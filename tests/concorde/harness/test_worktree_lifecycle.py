@@ -261,53 +261,119 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertFalse((self.change / "CLAUDE.md").exists())
         self.assertFalse((self.change / STATE_PATH).exists())
 
-    @verifies("scenario.development.worktree-handoff")
-    def test_primary_mutation_creates_handoff_without_running_an_agent(self):
-        self.assert_primary_handoff("concorde-dev-loop")
+    def relay_in_process(self, callback=None):
+        """A trusted relay running the candidate in this process with the same worker double."""
+        self.relayed = []
 
-    @verifies(
-        "scenario.development.worktree-handoff", "scenario.development.specify-loop"
-    )
-    def test_specify_loop_handoff_stops_at_spec_completion(self):
-        result = self.assert_primary_handoff("concorde-specify-loop")
-        self.assertIn(
-            "return completed before planning", result["errors"][0]["message"]
+        def relay(host, operation, invocation, candidate):
+            double = ModelProcessDouble(callback)
+            inner = OperationHost(
+                candidate, PACKAGE, executor=double.executor, mode=invocation["mode"]
+            )
+            result = run_operation(
+                operation, CONFIGURATION, invocation["input"], host_context=inner
+            )
+            self.relayed.append(
+                {
+                    "operation": operation,
+                    "invocation": invocation,
+                    "candidate": candidate,
+                    "calls": double.calls,
+                    "result": result,
+                }
+            )
+            return result, ""
+
+        return relay
+
+    def primary_host(self, relay):
+        self.outer_double = ModelProcessDouble()
+        return OperationHost(
+            self.primary, PACKAGE, executor=self.outer_double.executor, relay=relay
         )
 
-    def assert_primary_handoff(self, operation):
-        result = self.call_operation(self.primary, operation, self.task)
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual("worktree_handoff_required", result["errors"][0]["code"])
-        self.assertEqual([], self.last_double.calls)
-        created = Path(result["workspace"]["path"])
-        message = result["errors"][0]["message"]
-        self.assertIn("```text", message)
-        for fact in (
-            str(created),
-            result["workspace"]["branch"],
-            result["workspace"]["change_id"],
-            self.task["task"],
-            str(created / STATE_PATH),
-            "have not run",
-            "No task agent",
-            '"temporary": true',
-        ):
-            self.assertIn(fact, message)
-        self.assertEqual(result, json.loads(json.dumps(result)))
-        try:
-            self.assertTrue((created / STATE_PATH).exists())
-            self.assertEqual("created", read_change(created, required=True)["phase"])
-            self.assertEqual(
-                "# TRANSFER_IMPLEMENTATION_CODE\ndef transfer(balance, amount):\n    return balance\n",
-                (self.primary / "app/transfer.py").read_text(),
-            )
-        finally:
-            git(self.primary, "worktree", "remove", "--force", str(created))
-            created.parent.rmdir()
-        return result
+    def remove_candidate(self, created):
+        git(self.primary, "worktree", "remove", "--force", str(created))
+        created.parent.rmdir()
 
-    @verifies("scenario.development.resume-unbound", "scenario.harness.change-owner")
-    def test_public_handoff_resumes_unbound_candidate_with_fresh_host(self):
+    @verifies("scenario.development.worktree-relay")
+    def test_primary_mutation_runs_in_a_host_created_candidate(self):
+        result = self.call_operation(
+            self.primary,
+            "concorde-dev-loop",
+            self.task,
+            host=self.primary_host(self.relay_in_process()),
+        )
+        [relayed] = self.relayed
+        created = relayed["candidate"]
+        self.addCleanup(self.remove_candidate, created)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"], result)
+        self.assertEqual(str(created), result["workspace"]["path"], result)
+        self.assertEqual(str(self.primary), result["workspace"]["primary_worktree"])
+        self.assertEqual("concorde-dev-loop", relayed["operation"])
+        invocation = relayed["invocation"]
+        self.assertEqual(
+            ("concorde-operation-invocation", 3, "concorde-dev-loop", "execute", None),
+            (
+                invocation["type_id"],
+                invocation["schema_version"],
+                invocation["operation_id"],
+                invocation["mode"],
+                invocation["configuration"],
+            ),
+        )
+        state = read_change(created, required=True)
+        self.assertEqual(state["change_id"], invocation["input"]["data"]["change_id"])
+        self.assertEqual(state["change_id"], result["workspace"]["change_id"])
+        self.assertEqual(self.task["task"], invocation["input"]["data"]["task"])
+        self.assertEqual("ready", state["status"])
+        # No agent ran in the primary worktree and nothing was recorded there.
+        self.assertEqual([], self.outer_double.calls)
+        self.assertTrue(relayed["calls"])
+        self.assertFalse((self.primary / STATE_PATH).exists())
+        self.assertEqual(
+            "# TRANSFER_IMPLEMENTATION_CODE\ndef transfer(balance, amount):\n    return balance\n",
+            (self.primary / "app/transfer.py").read_text(),
+        )
+        self.assertEqual(result, json.loads(json.dumps(result)))
+
+    @verifies(
+        "scenario.development.worktree-relay", "scenario.development.specify-loop"
+    )
+    def test_specify_loop_from_primary_relays_and_stops_at_spec_completion(self):
+        result = self.call_operation(
+            self.primary,
+            "concorde-specify-loop",
+            self.task,
+            host=self.primary_host(self.relay_in_process()),
+        )
+        [relayed] = self.relayed
+        self.addCleanup(self.remove_candidate, relayed["candidate"])
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("completed", result["output"]["data"]["outcome"], result)
+        stages = [call["stage"] for call in relayed["calls"]]
+        self.assertNotIn("implementation", stages)
+        self.assertEqual([], self.outer_double.calls)
+
+    @verifies("scenario.development.worktree-relay")
+    def test_primary_mutation_with_an_unknown_change_id_is_refused(self):
+        result = self.call_operation(
+            self.primary,
+            "concorde-dev-loop",
+            {**self.task, "change_id": "change.unknown"},
+            host=self.primary_host(self.relay_in_process()),
+        )
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("missing_change", result["errors"][0]["code"], result)
+        self.assertEqual([], self.relayed)
+
+    @verifies(
+        "scenario.development.resume-unbound",
+        "scenario.harness.change-owner",
+        "scenario.development.worktree-relay",
+    )
+    def test_primary_resume_by_change_id_relays_into_the_recorded_candidate(self):
         for specify in (False, True):
             for reviews in (False, True):
                 with self.subTest(specify=specify, reviews=reviews):
@@ -317,26 +383,56 @@ class WorktreeLifecycleTests(unittest.TestCase):
                         "specify": specify,
                         "run_reviews": reviews,
                     }
+                    prepared = []
+
+                    def prepare_only(host, operation, invocation, candidate):
+                        # An interrupted first run: the candidate exists and records the
+                        # change, but nothing was routed or executed in it.
+                        prepared.append(candidate)
+                        return {
+                            "type_id": "concorde-operation-result",
+                            "schema_version": 3,
+                            "operation_id": operation,
+                            "invocation_id": "relay-interrupted",
+                            "mode": "execute",
+                            "status": "failed",
+                            "workspace": None,
+                            "output": None,
+                            "errors": [
+                                {
+                                    "code": "execution_cancelled",
+                                    "field": "",
+                                    "message": "interrupted",
+                                }
+                            ],
+                        }, ""
+
                     initial = self.call_operation(
-                        self.primary, "concorde-dev-loop", task
+                        self.primary,
+                        "concorde-dev-loop",
+                        task,
+                        host=self.primary_host(prepare_only),
                     )
+                    self.assertEqual("failed", initial["status"], initial)
                     self.assertEqual(
-                        "worktree_handoff_required", initial["errors"][0]["code"]
+                        "execution_cancelled", initial["errors"][0]["code"]
                     )
-                    self.assertEqual([], self.last_double.calls)
-                    created = Path(initial["workspace"]["path"])
+                    [created] = prepared
                     try:
                         state = read_change(created, required=True)
                         self.assertIsNone(state["target_id"])
                         self.assertEqual({}, state["targets"])
                         resumed = self.call_operation(
-                            created,
+                            self.primary,
                             "concorde-dev-loop",
                             {**task, "change_id": state["change_id"]},
+                            host=self.primary_host(self.relay_in_process()),
                         )
+                        [relayed] = self.relayed
+                        self.assertEqual(created, relayed["candidate"])
                         self.assertEqual("succeeded", resumed["status"], resumed)
                         self.assertEqual("ready", resumed["output"]["data"]["outcome"])
-                        stages = [call["stage"] for call in self.last_double.calls]
+                        stages = [call["stage"] for call in relayed["calls"]]
                         # Fixture discovery expands once, then selects exactly one route.
                         self.assertEqual(["route", "route"], stages[:2])
                         self.assertEqual(2, stages.count("route"))
@@ -452,11 +548,19 @@ class WorktreeLifecycleTests(unittest.TestCase):
         result = self.call_operation(self.change, "concorde-dev-loop", task)
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
         self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
+        # From the primary worktree the recorded change is relayed into its candidate.
         result = self.call_operation(
-            self.primary, "concorde-dev-loop", {**task, "change_id": state["change_id"]}
+            self.primary,
+            "concorde-dev-loop",
+            {**task, "change_id": state["change_id"]},
+            host=self.primary_host(self.relay_in_process()),
         )
-        self.assertEqual("missing_change", result["errors"][0]["code"], result)
-        self.assertIsNone(result["workspace"])
+        [relayed] = self.relayed
+        self.assertEqual(self.change.resolve(), Path(relayed["candidate"]).resolve())
+        self.assertEqual(
+            self.change.resolve(), Path(result["workspace"]["path"]).resolve(), result
+        )
+        self.assertEqual("succeeded", result["status"], result)
         for field, value, code in (
             ("path", str(self.primary), "invalid_worktree_state"),
             ("branch", "wrong-branch", "workspace_mismatch"),
@@ -544,9 +648,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
         self.assertEqual([], double.calls)
 
-    @verifies("scenario.development.worktree-handoff")
-    def test_handoff_remains_one_json_response_on_the_paired_cli(self):
-        operation = "concorde-dev-loop"
+    @verifies("scenario.development.worktree-relay")
+    def test_primary_relay_is_one_json_response_on_the_paired_cli(self):
+        """The default relay runs the candidate's launcher in a subprocess; validate needs no agent."""
+        operation = "concorde-validate"
         task = {**self.task, "constraints": ["保留用户原文；不合并、不 push"]}
         invocation = {
             "type_id": "concorde-operation-invocation",
@@ -565,19 +670,26 @@ class WorktreeLifecycleTests(unittest.TestCase):
             env={**os.environ, "CONCORDE_STUDIO_URL": ""},
         )
         result = json.loads(process.stdout)
+        self.assertIsNotNone(result["workspace"], result)
         created = Path(result["workspace"]["path"])
-        try:
-            self.assertEqual(3, process.returncode, process.stderr)
-            self.assertEqual("", process.stderr)
-            self.assertEqual("worktree_handoff_required", result["errors"][0]["code"])
-            message = result["errors"][0]["message"]
-            self.assertIn("```text", message)
-            self.assertIn(task["constraints"][0], message)
-            self.assertIn(str(created / STATE_PATH), message)
-            self.assertEqual("created", read_change(created, required=True)["phase"])
-        finally:
-            git(self.primary, "worktree", "remove", "--force", str(created))
-            created.parent.rmdir()
+        self.addCleanup(self.remove_candidate, created)
+        self.assertNotEqual(self.primary, created)
+        self.assertTrue(created.is_dir(), created)
+        self.assertEqual(str(self.primary), result["workspace"]["primary_worktree"])
+        state = read_change(created, required=True)
+        self.assertEqual(state["change_id"], result["workspace"]["change_id"])
+        self.assertEqual(task["constraints"], state["constraints"])
+        self.assertIn(result["status"], {"succeeded", "blocked", "failed"}, result)
+        self.assertEqual(
+            0 if result["status"] == "succeeded" else 3,
+            process.returncode,
+            process.stderr,
+        )
+        self.assertFalse((self.primary / STATE_PATH).exists())
+        # Whatever the candidate's launcher wrote to stderr is forwarded as it was: JSON lines.
+        for line in process.stderr.splitlines():
+            if line.strip():
+                json.loads(line)
 
     def test_second_top_level_task_cannot_share_the_same_change_worktree(self):
         self.ready()

@@ -33,8 +33,9 @@ It can resolve, identify a duplicate or reject a mistaken report from evidence w
 human approval. Unresolved product/design choices are returned as needs-decision. Respect the host's
 bounded iteration limit and distinct execution failures. Do not retry by widening permissions.
 
-A source-worktree handoff carries the selected Issue's exact bytes, including an uncommitted report,
-without copying unrelated edits. Resume in the host-created worktree using its own fresh session.
+From the primary worktree the host copies the selected Issue's exact bytes, including an uncommitted
+report, into the candidate worktree it creates, without copying unrelated edits, and solves there;
+this session receives the candidate's result and continues the change with its change_id.
 A successful solve ends at ready with the disposition included in verification. It does not deliver,
 merge primary or claim another branch is fixed. Closed Issues remain recorded. Legacy Reflections
 are archived history, never automatically converted or used as current approval.

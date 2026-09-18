@@ -85,7 +85,7 @@ class ScopedProtocolTests(unittest.TestCase):
         # The rule bundle is indexed by path and digest and granted as a file, never embedded.
         self.assertNotIn("content", context["protocol"][0])
         self.assertIn(
-            "### P10. Explicit session handoffs",
+            "### P10. Candidate worktrees, not session moves",
             repository.protocol_assets[context["protocol"][0]["path"]].decode(),
         )
         self.assertNotIn("UNTRUSTED_AMBIENT_GUIDANCE", json.dumps(context))

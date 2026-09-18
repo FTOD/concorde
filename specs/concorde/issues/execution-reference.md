@@ -167,9 +167,9 @@ These companions are part of the same complete Module specification, not separat
 
 One solve request selects one Issue and freezes its exact byte revision before preparing work. A
 new host-created candidate receives exactly that selected record, even if it is not yet committed;
-other local changes are not copied or committed. The existing fresh-session handoff remains
-mandatory. The owning session resumes in that candidate. Current-worktree bookkeeping operations
-never create candidates. Repeating solve on an ordinarily closed Issue reports its existing
+other local changes are not copied or committed. The solve request is then relayed to that
+candidate's own launcher and its result returned to the requesting session, which stays in the
+primary worktree. Current-worktree bookkeeping operations never create candidates. Repeating solve on an ordinarily closed Issue reports its existing
 disposition, but a candidate-local pending disposition must be recovered before that fast path.
 
 The solver receives the problem and impact plus its complete Module Spec. It chooses ordinary

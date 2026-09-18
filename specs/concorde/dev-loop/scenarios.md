@@ -19,9 +19,9 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Development Graph
 
-### scenario.development.resume-unbound — Resume a handoff before target selection
+### scenario.development.resume-unbound — Resume a candidate before target selection
 
-- GIVEN the host created a candidate and returned a session handoff before routing or binding an owner
+- GIVEN the host created a candidate whose change was recorded before routing or binding an owner
 - WHEN a fresh host in that worktree resumes the development loop with the recorded change identity and original task
 - THEN it validates the worktree identity and preserved intent, restores omitted constraints and focus hints, and performs real router discovery and single-target selection before binding the owner
 - AND a supplied target hint never substitutes for routing authority

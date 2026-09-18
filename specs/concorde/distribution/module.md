@@ -87,12 +87,12 @@ timeout and overrides; accepting new Protocol assets is an additional explicit d
 runtime-rebuild preservation gap below remains an unfulfilled obligation, not a claim that every
 failed rebuild restored the prior environment.
 
-<a id="entity.distribution.worktree-guard"></a><a id="entity.distribution.developer-session"></a>
+<a id="entity.distribution.developer-session"></a>
 
-The checkout-only Worktree guard constrains the Developer agent session to the worktree that
-supplied its instructions. It is not installed into consumer projects and does not move a session
-between revisions. Builds use only their own worktree's source and outputs; host-created candidate
-work follows the separate fresh-session handoff rule.
+The Developer agent session is the developer's own client session in the worktree whose build
+supplied its projections. It never needs to move: a mutation it requests from the primary worktree
+runs in a candidate worktree the host creates, and the session receives that candidate's result.
+Builds use only their own worktree's source and outputs.
 
 ## Relationships
 
@@ -101,9 +101,9 @@ records: Build never writes into a target project, Installation never renders Fr
 itself, and Managed runtime never chooses which files Installation replaces. Ownership receipt and
 Build manifest play matching but distinct roles — one binds installed bytes in a target project,
 the other binds authored sources to rendered outputs in this checkout or a build client — and
-neither substitutes for the other. In this source checkout specifically, the worktree guard and the
-developer session it constrains are the only entities with no counterpart in an installed consumer
-project, because the guard is checkout policy and ships to no one else.
+neither substitutes for the other. The developer agent session is the same actor in this source
+checkout and in an installed consumer project: it works in the worktree whose build supplied its
+projections and lets the host run candidate work elsewhere.
 
 Skill sources are authored and owned here, Build renders them, and Installation places the rendered
 Skills in the target integration. The external Developer runtime consumes those instructions and
@@ -116,7 +116,7 @@ operation behavior to Distribution.
 ```mermaid
 flowchart TB
     accTitle: Distribution entities and relationships
-    accDescr: Build renders Authored sources and Skill sources, records freshness in the Build manifest and validates the Package inventory. Installation installs rendered Skills, or the shim of the Pi session extension, for the external Developer runtime, applies receipt-owned proposals to the Target project and reads configuration through Spec. Managed runtime provisions the Verified managed runtime. In this source checkout the Worktree guard constrains the Developer agent session.
+    accDescr: Build renders Authored sources and Skill sources, records freshness in the Build manifest and validates the Package inventory. Installation installs rendered Skills, or the shim of the Pi session extension, for the external Developer runtime, applies receipt-owned proposals to the Target project and reads configuration through Spec. Managed runtime provisions the Verified managed runtime. The Developer agent session loads the projections its own worktree's build rendered.
     authored["Authored sources"]
     build["Build"]
     buildCmd["Build command"]
@@ -131,7 +131,6 @@ flowchart TB
     runtimeIface["Runtime provisioning interface"]
     managedRuntime["Managed runtime"]
     verifiedRuntime["Verified managed runtime"]
-    guard["Worktree guard"]
     session["Developer agent session"]
     spec["Spec"]
     skillSources["Skill sources"]
@@ -162,7 +161,6 @@ flowchart TB
     managedRuntime -->|provisions and verifies| verifiedRuntime
     installation -->|reads project configuration and registry through| spec
     session -->|loads worktree-owned outputs rendered by| build
-    guard -->|refuses native worktree creation in| session
 ```
 
 ## Provider collaboration

@@ -43,7 +43,6 @@
         "scripts/install-concorde.py",
         "scripts/requirements.lock",
         "scripts/run-operation.py",
-        "scripts/worktree-guard.py",
         "src/concorde/distribution/",
         "templates/",
         "tests/concorde/distribution/"
@@ -118,12 +117,6 @@
       "title": "Runtime provisioning interface",
       "kind": "interface",
       "meaning": "#entity.distribution.runtime-provisioning"
-    },
-    {
-      "id": "entity.distribution.worktree-guard",
-      "title": "Worktree guard",
-      "kind": "interface",
-      "meaning": "#entity.distribution.worktree-guard"
     },
     {
       "id": "entity.distribution.authored-sources",

@@ -10,7 +10,7 @@ under `reference/` (media-free partial clones of the submodules `.gitmodules` re
 follow `.concorde/protocol/principles.md`, the tracked Protocol copy that
 `python3 scripts/concorde.py protocol-manifest --write --bind-project` refreshes after a Protocol
 change, as the canonical Concorde Spec Protocol and Framework rule bundle, including P10 for
-all session handoffs below. This file adds only source-checkout worktree and maintenance boundaries.
+candidate worktrees. This file adds only source-checkout worktree and maintenance boundaries.
 
 ## Direct maintenance is the default
 
@@ -27,7 +27,7 @@ The build renders this checkout's Claude Skills with `disable-model-invocation: 
 hidden from the model until the user types `/concorde-<name>`; when the user names a graph in prose
 instead, read its rendered file under `.claude/skills/<name>/SKILL.md` and submit the typed request
 it describes through `scripts/run-operation.py`. An explicitly requested graph keeps every rule of
-this policy, including the worktree ownership and handoff rules below.
+this policy, including the worktree rules below.
 
 ## Format before committing
 
@@ -57,36 +57,16 @@ the Concorde Spec Protocol; it does not prescribe the language of consumer proje
 
 ## Worktree ownership
 
-A session works in the worktree that supplied its Skills and never creates, moves or enters
-another worktree itself. Direct maintenance needs no other worktree: the change is made, verified
-and committed here. Worktrees for changes are created only by the Concorde host, and only for a
-Concorde graph the user explicitly asked for (for example `concorde-dev-loop`): the host prepares
-the candidate worktree from the committed base, and the work continues there in a fresh session
-under P10. That successor session
-starts with the target worktree as its initial working directory, fresh context and that worktree's
-own Skills; changing cwd or spawning a native subagent that inherits this conversation or its Skill
-bodies does not satisfy the handoff. Never switch the current worktree in place to another branch
-or revision to avoid a handoff; a new target revision belongs in a host-created linked worktree
-with its own agent session.
+A session works in the worktree whose build supplied its projections, and direct maintenance
+needs no other worktree: the change is made, verified and committed here. When the user
+explicitly asks for a Concorde graph that changes the project (for example `concorde-dev-loop`)
+from the primary worktree, the host creates the candidate worktree from the committed base and
+runs the graph there with the candidate's own code; this session stays here and receives the
+candidate's result, whose workspace names the candidate's path, branch and change_id. Continue
+the same change from here with that change_id, or open a separate session inside the candidate.
+Never switch this worktree in place to another branch or revision to work on a candidate.
 
-This checkout enforces the rule in the agent runtimes, so it does not depend on an agent
-remembering it. Claude Code reads `.claude/settings.json`, which denies the `EnterWorktree` tool,
-subagents with `isolation: "worktree"`, and shell commands that run `git worktree add`,
-`git worktree move` or `claude --worktree`; its `PreToolUse` and `WorktreeCreate` hooks run
-`scripts/worktree-guard.py`, which also refuses the forms a permission rule cannot express and
-aborts every native worktree creation, `claude --worktree` at startup included. Codex reads
-`.codex/rules/worktree.rules`, which forbids `git worktree add` and `git worktree move`, and
-`.codex/hooks.json`, which runs the same guard before each shell command; Codex loads both only for
-a trusted project and runs the hook only after you reviewed it once with `/hooks`. Both runtimes
-apply these rules to native subagents as well. The guard inspects the whole command text, so write
-a file that must mention these commands with the editor tool rather than a shell here-document.
-`python3 scripts/worktree-guard.py --explain` prints the policy; `--check "<command>"` decides one
-command.
-
-The guard protects developer sessions of this checkout; it is not a sandbox, and it is not
-installed into consumer projects. Concorde's own workers run with project settings ignored and
-never create worktrees themselves. A refusal is a policy result, not a defect to work around: do
-not compute the command at runtime or reach the same effect through another tool.
+Concorde's own workers run with project settings ignored and never create worktrees themselves.
 
 ## Delivery between participating worktrees
 
@@ -94,8 +74,8 @@ For user-authorized delivery, the agent's initial worktree may be either the sel
 worktree or the primary worktree. A third-worktree session cannot initiate that delivery. The
 session keeps its own worktree's Skills as usual. The deterministic host may inspect the
 participants and verify integration without moving the session or loading the other participant's
-Skills. These bounded delivery actions are an exception to the cross-worktree handoff above;
-unrelated development and Skill projection maintenance remain bound to the original worktree.
+Skills. Delivery is a bounded action on both participants; unrelated development and Skill
+projection maintenance remain bound to the original worktree.
 
 Default delivery creates an independent `concorde/delivered/<change_id>` branch in the shared Git
 repository and removes the source worktree after verification. It never advances the primary

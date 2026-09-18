@@ -22,8 +22,8 @@ Specification Graph prepares or revises a Module’s specification and obtains i
 Choose `concorde-specify-loop` when you want to prepare or review a Module contract without yet
 planning or implementing code. Supply a task, optional target/focus hints and constraints; the
 Graph selects one owner, authors its documents and independently reviews the resulting contract
-and affected consumers. A primary mutation requires the common committed-base session handoff.
-Resume with the recorded change and compatible intent.
+and affected consumers. A primary mutation runs in the common committed-base candidate worktree
+and returns its result here. Resume with the recorded change and compatible intent.
 
 `specify=false` reviews the existing contract. `run_reviews=false` records a Spec review skip only
 where no requirement already exists. Accepted authoring for the same intent and current review

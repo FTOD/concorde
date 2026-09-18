@@ -183,7 +183,7 @@ The record is computed from the invocation's own project root, the worktree at t
 working directory, and each linked worktree's summary comes from its `.concorde/worktree.json` alone.
 The host rechecks the current workspace identity and lifecycle after a stage; other worktrees' frozen
 summaries may advance independently. Topology proposals retain their originating workspace observation
-so a committed-base handoff can recheck the same admitted Spec and design inputs in its candidate.
+so the relayed run in a committed-base candidate can recheck the same admitted Spec and design inputs.
 
 That closed record has `kind: primary|change|unversioned`, `current_worktree: str`, nullable string
 `current_branch`, `primary_worktree`, `primary_branch`, `change_id`, `phase`, `status` and `outcome`,
@@ -207,7 +207,7 @@ both Concorde Spec Protocol requirements and the Framework execution profile; th
 not classify all runtime rules as Spec organization rules.
 Concorde Spec Protocol 10.0.0 defines the Spec context, implementation context and external
 references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
-profile, including P10 handoffs. The resolver verifies the build is
+profile, including P10 candidate worktrees. The resolver verifies the build is
 fresh, then admits the Protocol copy the installer placed under `.concorde/protocol/`, the manifest
 the configuration binds and its rendered assets, cross-checked against the installed package's
 manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves

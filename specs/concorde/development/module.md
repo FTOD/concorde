@@ -31,10 +31,11 @@ For example, a standalone review and a development request use the same admissio
 review returns findings while development may create a candidate. A successful host response must
 still be read for the operation's result: answered, ready, blocked or another declared outcome.
 
-Mutating work on primary normally prepares an isolated candidate and a fresh-session handoff from
-the committed base. Uncommitted primary edits are not silently carried into it. Resuming preserves
-the saved task and workspace identity; incompatible input is rejected rather than applied to another
-change. [Operations](operations.md) explains the public/internal distinction and [coordination](graphs.md)
+Mutating work requested from primary runs in an isolated candidate the host creates from the
+committed base: the request is relayed to that candidate's own launcher and its result returned,
+while the requesting session stays where it is. Uncommitted primary edits are not silently carried
+into it. Resuming preserves the saved task and workspace identity; incompatible input is rejected
+rather than applied to another change. [Operations](operations.md) explains the public/internal distinction and [coordination](graphs.md)
 explains the host's part in the workflow. The exact invocation envelope belongs in Implementation Specs.
 
 ## Design

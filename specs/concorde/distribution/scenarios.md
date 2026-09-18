@@ -132,37 +132,6 @@ no separate `agents` authoring root, and 4 templates. Codex `.agents/skills` and
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
 operation owned by the [Spec Module](../spec/module.md), not by this Module.
 
-### scenario.distribution.worktree-guard-refuses — The guard refuses native worktree creation in a developer session
-
-- GIVEN a Claude Code or Codex hook payload for a `WorktreeCreate` event, an `EnterWorktree` tool call, a worktree-isolated Agent/Task call, or a shell command whose text contains a worktree-add/move or `claude --worktree` form
-- WHEN the worktree guard decides that payload
-- THEN it writes a `permissionDecision: deny` object with its reason to stdout and the reason to stderr, and exits 2
-- AND `git worktree list`, removing a worktree and starting a session in an existing host-created worktree are allowed unchanged
-
-The guard's decision procedure and its checkout-only scope are Module-wide requirements; see
-[req.distribution.guard-inspects-text](requirements.md#req.distribution.guard-inspects-text) and
-[req.distribution.guard-checkout-only](requirements.md#req.distribution.guard-checkout-only).
-
-The source checkout refuses native worktree creation in developer agent sessions because its
-project-local Skills are worktree-owned build output: a session that loaded them in one worktree
-and then created or entered another would act on the second worktree with the first worktree's
-instructions. A developer session therefore makes its change in the worktree it started in, as
-direct developer-authorized maintenance; a further worktree exists only when the developer
-explicitly asks for a Concorde graph, whose host creates the candidate worktree from the committed
-base, builds it, and returns a P10 handoff for a fresh session there.
-
-Unreadable hook input exits 1, a visible non-blocking hook error rather than a refusal of every
-tool call. `--check "<command>"` decides one command text and `--explain` prints the policy for
-people. `.claude/settings.json` denies `EnterWorktree`, `Agent(isolation:worktree)` and the
-`git worktree add`, `git worktree move` and `claude --worktree` command prefixes outright, and runs
-the guard from `PreToolUse` and `WorktreeCreate`; `.codex/rules/worktree.rules` and
-`.codex/hooks.json` provide the matching Codex layer, loaded only for a trusted project. The guard
-inspects the command text an agent submits, so a command that computes `git worktree add` at
-runtime, or input sent to an already running shell, is outside its reach. Concorde's own workers
-are unaffected: each Pi worker process starts with sessions, project settings and discovered
-extensions disabled and its own configuration directory holding only what the host placed there,
-so it never reads this checkout's `.claude/` or `.codex/` layer and never creates a worktree itself.
-
 ### scenario.distribution.check-docsite-external — Type-check preparation uses disposable external files
 
 - GIVEN a source checkout with a configured docsite type check

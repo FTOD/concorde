@@ -14,6 +14,9 @@ TARGET_DISCOVERY_OPERATIONS = frozenset(DISCOVERY_OPERATIONS - {MAIN_OPERATION})
 class DispatchState(TypedDict, total=False):
     route: str
     output: dict
+    # The complete result envelope a candidate worktree's launcher returned for a mutation
+    # admitted in the primary worktree; the operation Graph adopts it as its own result.
+    relayed: dict
     result: dict
 
 
@@ -73,6 +76,7 @@ SUBGRAPH_NODES = {
 
 DISPATCH_NODES = (
     "select_operation",
+    "relay",
     "deliver",
     "project",
     "answer",
@@ -121,7 +125,10 @@ def build_dispatch_graph(node_factory, *, operation=None):
         ),
     }
     graph = StateGraph(DispatchState)
+    # A mutation admitted in the primary worktree is relayed into its host-created candidate
+    # before any entry leaf; every operation kind can be admitted that way.
     leaves = (
+        "relay",
         "deliver",
         "project",
         "answer",
@@ -141,6 +148,7 @@ def build_dispatch_graph(node_factory, *, operation=None):
         "context_solve",
     )
     entry = [
+        "relay",
         "deliver",
         "project",
         "answer",
@@ -149,19 +157,19 @@ def build_dispatch_graph(node_factory, *, operation=None):
         "apply_topology",
         "prepare_target",
     ]
-    targeted = list(leaves[6:])
+    targeted = list(leaves[leaves.index("review") :])
     if operation == "concorde-main":
         entry, targeted = (
-            ["answer", "design_topology", "prepare_topology", "apply_topology"],
+            ["relay", "answer", "design_topology", "prepare_topology", "apply_topology"],
             [],
         )
     elif operation in {"concorde-init", "concorde-configure", "concorde-deliver"}:
         entry, targeted = (
-            ["deliver" if operation == "concorde-deliver" else "project"],
+            ["relay", "deliver" if operation == "concorde-deliver" else "project"],
             [],
         )
     elif operation is not None:
-        entry = ["prepare_target"]
+        entry = ["relay", "prepare_target"]
         target = {
             "concorde-review": "review",
             "concorde-issues": "issues",

@@ -4,7 +4,7 @@ A prompt is a Markdown file with YAML front matter declaring ``audience: worker 
 shared``. A prompt body may reference other prompts through one explicit ``@include`` directive
 that occupies a whole line starting at column one:
 
-    @include prompts/workflow-host/worktree-handoff.md
+    @include prompts/workflow-host/candidate-worktree.md
     @include prompts/workflow-host/invoke.md operation=concorde-main request=concorde-main-request
 
 Resolution is a pure function of the source tree: given a root (a role root prompt or a skill

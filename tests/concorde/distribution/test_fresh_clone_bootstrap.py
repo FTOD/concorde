@@ -105,10 +105,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             )
             self.assertEqual([], projected)
 
-    @verifies(
-        "scenario.distribution.build-write",
-        "scenario.distribution.worktree-guard-refuses",
-    )
+    @verifies("scenario.distribution.build-write")
     def test_one_build_command_bootstraps_a_fully_working_clone(self):
         build = _run([sys.executable, "scripts/concorde.py", "build"], self.clone)
         self.assertEqual(0, build.returncode, build.stderr)
@@ -130,28 +127,6 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             )
             self.assertEqual(expected_skills, skills)
 
-        # The clone carries the worktree guard and the Claude/Codex files that register it, so a
-        # session opened here refuses native worktree creation from its first tool call.
-        refused = _run(
-            [
-                sys.executable,
-                "scripts/worktree-guard.py",
-                "--check",
-                "git worktree add ../elsewhere",
-            ],
-            self.clone,
-        )
-        self.assertEqual(2, refused.returncode, refused.stderr)
-        self.assertTrue(
-            refused.stdout.startswith("deny (git-worktree)"), refused.stdout
-        )
-        for integration_file in (
-            ".claude/settings.json",
-            ".codex/hooks.json",
-            ".codex/rules/worktree.rules",
-        ):
-            self.assertTrue((self.clone / integration_file).is_file(), integration_file)
-
         described = self._validate_invocation()
         self.assertEqual("described", described["status"], described)
 
@@ -165,7 +140,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         described = self._validate_invocation()
         self.assertEqual("described", described["status"], described)
 
-        prompt = self.clone / "prompts/workflow-host/worktree-handoff.md"
+        prompt = self.clone / "prompts/workflow-host/task-request-fields.md"
         original = prompt.read_text(encoding="utf-8")
         prompt.write_text(
             original + "\n<!-- drifted after the build: source digest changes -->\n",

@@ -77,7 +77,7 @@ explicit recovery still fail their original stale-context checks.
 #### Failure and recovery {#development-failure-and-recovery}
 
 Candidate creation precedes routing. A change ID identifies a worktree, not a completed route.
-An unbound handoff resumes router selection using the recorded task and constraints; optional
+An unbound candidate resumes router selection using the recorded task and constraints; optional
 saved target/focus hints only steer that selection. Older records without a saved target hint
 remain valid. Once bound, the recorded owner supplies an omitted target or focus and omitted
 constraints, while explicit incompatible intent is rejected. Standalone reviews without a change

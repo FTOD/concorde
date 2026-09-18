@@ -176,10 +176,10 @@ change, use the built-in loop:
 Use concorde-dev-loop to implement the next change described below: …
 ```
 
-The host prepares a candidate worktree from committed HEAD. Continue in the fresh session it
-hands off, with that worktree's own instructions. See the
+The host prepares a candidate worktree from committed HEAD, runs the change there and returns the
+candidate's result to your session. See the
 [workflow guide](docs/workflow-guide.md#install-and-initialize) for typed JSON invocations,
-initialization details and session handoffs.
+initialization details and candidate worktrees.
 
 ## Explore Concorde
 
@@ -429,7 +429,6 @@ scripts under `.concorde/framework/`; Studio and development setup are documente
 | `python3 scripts/issues.py` | Inspect branch-local Issues or explicitly archive legacy Reflection data. |
 | `npm --prefix docsite run <script>` | `start`, `build`, `validate`, `typecheck`, `test`, `check`. |
 | `python3 scripts/development/run-tests.py` | Run the project's test suite. |
-| `python3 scripts/worktree-guard.py` | Explain or check the source-checkout worktree policy. |
 
 The CLI `validate` command performs direct validation. The `concorde-validate` operation also
 manages candidate readiness evidence as part of the lifecycle. Studio uses the same host and

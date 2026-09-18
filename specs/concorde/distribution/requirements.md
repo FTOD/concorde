@@ -80,20 +80,3 @@ Installation SHALL NOT hash or replace user text surrounding an owned root block
 
 A runtime or setup failure during installation SHALL roll back root bytes, modes and the receipt
 together with the other installation outputs.
-
-### req.distribution.guard-inspects-text — Guard decides from the submitted command text
-
-The worktree guard SHALL decide from the submitted command text, including global git options such
-as `-C` and `--git-dir=`.
-
-### req.distribution.guard-not-agent-reliant — Guard does not rely on agent memory
-
-The worktree guard SHALL NOT depend on an agent remembering the policy.
-
-### req.distribution.guard-checkout-only — Guard protects only this checkout's sessions
-
-The worktree guard SHALL protect only developer sessions of this source checkout.
-
-### req.distribution.guard-not-in-consumer-projects — Guard is excluded from consumer projects
-
-The worktree guard SHALL NOT be installed into consumer projects.

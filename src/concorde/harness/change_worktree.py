@@ -567,7 +567,7 @@ def create_worktree(
     state = ensure_change(directory, task=task, change_id=change_id)
     if package_root is not None and package_root.resolve() == root.resolve():
         # Self-hosted Concorde: the new linked worktree is also its own package root, and
-        # generated/ is untracked, so the handoff must not open on a build-less checkout.
+        # generated/ is untracked, so the relayed run must not start on a build-less checkout.
         from ..distribution.build import write_build
 
         write_build(directory)

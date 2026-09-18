@@ -157,10 +157,10 @@ A null outer configuration SHALL load existing project settings.
 Before a project is initialized no such settings exist, so the caller SHALL supply a valid outer
 configuration or receive configuration_mismatch.
 
-### req.spec.init-worktree-handoff — Worktree handoffs are reported, not applied
+### req.spec.init-worktree-handoff — Initialization from primary applies only in the candidate
 
-A required worktree handoff SHALL be reported as a blocked result, never as an applied
-initialization.
+An initialization requested from the primary worktree SHALL apply in the host-created candidate
+worktree and report that candidate, never as an applied initialization of the primary worktree.
 
 ### req.spec.init-no-blind-retry — No blind retries of a rejected proposal
 

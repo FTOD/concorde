@@ -329,7 +329,7 @@ const operationDetails: Record<string, OperationDetail> = {
     exchange:
       "concorde-dev-loop-request@1 → concorde-dev-loop-response@2. Task, constraints, flags and optional change_id enter; outcome, gaps, checks and artifact references return. Step handoffs and candidate files are managed by the host.",
     stops:
-      "Any non-advancing step outcome stops the loop, except admitted local code-review repair. A new primary-worktree change first returns worktree_handoff_required so a fresh session can continue in the candidate.",
+      "Any non-advancing step outcome stops the loop, except admitted local code-review repair. A new primary-worktree change runs in a host-created candidate worktree and returns that candidate's result.",
   },
   "concorde-review": {
     title: "Review",

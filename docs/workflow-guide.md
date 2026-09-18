@@ -67,12 +67,12 @@ the session extension shim under `.pi/extensions/`, whose `concorde` tool descri
 same public Operations.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
-project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
-primary-worktree authorization). A mutation requested from the primary worktree prepares a linked
-worktree from committed HEAD and returns its identity. The outer agent then starts a fresh session
-in that worktree under P10, using its own Skills; when automatic startup is unavailable or cannot
-establish that isolation, it provides a complete prompt for the user to open the session manually.
-The originating session does not follow the task into a different checkout.
+project, then invoke the paired init entry (or use the trusted host's explicit primary-worktree
+authorization). A mutation requested from the primary worktree prepares a linked worktree from
+committed HEAD, runs the same request through that candidate's own launcher and returns the
+candidate's result; its workspace names the candidate's path, branch and change_id, with which the
+same session continues the change. The originating session never follows the task into a different
+checkout.
 
 ```json
 {
@@ -247,7 +247,7 @@ navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades
 
-The Framework execution profile defines session handoffs in [P10](../prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
+The Framework execution profile defines candidate worktrees in [P10](../prompts/protocol/framework-profile.md#p10-candidate-worktrees-not-session-moves).
 Concorde Spec Protocol 10.0.0 defines readable Module specifications with paired metadata whose entities bind the
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
 the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
@@ -390,19 +390,10 @@ the checkout's Claude Skills with `disable-model-invocation: true`, so the model
 `concorde-dev-loop` on its own and the developer invokes a graph with its slash command or by naming
 it; installed consumer projections keep model-initiated invocation.
 
-Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. Agent
-sessions never create or enter worktrees themselves: the checkout's `.claude/settings.json`,
-`.codex/hooks.json` and `.codex/rules/worktree.rules` refuse `EnterWorktree`, worktree-isolated
-subagents, `git worktree add` and `claude --worktree`, with `scripts/worktree-guard.py` as the hook
-behind them. A further worktree exists only when the developer explicitly asks for a Concorde graph,
-whose host creates the candidate worktree and hands off a fresh session there under P10. The policy
-and a one-command check:
-
-```bash
-python3 scripts/worktree-guard.py --explain
-python3 scripts/worktree-guard.py --check "git worktree add ../elsewhere"
-```
-
-User-authorized delivery is the bounded exception: a session in either participating worktree can
-complete the integration while retaining its own Skills.
+Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree whose build supplied its projections.
+A further worktree exists only when the developer explicitly asks for a Concorde graph that changes
+the project: the host creates the candidate worktree from the committed base, runs the graph there
+through the candidate's own launcher and returns its result to the requesting session, which never
+moves. User-authorized delivery is a bounded action on both participating worktrees: a session in
+either can complete the integration while retaining its own Skills.
 See [source-checkout distribution](../specs/concorde/distribution/build.md).

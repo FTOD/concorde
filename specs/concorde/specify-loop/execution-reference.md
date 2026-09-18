@@ -40,8 +40,8 @@ existing Spec, and `run_reviews=false` records only a Spec review skip where no 
 
 The public request requires task and admits optional target/focus hints, constraints, change_id,
 specify and run_reviews. Both booleans default true. New tasks use [Query and Routing](../query-routing/module.md) to select one
-owner; a trusted bound caller preserves that owner. Mutating primary requests first use the common
-host's isolated committed-base handoff. The recorded task, owner, focus and constraints bind resume;
+owner; a trusted bound caller preserves that owner. Mutating primary requests run in the common
+host's isolated committed-base candidate. The recorded task, owner, focus and constraints bind resume;
 incompatible intent or worktree identity is rejected before a worker starts.
 
 [Spec Authoring](../spec-authoring/module.md) produces owned replacements; [Review Module](../review/module.md) produces independent current coverage for the

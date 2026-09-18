@@ -22,9 +22,11 @@ Development Graph takes one intended change through specification, planning, imp
 
 Choose `concorde-dev-loop` for one intended change through specification, planning, task authoring,
 implementation, validation and code review. Supply task and constraints; optional target/focus
-hints help initial routing. New primary-worktree mutations return a committed-base worktree
-handoff and require a fresh owning session there. Resume with the recorded change identity and
-compatible intent; a bound candidate does not reroute to another owner.
+hints help initial routing. A new change requested from the primary worktree runs in a
+committed-base candidate worktree the host creates, and the result names that candidate; the
+requesting session stays in place. Resume with the recorded change identity and compatible
+intent, from the primary worktree or inside the candidate; a bound candidate does not reroute to
+another owner.
 [Specification Graph](../specify-loop/module.md) can run first on its own; development reuses its
 accepted work for the same task when inputs remain unchanged.
 

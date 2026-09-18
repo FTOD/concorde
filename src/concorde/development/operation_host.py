@@ -81,6 +81,7 @@ from ..spec.contracts import (
 )
 from ..spec.repository import SpecError, SpecRepository, digest, read_file
 from ..spec.typed_data import (
+    DATA_SCHEMAS,
     OPERATION_CONTRACTS,
     TypedDataError,
     artifact,
@@ -108,6 +109,12 @@ class OperationHost:
     allow_primary_worktree: bool = False
     outer_sandbox: str | None = None
     routed_target: str | None = None
+    # A mutation admitted in the primary worktree runs in a host-created candidate worktree.
+    # ``relay`` runs the same invocation there (``relay_operation``, the candidate's own launcher
+    # in a subprocess, unless a trusted caller supplies another runner) and ``relay_target``
+    # names that candidate once bind_workspace prepared it.
+    relay: Any = None
+    relay_target: dict | None = None
     configuration_snapshot: str = ""
     session_root: Path | None = None
     coordinated: bool = False
@@ -366,18 +373,124 @@ def _run_host_node(runner, host, configuration, payload, operation):
     )["result"]
 
 
+# An installed consumer keeps the framework below this project-relative root (the installer's
+# FRAMEWORK_ROOT); a source checkout is its own framework.
+INSTALLED_FRAMEWORK_ROOT = ".concorde/framework"
+# How long a relayed launcher may cancel its worker after the host was interrupted.
+RELAY_GRACE_SECONDS = 30
+
+
+def _candidate_by_change_id(root: Path, change_id: str) -> dict | None:
+    """The one live managed candidate of ``change_id`` in the primary's inventory, or None."""
+    inventory = refresh_registry(root, persist=False)
+    matches = [
+        item
+        for item in inventory["worktrees"]
+        if item["managed"] and item["change_id"] == change_id
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def relay_launcher(host: OperationHost, candidate: Path) -> list[str]:
+    """The launcher that runs an operation inside ``candidate``.
+
+    A candidate that carries its own Concorde, the source checkout itself or a consumer project
+    whose installed framework is tracked, runs that code, so a change to Concorde is exercised by
+    the candidate's own framework. Otherwise the invoking framework runs with the candidate as its
+    project root."""
+    for framework in (candidate, candidate / INSTALLED_FRAMEWORK_ROOT):
+        launcher = framework / "scripts/run-operation.py"
+        if launcher.is_file() and (framework / "src/concorde").is_dir():
+            return [sys.executable, str(launcher)]
+    return [sys.executable, str(host.package_root / "scripts/run-operation.py")]
+
+
+def relay_operation(
+    host: OperationHost, operation: str, invocation: dict, candidate: Path
+) -> tuple[dict, str]:
+    """Run ``invocation`` with the candidate worktree's launcher; return its envelope and stderr.
+
+    A self-hosted candidate is rebuilt from its own sources first, because its generated
+    instructions are untracked and its sources may have changed since it was created. A host
+    interrupt reaches the launcher as SIGTERM, which cancels its worker and prints its result;
+    only a launcher that does not finish within the grace period is killed."""
+    if (candidate / "concorde.json").is_file() and (candidate / "src/concorde").is_dir():
+        from ..distribution.build import write_build
+
+        write_build(candidate)
+    argv = [*relay_launcher(host, candidate), operation]
+    environment = {
+        key: value for key, value in os.environ.items() if key != "CONCORDE_STUDIO_URL"
+    }
+    import signal
+    import subprocess
+
+    process = subprocess.Popen(
+        argv,
+        cwd=str(candidate),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=environment,
+    )
+    try:
+        stdout, stderr = process.communicate(canonical(invocation))
+    except KeyboardInterrupt:
+        process.send_signal(signal.SIGTERM)
+        try:
+            stdout, stderr = process.communicate(timeout=RELAY_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            stdout, stderr = process.communicate()
+    try:
+        envelope = decode(stdout)
+    except Exception:  # any non-envelope output is the same failure
+        envelope = None
+    if (
+        not isinstance(envelope, dict)
+        or envelope.get("type_id") != "concorde-operation-result"
+    ):
+        detail = stderr.strip()[-2000:] or stdout.strip()[-2000:]
+        raise SpecError(
+            "the candidate worktree's launcher returned no result envelope"
+            + (f": {detail}" if detail else f" (exit code {process.returncode})"),
+            "relay_failed",
+        )
+    return envelope, stderr
+
+
 def _worktree(
     host: OperationHost, mutation: bool, task: dict
 ) -> tuple[OperationHost, dict | None]:
+    primary, current = workspace_identity(host.project_root)
+    in_primary = (
+        current is not None
+        and primary is not None
+        and current["path"] == primary["path"]
+    )
     if task.get("change_id") is not None:
-        state = read_change(host.project_root, required=True)
+        state = read_change(host.project_root)
+        if state is None and in_primary and host.mode == "execute":
+            # From the primary worktree a recorded change continues in its own candidate.
+            candidate = _candidate_by_change_id(host.project_root, task["change_id"])
+            if candidate is not None:
+                return host, {
+                    "path": candidate["path"],
+                    "branch": candidate["branch"],
+                    "change_id": task["change_id"],
+                    "primary_worktree": primary["path"] if primary else None,
+                    "relay": True,
+                }
+        if state is None:
+            # No candidate records this change here or in the inventory: missing_change.
+            state = read_change(host.project_root, required=True)
         if task["change_id"] != state["change_id"]:
             raise SpecError(
                 "change ID does not own this worktree", "incompatible_handoff"
             )
     if host.mode == "describe-policy":
         return host, None
-    primary, current = workspace_identity(host.project_root)
     if (
         current is not None
         and primary is not None
@@ -409,11 +522,11 @@ def _worktree(
             raise SpecError(
                 "mutations require a committed Git worktree", "workspace_mismatch"
             )
-        # Preparing a worktree is a handoff, never permission to continue the
-        # originating agent conversation against a different checkout.
+        # The mutation runs in a host-created candidate; the originating session stays in
+        # the primary worktree and receives the candidate's result.
         return host, {
             **create_worktree(host.project_root, task, package_root=host.package_root),
-            "handoff": True,
+            "relay": True,
         }
     if mutation:
         ensure_change(
@@ -4768,7 +4881,9 @@ def _dispatch_nodes(operation, configuration, task, host):
     target_discovery_nodes = {}
 
     def select_operation(state):
-        if operation == "concorde-deliver":
+        if host.relay_target is not None:
+            route = "relay"
+        elif operation == "concorde-deliver":
             route = "deliver"
         elif operation in {"concorde-init", "concorde-configure"}:
             route = "project"
@@ -4966,6 +5081,20 @@ def _dispatch_nodes(operation, configuration, task, host):
             blockers=result["blockers"],
         )
 
+    def relay():
+        """Run this invocation in the prepared candidate worktree and adopt its result."""
+        target = host.relay_target
+        assert target is not None, "relay requires a prepared candidate"
+        runner = host.relay or relay_operation
+        envelope, diagnostics = runner(
+            host, operation, target["invocation"], Path(target["path"])
+        )
+        if diagnostics:
+            # The candidate's policies and usage lines reach the caller unchanged.
+            sys.stderr.write(diagnostics.rstrip("\n") + "\n")
+            sys.stderr.flush()
+        return envelope
+
     operations = {
         "deliver": deliver,
         "project": project,
@@ -4994,6 +5123,7 @@ def _dispatch_nodes(operation, configuration, task, host):
         name: (lambda state, operation=operation: {"output": operation()})
         for name, operation in operations.items()
     }
+    nodes["relay"] = lambda state: {"relayed": relay()}
     subgraphs = {}
 
     def subgraph(name, child, state):
@@ -5177,58 +5307,31 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         else:
             host, workspace = _worktree(host, mutation, task)
         result["workspace"] = workspace
-        if workspace and workspace.get("handoff"):
+        if workspace and workspace.get("relay"):
+            candidate = Path(workspace["path"])
             if operation == "concorde-issues":
                 from ..issues.graph import copy_selection
 
-                copy_selection(host.project_root, Path(workspace["path"]), task)
-            from ..harness.session_handoff import handoff_prompt
-
-            prompt = handoff_prompt(
-                workspace["path"],
-                branch=workspace.get("branch"),
-                change_id=workspace.get("change_id"),
-                task=task["task"]
-                if operation == "concorde-issues"
-                else runtime_input["data"].get("task"),
-                constraints=runtime_input["data"].get("constraints"),
-                completed="The host prepared a linked worktree from the committed base and local change state. "
-                "No task agent has run in it during this invocation.",
-                remaining=f"Resume {operation} for this change with the original task and constraints.",
-                checks="Worktree preparation succeeded; task implementation/review/validation have not run "
-                "during this invocation.",
-                artifacts=[
-                    {
-                        "path": str(
-                            Path(workspace["path"]) / ".concorde/worktree.json"
-                        ),
-                        "applied": True,
-                        "temporary": True,
-                        "storage": "create_worktree used a temporary directory; preserve it until completion",
-                    }
-                ],
-                next_steps=f"Resume {operation} with change_id {workspace.get('change_id')} in the initial "
-                "directory after policy verification. The host must resolve fresh bounded contexts."
-                + (
-                    f" Select issue_id {task['issue_id']} with expected_revision {task['expected_revision']}."
-                    if operation == "concorde-issues"
-                    else ""
-                ),
-                completion=(
-                    "Complete Spec authoring and required Spec review, then return completed before planning "
-                    "or implementation. The same change can continue through concorde-dev-loop."
-                    if operation == "concorde-specify-loop"
-                    else "Complete the accepted task and its required checks; development loops stop at ready. "
-                    "Delivery requires the user's separate request from a participating worktree session."
-                ),
-            )
-            raise SpecError(
-                "Change worktree prepared at "
-                + workspace["path"]
-                + ". The outer agent must initiate the P10 handoff to a fresh session in that worktree.\n\n"
-                + prompt,
-                "worktree_handoff_required",
-            )
+                copy_selection(host.project_root, candidate, task)
+            # The candidate receives this exact request; a request type that records the
+            # change carries the candidate's change_id, the others adopt the candidate as is.
+            data = dict(runtime_input["data"])
+            request_type = OPERATION_CONTRACTS[operation][0]
+            if "change_id" in DATA_SCHEMAS[request_type].get("properties", {}):
+                data["change_id"] = workspace["change_id"]
+            invocation = {
+                "type_id": "concorde-operation-invocation",
+                "schema_version": 3,
+                "operation_id": operation,
+                "mode": host.mode,
+                "configuration": None,
+                "input": {**runtime_input, "data": data},
+            }
+            target = {key: value for key, value in workspace.items() if key != "relay"}
+            host = replace(host, relay_target={**target, "invocation": invocation})
+            # The candidate records its own progress; this invocation only relays.
+            record_progress = False
+            return
         record_progress = (
             mutation and operation != "concorde-deliver" and host.depth == 1
         )
@@ -5288,7 +5391,17 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             dispatch_nodes = _dispatch_nodes(operation, configuration, task, host)
         updates = dispatch_nodes[name](state)
         payload = (updates.update or {}) if isinstance(updates, Command) else updates
-        if (
+        if isinstance(payload.get("relayed"), dict):
+            # The candidate's launcher produced the complete envelope; adopt it as this
+            # invocation's result rather than deriving a second status from its output.
+            relayed = payload["relayed"]
+            result.update(
+                status=relayed["status"],
+                output=relayed["output"],
+                errors=list(relayed["errors"]),
+                workspace=relayed["workspace"],
+            )
+        elif (
             isinstance(payload.get("output"), dict)
             and payload["output"].get("type_id") == OPERATION_CONTRACTS[operation][1]
         ):

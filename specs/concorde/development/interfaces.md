@@ -76,14 +76,16 @@ Skill projection supplied the instructions and every other linked worktree contr
 document or file to the invocation, and changing the working directory selects a different project
 rather than a wider one.
 
-A mutating request in the primary worktree creates an isolated branch from committed HEAD and
-returns worktree_handoff_required with its path, branch, base commit and change_id. It does not copy
-uncommitted primary changes or continue the originating agent session in the new worktree. A new
-agent opened in the returned worktree continues the task. The existing error message includes a
-Framework execution profile P10 draft with real worktree identity, submitted task/constraints, preparation/check status
-and the absolute local state artifact path. Host-created worktrees live in temporary storage and the
-draft labels that lifetime explicitly. Unavailable conversation facts are marked unknown for the
-outer session to complete/localize; these drafts are never admitted as worker context or authority.
+A mutating request in the primary worktree creates a candidate worktree on an isolated branch
+from committed HEAD, records the change there and relays the same request to that candidate's own
+launcher (`relay_operation`): a candidate that carries its own Concorde, the source checkout or a
+consumer whose installed framework is tracked, runs that code after a rebuild from its own
+sources; any other candidate runs the invoking framework with the candidate as its project root.
+The relayed launcher's complete result envelope becomes this invocation's result, its stderr
+diagnostics are forwarded, and its workspace names the candidate; the originating session never
+moves. Uncommitted primary changes are not copied. A request that names a recorded change_id from
+the primary worktree relays into that candidate, found through the worktree inventory; a launcher
+that returns no envelope fails with relay_failed. Host-created worktrees live in temporary storage.
 Host administrators may explicitly permit
 standalone development for controlled embedding. Delivery separately requires a session in its
 selected source or primary worktree; third-worktree and nested sessions are rejected. Default
@@ -337,7 +339,7 @@ context forms; package/schema alignment checks verify those identities.
 | `unsupported_worktree_version` | Saved worktree progress uses schema 1; archive it explicitly and establish fresh evidence rather than silently reusing renamed fields. |
 | `use_proposal` | `describe-policy` cannot preview `init`/`configure`; use their deterministic proposal graph instead. |
 | `workspace_mismatch` | The current worktree, branch, or worktree topology does not match what the requested operation or transition requires, including an entry process whose working directory lies inside a Git worktree but not at its root. |
-| `worktree_handoff_required` | A mutating request in the primary worktree needs a new agent session opened in the linked worktree the host just prepared. |
+| `relay_failed` | The candidate worktree's launcher, running a mutation relayed from the primary worktree, returned no result envelope. |
 | `execution_failed` | The host caught an exception outside the named Spec/typed-data/build error vocabulary. |
 
 ### Main routing view

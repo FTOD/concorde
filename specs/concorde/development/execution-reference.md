@@ -178,7 +178,7 @@ in `result` and routes to `finalize`.
 | --- | --- | --- | --- |
 | `initialize` | Deterministic: fresh host identity, root invocation id and lifecycle record for this invocation. | invocation | result (cleared) |
 | `admit_request` | Deterministic: operation name, mode, configuration and request are validated against the registered contracts; a stale build is refused for model-backed operations. | invocation | admitted task, configuration |
-| `bind_workspace` | Deterministic: primary, change or unversioned workspace identity; a mutating primary request prepares a candidate worktree and returns the P10 handoff. | admitted task, worktree | workspace, handoff |
+| `bind_workspace` | Deterministic: primary, change or unversioned workspace identity; a mutating primary request prepares a candidate worktree and marks the invocation for relay into it. | admitted task, worktree | workspace, relay target |
 | `check_configuration` | Deterministic: the invocation configuration equals the initialized project settings and the host snapshot. | configuration, project settings | configuration snapshot |
 | `execute` | The dispatch Graph (below) as a subgraph. | admitted task, workspace | output |
 | `finalize` | Deterministic: status from the output outcome or the recorded error, execution-error propagation, lifecycle progress. | output, result, lifecycle | result |
@@ -191,7 +191,7 @@ flowchart TB
     __start__["start"]
     initialize["initialize<br/>in: invocation<br/>out: result cleared"]
     admit_request["admit_request<br/>in: invocation<br/>out: admitted task, configuration"]
-    bind_workspace["bind_workspace<br/>in: admitted task, worktree<br/>out: workspace, handoff"]
+    bind_workspace["bind_workspace<br/>in: admitted task, worktree<br/>out: workspace, relay target"]
     check_configuration["check_configuration<br/>in: configuration, project settings<br/>out: configuration snapshot"]
     execute["execute<br/>in: admitted task, workspace<br/>out: output"]
     finalize["finalize<br/>in: output, result, lifecycle<br/>out: result envelope"]
@@ -202,7 +202,7 @@ flowchart TB
     admit_request -->|request admitted| bind_workspace
     admit_request -->|rejected| finalize
     bind_workspace -->|workspace bound| check_configuration
-    bind_workspace -->|handoff required or blocked| finalize
+    bind_workspace -->|blocked| finalize
     check_configuration -->|configuration matches| execute
     check_configuration -->|mismatch| finalize
     execute --> finalize
@@ -217,7 +217,8 @@ operation; the diagram shows the complete dispatch topology every entry compiles
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `select_operation` | Deterministic: the admitted operation selects its entry leaf or target admission. | admitted task | route |
+| `select_operation` | Deterministic: the admitted operation selects its entry leaf or target admission; a mutation admitted in the primary worktree selects the relay. | admitted task, relay target | route |
+| `relay` | Deterministic: runs the same invocation through the prepared candidate worktree's launcher and adopts its complete result envelope. | relay target, invocation | relayed result |
 | `prepare_target` | The target admission Graph (below) as a subgraph: binds or discovers the owning Module and selects the bound leaf. | admitted task, change | route, bound invocation |
 | `deliver` | Deterministic: worktree delivery under the repository lock. | change, worktrees | delivery receipt |
 | `project` | The project Graph (below): initialization proposal or application, or configuration. | request | proposal or applied files |
@@ -243,7 +244,8 @@ flowchart TB
     accTitle: Operation dispatch Graph
     accDescr: The admitted operation selects one entry leaf, or target admission first and then one bound leaf; every leaf ends the Graph with its typed output.
     __start__["start"]
-    select_operation["select_operation<br/>in: admitted task<br/>out: route"]
+    select_operation["select_operation<br/>in: admitted task, relay target<br/>out: route"]
+    relay["relay<br/>in: relay target, invocation<br/>out: relayed result"]
     prepare_target["prepare_target<br/>in: admitted task, change<br/>out: route, bound invocation"]
     deliver["deliver<br/>in: change, worktrees<br/>out: delivery receipt"]
     project["project<br/>in: request<br/>out: proposal or applied files"]
@@ -264,6 +266,7 @@ flowchart TB
     context_solve["context_solve<br/>in: bound target, Spec context<br/>out: sufficiency or gaps"]
     __end__["end"]
     __start__ --> select_operation
+    select_operation -->|mutation admitted in the primary worktree| relay
     select_operation -->|concorde-deliver| deliver
     select_operation -->|concorde-init or concorde-configure| project
     select_operation -->|concorde-main ask| answer
@@ -284,6 +287,7 @@ flowchart TB
     prepare_target -->|concorde-specify-loop| specify_loop
     prepare_target -->|concorde-context-solve| context_solve
     prepare_target -->|blocked or error| __end__
+    relay --> __end__
     deliver --> __end__
     project --> __end__
     answer --> __end__

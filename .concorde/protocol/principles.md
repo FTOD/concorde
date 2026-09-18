@@ -842,15 +842,16 @@ deterministic host edit included in the delivered commit, and the receipt names 
 entries; an entry that still does not exist stays pending and is reported. No component
 independently delivers its enclosing change.
 
-### P10. Explicit session handoffs
+### P10. Candidate worktrees, not session moves
 
-When the selected workflow requires a new outer session, start it in the intended worktree with
-fresh context and that worktree's instructions. Changing cwd does not erase prior cognitive inputs.
-Supply a self-contained prompt in the developer's language with the absolute directory, branch,
-task, authorizations, completed and remaining work, artifacts, checks and next steps. Start the
-session automatically when isolation can be established; otherwise provide a complete copyable
-prompt. A direct maintenance task explicitly authorized by the developer does not require a workflow
-handoff solely because it updates the Framework's own instructions.
+A mutating Operation requested from the primary worktree runs in a candidate worktree the host
+creates from the committed base: the host relays the same request to that candidate's own launcher
+and returns its result, whose workspace names the candidate. The requesting session stays in the
+worktree it started in and continues the change with the returned change identity; a session
+opened inside a candidate may also continue it. No workflow requires a new outer session, and
+changing a session's working directory does not erase prior cognitive inputs, so a session never
+moves between worktrees to follow work. A direct maintenance task explicitly authorized by the
+developer runs in the current worktree.
 
 ### Framework authoring and publication conventions
 

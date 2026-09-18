@@ -102,7 +102,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 - GIVEN an open report not yet present in the committed base
 - WHEN the host prepares a candidate for its explicit solve request
-- THEN that record's exact selected bytes are copied to the candidate before the session handoff
+- THEN that record's exact selected bytes are copied to the candidate before the solve request is relayed into it
 - AND unrelated local edits and the source worktree's index are preserved
 
 ## Issue records and reporting

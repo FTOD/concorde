@@ -15,7 +15,7 @@ operation: validate
 @include prompts/workflow-host/init-request-and-no-flags.md
 
 @include prompts/workflow-host/target-identity-opener.md
-@include prompts/workflow-host/worktree-handoff.md
+@include prompts/workflow-host/candidate-worktree.md
 
 Validation checks document-unit identity and ownership, the paired reading/metadata sources,
 Purpose/Usage/Design/Relationships reading structure, requirement and scenario syntax, local readable

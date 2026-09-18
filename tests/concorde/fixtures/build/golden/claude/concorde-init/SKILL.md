@@ -29,12 +29,10 @@ No domain flags or positional task arguments are accepted. Configuration is neve
 
 Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
 searching other Specs.
-When a mutation starts in the primary worktree, the host prepares a committed-base linked
-worktree and returns its identity and a handoff draft; it does not launch the next outer session.
-Follow P10 to start that session automatically with the returned worktree as its initial directory,
-fresh context and its own Skills. Only if automatic startup is unavailable or cannot establish these
-conditions, ask the user to open it manually with the complete copyable prompt. Stop development in
-this conversation; never carry it or its worktree-owned Skill bodies across that boundary. Report Spec gaps
+A mutating request from the primary worktree runs in a candidate worktree the host creates from
+the committed base; this session stays where it is and receives that candidate's result, whose
+workspace names the candidate's path, branch and change_id. Continue the same change from here
+with that change_id. Uncommitted primary edits are not carried into the candidate. Report Spec gaps
 or blocked execution as returned; do not work around the boundary. Non-implementation agents never
 receive implementation code or raw test logs.
 

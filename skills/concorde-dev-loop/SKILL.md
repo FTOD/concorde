@@ -15,6 +15,6 @@ operation: dev_loop
 @include prompts/workflow-host/init-request-and-no-flags.md
 
 @include prompts/workflow-host/main-may-inspect.md WORKERS="a different target worker"
-@include prompts/workflow-host/worktree-handoff.md
+@include prompts/workflow-host/candidate-worktree.md
 
 @include prompts/workflow-host/loop-completion-and-reviews.md

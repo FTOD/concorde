@@ -80,13 +80,15 @@ See [project root is the entry process's working directory](requirements.md#req.
 - BUT no linked worktree's registry, Spec document or implementation file is read, so a candidate's draft Spec edits stay invisible to the primary until they are delivered
 - AND an operation invoked in a linked worktree instead sees kind `change` with its own candidate identity and status
 
-### scenario.development.worktree-handoff — Mutating request in the primary worktree hands off
+### scenario.development.worktree-relay — Mutating request in the primary worktree runs in a host-created candidate
 
 - GIVEN a mutating operation request is admitted while the current session's worktree is the primary worktree
 - WHEN the host would otherwise start development work there
-- THEN it creates an isolated worktree from the committed HEAD and returns `worktree_handoff_required` with its path, branch, base commit and change_id
-- AND it does not copy uncommitted primary changes or continue the originating session in the new worktree
-- AND the error carries a complete Framework execution profile P10 prompt with real worktree identity, the submitted task and constraints, and the current preparation and check status
+- THEN it creates a candidate worktree from the committed HEAD, records the change there and runs the same request through that candidate's own launcher, with the candidate's change_id when the request type records one
+- AND the invocation returns the candidate launcher's complete result envelope, whose workspace names the candidate, and forwards its policy and usage diagnostics
+- AND it does not copy uncommitted primary changes into the candidate, records no progress in the primary worktree and never moves the originating session
+- AND a later request from the primary worktree that names the recorded change_id runs in that candidate again, while a change_id no live candidate records is refused with missing_change
+- AND a candidate that carries its own Concorde runs that code, rebuilt from its own sources before the launch, and any other candidate runs the invoking framework with the candidate as its project root
 
 ### scenario.development.graph-specs — Every Graph Spec equals its compiled Graph
 

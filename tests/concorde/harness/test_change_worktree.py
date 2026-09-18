@@ -21,7 +21,7 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 class CreateWorktreeBuildsTests(unittest.TestCase):
-    """A self-hosted candidate worktree must build itself so the handoff opens on a fresh build."""
+    """A self-hosted candidate worktree must build itself so the relayed run starts on a fresh build."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
