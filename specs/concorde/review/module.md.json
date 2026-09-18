@@ -11,9 +11,9 @@
       "title": "Review adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/review.py",
+        "operations/review.py",
         "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_run_capability.py",
+        "tests/concorde/development/test_run_operation.py",
         "tests/concorde/development/test_standalone_review.py",
         "tests/concorde/development/test_target_discovery.py"
       ],

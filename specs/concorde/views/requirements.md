@@ -19,7 +19,7 @@ with explanatory topics linked from the Module entry.
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ### req.views.registry-derived-pages — Pages and navigation derive from the registry
 
@@ -92,13 +92,13 @@ feature. It also applies to the publishing template supplied to consumer project
 and resources still needed for ordinary reading, navigation or inline Mermaid rendering remain.
 The UA exporter and official viewer remain separate non-docsite facilities.
 
-Concorde's own source-checkout site has an independent Agent Flows page describing actual runtime
+Concorde's own source-checkout site has an independent Agent Graphs page describing actual runtime
 execution. It is excluded from the consumer template and does not derive a graph from the Spec
-registry. See [Agent execution publication](scenarios.md#scenario.views.agent-flows).
+registry. See [Agent execution publication](scenarios.md#scenario.views.agent-graphs).
 
-### req.views.agent-flows — Concorde-only execution diagrams
+### req.views.agent-graphs — Concorde-only execution diagrams
 
-Concorde's own docsite SHALL publish an Agent Flows tab whose LangGraph nodes and edges come from
+Concorde's own docsite SHALL publish an Agent Graphs tab whose LangGraph nodes and edges come from
 the current executable factories and whose explanations distinguish execution, wrappers and
 unimplemented design.
 

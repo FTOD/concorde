@@ -1,7 +1,7 @@
 # LangGraph Studio for Concorde
 
-Studio can start every Concorde Skill and inspect capabilities submitted by the existing
-CLI or Skill launcher. Both paths execute the same `CapabilityHost`, typed request validation,
+Studio can start every Concorde Skill and inspect operations submitted by the existing
+CLI or Skill launcher. Both paths execute the same `OperationHost`, typed request validation,
 configuration binding, native agent permission checks and worktree lifecycle as local CLI runs.
 Studio is an optional development interface; ordinary CLI and Skill calls need no Agent Server.
 
@@ -19,13 +19,13 @@ uv run --locked --group studio langgraph dev --config generated/langgraph.json -
 
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
 `generated/langgraph.json` (build output; run the build before starting Studio) registers all nine
-Flows, one per Skill, derived from `skills/`. The five non-public capabilities run through their
-composing Skill and remain visible in stage/process events; non-public capabilities have no
+Graphs, one per Skill, derived from `skills/`. The five non-public operations run through their
+composing Skill and remain visible in stage/process events; non-public operations have no
 executable entry, and Studio does not restore one. API health
 is available at <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
 The `concorde-review` assistant accepts `task` and `review_mode: "spec"` or `"code"`, plus optional
 target/focus routing hints. It runs a standalone read-only review without creating a development change.
-The local dev API works without model credentials for deterministic capabilities and policy previews.
+The local dev API works without model credentials for deterministic operations and policy previews.
 The hosted Studio UI requires a LangSmith account; follow the official
 [Studio setup](https://docs.langchain.com/oss/python/langgraph/studio) for its authentication setup.
 Actual agent execution still requires the project's configured Codex or Claude runtime and credentials.
@@ -40,16 +40,16 @@ independently of request input. Start a separate server on a different port for 
 Starting this config from another directory does not retarget it. This source-checkout launcher is
 not installed into consumer projects; see the consumer setup below.
 
-## Start and debug a capability in Studio
+## Start and debug a operation in Studio
 
 Select `concorde-main`, create a new thread, and enter this complete input in Graph mode:
 
 ```json
 {
   "invocation": {
-    "type_id": "concorde-capability-invocation",
+    "type_id": "concorde-operation-invocation",
     "schema_version": 3,
-    "capability_id": "concorde-main",
+    "operation_id": "concorde-main",
     "mode": "describe-policy",
     "configuration": null,
     "input": {
@@ -62,21 +62,21 @@ Select `concorde-main`, create a new thread, and enter this complete input in Gr
 ```
 
 This previews the admitted policies without starting an agent. Switch `mode` to `execute` to run it.
-For another capability, select its assistant and change both `capability_id` and the inner request
-`type_id`; use that capability's existing request data contract. Null configuration loads the
+For another operation, select its assistant and change both `operation_id` and the inner request
+`type_id`; use that operation's existing request data contract. Null configuration loads the
 project's initialized settings. A supplied configuration must match those settings. The invocation
 has the same six fields and 1 MiB size limit as CLI stdin. Optional `expected_workspace` alongside
 `invocation` asserts exact absolute `project_root` and `package_root` identities; it never selects them.
 
-The public Flow has a `validate_invocation` node followed by the named capability subflow. Expand
-that subflow to inspect admission, workspace/configuration binding and the capability's real dispatch
-branches. Query/discovery, topology, planning, development and reflection Flows are composed below it;
-`get_graph(xray=True)` exposes the same definitions. Use Studio interrupt-before on the public capability
+The public Graph has a `validate_invocation` node followed by the named operation subgraph. Expand
+that subgraph to inspect admission, workspace/configuration binding and the operation's real dispatch
+branches. Query/discovery, topology, planning, development and reflection Graphs are composed below it;
+`get_graph(xray=True)` exposes the same definitions. Use Studio interrupt-before on the public operation
 node to inspect the invocation before executing it. Replay rechecks the envelope and workspace assertion.
-Internal host Flows deliberately disable checkpoints: host objects live in per-run runtime context,
+Internal host Graphs deliberately disable checkpoints: host objects live in per-run runtime context,
 while node updates and public checkpoints contain JSON. Internal nodes are inspectable, but internal
-checkpoint resume is not supported; pause or replay at the public capability boundary. Inspect `result`, `policies` and
-`events` in the final state. `result` is the unchanged `concorde-capability-result` schema 3 envelope.
+checkpoint resume is not supported; pause or replay at the public operation boundary. Inspect `result`, `policies` and
+`events` in the final state. `result` is the unchanged `concorde-operation-result` schema 3 envelope.
 Input or workspace rejection clears previous output and returns a blocked result without execution.
 Always submit a complete invocation for a new run; LangGraph merges partial input into thread state.
 Use a new thread for an independent request. Hosts, permission descriptions and event lists are fresh
@@ -90,13 +90,13 @@ uv run --locked --group studio --with debugpy langgraph dev --config generated/l
 
 Attach your Python debugger to localhost:5678. See the official
 [CLI reference](https://docs.langchain.com/langsmith/cli) for debug and server options. Replaying a
-capability checkpoint executes the capability again: filesystem writes, external checks and agent
+operation checkpoint executes the operation again: filesystem writes, external checks and agent
 processes are not rolled back by LangGraph. Inspect the existing worktree state before replaying a
 mutation. A paused/interrupted Agent Server run is not an authorization to bypass Concorde checks.
 
 ## Monitor CLI and Skill calls
 
-Start the server above. In the shell or agent environment that launches capabilities, set:
+Start the server above. In the shell or agent environment that launches operations, set:
 
 ```bash
 export CONCORDE_STUDIO_URL=http://127.0.0.1:2024
@@ -105,8 +105,8 @@ export CONCORDE_STUDIO_URL=http://127.0.0.1:2024
 Keep using the same JSON invocation on stdin, without the Studio `invocation` wrapper:
 
 ```bash
-python3 scripts/run-capability.py concorde-main <<'JSON'
-{"type_id":"concorde-capability-invocation","schema_version":3,"capability_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's Harness","target_id":"module.harness"}}}
+python3 scripts/run-operation.py concorde-main <<'JSON'
+{"type_id":"concorde-operation-invocation","schema_version":3,"operation_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's Harness","target_id":"module.harness"}}}
 JSON
 ```
 
@@ -117,11 +117,11 @@ already-running processes or import historical runs.
 
 Each call creates a Studio thread and prints its thread ID, server URL and run ID to **stderr**.
 Open that thread in Studio while the command waits. Policy descriptions remain on stderr. **stdout
-contains exactly the original JSON capability result**, with exit code 0 for `succeeded`/`described`
+contains exactly the original JSON operation result**, with exit code 0 for `succeeded`/`described`
 and 3 for `blocked`/`failed`. Unset `CONCORDE_STUDIO_URL` to use ordinary local execution.
 
 The client sends both caller roots; a server belonging to another project, package checkout or
-linked worktree returns `workspace_mismatch` before running any capability. Only loopback HTTP URLs
+linked worktree returns `workspace_mismatch` before running any operation. Only loopback HTTP URLs
 are accepted; redirects and environment HTTP proxies are disabled. Environment variables do not
 grant primary-worktree or outer-sandbox authorization. Server-side agent subprocesses retain the
 original environment allowlist and native enforcement; they do not inherit this transport switch.
@@ -132,14 +132,14 @@ Custom stream events are emitted live and retained as JSON in final `events`:
 
 | Event | Meaning |
 | --- | --- |
-| `capability_started`, `capability_finished` | Top-level and nested host capability invocation, with invocation ID, depth and final status |
+| `operation_started`, `operation_finished` | Top-level and nested host operation invocation, with invocation ID, depth and final status |
 | `stage_started`, `stage_finished`, `stage_failed` | Development-loop stage, including deterministic validation, review skips and readiness; carries `trigger` (`deterministic` or `ai-review` on these events; the persisted `.concorde/worktree.json` graph record also distinguishes `ai-assessment` and `human`) and `iteration`, the repair-loop cycle number for that stage |
-| `agent_started`, `agent_finished`, `agent_failed` | Agent executor handoff with capability, stage, role and invocation ID; the same launch's `agent`, `harness` and `agent_binding_digest` identity is available in the run's persisted `policies` (policy descriptions) |
+| `agent_started`, `agent_finished`, `agent_failed` | Agent executor handoff with operation, stage, role and invocation ID; the same launch's `agent`, `harness` and `agent_binding_digest` identity is available in the run's persisted `policies` (policy descriptions) |
 
 Use API streaming with `stream_mode: ["custom", "updates"]` to receive these events while a run is
 active. Studio can inspect persisted `events` and `policies` on completion. Agent events describe
 process handoffs, not token-level traces, internal tool calls or proof that a completion passed
-admission. The final capability result reports completion/admission failures. Ordinary host graph
+admission. The final operation result reports completion/admission failures. Ordinary host graph
 nodes encapsulate their stages; loop events do not create independently replayable phase
 checkpoints. Abrupt server/process termination may leave only the events already streamed.
 
@@ -180,10 +180,10 @@ PROJECT = Path(__file__).resolve().parent
 PACKAGE = PROJECT / ".concorde/framework"
 sys.path.insert(0, str(PACKAGE / "src"))
 from concorde.spec.contracts import SKILL_NAMES
-from concorde.harness.studio import build_studio_flow
+from concorde.harness.studio import build_studio_graph
 
-for capability in SKILL_NAMES:
-    globals()[capability.replace("-", "_")] = build_studio_flow(capability, PROJECT, PACKAGE)
+for operation in SKILL_NAMES:
+    globals()[operation.replace("-", "_")] = build_studio_graph(operation, PROJECT, PACKAGE)
 ```
 
 Register those variables in that project's `langgraph.json` (for example,
@@ -204,36 +204,36 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p '
 ```
 
 The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-nine assistants, capability admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
+nine assistants, operation admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.
-The standalone Specification Flow test also invalidates accepted review evidence in its temporary
+The standalone Specification Graph test also invalidates accepted review evidence in its temporary
 candidate and supplies failed, incomplete and blocking model responses. Disabling review must still
 preserve the recorded requirement and stop Spec completion. These are real server runs with model
 process doubles, not evidence of model review quality. The forwarding-example test parses the JSON
-above, exercises describe-policy through the bound Studio Flow, and rejects either mismatched root.
+above, exercises describe-policy through the bound Studio Graph, and rejects either mismatched root.
 
 
 ### Bounded inspection surfaces
 
-`src/concorde/harness/studio.py:build_studio_flow` attaches the executable
-`build_capability_flow` instance at the public capability node through
-`expose_stateless_subflow`; `get_graph(xray=True)` expands that instance without executing it.
-The capability name and project/package roots are startup bindings. Request input cannot select
-another workspace. The attached capability factory and its discovery/review/component scheduling
+`src/concorde/harness/studio.py:build_studio_graph` attaches the executable
+`build_operation_graph` instance at the public operation node through
+`expose_stateless_subgraph`; `get_graph(xray=True)` expands that instance without executing it.
+The operation name and project/package roots are startup bindings. Request input cannot select
+another workspace. The attached operation factory and its discovery/review/component scheduling
 are supplied by Development.
 
-`src/concorde/harness/batch_flow.py:build_batch_flow` is a separately inspectable sequential
+`src/concorde/harness/batch_graph.py:build_batch_graph` is a separately inspectable sequential
 batch surface. Its host-selected `name` and `item_node` identify a variant; both the next-item and
-stop branches are visible. `run_batch_flow` uses this same factory, with an immutable item tuple
+stop branches are visible. `run_batch_graph` uses this same factory, with an immutable item tuple
 and a host callback held outside checkpoint state. Inspection does not call that callback.
 The batch factory alone does not establish which Development review or component paths use it.
 Those call sites must be inspected under Development's implementation grant when auditing fresh
 review discovery, dev-loop discovery, scoped reviews and component coordination.
 
 For fresh review and dev-loop discovery, the local inspection entry is the corresponding public
-Studio Flow, expanded with `xray=True`. Its capability selects the attached Development factory;
+Studio Graph, expanded with `xray=True`. Its operation selects the attached Development factory;
 the admitted task, target/focus hints and current candidate state select execution scope through
 the Host. Harness's attachment does not independently define those discovery branches.
 For scoped review and component coordination, the local batch factory exposes selection,

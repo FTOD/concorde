@@ -2,21 +2,21 @@
 
 ## Purpose
 
-Concorde helps developers agree on what software should do, carry out changes within explicit boundaries, and check the result before delivery. Its specifications explain responsibilities and design as well as precise behavior. Developers can also ask questions, inspect documentation and track problems without starting a code change.
+Concorde helps developers agree on what software should do, execute changes within explicit boundaries and check the result before delivery. It provides complete, composable Operations for those tasks, supported by specifications that explain responsibilities, design and precise behavior. Developers can also ask questions, inspect documentation and track problems without starting a code change.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
+| [Operation](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [State](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Issue](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -24,153 +24,118 @@ Concorde helps developers agree on what software should do, carry out changes wi
 
 ## Usage
 
-Choose the operation that matches your goal. Use `concorde-main` to ask about the project or find an
-owner, `concorde-specify-loop` to prepare a contract, or `concorde-dev-loop` to develop a change.
-Install and initialize the project before these workflows, and configure the worker model separately.
+Choose the Operation that matches your goal. After installation and project initialization,
+`concorde-main` answers a question or finds an owner. `concorde-specify-loop` prepares a contract;
+`concorde-dev-loop` develops a change. Configure the worker model separately. Public Operations
+are exposed through Skills and the common launcher; internal Operations are complete building
+blocks for admitted compositions, not unrestricted alternative entry points.
 
-For example, asking to add retries first requires deciding which failures allow them. Concorde can
-prepare that rule, then plan and implement the behavior, run checks and obtain independent review.
-If a necessary promise is missing, the dependent step pauses rather than guessing from code.
-
-A ready result is not a merge. Delivery is explicit and normally removes the candidate worktree;
-primary merging needs separate authorization. Questions, previews and Issue inspection have different
-completion boundaries from development. Choose an entry below, then read that Module's explanation.
+For example, adding retries first requires deciding which failures permit them. Concorde prepares
+that rule, plans the work, implements it and obtains current checks and independent review. If a
+necessary promise is missing, the dependent step pauses rather than guessing from implementation.
+A ready result is not a merge. Delivery requires a separate request and normally removes the
+candidate worktree; merging into primary requires additional explicit authorization.
 
 ### Developer entry points
 
-| Intent | Entry and completion |
+| Intent | Operation and completion |
 | --- | --- |
-| Ask about a Spec or route a task | `concorde-main` takes intent and optional target/focus hints; an answer or attributed limitation completes a query without editing Specs or code; an explicit worker Issue report is host bookkeeping. |
-| Prepare or review a Spec | `concorde-specify-loop` completes independent Spec preparation; [Planning Module](planning/module.md) and [Implementation Module](implementation/module.md) are separate downstream choices. |
+| Ask about a Spec or route a task | `concorde-main` returns an answer or attributed limitation without editing Specs or code; an explicit worker Issue report is host bookkeeping. |
+| Prepare a Spec | `concorde-specify-loop` completes independent authoring and review, before planning or implementation. |
 | Review a task | `concorde-review` returns independent Spec/code coverage and findings without creating a development change. |
-| Develop a change | `concorde-dev-loop` takes task/constraints and optional authoring/review flags; completion is a ready candidate, with explicit skips where authorized. |
-| Initialize a project | `concorde-init` proposes then applies initial configuration and an honest Module stub; an existing project cannot be overwritten. |
-| Change worker configuration | `concorde-configure` applies an explicit supported Pi worker model/thinking/timeout selection to an initialized project. |
-| Check a candidate | `concorde-validate` records current deterministic evidence; a failed or stale check cannot establish readiness. |
-| Deliver a candidate | `concorde-deliver` stages the selected change on an independent branch and removes its worktree by default; only a separate explicitly authorized request by the sole primary writer merges it into the primary branch. |
-| Work with Issues | `concorde-issues` lists, shows, reports, reopens or solves an explicit Issue; solving ends at a verified candidate, not delivery. |
+| Develop a change | `concorde-dev-loop` composes specification, planning, implementation and verification to a ready candidate, recording explicitly authorized skips. |
+| Initialize a project | `concorde-init` proposes then applies configuration and an honest Module stub without overwriting an existing project. |
+| Configure workers | `concorde-configure` applies explicit supported model, thinking and timeout selections. |
+| Check a candidate | `concorde-validate` records current deterministic evidence; failed or stale evidence cannot establish readiness. |
+| Deliver a candidate | `concorde-deliver` stages an independent branch and normally removes its source worktree; primary merging is a separate authorization. |
+| Work with Issues | `concorde-issues` inspects, reports, reopens or solves an explicit Issue; solving ends at a verified candidate, not delivery. |
 
-Human views are complementary entries: [Views Module](views/module.md) presents registered contracts and declared relationships and opens a preexisting raw code graph. A view or feedback comment does not itself authorize code changes, claim Spec/code agreement or create an Issue. The developer's explicit intent and constraints determine a subsequent task.
+[Views](views/module.md) publishes contracts and relationships and opens a preexisting code graph.
+Reading a view or supplying feedback does not itself authorize changes or create an Issue.
 
 ## Design
 
+**Operation is Concorde's only executable entity.** Each Operation declares input State, output
+State updates, effects, use conditions and execution policy. It can be called as a LangGraph node
+without its caller reconstructing context selection, permissions, model execution or result checks.
+Its implementation may be deterministic code, model execution or a compiled graph; composition
+produces another Operation. `dev-loop` and `specify-loop` are examples of composed Operations.
+
+Completeness does not eliminate trusted infrastructure. The common Host and Harness apply an
+Operation's declared permission ceiling to the actual task and narrow the effective grant.
+Trusted Runtime context supplies execution services; State carries data and cannot carry or expand
+authority. Public/internal exposure changes entry availability, not this completeness obligation.
+
 <a id="entity.concorde.developer"></a><a id="entity.concorde.protocol"></a>
 
-The Framework realizes its entry contract almost entirely through sixteen child responsibilities
-and owns no product code of its own. The common [Development Module](development/module.md) host admits typed requests;
-providers own reusable behavior and sibling Flows own sequencing. [Spec Module](spec/module.md) supplies identities and
-complete contexts, [Harness Module](harness/module.md) bounds worker execution, and [Distribution Module](distribution/module.md) supplies fresh runtime assets.
-This separates permission and admission from model decisions. [Validation Module](validation/module.md) and [Review Module](review/module.md) produce
-revision-bound evidence; [Delivery Module](delivery/module.md) consumes it only at a separately authorized boundary.
+The Developer supplies intent and constraints through installed Skills. The independent Spec
+Protocol defines Module ownership, complete context and readable contracts. A **Module owns a
+responsibility and its Spec**; it is not a synonym for an Operation. Planning can own several
+Operations, and a development Operation composes behavior from several provider Modules.
+
+The Framework has seven direct responsibility owners. [Operations](operations/module.md) groups
+ten provider Modules, including the owners of composed development and specification Operations.
+[Development](development/module.md) provides the common admission Host; [Harness](harness/module.md)
+provides bounded model execution; [Spec](spec/module.md) resolves identities and complete contexts.
+[Distribution](distribution/module.md) supplies fresh runnable assets, [Issues](issues/module.md)
+retains problems and [Views](views/module.md) publishes contracts.
 
 <a id="entity.concorde.acceptance-tests"></a>
 
-Acceptance tests exercise requests across several child responsibilities. This checks that the
-composition works together, not just that each isolated part reports success. The Framework owns
-those end-to-end promises while each child owns its local behavior.
-
-The child collaboration declarations below explain which guarantees support each entry. Reference
-inclusion preserves their ownership and is not permission to inspect their implementations. The
-[ownership ledger](ownership-migration.md) records realization sharing and remaining extraction
-limits; logical responsibility boundaries do not imply separate runtime packages.
-
-The Developer supplies intent through installed Skills. The independent Spec Protocol defines complete content and the human-readable subset; the Spec Module enforces the accepted binding rather than inventing software behavior.
+Framework acceptance tests exercise requests across those responsibilities. Each provider owns
+its local behavior; cross-provider tests check that composition preserves the Framework promises.
+The [ownership ledger](ownership-migration.md) records historical extraction limits rather than
+replacing the current architecture.
 
 ## Relationships
 
-The Framework contains sixteen Module responsibilities. The diagrams below answer two questions:
-which providers contribute to a change, and which services make that work possible? They show scoped
-collaborations, not every field, file or executable node.
-
-[Specification Flow](specify-loop/module.md) settles intended behavior through authoring and review. [Development Flow](dev-loop/module.md) adds
-planning, implementation and verification. These providers are reusable siblings: using Planning
-does not make Planning a child owned by the workflow.
-
-The foundations serve a different purpose. Spec supplies the agreed contracts, Harness bounds worker
-execution, and Development checks and dispatches requests. Distribution prepares runnable assets,
-Views makes the contracts readable, and [Issues Module](issues/module.md) retains problems. Delivery remains a separate decision
-after the development result has been checked.
-
-A developer request carries intent and constraints. Project Specs supply promised behavior; a candidate worktree holds proposed changes and revision-bound evidence. A ready candidate ends development; only a separately authorized delivery updates the destination.
-
-### Flow composition
-
-This view shows reusable providers behind development and specification. All depicted Modules are
-siblings under Concorde Framework; using a provider does not make it a child of the consuming Flow.
-The Usage table selects entry points, and Development admits every capability invocation.
+This diagram shows responsibility ownership and supporting services, not an executable graph.
+The Operations hierarchy includes composed behavior providers; it does not make their called
+providers children of the calling Operation. Three relations stay independent: Module ownership,
+Operation composition through graph nodes, and explicit references selecting context.
 
 ```mermaid
 flowchart TB
-    accTitle: Specification and development composition
-    accDescr: Development Flow composes specification preparation, planning, implementation, validation and review. Specification Flow independently composes authoring and review. Query and Routing selects unbound owners.
-    developmentFlow["Development Flow"]
-    specificationFlow["Specification Flow"]
-    authoring["Spec Authoring"]
-    planning["Planning"]
-    implementation["Implementation"]
-    validation["Validation"]
-    review["Review"]
-    routing["Query and Routing"]
-    developmentFlow -->|prepares Specs through| specificationFlow
-    developmentFlow -->|plans through| planning
-    developmentFlow -->|fulfills tasks through| implementation
-    developmentFlow -->|checks through| validation
-    developmentFlow -->|reviews code through| review
-    specificationFlow -->|authors through| authoring
-    specificationFlow -->|reviews Specs through| review
-    specificationFlow -->|selects unbound owners through| routing
-```
-
-### Runtime foundations
-
-This view separates contract meaning, execution and distribution. Delivery remains a separately
-selected transition. Issues hands selected intended behavior to Development Flow; [Topology Module](topology/module.md) uses [Query and Routing](query-routing/module.md) for design context. Their complete local obligations remain in the collaboration agreements
-below rather than being compressed into every overview edge.
-
-```mermaid
-flowchart TB
-    accTitle: Shared runtime foundations
-    accDescr: The independent Protocol defines the Spec model. Development uses Harness for bounded execution and Spec for complete context. Distribution supplies fresh assets. Views publishes declared Specs without granting extra context.
-    protocol["Spec Protocol"]
-    spec["Spec"]
-    development["Development"]
+    accTitle: Operations and shared execution services
+    accDescr: Operations groups behavior providers. Development admits requests, Harness bounds execution, and Spec supplies complete contracts. Distribution, Issues and Views support this work without creating additional executable entity kinds.
+    operations["Operations"]
+    host["Development"]
     harness["Harness"]
+    spec["Spec"]
     distribution["Distribution"]
+    issues["Issues"]
     views["Views"]
-    protocol -->|defines meaning enforced by| spec
-    development -->|binds execution through| harness
-    development -->|selects contracts through| spec
-    harness -->|resolves context through| spec
+    operations -->|enters through| host
+    host -->|bounds model execution through| harness
+    host -->|selects contracts through| spec
     harness -->|loads fresh assets from| distribution
-    views -->|publishes declared contracts from| spec
+    issues -->|requests admitted resolution through| host
+    views -->|publishes contracts from| spec
 ```
+
+The [collaboration agreements](collaborations.md) state conditions, relied-upon guarantees and local
+duties for each direct child. Root context explicitly includes provider collections for reader
+understanding; neither hierarchy nor those providers' own references expand that context implicitly.
+A relationship grants neither implementation access nor execution authority.
 
 ### Project diagram convention
 
-Every Concorde Module MUST describe its principal entities and directed relationships with an inline Mermaid diagram in the Relationships section of its `module.md`. Labels, titles, descriptions and explanatory prose use English. Include an accessible title and description, and explain the relationships, cardinalities or state rules needed to read the diagram. This is a Concorde project convention under the tool-neutral Spec Protocol, not a change to the independent standard. Rendered SVG/HTML and navigation remain derived views.
+Concorde's own reading diagrams use English labels, accessible titles and descriptions. Conceptual
+views explain one collaboration; exact executable graphs live in their owners' Implementation
+Specs and are checked against compiled LangGraph topology. A diagram is not another ownership or
+permission declaration.
 
-## Provider collaboration
+## Compatibility and unresolved information
 
-Spec and Harness establish the contract and execution boundary. Development admits operations,
-while planning, authoring, implementation, review and validation each own a distinct result.
-Specification Flow and Development Flow choose their order; Delivery remains a later decision.
-Issues preserves problems, Distribution supplies runnable assets, and Views makes the project
-understandable without granting additional execution authority.
-
-The Module-owned [collaboration agreements](collaborations.md) state each provider’s conditions,
-guarantees and local duties once. A dependency is not another structural parent or code grant.
-
-## Unresolved information
-
-None beyond what each child Module records in its own Unresolved information: this root Module delegates every unresolved business fact to the child Module that owns the affected contract.
-
-## Ownership, context and implementation status
-
-This root owns its reading entry, migration ledger and precise specification companions and explicitly references all sixteen child Modules, so its resolved context includes their owned documents once. Child references do not expand again. Protocol 9/Profile 14/schema 5 is implemented by repository admission, context delivery, authoring and publication. Separately recorded realization-extraction limits remain explicit. This maintenance produces no lifecycle-ready or delivery evidence.
-
-See the [ownership migration ledger](ownership-migration.md) for preserved IDs, transferred definitions and adapter limitations.
+Protocol 10/Profile 15 uses Operations and graphs consistently. Old executable names and record
+formats require the explicit refusal or migration described in the
+[Host boundary](development/interfaces.md#wire-contracts); byte-bound evidence must be rebuilt.
+The source-maintenance record is `docs/changes/operations-graphs.md`, separate from current Spec
+context and execution evidence.
+Unresolved behavioral facts remain with their provider owners. Structural validation does not
+prove semantic completeness, and direct maintenance creates no lifecycle-ready or delivery evidence.
 
 ## Precise specifications
 
-The Concorde Framework Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
-These companions are part of the same complete Module specification, not separate topic owners.
+The root owns [requirements](requirements.md) and [scenarios](scenarios.md). Its provider Modules own
+their own precise contracts; grouping them under Operations neither copies nor weakens those promises.

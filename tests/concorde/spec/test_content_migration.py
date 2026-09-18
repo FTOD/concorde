@@ -14,7 +14,6 @@ from concorde.spec.content_migration import (
 from concorde.spec.content_model import ContentModelError
 from concorde.spec.repository import digest
 
-
 OWNER = "module.checkout"
 DOCUMENT = {"id": "document.checkout.module", "owner": OWNER, "main_visible": True}
 ENTITIES = [
@@ -246,7 +245,7 @@ class ContentMigrationTests(unittest.TestCase):
     ):
         text = (
             source()
-            + "\n### Capability inventory\n\n"
+            + "\n### Operation inventory\n\n"
             + block("concorde-custom-control", [{"id": "submit"}])
         )
         plan = migrate(text)
@@ -260,7 +259,7 @@ class ContentMigrationTests(unittest.TestCase):
 
     def test_known_framework_inventories_move_to_named_metadata_extensions(self):
         for language, key in [
-            ("concorde-capabilities", "concorde.capabilities"),
+            ("concorde-operations", "concorde.operations"),
             ("concorde-agents", "concorde.agents"),
         ]:
             entries = [{"id": "example", "public": False}]

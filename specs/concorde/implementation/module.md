@@ -17,14 +17,14 @@ Implementation fulfills accepted tasks by changing the code that its worker is a
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
-| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
-A declared composing capability calls `implement` with a current accepted plan and nonempty task
+A declared composing operation calls `implement` with a current accepted plan and nonempty task
 list for one selected Module. This is a private bound provider, not a directly invocable Skill.
 The programmer receives the complete Module Spec and the implementation paths its own entities
 bind, and must return every admitted task with unchanged identity and acceptance. Only fulfilled
@@ -34,7 +34,7 @@ Missing tasks reject before launch. Incomplete output cannot establish fulfillme
 edits may remain after a failed or cancelled run, so inspect preserved candidate state and re-admit
 current artifacts rather than assuming rollback. A listed test does not grant its transitive inputs:
 record unavailable repository-level execution as deferred host verification, not as a pass.
-Coordination with other Modules requires their separate contexts and the existing enclosing-flow
+Coordination with other Modules requires their separate contexts and the existing enclosing-graph
 adapter; no arbitrary scheduler is accepted.
 
 For example, a test may import a fixture outside the programmer's allowed files. That import does
@@ -54,8 +54,8 @@ fictional rollback guarantee.
 
 [Component coordination](execution-reference.md#implementation-component-coordination-and-current-adapter-limit)
 separates local tasks from participant work and delegates scheduling/final shared-consumer checks
-to the existing enclosing Flow. Final checks wait for every writer so partly changed shared files
-do not produce misleading consumer evidence. This shared realization does not transfer those Flow
+to the existing enclosing Graph. Final checks wait for every writer so partly changed shared files
+do not produce misleading consumer evidence. This shared realization does not transfer those Graph
 completion conditions to the reusable local task contract.
 
 ## Relationships
@@ -64,7 +64,7 @@ This view follows an admitted Implementation task to Task completion. [Spec Modu
 Module's implementation boundary, [Harness Module](../harness/module.md) enforces the programmer's grant, and [Development Module](../development/module.md) admits
 the exact task list and retains its progress. The adapter's use of these sibling providers does not
 merge their ownership or permissions. Task completion reports fulfilled acceptance only; validation,
-review and delivery remain separate decisions of the composing Flow.
+review and delivery remain separate decisions of the composing Graph.
 
 ```mermaid
 flowchart TB
@@ -91,7 +91,7 @@ Admit the current implementation task and permitted repair feedback, persist exa
 
 This collaboration applies before implementation starts and when its returned task completion or execution failure is recorded.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -116,5 +116,5 @@ This collaboration applies when deriving a local code grant or admitting separat
 ## Precise specifications
 
 The Implementation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#implementation-implementation-capability).
+[execution and record contracts](execution-reference.md#implementation-implementation-operation).
 These companions are part of the same complete Module specification, not separate topic owners.

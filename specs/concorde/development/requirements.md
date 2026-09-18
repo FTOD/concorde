@@ -7,21 +7,21 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Internal capability](module.md#terminology) | Defined in Development capability host. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Internal operation](module.md#terminology) | Defined in Development operation host. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Development capability host
+## Development operation host
 
-### req.development.stage-no-reselect — Bound capabilities preserve their context
+### req.development.stage-no-reselect — Bound operations preserve their context
 
-A Capability with bound context selection SHALL NOT reselect or expand the frozen context its composing capability gave it.
+An Operation with bound context selection SHALL NOT reselect or expand the frozen context its composing operation gave it.
 
 ### req.development.no-implementation-for-non-code — No implementation contents for non-code phases
 
@@ -41,26 +41,26 @@ and every other linked worktree are not inputs; see
 
 ### req.development.distinct-outcomes — Results distinguish admission, domain and execution outcomes
 
-A capability result SHALL distinguish admission, domain and execution outcomes instead of collapsing
+An operation result SHALL distinguish admission, domain and execution outcomes instead of collapsing
 them into one generic failure.
 
-### req.development.stage-no-skill — Non-public capabilities have no installed Skill
+### req.development.stage-no-skill — Non-public operations have no installed Skill
 
-A non-public Capability SHALL have no installed Skill.
+A non-public Operation SHALL have no installed Skill.
 
-### req.development.stage-in-process-only — Non-public capabilities require declared composition
+### req.development.stage-in-process-only — Non-public operations require declared composition
 
-A non-public Capability SHALL be reachable only in-process from a capability that declares it in its
+A non-public Operation SHALL be reachable only in-process from an operation that declares it in its
 composition.
 
-### req.development.langgraph-control-flow — Orchestration executes as a LangGraph Flow
+### req.development.langgraph-control-flow — Orchestration executes as a LangGraph Graph
 
-Every capability's orchestration SHALL execute as a LangGraph Flow of deterministic operations,
+Every operation's orchestration SHALL execute as a LangGraph Graph of deterministic operations,
 Agent invocations and explicitly represented transitions.
 
-The [Harness Module](../harness/module.md) explains Flow execution in [Flows and feedback](../harness/graphs-and-loops.md); the term's canonical definition is linked above.
+The [Harness Module](../harness/module.md) explains Graph execution in [Graphs and feedback](../harness/graphs-and-loops.md); the term's canonical definition is linked above.
 
 ### req.development.single-boundary — Every invocation passes through the host adapter
 
-Every capability invocation SHALL pass through this Module's host adapter, with no direct
+Every operation invocation SHALL pass through this Module's host adapter, with no direct
 agent-to-agent channel bypassing it.

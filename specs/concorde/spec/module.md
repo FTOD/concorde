@@ -39,13 +39,13 @@ understand what deterministic checks establish. Exact query interfaces are in Im
 
 ## Design
 
-<a id="entity.spec.registry"></a><a id="entity.spec.protocol-binding"></a><a id="entity.spec.repository-api"></a><a id="entity.spec.validator"></a><a id="entity.spec.init-capability"></a><a id="entity.spec.spec-model"></a><a id="entity.spec.typed-values"></a><a id="entity.spec.file-transactions"></a><a id="entity.spec.protocol-text"></a><a id="entity.spec.protocol-assets"></a>
+<a id="entity.spec.registry"></a><a id="entity.spec.protocol-binding"></a><a id="entity.spec.repository-api"></a><a id="entity.spec.validator"></a><a id="entity.spec.init-operation"></a><a id="entity.spec.spec-model"></a><a id="entity.spec.typed-values"></a><a id="entity.spec.file-transactions"></a><a id="entity.spec.protocol-text"></a><a id="entity.spec.protocol-assets"></a>
 
 The Registry records ownership and relationships before document content is selected. The Protocol
 binding identifies the rules the project has explicitly accepted. The SpecRepository API and Validator
 use the same Spec model, so a query and a check do not invent different meanings of ownership.
 
-The Initialization capability creates an honest starting draft. Typed values checks record shapes;
+The Initialization operation creates an honest starting draft. Typed values checks record shapes;
 File transactions applies accepted changes together rather than leaving half an update visible.
 Protocol text is the authored standard and Protocol assets are its distributed copy. Keeping these
 roles separate prevents installation from silently deciding the project's business behavior.
@@ -56,17 +56,17 @@ results, while explicit one-level references keep the boundary understandable an
 
 ## Relationships
 
-The registry separates semantic Module identities from implementation-file ownership: Modules register documents and entities, entities bind listing entries that are exact files or directory prefixes, and a file may be bound by several Modules while belonging to one entity within each, the owner of its most specific entry. Admission creates immutable selection records and reverse indexes from exact declarations; overlay bytes support candidate inspection without writes. Selection never walks a dependency to read another Module's body. The Spec model's own package entry points, the Validator and the Initialization capability are three ways of using the same admitted Registry and Protocol binding; the Protocol assets entity packages the authored Protocol text for runtime distribution without becoming a second authority over its meaning.
+The registry separates semantic Module identities from implementation-file ownership: Modules register documents and entities, entities bind listing entries that are exact files or directory prefixes, and a file may be bound by several Modules while belonging to one entity within each, the owner of its most specific entry. Admission creates immutable selection records and reverse indexes from exact declarations; overlay bytes support candidate inspection without writes. Selection never walks a dependency to read another Module's body. The Spec model's own package entry points, the Validator and the Initialization operation are three ways of using the same admitted Registry and Protocol binding; the Protocol assets entity packages the authored Protocol text for runtime distribution without becoming a second authority over its meaning.
 
 ```mermaid
 flowchart TB
     accTitle: Spec entities and relationships
-    accDescr: A pinned Protocol binding and the explicit Registry are admitted together. The SpecRepository API, the Validator and the Initialization capability are interfaces realized by the Spec model program, which depends on the shared Typed values and File transactions programs and verifies the freshness of the packaged Protocol assets, themselves built from the authored Protocol text.
+    accDescr: A pinned Protocol binding and the explicit Registry are admitted together. The SpecRepository API, the Validator and the Initialization operation are interfaces realized by the Spec model program, which depends on the shared Typed values and File transactions programs and verifies the freshness of the packaged Protocol assets, themselves built from the authored Protocol text.
     registry["Registry"]
     binding["Protocol binding"]
     repositoryApi["SpecRepository API"]
     validator["Validator"]
-    initCapability["Initialization capability"]
+    initOperation["Initialization operation"]
     specModel["Spec model"]
     typedValues["Typed values"]
     fileTransactions["File transactions"]
@@ -76,10 +76,10 @@ flowchart TB
     repositoryApi -->|admits| registry
     repositoryApi -->|admits| binding
     validator -->|checks| registry
-    initCapability -->|creates| registry
+    initOperation -->|creates| registry
     repositoryApi -->|realized by| specModel
     validator -->|realized by| specModel
-    initCapability -->|realized by| specModel
+    initOperation -->|realized by| specModel
     specModel -->|depends on| typedValues
     specModel -->|depends on| fileTransactions
     specModel -->|verifies freshness of| protocolAssets
@@ -90,10 +90,10 @@ flowchart TB
 
 `spec_files` and `spec_context` now resolve Module and scenario queries through unique document
 ownership and explicit one-level references. The retired `spec_pair` is not a Protocol 5 query.
-Initialization emits the paired reading/metadata Module stub, Profile 14/schema 5 and owner metadata.
+Initialization emits the paired reading/metadata Module stub, Profile 15/schema 5 and owner metadata.
 `model.py` retains the compatibility `ProposalFile` record alongside `Finding` and `ToolResult`.
 
-The runtime admits Profile 14/schema 5, validates canonical definitions and participant bindings,
+The runtime admits Profile 15/schema 5, validates canonical definitions and participant bindings,
 and records exact source bytes, ownership, declarations and inclusion provenance. Structural
 validation and passing tests do not establish semantic completeness.
 

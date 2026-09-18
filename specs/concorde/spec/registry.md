@@ -10,7 +10,7 @@ This is a topic of the [Spec Module](module.md), not another Module or a separat
 | --- | --- |
 | Ownership | Responsibility for authoring a document's canonical contract; each document has one Module owner. |
 | Composition | A parent-child relation between software responsibilities, not merely directories. |
-| Use | A declared reliance on another Module's capability, without acquiring that Module as a child. |
+| Use | A declared reliance on another Module's operation, without acquiring that Module as a child. |
 | Reference | An explicit selection of another owned document or Module collection as knowledge for this Module. |
 | Implementation binding | A declaration of which files realize an entity; it does not itself grant file access. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |

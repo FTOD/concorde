@@ -1,6 +1,6 @@
-# Specification Flow scenarios
+# Specification Graph scenarios
 
-These precise specifications belong directly to the [Specification Flow Module](module.md).
+These precise specifications belong directly to the [Specification Graph Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
 ## Terminology
@@ -13,7 +13,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Review coverage](../review/module.md#terminology) | Defined in Review. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Specification Flow
+## Specification Graph
 
 ### scenario.development.specify-loop — Author and review a Spec independently
 
@@ -25,4 +25,4 @@ Subject headings organize the Module's obligations; they do not create separate 
 - AND a required review with blocking findings, gaps, incomplete coverage or failed execution stops with inspectable progress
 - AND repeating the same intent resumes accepted authoring and current reviews, including when concorde-dev-loop calls specify-loop before continuing development
 
-The detailed contract is [Independent Spec completion](execution-reference.md#specify-loop-specification-flow).
+The detailed contract is [Independent Spec completion](execution-reference.md#specify-loop-specification-graph).

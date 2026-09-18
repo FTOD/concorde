@@ -105,10 +105,10 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ### scenario.spec.reject-unsupported-profile — Rejecting an unsupported configuration profile
 
-- GIVEN a project configuration whose profile_version is not 14, or whose Protocol binding does not match the Protocol copy the installer placed under `.concorde/protocol/`, or whose copy differs from the installed package's Protocol
+- GIVEN a project configuration whose profile_version is not 15, or whose Protocol binding does not match the Protocol copy the installer placed under `.concorde/protocol/`, or whose copy differs from the installed package's Protocol
 - WHEN the repository is constructed
 - THEN construction fails with unsupported_profile or protocol_mismatch
-- BUT a matching Profile 14 configuration with a current Protocol binding admits normally
+- BUT a matching Profile 15 configuration with a current Protocol binding admits normally
 
 ### scenario.spec.task-control-values — Admit bounded task metadata without granting authority
 
@@ -227,16 +227,16 @@ It is independent documentation evidence, not a lifecycle check or a semantic-co
 
 ### scenario.spec.propose-initialization — Proposing an initial project structure
 
-- GIVEN an uninitialized project, a name and a supported capability configuration
+- GIVEN an uninitialized project, a name and a supported operation configuration
 - WHEN the developer requests action propose
-- THEN the capability returns a typed concorde-project-proposal with a null base_digest, every file's before_digest null, and an honest Module stub
+- THEN the operation returns a typed concorde-project-proposal with a null base_digest, every file's before_digest null, and an honest Module stub
 - AND no project file changes yet
 
 ### scenario.spec.apply-initialization — Applying an accepted proposal
 
 - GIVEN a previously returned proposal whose destinations are still absent and whose Protocol binding is current
 - WHEN the developer requests action apply with that exact proposal
-- THEN the capability validates the complete resulting registry and documents and commits every file in one transaction
+- THEN the operation validates the complete resulting registry and documents and commits every file in one transaction
 - AND it creates nothing that exists only because Concorde is installed: the Protocol copy, the Issue directory defaults and the topology-artifact ignore file are the installer's outputs
 - AND the response reports status applied with the applied paths
 
@@ -244,19 +244,19 @@ It is independent documentation evidence, not a lifecycle check or a semantic-co
 
 - GIVEN a project whose configuration already exists
 - WHEN initialization is requested
-- THEN the capability fails with already_initialized
+- THEN the operation fails with already_initialized
 - AND no existing file is overwritten
 
 ### scenario.spec.reject-stale-or-invalid-proposal — Rejecting a stale, invalid or out-of-bound proposal
 
 - GIVEN a proposal whose identity, registry/Protocol binding or destination set is invalid, out of bound, or whose preconditions changed since it was proposed
 - WHEN the developer requests action apply
-- THEN the capability fails with invalid_proposal, permission_denied or stale_proposal as appropriate
+- THEN the operation fails with invalid_proposal, permission_denied or stale_proposal as appropriate
 - AND it does not apply a partial file set
 
 ### scenario.spec.rollback-on-failure — Restoring original bytes on failure
 
 - GIVEN an accepted proposal is being applied
 - WHEN a filesystem or transaction failure occurs after some files were staged
-- THEN the capability restores the original bytes and cannot report applied
+- THEN the operation restores the original bytes and cannot report applied
 - BUT a failure during that recovery itself is reported as a failure, never as a successful rollback

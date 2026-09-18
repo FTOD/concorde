@@ -3,7 +3,7 @@
 Use the deterministic exporter to derive declared structure only, or the native analysis bridge
 to combine Protocol, project Specs and project code in Understand Anything's full analysis flow.
 Both produce graph data for the existing Viewer, independently of starting it. These are developer
-tools, not Framework agent Capabilities or new Skills. The exporter launches no model cognition;
+tools, not Framework agent Operations or new Skills. The exporter launches no model cognition;
 the native analysis bridge explicitly starts an external model-backed host.
 
 ## Terminology
@@ -18,7 +18,7 @@ the native analysis bridge explicitly starts an external model-backed host.
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
 | [Implementation context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 

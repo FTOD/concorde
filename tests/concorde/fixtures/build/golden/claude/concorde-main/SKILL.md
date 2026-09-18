@@ -1,20 +1,20 @@
 ---
 name: concorde-main
-description: "Capability: answer questions, route work, and design or apply system topology from complete Module Specs."
-argument-hint: "Optional capability guidance"
+description: "Operation: answer questions, route work, and design or apply system topology from complete Module Specs."
+argument-hint: "Optional operation guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
   source: "skills/concorde-main/SKILL.md"
   kind: "skill"
-  capability: "main"
-  entrypoint: "scripts/run-capability.py concorde-main"
+  operation: "main"
+  entrypoint: "scripts/run-operation.py concorde-main"
 user-invocable: true
 disable-model-invocation: true
 ---
 # concorde-main
 
-This is Concorde's public main entry. It replaces the former ask capability. Its internal discovery workers (answerer, router and
+This is Concorde's public main entry. It replaces the former ask operation. Its internal discovery workers (answerer, router and
 topology designer) start from the project's entry Module and may expand only registered Module
 complete document units and their explicit one-level references. Inclusion never expands a
 provider's own references or transfers ownership. It understands the Module contract and never reads implementation files.
@@ -29,9 +29,9 @@ private target-local Spec authors and stores the resulting exact application as 
 only its path and digest return to ambient cognition. After the developer reviews that artifact,
 action `apply-topology` accepts it and atomically applies or rolls back the registry/document set.
 
-Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-main`. Its exact fields
-are type_id, schema_version:3, capability_id:"concorde-main", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-main-request@1).
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-main`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-main", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-main-request@1).
 Ask and design-topology requests require task and accept optional target_id/focus_id (a candidate
 scenario ID) routing hints and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
 topology requires only the exact application ArtifactRef returned by accept.
@@ -49,7 +49,7 @@ intermediate summaries. A mutation route selects a Module from admitted responsi
 complete Module context, including both reading and metadata members. A publisher's presentation
 does not trim that context or admit implementation files.
 Topology design receives exact registry metadata and explicitly admits affected Module contracts. Target authors' complete output
-is never returned through this capability; it stays in the ignored host application artifact. Report
+is never returned through this operation; it stays in the ignored host application artifact. Report
 Spec gaps or blocked execution as returned and do not work around the boundary. Non-implementation
 agents never receive implementation code or raw test logs.
 

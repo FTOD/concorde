@@ -35,7 +35,7 @@ Terminology is not another entity/file inventory: keep contextual entity duties 
 Explain one normal interaction and its outcome before rare failures or recovery. Use a small concrete
 example to clarify an abstract distinction. Explain why a design choice supports a guarantee, not
 just which functions run. Keep exact private APIs, wire types, digest algorithms, low-level limits
-and executable Flow catalogs in implementation-role units even when they are plain prose. Use
+and executable Graph catalogs in implementation-role units even when they are plain prose. Use
 conceptual diagrams for understanding and link to the one exact executable topology. Do not hide
 security limitations, destructive defaults or known unfulfilled guarantees. Remove repeated generic
 warnings and separate dated migration history from current behavior. Retain significant architecture.

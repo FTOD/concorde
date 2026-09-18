@@ -11,7 +11,7 @@
       "title": "Build",
       "kind": "program",
       "files": [
-        "capabilities/__init__.py",
+        "operations/__init__.py",
         "concorde.json",
         "pyproject.toml",
         "src/concorde/distribution/build.py",
@@ -32,7 +32,7 @@
       "title": "Installation",
       "kind": "program",
       "files": [
-        "capabilities/configure.py",
+        "operations/configure.py",
         "scripts/concorde.ps1",
         "scripts/concorde.py",
         "scripts/concorde.sh",
@@ -41,7 +41,7 @@
         "scripts/development/run-tests.py",
         "scripts/install-concorde.py",
         "scripts/requirements.lock",
-        "scripts/run-capability.py",
+        "scripts/run-operation.py",
         "scripts/worktree-guard.py",
         "src/concorde/distribution/",
         "templates/",

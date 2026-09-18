@@ -12,10 +12,10 @@ from unittest.mock import patch
 
 from concorde.development.review import _changes
 from concorde.harness.context import (
+    _stale_on_resolution_error,
     context_documents,
     context_grants,
     materialize_documents,
-    _stale_on_resolution_error,
 )
 from concorde.harness.effects import EffectDeclaration
 from concorde.harness.permissions import PolicyBinding, compile_policy
@@ -557,6 +557,7 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         # A finding names the canonical reading document, while its precise location may be
         # the metadata member. Included provider ownership is retained, not reassigned to A.
         from types import SimpleNamespace
+
         from concorde.development.review import _validate
 
         snapshot = SimpleNamespace(id=digest("snapshot"))
@@ -722,8 +723,8 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         repository = SpecRepository(root)
         repository.validate()
-        self.assertEqual(14, repository.config["profile_version"])
-        self.assertEqual("9.0.0", repository.config["protocol"]["version"])
+        self.assertEqual(15, repository.config["profile_version"])
+        self.assertEqual("10.0.0", repository.config["protocol"]["version"])
         self.assertEqual(len(repository.targets), len(repository.context_identities()))
         self.assertEqual(
             2 * len(repository.document_targets), len(repository.source_documents)
@@ -929,9 +930,9 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
             resolve_topology_author_context,
         )
 
-        before.protocol_assets = {
-            path: b"Test Protocol index source\n" for path in PROTOCOL_PATHS
-        }
+        before.protocol_assets = dict.fromkeys(
+            PROTOCOL_PATHS, b"Test Protocol index source\n"
+        )
         before.config = {
             "protocol": {"version": "8.0.0", "digest": digest("test binding")}
         }

@@ -1,22 +1,22 @@
 from __future__ import annotations
 
+import ast
+import json
 import re
 import shutil
-import json
-import ast
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution.build import (  # noqa: E402
-    MODEL_ROOTS,
     INTEGRATION_ROOTS,
+    MODEL_ROOTS,
     SKILL_NAMES,
     BuildError,
     build,
@@ -27,9 +27,8 @@ from concorde.distribution.build import (  # noqa: E402
 )
 from concorde.spec.verification import verifies  # noqa: E402
 
-
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
-_SOURCE_LINE = re.compile(r'(?m)^(\s*source:\s*).*$')
+_SOURCE_LINE = re.compile(r"(?m)^(\s*source:\s*).*$")
 
 
 def _normalize_source_line(text: str) -> str:
@@ -55,57 +54,91 @@ class BuildGoldenTests(unittest.TestCase):
         for integration, directory in (("claude", "claude"), ("codex", "codex")):
             for name in SKILL_NAMES:
                 with self.subTest(integration=integration, skill=name):
-                    golden = (GOLDEN / directory / name / "SKILL.md").read_text(encoding="utf-8")
-                    mine = self.by_path[f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md"].content.decode("utf-8")
-                    self.assertEqual(_normalize_source_line(mine), _normalize_source_line(golden))
+                    golden = (GOLDEN / directory / name / "SKILL.md").read_text(
+                        encoding="utf-8"
+                    )
+                    mine = self.by_path[
+                        f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md"
+                    ].content.decode("utf-8")
+                    self.assertEqual(
+                        _normalize_source_line(mine), _normalize_source_line(golden)
+                    )
 
     def test_skill_source_line_names_the_skill_source(self):
         for integration in ("claude", "codex"):
-            mine = self.by_path[f"{INTEGRATION_ROOTS[integration]}/concorde-main/SKILL.md"].content.decode("utf-8")
+            mine = self.by_path[
+                f"{INTEGRATION_ROOTS[integration]}/concorde-main/SKILL.md"
+            ].content.decode("utf-8")
             self.assertIn('source: "skills/concorde-main/SKILL.md"', mine)
 
     @verifies("scenario.distribution.build-checkout-skills-user-invoked")
-    def test_checkout_claude_skills_are_user_invoked_while_installed_ones_stay_model_invocable(self):
+    def test_checkout_claude_skills_are_user_invoked_while_installed_ones_stay_model_invocable(
+        self,
+    ):
         installed = {
             output.path: output
-            for output in build(REPOSITORY_ROOT, "all", framework_prefix=".concorde/framework").outputs
+            for output in build(
+                REPOSITORY_ROOT, "all", framework_prefix=".concorde/framework"
+            ).outputs
         }
         for name in SKILL_NAMES:
             claude_path = f"{INTEGRATION_ROOTS['claude']}/{name}/SKILL.md"
             codex_path = f"{INTEGRATION_ROOTS['codex']}/{name}/SKILL.md"
             with self.subTest(skill=name):
                 checkout_claude = self.by_path[claude_path].content.decode("utf-8")
-                checkout_front, _, _ = checkout_claude.removeprefix("---\n").partition("\n---\n")
+                checkout_front, _, _ = checkout_claude.removeprefix("---\n").partition(
+                    "\n---\n"
+                )
                 self.assertIn("\nuser-invocable: true\n", "\n" + checkout_front + "\n")
-                self.assertIn("\ndisable-model-invocation: true\n", "\n" + checkout_front + "\n")
-                self.assertIn(f"python3 scripts/run-capability.py {name}", checkout_claude)
+                self.assertIn(
+                    "\ndisable-model-invocation: true\n", "\n" + checkout_front + "\n"
+                )
+                self.assertIn(
+                    f"python3 scripts/run-operation.py {name}", checkout_claude
+                )
                 installed_claude = installed[claude_path].content.decode("utf-8")
-                installed_front, _, _ = installed_claude.removeprefix("---\n").partition("\n---\n")
+                installed_front, _, _ = installed_claude.removeprefix(
+                    "---\n"
+                ).partition("\n---\n")
                 self.assertIn("\nuser-invocable: true\n", "\n" + installed_front + "\n")
-                self.assertIn("\ndisable-model-invocation: false\n", "\n" + installed_front + "\n")
-                self.assertIn(f"python3 .concorde/framework/scripts/run-capability.py {name}", installed_claude)
+                self.assertIn(
+                    "\ndisable-model-invocation: false\n", "\n" + installed_front + "\n"
+                )
+                self.assertIn(
+                    f"python3 .concorde/framework/scripts/run-operation.py {name}",
+                    installed_claude,
+                )
                 for codex in (self.by_path[codex_path], installed[codex_path]):
-                    codex_front, _, _ = codex.content.decode("utf-8").removeprefix("---\n").partition("\n---\n")
+                    codex_front, _, _ = (
+                        codex.content.decode("utf-8")
+                        .removeprefix("---\n")
+                        .partition("\n---\n")
+                    )
                     self.assertNotIn("user-invocable", codex_front)
                     self.assertNotIn("disable-model-invocation", codex_front)
 
     @verifies("scenario.distribution.build-render")
     def test_eighteen_skills_twelve_agents_and_one_langgraph_config(self):
         skill_outputs = [
-            path for path in self.by_path
+            path
+            for path in self.by_path
             if path.startswith(".claude/skills/") or path.startswith(".agents/skills/")
         ]
-        agent_outputs = [path for path in self.by_path if path.startswith("generated/agents/")]
+        agent_outputs = [
+            path for path in self.by_path if path.startswith("generated/agents/")
+        ]
         self.assertEqual(len(skill_outputs), 18)
         self.assertEqual(len(agent_outputs), 12)
         # One flat rendered file per worker, never a mode subdirectory.
         self.assertTrue(all(path.count("/") == 2 for path in agent_outputs))
-        self.assertEqual(set(agent_outputs), {f"generated/agents/{agent}.md" for agent in MODEL_ROOTS})
+        self.assertEqual(
+            set(agent_outputs),
+            {f"generated/agents/{agent}.md" for agent in MODEL_ROOTS},
+        )
         self.assertIn("generated/langgraph.json", self.by_path)
 
     @verifies("scenario.distribution.build-render")
     def test_langgraph_config_names_one_graph_per_skill(self):
-        import json
 
         payload = json.loads(self.by_path["generated/langgraph.json"].content)
         self.assertEqual(set(payload["graphs"]), set(SKILL_NAMES))
@@ -119,7 +152,6 @@ class BuildGoldenTests(unittest.TestCase):
         manifest = self.result.manifest.decode("utf-8")
         self.assertTrue(manifest.endswith("\n"))
         self.assertNotIn("\r", manifest)
-        import json
 
         payload = json.loads(manifest)
         self.assertEqual(payload["schema_version"], 1)
@@ -127,13 +159,16 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertIn("outputs", payload)
         for output in self.result.outputs:
             self.assertIn(output.path, payload["outputs"])
-            self.assertEqual(payload["outputs"][output.path]["sources"], sorted(output.sources))
+            self.assertEqual(
+                payload["outputs"][output.path]["sources"], sorted(output.sources)
+            )
 
     @verifies("scenario.distribution.build-render")
     def test_runtime_schemas_remain_without_docsite_projections(self):
-        import json
 
-        self.assertFalse(any(path.startswith("generated/docs/") for path in self.by_path))
+        self.assertFalse(
+            any(path.startswith("generated/docs/") for path in self.by_path)
+        )
         schemas = json.loads(self.by_path["generated/protocol/schemas.json"].content)
         self.assertIn("concorde-main-request", schemas)
 
@@ -169,9 +204,12 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
-        shutil.copytree(REPOSITORY_ROOT / "capabilities", self.root / "capabilities")
-        shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", self.root / "src/concorde/spec",
-                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
+        shutil.copytree(
+            REPOSITORY_ROOT / "src/concorde/spec",
+            self.root / "src/concorde/spec",
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
 
     @verifies("scenario.distribution.build-check", "scenario.distribution.build-write")
     def test_check_fails_before_build_and_passes_after(self):
@@ -191,13 +229,19 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertTrue(current)
 
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
-        edited.write_text(edited.read_text(encoding="utf-8") + "One more sentence.\n", encoding="utf-8")
+        edited.write_text(
+            edited.read_text(encoding="utf-8") + "One more sentence.\n",
+            encoding="utf-8",
+        )
 
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
         self.assertTrue(differences)
 
-    @verifies("scenario.distribution.build-check", "scenario.distribution.build-stale-blocks-execution")
+    @verifies(
+        "scenario.distribution.build-check",
+        "scenario.distribution.build-stale-blocks-execution",
+    )
     def test_independent_protocol_edit_invalidates_runtime_rule_projection(self):
         write_build(self.root, "all")
         chapter = self.root / "protocol/principles.md"
@@ -224,7 +268,9 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         write_build(self.root, "all")
         other = self.root / ".claude/skills/example-third-party"
         other.mkdir(parents=True)
-        (other / "SKILL.md").write_text("unrelated third-party skill\n", encoding="utf-8")
+        (other / "SKILL.md").write_text(
+            "unrelated third-party skill\n", encoding="utf-8"
+        )
         current, differences = check_build(self.root, "all")
         self.assertTrue(current)
         self.assertEqual(differences, ())
@@ -237,7 +283,9 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         write_build(self.root, "all")
         other = self.root / "generated/architecture"
         other.mkdir(parents=True)
-        (other / "example.html").write_text("unrelated diagram render\n", encoding="utf-8")
+        (other / "example.html").write_text(
+            "unrelated diagram render\n", encoding="utf-8"
+        )
         current, differences = check_build(self.root, "all")
         self.assertTrue(current)
         self.assertEqual(differences, ())
@@ -245,7 +293,9 @@ class BuildCheckLifecycleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_check_reports_an_unexpected_file_in_an_owned_directory(self):
         write_build(self.root, "all")
-        (self.root / "generated/agents/extra.md").write_text("not a build output\n", encoding="utf-8")
+        (self.root / "generated/agents/extra.md").write_text(
+            "not a build output\n", encoding="utf-8"
+        )
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
         self.assertIn("generated/agents/extra.md", differences)
@@ -254,7 +304,9 @@ class BuildCheckLifecycleTests(unittest.TestCase):
     def test_check_reports_a_modified_owned_file(self):
         write_build(self.root, "all")
         target = self.root / "generated/agents/planner.md"
-        target.write_text(target.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8")
+        target.write_text(
+            target.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8"
+        )
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
         self.assertIn("generated/agents/planner.md", differences)
@@ -268,9 +320,12 @@ class BuildFreshnessTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
-        shutil.copytree(REPOSITORY_ROOT / "capabilities", self.root / "capabilities")
-        shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", self.root / "src/concorde/spec",
-                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
+        shutil.copytree(
+            REPOSITORY_ROOT / "src/concorde/spec",
+            self.root / "src/concorde/spec",
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
 
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_closed_with_no_manifest(self):
@@ -286,7 +341,9 @@ class BuildFreshnessTests(unittest.TestCase):
     def test_verify_fresh_fails_after_editing_a_recorded_source(self):
         write_build(self.root, "all")
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
-        edited.write_text(edited.read_text(encoding="utf-8") + "Changed.\n", encoding="utf-8")
+        edited.write_text(
+            edited.read_text(encoding="utf-8") + "Changed.\n", encoding="utf-8"
+        )
         with self.assertRaises(BuildError) as failure:
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
@@ -294,7 +351,10 @@ class BuildFreshnessTests(unittest.TestCase):
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_child_definition_and_python_contract_edits_both_invalidate_build(self):
         write_build(self.root, "all")
-        for relative in ("capabilities/programmer/children/scout.md", "capabilities/programmer/__init__.py"):
+        for relative in (
+            "operations/programmer/children/scout.md",
+            "operations/programmer/__init__.py",
+        ):
             path = self.root / relative
             before = path.read_text()
             with self.subTest(source=relative):
@@ -322,10 +382,12 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertTrue(prompt.body.strip())
         self.assertIsNotNone(prompt.binding)
         self.assertEqual(prompt.binding.agent, "planner")
-        self.assertEqual(prompt.binding.spec_path, "capabilities/planner/spec.md")
+        self.assertEqual(prompt.binding.spec_path, "operations/planner/spec.md")
 
-        edited = self.root / "capabilities/planner/spec.md"
-        edited.write_text(edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8")
+        edited = self.root / "operations/planner/spec.md"
+        edited.write_text(
+            edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8"
+        )
         with self.assertRaises(BuildError) as failure:
             load_model_instructions(self.root, "concorde-planner")
         self.assertEqual(failure.exception.code, "stale_build")
@@ -349,64 +411,107 @@ class BuildFreshnessTests(unittest.TestCase):
 
 
 class WireHelperBuildTests(unittest.TestCase):
-    @verifies("scenario.distribution.build-render", "scenario.distribution.build-write",
-              "scenario.distribution.build-check", "scenario.distribution.build-stale-blocks-execution")
+    @verifies(
+        "scenario.distribution.build-render",
+        "scenario.distribution.build-write",
+        "scenario.distribution.build-check",
+        "scenario.distribution.build-stale-blocks-execution",
+    )
     def test_wire_helper_change_invalidates_and_rebuilds_actual_schema_outputs(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
-            for directory in ("prompts", "protocol", "skills", "capabilities"):
+            for directory in ("prompts", "protocol", "skills", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
-            shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
-                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            shutil.copytree(
+                REPOSITORY_ROOT / "src/concorde/spec",
+                root / "src/concorde/spec",
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
             # This isolated render fixture does not accept a consumer Protocol binding.
             (root / "protocol/manifest.json").unlink()
 
             def contents():
-                return {p.relative_to(root).as_posix(): p.read_bytes()
-                        for p in root.rglob("*") if p.is_file()}
+                return {
+                    p.relative_to(root).as_posix(): p.read_bytes()
+                    for p in root.rglob("*")
+                    if p.is_file()
+                }
 
-            def invoke_model_backed_capability():
+            def invoke_model_backed_operation():
                 # The fixture is this invocation's package root: a top-level model-backed
-                # capability verifies the fixture build before admitting anything else.
-                from concorde.development.capability_host import CapabilityHost, run_capability
+                # operation verifies the fixture build before admitting anything else.
+                from concorde.development.operation_host import (
+                    OperationHost,
+                    run_operation,
+                )
                 from concorde.spec.typed_data import typed
+
                 def launched(launch):
                     raise AssertionError("an WorkerProfile launched on a stale build")
-                host = CapabilityHost(root, root, mode="describe-policy", executor=launched)
-                return run_capability("concorde-review", None, typed("concorde-review-request", {
-                    "target_id": "module.fixture", "task": "Review", "review_mode": "spec"}),
-                    host_context=host)
 
-            with (patch("subprocess.Popen", side_effect=AssertionError("build process I/O")),
-                  patch("socket.socket", side_effect=AssertionError("build network I/O"))):
+                host = OperationHost(
+                    root, root, mode="describe-policy", executor=launched
+                )
+                return run_operation(
+                    "concorde-review",
+                    None,
+                    typed(
+                        "concorde-review-request",
+                        {
+                            "target_id": "module.fixture",
+                            "task": "Review",
+                            "review_mode": "spec",
+                        },
+                    ),
+                    host_context=host,
+                )
+
+            with (
+                patch(
+                    "subprocess.Popen", side_effect=AssertionError("build process I/O")
+                ),
+                patch("socket.socket", side_effect=AssertionError("build network I/O")),
+            ):
                 first = write_build(root)
                 verify_fresh(root)
                 self.assertEqual((True, ()), check_build(root))
                 self.assertEqual(first, build(root))
-                admitted = invoke_model_backed_capability()
-                self.assertNotEqual("stale_build", (admitted["errors"] or [{}])[0].get("code"), admitted)
+                admitted = invoke_model_backed_operation()
+                self.assertNotEqual(
+                    "stale_build", (admitted["errors"] or [{}])[0].get("code"), admitted
+                )
                 helper = root / "src/concorde/spec/wire_shapes.py"
                 before = contents()
 
                 class DescribeStrings(ast.NodeTransformer):
                     def visit_Dict(self, node):
                         self.generic_visit(node)
-                        if any(isinstance(k, ast.Constant) and k.value == "type"
-                               and isinstance(v, ast.Constant) and v.value == "string"
-                               for k, v in zip(node.keys, node.values)):
+                        if any(
+                            isinstance(k, ast.Constant)
+                            and k.value == "type"
+                            and isinstance(v, ast.Constant)
+                            and v.value == "string"
+                            for k, v in zip(node.keys, node.values, strict=True)
+                        ):
                             node.keys.append(ast.Constant("description"))
-                            node.values.append(ast.Constant("Fixture helper schema change"))
+                            node.values.append(
+                                ast.Constant("Fixture helper schema change")
+                            )
                         return node
 
                 changed = DescribeStrings().visit(ast.parse(helper.read_text()))
-                helper.write_text(ast.unparse(ast.fix_missing_locations(changed)) + "\n")
-                self.assertEqual({"src/concorde/spec/wire_shapes.py"},
-                                 {p for p, data in contents().items() if before.get(p) != data})
+                helper.write_text(
+                    ast.unparse(ast.fix_missing_locations(changed)) + "\n"
+                )
+                self.assertEqual(
+                    {"src/concorde/spec/wire_shapes.py"},
+                    {p for p, data in contents().items() if before.get(p) != data},
+                )
                 with self.assertRaises(BuildError) as failure:
                     verify_fresh(root)
                 self.assertEqual("stale_build", failure.exception.code)
                 before_invocation = contents()
-                refused = invoke_model_backed_capability()
+                refused = invoke_model_backed_operation()
                 self.assertEqual("blocked", refused["status"], refused)
                 self.assertEqual("stale_build", refused["errors"][0]["code"], refused)
                 self.assertIsNone(refused["output"])
@@ -433,36 +538,52 @@ class BuildErrorTests(unittest.TestCase):
             shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts")
             shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol")
             shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
-            shutil.copytree(REPOSITORY_ROOT / "capabilities", root / "capabilities")
+            shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
             main = root / "skills/concorde-main/SKILL.md"
-            main.write_text(main.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n", encoding="utf-8")
+            main.write_text(
+                main.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n",
+                encoding="utf-8",
+            )
             with self.assertRaises(BuildError):
                 build(root, "all")
 
     def test_broken_schema_helper_fails_the_build_with_build_error(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "capabilities"):
+            for directory in ("prompts", "protocol", "skills", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
-            shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
-                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            shutil.copytree(
+                REPOSITORY_ROOT / "src/concorde/spec",
+                root / "src/concorde/spec",
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
             (root / "protocol/manifest.json").unlink()
             helper = root / "src/concorde/spec/wire_shapes.py"
-            helper.write_text(helper.read_text(encoding="utf-8") + "\nSTRING = {\n", encoding="utf-8")
+            helper.write_text(
+                helper.read_text(encoding="utf-8") + "\nSTRING = {\n", encoding="utf-8"
+            )
             for surface in (build, check_build, write_build):
-                with self.subTest(surface=surface.__name__), self.assertRaises(BuildError) as failure:
+                with (
+                    self.subTest(surface=surface.__name__),
+                    self.assertRaises(BuildError) as failure,
+                ):
                     surface(root)
                 self.assertEqual("invalid_build", failure.exception.code)
                 self.assertIn("wire_shapes.py", str(failure.exception))
             self.assertFalse((root / "generated").exists())
 
-    def test_incomplete_schema_source_tree_fails_closed_while_a_source_free_root_falls_back(self):
+    def test_incomplete_schema_source_tree_fails_closed_while_a_source_free_root_falls_back(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "capabilities"):
+            for directory in ("prompts", "protocol", "skills", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
-            shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
-                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            shutil.copytree(
+                REPOSITORY_ROOT / "src/concorde/spec",
+                root / "src/concorde/spec",
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
             (root / "protocol/manifest.json").unlink()
             (root / "src/concorde/spec/contracts.py").unlink()
             with self.assertRaises(BuildError) as failure:
@@ -472,26 +593,48 @@ class BuildErrorTests(unittest.TestCase):
             self.assertFalse((root / "generated").exists())
             shutil.rmtree(root / "src")
             rendered = build(root)
-            schemas = next(o for o in rendered.outputs if o.path == "generated/protocol/schemas.json")
+            schemas = next(
+                o
+                for o in rendered.outputs
+                if o.path == "generated/protocol/schemas.json"
+            )
             self.assertEqual((), schemas.sources)
-            self.assertFalse(any(s.startswith("src/concorde/spec/") for o in rendered.outputs for s in o.sources))
+            self.assertFalse(
+                any(
+                    s.startswith("src/concorde/spec/")
+                    for o in rendered.outputs
+                    for s in o.sources
+                )
+            )
 
-    def test_root_inventory_missing_a_skill_request_schema_fails_the_build_with_build_error(self):
+    def test_root_inventory_missing_a_skill_request_schema_fails_the_build_with_build_error(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "capabilities"):
+            for directory in ("prompts", "protocol", "skills", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
-            shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
-                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            shutil.copytree(
+                REPOSITORY_ROOT / "src/concorde/spec",
+                root / "src/concorde/spec",
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
             (root / "protocol/manifest.json").unlink()
             contracts = root / "src/concorde/spec/contracts.py"
-            contracts.write_text(contracts.read_text(encoding="utf-8") + (
-                "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
-                "def exported_types():\n"
-                "    return tuple(n for n in _ORIGINAL_EXPORTED_TYPES() if n != 'concorde-main-request')\n"),
-                encoding="utf-8")
+            contracts.write_text(
+                contracts.read_text(encoding="utf-8")
+                + (
+                    "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
+                    "def exported_types():\n"
+                    "    return tuple(n for n in _ORIGINAL_EXPORTED_TYPES() if n != 'concorde-main-request')\n"
+                ),
+                encoding="utf-8",
+            )
             for surface in (build, check_build, write_build):
-                with self.subTest(surface=surface.__name__), self.assertRaises(BuildError) as failure:
+                with (
+                    self.subTest(surface=surface.__name__),
+                    self.assertRaises(BuildError) as failure,
+                ):
                     surface(root)
                 self.assertEqual("invalid_build", failure.exception.code)
                 self.assertIn("concorde-main-request", str(failure.exception))

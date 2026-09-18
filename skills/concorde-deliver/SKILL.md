@@ -1,7 +1,7 @@
 ---
 name: concorde-deliver
-description: "Capability: stage a verified change, remove its worktree, and explicitly merge from the primary session."
-capability: deliver
+description: "Operation: stage a verified change, remove its worktree, and explicitly merge from the primary session."
+operation: deliver
 ---
 
 # concorde-deliver
@@ -11,7 +11,7 @@ worktree or the primary Git worktree. A third-worktree or nested invocation cann
 change. Keep the session and its loaded Skills bound to their original participant.
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-deliver
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1),
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1),
 and input (concorde-deliver-request@1). Supply the selected change_id from the primary worktree's
 `.concorde/worktrees.json` inventory or its saved delivery receipt. Optional target/task metadata
 cannot replace change ownership. No domain flags or positional arguments are accepted.

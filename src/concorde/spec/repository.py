@@ -1,12 +1,17 @@
-"""Protocol-9 / Profile-14 repository admission. No old-format runtime path."""
+"""Protocol-10 / Profile-15 repository admission. No old-format runtime path."""
 
 from __future__ import annotations
+
 from pathlib import Path
 
-# Keep the established import surface for shared value types and deterministic helpers.
-from .repository_base import *
-from .repository_base import _parse_definitions, _logical_lines, _paragraph_end
 from .content_repository import DocumentUnitRepository
+
+# Keep the established import surface for shared value types and deterministic helpers.
+from .repository_base import *  # noqa: F403 - public compatibility facade for shared helpers
+from .repository_base import PROFILE_VERSION, SpecError, decode, read_file
+from .repository_base import _logical_lines as _logical_lines
+from .repository_base import _paragraph_end as _paragraph_end
+from .repository_base import _parse_definitions as _parse_definitions
 
 
 class SpecRepository(DocumentUnitRepository):
@@ -35,17 +40,17 @@ class SpecRepository(DocumentUnitRepository):
             or self.config["profile_version"] != PROFILE_VERSION
         ):
             raise SpecError(
-                "Profile 14 is required; older profiles need explicit migration",
+                "Profile 15 is required; older profiles need explicit migration",
                 "unsupported_profile",
             )
         if set(self.config) != {
             "profile_version",
             "registry",
             "protocol",
-            "capability_configuration",
+            "operation_configuration",
         }:
             raise SpecError(
-                "configuration fields must be profile_version, registry, protocol, capability_configuration"
+                "configuration fields must be profile_version, registry, protocol, operation_configuration"
             )
         super().__init__(
             root,

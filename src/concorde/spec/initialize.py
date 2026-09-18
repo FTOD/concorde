@@ -1,22 +1,20 @@
-"""Initialize the document-unit profile (Profile 14) with an honest, self-contained Module stub."""
+"""Initialize the document-unit profile (Profile 15) with an honest, self-contained Module stub."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from .typed_data import decode, typed, validate_typed, checked_path, canonical
-from .model import ToolResult
-from .changes import file_change, apply_files
+from .changes import apply_files, file_change
 from .repository import (
     PROFILE_VERSION,
     REGISTRY_SCHEMA,
     SpecError,
-    SpecRepository,
-    identifier,
     digest,
+    identifier,
     read_file,
 )
+from .typed_data import checked_path, decode, validate_typed
 from .validation import validate_repository
 
 
@@ -109,7 +107,7 @@ def initial_module_text(target_id: str, name: str) -> str:
         "## Usage\n\nUse this draft to supply intended responsibility before planning implementation.\n"
         "Business entry points, inputs, results, effects, errors, repeat, cancellation and compatibility\n"
         "behavior are unknown; do not infer them from existing code or this authoring example.\n\n"
-        "## Design\n\nBusiness responsibility decomposition, state, flow, dependencies and internal constraints\n"
+        "## Design\n\nBusiness responsibility decomposition, state, graph, dependencies and internal constraints\n"
         "remain unknown. The known authoring boundary is not an invented business design.\n\n"
         f'<a id="entity.{local}.project-spec"></a><a id="entity.{local}.developer"></a><a id="entity.{local}.framework"></a>\n\n'
         "The Developer supplies intended behavior in the Project Spec; Concorde Framework checks its\n"
@@ -135,7 +133,7 @@ def project_proposal(
     target_id: str = "module.project",
 ) -> dict:
     identifier(target_id)
-    configuration = validate_typed(configuration, "concorde-capability-configuration")
+    configuration = validate_typed(configuration, "concorde-operation-configuration")
     if not isinstance(name, str) or not name.strip():
         raise SpecError("project name is required", "invalid_input")
     if checked_path(root, ".concorde/config.json").exists():
@@ -156,7 +154,7 @@ def project_proposal(
         "profile_version": PROFILE_VERSION,
         "registry": ".concorde/specs.json",
         "protocol": installed_protocol_binding(root),
-        "capability_configuration": configuration,
+        "operation_configuration": configuration,
     }
     files = [
         file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),

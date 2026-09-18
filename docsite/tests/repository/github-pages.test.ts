@@ -1,50 +1,59 @@
-import {readFile} from 'node:fs/promises';
-import {resolve} from 'node:path';
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import {loadSiteIdentity} from '../../plugins/scoped-content/site-identity';
-import {canonicalRoute} from '../../plugins/scoped-content/routes';
+import { loadSiteIdentity } from "../../plugins/scoped-content/site-identity";
+import { canonicalRoute } from "../../plugins/scoped-content/routes";
 
-const siteDir = resolve(__dirname, '../..');
-const projectRoot = resolve(siteDir, '..');
+const siteDir = resolve(__dirname, "../..");
+const projectRoot = resolve(siteDir, "..");
 
-describe('Concorde repository GitHub Pages deployment', () => {
-  it('reproduces the Concorde repository identity in docsite/site.json', () => {
+describe("Concorde repository GitHub Pages deployment", () => {
+  it("reproduces the Concorde repository identity in docsite/site.json", () => {
     const identity = loadSiteIdentity(siteDir);
-    expect(identity.title).toBe('Concorde Framework');
-    expect(identity.url).toBe('https://ftod.github.io');
-    expect(identity.baseUrl).toBe('/concorde/');
-    expect(identity.organizationName).toBe('FTOD');
-    expect(identity.projectName).toBe('concorde');
-    expect(identity.repository).toBe('https://github.com/FTOD/concorde');
-    expect(canonicalRoute('/concorde/specs/concorde/module', identity.baseUrl)).toBe('/specs/concorde/module');
-    expect(canonicalRoute('/concorde/', identity.baseUrl)).toBe('/');
+    expect(identity.title).toBe("Concorde Framework");
+    expect(identity.url).toBe("https://ftod.github.io");
+    expect(identity.baseUrl).toBe("/concorde/");
+    expect(identity.organizationName).toBe("FTOD");
+    expect(identity.projectName).toBe("concorde");
+    expect(identity.repository).toBe("https://github.com/FTOD/concorde");
+    expect(
+      canonicalRoute("/concorde/specs/concorde/module", identity.baseUrl),
+    ).toBe("/specs/concorde/module");
+    expect(canonicalRoute("/concorde/", identity.baseUrl)).toBe("/");
   });
 
-  it('keeps graph inspection dependencies exclusive to the Concorde source workflow', async () => {
+  it("keeps graph inspection dependencies exclusive to the Concorde source workflow", async () => {
     const [workflow, scaffold] = await Promise.all([
-      readFile(resolve(projectRoot, '.github/workflows/deploy-docsite.yml'), 'utf8'),
-      readFile(resolve(siteDir, 'scaffold/deploy-docsite.yml'), 'utf8'),
+      readFile(
+        resolve(projectRoot, ".github/workflows/deploy-docsite.yml"),
+        "utf8",
+      ),
+      readFile(resolve(siteDir, "scaffold/deploy-docsite.yml"), "utf8"),
     ]);
-    const ownPreparation = /\n      # Only Concorde's own site[^]*?          uv sync --frozen --group dev\n/;
+    const ownPreparation =
+      /\n      # Only Concorde's own site[^]*?          uv sync --frozen --group dev\n/;
     expect(workflow).toMatch(ownPreparation);
-    expect(workflow.replace(ownPreparation, '')).toBe(scaffold);
-    expect(scaffold).not.toContain('uv sync');
-    expect(scaffold).not.toContain('Agent Flows');
+    expect(workflow.replace(ownPreparation, "")).toBe(scaffold);
+    expect(scaffold).not.toContain("uv sync");
+    expect(scaffold).not.toContain("Agent Graphs");
   });
 
-  it('checks out once and deploys only the verified output', async () => {
-    const workflow = await readFile(resolve(projectRoot, '.github/workflows/deploy-docsite.yml'), 'utf8');
-    expect(workflow).toContain('name: Deploy project docsite');
-    expect(workflow).toContain('branches: [main]');
-    expect(workflow).toContain('name: Check out repository');
+  it("checks out once and deploys only the verified output", async () => {
+    const workflow = await readFile(
+      resolve(projectRoot, ".github/workflows/deploy-docsite.yml"),
+      "utf8",
+    );
+    expect(workflow).toContain("name: Deploy project docsite");
+    expect(workflow).toContain("branches: [main]");
+    expect(workflow).toContain("name: Check out repository");
     expect(workflow.match(/uses: actions\/checkout@v6/g)).toHaveLength(1);
-    expect(workflow).not.toContain('fetch-depth');
+    expect(workflow).not.toContain("fetch-depth");
     expect(workflow).not.toMatch(/Build verified docsite\n\s+env:/);
-    expect(workflow).toContain('run: npm ci --prefix docsite');
-    expect(workflow).toContain('run: npm --prefix docsite run build');
-    expect(workflow).toContain('path: docsite/build');
-    expect(workflow).toContain('uses: actions/deploy-pages@v4');
+    expect(workflow).toContain("run: npm ci --prefix docsite");
+    expect(workflow).toContain("run: npm --prefix docsite run build");
+    expect(workflow).toContain("path: docsite/build");
+    expect(workflow).toContain("uses: actions/deploy-pages@v4");
   });
 });

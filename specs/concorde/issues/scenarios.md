@@ -63,7 +63,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 ### scenario.issues.solve-spec-repair — Route contract repair to the ordinary author
 
 - GIVEN an admitted solver decision with action spec-repair
-- WHEN the flow selects the next operation
+- WHEN the graph selects the next operation
 - THEN it enters the declared repair_spec node and invokes the owner-only Spec author
 - AND the author receives intended behavior without the solver's selection or prior transcript
 - AND accepted repair can continue to development or, for a code-free Module, Spec-only verification
@@ -106,6 +106,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 - AND unrelated local edits and the source worktree's index are preserved
 
 ## Issue records and reporting
+
+### scenario.issues.historical-record — Preserve historical observations without wire aliases
+
+- GIVEN an intact schema-1 Issue with historical provenance and immutable observation receipts
+- WHEN the current Host reads it or attempts to mutate it
+- THEN reads preserve its exact bytes and receipts while mutations fail with unsupported_issue_version
+- AND new reports accept only current provenance and create schema-2 records
+- AND corrupted historical observation digests are rejected rather than repaired silently
 
 ### scenario.issues.report-authority — Bind reporting without granting arbitrary writes
 

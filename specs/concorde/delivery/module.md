@@ -86,7 +86,7 @@ Admit participating delivery sessions and explicit primary-merge intent, and per
 
 This collaboration applies when staging the selected change, resuming cleanup or processing a separately authorized primary merge.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -123,5 +123,5 @@ This collaboration applies when the actual integration tree contains concorde.js
 ## Precise specifications
 
 The Delivery Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#delivery-delivery-capability).
+[execution and record contracts](execution-reference.md#delivery-delivery-operation).
 These companions are part of the same complete Module specification, not separate topic owners.

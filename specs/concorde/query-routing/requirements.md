@@ -8,7 +8,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | Term | Meaning / definition |
 | --- | --- |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -17,7 +17,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ### req.development.global-discovery — Discovery workers discover complete Module contexts
 
-A Capability with discover context selection SHALL use a discovery-phase worker to discover complete Module Spec contexts.
+An Operation with discover context selection SHALL use a discovery-phase worker to discover complete Module Spec contexts.
 
 ### req.development.routing-hint-not-context — Routing hints only steer selection
 

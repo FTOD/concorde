@@ -7,7 +7,6 @@ import sys
 import zipfile
 from pathlib import Path
 
-
 LANGGRAPH_VERSION = "1.2.11"
 
 
@@ -28,16 +27,20 @@ def create_langgraph_index(root: Path) -> Path:
             "Summary: Minimal Concorde installer test fixture\n"
         ).encode(),
         f"{dist_info}/WHEEL": (
-            "Wheel-Version: 1.0\n"
-            "Generator: concorde-tests\n"
-            "Root-Is-Purelib: true\n"
-            "Tag: py3-none-any\n"
-        ).encode(),
+            b"Wheel-Version: 1.0\n"
+            b"Generator: concorde-tests\n"
+            b"Root-Is-Purelib: true\n"
+            b"Tag: py3-none-any\n"
+        ),
         f"{dist_info}/top_level.txt": b"langgraph\n",
     }
     record_rows = []
     for name, content in files.items():
-        digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode()
+        digest = (
+            base64.urlsafe_b64encode(hashlib.sha256(content).digest())
+            .rstrip(b"=")
+            .decode()
+        )
         record_rows.append(f"{name},sha256={digest},{len(content)}")
     record_rows.append(f"{dist_info}/RECORD,,")
     files[f"{dist_info}/RECORD"] = ("\n".join(record_rows) + "\n").encode()
@@ -68,7 +71,9 @@ def _create_viewer_tools(root: Path) -> Path:
     tools.mkdir(parents=True, exist_ok=True)
     node = tools / ("node.cmd" if os.name == "nt" else "node")
     npm = tools / ("npm.cmd" if os.name == "nt" else "npm")
-    if os.name == "nt":  # pragma: no cover - Windows CI uses the real command shim shape
+    if (
+        os.name == "nt"
+    ):  # pragma: no cover - Windows CI uses the real command shim shape
         node.write_text(f'@"{sys.executable}" "%~dp0\\node.py" %*\n', encoding="utf-8")
         npm.write_text(f'@"{sys.executable}" "%~dp0\\npm.py" %*\n', encoding="utf-8")
         node_script = tools / "node.py"
@@ -127,7 +132,7 @@ def _create_viewer_tools(root: Path) -> Path:
 
 
 def _graph_source() -> str:
-    return '''from __future__ import annotations
+    return """from __future__ import annotations
 
 START = "__start__"
 END = "__end__"
@@ -160,10 +165,10 @@ class _CompiledGraph:
         while current != END:
             update = self.nodes[current](value)
             for key, item in update.items():
-                if key == "capability_results":
+                if key == "operation_results":
                     value[key] = [*value.get(key, []), *item]
                 else:
                     value[key] = item
             current = self.edges[current]
         return value
-'''
+"""

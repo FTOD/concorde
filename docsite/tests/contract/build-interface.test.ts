@@ -72,7 +72,7 @@ describe("build interface", () => {
     );
   });
 
-  it("refuses to publish a project that does not declare Profile 14", async () => {
+  it("refuses to publish a project that does not declare Profile 15", async () => {
     const root = await temporaryRoot("concorde-legacy-profile-");
     await mkdir(resolve(root, ".concorde"), { recursive: true });
     await writeFile(
@@ -83,7 +83,7 @@ describe("build interface", () => {
     const result = validate(root);
     expect(result.status).toBe(1);
     expect(`${result.stdout}${result.stderr}`).toContain(
-      "Profile 14 is required",
+      "Profile 15 is required",
     );
   });
 });

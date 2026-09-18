@@ -9,9 +9,9 @@ meaning and links to the included providers.
 | Term | Meaning / definition |
 | --- | --- |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -26,7 +26,7 @@ meaning and links to the included providers.
 
 ## Dependencies and composition
 
-Development's sole structural parent is `module.concorde`; it has no submodules of its own. Its direct uses distinguish shared services, providers and composing flows.
+Development's sole structural parent is `module.concorde`; it has no submodules of its own. Its direct uses distinguish shared services, providers and composing graphs.
 
 ### Harness
 
@@ -34,7 +34,7 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
 
 The [Harness Module](../harness/module.md) prepares each worker with its allowed inputs and tools, and runs configured checks through their separate read-only boundary.
 
-This collaboration applies when a capability Flow reaches an Agent invocation, policy preview or configured deterministic check.
+This collaboration applies when an operation graph reaches an Agent invocation, policy preview or configured deterministic check.
 
 - [Freeze and recheck each stage input](../harness/contracts.md#contract.context.selection)
 - [Stop rather than widen rejected authority](../harness/requirements.md#req.harness.permission-no-widen)
@@ -80,7 +80,7 @@ This collaboration applies when a developer runtime uses an installed Skill, an 
 
 <a id="entity.development.planning"></a><a id="agreement.document.development.module.5"></a>
 
-[Planning Module](../planning/module.md) assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning.
+[Planning Module](../planning/module.md) assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing operations with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning.
 
 This collaboration applies when the request concerns Planning.
 
@@ -90,7 +90,7 @@ This collaboration applies when the request concerns Planning.
 
 <a id="entity.development.implementation"></a><a id="agreement.document.development.module.6"></a>
 
-[Implementation Module](../implementation/module.md) fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.
+[Implementation Module](../implementation/module.md) fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing operations that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.
 
 This collaboration applies when the request concerns Implementation.
 
@@ -100,7 +100,7 @@ This collaboration applies when the request concerns Implementation.
 
 <a id="entity.development.spec-authoring"></a><a id="agreement.document.development.module.7"></a>
 
-[Spec Authoring](../spec-authoring/module.md) proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers.
+[Spec Authoring](../spec-authoring/module.md) proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification graphs and other declared callers; independent review and graph completion belong to their consumers.
 
 This collaboration applies when the request concerns Spec Authoring.
 
@@ -110,7 +110,7 @@ This collaboration applies when the request concerns Spec Authoring.
 
 <a id="entity.development.review"></a><a id="agreement.document.development.module.8"></a>
 
-[Review Module](../review/module.md) independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work.
+[Review Module](../review/module.md) independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing graphs with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work.
 
 This collaboration applies when the request concerns Review.
 
@@ -120,7 +120,7 @@ This collaboration applies when the request concerns Review.
 
 <a id="entity.development.validation"></a><a id="agreement.document.development.module.9"></a>
 
-[Validation Module](../validation/module.md) collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required.
+[Validation Module](../validation/module.md) collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing graphs; neither a development plan nor dev-loop invocation is universally required.
 
 This collaboration applies when the request concerns Validation.
 
@@ -130,7 +130,7 @@ This collaboration applies when the request concerns Validation.
 
 <a id="entity.development.delivery"></a><a id="agreement.document.development.module.10"></a>
 
-[Delivery Module](../delivery/module.md) stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate.
+[Delivery Module](../delivery/module.md) stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the graph that produced the candidate.
 
 This collaboration applies when the request concerns Delivery.
 
@@ -156,22 +156,22 @@ This collaboration applies when the request concerns Topology.
 
 - [Topology contract](../topology/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
-### Development Flow
+### Development Graph
 
 <a id="entity.development.dev-loop"></a><a id="agreement.document.development.module.13"></a>
 
-[Development Flow](../dev-loop/module.md) composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.
+[Development Graph](../dev-loop/module.md) composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.
 
-This collaboration applies when the request concerns Development Flow.
+This collaboration applies when the request concerns Development Graph.
 
-- [Development Flow contract](../dev-loop/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Development Graph contract](../dev-loop/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
-### Specification Flow
+### Specification Graph
 
 <a id="entity.development.specify-loop"></a><a id="agreement.document.development.module.14"></a>
 
-[Specification Flow](../specify-loop/module.md) composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness.
+[Specification Graph](../specify-loop/module.md) composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness.
 
-This collaboration applies when the request concerns Specification Flow.
+This collaboration applies when the request concerns Specification Graph.
 
-- [Specification Flow contract](../specify-loop/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Specification Graph contract](../specify-loop/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.

@@ -10,7 +10,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
@@ -59,8 +59,8 @@ The resolver (`resolve_model_instructions`, `resolve_role_prompt`, `resolve_skil
 `find_unreachable_prompts`, `check_reachability`) expands `@include` directives, enforces
 audience/layering rules, and detects unreachable or diamond-included sources; `resolve_model_instructions`
 additionally rejects an Agent Spec that carries front matter. `package_validation` attributes its
-findings to `module.distribution` and requires exactly one registered `concorde-capabilities` block
-across all Module documents, equal to the single code inventory of Capabilities, including State,
+findings to `module.distribution` and requires exactly one registered `concorde-operations` block
+across all Module documents, equal to the single code inventory of Operations, including State,
 USES and optional model execution profiles; no parallel Agent inventory is required.
 
 Failures return structured findings or the declared exception; callers must stop the affected

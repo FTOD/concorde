@@ -15,6 +15,7 @@ from pathlib import Path
 from .content_model import ContentModelError, DocumentUnit, admit_document_unit
 from .repository_base import (
     HEADING,
+    LIST_ITEM,
     SpecDocument,
     _parse_definitions,
     digest,
@@ -22,8 +23,7 @@ from .repository_base import (
     walk_lines,
 )
 from .typed_data import decode, safe_path
-from .validation import _section_ranges, _fences_in_range
-from .repository_base import LIST_ITEM
+from .validation import _fences_in_range, _section_ranges
 
 MANDATORY_SECTIONS = ("Usage & Contract", "Architecture & Realization")
 USAGE_SECTIONS = ("Purpose", "Usage", "Requirements", "Scenarios")
@@ -64,14 +64,15 @@ def legacy_reading_problems(body: str, *, primary: bool = False) -> list[str]:
             "substantive sections must be nested inside a reader-oriented part"
         )
     for number, kind, line in lines:
-        if kind == "fence-open" and line.strip() == "```concorde-entities":
-            if not any(
+        if (
+            kind == "fence-open"
+            and line.strip() == "```concorde-entities"
+            and not any(
                 s[0] == MANDATORY_SECTIONS[1] and s[1] == 2 and s[2] < number <= s[3]
                 for s in parts
-            ):
-                problems.append(
-                    "entity declarations belong in Architecture & Realization"
-                )
+            )
+        ):
+            problems.append("entity declarations belong in Architecture & Realization")
     if not primary:
         return problems
     for part, required in (
@@ -95,18 +96,15 @@ def legacy_reading_problems(body: str, *, primary: bool = False) -> list[str]:
         for section in subsections:
             name, _, start, end = section
             content = [(kind, line) for n, kind, line in lines if start < n <= end]
-            if name in {"Purpose", "Usage", "Design"}:
-                if not any(
-                    kind == "prose"
-                    and line.strip()
-                    and not HEADING.match(line)
-                    and not LIST_ITEM.match(line)
-                    and not line.lstrip().startswith("|")
-                    for kind, line in content
-                ):
-                    problems.append(
-                        f"the {name} section must contain explanatory prose"
-                    )
+            if name in {"Purpose", "Usage", "Design"} and not any(
+                kind == "prose"
+                and line.strip()
+                and not HEADING.match(line)
+                and not LIST_ITEM.match(line)
+                and not line.lstrip().startswith("|")
+                for kind, line in content
+            ):
+                problems.append(f"the {name} section must contain explanatory prose")
             if name == "Purpose" and any(
                 kind != "prose"
                 or HEADING.match(line)
@@ -138,7 +136,7 @@ _MOVED_BLOCKS = frozenset(
         "concorde-entities",
         "concorde-dependencies",
         "concorde-contract-binding",
-        "concorde-capabilities",
+        "concorde-operations",
         "concorde-agents",
     }
 )
@@ -243,7 +241,7 @@ def _layout(text: str, primary: bool) -> str:
 
     if not primary:
         # The old architecture wrapper has a real, linkable content boundary. Retain that
-        # boundary under Design; do not flatten prose and Flow sections into the preceding case.
+        # boundary under Design; do not flatten prose and Graph sections into the preceding case.
         return (
             "\n".join(
                 (
@@ -467,7 +465,7 @@ def plan_document_migration(
             continue
         value = decode(payload)
         prose = []
-        if name in {"concorde-capabilities", "concorde-agents"}:
+        if name in {"concorde-operations", "concorde-agents"}:
             key = name.replace("concorde-", "concorde.", 1)
             if key in metadata.get("extensions", {}):
                 raise ContentModelError(
@@ -652,7 +650,7 @@ def plan_document_migration(
             "Preserve the former hidden-page preference in publisher configuration, never as Protocol reading membership."
         )
     notes.append(
-        "Register every planned unit and reconcile all consumer references before explicit Protocol 9 acceptance."
+        "Register every planned unit and reconcile all consumer references before explicit Protocol 10 acceptance."
     )
     return DocumentMigration(
         unit,
@@ -756,7 +754,7 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Preview legacy inline sources as Protocol 9 document roles without writes"
+        description="Preview legacy inline sources as Protocol 10 document roles without writes"
     )
     parser.parse_args()
     try:

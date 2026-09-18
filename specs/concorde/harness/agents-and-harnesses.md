@@ -1,20 +1,21 @@
-# Capabilities, workers and their environment
+# Operations, workers and their environment
 
-A capability describes an operation; a worker is one agent execution that performs a model-backed
-operation. The [Harness Module](module.md) prepares that execution and checks its result. This distinction lets a workflow
+An Operation is executable behavior with a complete contract; a worker is one fresh agent
+execution used by a model-backed Operation. The [Harness Module](module.md) prepares that execution
+and checks its result. This distinction lets a graph
 combine ordinary code and model work without treating a model's answer as permission to act.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker profile](module.md#terminology) | Defined in Harness. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## One bounded job
 
@@ -34,7 +35,7 @@ allowed scope before launch, then rejects a result that does not match the job.
 
 Some workers have named helpers for a limited subtask. Helpers use fresh conversations and the
 parent's bounded access, cannot delegate again, and report back to the parent. The parent remains
-responsible for its submitted result. This is different from a Flow selecting another operation.
+responsible for its submitted result. This is different from a Graph selecting another operation.
 
 ## Read next
 
@@ -44,5 +45,5 @@ and helper rules are in the Module's execution reference, not prerequisites for 
 
 ## Precise specifications
 
-See the Module-owned [execution and record contracts](execution-reference.md#agents-and-harnesses-capabilities-and-harnesses).
+See the Module-owned [execution and record contracts](execution-reference.md#agents-and-harnesses-operations-and-harnesses).
 The exact obligations remain in Implementation Specs; this topic explains their purpose and use.

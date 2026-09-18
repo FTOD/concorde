@@ -1,12 +1,12 @@
 ---
 name: concorde-configure
-description: "Capability: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy."
-capability: configure
+description: "Operation: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy."
+operation: configure
 ---
 
 # concorde-configure
 
-@include prompts/workflow-host/invoke-capability-opener.md ACTION=configure
+@include prompts/workflow-host/invoke-operation-opener.md ACTION=configure
 @include prompts/workflow-host/lifecycle-no-cognition.md
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-configure

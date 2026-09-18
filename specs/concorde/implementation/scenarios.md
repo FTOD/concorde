@@ -25,9 +25,9 @@ Subject headings organize the Module's obligations; they do not create separate 
 - THEN the host accepts completion only for those same tasks with their IDs and acceptance preserved and all complete flags true
 - AND the host records accepted progress without declaring ready or changing Specs
 
-The detailed contract is [Exact tasks and bounded code effects](execution-reference.md#implementation-implementation-capability).
+The detailed contract is [Exact tasks and bounded code effects](execution-reference.md#implementation-implementation-operation).
 
-## Implementation capability
+## Implementation operation
 
 ### scenario.implementation.missing-tasks — Implementation has no authored tasks
 

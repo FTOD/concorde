@@ -1,26 +1,26 @@
 import copy
 import json
-import re
 import tempfile
 import unittest
 from pathlib import Path
-from concorde.spec.typed_data import typed, TypedDataError
-from concorde.spec.verification import verifies
-from concorde.development.capability_service import CapabilityHost, run_capability
-from concorde.spec.repository import SpecRepository, SpecError
+
+from concorde.development.operation_service import OperationHost, run_operation
 from concorde.harness.context import (
-    resolve_context,
     recheck_context,
-    resolve_discovery_context,
     recheck_discovery_context,
+    resolve_context,
+    resolve_discovery_context,
 )
+from concorde.spec.repository import SpecError, SpecRepository
+from concorde.spec.typed_data import TypedDataError, typed
 from concorde.spec.validation import validate_repository
+from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
-    project,
-    PACKAGE,
     CONFIGURATION,
+    PACKAGE,
     ModelProcessDouble,
     module_document,
+    project,
     update_document_declaration,
 )
 
@@ -32,15 +32,15 @@ class ScopedProtocolTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.registry = project(self.root)
 
-    def call_capability(self, name, data, double=None, mode="execute"):
-        self.host = CapabilityHost(
+    def call_operation(self, name, data, double=None, mode="execute"):
+        self.host = OperationHost(
             self.root,
             PACKAGE,
             executor=double.executor if double else None,
             allow_primary_worktree=True,
             mode=mode,
         )
-        return run_capability(
+        return run_operation(
             name, CONFIGURATION, typed(name + "-request", data), host_context=self.host
         )
 
@@ -142,7 +142,7 @@ class ScopedProtocolTests(unittest.TestCase):
         for peer in ("service.transfer", "module.ledger", "scope.audit"):
             self.assertTrue(any(peer in finding.message for finding in report.findings))
         double = ModelProcessDouble()
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-plan",
             {"target_id": "scope.bank", "task": "Plan a banking change"},
             double,
@@ -185,7 +185,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 "CONCORDE-DEPENDENCY-001", {f.rule_id for f in report.findings}
             )
         double = ModelProcessDouble()
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-plan",
             {"target_id": "scope.bank", "task": "Plan a banking change"},
             double,
@@ -211,7 +211,7 @@ class ScopedProtocolTests(unittest.TestCase):
     )
     def test_main_answers_directly_from_complete_injected_contexts(self):
         double = ModelProcessDouble()
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main", {"task": "Explain transfer"}, double
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -221,7 +221,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertNotIn("worker_results", data)
         self.assertEqual(["route", "route"], [call["stage"] for call in double.calls])
         self.assertEqual(
-            ["concorde-answerer"] * 2, [call["capability"] for call in double.calls]
+            ["concorde-answerer"] * 2, [call["operation"] for call in double.calls]
         )
         first, second = double.calls
         self.assertEqual(
@@ -398,7 +398,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 ]
 
         double = ModelProcessDouble(callback)
-        design = self.call_capability(
+        design = self.call_operation(
             "concorde-main",
             {"action": "design-topology", "task": "Add audit reports"},
             double,
@@ -406,7 +406,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("topology_proposed", design["output"]["data"]["outcome"])
         proposal = design["output"]["data"]["topology_proposal"]
         self.assertFalse((self.root / "specs/audit-report/module.md").exists())
-        prepared = self.call_capability(
+        prepared = self.call_operation(
             "concorde-main",
             {"action": "accept-topology", "topology_proposal": proposal},
             double,
@@ -420,14 +420,14 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertTrue((self.root / application["path"]).is_file())
         self.assertFalse((self.root / "specs/audit-report/module.md").exists())
         tampered = {**application, "digest": "sha256:" + "0" * 64}
-        rejected = self.call_capability(
+        rejected = self.call_operation(
             "concorde-main",
             {"action": "apply-topology", "application": tampered},
             double,
         )
         self.assertEqual("blocked", rejected["status"])
         self.assertTrue((self.root / application["path"]).is_file())
-        applied = self.call_capability(
+        applied = self.call_operation(
             "concorde-main",
             {"action": "apply-topology", "application": application},
             double,
@@ -452,7 +452,7 @@ class ScopedProtocolTests(unittest.TestCase):
         main = [
             call
             for call in double.calls
-            if call["capability"] == "concorde-topology-designer"
+            if call["operation"] == "concorde-topology-designer"
         ]
         self.assertTrue(
             any("specs/ledger/module.md" in call["granted"] for call in main)
@@ -516,7 +516,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 ),
             )
 
-        designed = self.call_capability(
+        designed = self.call_operation(
             "concorde-main",
             {"action": "design-topology", "task": "Share promises"},
             ModelProcessDouble(design_callback),
@@ -554,7 +554,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 )
 
         double = ModelProcessDouble(reconcile)
-        prepared = self.call_capability(
+        prepared = self.call_operation(
             "concorde-main",
             {"action": "accept-topology", "topology_proposal": proposal},
             double,
@@ -569,7 +569,7 @@ class ScopedProtocolTests(unittest.TestCase):
             all("specs/transfer/promises.md" in c["granted"] for c in reviews)
         )
         application = prepared["output"]["data"]["application"]
-        applied = self.call_capability(
+        applied = self.call_operation(
             "concorde-main",
             {"action": "apply-topology", "application": application},
             double,
@@ -633,7 +633,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 )
 
         design_double = ModelProcessDouble(design_callback)
-        designed = self.call_capability(
+        designed = self.call_operation(
             "concorde-main",
             {"action": "design-topology", "task": "Rename transfers"},
             design_double,
@@ -657,7 +657,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     ],
                 )
 
-        blocked = self.call_capability(
+        blocked = self.call_operation(
             "concorde-main",
             {"action": "accept-topology", "topology_proposal": proposal},
             ModelProcessDouble(gap),
@@ -667,7 +667,7 @@ class ScopedProtocolTests(unittest.TestCase):
         (self.root / ".concorde/specs.json").write_text(
             (self.root / ".concorde/specs.json").read_text() + "\n"
         )
-        stale = self.call_capability(
+        stale = self.call_operation(
             "concorde-main",
             {"action": "accept-topology", "topology_proposal": proposal},
             ModelProcessDouble(),
@@ -719,7 +719,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 )
 
         double = ModelProcessDouble(callback)
-        designed = self.call_capability(
+        designed = self.call_operation(
             "concorde-main",
             {"action": "design-topology", "task": "Clarify transfer title"},
             double,
@@ -730,7 +730,7 @@ class ScopedProtocolTests(unittest.TestCase):
             path.relative_to(self.root).as_posix(): path.read_bytes()
             for path in (self.root / "specs").rglob("*.md")
         }
-        described = self.call_capability(
+        described = self.call_operation(
             "concorde-main",
             {"action": "accept-topology", "topology_proposal": proposal},
             mode="describe-policy",
@@ -751,14 +751,14 @@ class ScopedProtocolTests(unittest.TestCase):
         )
         self.assertTrue(self.host.descriptions)
         self.assertTrue(all(not item["write_paths"] for item in self.host.descriptions))
-        prepared = self.call_capability(
+        prepared = self.call_operation(
             "concorde-main",
             {"action": "accept-topology", "topology_proposal": proposal},
             double,
         )
         application = prepared["output"]["data"]["application"]
         artifact_before = (self.root / application["path"]).read_bytes()
-        described = self.call_capability(
+        described = self.call_operation(
             "concorde-main",
             {"action": "apply-topology", "application": application},
             mode="describe-policy",
@@ -801,7 +801,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 )
 
         double = ModelProcessDouble(callback)
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main",
             {"action": "design-topology", "task": "Select a Module entry"},
             double,
@@ -857,7 +857,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     topology_design=design,
                 )
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main",
             {"action": "design-topology", "task": "Add audit reports"},
             ModelProcessDouble(callback),
@@ -869,7 +869,7 @@ class ScopedProtocolTests(unittest.TestCase):
     @verifies("scenario.development.answer-question")
     def test_main_can_admit_modules_and_answer_but_not_read_implementation_code(self):
         double = ModelProcessDouble()
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main",
             {
                 "task": "Explain ledger reads",
@@ -896,7 +896,7 @@ class ScopedProtocolTests(unittest.TestCase):
             resolve_discovery_context(
                 SpecRepository(self.root),
                 ("entity.ledger.store",),
-                capability="concorde-main",
+                operation="concorde-main",
                 phase="route",
                 task="Read one entity",
             )
@@ -927,13 +927,13 @@ class ScopedProtocolTests(unittest.TestCase):
                 )
 
         double = ModelProcessDouble(answer)
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main", {"task": "Explain transfer and ledger"}, double
         )
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual(2, len(double.calls))
         self.assertTrue(
-            all(call["capability"] == "concorde-answerer" for call in double.calls)
+            all(call["operation"] == "concorde-answerer" for call in double.calls)
         )
         self.assertEqual(
             ["scope.bank", "service.transfer", "module.ledger"],
@@ -962,7 +962,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 ],
             )
 
-        blocked = self.call_capability(
+        blocked = self.call_operation(
             "concorde-main",
             {"task": "Explain settlement"},
             ModelProcessDouble(routing_gap),
@@ -1000,7 +1000,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     ],
                 )
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main",
             {"task": "Explain settlement ledger"},
             ModelProcessDouble(contract_gap),
@@ -1029,7 +1029,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 ],
             )
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main", {"task": "Explain ledger"}, ModelProcessDouble(route)
         )
         self.assertEqual("blocked", result["status"])
@@ -1037,7 +1037,7 @@ class ScopedProtocolTests(unittest.TestCase):
 
     def test_global_loop_routes_once_before_its_first_internal_stage(self):
         double = ModelProcessDouble()
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-dev-loop",
             {
                 "task": "Plan the transfer promise",
@@ -1050,7 +1050,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("service.transfer", result["output"]["data"]["target_id"])
         self.assertEqual(
             "concorde-router-route",
-            result["output"]["data"]["completed_capabilities"][0],
+            result["output"]["data"]["completed_operations"][0],
         )
         self.assertEqual(
             ["route", "route", "context-solve"],
@@ -1058,11 +1058,11 @@ class ScopedProtocolTests(unittest.TestCase):
         )
         self.assertEqual(
             ["concorde-router", "concorde-router", "concorde-context-assessor"],
-            [call["capability"] for call in double.calls][:3],
+            [call["operation"] for call in double.calls][:3],
         )
 
     @verifies("scenario.harness.typed-reject")
-    def test_internal_stage_capability_requires_target_id_at_the_top_level(self):
+    def test_internal_stage_operation_requires_target_id_at_the_top_level(self):
         with self.assertRaises(TypedDataError) as caught:
             typed("concorde-plan-request", {"task": "Plan the transfer promise"})
         self.assertEqual("invalid_field", caught.exception.code)
@@ -1091,7 +1091,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     ],
                 )
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-dev-loop",
             {"task": "Plan transfer", "specify": False, "run_reviews": False},
             ModelProcessDouble(split),
@@ -1115,7 +1115,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     ],
                 )
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-dev-loop",
             {
                 "task": "Plan transfer",
@@ -1169,7 +1169,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     blockers=[],
                 )
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main", {"task": "Explain transfer"}, ModelProcessDouble(expand)
         )
         self.assertEqual("blocked", result["status"])
@@ -1184,7 +1184,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     routes=[],
                 )
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main", {"task": "Explain ledger"}, ModelProcessDouble(route)
         )
         self.assertEqual("blocked", result["status"])
@@ -1198,14 +1198,14 @@ class ScopedProtocolTests(unittest.TestCase):
         first = resolve_discovery_context(
             repo,
             ("scope.bank",),
-            capability="concorde-main",
+            operation="concorde-main",
             phase="route",
             task="Route transfer",
         )
         second = resolve_discovery_context(
             repo,
             ("scope.bank", "service.transfer"),
-            capability="concorde-main",
+            operation="concorde-main",
             phase="route",
             task="Route transfer",
         )
@@ -1217,7 +1217,7 @@ class ScopedProtocolTests(unittest.TestCase):
         third = resolve_discovery_context(
             repo,
             ("scope.bank", "module.ledger"),
-            capability="concorde-main",
+            operation="concorde-main",
             phase="route",
             task="Route ledger",
         )
@@ -1230,7 +1230,7 @@ class ScopedProtocolTests(unittest.TestCase):
             resolve_discovery_context(
                 repo,
                 ("entity.ledger.store",),
-                capability="concorde-main",
+                operation="concorde-main",
                 phase="route",
                 task="Read one entity",
             )
@@ -1251,7 +1251,7 @@ class ScopedProtocolTests(unittest.TestCase):
         visible = resolve_discovery_context(
             SpecRepository(self.root),
             ("scope.bank", "service.transfer"),
-            capability="concorde-main",
+            operation="concorde-main",
             phase="route",
             task="Route transfer",
         ).value
@@ -1289,7 +1289,7 @@ class ScopedProtocolTests(unittest.TestCase):
         snapshot = resolve_discovery_context(
             SpecRepository(self.root),
             ("scope.bank", "service.transfer", "module.ledger"),
-            capability="concorde-main",
+            operation="concorde-main",
             phase="route",
             action="ask",
             task="Compare contracts",
@@ -1327,7 +1327,7 @@ class ScopedProtocolTests(unittest.TestCase):
         snapshot = resolve_discovery_context(
             repository,
             ("scope.bank",),
-            capability="concorde-main",
+            operation="concorde-main",
             phase="route",
             task="Explain architecture",
         )
@@ -1353,7 +1353,7 @@ class ScopedProtocolTests(unittest.TestCase):
             resolve_discovery_context(
                 SpecRepository(self.root),
                 ("scope.bank",),
-                capability="concorde-main",
+                operation="concorde-main",
                 phase="route",
                 task="Explain architecture",
             )
@@ -1372,7 +1372,7 @@ class ScopedProtocolTests(unittest.TestCase):
             )
 
         double = ModelProcessDouble(answer)
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main", {"task": "What does Banking coordinate?"}, double
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -1433,7 +1433,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 )
 
         double = ModelProcessDouble(gap)
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-plan",
             {"target_id": "service.transfer", "task": "Add a daily limit"},
             double,
@@ -1453,7 +1453,7 @@ class ScopedProtocolTests(unittest.TestCase):
     )
     def test_standard_loop_real_checks_leave_a_ready_change(self):
         double = ModelProcessDouble()
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-dev-loop", {"task": "Implement the transfer contract"}, double
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -1503,7 +1503,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     "def transfer(balance,amount):\n    return 0\n"
                 )
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-dev-loop",
             {"target_id": "service.transfer", "task": "Implement transfer"},
             ModelProcessDouble(broken),
@@ -1517,7 +1517,7 @@ class ScopedProtocolTests(unittest.TestCase):
         def wrong(stage, snapshot, data, cwd):
             data["context_id"] = "sha256:" + "0" * 64
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main",
             {"target_id": "service.transfer", "task": "Explain transfer"},
             ModelProcessDouble(wrong),

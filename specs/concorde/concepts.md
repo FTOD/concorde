@@ -20,12 +20,13 @@ implementation references define exact fields and algorithms.
 | Grant | Permission to use particular tools or read/write particular files for one invocation; information and permission are separate. |
 | Snapshot | A record of exactly which inputs a task received, so later changes can be detected. |
 | Evidence | A recorded check or review result tied to the inputs it examined, not a permanent guarantee about future revisions. |
-| Capability | An executable operation with defined inputs and results. Some operations use a model; others run ordinary code. |
-| Skill | Instructions that let a developer's agent client invoke a public Concorde capability. |
+| State | The declared data channels an Operation accepts and updates when invoked as a graph node. State carries task information and results, never execution authority. |
+| Operation | Concorde's only executable entity: a complete callable with an input State, output State updates, effects, use conditions and execution policy. It can run as a LangGraph node using deterministic code, a model or a compiled graph. |
+| Skill | Instructions that let a developer's agent client invoke a public Concorde operation. |
 | Worker | One fresh agent execution for a bounded job, such as writing a plan or reviewing code. |
 | Host | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results. |
 | Harness | The services that give a worker its inputs, tools, environment and limits, then check its result. |
-| Flow | The declared sequence and branching of operations that pursue a goal. A loop is a feedback path within that execution. |
+| Graph | LangGraph's declared nodes, edges and State channels for executing and composing Operations. A compiled graph can implement another Operation; a loop is a feedback path, not another executable kind. |
 | Candidate | An isolated proposed project change together with its progress and verification records. It is not yet an update to the primary branch. |
 | Worktree | A separate working directory of a Git repository, used here to keep candidate changes apart from primary work. |
 | Ready | The candidate has met the required current checks and reviews; it has not thereby been delivered or merged. |
@@ -33,6 +34,37 @@ implementation references define exact fields and algorithms.
 | Issue | A durable record of an observed bug, missing/conflicting promise or limitation. Recording it does not itself stop work or authorize repair. |
 | Blocker | A task's recorded dependency on a problem that prevents a particular next step. Releasing it does not automatically close the Issue. |
 | Contract | A precise agreement about inputs, effects, results, failures or constraints that callers and implementations rely on. |
+
+## Complete Operations, bounded execution
+
+A caller selects an Operation and supplies its declared State. The Operation carries the policy
+for selecting context, limiting effects, executing any model work and checking results. The caller
+does not reassemble those steps to make an internal building block safe or meaningful. Public and
+internal Operations have the same completeness obligation; exposure only decides which entries a
+developer may invoke directly.
+
+Completeness does not mean self-sufficiency from trusted infrastructure. The common Host and
+Harness apply the Operation's declared policy and permission ceiling to the actual task, narrowing
+the effective grant. Trusted Runtime context supplies those services. State carries information,
+never a Host, credential, permission grant or authority to expand one.
+
+For example, planning is an Operation with Spec-only reasoning and an admitted plan result.
+`dev-loop` composes it with specification, implementation and verification Operations. The compiled
+composition is still an Operation: it has its own input, result, effects and stopping conditions.
+`specify-loop` is likewise a composed Operation, not a different executable category.
+
+## Three independent relationships
+
+- **Module ownership** identifies who promises behavior and owns its Spec. One Module can provide
+  several Operations; one composed Operation can rely on several provider Modules.
+- **Operation composition** identifies which Operations call others in a graph. It does not make
+  a provider Module a child of the caller's Module.
+- **Context references** select knowledge supplied to a task. They neither compose Operations nor
+  grant execution permission or transfer ownership.
+
+The [Operations layer](operations/module.md) organizes the responsibilities that provide reusable
+and composed Operations. The common execution infrastructure serves that layer; it is not a second
+inventory of executable entities.
 
 ## Follow one change
 

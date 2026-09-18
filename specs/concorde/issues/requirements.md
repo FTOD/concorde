@@ -13,7 +13,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Issues
 
@@ -31,4 +31,4 @@ Issue disposition SHALL preserve the record and every original observation.
 
 ### req.issues.ready-boundary — Solving stops before delivery
 
-A successful solving flow SHALL stop at ready without delivery or primary merge.
+A successful solving graph SHALL stop at ready without delivery or primary merge.

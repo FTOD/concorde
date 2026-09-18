@@ -1,6 +1,6 @@
 # Development execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Development Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -8,11 +8,11 @@ and transitions are retained here as the single detailed contract.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Public capability](module.md#terminology) | Defined in Development capability host. |
-| [Internal capability](module.md#terminology) | Defined in Development capability host. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public operation](module.md#terminology) | Defined in Development operation host. |
+| [Internal operation](module.md#terminology) | Defined in Development operation host. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -30,27 +30,27 @@ and transitions are retained here as the single detailed contract.
 | [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
 | [Review coverage](../review/module.md#terminology) | Defined in Review. |
 
-## Capability registry {#capabilities-capability-registry}
+## Operation registry {#operations-operation-registry}
 
-A **Capability** is an executable entity that can be used as a LangGraph node. It declares its
+A **Operation** is an executable entity that can be used as a LangGraph node. It declares its
 input State, output State updates, effects and usage conditions. Its implementation can be
 ordinary deterministic code, a model invocation or a compiled LangGraph subgraph. These are
-implementation choices, not separate entity kinds. A Flow is a graph that composes Capabilities;
-a compiled Flow can itself be used as a Capability node.
+implementation choices, not separate entity kinds. A Graph is a graph that composes Operations;
+a compiled Graph can itself be used as an Operation node.
 
-**Capability** is the canonical executable identity. The former **Operation** name and the
+**Operation** is the canonical executable identity. The former **Operation** name and the
 parallel **Agent** executable registry are retired. A worker is a runtime process executing a
-model-backed Capability, not another definition of what the Capability does. A model execution
-profile records instructions, tools, context/effect limits, children and timeout on that Capability.
+model-backed Operation, not another definition of what the Operation does. A model execution
+profile records instructions, tools, context/effect limits, children and timeout on that Operation.
 Lowercase *operation* still describes an ordinary action such as a filesystem or Git operation.
 A helper function need not be registered merely because Python permits calling it from a node.
 
-#### State and runtime boundaries {#capabilities-state-and-runtime-boundaries}
+#### State and runtime boundaries {#operations-state-and-runtime-boundaries}
 
-Each entry under `capabilities/` declares `STATE` and `run(state, runtime)`. The State contract
+Each entry under `operations/` declares `STATE` and `run(state, runtime)`. The State contract
 provides LangGraph input and output schemas. Model nodes consume the admitted task-context fields
 and return validated result fields. Existing host-backed graph adapters consume request-data
-fields and return a `result` channel containing the complete capability envelope, preserving
+fields and return a `result` channel containing the complete operation envelope, preserving
 blocked, failed, cancelled and successful outcomes rather than flattening them into success data.
 `REQUEST` and `RESPONSE` remain the versioned transport schemas of those existing host adapters;
 they are not a second executable interface for model nodes.
@@ -68,16 +68,16 @@ also rechecks its byte-bound instructions and effective authority before launchi
 
 The existing `agent` record fields, `concorde-agent-stage-*` wire identities, generated instruction
 paths under `generated/agents/`, stable Spec anchors and historical event names are compatibility
-spellings. They identify the executing model Capability and do not recreate an Agent registry.
+spellings. They identify the executing model Operation and do not recreate an Agent registry.
 
-#### Current host adapter {#capabilities-current-host-adapter}
+#### Current host adapter {#operations-current-host-adapter}
 
-Each public Capability has exactly one Skill invoking `scripts/run-capability.py <skill>`.
-Non-public Capabilities have no Skill or direct launcher entry. [Distribution Module](../distribution/module.md) owns the Skill
+Each public Operation has exactly one Skill invoking `scripts/run-operation.py <skill>`.
+Non-public Operations have no Skill or direct launcher entry. [Distribution Module](../distribution/module.md) owns the Skill
 sources and projection; Development owns shared admission and dispatch. A Skill is an instruction
 artifact for the developer's external runtime, not the worker's task context or a node kind.
 
-| Capability | Public | Context selection | Deterministic | Uses | Behavior |
+| Operation | Public | Context selection | Deterministic | Uses | Behavior |
 | --- | --- | --- | --- | --- | --- |
 | main | true | discover | false | answerer, router, topology-designer, topology-author | Answer from selected Specs or prepare and apply accepted topology |
 | dev-loop | true | discover | false | router, specify-loop, review, plan, tasks, implement, validate | Develop one change to a ready candidate |
@@ -94,43 +94,43 @@ artifact for the developer's external runtime, not the worker's task context or 
 | tasks | false | bound | false | task-author | Derive acceptance tasks from the accepted plan |
 | implement | false | bound | false | programmer | Fulfil tasks or coordinate participating components |
 
-The twelve model-backed entries named in this table are themselves private, bound Capabilities
+The twelve model-backed entries named in this table are themselves private, bound Operations
 with `DETERMINISTIC=false` and no composed `USES`. Their detailed task State contracts, tools and
 effects are defined in [model execution profiles](../harness/execution-reference.md). A bound
 model node can consume a host-frozen discovery context without independently selecting more
 Modules. Routing is explicit composition, not an implicit dependency added by a naming convention.
 
-#### Capability properties {#capabilities-capability-properties}
+#### Operation properties {#operations-operation-properties}
 
-Every Capability declares:
+Every Operation declares:
 
 - **PUBLIC**: a boolean; true requires exactly one public Skill and launcher entry.
 - **CONTEXT_SELECTION**: `discover`, `bound` or `none`. Discovery selects complete Module contexts;
   bound consumes an already selected/frozen context; none performs host work without model context.
 - **DETERMINISTIC**: a boolean; true means no supported path calls a model, including transitive
   `USES`. It does not promise purity, reproducible filesystem observations or absence of effects.
-- **USES**: the directly composed Capability identities. It is the sole composition relation,
+- **USES**: the directly composed Operation identities. It is the sole composition relation,
   including calls to model nodes. It grants no additional context or write authority.
 - **STATE**: the input and output State contract. Runtime schema and effect validation remain
   necessary even when LangGraph accepts the Python type declaration.
 - **PROFILE**: optional model execution configuration, or `None`; it has the same identity as its
-  Capability and never registers a second executable entity.
+  Operation and never registers a second executable entity.
 
 `AGENTS` and `CLASS` declarations are rejected. `USES` must name registered entries, be duplicate
 free and have no definition cycle in this adapter. Bounded runtime loops and per-target recursive
 execution remain graph control flow, not cyclic definition dependencies. Actual ordering, branches,
 loops and reducers live in LangGraph, not a duplicate metadata graph. Undeclared composition fails
-with `undeclared_capability`; host composition never grants a worker another callable tool.
+with `undeclared_operation`; host composition never grants a worker another callable tool.
 
-The single `concorde.capabilities` metadata inventory records exposure, context selection,
+The single `concorde.operations` metadata inventory records exposure, context selection,
 determinism, Skill mapping, direct uses, State type identities and optional profile workspace/tools/
 children. Validation compares it with code. There is no independent `concorde.agents` inventory.
 
-### Design {#capabilities-design}
+### Design {#operations-design}
 
-#### Behavioral ownership and composition limits {#capabilities-behavioral-ownership-and-composition-limits}
+#### Behavioral ownership and composition limits {#operations-behavioral-ownership-and-composition-limits}
 
-| Capability or action | Canonical behavioral owner |
+| Operation or action | Canonical behavioral owner |
 | --- | --- |
 | context-solve, plan, tasks | [Planning](../planning/module.md) |
 | implement | [Implementation](../implementation/module.md) |
@@ -140,36 +140,36 @@ children. Validation compares it with code. There is no independent `concorde.ag
 | deliver | [Delivery](../delivery/module.md) |
 | main ask and routing | [Query and Routing](../query-routing/module.md) |
 | main topology actions | [Topology](../topology/module.md) |
-| dev-loop | [Development Flow](../dev-loop/module.md) |
-| specify-loop | [Specification Flow](../specify-loop/module.md) |
+| dev-loop | [Development Graph](../dev-loop/module.md) |
+| specify-loop | [Specification Graph](../specify-loop/module.md) |
 
 Module ownership is distinct from node composition. `USES` is the executable composition relation;
 registry `uses` describes Module responsibility dependencies. Shared model execution support does
 not merge provider contracts. Every phase, target and independent review retains a fresh invocation
 and its own grant. Only admitted structured artifacts cross node boundaries.
 
-### Precise specifications {#capabilities-precise-specifications}
+### Precise specifications {#operations-precise-specifications}
 
 The Development Module owns the exact obligations and interface details in [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
 
-## Development host Flows {#flows-development-host-flows}
+## Development host Graphs {#graphs-development-host-graphs}
 
-### Design {#flows-design}
+### Design {#graphs-design}
 
-The Development host executes every capability invocation as LangGraph Flows. The six Flows
+The Development host executes every operation invocation as LangGraph Graphs. The six Graphs
 below are its own: admission, dispatch, target admission, project initialization and
-configuration, component coordination and shared-candidate stabilization. The composed Flows they
+configuration, component coordination and shared-candidate stabilization. The composed Graphs they
 dispatch to (discovery, query, topology, planning, specification, development and issues) are
-specified by their owning Modules. Each Flow Spec follows the
-[Flow Spec convention](../harness/execution-reference.md): nodes execute, edges route, and node
-labels state the state read and written. Every diagram is bound to its compiled Flow by
-`%% flow:` and kept equal to it by the configured Flow Spec check.
+specified by their owning Modules. Each Graph Spec follows the
+[Graph Spec convention](../harness/execution-reference.md): nodes execute, edges route, and node
+labels state the state read and written. Every diagram is bound to its compiled Graph by
+`%% graph:` and kept equal to it by the configured Graph Spec check.
 
-#### Capability admission Flow (`capability_flow`) {#flows-capability-admission-flow-capability-flow}
+#### Operation admission Graph (`operation_graph`) {#graphs-operation-admission-graph-operation-graph}
 
-State: `invocation` (the admitted `concorde-capability-invocation@3`), `result` (the
-`concorde-capability-result@3` envelope, filled by `finalize` or by a guard that caught an
+State: `invocation` (the admitted `concorde-operation-invocation@3`), `result` (the
+`concorde-operation-result@3` envelope, filled by `finalize` or by a guard that caught an
 error), `policies` and `events` (the host's policy descriptions and observed events, Studio only),
 `expected_workspace`. Every node runs under a guard: an error records the typed failure envelope
 in `result` and routes to `finalize`.
@@ -177,17 +177,17 @@ in `result` and routes to `finalize`.
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `initialize` | Deterministic: fresh host identity, root invocation id and lifecycle record for this invocation. | invocation | result (cleared) |
-| `admit_request` | Deterministic: capability name, mode, configuration and request are validated against the registered contracts; a stale build is refused for model-backed capabilities. | invocation | admitted task, configuration |
+| `admit_request` | Deterministic: operation name, mode, configuration and request are validated against the registered contracts; a stale build is refused for model-backed operations. | invocation | admitted task, configuration |
 | `bind_workspace` | Deterministic: primary, change or unversioned workspace identity; a mutating primary request prepares a candidate worktree and returns the P10 handoff. | admitted task, worktree | workspace, handoff |
 | `check_configuration` | Deterministic: the invocation configuration equals the initialized project settings and the host snapshot. | configuration, project settings | configuration snapshot |
-| `execute` | The dispatch Flow (below) as a subflow. | admitted task, workspace | output |
+| `execute` | The dispatch Graph (below) as a subgraph. | admitted task, workspace | output |
 | `finalize` | Deterministic: status from the output outcome or the recorded error, execution-error propagation, lifecycle progress. | output, result, lifecycle | result |
 
 ```mermaid
 flowchart TB
-    %% flow: capability_flow
-    accTitle: Capability admission Flow
-    accDescr: Every invocation is initialized, admitted, bound to a workspace and checked against the initialized configuration before the dispatch subflow executes; any error routes to finalize, which always writes the typed result envelope.
+    %% graph: operation_graph
+    accTitle: Operation admission Graph
+    accDescr: Every invocation is initialized, admitted, bound to a workspace and checked against the initialized configuration before the dispatch subgraph executes; any error routes to finalize, which always writes the typed result envelope.
     __start__["start"]
     initialize["initialize<br/>in: invocation<br/>out: result cleared"]
     admit_request["admit_request<br/>in: invocation<br/>out: admitted task, configuration"]
@@ -209,41 +209,41 @@ flowchart TB
     finalize --> __end__
 ```
 
-#### Capability dispatch Flow (`dispatch_flow`) {#flows-capability-dispatch-flow-dispatch-flow}
+#### Operation dispatch Graph (`dispatch_graph`) {#graphs-operation-dispatch-graph-dispatch-graph}
 
-State: `route` (the leaf or subflow selected for the admitted capability), `output` (the
-capability's typed response), `result`. The Studio and CLI build one dispatch Flow per public
-capability; the diagram shows the complete dispatch topology every entry compiles from.
+State: `route` (the leaf or subgraph selected for the admitted operation), `output` (the
+operation's typed response), `result`. The Studio and CLI build one dispatch Graph per public
+operation; the diagram shows the complete dispatch topology every entry compiles from.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `select_capability` | Deterministic: the admitted capability selects its entry leaf or target admission. | admitted task | route |
-| `prepare_target` | The target admission Flow (below) as a subflow: binds or discovers the owning Module and selects the bound leaf. | admitted task, change | route, bound invocation |
+| `select_operation` | Deterministic: the admitted operation selects its entry leaf or target admission. | admitted task | route |
+| `prepare_target` | The target admission Graph (below) as a subgraph: binds or discovers the owning Module and selects the bound leaf. | admitted task, change | route, bound invocation |
 | `deliver` | Deterministic: worktree delivery under the repository lock. | change, worktrees | delivery receipt |
-| `project` | The project Flow (below): initialization proposal or application, or configuration. | request | proposal or applied files |
-| `answer` | The query Flow with the answerer. | question, Module contexts | answer |
-| `design_topology` | The query Flow with the topology-designer. | task, Module contexts, registry | topology design |
-| `prepare_topology` | The topology preparation Flow. | accepted design | prepared application |
-| `apply_topology` | The topology application Flow. | prepared application | applied topology |
+| `project` | The project Graph (below): initialization proposal or application, or configuration. | request | proposal or applied files |
+| `answer` | The query Graph with the answerer. | question, Module contexts | answer |
+| `design_topology` | The query Graph with the topology-designer. | task, Module contexts, registry | topology design |
+| `prepare_topology` | The topology preparation Graph. | accepted design | prepared application |
+| `apply_topology` | The topology application Graph. | prepared application | applied topology |
 | `review` | Deterministic scope over Review invocations: owner and changed-file peers. | bound target, changes | review results |
 | `describe_policy` | Deterministic: the exact grants each stage would receive, without launching an Agent. | bound target | policy descriptions |
-| `issues` | The Issue management and solving Flow. | bound target, selected Issue | Issue result |
+| `issues` | The Issue management and solving Graph. | bound target, selected Issue | Issue result |
 | `specify` | Spec Authoring: one spec-author invocation and the affected-consumer reviews. | bound target, Spec context | replaced Spec documents |
-| `plan` | The planning Flow. | bound target, Spec context | plan |
+| `plan` | The planning Graph. | bound target, Spec context | plan |
 | `tasks` | One task-author invocation and task admission. | plan, reserved ids, review feedback | tasks |
 | `implement` | One programmer `implementation` invocation, or component coordination. | tasks, implementation files | completed tasks |
 | `validate` | Deterministic checks and readiness gates for the candidate. | candidate | checks, readiness |
-| `development_loop` | The development Flow. | bound target, change | ready candidate or stop |
-| `specify_loop` | The specification Flow. | bound target, change | Spec completion |
+| `development_loop` | The development Graph. | bound target, change | ready candidate or stop |
+| `specify_loop` | The specification Graph. | bound target, change | Spec completion |
 | `context_solve` | One context-assessor invocation. | bound target, Spec context | sufficiency or gaps |
 
 ```mermaid
 flowchart TB
-    %% flow: dispatch_flow
-    accTitle: Capability dispatch Flow
-    accDescr: The admitted capability selects one entry leaf, or target admission first and then one bound leaf; every leaf ends the Flow with its typed output.
+    %% graph: dispatch_graph
+    accTitle: Operation dispatch Graph
+    accDescr: The admitted operation selects one entry leaf, or target admission first and then one bound leaf; every leaf ends the Graph with its typed output.
     __start__["start"]
-    select_capability["select_capability<br/>in: admitted task<br/>out: route"]
+    select_operation["select_operation<br/>in: admitted task<br/>out: route"]
     prepare_target["prepare_target<br/>in: admitted task, change<br/>out: route, bound invocation"]
     deliver["deliver<br/>in: change, worktrees<br/>out: delivery receipt"]
     project["project<br/>in: request<br/>out: proposal or applied files"]
@@ -263,15 +263,15 @@ flowchart TB
     specify_loop["specify_loop<br/>in: bound target, change<br/>out: Spec completion"]
     context_solve["context_solve<br/>in: bound target, Spec context<br/>out: sufficiency or gaps"]
     __end__["end"]
-    __start__ --> select_capability
-    select_capability -->|concorde-deliver| deliver
-    select_capability -->|concorde-init or concorde-configure| project
-    select_capability -->|concorde-main ask| answer
-    select_capability -->|concorde-main design-topology| design_topology
-    select_capability -->|concorde-main accept-topology| prepare_topology
-    select_capability -->|concorde-main apply-topology| apply_topology
-    select_capability -->|target-bound capability| prepare_target
-    select_capability -->|error| __end__
+    __start__ --> select_operation
+    select_operation -->|concorde-deliver| deliver
+    select_operation -->|concorde-init or concorde-configure| project
+    select_operation -->|concorde-main ask| answer
+    select_operation -->|concorde-main design-topology| design_topology
+    select_operation -->|concorde-main accept-topology| prepare_topology
+    select_operation -->|concorde-main apply-topology| apply_topology
+    select_operation -->|target-bound operation| prepare_target
+    select_operation -->|error| __end__
     prepare_target -->|concorde-review| review
     prepare_target -->|describe-policy mode| describe_policy
     prepare_target -->|concorde-issues| issues
@@ -303,21 +303,21 @@ flowchart TB
     context_solve --> __end__
 ```
 
-#### Target admission Flow (`target_flow`) {#flows-target-admission-flow-target-flow}
+#### Target admission Graph (`target_graph`) {#graphs-target-admission-graph-target-graph}
 
-State: `route`, `occurrence`, `routes` and `decision` (the discovery subflow's counters and
+State: `route`, `occurrence`, `routes` and `decision` (the discovery subgraph's counters and
 routed selection), `output`, `result`.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `initialize_target` | Deterministic: a recorded change restores its owner and intent; a trusted routed target is checked against the request; an unbound discovering capability enters discovery. | admitted task, change | route, restored task |
-| `discover` | The discovery Flow as a subflow (the router). | task, entry Module context | routes, decision |
+| `initialize_target` | Deterministic: a recorded change restores its owner and intent; a trusted routed target is checked against the request; an unbound discovering operation enters discovery. | admitted task, change | route, restored task |
+| `discover` | The discovery Graph as a subgraph (the router). | task, entry Module context | routes, decision |
 | `bind_target` | Deterministic: the single route or restored owner binds the candidate, and the bound leaf is selected. | routes, task | bound invocation, route |
 
 ```mermaid
 flowchart TB
-    %% flow: target_flow
-    accTitle: Target admission Flow
+    %% graph: target_graph
+    accTitle: Target admission Graph
     accDescr: A request with a bound or recorded owner is bound directly; an unbound request first runs router discovery, and the selected route binds the owner.
     __start__["start"]
     initialize_target["initialize_target<br/>in: admitted task, change<br/>out: route, restored task"]
@@ -333,22 +333,22 @@ flowchart TB
     bind_target --> __end__
 ```
 
-#### Project Flow (`project_flow`) {#flows-project-flow-project-flow}
+#### Project Graph (`project_graph`) {#graphs-project-graph-project-graph}
 
 State: `route`, `output`, `result`.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `select_action` | Deterministic: the capability and action select one deterministic operation; describe-policy is refused because proposals are the preview. | request | route |
-| `configure` | Deterministic: writes the typed capability configuration into the project settings. | configuration | applied configuration |
+| `select_action` | Deterministic: the operation and action select one deterministic operation; describe-policy is refused because proposals are the preview. | request | route |
+| `configure` | Deterministic: writes the typed operation configuration into the project settings. | configuration | applied configuration |
 | `propose` | Deterministic: the initialization proposal with its base digest and files. | name, configuration | proposal |
 | `apply` | Deterministic: applies an unchanged proposal atomically. | proposal | applied files |
 
 ```mermaid
 flowchart TB
-    %% flow: project_flow
-    accTitle: Project Flow
-    accDescr: The capability selects configuration, an initialization proposal or its application; each ends the Flow with its typed response.
+    %% graph: project_graph
+    accTitle: Project Graph
+    accDescr: The operation selects configuration, an initialization proposal or its application; each ends the Graph with its typed response.
     __start__["start"]
     select_action["select_action<br/>in: request<br/>out: route"]
     configure["configure<br/>in: configuration<br/>out: applied configuration"]
@@ -365,27 +365,27 @@ flowchart TB
     apply --> __end__
 ```
 
-#### Component coordination Flow (`coordination_flow`) {#flows-component-coordination-flow-coordination-flow}
+#### Component coordination Graph (`coordination_graph`) {#graphs-component-coordination-graph-coordination-graph}
 
-State: `output` (a blocking result, or none while the Flow advances), `route`; the candidate's
+State: `output` (a blocking result, or none while the Graph advances), `route`; the candidate's
 target record carries the coordination table (per component: task, Spec and implementation
 status, digests, gaps) and the local task list. A composite Module's implementation runs this
-Flow when its tasks name submodules or used Modules.
+Graph when its tasks name submodules or used Modules.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `reconcile_specs` | Sequential work items: each component runs `concorde-specify` from its own contract until its Spec is current. | component tasks, component Specs | reconciled Specs, coordination table |
 | `validate_specs` | Deterministic repository validation across every participant's contract. | Spec collections | validation, phase |
-| `implement_components` | Sequential work items: each component runs its own development Flow (`specify=false`) in this candidate. | component tasks, component grants | component implementations, review artifacts |
+| `implement_components` | Sequential work items: each component runs its own development Graph (`specify=false`) in this candidate. | component tasks, component grants | component implementations, review artifacts |
 | `implement_local` | One programmer `implementation` invocation for the composite's own tasks. | local tasks, local files | completed local tasks |
-| `finalize_components` | The stabilization Flow (below): every participant's final checks and reviews until the shared candidate is stable. | candidate | component revisions, evidence |
+| `finalize_components` | The stabilization Graph (below): every participant's final checks and reviews until the shared candidate is stable. | candidate | component revisions, evidence |
 | `record_completion` | Deterministic: tasks marked complete, component revisions and implementation digest recorded. | coordination table | completed target record |
 
 ```mermaid
 flowchart TB
-    %% flow: coordination_flow
-    accTitle: Component coordination Flow
-    accDescr: Component Specs are reconciled and validated, components and local code are implemented, and every participant is finalized until stable before completion is recorded; a blocked step ends the Flow with that result.
+    %% graph: coordination_graph
+    accTitle: Component coordination Graph
+    accDescr: Component Specs are reconciled and validated, components and local code are implemented, and every participant is finalized until stable before completion is recorded; a blocked step ends the Graph with that result.
     __start__["start"]
     reconcile_specs["reconcile_specs<br/>in: component tasks, component Specs<br/>out: reconciled Specs, coordination table"]
     validate_specs["validate_specs<br/>in: Spec collections<br/>out: validation, phase"]
@@ -408,7 +408,7 @@ flowchart TB
     record_completion --> __end__
 ```
 
-#### Shared candidate stabilization Flow (`stabilization_flow`) {#flows-shared-candidate-stabilization-flow-stabilization-flow}
+#### Shared candidate stabilization Graph (`stabilization_graph`) {#graphs-shared-candidate-stabilization-graph-stabilization-graph}
 
 State: `output`, `route`; the enclosing coordination holds the participant set and a bounded
 remaining-round counter, because a later participant's repair can stale an earlier participant's
@@ -417,14 +417,14 @@ evidence.
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `snapshot` | Deterministic: digest of every participant's implementation before this round; an exhausted round budget fails. | participant implementations | round digest |
-| `verify_components` | Sequential work items: each participant's final development Flow (`specify=false`, `finalize_components`) runs its checks and required reviews. | participant records | evidence, review artifacts |
+| `verify_components` | Sequential work items: each participant's final development Graph (`specify=false`, `finalize_components`) runs its checks and required reviews. | participant records | evidence, review artifacts |
 | `check_stability` | Deterministic: the candidate digest after verification equals the round digest. | round digest, participant implementations | route |
 
 ```mermaid
 flowchart TB
-    %% flow: stabilization_flow
-    accTitle: Shared candidate stabilization Flow
-    accDescr: Each round snapshots the candidate, verifies every participant and repeats while a repair changed the candidate; a failed participant ends the Flow.
+    %% graph: stabilization_graph
+    accTitle: Shared candidate stabilization Graph
+    accDescr: Each round snapshots the candidate, verifies every participant and repeats while a repair changed the candidate; a failed participant ends the Graph.
     __start__["start"]
     snapshot["snapshot<br/>in: participant implementations<br/>out: round digest"]
     verify_components["verify_components<br/>in: participant records<br/>out: evidence, review artifacts"]

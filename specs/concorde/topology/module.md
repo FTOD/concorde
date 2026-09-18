@@ -17,7 +17,7 @@ Topology changes the declared responsibility structure of a project: Module owne
 | [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
@@ -34,7 +34,7 @@ affected consumers are reviewed independently. Rejected,
 stale or conflicting input leaves the pre-application project unchanged rather than partially
 changing ownership. New Modules need usable external contracts and internal designs, not merely
 new directories. The existing main adapter supplies these actions without adding a new callable
-flow entry.
+graph entry.
 
 For example, moving a shared interface from one owner to another requires more than moving a file.
 Its stable identity must remain unique, its consumers must include the new canonical unit, and their
@@ -43,7 +43,7 @@ local obligations must still make sense. Consumers do not copy it into competing
 ### Two decisions
 
 This conceptual view explains the two human decisions, not the runtime's exact nodes or error edges.
-The [executable Flow](execution-reference.md#topology-topology-preparation-flow-topology-flow)
+The [executable Graph](execution-reference.md#topology-topology-preparation-graph-topology-graph)
 is defined once in Implementation Specs.
 
 ```mermaid
@@ -68,7 +68,7 @@ flowchart LR
 Preparation orders candidate authors so providers precede consumers, validates the complete
 overlay and obtains independent affected-context reviews before persisting an exact application.
 Application then rechecks the accepted artifact, registry/Protocol identity and every before-digest
-before one transaction. [Topology Flows](execution-reference.md#topology-design) expose those distinct
+before one transaction. [Topology Graphs](execution-reference.md#topology-design) expose those distinct
 boundaries and stop conditions.
 
 Each candidate definition has one author/owner. Comparing old and candidate contexts captures
@@ -76,7 +76,7 @@ consumers affected by reference or ownership changes even when the path set is u
 prepared bytes separate from accepted effects lets validation and review find conflicts without
 exposing a half-updated registry. Rechecking inputs prevents an old proposal from overwriting a
 later edit. These boundaries support the two-acceptance and no-partial-application promises; they
-do not add arbitrary flow configuration or provider write grants.
+do not add arbitrary graph configuration or provider write grants.
 
 ## Relationships
 
@@ -110,7 +110,7 @@ Admit topology actions and exact acceptance artifacts, store before-digest-bound
 
 This collaboration applies when design-topology, accept-topology or apply-topology crosses its existing host boundary.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -146,5 +146,5 @@ This collaboration applies when design-topology selects or expands the complete 
 ## Precise specifications
 
 The Topology Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#topology-topology-evolution-agent-flow).
+[execution and record contracts](execution-reference.md#topology-topology-evolution-agent-graph).
 These companions are part of the same complete Module specification, not separate topic owners.

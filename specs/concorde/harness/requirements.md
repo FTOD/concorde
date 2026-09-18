@@ -117,7 +117,7 @@ The gate is a policy boundary inside the Pi process, not an operating-system san
 ### req.harness.worker-selection — Each worker runs on its own configured selection
 
 Every worker launch SHALL use the model, thinking level and timeout resolved for that worker, and for
-each of its children, from the project capability configuration.
+each of its children, from the project operation configuration.
 
 ### req.harness.capsule-closed — A capsule grants only its own snapshot
 

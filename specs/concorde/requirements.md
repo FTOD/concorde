@@ -9,7 +9,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | --- | --- |
 | [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -37,7 +37,7 @@ queries of stored issue metadata remain free of issue-creation effects.
 
 ### req.concorde.versioned-result — Versioned result per invocation
 
-Every invocation SHALL return a versioned capability result that distinguishes admission failure,
+Every invocation SHALL return a versioned operation result that distinguishes admission failure,
 execution failure and the domain outcome.
 
 ### req.concorde.preserve-user-content — Preservation of developer-owned content
@@ -54,7 +54,7 @@ Delivery to a destination SHALL require a separately authorized transition beyon
 
 ### req.concorde.unsupported-explicit — Explicit failure for unsupported versions
 
-An unsupported capability version or integration SHALL fail explicitly rather than degrading
+An unsupported operation version or integration SHALL fail explicitly rather than degrading
 silently.
 
 ### req.concorde.no-stale-replay — No replay of stale effects

@@ -6,18 +6,18 @@ metadata:
   author: "concorde"
   source: "skills/concorde-issues/SKILL.md"
   kind: "skill"
-  capability: "issues"
-  entrypoint: "scripts/run-capability.py concorde-issues"
+  operation: "issues"
+  entrypoint: "scripts/run-operation.py concorde-issues"
 ---
 # concorde-issues
 
-Invoke this capability to manage or solve explicitly selected Issues. The host owns context
+Invoke this operation to manage or solve explicitly selected Issues. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
 
-Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-issues`. Its exact fields
-are type_id, schema_version:3, capability_id:"concorde-issues", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-issues-request@1).
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-issues`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-issues", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-issues-request@1).
 
 Choose action list, show, report, reopen or solve. Show, reopen and solve require one issue_id;
 expected_revision optionally rejects a changed selection. Report requires target_id and a classified

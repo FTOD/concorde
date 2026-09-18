@@ -1,25 +1,25 @@
 """Behavioral regression gates replacing Profile 7 ambient/ancestor context contracts."""
 
-import copy
 import json
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
-from concorde.spec.typed_data import typed, validate_typed, TypedDataError
+
+from concorde.development.operation_host import Invocation
+from concorde.development.operation_service import OperationHost, run_operation
+from concorde.harness.context import resolve_context
+from concorde.spec.changes import apply_files, file_change
+from concorde.spec.repository import SpecError, SpecRepository
+from concorde.spec.schema import ContractError, admit
+from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.verification import verifies
-from concorde.development.capability_service import CapabilityHost, run_capability
-from concorde.development.capability_host import Invocation
-from concorde.spec.repository import SpecRepository, SpecError
-from concorde.harness.context import resolve_context, recheck_context
-from concorde.spec.changes import file_change, apply_files
-from concorde.spec.schema import admit, ContractError
 from tests.concorde.spec.support import (
-    project,
-    PACKAGE,
     CONFIGURATION,
+    PACKAGE,
     ModelProcessDouble,
+    project,
     update_document_declaration,
 )
 
@@ -48,17 +48,17 @@ class BoundaryTests(unittest.TestCase):
 
         return metadata["entities"], save
 
-    def call_capability(self, name, data=None, callback=None, mode="execute"):
+    def call_operation(self, name, data=None, callback=None, mode="execute"):
         double = ModelProcessDouble(callback)
         self.double = double
-        self.host = CapabilityHost(
+        self.host = OperationHost(
             self.root,
             PACKAGE,
             executor=double.executor,
             allow_primary_worktree=True,
             mode=mode,
         )
-        return run_capability(
+        return run_operation(
             name,
             CONFIGURATION,
             typed(name + "-request", data or self.task),
@@ -66,7 +66,7 @@ class BoundaryTests(unittest.TestCase):
         )
 
     def change(self):
-        result = self.call_capability("concorde-plan")
+        result = self.call_operation("concorde-plan")
         self.assertEqual("succeeded", result["status"], result)
         return {**self.task, "change_id": result["output"]["data"]["change_id"]}
 
@@ -139,7 +139,7 @@ class BoundaryTests(unittest.TestCase):
                     }
                 ]
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-specify",
             data={"target_id": "module.ledger", "task": "Clarify consumer"},
             callback=cb,
@@ -161,7 +161,7 @@ class BoundaryTests(unittest.TestCase):
                     {"path": "specs/transfer/module.md.json", "content": replacement}
                 ]
 
-        result = self.call_capability("concorde-specify", callback=cb)
+        result = self.call_operation("concorde-specify", callback=cb)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual(before, path.read_bytes())
         self.assertIn("identity", result["errors"][0]["message"])
@@ -178,7 +178,7 @@ class BoundaryTests(unittest.TestCase):
                     {"path": "specs/transfer/module.md", "content": replacement}
                 ]
 
-        result = self.call_capability("concorde-specify", callback=cb)
+        result = self.call_operation("concorde-specify", callback=cb)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual(replacement, path.read_text())
 
@@ -287,7 +287,7 @@ class BoundaryTests(unittest.TestCase):
         package = self.root / "package"
         shutil.copytree(PACKAGE / "prompts", package / "prompts")
         shutil.copytree(PACKAGE / "skills", package / "skills")
-        shutil.copytree(PACKAGE / "capabilities", package / "capabilities")
+        shutil.copytree(PACKAGE / "operations", package / "operations")
         shutil.copytree(PACKAGE / "protocol", package / "protocol")
         write_build(package, "all")
         SpecRepository(self.root, package)
@@ -299,14 +299,14 @@ class BoundaryTests(unittest.TestCase):
 
     def test_configuration_cannot_replace_initialized_authority(self):
         other = typed(
-            "concorde-capability-configuration",
+            "concorde-operation-configuration",
             {"model": CONFIGURATION["data"]["model"], "thinking": "high"},
         )
-        result = run_capability(
+        result = run_operation(
             "concorde-main",
             other,
             typed("concorde-main-request", self.task),
-            host_context=CapabilityHost(self.root, PACKAGE),
+            host_context=OperationHost(self.root, PACKAGE),
         )
         self.assertEqual("configuration_mismatch", result["errors"][0]["code"])
 
@@ -331,7 +331,7 @@ class BoundaryTests(unittest.TestCase):
                     outcome="unsupported", answer="The Spec prohibits this use."
                 )
 
-        result = self.call_capability("concorde-plan", callback=cb)
+        result = self.call_operation("concorde-plan", callback=cb)
         self.assertEqual("unsupported", result["output"]["data"]["outcome"])
         self.assertEqual([], result["output"]["data"]["blockers"])
         self.assertFalse((self.root / ".concorde/attempts").exists())
@@ -348,7 +348,7 @@ class BoundaryTests(unittest.TestCase):
         )
 
     def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
-        result = self.call_capability("concorde-dev-loop", mode="describe-policy")
+        result = self.call_operation("concorde-dev-loop", mode="describe-policy")
         self.assertEqual("described", result["status"])
         self.assertEqual([], self.double.calls)
         for policy in self.host.descriptions:
@@ -357,7 +357,7 @@ class BoundaryTests(unittest.TestCase):
                 self.assertEqual([], policy["write_paths"])
 
     def test_ask_policy_describes_only_the_route_phase_without_launching(self):
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-main",
             {"task": "Explain transfer", "target_id": "service.transfer"},
             mode="describe-policy",
@@ -378,7 +378,7 @@ class BoundaryTests(unittest.TestCase):
         p = self.root / "specs/transfer/module.md"
         p.write_text(p.read_text() + "\nChanged obligations.\n")
         self.assertEqual(
-            "blocked", self.call_capability("concorde-tasks", task)["status"]
+            "blocked", self.call_operation("concorde-tasks", task)["status"]
         )
         self.assertEqual([], self.double.calls)
 
@@ -386,7 +386,7 @@ class BoundaryTests(unittest.TestCase):
         task = self.change()
         task["task"] = "Different behavior"
         self.assertEqual(
-            "blocked", self.call_capability("concorde-tasks", task)["status"]
+            "blocked", self.call_operation("concorde-tasks", task)["status"]
         )
 
     def test_spec_author_cannot_edit_provider_or_registry(self):
@@ -397,7 +397,7 @@ class BoundaryTests(unittest.TestCase):
                 ]
 
         old = (self.root / "specs/ledger/module.md").read_bytes()
-        result = self.call_capability("concorde-specify", callback=cb)
+        result = self.call_operation("concorde-specify", callback=cb)
         self.assertEqual("blocked", result["status"])
         self.assertEqual(old, (self.root / "specs/ledger/module.md").read_bytes())
 
@@ -416,7 +416,7 @@ class BoundaryTests(unittest.TestCase):
                     }
                 ]
 
-        result = self.call_capability(
+        result = self.call_operation(
             "concorde-specify",
             {"target_id": "scope.bank", "task": "Edit banking rules"},
             cb,
@@ -433,17 +433,17 @@ class BoundaryTests(unittest.TestCase):
                 ]
 
         self.assertEqual(
-            "blocked", self.call_capability("concorde-plan", callback=cb)["status"]
+            "blocked", self.call_operation("concorde-plan", callback=cb)["status"]
         )
 
     def test_delivery_requires_real_current_checks(self):
         task = self.change()
-        self.call_capability("concorde-tasks", task)
-        self.call_capability("concorde-implement", task)
+        self.call_operation("concorde-tasks", task)
+        self.call_operation("concorde-implement", task)
         with self.assertRaises(SpecError):
             self.completion(task)
         self.assertEqual(
-            "succeeded", self.call_capability("concorde-validate", task)["status"]
+            "succeeded", self.call_operation("concorde-validate", task)["status"]
         )
         self.completion(task)
         (self.root / "checks/transfer_check.py").write_text(
@@ -458,9 +458,9 @@ class BoundaryTests(unittest.TestCase):
         self.save()
         (self.root / "acceptance.json").write_text("{}")
         task = self.change()
-        self.call_capability("concorde-tasks", task)
-        self.call_capability("concorde-implement", task)
-        self.call_capability("concorde-validate", task)
+        self.call_operation("concorde-tasks", task)
+        self.call_operation("concorde-implement", task)
+        self.call_operation("concorde-validate", task)
         (self.root / "acceptance.json").write_text('{"revision":2}')
         with self.assertRaisesRegex(SpecError, "stale"):
             self.completion(task)
@@ -514,12 +514,12 @@ class BoundaryTests(unittest.TestCase):
             "profile_version": 7,
             "specification_root": "specs",
             "root_module_id": "module.old",
-            "capability_configuration": config["capability_configuration"],
+            "operation_configuration": config["operation_configuration"],
         }
         (self.root / ".concorde/config.json").write_text(json.dumps(config))
 
     def test_profile7_cannot_be_silently_used_by_new_agent_runtime(self):
         self.downgrade_to_profile7()
-        result = self.call_capability("concorde-main")
+        result = self.call_operation("concorde-main")
         self.assertEqual("blocked", result["status"])
         self.assertEqual([], self.double.calls)

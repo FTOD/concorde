@@ -35,8 +35,8 @@ may cite an existing non-symlink file under the legacy archive as evidence; ordi
 no archive read grant from that exception. Reporting includes the known
 contract owner or null without replacing the reporting Module. `show`, `reopen` and `solve` resolve
 the latest known owner, or the original reporting scope when unknown; a supplied foreign target
-cannot transfer ownership or widen a grant. The result is `concorde-issues-response@1`, the common
-response with `issues` (complete version-1 records) and nullable `decision`. The common response
+cannot transfer ownership or widen a grant. The result is `concorde-issues-response@2`, the common
+response with `issues` (complete schema-2 records or read-only historical schema-1 records) and nullable `decision`. The common response
 carries `blockers`, references to immutable Issue reports with a task-local `blocked_step`.
 The response is metadata/evidence, not an instruction to execute another operation.
 
@@ -47,7 +47,7 @@ or explicitly admitted as stage input. A forged, missing, foreign or repeated re
 Review findings are references with `severity` and `affected_task`; the host derives blocking
 relations from those judgments, with no second question/contract text to copy verbatim.
 
-The legacy `concorde-reflections-triage` capability and queue helper are retired, not aliases for
+The legacy `concorde-reflections-triage` operation and queue helper are retired, not aliases for
 Issue solving. `scripts/issues.py archive-reflections` explicitly moves an old queue into
 `.concorde/archive/reflections/` without reclassification or disposition. A destination collision,
 symlink or unsafe source is refused without deleting either copy. Installation preserves legacy

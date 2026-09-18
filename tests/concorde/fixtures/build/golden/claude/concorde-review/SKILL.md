@@ -1,26 +1,26 @@
 ---
 name: concorde-review
-description: "Capability: route a standalone Spec review, code review or source diagnosis to its owning Module and return scoped, read-only findings."
-argument-hint: "Optional capability guidance"
+description: "Operation: route a standalone Spec review, code review or source diagnosis to its owning Module and return scoped, read-only findings."
+argument-hint: "Optional operation guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
   source: "skills/concorde-review/SKILL.md"
   kind: "skill"
-  capability: "review"
-  entrypoint: "scripts/run-capability.py concorde-review"
+  operation: "review"
+  entrypoint: "scripts/run-operation.py concorde-review"
 user-invocable: true
 disable-model-invocation: true
 ---
 # concorde-review
 
-Invoke this capability to review the selected Spec or implementation. The host owns context
+Invoke this operation to review the selected Spec or implementation. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
 
-Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-review`. Its exact fields
-are type_id, schema_version:3, capability_id:"concorde-review", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-review-request@1).
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-review`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-review", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-review-request@1).
 
 The request requires task and review_mode (spec or code). Use code for code review or source
 diagnosis, and spec for contract review. A new task may supply target_id and focus_id (a scenario
@@ -29,7 +29,7 @@ a bound review with change_id, supply its target_id and current-worktree change_
 No positional task arguments or domain flags are accepted.
 
 Main may explicitly admit complete Module Specs for routing, but cannot read implementation files.
-It returns one typed route for this capability; the host then starts a fresh read-only reviewer.
+It returns one typed route for this operation; the host then starts a fresh read-only reviewer.
 
 Review runs in the current worktree without creating a development change or requiring a
 preexisting Issue. Spec review reads the complete selected Module contract; code review also reads only

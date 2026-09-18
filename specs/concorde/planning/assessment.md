@@ -13,7 +13,7 @@ question.
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Before planning

@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Any, Literal, Mapping
+from typing import Any, Literal
 
-from .effects import EffectDeclaration, PATH_ROLES
+from .effects import PATH_ROLES, EffectDeclaration
 
 
 class PermissionPolicyError(ValueError):
@@ -27,7 +28,7 @@ OPTIONAL_ROLES = frozenset({"references"})
 
 @dataclass(frozen=True)
 class PolicyBinding:
-    capability: str
+    operation: str
     stage: str
     occurrence: int
     role: str
@@ -40,7 +41,7 @@ class PolicyBinding:
 
 @dataclass(frozen=True)
 class NormalizedPolicy:
-    capability: str
+    operation: str
     stage: str
     occurrence: int
     role: str
@@ -75,10 +76,16 @@ def _digest(value: Any) -> str:
 
 def _path(value: str) -> str:
     if not isinstance(value, str) or not value or "\\" in value:
-        raise PermissionPolicyError(f"policy path must be project-relative POSIX: {value!r}")
+        raise PermissionPolicyError(
+            f"policy path must be project-relative POSIX: {value!r}"
+        )
     candidate = PurePosixPath(value.rstrip("/"))
-    if candidate.is_absolute() or any(part in {"", ".", ".."} for part in candidate.parts):
-        raise PermissionPolicyError(f"policy path must be project-relative POSIX: {value!r}")
+    if candidate.is_absolute() or any(
+        part in {"", ".", ".."} for part in candidate.parts
+    ):
+        raise PermissionPolicyError(
+            f"policy path must be project-relative POSIX: {value!r}"
+        )
     return candidate.as_posix()
 
 
@@ -102,10 +109,14 @@ def _role_selection(
         raise PermissionPolicyError(f"binding {label} roles contain duplicates")
     unknown = sorted(set(selected) - PATH_ROLES)
     if unknown:
-        raise PermissionPolicyError(f"binding {label} roles contain unknown path roles: {unknown}")
+        raise PermissionPolicyError(
+            f"binding {label} roles contain unknown path roles: {unknown}"
+        )
     widened = sorted(set(selected) - set(effect_roles))
     if widened:
-        raise PermissionPolicyError(f"binding widens {label} roles beyond leaf effects: {widened}")
+        raise PermissionPolicyError(
+            f"binding widens {label} roles beyond leaf effects: {widened}"
+        )
     return tuple(selected)
 
 
@@ -122,29 +133,44 @@ def compile_policy(
     reads = _role_selection(effects.reads, binding.read_roles, "read")
     writes = _role_selection(effects.writes, binding.write_roles, "write")
     if not set(writes).issubset(reads):
-        raise PermissionPolicyError("binding write roles must also be selected read roles")
+        raise PermissionPolicyError(
+            "binding write roles must also be selected read roles"
+        )
     required_roles = tuple(dict.fromkeys((*reads, *writes)))
     # ``references`` is the one role whose absence from the map means "none declared": a contract
     # may read external references, but a Module need not declare any. Every other selected role
     # must be supplied explicitly.
-    missing = [role for role in required_roles if role not in role_paths and role not in OPTIONAL_ROLES]
+    missing = [
+        role
+        for role in required_roles
+        if role not in role_paths and role not in OPTIONAL_ROLES
+    ]
     if missing:
-        raise PermissionPolicyError(f"unknown path role in permission context: {missing}")
+        raise PermissionPolicyError(
+            f"unknown path role in permission context: {missing}"
+        )
     read_paths = _paths([path for role in reads for path in role_paths.get(role, ())])
     write_paths = _paths([path for role in writes for path in role_paths.get(role, ())])
     for writable in write_paths:
-        if not any(_under(writable, readable) or _under(readable, writable) for readable in read_paths):
-            raise PermissionPolicyError(f"write path is not covered by readable authority: {writable}")
+        if not any(
+            _under(writable, readable) or _under(readable, writable)
+            for readable in read_paths
+        ):
+            raise PermissionPolicyError(
+                f"write path is not covered by readable authority: {writable}"
+            )
     network = effects.network if binding.network is None else binding.network
     if network and not effects.network:
         raise PermissionPolicyError("binding network request widens leaf effects")
-    credentials = effects.credentials if binding.credentials is None else binding.credentials
+    credentials = (
+        effects.credentials if binding.credentials is None else binding.credentials
+    )
     if credentials == "declared" and effects.credentials == "none":
         raise PermissionPolicyError("binding credential request widens leaf effects")
     denied = _paths([*deny_paths, *_CREDENTIAL_DENIES])
     payload = {
         "binding": {
-            "capability": binding.capability,
+            "operation": binding.operation,
             "stage": binding.stage,
             "occurrence": binding.occurrence,
             "role": binding.role,
@@ -159,7 +185,7 @@ def compile_policy(
         "outer_sandbox_required": outer_sandbox_required,
     }
     return NormalizedPolicy(
-        capability=binding.capability,
+        operation=binding.operation,
         stage=binding.stage,
         occurrence=binding.occurrence,
         role=binding.role,
@@ -175,17 +201,29 @@ def compile_policy(
     )
 
 
-def verify_effective_subset(declared: NormalizedPolicy, effective: NormalizedPolicy) -> None:
+def verify_effective_subset(
+    declared: NormalizedPolicy, effective: NormalizedPolicy
+) -> None:
     """Reject an effective policy that widens the declared one."""
 
-    if any(not any(_under(path, root) for root in declared.read_paths) for path in effective.read_paths):
+    if any(
+        not any(_under(path, root) for root in declared.read_paths)
+        for path in effective.read_paths
+    ):
         raise PermissionPolicyError("effective configuration widens readable paths")
-    if any(not any(_under(path, root) for root in declared.write_paths) for path in effective.write_paths):
+    if any(
+        not any(_under(path, root) for root in declared.write_paths)
+        for path in effective.write_paths
+    ):
         raise PermissionPolicyError("effective configuration widens writable paths")
     if declared.default_deny and not effective.default_deny:
-        raise PermissionPolicyError("effective configuration widens default-deny posture")
+        raise PermissionPolicyError(
+            "effective configuration widens default-deny posture"
+        )
     if not set(declared.deny_paths).issubset(effective.deny_paths):
-        raise PermissionPolicyError("effective configuration removes declared deny paths")
+        raise PermissionPolicyError(
+            "effective configuration removes declared deny paths"
+        )
     if effective.network_enabled and not declared.network_enabled:
         raise PermissionPolicyError("effective configuration widens network access")
     if effective.credentials == "declared" and declared.credentials == "none":

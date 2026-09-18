@@ -8,30 +8,34 @@ import hashlib
 import json
 import sys
 import tempfile
+from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from pathlib import Path, PurePosixPath
-from typing import Any, Mapping, NamedTuple, Sequence
-
+from typing import Any, NamedTuple
 
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_ROOT / "src"))
 
-from concorde.views.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
+from concorde.distribution import build as concorde_build  # noqa: E402
+from concorde.distribution import protocol_guidance as guidance  # noqa: E402
 from concorde.distribution.managed_runtime import (  # noqa: E402
     ManagedRuntimeError,
     load_runtime_spec,
     plan_runtime,
     provision_runtime,
 )
-from concorde.distribution import protocol_guidance as guidance  # noqa: E402
 from concorde.distribution.project_defaults import project_default_files  # noqa: E402
-
+from concorde.views.docsite_template import (  # noqa: E402
+    DocsiteTemplateError,
+    template_files,
+)
 
 FRAMEWORK_ROOT = ".concorde/framework"
 PROTOCOL_ROOT = ".concorde/protocol"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
 PACKAGE_ROOTS = [
-    "capabilities",
+    "operations",
     "docsite",
     "pi",
     "prompts",
@@ -42,9 +46,9 @@ PACKAGE_ROOTS = [
     "templates",
     "viewer",
 ]
-from concorde.distribution import build as concorde_build
+
 RUNTIME = {
-    "launcher": "scripts/run-capability.py",
+    "launcher": "scripts/run-operation.py",
     "python": ">=3.11",
     "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv",
@@ -107,7 +111,9 @@ def load_package(root: Path) -> Package:
     root = root.resolve()
     manifest_path = root / "concorde.json"
     if manifest_path.is_symlink() or not manifest_path.is_file():
-        raise InstallError(f"Concorde package manifest must be one real file: {manifest_path}")
+        raise InstallError(
+            f"Concorde package manifest must be one real file: {manifest_path}"
+        )
     manifest = _read_json(manifest_path, "Concorde package manifest")
     required = {
         "schema_version",
@@ -122,21 +128,45 @@ def load_package(root: Path) -> Package:
         "install",
     }
     if required - set(manifest):
-        raise InstallError(f"Concorde manifest is missing fields: {sorted(required - set(manifest))}")
+        raise InstallError(
+            f"Concorde manifest is missing fields: {sorted(required - set(manifest))}"
+        )
     if manifest.get("schema_version") != 3 or manifest.get("name") != "concorde":
-        raise InstallError("Concorde manifest must declare schema_version 3 and name 'concorde'")
-    if manifest.get("architecture_profile") != 14 or manifest.get("workspace_protocol") != 15:
-        raise InstallError("Concorde package must declare Architecture Profile 14 and Workspace Protocol 15")
-    if manifest.get("delivery_proposal") != 10 or manifest.get("skill_namespace") != "concorde":
-        raise InstallError("Concorde package must declare Delivery Proposal 10 and the concorde Skill namespace")
+        raise InstallError(
+            "Concorde manifest must declare schema_version 3 and name 'concorde'"
+        )
+    if (
+        manifest.get("architecture_profile") != 15
+        or manifest.get("workspace_protocol") != 16
+    ):
+        raise InstallError(
+            "Concorde package must declare Architecture Profile 15 and Workspace Protocol 16"
+        )
+    if (
+        manifest.get("delivery_proposal") != 10
+        or manifest.get("skill_namespace") != "concorde"
+    ):
+        raise InstallError(
+            "Concorde package must declare Delivery Proposal 10 and the concorde Skill namespace"
+        )
     install = manifest.get("install")
-    if not isinstance(install, dict) or install.get("framework_root") != FRAMEWORK_ROOT or install.get("receipt") != RECEIPT_PATH:
-        raise InstallError("Concorde manifest declares an unsupported installation layout")
+    if (
+        not isinstance(install, dict)
+        or install.get("framework_root") != FRAMEWORK_ROOT
+        or install.get("receipt") != RECEIPT_PATH
+    ):
+        raise InstallError(
+            "Concorde manifest declares an unsupported installation layout"
+        )
     integrations = manifest.get("integrations")
     if integrations != ["claude", "codex"]:
-        raise InstallError("Concorde manifest must declare exactly claude and codex integrations")
+        raise InstallError(
+            "Concorde manifest must declare exactly claude and codex integrations"
+        )
     if manifest.get("package_roots") != PACKAGE_ROOTS:
-        raise InstallError("Concorde manifest declares an unsupported root package inventory")
+        raise InstallError(
+            "Concorde manifest declares an unsupported root package inventory"
+        )
     if manifest.get("runtime") != RUNTIME:
         raise InstallError(
             f"Concorde manifest must declare the exact managed runtime: {RUNTIME}"
@@ -156,28 +186,41 @@ def load_package(root: Path) -> Package:
         if path.is_symlink() or not path.is_file():
             raise InstallError(f"Concorde Viewer {field} is missing: {relative}")
     templates = manifest.get("templates")
-    if not isinstance(templates, list) or any(not isinstance(item, str) for item in templates):
+    if not isinstance(templates, list) or any(
+        not isinstance(item, str) for item in templates
+    ):
         raise InstallError("Concorde manifest templates must be a string list")
     if len(templates) != len(set(templates)):
         raise InstallError("Concorde manifest template inventory contains duplicates")
     observed_templates = sorted(path.name for path in (root / "templates").glob("*.md"))
     if observed_templates != sorted(templates):
-        raise InstallError("Concorde manifest template inventory differs from root templates/")
+        raise InstallError(
+            "Concorde manifest template inventory differs from root templates/"
+        )
     for required_root in PACKAGE_ROOTS:
         path = root / required_root
         if path.is_symlink() or not path.is_dir():
             raise InstallError(f"Concorde package root is missing: {required_root}")
     for legacy_root in ("commands", "examples"):
         if (root / legacy_root).exists() or (root / legacy_root).is_symlink():
-            raise InstallError(f"Concorde package contains removed legacy root: {legacy_root}")
+            raise InstallError(
+                f"Concorde package contains removed legacy root: {legacy_root}"
+            )
     try:
         concorde_build.build(root, "all", framework_prefix=FRAMEWORK_ROOT)
     except concorde_build.BuildError as error:
         raise InstallError(str(error)) from error
     license_path = root / "LICENSE"
     readme_path = root / "README.md"
-    if manifest.get("license") != "MIT" or manifest.get("license_file") != "LICENSE" or license_path.is_symlink() or not license_path.is_file():
-        raise InstallError("Concorde package must include its declared MIT LICENSE file")
+    if (
+        manifest.get("license") != "MIT"
+        or manifest.get("license_file") != "LICENSE"
+        or license_path.is_symlink()
+        or not license_path.is_file()
+    ):
+        raise InstallError(
+            "Concorde package must include its declared MIT LICENSE file"
+        )
     if readme_path.is_symlink() or not readme_path.is_file():
         raise InstallError("Concorde package must include one real root README.md")
     try:
@@ -185,6 +228,7 @@ def load_package(root: Path) -> Package:
     except ManagedRuntimeError as error:
         raise InstallError(str(error)) from error
     from concorde.distribution.package_validation import validate_package
+
     findings = validate_package(root)
     if findings:
         raise InstallError("; ".join(f.message for f in findings))
@@ -193,10 +237,21 @@ def load_package(root: Path) -> Package:
 
 def _package_files(package: Package) -> dict[str, bytes]:
     desired: dict[str, bytes] = {}
-    desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
+    desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (
+        package.root / "concorde.json"
+    ).read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("capabilities", "pi", "prompts", "protocol", "skills", "src", "templates", "viewer"):
+    for directory in (
+        "operations",
+        "pi",
+        "prompts",
+        "protocol",
+        "skills",
+        "src",
+        "templates",
+        "viewer",
+    ):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             relative = path.relative_to(package.root).as_posix()
@@ -207,7 +262,9 @@ def _package_files(package: Package) -> dict[str, bytes]:
                 # package.json and lock separately, so a local install is neither deployed nor inspected.
                 continue
             if path.is_symlink():
-                raise InstallError(f"Concorde packages may not contain symlinks: {path}")
+                raise InstallError(
+                    f"Concorde packages may not contain symlinks: {path}"
+                )
             if path.is_file():
                 if "__pycache__" in parts or path.suffix in {".pyc", ".pyo"}:
                     continue
@@ -223,7 +280,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "concorde.sh",
         "issues.py",
         "requirements.lock",
-        "run-capability.py",
+        "run-operation.py",
         "run-ua-graph-viewer.py",
     )
     for name in scripts:
@@ -237,12 +294,17 @@ def _package_files(package: Package) -> dict[str, bytes]:
 def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes, str]]:
     if integration not in package.manifest["integrations"]:
         raise InstallError(f"unsupported integration: {integration}")
-    outputs = {path: (content, "framework") for path, content in _package_files(package).items()}
+    outputs = {
+        path: (content, "framework")
+        for path, content in _package_files(package).items()
+    }
     # The build is the only instruction source: it renders the framework's generated/**
     # (role bodies, the build manifest, the Studio graph list) and, for this integration,
     # the public skill wrappers. Consumers never run this build themselves.
     try:
-        build_result = concorde_build.build(package.root, integration, framework_prefix=FRAMEWORK_ROOT)
+        build_result = concorde_build.build(
+            package.root, integration, framework_prefix=FRAMEWORK_ROOT
+        )
     except concorde_build.BuildError as error:
         raise InstallError(str(error)) from error
     for output in build_result.outputs:
@@ -250,15 +312,23 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
             outputs[output.path] = (output.content, "skill")
         else:
             outputs[f"{FRAMEWORK_ROOT}/{output.path}"] = (output.content, "framework")
-    outputs[f"{FRAMEWORK_ROOT}/generated/build-manifest.json"] = (build_result.manifest, "framework")
+    outputs[f"{FRAMEWORK_ROOT}/generated/build-manifest.json"] = (
+        build_result.manifest,
+        "framework",
+    )
     # The Protocol bundle the project is granted lives at a stable project path, .concorde/protocol/:
     # the tracked package manifest verbatim (its digest is what `.concorde/config.json` binds) and
     # the rendered assets it lists. The installer owns and updates these files; initialization
     # binds them and configuration accepts an updated bundle explicitly.
-    outputs[f"{PROTOCOL_ROOT}/manifest.json"] = ((package.root / "protocol/manifest.json").read_bytes(), "protocol")
+    outputs[f"{PROTOCOL_ROOT}/manifest.json"] = (
+        (package.root / "protocol/manifest.json").read_bytes(),
+        "protocol",
+    )
     for output in build_result.outputs:
         if output.path.startswith("generated/protocol/"):
-            outputs[f"{PROTOCOL_ROOT}/{output.path.removeprefix('generated/protocol/')}"] = (output.content, "protocol")
+            outputs[
+                f"{PROTOCOL_ROOT}/{output.path.removeprefix('generated/protocol/')}"
+            ] = (output.content, "protocol")
     # Concorde-owned defaults a project starts from, seeded only when absent and never owned by
     # the receipt. Initialization creates none of them; it produces only the user's project files.
     for path, content in project_default_files(package.root).items():
@@ -270,13 +340,19 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
 def _load_receipt(target: Path) -> dict[str, Any]:
     path = _check_parent(target, RECEIPT_PATH)
     if path.is_symlink():
-        raise InstallError(f"Concorde installation receipt must not be a symlink: {path}")
+        raise InstallError(
+            f"Concorde installation receipt must not be a symlink: {path}"
+        )
     if not path.exists():
         return {"schema_version": INSTALL_SCHEMA, "outputs": []}
     if path.is_symlink() or not path.is_file():
-        raise InstallError(f"Concorde installation receipt must be one real file: {path}")
+        raise InstallError(
+            f"Concorde installation receipt must be one real file: {path}"
+        )
     value = _read_json(path, "Concorde installation receipt")
-    if value.get("schema_version") != INSTALL_SCHEMA or not isinstance(value.get("outputs"), list):
+    if value.get("schema_version") != INSTALL_SCHEMA or not isinstance(
+        value.get("outputs"), list
+    ):
         raise InstallError(f"unsupported Concorde installation receipt: {path}")
     return value
 
@@ -284,11 +360,19 @@ def _load_receipt(target: Path) -> dict[str, Any]:
 def _prior_outputs(receipt: Mapping[str, Any]) -> dict[str, str]:
     outputs: dict[str, str] = {}
     for item in receipt.get("outputs", []):
-        if not isinstance(item, Mapping) or not isinstance(item.get("path"), str) or not isinstance(item.get("sha256"), str):
-            raise InstallError("Concorde installation receipt contains an invalid output")
+        if (
+            not isinstance(item, Mapping)
+            or not isinstance(item.get("path"), str)
+            or not isinstance(item.get("sha256"), str)
+        ):
+            raise InstallError(
+                "Concorde installation receipt contains an invalid output"
+            )
         relative = _safe_relative(item["path"], "receipt output")
         if relative in outputs:
-            raise InstallError(f"Concorde installation receipt repeats output: {relative}")
+            raise InstallError(
+                f"Concorde installation receipt repeats output: {relative}"
+            )
         if item.get("role") != guidance.ROLE:
             if relative in guidance.FILES.values():
                 raise InstallError("root guidance cannot be owned as a whole file")
@@ -306,7 +390,8 @@ def installation_plan(
     target: Path,
     package: Package,
     integration: str,
-    *, remove_protocol_guidance: bool = False,
+    *,
+    remove_protocol_guidance: bool = False,
 ) -> tuple[list[dict[str, str]], dict[str, tuple[bytes, str]], dict[str, Any]]:
     target = target.resolve()
     receipt = _load_receipt(target)
@@ -321,15 +406,24 @@ def installation_plan(
             prior_guidance[relative] = item["sha256"]
     guidance_actions = []
     guidance_desired = {}
-    roots = set(prior_guidance) | {p for p, (_, role) in desired.items() if role == guidance.ROLE}
+    roots = set(prior_guidance) | {
+        p for p, (_, role) in desired.items() if role == guidance.ROLE
+    }
     for relative in sorted(roots):
         wanted = desired.pop(relative, (None, None))[0]
         try:
-            item, merged = guidance.plan(target, relative, wanted, prior_guidance.get(relative))
+            item, merged = guidance.plan(
+                target, relative, wanted, prior_guidance.get(relative)
+            )
             guidance_desired[relative] = (merged, item["role"])
         except (guidance.GuidanceError, UnicodeError) as error:
-            item = {"path": relative, "action": "conflict", "role": guidance.ROLE,
-                    "sha256": "", "reason": str(error)}
+            item = {
+                "path": relative,
+                "action": "conflict",
+                "role": guidance.ROLE,
+                "sha256": "",
+                "reason": str(error),
+            }
         guidance_actions.append(item)
     if remove_protocol_guidance:
         return guidance_actions, guidance_desired, receipt
@@ -357,7 +451,10 @@ def installation_plan(
             action = "conflict"
         item = {"path": relative, "action": action, "role": role, "sha256": expected}
         if action == "conflict":
-            item["reason"] = unsafe or "existing target is not the desired bytes or an unchanged owned output"
+            item["reason"] = (
+                unsafe
+                or "existing target is not the desired bytes or an unchanged owned output"
+            )
         actions.append(item)
     for relative, digest in sorted(prior.items()):
         if relative in desired:
@@ -377,12 +474,23 @@ def installation_plan(
             action = "remove"
         else:
             action = "conflict"
-        item = {"path": relative, "action": action, "role": "superseded", "sha256": digest}
+        item = {
+            "path": relative,
+            "action": action,
+            "role": "superseded",
+            "sha256": digest,
+        }
         if action == "conflict":
-            item["reason"] = unsafe or "superseded owned output was modified and must be preserved"
+            item["reason"] = (
+                unsafe or "superseded owned output was modified and must be preserved"
+            )
         actions.append(item)
     try:
-        actions.append(plan_runtime(target, load_runtime_spec(package.root, package.manifest), receipt))
+        actions.append(
+            plan_runtime(
+                target, load_runtime_spec(package.root, package.manifest), receipt
+            )
+        )
     except ManagedRuntimeError as error:
         actions.append(
             {
@@ -411,9 +519,13 @@ def _check_parent(target: Path, relative: str) -> Path:
     for part in PurePosixPath(relative).parts[:-1]:
         current /= part
         if current.is_symlink():
-            raise InstallError(f"installation path contains a symlink: {current.relative_to(target)}")
+            raise InstallError(
+                f"installation path contains a symlink: {current.relative_to(target)}"
+            )
         if current.exists() and not current.is_dir():
-            raise InstallError(f"installation parent is not a directory: {current.relative_to(target)}")
+            raise InstallError(
+                f"installation parent is not a directory: {current.relative_to(target)}"
+            )
     return path
 
 
@@ -431,8 +543,13 @@ def _receipt(
         "workspace_protocol": package.manifest["workspace_protocol"],
         "runtime": dict(runtime),
         "outputs": [
-            {"path": path, "role": role, "sha256": _sha256(
-                guidance.split(content)[1] if role == guidance.ROLE else content)}
+            {
+                "path": path,
+                "role": role,
+                "sha256": _sha256(
+                    guidance.split(content)[1] if role == guidance.ROLE else content
+                ),
+            }
             for path, (content, role) in sorted(desired.items())
             if role not in {"project-default", "protocol-guidance-cleanup"}
         ],
@@ -446,7 +563,8 @@ def apply_plan(
     integration: str,
     actions: Sequence[Mapping[str, str]],
     desired: Mapping[str, tuple[bytes, str]],
-    *, remove_protocol_guidance: bool = False,
+    *,
+    remove_protocol_guidance: bool = False,
 ) -> str:
     conflicts = [item for item in actions if item["action"] == "conflict"]
     if conflicts:
@@ -455,24 +573,39 @@ def apply_plan(
     for item in actions:
         if item["role"].startswith("protocol-guidance"):
             path = target / item["path"]
-            if (path.is_symlink() or (path.exists() and not path.is_file())
-                    or ("yes" if path.exists() else "no") != item["before_exists"]
-                    or _sha256(path.read_bytes() if path.exists() else b"") != item["before_sha256"]):
-                raise InstallError("Protocol guidance changed since preview; create a fresh plan")
+            if (
+                path.is_symlink()
+                or (path.exists() and not path.is_file())
+                or ("yes" if path.exists() else "no") != item["before_exists"]
+                or _sha256(path.read_bytes() if path.exists() else b"")
+                != item["before_sha256"]
+            ):
+                raise InstallError(
+                    "Protocol guidance changed since preview; create a fresh plan"
+                )
     if remove_protocol_guidance and not actions:
         return "unchanged"
     mutable = [
         item
         for item in actions
-        if item["role"] != "runtime" and item["action"] in {"create", "update", "remove"}
+        if item["role"] != "runtime"
+        and item["action"] in {"create", "update", "remove"}
     ]
     runtime_items = [item for item in actions if item["role"] == "runtime"]
     if not remove_protocol_guidance and len(runtime_items) != 1:
-        raise InstallError("installation plan must contain exactly one managed runtime action")
+        raise InstallError(
+            "installation plan must contain exactly one managed runtime action"
+        )
     runtime_action = runtime_items[0] if runtime_items else {"action": "unchanged"}
     receipt_path = target / RECEIPT_PATH
-    previous_receipt = receipt_path.read_bytes() if receipt_path.is_file() and not receipt_path.is_symlink() else None
-    previous_receipt_mode = receipt_path.stat().st_mode & 0o777 if previous_receipt is not None else None
+    previous_receipt = (
+        receipt_path.read_bytes()
+        if receipt_path.is_file() and not receipt_path.is_symlink()
+        else None
+    )
+    previous_receipt_mode = (
+        receipt_path.stat().st_mode & 0o777 if previous_receipt is not None else None
+    )
     backups: dict[str, tuple[bytes, int]] = {}
     created: list[str] = []
     created_directories: set[Path] = set()
@@ -497,20 +630,29 @@ def apply_plan(
             created_directories.update(missing)
             if action == "create":
                 created.append(relative)
-            with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".concorde-install-", delete=False) as handle:
+            with tempfile.NamedTemporaryFile(
+                dir=path.parent, prefix=".concorde-install-", delete=False
+            ) as handle:
                 staged = Path(handle.name)
                 staged_files.add(staged)
                 handle.write(content)
             staged.replace(path)
             staged_files.discard(staged)
-            if relative.startswith(f"{FRAMEWORK_ROOT}/scripts/") and path.suffix in {".py", ".sh"}:
+            if relative.startswith(f"{FRAMEWORK_ROOT}/scripts/") and path.suffix in {
+                ".py",
+                ".sh",
+            }:
                 path.chmod(0o755)
             else:
                 path.chmod(backups[relative][1] if relative in backups else 0o644)
         if remove_protocol_guidance:
             value = _load_receipt(target)
-            value["outputs"] = [item for item in value["outputs"] if item.get("role") != guidance.ROLE]
-            receipt_content = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
+            value["outputs"] = [
+                item for item in value["outputs"] if item.get("role") != guidance.ROLE
+            ]
+            receipt_content = (
+                json.dumps(value, indent=2, sort_keys=True) + "\n"
+            ).encode()
         else:
             try:
                 runtime = provision_runtime(
@@ -523,7 +665,9 @@ def apply_plan(
                 raise InstallError(str(error)) from error
             receipt_content = _receipt(package, integration, desired, runtime)
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(dir=receipt_path.parent, prefix=".concorde-receipt-", delete=False) as handle:
+        with tempfile.NamedTemporaryFile(
+            dir=receipt_path.parent, prefix=".concorde-receipt-", delete=False
+        ) as handle:
             staged_receipt = Path(handle.name)
             staged_files.add(staged_receipt)
             handle.write(receipt_content)
@@ -535,9 +679,10 @@ def apply_plan(
             staged.unlink(missing_ok=True)
         for relative in reversed(created):
             path = target / relative
-            if not path.is_symlink():
-                if path.is_file():
-                    path.unlink()
+            if path.is_symlink():
+                continue
+            if path.is_file():
+                path.unlink()
         for relative, (content, mode) in backups.items():
             path = target / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -549,11 +694,12 @@ def apply_plan(
             receipt_path.write_bytes(previous_receipt)
             if previous_receipt_mode is not None:
                 receipt_path.chmod(previous_receipt_mode)
-        for directory in sorted(created_directories, key=lambda item: len(item.parts), reverse=True):
-            try:
+        for directory in sorted(
+            created_directories, key=lambda item: len(item.parts), reverse=True
+        ):
+            # Rollback preserves the original failure if another file now occupies the directory.
+            with suppress(OSError):
                 directory.rmdir()
-            except OSError:
-                pass
         raise
     return (
         "unchanged"
@@ -564,7 +710,12 @@ def apply_plan(
     )
 
 
-def _print_plan(package: Package, integration: str, actions: Sequence[Mapping[str, str]], status: str) -> None:
+def _print_plan(
+    package: Package,
+    integration: str,
+    actions: Sequence[Mapping[str, str]],
+    status: str,
+) -> None:
     counts: dict[str, int] = {}
     for item in actions:
         counts[item["action"]] = counts.get(item["action"], 0) + 1
@@ -572,7 +723,10 @@ def _print_plan(package: Package, integration: str, actions: Sequence[Mapping[st
     print(f"  version: {package.version}")
     print(f"  integration: {integration}")
     print(f"  status: {status}")
-    print("  actions: " + ", ".join(f"{name}={count}" for name, count in sorted(counts.items())))
+    print(
+        "  actions: "
+        + ", ".join(f"{name}={count}" for name, count in sorted(counts.items()))
+    )
     for item in actions:
         if item["action"] == "conflict":
             print(f"  conflict: {item['path']} — {item['reason']}")
@@ -586,8 +740,11 @@ def create_parser() -> argparse.ArgumentParser:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--preview", action="store_true")
-    parser.add_argument("--remove-protocol-guidance", action="store_true",
-                        help="preview/remove only receipt-owned root Protocol entry blocks")
+    parser.add_argument(
+        "--remove-protocol-guidance",
+        action="store_true",
+        help="preview/remove only receipt-owned root Protocol entry blocks",
+    )
     parser.add_argument("--format", choices=["text", "json"], default="text")
     return parser
 
@@ -601,13 +758,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         target = requested_target.resolve()
         _check_target(target)
         package = load_package(Path(arguments.checkout))
-        actions, desired, _ = installation_plan(target, package, arguments.integration,
-            remove_protocol_guidance=arguments.remove_protocol_guidance)
+        actions, desired, _ = installation_plan(
+            target,
+            package,
+            arguments.integration,
+            remove_protocol_guidance=arguments.remove_protocol_guidance,
+        )
         conflicts = [item for item in actions if item["action"] == "conflict"]
         status = "conflict" if conflicts else "preview"
         if arguments.apply and not conflicts:
-            status = apply_plan(target, package, arguments.integration, actions, desired,
-                remove_protocol_guidance=arguments.remove_protocol_guidance)
+            status = apply_plan(
+                target,
+                package,
+                arguments.integration,
+                actions,
+                desired,
+                remove_protocol_guidance=arguments.remove_protocol_guidance,
+            )
         result = {
             "schema_version": INSTALL_SCHEMA,
             "status": status,
@@ -626,7 +793,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2 if conflicts else 0
     except (InstallError, ManagedRuntimeError, OSError, UnicodeError) as error:
         if arguments.format == "json":
-            print(json.dumps({"schema_version": INSTALL_SCHEMA, "status": "failed", "error": str(error)}, sort_keys=True))
+            print(
+                json.dumps(
+                    {
+                        "schema_version": INSTALL_SCHEMA,
+                        "status": "failed",
+                        "error": str(error),
+                    },
+                    sort_keys=True,
+                )
+            )
         else:
             print(f"CONCORDE INSTALL FAILED: {error}", file=sys.stderr)
         return 3

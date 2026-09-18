@@ -1,14 +1,14 @@
-# Development Flow execution and record contracts
+# Development Graph execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
-[Development Flow Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
+These are the precise implementation agreements and executable Graph specifications owned by the
+[Development Graph Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -26,20 +26,20 @@ and transitions are retained here as the single detailed contract.
 | [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
 | [Reserved task ID](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
 | [Review coverage](../review/module.md#terminology) | Defined in Review. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Development Agent Flow and revision loops {#development-development-agent-flow-and-revision-loops}
+## Development Agent Graph and revision loops {#development-development-agent-graph-and-revision-loops}
 
 A developer supplies intended behavior and constraints for one top-level candidate change.
 `concorde-specify-loop` independently routes, authors or revises, and reviews the Spec. It ends
 with a completed Spec result, retaining blockers and review evidence in the candidate worktree.
-`concorde-dev-loop` calls that capability, then coordinates context assessment, planning, tasks,
+`concorde-dev-loop` calls that operation, then coordinates context assessment, planning, tasks,
 implementation and checks. The same task and change can continue from specify-loop into dev-loop
 without repeating accepted authoring or current reviews. `specify=false` skips authoring; `run_reviews=false` records review
-skips where no earlier requirement exists. The specification flow can complete independently; dev-loop adds its own development lifecycle.
+skips where no earlier requirement exists. The specification graph can complete independently; dev-loop adds its own development lifecycle.
 Its successful output is a ready candidate, not an automatic merge.
 
 [Planning task acceptance](../planning/execution-reference.md) and
@@ -51,7 +51,7 @@ An explicit `repair_task_scope:{tasks_digest}` request repairs this phase error 
 incomplete task list. The digest is SHA-256 of canonical JSON bytes (sorted keys, compact
 separators, ASCII escaping), prefixed `sha256:`. It must match the current list and admitted intent;
 unresolved gaps, a completed list or a pending code-review repair reject the request.
-The normal Flow enters tasks after the required Spec review. A fresh task author receives only
+The normal Graph enters tasks after the required Spec review. A fresh task author receives only
 its complete Module Spec, plan, prior tasks, reserved IDs and Host-generated `implementation_boundary` feedback.
 It preserves software acceptance and returns new incomplete tasks with new IDs. The Host saves the
 original list, request digest and implementation revision in task history, invalidates checks and
@@ -113,7 +113,7 @@ conversation or free-form predecessor output into context.
 `concorde-dev-loop` calls `concorde-specify-loop` for specify (default `specify=true`; `specify=false` skips Spec authoring
 when the target's current Spec already suffices) and Spec review, then runs plan, tasks, implement, deterministic
 validation and code review, then verifies readiness. It uses the same public contracts as standalone
-capabilities. `run_reviews` defaults to `true`; `run_reviews=false` records an explicit skip for each
+operations. `run_reviews` defaults to `true`; `run_reviews=false` records an explicit skip for each
 review mode instead of running it, and cannot cancel a review already required for this change. Every
 invocation ends at ready and never invokes deliver.
 It stops on the first non-successful outcome and preserves the change worktree, except that a
@@ -128,10 +128,10 @@ selected transitions (development.md's "AI and human feedback", G4). Repeated un
 feedback is guarded by code: new records carry the formal `source` value `code-driven` or
 `model-driven`, while retaining their descriptive legacy `trigger` label. A repair selected from
 review findings is model-driven; unchanged-feedback and limit stops are code-driven. Repeated unchanged blocking
-feedback across a repair attempt, or exhausting the declared limit, stops the Flow instead of
+feedback across a repair attempt, or exhausting the declared limit, stops the Graph instead of
 retrying forever: the change `status` becomes `waiting` (a human decision or a Spec/code change is
 needed) or `limit_exhausted` respectively, and the wire `outcome` remains `conflicting`. Elsewhere, a
-Spec gap (`spec_incomplete`) stops the Flow with status `waiting`, a failed deterministic check
+Spec gap (`spec_incomplete`) stops the Graph with status `waiting`, a failed deterministic check
 stops it with status `failed`, and another blocking/unsupported outcome stops it with status
 `blocked`. A human directly changing the Spec or the implementation between invocations resets the
 recorded repair count instead of silently continuing a stale repair attempt. Preserving the change
@@ -166,7 +166,7 @@ findings/gaps. Changed Spec invalidates its dependent plan/reviews and rebuilds 
 invalidates code review/check evidence. Explicitly required reviews also apply to directly authored
 candidates without inventing plans. Review does not edit files, run repair steps or deliver changes.
 
-Common [gap history](../development/execution-reference.md) retains attributed blockers and accepts resolution only after current successful output. The flow stops dependent work until those conditions hold.
+Common [gap history](../development/execution-reference.md) retains attributed blockers and accepts resolution only after current successful output. The graph stops dependent work until those conditions hold.
 
 A change's `status` may also become `cancelled` or `limit_exhausted` after an executor outcome of
 the same name (`execution_cancelled`/`execution_limit`), distinguishing a cancelled or time-limited
@@ -179,14 +179,14 @@ During dev-loop, the initial Module Spec review is local. Component reviews occu
 
 ### Design {#development-design}
 
-#### Development Flow (`development_flow`) {#development-development-flow-development-flow}
+#### Development Graph (`development_graph`) {#development-development-graph-development-graph}
 
-The development Flow is the LangGraph Flow `concorde-dev-loop` executes after target admission.
-It follows the [Flow Spec convention](../harness/execution-reference.md): nodes execute, edges
+The development Graph is the LangGraph Graph `concorde-dev-loop` executes after target admission.
+It follows the [Graph Spec convention](../harness/execution-reference.md): nodes execute, edges
 route, node labels state the state read and written, and the diagram is kept equal to the
-compiled Flow by the configured Flow Spec check. Specified and SpecReviewed belong to the
-independently callable specification Flow, which the `specify_loop` node composes; delivery is a
-separately invoked capability after `ready`.
+compiled Graph by the configured Graph Spec check. Specified and SpecReviewed belong to the
+independently callable specification Graph, which the `specify_loop` node composes; delivery is a
+separately invoked operation after `ready`.
 
 State: `output` (the last stage's typed response data, including its outcome), `artifacts`
 (review and stage artifact references accumulated across stages under a merge reducer), `result`
@@ -200,21 +200,21 @@ stop routes to `summarize`, and only `review_code` may select the automatic repa
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `initialize` | Deterministic: records the graph policy and enters the Flow. | task, candidate | route |
-| `specify_loop` | The specification Flow: Spec authoring (unless `specify=false` or already accepted) and independent Spec review with consumer reuse. Its result also selects where a resumed candidate re-enters. | task, Spec context, candidate | Spec, Spec review evidence, entry stage |
-| `plan` | The planning Flow: context assessment, then one planner invocation. | Spec, task | plan |
+| `initialize` | Deterministic: records the graph policy and enters the Graph. | task, candidate | route |
+| `specify_loop` | The specification Graph: Spec authoring (unless `specify=false` or already accepted) and independent Spec review with consumer reuse. Its result also selects where a resumed candidate re-enters. | task, Spec context, candidate | Spec, Spec review evidence, entry stage |
+| `plan` | The planning Graph: context assessment, then one planner invocation. | Spec, task | plan |
 | `tasks` | One task-author invocation with the plan, reserved task ids and, in a repair round, the blocking review result. | plan, reserved ids, review result | tasks |
 | `implement` | One programmer `implementation` invocation, or component coordination for a composite. | tasks, implementation files, Spec | completed tasks, changed files |
 | `validate` | Deterministic: Spec validation and configured checks for the owner and every Module sharing a changed file. | candidate | checks, readiness gate |
 | `review_code` | Independent code review of the owner and every changed-file peer, each from its own contract, reusing current evidence. | Spec, changed files, tasks | code review results |
 | `ready` | Deterministic: verifies current evidence for every affected Module and marks the candidate ready. | evidence, reviews | ready candidate |
-| `summarize` | Deterministic: the capability response with review coverage and every artifact reference. | output, artifacts | response |
+| `summarize` | Deterministic: the operation response with review coverage and every artifact reference. | output, artifacts | response |
 
 ```mermaid
 flowchart TB
-    %% flow: development_flow
-    accTitle: Development Flow
-    accDescr: After initialization the specification Flow runs, then planning, tasks, implementation, validation, code review and readiness in order; a resumed candidate re-enters at the stage its current evidence permits; blocking code review routes back to tasks within the repair budget; every other non-advancing outcome stops at summarize, and a guard-caught error ends the Flow.
+    %% graph: development_graph
+    accTitle: Development Graph
+    accDescr: After initialization the specification Graph runs, then planning, tasks, implementation, validation, code review and readiness in order; a resumed candidate re-enters at the stage its current evidence permits; blocking code review routes back to tasks within the repair budget; every other non-advancing outcome stops at summarize, and a guard-caught error ends the Graph.
     __start__["start"]
     initialize["initialize<br/>in: task, candidate<br/>out: route"]
     specify_loop["specify_loop<br/>in: task, Spec context, candidate<br/>out: Spec, Spec review evidence, entry stage"]
@@ -260,16 +260,16 @@ flowchart TB
 #### AI and human feedback {#development-ai-and-human-feedback}
 
 Author, assessor, planner, task author, implementation and reviewer invocations MUST resolve their
-own Capability execution profiles and effective Harnesses. Shared Flow state contains admitted outputs and
+own Operation execution profiles and effective Harnesses. Shared Graph state contains admitted outputs and
 feedback, not their private transcripts. Review findings identify the input revision and the
 required repair. A code defect selects an implementation repair and another review; a necessary
 Spec gap selects a clarification or authorized Spec-authoring path before implementation resumes.
 
-The Flow MUST record which AI finding or human decision selected a transition. Repeated unchanged
+The Graph MUST record which AI finding or human decision selected a transition. Repeated unchanged
 blocking feedback waits for new information or stops at the declared limit. Human changes to intent
 create a revised task and invalidate dependent plans and evidence. Human acceptance required for
-another transition remains explicit; a reviewer cannot grant it. `ready` ends this Flow, while
-user-authorized delivery remains a separate capability.
+another transition remains explicit; a reviewer cannot grant it. `ready` ends this Graph, while
+user-authorized delivery remains a separate operation.
 
 #### Coordinated implementation and final consumer checks {#development-coordinated-implementation-and-final-consumer-checks}
 
@@ -295,7 +295,7 @@ are stable. Incompatible contracts or exhausted repair attempts leave the candid
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

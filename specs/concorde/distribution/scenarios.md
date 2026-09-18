@@ -10,9 +10,9 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Public capability](../development/module.md#terminology) | Defined in Development capability host. |
-| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public operation](../development/module.md#terminology) | Defined in Development operation host. |
+| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -110,20 +110,20 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 Owned content is hashed in the installation receipt. A local modification conflicts unless an
 explicit supported ownership transition authorizes replacement. Staging, provisioning and
 verification must finish before installation is accepted; failure restores replaced outputs and
-receipts. The locked managed Python runtime runs actual capabilities; viewer provisioning is
+receipts. The locked managed Python runtime runs actual operations; viewer provisioning is
 separate and versioned. Check verifies receipt hashes and required runtime identity without
 changing project behavior.
 
-The distributable manifest is `concorde.json` schema_version 3, Concorde 7.0.0, Architecture
-Profile 14, Workspace Protocol 15 and Delivery Proposal 10. The single inventory has 26
-Capabilities: 9 public Skill entries and 17 private nodes, including 12 model-backed nodes with
-Pi worker profiles. It declares package roots including `prompts`/`capabilities`/`protocol`, with
+The distributable manifest is `concorde.json` schema_version 3, Concorde 8.0.0, Architecture
+Profile 15, Workspace Protocol 16 and Delivery Proposal 10. The single inventory has 26
+Operations: 9 public Skill entries and 17 private nodes, including 12 model-backed nodes with
+Pi worker profiles. It declares package roots including `prompts`/`operations`/`protocol`, with
 no separate `agents` authoring root, and 4 templates. Codex `.agents/skills` and Claude
-`.claude/skills` expose the same 9 Skills; non-public Capabilities remain private. Every Skill sends a typed `invocation@3` to
-`scripts/run-capability.py` and does not inspect project context.
+`.claude/skills` expose the same 9 Skills; non-public Operations remain private. Every Skill sends a typed `invocation@3` to
+`scripts/run-operation.py` and does not inspect project context.
 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
-capability owned by the [Spec Module](../spec/module.md), not by this Module.
+operation owned by the [Spec Module](../spec/module.md), not by this Module.
 
 ### scenario.distribution.worktree-guard-refuses — The guard refuses native worktree creation in a developer session
 
@@ -141,7 +141,7 @@ project-local Skills are worktree-owned build output: a session that loaded them
 and then created or entered another would act on the second worktree with the first worktree's
 instructions. A developer session therefore makes its change in the worktree it started in, as
 direct developer-authorized maintenance; a further worktree exists only when the developer
-explicitly asks for a Concorde flow, whose host creates the candidate worktree from the committed
+explicitly asks for a Concorde graph, whose host creates the candidate worktree from the committed
 base, builds it, and returns a P10 handoff for a fresh session there.
 
 Unreadable hook input exits 1, a visible non-blocking hook error rather than a refusal of every
@@ -175,14 +175,14 @@ that need persistent source or dependency changes must prepare them in the imple
 
 ### scenario.distribution.build-render — Build renders deterministic projections from authored sources
 
-- GIVEN the current `prompts/`, `skills/`, `capabilities/` and Protocol chapter sources
+- GIVEN the current `prompts/`, `skills/`, `operations/` and Protocol chapter sources
 - WHEN build runs for a selected integration
 - THEN it renders Agent instructions, Skill files, the Studio graph configuration, Protocol assets and runtime schemas deterministically
 - AND repeated renders of unchanged inputs are byte-identical and perform no network or process I/O
 
 ### scenario.distribution.build-checkout-skills-user-invoked — The source checkout's Skills wait for the developer's explicit request
 
-- GIVEN a build without a framework prefix, whose Skill launcher is the checkout's own `scripts/run-capability.py`
+- GIVEN a build without a framework prefix, whose Skill launcher is the checkout's own `scripts/run-operation.py`
 - WHEN build renders the Claude Skill projections
 - THEN every rendered `SKILL.md` declares `user-invocable: true` and `disable-model-invocation: true`, so Claude Code offers the Skill to the developer's own `/concorde-<name>` invocation and never lists it for the model
 - AND a build with a framework prefix, the installed consumer projection, declares `disable-model-invocation: false`
@@ -190,7 +190,7 @@ that need persistent source or dependency changes must prepare them in the imple
 
 A build without a framework prefix projects the Skills into the Concorde source checkout itself.
 Developing that checkout is direct developer-authorized maintenance by default, and one of
-Concorde's own flows runs there only when the developer explicitly asks for it, by its slash
+Concorde's own graphs runs there only when the developer explicitly asks for it, by its slash
 command or by naming it in prose; in the latter case the developer's session reads the rendered
 Skill file under `.claude/skills/<name>/` and submits the typed request it describes. Hiding the
 Skill from the model keeps that choice with the developer. An installed consumer project receives
@@ -215,10 +215,10 @@ checkout's root instructions state the rule for that runtime.
 ### scenario.distribution.build-stale-blocks-execution — A stale build fails closed
 
 - GIVEN a recorded source has changed since the last build
-- WHEN a top-level model-backed capability is invoked in execute or describe-policy mode
+- WHEN a top-level model-backed operation is invoked in execute or describe-policy mode
 - THEN verify_fresh raises a `stale_build` BuildError and the invocation does not proceed with stale instructions
 
-The deterministic capabilities `concorde-init`, `concorde-configure`,
+The deterministic operations `concorde-init`, `concorde-configure`,
 `concorde-validate` and `concorde-deliver` are exempt from this entry check: they launch no Agents
 and consume no generated Agent instructions. Loading an Agent still verifies freshness
 independently. This exception does not waive Protocol, input, permission or evidence checks.
@@ -230,33 +230,33 @@ independently. This exception does not waive Protocol, input, permission or evid
 - THEN it verifies freshness first and returns the Agent's rendered body, effect declaration and complete `WorkerBinding`
 - AND an unknown Agent or an invalid binding fails closed with a typed BuildError (`stale_build`, `unknown_agent`, or `invalid_agent_binding`)
 
-`validate_package(root)` runs the complete prompt, capability-module, Agent, contract,
+`validate_package(root)` runs the complete prompt, operation-module, Agent, contract,
 Spec-alignment and build-output checks behind `python -m concorde validate` and `build --check`.
 `recompute_protocol_manifest`/`python -m concorde protocol-manifest` report, accept (`--write`), or
 bind (`--bind-project`) the tracked `protocol/manifest.json` digest to the current build; accepting
 a changed Protocol export is developer-only, and a consumer separately accepts the installed
 manifest version/digest in its own project configuration. Agent responsibility files are bound
-separately by their Capability execution profiles. Protocol adapters and the Framework execution profile are bound by
+separately by their Operation execution profiles. Protocol adapters and the Framework execution profile are bound by
 Protocol assets; the independent standard under `protocol/` is an external normative input, not a
 Module-bound Spec. Protocol adapters alone may include its plain Markdown chapters, which require
 no audience front matter. The build records included chapter bytes in source identities so edits
 invalidate runtime outputs. Modules refer to their own entity file listings rather than owning file
 prefixes themselves.
 
-### scenario.distribution.capability-determinism — Capability metadata accounts for model calls
+### scenario.distribution.operation-determinism — Operation metadata accounts for model calls
 
-- GIVEN capability modules declaring public exposure, context selection, Agents, host routing and acyclic `USES` composition
+- GIVEN operation modules declaring public exposure, context selection, Agents, host routing and acyclic `USES` composition
 - WHEN package validation checks their metadata
 - THEN each module must declare a boolean `DETERMINISTIC`, rejecting missing values, strings and integers
-- AND the flag must be true exactly when neither its model profile, host routing nor any transitive USES capability can call a model
-- AND a capability declaring no Agent context selection must have no model-call path
-- AND the single registered `concorde-capabilities` block must contain the same boolean `deterministic` for every capability alongside its `id`, `public`, `context_selection` and `skill`
-- BUT a path that skips model execution does not make a model-backed capability deterministic
+- AND the flag must be true exactly when neither its model profile, host routing nor any transitive USES operation can call a model
+- AND an operation declaring no Agent context selection must have no model-call path
+- AND the single registered `concorde-operations` block must contain the same boolean `deterministic` for every operation alongside its `id`, `public`, `context_selection` and `skill`
+- BUT a path that skips model execution does not make a model-backed operation deterministic
 
 Validation checks declared model-call paths, not arbitrary Python or subprocess behavior. It
-reports invalid metadata with `CONCORDE-CAPABILITY-CONSTANTS-001`, inconsistent determinism
-with `CONCORDE-CAPABILITY-DETERMINISTIC-001`, and Spec metadata drift with
-`CONCORDE-SPEC-CAPABILITIES-001`. Unknown or cyclic composition remains a composition error;
+reports invalid metadata with `CONCORDE-OPERATION-CONSTANTS-001`, inconsistent determinism
+with `CONCORDE-OPERATION-DETERMINISTIC-001`, and Spec metadata drift with
+`CONCORDE-SPEC-OPERATIONS-001`. Unknown or cyclic composition remains a composition error;
 validation cannot certify its determinism.
 
 ## Managed runtime

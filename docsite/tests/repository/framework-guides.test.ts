@@ -3,91 +3,93 @@ import { describe, it, expect } from "vitest";
 import { loadScopedRegistry } from "../../plugins/scoped-content/model";
 const root = resolve(__dirname, "../../..");
 describe("Explicit Concorde self specification", () => {
- it("publishes every registered document exactly once and no ambient control/README source", () => {
-  const r = loadScopedRegistry(root);
-  expect(r.pages.map((p) => p.sourcePath)).toEqual([
-   ...new Set(r.targets.flatMap((t) => t.documents)),
-  ]);
-  expect(
-   r.pages.some(
-    (p) =>
-     p.sourcePath === "README.md" || p.sourcePath.startsWith(".concorde/"),
-   ),
-  ).toBe(false);
-  expect(r.targets.some((t) => t.id === "module.protocol")).toBe(false);
-  expect(
-   r.pages.some(
-    (p) =>
-     p.sourcePath.startsWith("protocol/") ||
-     p.sourcePath.startsWith("specs/concorde/protocol/"),
-   ),
-  ).toBe(false);
- });
- it("distinguishes Capability dispatch from conditional worker execution", () => {
-  const registry = loadScopedRegistry(root);
-  const entry = registry.pages.find(
-   (page) => page.primaryOf === "module.development",
-  )!;
-  const relationships = entry.content
-   .split("## Relationships\n")[1]
-   .split("\n## Provider collaboration")[0];
-  expect(relationships).toContain('capabilities["Development capabilities"]');
-  expect(relationships).toContain(
-   "host -->|dispatches admitted requests to| capabilities",
-  );
-  expect(relationships).toContain(
-   "host -.->|prepares and runs worker invocations through<br/>when model execution is needed| harness",
-  );
-  expect(relationships).toContain(
-   "A deterministic operation need not start a worker.",
-  );
-  expect(relationships).toContain("such as isolated checks");
-  expect(relationships).not.toContain("runs admitted work through");
- });
- it("contains independently complete public Skill and business scope descriptions", () => {
-  const r = loadScopedRegistry(root);
-  const host = r.pages
-   .filter((p) => p.owner === "module.development")
-   .map((p) => p.content)
-   .join("\n");
-  expect(host).toContain("concorde-context-solve-request");
-  expect(host).toContain("concorde-capability-invocation");
-  const hostEntry = r.pages.find((p) => p.primaryOf === "module.development")!;
-  expect(hostEntry.content).not.toMatch(/^#{2,5} (?:req|scenario)\./m);
-  expect(
-   r.pages.find((p) => p.documentId === "document.development.scenarios")!
-    .content,
-  ).toContain("scenario.development.execute-capability");
-  const specFlow = r.pages.find(
-   (p) => p.documentId === "document.specify-loop.scenarios",
-  )!;
-  expect(specFlow.readingCollection).toBe("implementation");
-  expect(specFlow.content).toContain("scenario.development.specify-loop");
-  for (const module of r.targets.filter((t) => t.kind === "module")) {
-   expect(
-    module.documents.some(
-     (path) =>
-      path.endsWith("/architecture.md") ||
-      path.endsWith("/developer-experience.md"),
-    ),
-   ).toBe(false);
-   const entry = r.pages.find((p) => p.primaryOf === module.id)!.content;
-   const sections = [
-    "Purpose",
-    "Terminology",
-    "Usage",
-    "Design",
-    "Relationships",
-   ];
-   for (const section of sections) expect(entry).toContain(`## ${section}`);
-   for (let i = 1; i < sections.length; i++)
-    expect(entry.indexOf(`## ${sections[i - 1]}`)).toBeLessThan(
-     entry.indexOf(`## ${sections[i]}`),
+  it("publishes every registered document exactly once and no ambient control/README source", () => {
+    const r = loadScopedRegistry(root);
+    expect(r.pages.map((p) => p.sourcePath)).toEqual([
+      ...new Set(r.targets.flatMap((t) => t.documents)),
+    ]);
+    expect(
+      r.pages.some(
+        (p) =>
+          p.sourcePath === "README.md" || p.sourcePath.startsWith(".concorde/"),
+      ),
+    ).toBe(false);
+    expect(r.targets.some((t) => t.id === "module.protocol")).toBe(false);
+    expect(
+      r.pages.some(
+        (p) =>
+          p.sourcePath.startsWith("protocol/") ||
+          p.sourcePath.startsWith("specs/concorde/protocol/"),
+      ),
+    ).toBe(false);
+  });
+  it("distinguishes Operation dispatch from conditional worker execution", () => {
+    const registry = loadScopedRegistry(root);
+    const entry = registry.pages.find(
+      (page) => page.primaryOf === "module.development",
+    )!;
+    const relationships = entry.content
+      .split("## Relationships\n")[1]
+      .split("\n## Provider collaboration")[0];
+    expect(relationships).toContain('operations["Development operations"]');
+    expect(relationships).toContain(
+      "host -->|dispatches admitted requests to| operations",
     );
-   expect(entry).not.toContain("## Usage & Contract");
-   expect(entry).not.toContain("## Architecture & Realization");
-   expect(entry).not.toContain("```concorde-entities");
-   expect(entry).not.toContain("## Entities");
-  }
- });
+    expect(relationships).toContain(
+      "host -.->|prepares and runs worker invocations through<br/>when model execution is needed| harness",
+    );
+    expect(relationships).toContain(
+      "A deterministic operation need not start a worker.",
+    );
+    expect(relationships).toContain("such as isolated checks");
+    expect(relationships).not.toContain("runs admitted work through");
+  });
+  it("contains independently complete public Skill and business scope descriptions", () => {
+    const r = loadScopedRegistry(root);
+    const host = r.pages
+      .filter((p) => p.owner === "module.development")
+      .map((p) => p.content)
+      .join("\n");
+    expect(host).toContain("concorde-context-solve-request");
+    expect(host).toContain("concorde-operation-invocation");
+    const hostEntry = r.pages.find(
+      (p) => p.primaryOf === "module.development",
+    )!;
+    expect(hostEntry.content).not.toMatch(/^#{2,5} (?:req|scenario)\./m);
+    expect(
+      r.pages.find((p) => p.documentId === "document.development.scenarios")!
+        .content,
+    ).toContain("scenario.development.execute-operation");
+    const specGraph = r.pages.find(
+      (p) => p.documentId === "document.specify-loop.scenarios",
+    )!;
+    expect(specGraph.readingCollection).toBe("implementation");
+    expect(specGraph.content).toContain("scenario.development.specify-loop");
+    for (const module of r.targets.filter((t) => t.kind === "module")) {
+      expect(
+        module.documents.some(
+          (path) =>
+            path.endsWith("/architecture.md") ||
+            path.endsWith("/developer-experience.md"),
+        ),
+      ).toBe(false);
+      const entry = r.pages.find((p) => p.primaryOf === module.id)!.content;
+      const sections = [
+        "Purpose",
+        "Terminology",
+        "Usage",
+        "Design",
+        "Relationships",
+      ];
+      for (const section of sections) expect(entry).toContain(`## ${section}`);
+      for (let i = 1; i < sections.length; i++)
+        expect(entry.indexOf(`## ${sections[i - 1]}`)).toBeLessThan(
+          entry.indexOf(`## ${sections[i]}`),
+        );
+      expect(entry).not.toContain("## Usage & Contract");
+      expect(entry).not.toContain("## Architecture & Realization");
+      expect(entry).not.toContain("```concorde-entities");
+      expect(entry).not.toContain("## Entities");
+    }
+  });
 });

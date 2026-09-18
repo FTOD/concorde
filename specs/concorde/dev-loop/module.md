@@ -1,14 +1,14 @@
-# Development Flow
+# Development Graph
 
 ## Purpose
 
-Development Flow takes one intended change through specification, planning, implementation and verification. It coordinates the contributing Modules and preserves progress when work stops. Success is a ready candidate; delivery and primary merging are separate choices.
+Development Graph takes one intended change through specification, planning, implementation and verification. It coordinates the contributing Modules and preserves progress when work stops. Success is a ready candidate; delivery and primary merging are separate choices.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -25,7 +25,7 @@ implementation, validation and code review. Supply task and constraints; optiona
 hints help initial routing. New primary-worktree mutations return a committed-base worktree
 handoff and require a fresh owning session there. Resume with the recorded change identity and
 compatible intent; a bound candidate does not reroute to another owner.
-[Specification Flow](../specify-loop/module.md) can run first on its own; development reuses its
+[Specification Graph](../specify-loop/module.md) can run first on its own; development reuses its
 accepted work for the same task when inputs remain unchanged.
 
 For example, adding retries first needs a clear rule for retryable failures. A missing rule pauses
@@ -45,7 +45,7 @@ Spec is incomplete. Other non-successful outcomes wait for a decision or explici
 
 <a id="entity.dev-loop.adapter"></a><a id="entity.dev-loop.candidate"></a><a id="entity.dev-loop.repair"></a>
 
-The [development Flow](execution-reference.md#development-development-flow-development-flow) composes sibling providers
+The [development Graph](execution-reference.md#development-development-graph-development-graph) composes sibling providers
 through explicit state and routing edges. Specification preparation owns its author/reviewer work;
 plan and task artifacts feed implementation, checks precede code review, and current evidence gates
 the single ready transition. Durable candidate state records intent, progress, repair policy and
@@ -62,9 +62,9 @@ weakening the contract to fit its own code. An explicit delivery decision follow
 
 ## Relationships
 
-This is a responsibility and collaboration view; the detailed development Flow defines execution
+This is a responsibility and collaboration view; the detailed development Graph defines execution
 order and routing. The adapter composes sibling providers rather than owning copies of their
-contracts: [Query and Routing](../query-routing/module.md) selects the owner, [Specification Flow](../specify-loop/module.md) prepares its Spec, [Planning](../planning/module.md)
+contracts: [Query and Routing](../query-routing/module.md) selects the owner, [Specification Graph](../specify-loop/module.md) prepares its Spec, [Planning](../planning/module.md)
 produces tasks, [Implementation Module](../implementation/module.md) fulfills them, and [Validation Module](../validation/module.md) and [Review](../review/module.md) supply current evidence.
 [Development Module](../development/module.md) retains the candidate and repair state, [Harness Module](../harness/module.md) isolates invocations, and [Spec Module](../spec/module.md) resolves
 participants and affected users. The Repair policy constrains feedback-driven transitions; reaching
@@ -72,14 +72,14 @@ a ready Development candidate does not invoke Delivery.
 
 ```mermaid
 flowchart TB
-    accTitle: Development Flow entities and dependencies
-    accDescr: Development Flow records one candidate and bounded repair policy while sibling providers route intent, prepare Specs, plan tasks, implement code, validate the candidate and independently review code.
-    e0["Development Flow adapter"]
+    accTitle: Development Graph entities and dependencies
+    accDescr: Development Graph records one candidate and bounded repair policy while sibling providers route intent, prepare Specs, plan tasks, implement code, validate the candidate and independently review code.
+    e0["Development Graph adapter"]
     e1["Development"]
     e2["Harness"]
     e3["Spec"]
     e4["Query and Routing"]
-    e5["Specification Flow"]
+    e5["Specification Graph"]
     e6["Planning"]
     e7["Implementation"]
     e8["Validation"]
@@ -105,9 +105,9 @@ flowchart TB
 
 Admit or resume the change intent, maintain candidate and component progress and record bounded repair transitions and evidence.
 
-This collaboration applies at flow entry, each accepted stage result, a stopping outcome and a current-state resume.
+This collaboration applies at graph entry, each accepted stage result, a stopping outcome and a current-state resume.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -139,7 +139,7 @@ This collaboration applies when the candidate has no persisted owner; a bound re
 
 - [Explicit discovery and routing](../query-routing/module.md#usage); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
 
-### Specification Flow
+### Specification Graph
 
 <a id="entity.dev-loop.specify-loop"></a><a id="agreement.document.dev-loop.module.5"></a>
 
@@ -184,7 +184,7 @@ This collaboration applies after the relevant writers finish and during finaliza
 
 <a id="entity.dev-loop.review"></a><a id="agreement.document.dev-loop.module.9"></a>
 
-Review independently reviews current code and returns coverage, findings and gaps for the flow's bounded repair or stop decision.
+Review independently reviews current code and returns coverage, findings and gaps for the graph's bounded repair or stop decision.
 
 This collaboration applies after implementation checks when code review is enabled or already required, including final component review.
 
@@ -192,6 +192,6 @@ This collaboration applies after implementation checks when code review is enabl
 
 ## Precise specifications
 
-The Development Flow Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#development-development-agent-flow-and-revision-loops).
+The Development Graph Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#development-development-agent-graph-and-revision-loops).
 These companions are part of the same complete Module specification, not separate topic owners.

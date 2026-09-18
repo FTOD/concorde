@@ -1,4 +1,4 @@
-"""Explicit project capability settings and digest-bound configuration proposals."""
+"""Explicit project operation settings and digest-bound configuration proposals."""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ import os
 import tempfile
 from pathlib import Path
 
-from ..spec.model import Finding, ToolResult
 from ..harness.model_selection import validate_worker_selections
+from ..spec.model import Finding, ToolResult
 from ..spec.typed_data import TypedDataError, checked_path, decode, validate_typed
 
 CONFIG_PATH = ".concorde/config.json"
-CONFIG_TYPE = "concorde-capability-configuration"
+CONFIG_TYPE = "concorde-operation-configuration"
 
 
 def admit_configuration(value, field: str = "/configuration") -> dict:
@@ -26,28 +26,61 @@ def admit_configuration(value, field: str = "/configuration") -> dict:
 def _project_root(project_root: str | Path) -> Path:
     project = Path(project_root)
     if project.is_symlink():
-        raise TypedDataError("configuration_mismatch", "/configuration", "project root may not be a symlink")
+        raise TypedDataError(
+            "configuration_mismatch",
+            "/configuration",
+            "project root may not be a symlink",
+        )
     return project.resolve()
 
 
 def load_configuration(project_root: str | Path) -> dict:
     project = Path(project_root)
     if project.is_symlink():
-        raise TypedDataError("configuration_mismatch", "/configuration", "project root may not be a symlink")
+        raise TypedDataError(
+            "configuration_mismatch",
+            "/configuration",
+            "project root may not be a symlink",
+        )
     try:
-        document = decode(checked_path(project, CONFIG_PATH).read_text(encoding="utf-8"))
-        value = document.get("capability_configuration") if isinstance(document, dict) else None
+        document = decode(
+            checked_path(project, CONFIG_PATH).read_text(encoding="utf-8")
+        )
+        value = (
+            document.get("operation_configuration")
+            if isinstance(document, dict)
+            else None
+        )
         if value is None:
-            raise TypedDataError("configuration_mismatch", "/configuration", "project capability settings are missing; apply an explicit configure proposal")
+            raise TypedDataError(
+                "configuration_mismatch",
+                "/configuration",
+                "project operation settings are missing; apply an explicit configure proposal",
+            )
         return admit_configuration(value)
     except OSError as error:
-        raise TypedDataError("configuration_mismatch", "/configuration", f"cannot load project configuration: {error}") from error
+        raise TypedDataError(
+            "configuration_mismatch",
+            "/configuration",
+            f"cannot load project configuration: {error}",
+        ) from error
 
 
 def _failure(error: Exception) -> ToolResult:
-    return ToolResult("configure", ".", "invalid", findings=(Finding(
-        "CONCORDE-CONFIG-001", "error", CONFIG_PATH, str(error),
-        "Propose explicit capability configuration JSON, review its source digest, and apply the accepted proposal."),))
+    return ToolResult(
+        "configure",
+        ".",
+        "invalid",
+        findings=(
+            Finding(
+                "CONCORDE-CONFIG-001",
+                "error",
+                CONFIG_PATH,
+                str(error),
+                "Propose explicit operation configuration JSON, review its source digest, and apply the accepted proposal.",
+            ),
+        ),
+    )
 
 
 def propose_configuration(project_root: str | Path, configuration: dict) -> ToolResult:
@@ -58,11 +91,14 @@ def propose_configuration(project_root: str | Path, configuration: dict) -> Tool
         document = decode(source.decode("utf-8"))
         if not isinstance(document, dict):
             raise ValueError("project configuration must be an object")
-        if document.get("capability_configuration") == configuration:
+        if document.get("operation_configuration") == configuration:
             return ToolResult("configure", ".", "unchanged", artifacts=(CONFIG_PATH,))
-        proposal = {"proposal_version": 1, "path": CONFIG_PATH,
-                    "source_digest": "sha256:" + hashlib.sha256(source).hexdigest(),
-                    "configuration": configuration}
+        proposal = {
+            "proposal_version": 1,
+            "path": CONFIG_PATH,
+            "source_digest": "sha256:" + hashlib.sha256(source).hexdigest(),
+            "configuration": configuration,
+        }
         return ToolResult("configure", ".", "proposal", result={"proposal": proposal})
     except (OSError, UnicodeError, ValueError) as error:
         return _failure(error)
@@ -73,10 +109,14 @@ def apply_configuration(project_root: str | Path, proposal_path: str) -> ToolRes
         project = _project_root(project_root)
         value = decode(checked_path(project, proposal_path).read_text(encoding="utf-8"))
         proposal = value.get("result", {}).get("proposal", value.get("proposal", value))
-        if (not isinstance(proposal, dict)
-                or set(proposal) != {"proposal_version", "path", "source_digest", "configuration"}
-                or type(proposal["proposal_version"]) is not int or proposal["proposal_version"] != 1
-                or proposal["path"] != CONFIG_PATH):
+        if (
+            not isinstance(proposal, dict)
+            or set(proposal)
+            != {"proposal_version", "path", "source_digest", "configuration"}
+            or type(proposal["proposal_version"]) is not int
+            or proposal["proposal_version"] != 1
+            or proposal["path"] != CONFIG_PATH
+        ):
             raise ValueError("unsupported configuration proposal")
         configuration = admit_configuration(proposal["configuration"], "")
         path = checked_path(project, CONFIG_PATH)
@@ -84,13 +124,20 @@ def apply_configuration(project_root: str | Path, proposal_path: str) -> ToolRes
         document = decode(source.decode("utf-8"))
         if not isinstance(document, dict):
             raise ValueError("project configuration must be an object")
-        if document.get("capability_configuration") == configuration:
+        if document.get("operation_configuration") == configuration:
             return ToolResult("configure", ".", "unchanged", artifacts=(CONFIG_PATH,))
         if "sha256:" + hashlib.sha256(source).hexdigest() != proposal["source_digest"]:
-            raise ValueError("configuration changed after proposal; request a fresh proposal")
-        document["capability_configuration"] = configuration
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
-                                         prefix="capability-config-", delete=False) as stream:
+            raise ValueError(
+                "configuration changed after proposal; request a fresh proposal"
+            )
+        document["operation_configuration"] = configuration
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix="operation-config-",
+            delete=False,
+        ) as stream:
             temporary = Path(stream.name)
             stream.write(json.dumps(document, indent=2, sort_keys=True) + "\n")
         try:
@@ -99,7 +146,12 @@ def apply_configuration(project_root: str | Path, proposal_path: str) -> ToolRes
             os.replace(temporary, path)
         finally:
             temporary.unlink(missing_ok=True)
-        return ToolResult("configure", ".", "success", artifacts=(CONFIG_PATH,),
-                          result={"configuration": configuration})
+        return ToolResult(
+            "configure",
+            ".",
+            "success",
+            artifacts=(CONFIG_PATH,),
+            result={"configuration": configuration},
+        )
     except (OSError, UnicodeError, ValueError, AttributeError, TypeError) as error:
         return _failure(error)

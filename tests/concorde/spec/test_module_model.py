@@ -9,27 +9,26 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
-from tests.concorde.spec.support import (
-    DocumentSource,
-    module_document,
-    write_document,
-    source_pairs,
-)
 from unittest.mock import patch
 
-from concorde.development.capability_host import (
+from concorde.development.operation_host import (
     Invocation,
     _implementation_digest,
     _target_revision,
 )
-from concorde.spec.changes import confirm_pending_files
-from concorde.harness.context import resolve_context, recheck_context
-from concorde.spec.initialize import protocol_binding
 from concorde.distribution.project_defaults import write_protocol_copy
+from concorde.harness.context import recheck_context, resolve_context
+from concorde.spec.changes import confirm_pending_files
+from concorde.spec.initialize import protocol_binding
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-
+from tests.concorde.spec.support import (
+    DocumentSource,
+    module_document,
+    source_pairs,
+    write_document,
+)
 
 PACKAGE = Path(__file__).resolve().parents[3]
 
@@ -70,7 +69,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         self.configuration = {
-            "type_id": "concorde-capability-configuration",
+            "type_id": "concorde-operation-configuration",
             "schema_version": 1,
             "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
         }
@@ -78,10 +77,10 @@ class ModuleImplementationTests(unittest.TestCase):
             ".concorde/config.json",
             json.dumps(
                 {
-                    "profile_version": 14,
+                    "profile_version": 15,
                     "registry": ".concorde/specs.json",
                     "protocol": protocol_binding(PACKAGE),
-                    "capability_configuration": self.configuration,
+                    "operation_configuration": self.configuration,
                 }
             ),
         )
@@ -313,9 +312,9 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("invalid_focus", raised.exception.code)
 
     @verifies("scenario.spec.reject-unsupported-profile")
-    def test_only_profile_14_with_the_installed_protocol_binding_is_admitted(self):
+    def test_only_profile_15_with_the_installed_protocol_binding_is_admitted(self):
         config = json.loads((self.root / ".concorde/config.json").read_text())
-        for profile in (13, 15):
+        for profile in (13, 14, 16):
             with self.subTest(profile=profile):
                 self.write(
                     ".concorde/config.json",
@@ -340,7 +339,7 @@ class ModuleImplementationTests(unittest.TestCase):
             self.repository()
         self.assertEqual("protocol_mismatch", raised.exception.code)
         self.write(".concorde/config.json", json.dumps(config))
-        self.assertEqual(14, self.repository().config["profile_version"])
+        self.assertEqual(15, self.repository().config["profile_version"])
         self.assertEqual("module.a", self.repository().select("module.a").id)
 
     def test_non_code_agents_receive_the_whole_module_and_only_file_names(self):
@@ -562,7 +561,7 @@ class ModuleImplementationTests(unittest.TestCase):
 
     @verifies("scenario.spec.shared-file")
     def test_a_directory_and_an_exact_entry_share_one_file_across_modules(self):
-        from concorde.development.capability_host import _implementation_users
+        from concorde.development.operation_host import _implementation_users
 
         self.write("source/nested/deep.py", "def deep():\n    return 1\n")
         self.relist(
@@ -733,7 +732,7 @@ class ModuleImplementationTests(unittest.TestCase):
         )
 
     def test_unconfirmed_entries_report_only_missing_declarations(self):
-        from concorde.development.capability_host import _unconfirmed_files
+        from concorde.development.operation_host import _unconfirmed_files
 
         self.relist(
             "specs/a/module.md",
@@ -822,7 +821,11 @@ class ModuleImplementationTests(unittest.TestCase):
         self.registry["targets"][1]["uses"] = ["module.b"]
         self.registry["targets"][2]["parent"] = None
         self.save_registry()
-        with self.assertRaisesRegex(SpecError, "siblings"):
+        # A shared foundation may sit above its consumers in the hierarchy.
+        self.repository()
+        self.registry["targets"][2]["parent"] = "module.a"
+        self.save_registry()
+        with self.assertRaisesRegex(SpecError, "cannot be owned"):
             self.repository()
 
     def test_file_only_change_invalidates_writers_not_planner_context(self):
@@ -855,7 +858,7 @@ class ModuleImplementationTests(unittest.TestCase):
     def test_a_new_listing_module_joins_the_reverse_index_without_entering_the_context(
         self,
     ):
-        from concorde.development.capability_host import _implementation_users
+        from concorde.development.operation_host import _implementation_users
 
         snapshot = resolve_context(
             self.repository(), "module.a", phase="implementation"
@@ -1090,17 +1093,17 @@ class ModuleImplementationTests(unittest.TestCase):
             peer.write_bytes(original + b"\nChanged by a concurrent host writer.\n")
             return result
 
-        with patch(
-            "concorde.development.capability_host.execute_check", external_change
+        with (
+            patch("concorde.development.operation_host.execute_check", external_change),
+            self.assertRaisesRegex(SpecError, "using Module"),
         ):
-            with self.assertRaisesRegex(SpecError, "using Module"):
-                Invocation.validate(cast(Invocation, run))
+            Invocation.validate(cast(Invocation, run))
 
     @verifies("scenario.spec.shared-file")
     def test_shared_code_review_preserves_separate_module_contexts_and_peer_findings(
         self,
     ):
-        from concorde.development.capability_host import CapabilityHost
+        from concorde.development.operation_host import OperationHost
         from concorde.development.review import review_scope
         from tests.concorde.spec.support import ModelProcessDouble
 
@@ -1135,7 +1138,7 @@ class ModuleImplementationTests(unittest.TestCase):
                 )
 
         double = ModelProcessDouble(inspect)
-        host = CapabilityHost(
+        host = OperationHost(
             self.root,
             PACKAGE,
             executor=double.executor,
@@ -1163,7 +1166,8 @@ class ModuleImplementationTests(unittest.TestCase):
     @verifies("scenario.spec.shared-file")
     def test_code_review_peers_are_only_the_listing_modules_of_changed_files(self):
         import subprocess
-        from concorde.development.capability_host import CapabilityHost
+
+        from concorde.development.operation_host import OperationHost
         from concorde.development.review import code_review_peers, review_scope
         from concorde.harness.change_worktree import ensure_change
         from tests.concorde.spec.support import ModelProcessDouble
@@ -1199,7 +1203,7 @@ class ModuleImplementationTests(unittest.TestCase):
         )
 
         def scope():
-            host = CapabilityHost(
+            host = OperationHost(
                 self.root,
                 PACKAGE,
                 executor=double.executor,
@@ -1322,9 +1326,9 @@ class ModuleImplementationTests(unittest.TestCase):
                     fixture.doCleanups()
 
     def test_code_writer_cannot_author_spec_documents(self):
-        from concorde.development.capability_host import CapabilityHost, run_capability
+        from concorde.development.operation_host import OperationHost, run_operation
         from concorde.spec.typed_data import typed
-        from tests.concorde.spec.support import project, ModelProcessDouble
+        from tests.concorde.spec.support import ModelProcessDouble, project
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1340,7 +1344,7 @@ class ModuleImplementationTests(unittest.TestCase):
                     ]
 
             double = ModelProcessDouble(author)
-            result = run_capability(
+            result = run_operation(
                 "concorde-dev-loop",
                 self.configuration,
                 typed(
@@ -1351,7 +1355,7 @@ class ModuleImplementationTests(unittest.TestCase):
                         "run_reviews": False,
                     },
                 ),
-                host_context=CapabilityHost(
+                host_context=OperationHost(
                     root, PACKAGE, executor=double.executor, allow_primary_worktree=True
                 ),
             )
@@ -1368,9 +1372,9 @@ class ModuleImplementationTests(unittest.TestCase):
 
     @verifies("scenario.spec.directory-entry")
     def test_a_code_writer_may_create_a_file_below_a_listed_directory(self):
-        from concorde.development.capability_host import CapabilityHost, run_capability
+        from concorde.development.operation_host import OperationHost, run_operation
         from concorde.spec.typed_data import typed
-        from tests.concorde.spec.support import project, ModelProcessDouble
+        from tests.concorde.spec.support import ModelProcessDouble, project
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1401,7 +1405,7 @@ class ModuleImplementationTests(unittest.TestCase):
                 )
 
             double = ModelProcessDouble(implement)
-            result = run_capability(
+            result = run_operation(
                 "concorde-dev-loop",
                 self.configuration,
                 typed(
@@ -1412,7 +1416,7 @@ class ModuleImplementationTests(unittest.TestCase):
                         "run_reviews": False,
                     },
                 ),
-                host_context=CapabilityHost(
+                host_context=OperationHost(
                     root, PACKAGE, executor=double.executor, allow_primary_worktree=True
                 ),
             )
@@ -1435,9 +1439,9 @@ class ModuleImplementationTests(unittest.TestCase):
             )
 
     def test_composite_keeps_its_plan_and_verifies_shared_code_after_all_writers(self):
-        from concorde.development.capability_host import CapabilityHost, run_capability
+        from concorde.development.operation_host import OperationHost, run_operation
         from concorde.spec.typed_data import typed
-        from tests.concorde.spec.support import project, ModelProcessDouble
+        from tests.concorde.spec.support import ModelProcessDouble, project
 
         for shared, nested in (
             (False, False),
@@ -1535,7 +1539,14 @@ class ModuleImplementationTests(unittest.TestCase):
                 )
                 coding_targets = []
 
-                def implement(stage, snapshot, result, cwd):
+                def implement(
+                    stage,
+                    snapshot,
+                    result,
+                    cwd,
+                    nested=nested,
+                    coding_targets=coding_targets,
+                ):
                     if (
                         nested
                         and stage == "tasks"
@@ -1579,14 +1590,14 @@ class ModuleImplementationTests(unittest.TestCase):
 
                 double = ModelProcessDouble(implement)
                 task = "Implement the bank result using its private transfer Module"
-                result = run_capability(
+                result = run_operation(
                     "concorde-dev-loop",
                     self.configuration,
                     typed(
                         "concorde-dev-loop-request",
                         {"target_id": "scope.bank", "task": task},
                     ),
-                    host_context=CapabilityHost(
+                    host_context=OperationHost(
                         root,
                         PACKAGE,
                         executor=double.executor,

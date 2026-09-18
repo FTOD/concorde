@@ -1,6 +1,6 @@
 # Preparing and coordinating work
 
-The [Development Module](../development/module.md) dispatches capability requests; when an operation
+The [Development Module](../development/module.md) dispatches operation requests; when an operation
 needs a worker, this Module's invocation host assembles that worker's task, information and permissions before execution.
 Its job is to make the boundary explicit, not to decide the software's intended behavior.
 
@@ -12,7 +12,7 @@ Its job is to make the boundary explicit, not to decide the software's intended 
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## From request to result
@@ -31,11 +31,11 @@ conversations or giving either reviewer the other's permissions.
 The host controls ordering and admission; a worker reasons within one job. This prevents a useful
 answer from becoming an unchecked command to run another stage. Sequential batches stop when an item
 cannot proceed, so a later operation does not accidentally consume incomplete earlier work.
-The exact batch and capability-node Flows are in the execution reference.
+The exact batch and operation-node Graphs are in the execution reference.
 
 ## Observing a run
 
-Studio shows the same executable Flows used by local invocations, along with stage and worker events.
+Studio shows the same executable Graphs used by local invocations, along with stage and worker events.
 It is optional: normal CLI and Skill calls do not require the server. Policy preview shows the
 intended access without launching a worker. Replaying a run may execute effects again and does not
 waive current permission or lifecycle checks. Setup is described in the project Studio guide.

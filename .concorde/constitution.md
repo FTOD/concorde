@@ -1,53 +1,45 @@
-# Concorde Constitution
+# Concorde source-checkout rule sources
 
-Version: 17.0.0. Spec Protocol 6.0.0; Framework Profile 13; registry schema 4;
-Workspace Protocol 15; Delivery Proposal 10.
+This file is a navigation index, not a second rule bundle or a separate specification language.
+The current checkout accepts Spec Protocol **10.0.0**, Framework **Profile 15** and registry schema
+**5**. Workspace Protocol **16** and Delivery Proposal **10** remain separate compatibility gates.
+The exact accepted Protocol version and manifest digest are recorded in `.concorde/config.json`.
 
-## Protocol and Framework rule sources
+## Canonical authorities
 
-The independent specification standard is authored under `protocol/`. Its principles, Module
-chapter, Spec management (including Spec and Context), Required format and canonical templates
-define the meaning and authored representation of project Specs. The standard is not itself a
-registered software Module and need not describe its own chapters as Modules.
+- Read `.concorde/protocol/principles.md` for the complete accepted Spec Protocol and Framework
+  execution profile, including P10 session handoffs. The tracked installed copy and its asset
+  digests are refreshed from authoring sources, never edited independently.
+- `protocol/` authors the independent specification standard: principles, Module specifications,
+  management, exact context selection, required format and canonical templates.
+- `prompts/protocol/framework-profile.md` authors Concorde's execution profile. It governs complete
+  Operations, bounded contexts, permission ceilings, trusted execution services, review evidence
+  and worktree handoffs. It does not turn Framework execution policy into a consumer language rule.
+- `AGENTS.md` supplies this source checkout's direct-maintenance, worktree ownership, build,
+  formatting and English-Spec conventions. It does not authorize starting a Concorde graph without
+  the developer's explicit request.
 
-Concorde's execution profile is authored separately in `prompts/protocol/framework-profile.md`.
-It defines configuration compatibility, bounded worker contexts, permissions, review evidence,
-worktree handoffs and Framework authoring/publication conventions. The build combines these with
-the Protocol into the rule assets. Source-checkout maintenance refreshes the tracked installed
-copy through `python3 scripts/concorde.py protocol-manifest --write --bind-project` after building.
-Read `.concorde/protocol/principles.md` as the canonical rule bundle, including P10; this document
-references those authorities rather than maintaining another copy of their requirements.
+After changing Protocol authoring sources, build and explicitly refresh the accepted binding with
+`python3 scripts/concorde.py protocol-manifest --write --bind-project`. Validate the resulting
+sources and projections; installation and ordinary execution never silently accept another binding.
 
-## Project application
+## Project specification and execution
 
-The explicit registry is `.concorde/specs.json`, with `module.concorde` as its entry Module.
-Every Module owns an English Spec collection. Its `module.md` introduces **Usage & Contract**
-for consumers, followed by **Architecture & Realization** for implementers. Usage explains correct
-use before formal guarantees; Design explains how responsibilities, flow, state and constraints
-fulfill them. Requirements and scenarios are defined once in the appropriate part with stable IDs.
-Internal obligations remain normative. Companion documents may cover either or both parts, and
-a logical Module need not invent a public API or physical package.
+`.concorde/specs.json` registers `module.concorde` as the entry Module. Its reading entry and
+`specs/concorde/concepts.md` introduce complete Operations and distinguish Module responsibility
+ownership, Operation composition and explicit context references. The Operations hierarchy includes
+composed development and specification providers without making called providers their children.
 
-Document ownership and explicit one-level references determine full-file Spec context; part headings
-are not context filters or permissions. Entity bindings separately record implementation entries,
-and the registry mirrors their union. Several Modules may bind one file; within one Module the most
-specific entry owns it. Phase-specific grants decide which workers receive implementation contents,
-with code review and investigation read-only. Tests declare their scenario identities in code.
-Structural checks and declared coverage are evidence, not semantic proof.
+Module Specs explain purpose, terminology, usage, design and relationships. Implementation Specs
+hold precise requirements, scenarios and canonical contracts. Both roles and both source members
+belong to complete Spec context; neither publication nor a prose link changes that context or
+execution authority. The canonical bundle defines the exact obligations. Deterministic checks and
+coverage declarations are evidence, not proof of semantic completeness.
 
-Concorde's source Specs, format validators, initializer, authored worker instructions, build and
-publication implement the same reader-oriented model. The runtime and publisher accept Profile 13;
-older projects need an explicit migration, not a silent installer rewrite or compatibility guess.
-Existing wire versions, unique definition ownership, complete context and worktree authority remain
-independent of this document-layout change. The source-checkout `AGENTS.md` governs direct
-maintenance and worktree ownership, subject to explicit developer instructions such as no commit.
+## Retired index content
 
-## Project diagrams and publication
-
-Each Module's Architecture & Realization / Relationships subsection has an inline Mermaid
-flowchart whose node labels are exactly its own entity titles and whose directed edges carry
-relationship labels. English accessible titles and descriptions accompany Concorde diagrams.
-Flow Specs describe execution separately from the entity relationship model. Publication preserves
-both reader parts in source order, renders diagrams in place and puts derived implementation-file
-listings in the internal part. Rendered pages and navigation create no second contract authority,
-context inclusion or write grant.
+At baseline `7af5a831220091693695fa92b71079d9f10c5bd7`, this file still advertised Protocol 6,
+Profile 13 and an obsolete two-part reading structure, despite the checkout's accepted Protocol 9 /
+Profile 14 binding. Those stale claims are retired, not an alternate compatibility policy. Their
+original bytes remain in Git history. The Operations migration and explicit compatibility policy
+are recorded in `docs/changes/operations-graphs.md`; current authority remains the accepted bundle.

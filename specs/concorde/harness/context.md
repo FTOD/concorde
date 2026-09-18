@@ -10,7 +10,7 @@ worker, provider or developer session knew.
 | --- | --- |
 | Spec context | The selected Module's complete owned and directly referenced specification units, including explanation, precise specifications and metadata. |
 | Implementation context | The Module's bound implementation files; names are visible generally, but contents require a code-phase grant. |
-| Capability context | The admitted operation/tool agreements and declared external reference material available to the phase. |
+| Resource context | The admitted operation/tool agreements and declared external reference material available to the phase. |
 | Task context | The explicit task, constraints, admitted stage results and relevant lifecycle state for this invocation. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |

@@ -1,26 +1,26 @@
 ---
 name: concorde-specify-loop
 description: "Spec loop: route one change, author or revise its Spec, then independently review it; stop before planning and implementation."
-argument-hint: "Optional capability guidance"
+argument-hint: "Optional operation guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
   source: "skills/concorde-specify-loop/SKILL.md"
   kind: "skill"
-  capability: "specify_loop"
-  entrypoint: "scripts/run-capability.py concorde-specify-loop"
+  operation: "specify_loop"
+  entrypoint: "scripts/run-operation.py concorde-specify-loop"
 user-invocable: true
 disable-model-invocation: true
 ---
 # concorde-specify-loop
 
-Invoke this capability to run the Spec loop. The host owns context
+Invoke this operation to run the Spec loop. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
 
-Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-specify-loop`. Its exact fields
-are type_id, schema_version:3, capability_id:"concorde-specify-loop", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-specify-loop-request@1).
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-specify-loop`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-specify-loop", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-specify-loop-request@1).
 New task requests require task and may supply target_id/focus_id (a scenario ID) as routing hints;
 main discovery selects the owning target before the bounded loop starts. Existing changes retain
 their bound target.
@@ -32,7 +32,7 @@ Initialization uses its typed propose/apply request; use the published request s
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Main may explicitly admit complete Module Specs for routing, but cannot read implementation files.
-It returns one typed route for this capability; the host then starts a different target worker.
+It returns one typed route for this operation; the host then starts a different target worker.
 When a mutation starts in the primary worktree, the host prepares a committed-base linked
 worktree and returns its identity and a handoff draft; it does not launch the next outer session.
 Follow P10 to start that session automatically with the returned worktree as its initial directory,

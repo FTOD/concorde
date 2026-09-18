@@ -21,7 +21,12 @@ from concorde.spec.verification import verifies  # noqa: E402
 class PermissionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.effect = EffectDeclaration(
-            reads=("selected-feature", "module-architecture", "required-feature-specs", "attempt"),
+            reads=(
+                "selected-feature",
+                "module-architecture",
+                "required-feature-specs",
+                "attempt",
+            ),
             writes=("attempt",),
             network=False,
             credentials="none",
@@ -33,7 +38,7 @@ class PermissionTests(unittest.TestCase):
             "selected-feature": ("specs/consumer/features/001-change.md",),
         }
         self.binding = PolicyBinding(
-            capability="concorde-plan",
+            operation="concorde-plan",
             stage="author",
             occurrence=0,
             role="concorde-plan-author",
@@ -52,17 +57,23 @@ class PermissionTests(unittest.TestCase):
                 "specs/provider/features/001-api.md",
             ),
         )
-        self.assertEqual(policy.write_paths, (".concorde/attempts/feature.example.change",))
+        self.assertEqual(
+            policy.write_paths, (".concorde/attempts/feature.example.change",)
+        )
         self.assertTrue(policy.default_deny)
         self.assertFalse(policy.network_enabled)
         self.assertEqual(policy.credentials, "none")
         self.assertRegex(policy.digest, r"^sha256:[0-9a-f]{64}$")
-        reordered = compile_policy(self.effect, self.binding, dict(reversed(tuple(self.roles.items()))))
+        reordered = compile_policy(
+            self.effect, self.binding, dict(reversed(tuple(self.roles.items())))
+        )
         self.assertEqual(reordered.digest, policy.digest)
         with self.assertRaises(FrozenInstanceError):
             policy.network_enabled = True  # type: ignore[misc]
 
-    @verifies("scenario.harness.permission-compile", "scenario.harness.permission-reject")
+    @verifies(
+        "scenario.harness.permission-compile", "scenario.harness.permission-reject"
+    )
     def test_binding_can_narrow_but_never_widen_leaf_effects(self):
         narrowed = replace(
             self.binding,
@@ -72,14 +83,20 @@ class PermissionTests(unittest.TestCase):
         policy = compile_policy(self.effect, narrowed, self.roles)
         self.assertEqual(
             policy.read_paths,
-            (".concorde/attempts/feature.example.change", "specs/consumer/features/001-change.md"),
+            (
+                ".concorde/attempts/feature.example.change",
+                "specs/consumer/features/001-change.md",
+            ),
         )
         self.assertEqual(policy.write_paths, ())
 
         with self.assertRaisesRegex(PermissionPolicyError, "widens read roles"):
             compile_policy(
                 self.effect,
-                replace(self.binding, read_roles=("selected-feature", "owned-implementation")),
+                replace(
+                    self.binding,
+                    read_roles=("selected-feature", "owned-implementation"),
+                ),
                 {**self.roles, "owned-implementation": ("src/consumer.py",)},
             )
         with self.assertRaisesRegex(PermissionPolicyError, "write roles"):
@@ -89,7 +106,11 @@ class PermissionTests(unittest.TestCase):
                 self.roles,
             )
         with self.assertRaisesRegex(PermissionPolicyError, "unknown path role"):
-            compile_policy(self.effect, self.binding, {"selected-feature": self.roles["selected-feature"]})
+            compile_policy(
+                self.effect,
+                self.binding,
+                {"selected-feature": self.roles["selected-feature"]},
+            )
         with self.assertRaisesRegex(PermissionPolicyError, "network"):
             compile_policy(self.effect, replace(self.binding, network=True), self.roles)
 
@@ -97,14 +118,23 @@ class PermissionTests(unittest.TestCase):
     def test_unsafe_paths_and_widened_effective_policies_are_rejected(self):
         for path in ("/etc/passwd", "../outside", "specs/../../outside"):
             with self.subTest(path=path), self.assertRaises(PermissionPolicyError):
-                compile_policy(self.effect, self.binding, {**self.roles, "selected-feature": (path,)})
+                compile_policy(
+                    self.effect,
+                    self.binding,
+                    {**self.roles, "selected-feature": (path,)},
+                )
         declared = compile_policy(self.effect, self.binding, self.roles)
-        narrowed = compile_policy(self.effect, replace(self.binding, write_roles=()), self.roles)
+        narrowed = compile_policy(
+            self.effect, replace(self.binding, write_roles=()), self.roles
+        )
         verify_effective_subset(declared, narrowed)
         with self.assertRaises(PermissionPolicyError):
             verify_effective_subset(narrowed, declared)
         with self.assertRaises(PermissionPolicyError):
-            verify_effective_subset(declared, replace(declared, read_paths=(*declared.read_paths, "secret.py")))
+            verify_effective_subset(
+                declared,
+                replace(declared, read_paths=(*declared.read_paths, "secret.py")),
+            )
 
 
 if __name__ == "__main__":

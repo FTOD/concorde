@@ -11,7 +11,7 @@
       "title": "Validation adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/validate.py",
+        "operations/validate.py",
         "tests/concorde/development/test_check_execution.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/harness/test_scoped_protocol.py",

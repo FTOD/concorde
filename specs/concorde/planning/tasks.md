@@ -39,5 +39,5 @@ outcomes are defined in the Module's execution reference and interface contracts
 
 ## Precise specifications
 
-See the Module-owned [execution and record contracts](execution-reference.md#tasks-task-authoring-capability).
+See the Module-owned [execution and record contracts](execution-reference.md#tasks-task-authoring-operation).
 The exact obligations remain in Implementation Specs; this topic explains their purpose and use.

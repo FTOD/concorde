@@ -4,7 +4,7 @@
 Concorde's project-local Skills are worktree-owned build output (see AGENTS.md). A session that
 loaded them in one worktree must not create, move or enter another worktree. Developing the
 checkout is direct maintenance in the worktree the session started in; a further worktree exists
-only when the developer explicitly asks for a Concorde flow, whose host creates the candidate
+only when the developer explicitly asks for a Concorde graph, whose host creates the candidate
 worktree and hands off a fresh session under Framework profile P10. This script is the command
 hook that the checkout registers in ``.claude/settings.json`` (Claude Code ``PreToolUse`` and
 ``WorktreeCreate``) and ``.codex/hooks.json`` (Codex ``PreToolUse``). It reads one hook payload
@@ -40,13 +40,14 @@ import argparse
 import json
 import re
 import sys
-from typing import Any, Mapping, NamedTuple
+from collections.abc import Mapping
+from typing import Any, NamedTuple
 
 REASON = (
     "Concorde source checkout: agent sessions may not create, move or enter git worktrees. "
     "Concorde Skills are worktree-owned build output, so this session stays in the worktree that "
     "supplied its Skills. Make the change here as developer-authorized direct maintenance; a further "
-    "worktree exists only when the developer explicitly asks for a Concorde flow, whose host creates "
+    "worktree exists only when the developer explicitly asks for a Concorde graph, whose host creates "
     "the candidate worktree and hands off a fresh session under P10. "
     "Details: python3 scripts/worktree-guard.py --explain"
 )
@@ -58,7 +59,7 @@ by the worktree that built them. A session that loaded those Skills in worktree 
 created or entered worktree B would keep A's instructions while acting on B, whose Skills may
 differ. Developer sessions of this checkout therefore work in the worktree they started in, as
 direct developer-authorized maintenance, and native worktree creation is refused. When the
-developer explicitly asks for a Concorde flow, its host creates the candidate worktree itself and
+developer explicitly asks for a Concorde graph, its host creates the candidate worktree itself and
 hands off a fresh session there (Framework profile P10).
 
 Refused: the Claude Code EnterWorktree tool, subagents with isolation "worktree", Claude Code
@@ -66,7 +67,7 @@ worktree creation (`claude --worktree`, background-session worktrees), and shell
 run `git worktree add`, `git worktree move` or `claude --worktree` / `claude -w`.
 
 Allowed: everything else, including `git worktree list`, starting a session in an existing
-host-created worktree, and explicitly requested Concorde flows, whose host creates worktrees in its
+host-created worktree, and explicitly requested Concorde graphs, whose host creates worktrees in its
 own process.
 
 Registered in: .claude/settings.json (permissions.deny, hooks PreToolUse and WorktreeCreate) and
@@ -77,16 +78,22 @@ reviewed once with `/hooks`; the execpolicy rules need no separate review.
 Not installed for consumer projects: this is repository policy for developing Concorde itself.
 """
 
-SHELL_TOOLS = frozenset({"bash", "powershell", "shell", "execcommand", "unifiedexec", "localshell"})
+SHELL_TOOLS = frozenset(
+    {"bash", "powershell", "shell", "execcommand", "unifiedexec", "localshell"}
+)
 SUBAGENT_TOOLS = frozenset({"agent", "task"})
 
 # One global git option, e.g. -C <path>, -c key=value, --git-dir=<path>, --git-dir <path>,
 # --no-pager. A separate value never starts with "-" and is never the word "worktree".
-_GIT_OPTION = r"-(?:-?[\w-]+)(?:=\S*|\s+(?!worktree(?![\w-]))(?:\"[^\"]*\"|'[^']*'|[^\s-]\S*))?"
+_GIT_OPTION = (
+    r"-(?:-?[\w-]+)(?:=\S*|\s+(?!worktree(?![\w-]))(?:\"[^\"]*\"|'[^']*'|[^\s-]\S*))?"
+)
 GIT_WORKTREE = re.compile(
     rf"(?<![\w-])git(?:\s+{_GIT_OPTION})*\s+worktree(?:\s+-\S*)*\s+(?:add|move)(?![\w-])"
 )
-CLAUDE_WORKTREE = re.compile(r"(?<![\w-])claude(?![\w-])(?:\s+\S+)*?\s+(?:--worktree|-w)(?=[\s=]|$)")
+CLAUDE_WORKTREE = re.compile(
+    r"(?<![\w-])claude(?![\w-])(?:\s+\S+)*?\s+(?:--worktree|-w)(?=[\s=]|$)"
+)
 
 
 class Verdict(NamedTuple):
@@ -139,7 +146,9 @@ def evaluate(payload: Mapping[str, Any]) -> Verdict:
     if tool == "enterworktree":
         return Verdict(True, "enter-worktree", REASON)
     if tool in SUBAGENT_TOOLS:
-        isolation = tool_input.get("isolation") if isinstance(tool_input, Mapping) else None
+        isolation = (
+            tool_input.get("isolation") if isinstance(tool_input, Mapping) else None
+        )
         if _normalise(isolation) == "worktree":
             return Verdict(True, "isolated-subagent", REASON)
         return ALLOW
@@ -168,15 +177,25 @@ def main(argv: list[str] | None = None) -> int:
         prog="worktree-guard",
         description="Concorde source-checkout hook: refuse native worktree creation in agent sessions.",
     )
-    parser.add_argument("--explain", action="store_true", help="print the policy and exit")
-    parser.add_argument("--check", metavar="COMMAND", help="decide one shell command text instead of a hook payload")
+    parser.add_argument(
+        "--explain", action="store_true", help="print the policy and exit"
+    )
+    parser.add_argument(
+        "--check",
+        metavar="COMMAND",
+        help="decide one shell command text instead of a hook payload",
+    )
     arguments = parser.parse_args(argv)
     if arguments.explain:
         sys.stdout.write(EXPLANATION)
         return 0
     if arguments.check is not None:
         verdict = evaluate_command(arguments.check)
-        sys.stdout.write(f"deny ({verdict.kind}): {verdict.reason}\n" if verdict.blocked else "allow\n")
+        sys.stdout.write(
+            f"deny ({verdict.kind}): {verdict.reason}\n"
+            if verdict.blocked
+            else "allow\n"
+        )
         return 2 if verdict.blocked else 0
     try:
         payload = json.loads(sys.stdin.read())

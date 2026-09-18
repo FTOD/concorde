@@ -11,34 +11,35 @@
       "title": "Development host",
       "kind": "program",
       "files": [
-        "scripts/development/check-flow-specs.py",
+        "scripts/development/check-graph-specs.py",
         "src/concorde/development/",
         "tests/concorde/development/",
-        "tests/concorde/harness/test_flows.py",
+        "tests/concorde/harness/test_graphs.py",
         "tests/concorde/harness/test_studio.py",
         "tests/concorde/harness/test_studio_server.py",
-        "tests/concorde/support/capability_json.py"
+        "tests/concorde/spec/test_operations_migration.py",
+        "tests/concorde/support/operation_json.py"
       ],
       "meaning": "#entity.development.development-host"
     },
     {
-      "id": "entity.development.development-capabilities",
-      "title": "Development capabilities",
+      "id": "entity.development.development-operations",
+      "title": "Development operations",
       "kind": "program",
       "files": [
-        "capabilities/context_solve.py",
-        "capabilities/deliver.py",
-        "capabilities/dev_loop.py",
-        "capabilities/implement.py",
-        "capabilities/main.py",
-        "capabilities/plan.py",
-        "capabilities/review.py",
-        "capabilities/specify.py",
-        "capabilities/specify_loop.py",
-        "capabilities/tasks.py",
-        "capabilities/validate.py"
+        "operations/context_solve.py",
+        "operations/deliver.py",
+        "operations/dev_loop.py",
+        "operations/implement.py",
+        "operations/main.py",
+        "operations/plan.py",
+        "operations/review.py",
+        "operations/specify.py",
+        "operations/specify_loop.py",
+        "operations/tasks.py",
+        "operations/validate.py"
       ],
-      "meaning": "#entity.development.development-capabilities"
+      "meaning": "#entity.development.development-operations"
     },
     {
       "id": "entity.development.worktree-lifecycle",

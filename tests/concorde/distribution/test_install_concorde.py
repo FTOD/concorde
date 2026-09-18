@@ -11,11 +11,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.managed_runtime import (
     create_langgraph_index,
     runtime_install_environment,
 )
+from tests.concorde.support.paths import REPOSITORY_ROOT
 
 INSTALLER_PATH = REPOSITORY_ROOT / "scripts/install-concorde.py"
 SPEC = importlib.util.spec_from_file_location("concorde_installer", INSTALLER_PATH)
@@ -52,9 +52,9 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(arguments.checkout, str(REPOSITORY_ROOT))
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
-        self.assertEqual(self.package.version, "7.0.0")
-        self.assertEqual(self.package.manifest["architecture_profile"], 14)
-        self.assertEqual(self.package.manifest["workspace_protocol"], 15)
+        self.assertEqual(self.package.version, "8.0.0")
+        self.assertEqual(self.package.manifest["architecture_profile"], 15)
+        self.assertEqual(self.package.manifest["workspace_protocol"], 16)
         self.assertEqual(len(self.package.manifest["templates"]), 4)
         self.assertEqual(
             self.package.manifest["runtime"]["venv"],
@@ -74,7 +74,9 @@ class NativeInstallerTests(unittest.TestCase):
             manifest = json.loads(json.dumps(self.package.manifest))
             lock = root / "viewer/package-lock.json"
             value = json.loads(lock.read_text(encoding="utf-8"))
-            value["packages"]["node_modules/understand-anything-viewer"]["integrity"] = ""
+            value["packages"]["node_modules/understand-anything-viewer"][
+                "integrity"
+            ] = ""
             lock.write_text(json.dumps(value), encoding="utf-8")
 
             with self.assertRaisesRegex(
@@ -87,44 +89,71 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(".concorde/framework/src/concorde/distribution/cli.py", outputs)
         self.assertIn(".concorde/framework/src/concorde/spec/validation.py", outputs)
         self.assertIn(".concorde/framework/docsite/docusaurus.config.ts", outputs)
-        self.assertIn(".concorde/framework/docsite/scaffold/deploy-docsite.yml", outputs)
+        self.assertIn(
+            ".concorde/framework/docsite/scaffold/deploy-docsite.yml", outputs
+        )
         self.assertNotIn(".concorde/framework/docsite/site.json", outputs)
         self.assertNotIn(".concorde/framework/docsite/sidebars.docs.ts", outputs)
-        self.assertTrue(all("node_modules" not in path and "/build/" not in path for path in outputs if path.startswith(".concorde/framework/docsite/")))
-        self.assertTrue(all(not path.startswith(".concorde/framework/docsite/tests/repository/") for path in outputs))
+        self.assertTrue(
+            all(
+                "node_modules" not in path and "/build/" not in path
+                for path in outputs
+                if path.startswith(".concorde/framework/docsite/")
+            )
+        )
+        self.assertTrue(
+            all(
+                not path.startswith(".concorde/framework/docsite/tests/repository/")
+                for path in outputs
+            )
+        )
         self.assertIn(".agents/skills/concorde-validate/SKILL.md", outputs)
         self.assertIn(".agents/skills/concorde-dev-loop/SKILL.md", outputs)
         self.assertIn(".concorde/framework/scripts/requirements.lock", outputs)
-        self.assertIn(".concorde/framework/scripts/run-capability.py", outputs)
+        self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
         self.assertIn(".concorde/framework/scripts/run-ua-graph-viewer.py", outputs)
         self.assertIn(".concorde/framework/viewer/package-lock.json", outputs)
-        self.assertFalse(any(path.startswith((
-            ".concorde/framework/operations",
-            ".concorde/framework/roles",
-            ".concorde/framework/agent-assets",
-            ".codex/",
-        )) for path in outputs))
+        self.assertFalse(
+            any(
+                path.startswith(
+                    (
+                        ".concorde/framework/capabilities",
+                        ".concorde/framework/roles",
+                        ".concorde/framework/agent-assets",
+                        ".codex/",
+                    )
+                )
+                for path in outputs
+            )
+        )
         # The build is the only instruction source for the consumer's own skill wrappers and for
         # the framework's own generated/** projections; consumers never run it themselves.
         self.assertIn(".concorde/framework/generated/build-manifest.json", outputs)
         plan = outputs[".agents/skills/concorde-validate/SKILL.md"][0].decode()
-        self.assertIn('capability: "validate"', plan)
+        self.assertIn('operation: "validate"', plan)
         self.assertIn('kind: "skill"', plan)
         self.assertNotIn("concorde-validate-context", outputs)
         self.assertNotIn("concorde-validate-author", outputs)
         self.assertNotIn(".specify", plan)
         skill_body = outputs[".agents/skills/concorde-dev-loop/SKILL.md"][0].decode()
-        self.assertIn('capability: "dev_loop"', skill_body)
+        self.assertIn('operation: "dev_loop"', skill_body)
         self.assertIn(
-            "python3 .concorde/framework/scripts/run-capability.py concorde-dev-loop",
+            "python3 .concorde/framework/scripts/run-operation.py concorde-dev-loop",
             skill_body,
         )
-        self.assertEqual(outputs[".agents/skills/concorde-validate/SKILL.md"][1], "skill")
+        self.assertEqual(
+            outputs[".agents/skills/concorde-validate/SKILL.md"][1], "skill"
+        )
         self.assertEqual(
             outputs[".agents/skills/concorde-dev-loop/SKILL.md"][1],
             "skill",
         )
-        self.assertTrue(all(not path.startswith(("presets/", "extensions/", "bundles/")) for path in outputs))
+        self.assertTrue(
+            all(
+                not path.startswith(("presets/", "extensions/", "bundles/"))
+                for path in outputs
+            )
+        )
 
     @verifies(
         "scenario.distribution.install-preview",
@@ -135,15 +164,29 @@ class NativeInstallerTests(unittest.TestCase):
     def test_empty_target_preview_apply_and_repeat_are_idempotent(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
             self.assertTrue(actions)
             self.assertEqual({item["action"] for item in actions}, {"create"})
             runtime_action = next(item for item in actions if item["role"] == "runtime")
             self.assertEqual(runtime_action["path"], ".concorde/.venv")
-            self.assertEqual(installer.apply_plan(target, self.package, "codex", actions, desired), "installed")
-            second, desired_again, _ = installer.installation_plan(target, self.package, "codex")
-            self.assertEqual({item["action"] for item in second}, {"unchanged", "preserve"})
-            self.assertEqual(installer.apply_plan(target, self.package, "codex", second, desired_again), "unchanged")
+            self.assertEqual(
+                installer.apply_plan(target, self.package, "codex", actions, desired),
+                "installed",
+            )
+            second, desired_again, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            self.assertEqual(
+                {item["action"] for item in second}, {"unchanged", "preserve"}
+            )
+            self.assertEqual(
+                installer.apply_plan(
+                    target, self.package, "codex", second, desired_again
+                ),
+                "unchanged",
+            )
             receipt = json.loads((target / ".concorde/install.json").read_text())
             self.assertEqual(receipt["integration"], "codex")
             self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
@@ -151,22 +194,34 @@ class NativeInstallerTests(unittest.TestCase):
                 receipt["runtime"]["verified_skills"],
                 list(installer.concorde_build.SKILL_NAMES),
             )
-            self.assertTrue((target / ".concorde/.venv/.concorde-runtime.json").is_file())
-            viewer = target / ".concorde/.venv/share/concorde/understand-anything-viewer"
             self.assertTrue(
-                (viewer / "node_modules/understand-anything-viewer/bin/viewer.mjs").is_file()
+                (target / ".concorde/.venv/.concorde-runtime.json").is_file()
+            )
+            viewer = (
+                target / ".concorde/.venv/share/concorde/understand-anything-viewer"
             )
             self.assertTrue(
-                (viewer / "node_modules/understand-anything-viewer/dist/index.html").is_file()
+                (
+                    viewer / "node_modules/understand-anything-viewer/bin/viewer.mjs"
+                ).is_file()
+            )
+            self.assertTrue(
+                (
+                    viewer / "node_modules/understand-anything-viewer/dist/index.html"
+                ).is_file()
             )
             self.assertEqual(receipt["runtime"]["viewer"]["version"], "2.9.0")
             self.assertEqual(receipt["runtime"]["viewer"]["node_version"], "v20.11.1")
             self.assertFalse((target / "node_modules").exists())
             self.assertFalse((target / "package.json").exists())
             self.assertFalse((target / "package-lock.json").exists())
-            project_defaults = sum(role == "project-default" for _, role in desired.values())
+            project_defaults = sum(
+                role == "project-default" for _, role in desired.values()
+            )
             self.assertEqual(len(receipt["outputs"]), len(desired) - project_defaults)
-            self.assertNotIn("project-default", {item["role"] for item in receipt["outputs"]})
+            self.assertNotIn(
+                "project-default", {item["role"] for item in receipt["outputs"]}
+            )
 
     @verifies("scenario.distribution.install-apply")
     def test_local_viewer_node_modules_are_neither_deployed_nor_inspected(self):
@@ -174,26 +229,50 @@ class NativeInstallerTests(unittest.TestCase):
             root = Path(temporary)
             for name in ("concorde.json", "LICENSE", "README.md"):
                 (root / name).write_text(name + "\n")
-            for directory in ("capabilities", "prompts", "protocol", "skills", "src",
-                              "templates", "viewer", "scripts"):
+            for directory in (
+                "operations",
+                "prompts",
+                "protocol",
+                "skills",
+                "src",
+                "templates",
+                "viewer",
+                "scripts",
+            ):
                 (root / directory).mkdir()
-            for name in ("concorde.py", "concorde.ps1", "concorde.sh", "issues.py",
-                         "requirements.lock", "run-capability.py", "run-ua-graph-viewer.py"):
+            for name in (
+                "concorde.py",
+                "concorde.ps1",
+                "concorde.sh",
+                "issues.py",
+                "requirements.lock",
+                "run-operation.py",
+                "run-ua-graph-viewer.py",
+            ):
                 (root / "scripts" / name).write_text("# script\n")
             (root / "viewer/package.json").write_text("{}\n")
-            executable = root / "viewer/node_modules/understand-anything-viewer/bin/viewer.mjs"
+            executable = (
+                root / "viewer/node_modules/understand-anything-viewer/bin/viewer.mjs"
+            )
             executable.parent.mkdir(parents=True)
             executable.write_text("// viewer\n")
             (root / "viewer/node_modules/.bin").mkdir()
             (root / "viewer/node_modules/.bin/understand-anything-viewer").symlink_to(
-                "../understand-anything-viewer/bin/viewer.mjs")
+                "../understand-anything-viewer/bin/viewer.mjs"
+            )
             package = installer.Package(root, self.package.manifest)
             with mock.patch.object(installer, "template_files", return_value={}):
                 desired = installer._package_files(package)
-                self.assertIn(f"{installer.FRAMEWORK_ROOT}/viewer/package.json", desired)
-                self.assertEqual([], [path for path in desired if "node_modules" in path])
+                self.assertIn(
+                    f"{installer.FRAMEWORK_ROOT}/viewer/package.json", desired
+                )
+                self.assertEqual(
+                    [], [path for path in desired if "node_modules" in path]
+                )
                 (root / "viewer/link.mjs").symlink_to("package.json")
-                with self.assertRaisesRegex(installer.InstallError, "may not contain symlinks"):
+                with self.assertRaisesRegex(
+                    installer.InstallError, "may not contain symlinks"
+                ):
                     installer._package_files(package)
 
     @verifies("scenario.distribution.install-apply")
@@ -202,34 +281,51 @@ class NativeInstallerTests(unittest.TestCase):
             target = Path(temporary)
             config = target / ".concorde/issues/.gitignore"
             config.parent.mkdir(parents=True)
-            config.write_text('# developer custom\n')
-            legacy = target / '.concorde/reflections/pending/R-001.md'
+            config.write_text("# developer custom\n")
+            legacy = target / ".concorde/reflections/pending/R-001.md"
             legacy.parent.mkdir(parents=True)
-            legacy.write_text('Unresolved historical report\n')
-            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
-            item = next(entry for entry in actions if entry["path"] == ".concorde/issues/.gitignore")
+            legacy.write_text("Unresolved historical report\n")
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            item = next(
+                entry
+                for entry in actions
+                if entry["path"] == ".concorde/issues/.gitignore"
+            )
             self.assertEqual(item["action"], "preserve")
             installer.apply_plan(target, self.package, "codex", actions, desired)
-            self.assertEqual('# developer custom\n', config.read_text())
-            self.assertEqual('Unresolved historical report\n', legacy.read_text())
-            paths = {entry["path"] for entry in json.loads((target / ".concorde/install.json").read_text())["outputs"]}
+            self.assertEqual("# developer custom\n", config.read_text())
+            self.assertEqual("Unresolved historical report\n", legacy.read_text())
+            paths = {
+                entry["path"]
+                for entry in json.loads(
+                    (target / ".concorde/install.json").read_text()
+                )["outputs"]
+            }
             self.assertNotIn(".concorde/reflections/config.json", paths)
             self.assertNotIn(".concorde/reflections/index.json", paths)
             self.assertNotIn(".concorde/reflections/.gitignore", paths)
             self.assertNotIn(".concorde/topology-proposals/.gitignore", paths)
-            self.assertNotIn('.concorde/issues/.gitignore', paths)
+            self.assertNotIn(".concorde/issues/.gitignore", paths)
             self.assertFalse((target / ".concorde/reflections/index.json").exists())
             self.assertIn(".concorde/protocol/manifest.json", paths)
 
-    @verifies("scenario.distribution.runtime-plan", "scenario.distribution.runtime-provision")
-    def test_target_root_venv_is_ignored_and_managed_runtime_rebuild_removes_obsolete_files(self):
+    @verifies(
+        "scenario.distribution.runtime-plan", "scenario.distribution.runtime-provision"
+    )
+    def test_target_root_venv_is_ignored_and_managed_runtime_rebuild_removes_obsolete_files(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             user_sentinel = target / ".venv/user-package.txt"
             user_sentinel.parent.mkdir()
             user_sentinel.write_text("user-owned\n", encoding="utf-8")
             before = user_sentinel.read_bytes()
-            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
             installer.apply_plan(target, self.package, "codex", actions, desired)
             obsolete = target / ".concorde/.venv/obsolete-package.txt"
             obsolete.write_text("obsolete\n", encoding="utf-8")
@@ -265,7 +361,10 @@ class NativeInstallerTests(unittest.TestCase):
     @verifies("scenario.distribution.runtime-plan")
     def test_unowned_or_symlinked_managed_runtime_is_a_nonmutating_conflict(self):
         for symlink in (False, True):
-            with self.subTest(symlink=symlink), tempfile.TemporaryDirectory() as temporary:
+            with (
+                self.subTest(symlink=symlink),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
                 target = Path(temporary)
                 runtime = target / ".concorde/.venv"
                 runtime.parent.mkdir(parents=True)
@@ -282,14 +381,21 @@ class NativeInstallerTests(unittest.TestCase):
                 item = next(entry for entry in actions if entry["role"] == "runtime")
                 self.assertEqual(item["action"], "conflict")
                 with self.assertRaises(installer.InstallError):
-                    installer.apply_plan(target, self.package, "codex", actions, desired)
+                    installer.apply_plan(
+                        target, self.package, "codex", actions, desired
+                    )
                 self.assertTrue(runtime.exists() or runtime.is_symlink())
 
     @verifies("scenario.distribution.runtime-provision-failure")
-    def test_dependency_or_smoke_failure_removes_partial_runtime_and_rolls_back_files(self):
+    def test_dependency_or_smoke_failure_removes_partial_runtime_and_rolls_back_files(
+        self,
+    ):
         failures = ("pip", "viewer-install", "smoke", "viewer-smoke")
         for failure in failures:
-            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
+            with (
+                self.subTest(failure=failure),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
                 target = Path(temporary)
                 actions, desired, _ = installer.installation_plan(
                     target, self.package, "codex"
@@ -299,7 +405,9 @@ class NativeInstallerTests(unittest.TestCase):
 
                     def fail_pip(command, **kwargs):
                         if "pip" in command:
-                            return subprocess.CompletedProcess(command, 1, "", "injected pip failure")
+                            return subprocess.CompletedProcess(
+                                command, 1, "", "injected pip failure"
+                            )
                         return real_run(command, **kwargs)
 
                     patcher = mock.patch.object(
@@ -335,7 +443,9 @@ class NativeInstallerTests(unittest.TestCase):
                         ),
                     )
                 with patcher, self.assertRaises(installer.InstallError):
-                    installer.apply_plan(target, self.package, "codex", actions, desired)
+                    installer.apply_plan(
+                        target, self.package, "codex", actions, desired
+                    )
                 self.assertFalse((target / ".concorde/.venv").exists())
                 self.assertFalse((target / ".concorde/install.json").exists())
                 self.assertEqual(list(target.rglob("*")), [])
@@ -354,12 +464,13 @@ class NativeInstallerTests(unittest.TestCase):
                     return "v17.9.1", (17, 9, 1)
                 return real_version(command, cwd, label)
 
-            with mock.patch.object(
-                managed_runtime, "_tool_version", side_effect=incompatible
-            ), self.assertRaisesRegex(installer.InstallError, "Node.js >=18"):
-                installer.apply_plan(
-                    target, self.package, "codex", actions, desired
-                )
+            with (
+                mock.patch.object(
+                    managed_runtime, "_tool_version", side_effect=incompatible
+                ),
+                self.assertRaisesRegex(installer.InstallError, "Node.js >=18"),
+            ):
+                installer.apply_plan(target, self.package, "codex", actions, desired)
             self.assertFalse((target / ".concorde/.venv").exists())
             self.assertFalse((target / ".concorde/install.json").exists())
 
@@ -376,9 +487,7 @@ class NativeInstallerTests(unittest.TestCase):
             value["viewer_lock_sha256"] = "sha256:" + "0" * 64
             marker.write_text(json.dumps(value), encoding="utf-8")
 
-            rebuild, _, _ = installer.installation_plan(
-                target, self.package, "codex"
-            )
+            rebuild, _, _ = installer.installation_plan(target, self.package, "codex")
             runtime = next(item for item in rebuild if item["role"] == "runtime")
             self.assertEqual(runtime["action"], "rebuild")
 
@@ -401,24 +510,50 @@ class NativeInstallerTests(unittest.TestCase):
             collision.parent.mkdir(parents=True)
             collision.write_text("developer file\n")
             actions, _, _ = installer.installation_plan(target, self.package, "codex")
-            item = next(entry for entry in actions if entry["path"] == collision.relative_to(target).as_posix())
+            item = next(
+                entry
+                for entry in actions
+                if entry["path"] == collision.relative_to(target).as_posix()
+            )
             self.assertEqual(item["action"], "conflict")
 
     @verifies("scenario.distribution.install-switch-integration")
     def test_integration_change_removes_only_prior_unchanged_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
             installer.apply_plan(target, self.package, "codex", actions, desired)
-            claude_actions, claude_desired, _ = installer.installation_plan(target, self.package, "claude")
-            self.assertTrue(any(item["action"] == "remove" and item["path"].startswith(".agents/skills/concorde-") for item in claude_actions))
-            self.assertTrue(any(item["action"] == "create" and item["path"].startswith(".claude/skills/concorde-") for item in claude_actions))
-            installer.apply_plan(target, self.package, "claude", claude_actions, claude_desired)
-            self.assertFalse((target / ".agents/skills/concorde-validate/SKILL.md").exists())
-            self.assertTrue((target / ".claude/skills/concorde-validate/SKILL.md").is_file())
+            claude_actions, claude_desired, _ = installer.installation_plan(
+                target, self.package, "claude"
+            )
+            self.assertTrue(
+                any(
+                    item["action"] == "remove"
+                    and item["path"].startswith(".agents/skills/concorde-")
+                    for item in claude_actions
+                )
+            )
+            self.assertTrue(
+                any(
+                    item["action"] == "create"
+                    and item["path"].startswith(".claude/skills/concorde-")
+                    for item in claude_actions
+                )
+            )
+            installer.apply_plan(
+                target, self.package, "claude", claude_actions, claude_desired
+            )
+            self.assertFalse(
+                (target / ".agents/skills/concorde-validate/SKILL.md").exists()
+            )
+            self.assertTrue(
+                (target / ".claude/skills/concorde-validate/SKILL.md").is_file()
+            )
 
     @verifies("scenario.distribution.install-apply")
-    def test_update_removes_only_unchanged_owned_legacy_capability_paths(self):
+    def test_update_removes_only_unchanged_owned_legacy_operation_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             legacy = target / ".concorde/framework/commands/concorde.plan.md"
@@ -445,10 +580,10 @@ class NativeInstallerTests(unittest.TestCase):
             receipt_path = target / ".concorde/install.json"
             receipt_path.parent.mkdir(exist_ok=True)
             receipt_path.write_text(json.dumps(receipt))
-            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
-            removed = {
-                item["path"] for item in actions if item["action"] == "remove"
-            }
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            removed = {item["path"] for item in actions if item["action"] == "remove"}
             self.assertEqual(
                 removed,
                 {
@@ -468,7 +603,9 @@ class NativeInstallerTests(unittest.TestCase):
     def test_mid_apply_failure_removes_created_files_and_directories(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
             original = installer.tempfile.NamedTemporaryFile
             calls = 0
 
@@ -479,9 +616,13 @@ class NativeInstallerTests(unittest.TestCase):
                     raise OSError("injected write failure")
                 return original(*args, **kwargs)
 
-            with mock.patch.object(installer.tempfile, "NamedTemporaryFile", side_effect=injected):
+            with mock.patch.object(
+                installer.tempfile, "NamedTemporaryFile", side_effect=injected
+            ):
                 with self.assertRaisesRegex(OSError, "injected write failure"):
-                    installer.apply_plan(target, self.package, "codex", actions, desired)
+                    installer.apply_plan(
+                        target, self.package, "codex", actions, desired
+                    )
             self.assertEqual(list(target.rglob("*")), [])
 
 

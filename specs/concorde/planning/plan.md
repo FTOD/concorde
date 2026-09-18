@@ -13,7 +13,7 @@ candidate.
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
 
 ## Normal planning
@@ -34,10 +34,10 @@ problem even if its text still looks plausible. The host rechecks its inputs bef
 invalid or stale output leaves the previous accepted plan intact but does not make it current.
 The planner uses Spec information and admitted reference material, not implementation contents.
 
-The exact planning Flow and artifact contract are maintained in Implementation Specs; the explanation
+The exact planning Graph and artifact contract are maintained in Implementation Specs; the explanation
 here is the normal reasoning path, not a second execution graph.
 
 ## Precise specifications
 
-See the Module-owned [execution and record contracts](execution-reference.md#plan-planning-capability).
+See the Module-owned [execution and record contracts](execution-reference.md#plan-planning-operation).
 The exact obligations remain in Implementation Specs; this topic explains their purpose and use.

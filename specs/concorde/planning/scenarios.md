@@ -47,7 +47,7 @@ The independent contracts are [Assessment](assessment.md), [Plan](plan.md) and [
 - AND the dependent step pauses while independent reasoning may continue
 - AND the assessor neither reads implementation contents nor expands the selected context to supply the missing promise
 
-## Planning capability
+## Planning operation
 
 ### scenario.planning.plan-current — Assessment admits a revision-bound plan
 
@@ -71,7 +71,7 @@ The independent contracts are [Assessment](assessment.md), [Plan](plan.md) and [
 - THEN it rejects stale output without replacing the previously accepted plan
 - AND preserving old bytes does not make the old plan current; reuse requires current admission
 
-## Task authoring capability
+## Task authoring operation
 
 ### scenario.planning.tasks-from-plan — Accepted plan yields implementation tasks
 

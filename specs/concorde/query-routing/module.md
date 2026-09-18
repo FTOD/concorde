@@ -14,7 +14,7 @@ Query and Routing answers questions from selected specifications and identifies 
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 
@@ -43,13 +43,13 @@ the reader's context merely because Inventory was selected.
 
 <a id="entity.query-routing.adapter"></a><a id="entity.query-routing.selection"></a>
 
-The [discovery Flow](execution-reference.md#query-and-routing-discovery-flow-discovery-flow) alternates a fresh
+The [discovery Graph](execution-reference.md#query-and-routing-discovery-graph-discovery-graph) alternates a fresh
 discovery decision with deterministic admission of explicitly selected complete contexts. A router
 returns identities; the host binds the original task and constraints rather than trusting rewritten
 intent. An answerer can complete directly from the indexed/granted originals without reader-worker
 summaries or a synthesis stage.
 
-The [query Flow](execution-reference.md#query-and-routing-query-flow-query-flow) returns the last admitted decision.
+The [query Graph](execution-reference.md#query-and-routing-query-graph-query-graph) returns the last admitted decision.
 Expansion limits and stop edges bound missing-context reasoning. Provider references expand once;
 links and implementation files never become implicit discovery routes.
 
@@ -84,7 +84,7 @@ Admit question and routing requests, bound discovery expansion and return answer
 
 This collaboration applies when main answers a question or a discovery consumer requests owner selection.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -109,5 +109,5 @@ This collaboration applies when selecting discovery inputs, validating target/fo
 ## Precise specifications
 
 The Query and Routing Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#query-and-routing-query-and-routing-agent-flow).
+[execution and record contracts](execution-reference.md#query-and-routing-query-and-routing-agent-graph).
 These companions are part of the same complete Module specification, not separate topic owners.

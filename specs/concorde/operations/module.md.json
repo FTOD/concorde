@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "document": {
+    "id": "document.operations.module",
+    "owner": "module.operations",
+    "role": "module"
+  },
+  "entities": [
+    {
+      "id": "entity.operations.providers",
+      "title": "Operation providers",
+      "kind": "concept",
+      "meaning": "#entity.operations.providers"
+    }
+  ],
+  "dependencies": [],
+  "bindings": []
+}

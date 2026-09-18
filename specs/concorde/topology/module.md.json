@@ -11,7 +11,7 @@
       "title": "Topology adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/main.py",
+        "operations/main.py",
         "tests/concorde/harness/test_scoped_protocol.py"
       ],
       "meaning": "#entity.topology.adapter"

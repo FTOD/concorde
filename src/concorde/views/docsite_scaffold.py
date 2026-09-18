@@ -10,19 +10,19 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from ..spec.changes import apply_files, file_change
+from ..spec.model import Finding, ToolResult
+from ..spec.repository import SpecError, SpecRepository
+from ..spec.typed_data import TypedDataError, checked_path, safe_path
 from .docsite_template import (
-    DocsiteTemplateError,
     TEMPLATE_ROOT,
     WORKFLOW_TEMPLATE,
+    DocsiteTemplateError,
     adapter_files,
     template_digest,
     verify_package_root,
     workflow_template,
 )
-from ..spec.typed_data import TypedDataError, checked_path, safe_path
-from ..spec.model import Finding, ToolResult
-from ..spec.changes import apply_files, file_change
-from ..spec.repository import SpecError, SpecRepository
 
 PROPOSAL_VERSION = 2
 SITE_IDENTITY_PATH = f"{TEMPLATE_ROOT}/site.json"
@@ -32,8 +32,12 @@ WORKFLOW_TARGET = ".github/workflows/deploy-docsite.yml"
 _ABSOLUTE_HTTP_URL = re.compile(r"^https?://\S+$")
 _ORIGIN_SECTION = 'remote "origin"'
 _SSH_GITHUB = re.compile(r"^git@github\.com:(?P<owner>[^/]+)/(?P<repo>.+?)(?:\.git)?$")
-_HTTPS_GITHUB = re.compile(r"^https://github\.com/(?P<owner>[^/]+)/(?P<repo>.+?)(?:\.git)?/?$")
-_GITHUB_REPOSITORY = re.compile(r"^https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)$")
+_HTTPS_GITHUB = re.compile(
+    r"^https://github\.com/(?P<owner>[^/]+)/(?P<repo>.+?)(?:\.git)?/?$"
+)
+_GITHUB_REPOSITORY = re.compile(
+    r"^https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)$"
+)
 
 
 def _default_package_root() -> Path:
@@ -85,7 +89,9 @@ def _origin_repository(root: Path) -> str | None:
     return None
 
 
-def _validate_identity_inputs(title: str | None, repository: str | None, url: str | None, base_url: str | None) -> list[str]:
+def _validate_identity_inputs(
+    title: str | None, repository: str | None, url: str | None, base_url: str | None
+) -> list[str]:
     errors: list[str] = []
     if title is not None and not title.strip():
         errors.append("--title must be non-empty")
@@ -93,7 +99,9 @@ def _validate_identity_inputs(title: str | None, repository: str | None, url: st
         errors.append("--repository must be an absolute http(s):// URL")
     if url is not None and not _ABSOLUTE_HTTP_URL.match(url):
         errors.append("--url must be an absolute http(s):// URL")
-    if base_url is not None and not (base_url.startswith("/") and base_url.endswith("/")):
+    if base_url is not None and not (
+        base_url.startswith("/") and base_url.endswith("/")
+    ):
         errors.append("--base-url must start and end with '/'")
     return errors
 
@@ -125,7 +133,9 @@ def _resolve_identity(
             "or pass --repository/--url/--base-url explicitly.",
         )
     identity: dict[str, Any] = {
-        "baseUrl": base_url_override if base_url_override is not None else default_base_url,
+        "baseUrl": base_url_override
+        if base_url_override is not None
+        else default_base_url,
         "organizationName": organization_name,
         "projectName": project_name,
         "schema_version": 1,
@@ -143,11 +153,24 @@ def _proposal_entries(
     identity: dict[str, Any],
     github_pages: bool,
 ) -> list[dict[str, Any]]:
-    entries: list[dict[str, Any]] = [{"path": path, "content": content, "source": path} for path, content in adapter.items()]
-    identity_bytes = (json.dumps(identity, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    entries.append({"path": SITE_IDENTITY_PATH, "content": identity_bytes, "source": None})
+    entries: list[dict[str, Any]] = [
+        {"path": path, "content": content, "source": path}
+        for path, content in adapter.items()
+    ]
+    identity_bytes = (json.dumps(identity, indent=2, sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
+    entries.append(
+        {"path": SITE_IDENTITY_PATH, "content": identity_bytes, "source": None}
+    )
     if github_pages:
-        entries.append({"path": WORKFLOW_TARGET, "content": workflow_template(package), "source": WORKFLOW_SOURCE})
+        entries.append(
+            {
+                "path": WORKFLOW_TARGET,
+                "content": workflow_template(package),
+                "source": WORKFLOW_SOURCE,
+            }
+        )
     return sorted(entries, key=lambda entry: entry["path"])
 
 
@@ -162,24 +185,46 @@ def _detect_prerequisites(root: Path) -> list[dict[str, Any]]:
     prerequisites: list[dict[str, Any]] = []
     node = shutil.which("node")
     if node is None:
-        prerequisites.append({"name": "node", "status": "missing", "detail": "Node.js was not found on PATH."})
+        prerequisites.append(
+            {
+                "name": "node",
+                "status": "missing",
+                "detail": "Node.js was not found on PATH.",
+            }
+        )
     else:
         try:
-            result = subprocess.run([node, "--version"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                [node, "--version"], capture_output=True, text=True, timeout=5
+            )
             version = result.stdout.strip() or result.stderr.strip()
             match = re.match(r"v?(\d+)", version)
             major = int(match.group(1)) if match else 0
             if not match or major < 20:
                 prerequisites.append(
-                    {"name": "node", "status": "outdated", "detail": f"Node.js {version or 'unknown'} was found; Node.js 20 or newer is required."}
+                    {
+                        "name": "node",
+                        "status": "outdated",
+                        "detail": f"Node.js {version or 'unknown'} was found; Node.js 20 or newer is required.",
+                    }
                 )
             else:
-                prerequisites.append({"name": "node", "status": "present", "detail": version})
+                prerequisites.append(
+                    {"name": "node", "status": "present", "detail": version}
+                )
         except (OSError, subprocess.SubprocessError) as error:
-            prerequisites.append({"name": "node", "status": "missing", "detail": f"Node.js version check failed: {error}"})
+            prerequisites.append(
+                {
+                    "name": "node",
+                    "status": "missing",
+                    "detail": f"Node.js version check failed: {error}",
+                }
+            )
     npm = shutil.which("npm")
     if npm is None:
-        prerequisites.append({"name": "npm", "status": "missing", "detail": "npm was not found on PATH."})
+        prerequisites.append(
+            {"name": "npm", "status": "missing", "detail": "npm was not found on PATH."}
+        )
     else:
         prerequisites.append({"name": "npm", "status": "present", "detail": npm})
     return prerequisites
@@ -213,7 +258,11 @@ def propose_docsite(
     package_root: str | Path | None = None,
 ) -> ToolResult:
     root = Path(project_root).resolve()
-    package = Path(package_root).resolve() if package_root is not None else _default_package_root()
+    package = (
+        Path(package_root).resolve()
+        if package_root is not None
+        else _default_package_root()
+    )
 
     entry_title = _entry_module_title(root)
     if entry_title is None:
@@ -250,12 +299,19 @@ def propose_docsite(
         return ToolResult("docsite", ".", "invalid", findings=(finding,))
 
     resolved_title = title if title is not None else (entry_title.strip() or root.name)
-    resolved_repository = repository if repository is not None else _origin_repository(root)
-    identity, identity_finding = _resolve_identity(resolved_title, resolved_repository, url, base_url)
+    resolved_repository = (
+        repository if repository is not None else _origin_repository(root)
+    )
+    identity, identity_finding = _resolve_identity(
+        resolved_title, resolved_repository, url, base_url
+    )
 
     adapter = adapter_files(package)
     entries = _proposal_entries(package, adapter, identity, github_pages)
-    files = [_file_entry(entry["path"], entry["content"], entry["source"]) for entry in entries]
+    files = [
+        _file_entry(entry["path"], entry["content"], entry["source"])
+        for entry in entries
+    ]
     conflicts = [
         {"path": entry["path"], "reason": "target already exists"}
         for entry in entries
@@ -278,7 +334,8 @@ def propose_docsite(
 
     result = {"proposal": proposal, "prerequisites": prerequisites}
     exact = [
-        (root / entry["path"]).is_file() and (root / entry["path"]).read_bytes() == entry["content"]
+        (root / entry["path"]).is_file()
+        and (root / entry["path"]).read_bytes() == entry["content"]
         for entry in entries
     ]
     if all(exact):
@@ -290,15 +347,26 @@ def propose_docsite(
             findings=tuple(findings),
             result=result,
         )
-    return ToolResult("docsite", ".", "proposal", findings=tuple(findings), result=result)
+    return ToolResult(
+        "docsite", ".", "proposal", findings=tuple(findings), result=result
+    )
 
 
-def _load_accepted(root: Path, package: Path, proposal_path: str) -> tuple[dict[str, bytes], dict[str, Any], bool, str]:
+def _load_accepted(
+    root: Path, package: Path, proposal_path: str
+) -> tuple[dict[str, bytes], dict[str, Any], bool, str]:
     path = checked_path(root, safe_path(proposal_path))
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"cannot read accepted docsite proposal: {error}") from error
+    if not isinstance(value, dict):
+        raise ValueError("accepted docsite proposal must be an object")
     value = value.get("result", {}).get("proposal", value.get("proposal", value))
     if not isinstance(value, dict) or value.get("proposal_version") != PROPOSAL_VERSION:
-        raise ValueError("unsupported or missing proposal_version; regenerate with docsite --propose (proposal version 2)")
+        raise ValueError(
+            "unsupported or missing proposal_version; regenerate with docsite --propose (proposal version 2)"
+        )
     files = value.get("files")
     if not isinstance(files, list) or not files:
         raise ValueError("proposal files must be a non-empty list")
@@ -314,16 +382,22 @@ def _load_accepted(root: Path, package: Path, proposal_path: str) -> tuple[dict[
     adapter = adapter_files(package)
     actual_digest = template_digest(adapter)
     if actual_digest != value.get("template_digest"):
-        raise ValueError("package bytes are stale relative to the accepted proposal template digest")
+        raise ValueError(
+            "package bytes are stale relative to the accepted proposal template digest"
+        )
 
     # Reconstruct the sole permitted inventory before touching any destination.
     # Equality also enforces ordering, uniqueness, closed entry shapes, mappings,
     # identity serialization and the current content hashes.
     entries = _proposal_entries(package, adapter, identity, github_pages)
-    expected = [_file_entry(entry["path"], entry["content"], entry["source"])
-                for entry in entries]
+    expected = [
+        _file_entry(entry["path"], entry["content"], entry["source"])
+        for entry in entries
+    ]
     if files != expected:
-        raise ValueError("proposal files must match the complete exact scaffold inventory and content hashes")
+        raise ValueError(
+            "proposal files must match the complete exact scaffold inventory and content hashes"
+        )
     resolved = {entry["path"]: entry["content"] for entry in entries}
     return resolved, identity, github_pages, actual_digest
 
@@ -335,10 +409,23 @@ def apply_docsite(
     package_root: str | Path | None = None,
 ) -> ToolResult:
     root = Path(project_root).resolve()
-    package = Path(package_root).resolve() if package_root is not None else _default_package_root()
+    package = (
+        Path(package_root).resolve()
+        if package_root is not None
+        else _default_package_root()
+    )
     try:
-        resolved, identity, github_pages, digest = _load_accepted(root, package, proposal_path)
-    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError, DocsiteTemplateError) as error:
+        resolved, identity, github_pages, digest = _load_accepted(
+            root, package, proposal_path
+        )
+    except (
+        OSError,
+        KeyError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+        DocsiteTemplateError,
+    ) as error:
         finding = Finding(
             "CONCORDE-DOCSITE-004",
             "error",
@@ -363,7 +450,11 @@ def apply_docsite(
             ".",
             "unchanged",
             tuple(sorted(resolved)),
-            result={"identity": identity, "template_digest": digest, "github_pages": github_pages},
+            result={
+                "identity": identity,
+                "template_digest": digest,
+                "github_pages": github_pages,
+            },
         )
     if any(state != "missing" for state in states.values()):
         findings = tuple(
@@ -382,10 +473,17 @@ def apply_docsite(
             ".",
             "conflict",
             findings=findings,
-            result={"conflicts": [path for path, state in sorted(states.items()) if state != "missing"]},
+            result={
+                "conflicts": [
+                    path for path, state in sorted(states.items()) if state != "missing"
+                ]
+            },
         )
     try:
-        changes = [file_change(root, path, content.decode("utf-8")) for path, content in sorted(resolved.items())]
+        changes = [
+            file_change(root, path, content.decode("utf-8"))
+            for path, content in sorted(resolved.items())
+        ]
         created = apply_files(root, changes, set(resolved))
     except (OSError, SpecError, TypedDataError, UnicodeError) as error:
         finding = Finding(
@@ -401,5 +499,10 @@ def apply_docsite(
         ".",
         "success",
         tuple(created),
-        result={"created": created, "identity": identity, "template_digest": digest, "github_pages": github_pages},
+        result={
+            "created": created,
+            "identity": identity,
+            "template_digest": digest,
+            "github_pages": github_pages,
+        },
     )

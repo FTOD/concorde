@@ -48,4 +48,4 @@ See [only one agent writes to primary](requirements.md#req.development.single-pr
 - WHEN final merging runs
 - THEN the host blocks the merge with `merge_conflict` or `failed_merge_checks`, preserves the delivered branch, and leaves the primary branch, index and project files unchanged
 
-The detailed contract is [Participating-session delivery](execution-reference.md#delivery-delivery-capability).
+The detailed contract is [Participating-session delivery](execution-reference.md#delivery-delivery-operation).

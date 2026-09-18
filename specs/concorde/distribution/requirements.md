@@ -47,7 +47,7 @@ Build SHALL render the source checkout's own Claude Skill projections as user-in
 hidden from model-initiated invocation.
 
 Developing the Concorde checkout is direct developer-authorized maintenance by default; a Concorde
-flow runs on the checkout only when the developer explicitly asks for it. The installed consumer
+graph runs on the checkout only when the developer explicitly asks for it. The installed consumer
 projection is unaffected and stays model-invocable.
 
 ### req.distribution.root-block-ownership — Root rule ownership is block-scoped

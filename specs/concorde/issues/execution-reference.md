@@ -1,6 +1,6 @@
 # Issues execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Issues Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -21,15 +21,15 @@ and transitions are retained here as the single detailed contract.
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Issue records and reporting {#issues-issue-records-and-reporting}
 
-Issues are branch-local problem records, not implementation tasks or flow-control signals. A
+Issues are branch-local problem records, not implementation tasks or graph-control signals. A
 reporter classifies a concrete observation as `bug`, `gap` or `limitation`. A bug is a defect,
 vulnerability or failure; a gap is an implementation/Spec mismatch, a conflict between Specs, or
 a missing necessary contract; a limitation is an internally consistent current behavior whose
-capability or usability is insufficient. Prefer gap when an explicit consistency conflict is the
+operation or usability is insufficient. Prefer gap when an explicit consistency conflict is the
 subject of the report. Only gap has a subtype: `implementation-spec-mismatch`, `spec-conflict` or
 `missing-contract`. Classification may change with new evidence without replacing the issue.
 
@@ -39,7 +39,7 @@ The Issue store retains its stable document and entity identities through transf
 Module; the legacy identity spelling does not preserve a triage API. It owns durable observations and disposition history under `.concorde/issues/`.
 Reports contain a title, description, impact, basis, admitted evidence locations and the known
 contract owner's Module identity, or null when unknown. The trusted caller supplies invocation,
-agent, capability, phase, reporting target, context digest, optional change and HEAD. Reporting
+agent, operation, phase, reporting target, context digest, optional change and HEAD. Reporting
 context and contract ownership remain distinct. Creating a record does not require a managed change,
 a reproduction verdict, an investigation plan, a repair proposal or human approval.
 
@@ -75,12 +75,20 @@ nothing. Unknown identities, malformed records, mismatched digests and symlink p
 `resolve_report(root, receipt)` retrieves the immutable observation rather than silently using the
 latest issue description. These host library operations neither launch a model nor execute Git.
 
-Each UTF-8 Markdown file has an identity heading and a single JSON fence containing the version-1
+Each UTF-8 Markdown file has an identity heading and a single JSON fence containing the version-2
 record: `id`, `status`, `reports`, `dispositions` and `schema_version`. The JSON is the sole record
 content, not a duplicate prose projection. A report stores its id, timestamp, report payload and
 source. Dispositions preserve reason, note, evidence references, actor, timestamp and nullable
 duplicate target. Record status must agree with disposition history. Editing an immutable report
 without reconciling its digest is invalid; append new observations instead.
+
+Schema 2 uses `operation` in host-issued provenance. Historical schema-1 records retain the old
+`capability` storage field and remain readable, with their exact bytes, identities and observation
+digests unchanged. This is historical evidence support, not a current wire alias. Append,
+disposition, rendering as current data and disposition recovery refuse schema 1 with
+`unsupported_issue_version`. To continue work, explicitly create a new current Issue with evidence
+referencing the historical record; do not rewrite old observations or claim they were resolved.
+Unknown versions and corrupted historical records remain invalid.
 
 ### Worker reporting service {#issues-worker-reporting-service}
 
@@ -146,8 +154,8 @@ an agent tool or a general-purpose record editing grant. See [recovery](scenario
 The store cannot establish semantic truth from an evidence string. Merely not reproducing once,
 using a workaround, writing code without validation or completing an unrelated task is not a
 resolution. Disposition never substitutes for required review or final candidate verification.
-An authorized solving flow may make evidence-grounded dispositions without mandatory human
-approval; genuinely unresolved design or product decisions remain for the developer. Solving-flow
+An authorized solving graph may make evidence-grounded dispositions without mandatory human
+approval; genuinely unresolved design or product decisions remain for the developer. Solving-graph
 admission and verification are separate from this storage boundary.
 
 ### Precise specifications {#issues-precise-specifications}
@@ -215,7 +223,7 @@ Candidate-local completion does not mean primary was changed; delivery remains s
 
 ### Design {#lifecycle-design}
 
-#### Issue Flow (`issue_flow`) {#lifecycle-issue-flow-issue-flow}
+#### Issue Graph (`issue_graph`) {#lifecycle-issue-graph-issue-graph}
 
 State: `route`, `output` and the guarded failure `result`. Selected record bytes, decision count, intended behavior and current
 verification are bound by the host; durable attempt history belongs to the candidate.
@@ -228,7 +236,7 @@ verification are bound by the host; durable attempt history belongs to the candi
 | `reopen` | Deterministic explicit reopening. | revision, note | output |
 | `prepare` | Deterministic selection, pending-disposition recovery and attempt binding. | selected issue | route |
 | `decide` | One fresh Issue solver invocation. | problem, Spec, evidence | route |
-| `develop` | Ordinary [Development Flow](../dev-loop/module.md). | intended behavior | route |
+| `develop` | Ordinary [Development Graph](../dev-loop/module.md). | intended behavior | route |
 | `repair_spec` | Ordinary owner-only [Spec Authoring](../spec-authoring/module.md). | intended contract | route |
 | `verify` | Fresh Issue-specific reviews. | problem, current inputs | route |
 | `close` | Deterministic write-ahead journaling and disposition with stale checks. | decision, evidence | disposition |
@@ -237,7 +245,7 @@ verification are bound by the host; durable attempt history belongs to the candi
 
 ```mermaid
 flowchart TB
-    %% flow: issue_flow
+    %% graph: issue_graph
     accTitle: Bounded Issue solving
     accDescr: Explicit operations select read-only inspection, reporting, reopening or bounded solving. Decisions compose ordinary providers, disposition precedes final validation, and no edge delivers the candidate.
     __start__["start"]
@@ -287,23 +295,23 @@ flowchart TB
     finish --> __end__
 ```
 
-#### Issue verification Flow (`issue_verification_flow`) {#lifecycle-issue-verification-flow-issue-verification-flow}
+#### Issue verification Graph (`issue_verification_graph`) {#lifecycle-issue-verification-graph-issue-verification-graph}
 
 Verification uses a bounded review list: Issue-specific Spec/code questions first, then the ordinary
 candidate review intents required for final readiness. Code-free Modules need only Spec review.
 The distinction preserves both targeted verification and the ordinary source/consumer freshness
 gates; a private targeted review cannot replace another task's required review. Each item is a
-separate [Review Module](../review/module.md) capability invocation, and a blocked or failed item prevents dependent items.
+separate [Review Module](../review/module.md) operation invocation, and a blocked or failed item prevents dependent items.
 
 State: `index`, `stop` and `output`. The host owns the finite list and its review input bindings.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `review_item` | One ordinary Review capability for the selected mode and intent. | index, review list | index, stop, output |
+| `review_item` | One ordinary Review operation for the selected mode and intent. | index, review list | index, stop, output |
 
 ```mermaid
 flowchart TB
-    %% flow: issue_verification_flow
+    %% graph: issue_verification_graph
     accTitle: Issue verification sequence
     accDescr: One review runs per transition. Failure stops the sequence and completion advances until every admitted review is covered.
     __start__["start"]

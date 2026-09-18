@@ -1,4 +1,5 @@
 """Worker definitions: profile validation, child definitions and reproducible build-bound bindings."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -15,10 +16,14 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
+from concorde.distribution.build import (  # noqa: E402
+    BuildError,
+    load_model_instructions,
+    write_build,
+)
 from concorde.harness import worker_profile as profiles  # noqa: E402
 from concorde.harness.worker_profile import (  # noqa: E402
     Child,
-    worker_profile,
     binding_digest,
     binding_from_json,
     binding_json,
@@ -26,13 +31,13 @@ from concorde.harness.worker_profile import (  # noqa: E402
     profile_digest,
     resolve_worker,
     validate_worker_profile,
+    worker_profile,
 )
-from concorde.distribution.build import BuildError, load_model_instructions, write_build  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 
 
 def _package(root: Path) -> None:
-    for directory in ("prompts", "protocol", "skills", "capabilities"):
+    for directory in ("prompts", "protocol", "skills", "operations"):
         shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
 
 
@@ -48,7 +53,9 @@ class ResolveAgentBuildTests(unittest.TestCase):
 
     @verifies("scenario.harness.agent-bind")
     def test_resolve_agent_succeeds_for_every_inventory_worker(self):
-        manifest = json.loads((self.root / "generated/build-manifest.json").read_text(encoding="utf-8"))
+        manifest = json.loads(
+            (self.root / "generated/build-manifest.json").read_text(encoding="utf-8")
+        )
         inventory = profiles.load_worker_profiles()
         self.assertEqual(12, len(inventory))
         for name in inventory:
@@ -56,20 +63,31 @@ class ResolveAgentBuildTests(unittest.TestCase):
                 agent = worker_profile(name)
                 binding = resolve_worker(self.root, name)
                 self.assertEqual(binding.agent, name)
-                self.assertEqual(binding.spec_path, f"capabilities/{name}/spec.md")
-                self.assertEqual(binding.spec_digest, manifest["sources"][binding.spec_path])
+                self.assertEqual(binding.spec_path, f"operations/{name}/spec.md")
+                self.assertEqual(
+                    binding.spec_digest, manifest["sources"][binding.spec_path]
+                )
                 for child in agent.children:
                     self.assertIn(child.definition, manifest["sources"])
                 hyphenated = name.replace("_", "-")
                 rendered = self.root / f"generated/agents/{hyphenated}.md"
-                self.assertEqual(binding.instructions_path, f"generated/agents/{hyphenated}.md")
-                self.assertEqual(binding.instructions_digest, "sha256:" + hashlib.sha256(rendered.read_bytes()).hexdigest())
+                self.assertEqual(
+                    binding.instructions_path, f"generated/agents/{hyphenated}.md"
+                )
+                self.assertEqual(
+                    binding.instructions_digest,
+                    "sha256:" + hashlib.sha256(rendered.read_bytes()).hexdigest(),
+                )
                 # One rendered view: the common worker rules, then this worker's own role Spec.
                 text = rendered.read_text(encoding="utf-8")
                 self.assertIn(f"# concorde-{hyphenated}", text)
-                self.assertLess(text.index("submit_result"), text.index(f"# concorde-{hyphenated}"))
+                self.assertLess(
+                    text.index("submit_result"), text.index(f"# concorde-{hyphenated}")
+                )
                 self.assertEqual(binding.timeout_seconds, agent.timeout_seconds)
-                self.assertEqual(binding.profile_digest, profile_digest(self.root, agent))
+                self.assertEqual(
+                    binding.profile_digest, profile_digest(self.root, agent)
+                )
                 self.assertEqual(binding.digest, binding_digest(binding))
                 self.assertEqual(binding, binding_from_json(binding_json(binding)))
 
@@ -90,8 +108,11 @@ class ResolveAgentBuildTests(unittest.TestCase):
     @verifies("scenario.harness.agent-bind")
     def test_a_changed_child_definition_changes_the_profile_and_stales_the_build(self):
         before = resolve_worker(self.root, "programmer")
-        scout = self.root / "capabilities/programmer/children/scout.md"
-        scout.write_text(scout.read_text(encoding="utf-8") + "\nPrefer exact file names.\n", encoding="utf-8")
+        scout = self.root / "operations/programmer/children/scout.md"
+        scout.write_text(
+            scout.read_text(encoding="utf-8") + "\nPrefer exact file names.\n",
+            encoding="utf-8",
+        )
         with self.assertRaises(BuildError) as failure:
             resolve_worker(self.root, "programmer")
         self.assertEqual("stale_build", failure.exception.code)
@@ -130,21 +151,52 @@ class ProfileValidationTests(unittest.TestCase):
         effects = planner.contract.effects
         contract = planner.contract
         for label, agent in {
-            "edit without a write effect": dataclasses.replace(planner, tools=(*planner.tools, "edit")),
-            "unknown tool": dataclasses.replace(planner, tools=(*planner.tools, "web_fetch")),
-            "duplicate tool": dataclasses.replace(planner, tools=(*planner.tools, "read")),
+            "edit without a write effect": dataclasses.replace(
+                planner, tools=(*planner.tools, "edit")
+            ),
+            "unknown tool": dataclasses.replace(
+                planner, tools=(*planner.tools, "web_fetch")
+            ),
+            "duplicate tool": dataclasses.replace(
+                planner, tools=(*planner.tools, "read")
+            ),
             "no read tool": dataclasses.replace(planner, tools=("grep",)),
-            "implementation in a capsule": dataclasses.replace(planner, contract=dataclasses.replace(
-                contract, effects=dataclasses.replace(effects, reads=(*effects.reads, "implementation")))),
-            "network": dataclasses.replace(planner, contract=dataclasses.replace(
-                contract, effects=dataclasses.replace(effects, network=True))),
-            "mismatched result": dataclasses.replace(planner, contract=dataclasses.replace(
-                contract, result="concorde-review-stage-result")),
-            "required input not admitted": dataclasses.replace(planner, contract=dataclasses.replace(
-                contract, required_inputs=("concorde-implementation-task",))),
-            "wrong spec path": dataclasses.replace(planner, spec="capabilities/other/spec.md"),
-            "child outside its directory": dataclasses.replace(planner, children=(Child("scout", "capabilities/scout.md"),)),
-            "child declared twice": dataclasses.replace(programmer, children=(*programmer.children, programmer.children[0])),
+            "implementation in a capsule": dataclasses.replace(
+                planner,
+                contract=dataclasses.replace(
+                    contract,
+                    effects=dataclasses.replace(
+                        effects, reads=(*effects.reads, "implementation")
+                    ),
+                ),
+            ),
+            "network": dataclasses.replace(
+                planner,
+                contract=dataclasses.replace(
+                    contract, effects=dataclasses.replace(effects, network=True)
+                ),
+            ),
+            "mismatched result": dataclasses.replace(
+                planner,
+                contract=dataclasses.replace(
+                    contract, result="concorde-review-stage-result"
+                ),
+            ),
+            "required input not admitted": dataclasses.replace(
+                planner,
+                contract=dataclasses.replace(
+                    contract, required_inputs=("concorde-implementation-task",)
+                ),
+            ),
+            "wrong spec path": dataclasses.replace(
+                planner, spec="operations/other/spec.md"
+            ),
+            "child outside its directory": dataclasses.replace(
+                planner, children=(Child("scout", "operations/scout.md"),)
+            ),
+            "child declared twice": dataclasses.replace(
+                programmer, children=(*programmer.children, programmer.children[0])
+            ),
             "zero timeout": dataclasses.replace(planner, timeout_seconds=0),
             "unknown workspace": dataclasses.replace(planner, workspace="container"),
         }.items():
@@ -154,21 +206,34 @@ class ProfileValidationTests(unittest.TestCase):
             validate_worker_profile(worker_profile(name))
 
     @verifies("scenario.harness.agent-bind-reject")
-    def test_child_definitions_are_checked_and_leave_model_selection_to_configuration(self):
+    def test_child_definitions_are_checked_and_leave_model_selection_to_configuration(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            shutil.copytree(REPOSITORY_ROOT / "capabilities", root / "capabilities")
+            shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
             programmer = worker_profile("programmer")
-            self.assertEqual({"scout", "planner", "verifier"}, {item.name for item in child_definitions(root, programmer)})
-            verifier = root / "capabilities/programmer/children/verifier.md"
+            self.assertEqual(
+                {"scout", "planner", "verifier"},
+                {item.name for item in child_definitions(root, programmer)},
+            )
+            verifier = root / "operations/programmer/children/verifier.md"
             original = verifier.read_text(encoding="utf-8")
             forged = {
-                "a model": original.replace("---\n", "---\nmodel: openai-codex/gpt-6-astra\n", 1),
-                "a thinking level": original.replace("---\n", "---\nthinking: high\n", 1),
-                "a tool outside the child set": original.replace("run_checks", "run_checks, edit", 1),
-                "inherited project context": original.replace("inheritProjectContext: false", "inheritProjectContext: true"),
+                "a model": original.replace(
+                    "---\n", "---\nmodel: openai-codex/gpt-6-astra\n", 1
+                ),
+                "a thinking level": original.replace(
+                    "---\n", "---\nthinking: high\n", 1
+                ),
+                "a tool outside the child set": original.replace(
+                    "run_checks", "run_checks, edit", 1
+                ),
+                "inherited project context": original.replace(
+                    "inheritProjectContext: false", "inheritProjectContext: true"
+                ),
                 "another name": original.replace("name: verifier", "name: tester"),
-                "no prompt": original[:original.index("---", 3) + 4],
+                "no prompt": original[: original.index("---", 3) + 4],
             }
             for label, text in forged.items():
                 with self.subTest(label):
@@ -181,9 +246,13 @@ class ProfileValidationTests(unittest.TestCase):
             with self.assertRaises(BuildError):
                 child_definitions(root, programmer)
             # A capsule worker's children cannot run host checks.
-            scout = root / "capabilities/planner/children/scout.md"
-            scout.write_text(scout.read_text(encoding="utf-8").replace("tools: read", "tools: run_checks, read", 1),
-                             encoding="utf-8")
+            scout = root / "operations/planner/children/scout.md"
+            scout.write_text(
+                scout.read_text(encoding="utf-8").replace(
+                    "tools: read", "tools: run_checks, read", 1
+                ),
+                encoding="utf-8",
+            )
             with self.assertRaises(BuildError):
                 child_definitions(root, worker_profile("planner"))
 
@@ -194,10 +263,16 @@ class ProfileValidationTests(unittest.TestCase):
             _package(root)
             write_build(root, "all")
             modified = dict(profiles.load_worker_profiles())
-            modified["router"] = dataclasses.replace(modified["router"], tools=("read", "write"))
-            with mock.patch.object(profiles, "load_worker_profiles", return_value=modified):
-                with self.assertRaises(BuildError) as failure:
-                    resolve_worker(root, "router")
+            modified["router"] = dataclasses.replace(
+                modified["router"], tools=("read", "write")
+            )
+            with (
+                mock.patch.object(
+                    profiles, "load_worker_profiles", return_value=modified
+                ),
+                self.assertRaises(BuildError) as failure,
+            ):
+                resolve_worker(root, "router")
             self.assertEqual("invalid_agent_binding", failure.exception.code)
 
 

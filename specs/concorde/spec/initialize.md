@@ -1,6 +1,6 @@
 # Project initialization
 
-This document defines `concorde-init`'s propose/apply behavior. [module](module.md) introduces the Module; [registry](registry.md) and [values](values.md) define the general query and value records this capability builds on.
+This document defines `concorde-init`'s propose/apply behavior. [module](module.md) introduces the Module; [registry](registry.md) and [values](values.md) define the general query and value records this operation builds on.
 
 ## Terminology
 
@@ -33,7 +33,7 @@ maintenance or topology changes, not reinitialization, to migrate their document
 ### Protocol compatibility and initialization
 
 New registries use schema 5 with explicit empty `references` on the initial Module; the stub's
-schema-2 document metadata names its single `owner` and explicit `role: module`. Initialization pins Protocol 9.0.0/Profile 14 and
+schema-2 document metadata names its single `owner` and explicit `role: module`. Initialization pins Protocol 10.0.0/Profile 15 and
 the exact manifest digest of the Protocol copy the [Distribution Module](../distribution/module.md) installer placed under `.concorde/protocol/`;
 it creates no Protocol file itself and fails with `not_installed` when that copy is absent. Later
 installations update the copy but never the binding, which the developer moves explicitly with

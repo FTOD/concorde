@@ -29,7 +29,7 @@ context, even when a site omits it from its main page. Presentation does not sel
 A registry distinguishes these facts:
 
 - `parent`: at most one structural parent, with acyclic composition.
-- `uses`: directed capability dependencies, not ownership.
+- `uses`: directed dependencies on provider Modules, not ownership or an execution graph.
 - `documents`: solely owned document units named by their reading paths.
 - `references`: explicitly included Module collections, individual document units or external material.
 - `files`: the union of local entity implementation entries, exact paths and directory prefixes.

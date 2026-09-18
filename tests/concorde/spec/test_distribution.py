@@ -1,4 +1,5 @@
 """Installed source closure and both native completion adapters, with explicit process doubles."""
+
 import importlib.util
 import json
 import os
@@ -7,108 +8,249 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from concorde.spec.contracts import CAPABILITY_NAMES,MODEL_CAPABILITIES,contracts
-from concorde.distribution.package_validation import validate_package
+
 from concorde.distribution.build import load_model_instructions
-from concorde.spec.typed_data import typed
+from concorde.distribution.package_validation import validate_package
+from concorde.spec.contracts import MODEL_OPERATIONS, OPERATION_NAMES, contracts
 from concorde.spec.repository import SpecRepository
+from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
+
+from .support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
+
 
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
-        self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(26,len(CAPABILITY_NAMES));self.assertEqual(12,len(MODEL_CAPABILITIES))
-        self.assertIn('concorde-main',CAPABILITY_NAMES);self.assertNotIn('concorde-ask',CAPABILITY_NAMES)
-        self.assertIn('concorde-planner',MODEL_CAPABILITIES);self.assertNotIn('concorde-main',MODEL_CAPABILITIES)
-        for role in MODEL_CAPABILITIES:
-            prompt=load_model_instructions(PACKAGE,role)
-            self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
-    @verifies("scenario.spec.admit-inventory", "scenario.spec.shared-file", "scenario.spec.validate-success")
+        self.assertEqual([], validate_package(PACKAGE))
+        self.assertEqual(26, len(OPERATION_NAMES))
+        self.assertEqual(12, len(MODEL_OPERATIONS))
+        self.assertIn("concorde-main", OPERATION_NAMES)
+        self.assertNotIn("concorde-ask", OPERATION_NAMES)
+        self.assertIn("concorde-planner", MODEL_OPERATIONS)
+        self.assertNotIn("concorde-main", MODEL_OPERATIONS)
+        for role in MODEL_OPERATIONS:
+            prompt = load_model_instructions(PACKAGE, role)
+            self.assertEqual(role, prompt.name)
+            self.assertTrue(prompt.body.strip())
+            self.assertIsNotNone(prompt.effects)
+
+    @verifies(
+        "scenario.spec.admit-inventory",
+        "scenario.spec.shared-file",
+        "scenario.spec.validate-success",
+    )
     def test_self_architecture_lists_every_implementation_file_under_an_entity(self):
-        repo=SpecRepository(PACKAGE);report=validate_repository(PACKAGE)
-        self.assertEqual('success',report.status,[f.message for f in report.findings])
-        self.assertEqual(17,len(repo.targets));self.assertTrue(all(t.kind=='module' for t in repo.targets.values()))
-        self.assertEqual('module.concorde',repo.select('module.views').parent)
-        self.assertIn('scripts/run-ua-graph-viewer.py',repo.implementation_paths(repo.select('module.views')))
+        repo = SpecRepository(PACKAGE)
+        report = validate_repository(PACKAGE)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        self.assertEqual(18, len(repo.targets))
+        self.assertTrue(all(t.kind == "module" for t in repo.targets.values()))
+        self.assertEqual("module.concorde", repo.select("module.views").parent)
+        self.assertIn(
+            "scripts/run-ua-graph-viewer.py",
+            repo.implementation_paths(repo.select("module.views")),
+        )
         for target in repo.targets.values():
-            self.assertEqual(list(target.files),sorted(repo.entity_files(target)))
-        shared=[path for path,users in repo.file_users.items() if len(users)>1]
-        self.assertTrue(shared,'the self-hosted project shares implementation files between Modules')
+            self.assertEqual(list(target.files), sorted(repo.entity_files(target)))
+        shared = [path for path, users in repo.file_users.items() if len(users) > 1]
+        self.assertTrue(
+            shared,
+            "the self-hosted project shares implementation files between Modules",
+        )
         for path in shared:
-            self.assertEqual(set(repo.listing_users(path)),
-                             {t.id for t in repo.affected_modules([path])})
-        self.assertEqual({'module.development', 'module.dev-loop', 'module.specify-loop', 'module.spec-authoring'},
-                         {t.id for t in repo.affected_modules(['tests/concorde/development/test_specify_loop.py'])})
-        text='\n'.join(repo.source_bytes(path).decode() for path in repo.spec_files('module.development'))
-        for op in contracts():self.assertIn(op+'-request',text)
-    def test_launcher_refuses_a_nonpublic_capability_name_and_accepts_a_public_skill(self):
+            self.assertEqual(
+                set(repo.listing_users(path)),
+                {t.id for t in repo.affected_modules([path])},
+            )
+        self.assertEqual(
+            {
+                "module.development",
+                "module.dev-loop",
+                "module.specify-loop",
+                "module.spec-authoring",
+            },
+            {
+                t.id
+                for t in repo.affected_modules(
+                    ["tests/concorde/development/test_specify_loop.py"]
+                )
+            },
+        )
+        text = "\n".join(
+            repo.source_bytes(path).decode()
+            for path in repo.spec_files("module.development")
+        )
+        for op in contracts():
+            self.assertIn(op + "-request", text)
+
+    def test_launcher_refuses_a_nonpublic_operation_name_and_accepts_a_public_skill(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);project(root)
-            launcher=str(PACKAGE/'scripts/run-capability.py')
-            internal_command=[sys.executable,launcher,'concorde-plan']
-            internal_value={'type_id':'concorde-capability-invocation','schema_version':3,'capability_id':'concorde-plan','mode':'execute','configuration':None,'input':typed('concorde-plan-request',{'target_id':'service.transfer','task':'Explain transfer'})}
-            result=subprocess.run(internal_command,input=json.dumps(internal_value),capture_output=True,text=True,cwd=root)
-            self.assertEqual(3,result.returncode,result.stdout+result.stderr)
-            output=json.loads(result.stdout)
-            self.assertEqual('blocked',output['status']);self.assertEqual('unknown_capability',output['errors'][0]['code'])
-            public_command=[sys.executable,launcher,'concorde-validate']
-            public_value={'type_id':'concorde-capability-invocation','schema_version':3,'capability_id':'concorde-validate','mode':'describe-policy','configuration':None,'input':typed('concorde-validate-request',{'target_id':'service.transfer','task':'Explain transfer'})}
-            result=subprocess.run(public_command,input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
-            self.assertEqual(0,result.returncode,result.stdout+result.stderr)
-            self.assertEqual('described',json.loads(result.stdout)['status'])
-            result=subprocess.run(public_command+['--feature-path','specs/transfer/module.md'],input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
-            self.assertEqual(3,result.returncode);self.assertEqual('blocked',json.loads(result.stdout)['status'])
-    def test_installed_framework_runs_complete_real_graph_and_checks_for_both_integrations(self):
-        spec=importlib.util.spec_from_file_location('protocol7_installer',PACKAGE/'scripts/install-concorde.py')
+            root = Path(directory)
+            project(root)
+            launcher = str(PACKAGE / "scripts/run-operation.py")
+            internal_command = [sys.executable, launcher, "concorde-plan"]
+            internal_value = {
+                "type_id": "concorde-operation-invocation",
+                "schema_version": 3,
+                "operation_id": "concorde-plan",
+                "mode": "execute",
+                "configuration": None,
+                "input": typed(
+                    "concorde-plan-request",
+                    {"target_id": "service.transfer", "task": "Explain transfer"},
+                ),
+            }
+            result = subprocess.run(
+                internal_command,
+                input=json.dumps(internal_value),
+                capture_output=True,
+                text=True,
+                cwd=root,
+            )
+            self.assertEqual(3, result.returncode, result.stdout + result.stderr)
+            output = json.loads(result.stdout)
+            self.assertEqual("blocked", output["status"])
+            self.assertEqual("unknown_operation", output["errors"][0]["code"])
+            public_command = [sys.executable, launcher, "concorde-validate"]
+            public_value = {
+                "type_id": "concorde-operation-invocation",
+                "schema_version": 3,
+                "operation_id": "concorde-validate",
+                "mode": "describe-policy",
+                "configuration": None,
+                "input": typed(
+                    "concorde-validate-request",
+                    {"target_id": "service.transfer", "task": "Explain transfer"},
+                ),
+            }
+            result = subprocess.run(
+                public_command,
+                input=json.dumps(public_value),
+                capture_output=True,
+                text=True,
+                cwd=root,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("described", json.loads(result.stdout)["status"])
+            result = subprocess.run(
+                public_command + ["--feature-path", "specs/transfer/module.md"],
+                input=json.dumps(public_value),
+                capture_output=True,
+                text=True,
+                cwd=root,
+            )
+            self.assertEqual(3, result.returncode)
+            self.assertEqual("blocked", json.loads(result.stdout)["status"])
+
+    def test_installed_framework_runs_complete_real_graph_and_checks_for_both_integrations(
+        self,
+    ):
+        spec = importlib.util.spec_from_file_location(
+            "protocol7_installer", PACKAGE / "scripts/install-concorde.py"
+        )
         assert spec is not None and spec.loader is not None
-        module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)
-        package=module.load_package(PACKAGE)
-        for integration in ('claude','codex'):
-            with self.subTest(integration=integration),tempfile.TemporaryDirectory() as directory:
-                root=Path(directory)
-                for path,(content,role) in module.desired_outputs(package,integration).items():
-                    p=root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(content)
-                driver=root/'driver.py';driver.write_text('''import importlib.util,json,sys
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        package = module.load_package(PACKAGE)
+        for integration in ("claude", "codex"):
+            with (
+                self.subTest(integration=integration),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                for path, (content, role) in module.desired_outputs(
+                    package, integration
+                ).items():
+                    p = root / path
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.write_bytes(content)
+                driver = root / "driver.py"
+                driver.write_text("""import importlib.util,json,sys
 from pathlib import Path
 root=Path.cwd();framework=root/'.concorde/framework';sys.path.insert(0,str(framework/'src'))
 spec=importlib.util.spec_from_file_location('model_process_fixture',sys.argv[1]);helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 helper.PACKAGE=framework
 from concorde.spec.typed_data import typed
 helper.project(root)
-from concorde.development.capability_service import CapabilityHost,run_capability
-import concorde.development.capability_host as actual_host
-model=helper.ModelProcessDouble();host=CapabilityHost(root,framework,executor=model.executor,allow_primary_worktree=True)
-spec_result=run_capability('concorde-specify-loop',None,typed('concorde-specify-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
+from concorde.development.operation_service import OperationHost,run_operation
+import concorde.development.operation_host as actual_host
+model=helper.ModelProcessDouble();host=OperationHost(root,framework,executor=model.executor,allow_primary_worktree=True)
+spec_result=run_operation('concorde-specify-loop',None,typed('concorde-specify-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
 spec_stages=[c['stage'] for c in model.calls]
-result=run_capability('concorde-dev-loop',None,typed('concorde-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
+result=run_operation('concorde-dev-loop',None,typed('concorde-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
 before=len(model.calls)
-ask=run_capability('concorde-main',None,typed('concorde-main-request',{'task':'Explain transfer'}),host_context=host)
+ask=run_operation('concorde-main',None,typed('concorde-main-request',{'task':'Explain transfer'}),host_context=host)
 print(json.dumps({'result':result,'spec_result':spec_result,'spec_stages':spec_stages,'ask':ask,'module_source':actual_host.__file__,
   'stages':[c['stage'] for c in model.calls[:before]],'ask_stages':[c['stage'] for c in model.calls[before:]]}))
-''')
-                completed=subprocess.run([sys.executable,str(driver),str(PACKAGE/'tests/concorde/spec/support.py'),integration],cwd=root,capture_output=True,text=True,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
-                self.assertEqual(0,completed.returncode,completed.stderr);value=json.loads(completed.stdout)
-                self.assertIn('.concorde/framework/src',value['module_source']);self.assertEqual('succeeded',value['result']['status'],value)
-                self.assertEqual('succeeded',value['spec_result']['status'],value)
-                self.assertEqual('completed',value['spec_result']['output']['data']['outcome'])
-                self.assertEqual(['specify','spec-review'],value['spec_stages'][-2:])
-                self.assertNotIn('plan',value['spec_stages'])
-                self.assertEqual(1,value['stages'].count('specify'))
-                self.assertEqual('ready',value['result']['output']['data']['outcome']);self.assertEqual('passed',value['result']['output']['data']['checks'][0]['status'])
-                self.assertEqual('succeeded',value['ask']['status'],value);self.assertEqual(['route','route'],value['ask_stages'])
+""")
+                completed = subprocess.run(
+                    [
+                        sys.executable,
+                        str(driver),
+                        str(PACKAGE / "tests/concorde/spec/support.py"),
+                        integration,
+                    ],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+                )
+                self.assertEqual(0, completed.returncode, completed.stderr)
+                value = json.loads(completed.stdout)
+                self.assertIn(".concorde/framework/src", value["module_source"])
+                self.assertEqual("succeeded", value["result"]["status"], value)
+                self.assertEqual("succeeded", value["spec_result"]["status"], value)
+                self.assertEqual(
+                    "completed", value["spec_result"]["output"]["data"]["outcome"]
+                )
+                self.assertEqual(["specify", "spec-review"], value["spec_stages"][-2:])
+                self.assertNotIn("plan", value["spec_stages"])
+                self.assertEqual(1, value["stages"].count("specify"))
+                self.assertEqual("ready", value["result"]["output"]["data"]["outcome"])
+                self.assertEqual(
+                    "passed", value["result"]["output"]["data"]["checks"][0]["status"]
+                )
+                self.assertEqual("succeeded", value["ask"]["status"], value)
+                self.assertEqual(["route", "route"], value["ask_stages"])
+
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
-        from concorde.development.capability_service import CapabilityHost,run_capability
+        from concorde.development.operation_service import OperationHost, run_operation
+
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);project(root);model=ModelProcessDouble();saved=[];replay=[False]
-            def executor(launch,*,checks=None,report_issue=None):
-                if replay[0]:return saved[0]
-                result=model.executor(launch,checks=checks,report_issue=report_issue)
-                if not saved:saved.append(result)
+            root = Path(directory)
+            project(root)
+            model = ModelProcessDouble()
+            saved = []
+            replay = [False]
+
+            def executor(launch, *, checks=None, report_issue=None):
+                if replay[0]:
+                    return saved[0]
+                result = model.executor(
+                    launch, checks=checks, report_issue=report_issue
+                )
+                if not saved:
+                    saved.append(result)
                 return result
-            host=CapabilityHost(root,PACKAGE,executor=executor,allow_primary_worktree=True)
-            task=typed('concorde-main-request',{'target_id':'service.transfer','task':'Explain transfer'})
-            first=run_capability('concorde-main',CONFIGURATION,task,host_context=host);replay[0]=True
-            second=run_capability('concorde-main',CONFIGURATION,task,host_context=host)
-            self.assertEqual('succeeded',first['status']);self.assertEqual('blocked',second['status']);self.assertEqual('invalid_completion',second['errors'][0]['code'])
+
+            host = OperationHost(
+                root, PACKAGE, executor=executor, allow_primary_worktree=True
+            )
+            task = typed(
+                "concorde-main-request",
+                {"target_id": "service.transfer", "task": "Explain transfer"},
+            )
+            first = run_operation(
+                "concorde-main", CONFIGURATION, task, host_context=host
+            )
+            replay[0] = True
+            second = run_operation(
+                "concorde-main", CONFIGURATION, task, host_context=host
+            )
+            self.assertEqual("succeeded", first["status"])
+            self.assertEqual("blocked", second["status"])
+            self.assertEqual("invalid_completion", second["errors"][0]["code"])

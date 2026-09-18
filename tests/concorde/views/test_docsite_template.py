@@ -12,18 +12,27 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.views.docsite_template import (  # noqa: E402
-    DocsiteTemplateError,
     SCAFFOLD_ONLY_DIRECTORIES,
     TEMPLATE_ROOT,
     WORKFLOW_TEMPLATE,
+    DocsiteTemplateError,
     adapter_files,
     template_digest,
     template_files,
     verify_package_root,
 )
 
-
-PACKAGE_ROOTS = ["capabilities", "docsite", "prompts", "protocol", "scripts", "skills", "src", "templates", "viewer"]
+PACKAGE_ROOTS = [
+    "operations",
+    "docsite",
+    "prompts",
+    "protocol",
+    "scripts",
+    "skills",
+    "src",
+    "templates",
+    "viewer",
+]
 
 
 def _write(path: Path, content: str) -> None:
@@ -33,7 +42,9 @@ def _write(path: Path, content: str) -> None:
 
 def write_fake_package(root: Path) -> None:
     (root / "concorde.json").write_text(
-        json.dumps({"schema_version": 2, "name": "concorde", "package_roots": PACKAGE_ROOTS}),
+        json.dumps(
+            {"schema_version": 2, "name": "concorde", "package_roots": PACKAGE_ROOTS}
+        ),
         encoding="utf-8",
     )
     _write(root / "docsite/docusaurus.config.ts", "export default {};\n")
@@ -66,7 +77,9 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
                     "docsite/scaffold/deploy-docsite.yml",
                 },
             )
-            self.assertEqual(files["docsite/docusaurus.config.ts"], b"export default {};\n")
+            self.assertEqual(
+                files["docsite/docusaurus.config.ts"], b"export default {};\n"
+            )
             # sorted output
             self.assertEqual(list(files), sorted(files))
 
@@ -76,8 +89,17 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
             write_fake_package(root)
             adapter = adapter_files(root)
             self.assertNotIn("docsite/scaffold/deploy-docsite.yml", adapter)
-            self.assertTrue(all(not path.startswith(f"{TEMPLATE_ROOT}/{name}/") for name in SCAFFOLD_ONLY_DIRECTORIES for path in adapter))
-            self.assertEqual(set(adapter), set(template_files(root)) - {"docsite/scaffold/deploy-docsite.yml"})
+            self.assertTrue(
+                all(
+                    not path.startswith(f"{TEMPLATE_ROOT}/{name}/")
+                    for name in SCAFFOLD_ONLY_DIRECTORIES
+                    for path in adapter
+                )
+            )
+            self.assertEqual(
+                set(adapter),
+                set(template_files(root)) - {"docsite/scaffold/deploy-docsite.yml"},
+            )
 
     def test_workflow_template_returns_scaffold_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -99,14 +121,19 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
                 workflow_template(root)
 
     def test_digest_is_deterministic_and_sensitive_to_content(self):
-        with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
+        with (
+            tempfile.TemporaryDirectory() as first,
+            tempfile.TemporaryDirectory() as second,
+        ):
             write_fake_package(Path(first))
             write_fake_package(Path(second))
             digest_one = template_digest(template_files(Path(first)))
             digest_two = template_digest(template_files(Path(second)))
             self.assertEqual(digest_one, digest_two)
             self.assertTrue(digest_one.startswith("sha256:"))
-            (Path(second) / "docsite/docusaurus.config.ts").write_text("export default {changed: true};\n", encoding="utf-8")
+            (Path(second) / "docsite/docusaurus.config.ts").write_text(
+                "export default {changed: true};\n", encoding="utf-8"
+            )
             digest_three = template_digest(template_files(Path(second)))
             self.assertNotEqual(digest_one, digest_three)
 
@@ -147,7 +174,9 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
             elsewhere.mkdir()
             (elsewhere / "x.js").write_text("module.exports = {};\n", encoding="utf-8")
             try:
-                (root / "docsite/node_modules").symlink_to(elsewhere, target_is_directory=True)
+                (root / "docsite/node_modules").symlink_to(
+                    elsewhere, target_is_directory=True
+                )
             except OSError:
                 self.skipTest("symlinks are not supported in this environment")
             files = template_files(root)
@@ -157,7 +186,9 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
     def test_missing_docsite_root_raises(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "concorde.json").write_text(json.dumps({"package_roots": PACKAGE_ROOTS}), encoding="utf-8")
+            (root / "concorde.json").write_text(
+                json.dumps({"package_roots": PACKAGE_ROOTS}), encoding="utf-8"
+            )
             with self.assertRaises(DocsiteTemplateError):
                 template_files(root)
             with self.assertRaises(DocsiteTemplateError):
@@ -173,7 +204,13 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
             root = Path(temporary)
             write_fake_package(root)
             (root / "concorde.json").write_text(
-                json.dumps({"package_roots": [name for name in PACKAGE_ROOTS if name != "docsite"]}),
+                json.dumps(
+                    {
+                        "package_roots": [
+                            name for name in PACKAGE_ROOTS if name != "docsite"
+                        ]
+                    }
+                ),
                 encoding="utf-8",
             )
             with self.assertRaises(DocsiteTemplateError):
@@ -233,7 +270,9 @@ class DocsiteTemplateRealRepositoryTests(unittest.TestCase):
 
     def test_adapter_files_excludes_scaffold_from_real_repository(self):
         adapter = adapter_files(REPOSITORY_ROOT)
-        self.assertTrue(all(not path.startswith("docsite/scaffold/") for path in adapter))
+        self.assertTrue(
+            all(not path.startswith("docsite/scaffold/") for path in adapter)
+        )
         files = template_files(REPOSITORY_ROOT)
         self.assertIn("docsite/scaffold/deploy-docsite.yml", files)
 

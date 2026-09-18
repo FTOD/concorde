@@ -18,7 +18,7 @@ Views publishes registered specifications as a readable website and provides too
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Usage
@@ -100,7 +100,7 @@ host prepares directories and Git identity and retains scratch rather than askin
 purge it; managed/project denials and hooks remain active. Afterwards it checks the native
 schema, declared identities and relationships, scan coverage and input freshness without
 reapplying an overlay that would discard AI enrichment. This is a developer-authorized native
-host tool, not a bounded Framework worker or a new Framework Capability. Its prompt is guidance,
+host tool, not a bounded Framework worker or a new Framework Operation. Its prompt is guidance,
 not a filesystem sandbox, and native permissions remain in effect. No structural check proves
 that workers read every source or that their semantic conclusions are correct.
 
@@ -122,7 +122,7 @@ launches a process; it neither generates nor verifies the freshness of that grap
 ### Publication and scaffolding
 
 This view covers reading publication and its creation-only scaffold, not graph generation or viewer
-processes. Concorde-only Flow inspection additionally uses [Harness Module](../harness/module.md) under the local agreement below.
+processes. Concorde-only Graph inspection additionally uses [Harness Module](../harness/module.md) under the local agreement below.
 
 ```mermaid
 flowchart TB
@@ -226,7 +226,7 @@ This collaboration applies when launching the viewer.
 
 <a id="entity.views.harness"></a><a id="agreement.document.views.module.3"></a>
 
-Supply inspectable executable Flows without invoking nodes.
+Supply inspectable executable Graphs without invoking nodes.
 
 This collaboration applies when compiling Agent execution views without running nodes.
 
@@ -234,7 +234,7 @@ This collaboration applies when compiling Agent execution views without running 
 
 ## Unresolved information
 
-Publication accepts Profile 14 projects only. `requireScoped` refuses any other `profile_version`
+Publication accepts Profile 15 projects only. `requireScoped` refuses any other `profile_version`
 with an explicit error, and no compatibility rendering path exists for an older profile: migrating
 such a project is a separate, explicit topology change that this Module does not perform.
 

@@ -1,6 +1,6 @@
-# Flows and feedback
+# Graphs and feedback
 
-A Flow describes which operations can run and what selects the next step. A loop describes how
+A Graph describes which operations can run and what selects the next step. A loop describes how
 feedback can lead to another attempt. Separating the two makes it possible to explain both the
 normal sequence and why repetition eventually stops.
 
@@ -8,14 +8,14 @@ normal sequence and why repetition eventually stops.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Follow the normal path first
 
-For a change handled by [Development Flow](../dev-loop/module.md), the broad sequence is specification, planning, tasks, implementation,
+For a change handled by [Development Graph](../dev-loop/module.md), the broad sequence is specification, planning, tasks, implementation,
 checks and review. Each operation receives only its own admitted inputs. A review finding may
 select an allowed repair path; it does not let the reviewer edit code itself.
 
@@ -30,18 +30,18 @@ judgment, such as assessing whether a promise is missing. A human decision suppl
 accepts a proposed effect when the workflow requires it. These sources remain distinct so that a
 model recommendation cannot stand in for required human approval.
 
-## Why executable flows are inspectable
+## Why executable graphs are inspectable
 
 Concorde declares control flow through LangGraph, so the runtime and Studio can inspect the same
 nodes and transitions. The conceptual sequence above helps explain the design; the exact executable
 node names, state channels, branching and limits are maintained once in Implementation Specs.
 A matching diagram proves agreement with the compiled topology, not that every decision is correct.
 
-A stopped flow retains its progress. Resuming checks that the task and inputs are still current
+A stopped graph retains its progress. Resuming checks that the task and inputs are still current
 before choosing a next step. Completing an inner worker or helper does not complete the enclosing
 change, and reaching ready does not authorize delivery.
 
 ## Precise specifications
 
-See the Module-owned [execution and record contracts](execution-reference.md#graphs-and-loops-capability-flows-loops-and-feedback).
+See the Module-owned [execution and record contracts](execution-reference.md#graphs-and-loops-operation-graphs-loops-and-feedback).
 The exact obligations remain in Implementation Specs; this topic explains their purpose and use.

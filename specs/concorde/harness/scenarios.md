@@ -13,8 +13,8 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec context](context.md#terminology) | Defined in What information a worker receives. |
 | [Task context](context.md#terminology) | Defined in What information a worker receives. |
 | [Capsule](module.md#terminology) | Defined in Harness. |
@@ -27,14 +27,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Harness
 
-### scenario.harness.flow-inspection — Inspect execution without acquiring authority
+### scenario.harness.graph-inspection — Inspect execution without acquiring authority
 
-- GIVEN the executable Flow factories and host-bound public Studio entries
+- GIVEN the executable Graph factories and host-bound public Studio entries
 - WHEN a viewer compiles them and requests their LangGraph nodes and edges
-- THEN it sees the actual admission, capability branches and composed Flow transitions without invoking an Agent or resolving project Spec contexts
+- THEN it sees the actual admission, operation branches and composed Graph transitions without invoking an Agent or resolving project Spec contexts
 - AND private stages gain no public entry or additional permissions
 - AND the public checkpoint contains only JSON input and output while internal host objects and callbacks remain ephemeral
-- AND replay of the public capability revalidates the input and expected workspace before any effects
+- AND replay of the public operation revalidates the input and expected workspace before any effects
 
 ### scenario.harness.context-freeze — Freeze one Module's context for a bounded phase
 
@@ -65,10 +65,10 @@ rule: see [names for every phase](requirements.md#req.harness.context-file-names
 ### scenario.harness.agent-node — Run a worker as a LangGraph node typed by its contract
 
 - GIVEN a canonical worker definition and its task contract
-- WHEN the host binds it as an CapabilityNode and executes an invocation through its compiled Flow
+- WHEN the host binds it as an OperationNode and executes an invocation through its compiled Graph
 - THEN the node's input schema is exactly the top-level fields of the contract's admitted context type and its output schema exactly those of the contract's result type
 - AND the node revalidates the admitted context before the launch and the returned data against the result type after it, so the launcher can neither admit an unexpected context nor return an unexpected result
-- AND the same factory compiled without a launcher is inspectable inside the Flows that run it and starts no process
+- AND the same factory compiled without a launcher is inspectable inside the Graphs that run it and starts no process
 - BUT the Pi worker launch, its admission checks and usage recording stay in the host's launcher, outside the graph's public state
 
 ### scenario.harness.context-invalid-input — Reject an unsupported phase or a blank task
@@ -90,7 +90,7 @@ See [the changed-input recheck bound](requirements.md#req.harness.context-rechec
 
 ### scenario.harness.context-discovery — Assemble several explicit Module contexts for a discovery worker
 
-- GIVEN a nonempty, duplicate-free ordered tuple of registered Module IDs, a capability, a phase of route, and an action of route, ask or design-topology
+- GIVEN a nonempty, duplicate-free ordered tuple of registered Module IDs, an operation, a phase of route, and an action of route, ask or design-topology
 - WHEN resolve_discovery_context is called
 - THEN the host returns a DiscoveryContext whose documents pool indexes the one-level union for every selected Module, deduplicated with ownership and inclusion reasons, and the router, answerer or topology designer launch grants those documents and the Protocol files read-only in its capsule
 - AND a focus hint is admitted only when it names a scenario of the target hint's own Module
@@ -108,10 +108,10 @@ See [the no-recursive-expansion bound](requirements.md#req.harness.context-disco
 
 ### scenario.harness.agent-bind — Bind a named worker's Spec, profile and children
 
-- GIVEN a named worker registered in the Capability inventory and a current, fresh build
+- GIVEN a named worker registered in the Operation inventory and a current, fresh build
 - WHEN resolve_worker is called for that name
 - THEN the host returns a reproducible WorkerBinding covering spec_digest, instructions_digest, profile_digest, build_manifest_digest and timeout_seconds, where the profile digest covers every child definition's bytes
-- AND worker_profile resolves that same name, its hyphenated spelling or its concorde- external name to the Capability's model execution profile
+- AND worker_profile resolves that same name, its hyphenated spelling or its concorde- external name to the Operation's model execution profile
 - AND resolve_worker verifies the binding against the current build before returning it
 
 See [the profile-within-contract bound](requirements.md#req.harness.profile-within-contract).
@@ -138,7 +138,7 @@ over Spec or the registry](requirements.md#req.harness.permission-no-spec-write)
 
 - GIVEN an unknown or duplicate role, an unsafe path, a widened read, write, network or credential effect, or an invocation granting writes, network or credentials its worker contract does not declare
 - WHEN compile_policy is called or the worker executor admits the invocation
-- THEN the call raises PermissionPolicyError or CapabilityExecutionError before any worker process starts
+- THEN the call raises PermissionPolicyError or OperationExecutionError before any worker process starts
 - AND no failure retries with a more permissive configuration
 
 See [the no-wider-retry bound](requirements.md#req.harness.permission-no-retry).
@@ -149,6 +149,7 @@ See [the no-wider-retry bound](requirements.md#req.harness.permission-no-retry).
 - WHEN the host reads, restores or binds its owner
 - THEN an unbound owner remains distinct from an absent or malformed record, and persisted change, path, branch, owner and intent fields are validated before use
 - AND a requested existing change cannot silently create replacement state in another worktree
+- AND schema-1 candidate progress is refused with unsupported_worktree_version without rewriting its bytes or reusing its readiness evidence
 - AND missing binding task or target returns a structured invalid_input error instead of a field lookup exception
 - AND binding preserves the recorded task and constraints, while conflicting bound intent is rejected with incompatible_handoff and its field
 - AND only a trusted coordinated child may use a distinct component intent without rewriting the root owner
@@ -177,7 +178,7 @@ settling-is-not-completion bound](requirements.md#req.harness.execute-exit-insuf
 
 - GIVEN a refused preflight or a Pi process that fails before settling, a host interrupt, a run past its timeout, or a run whose submitted result is missing, repeated or outside the contract
 - WHEN WorkerExecutor is called
-- THEN it raises CapabilityExecutionError with outcome failed, cancelled, limit_exhausted or invalid_completion respectively
+- THEN it raises OperationExecutionError with outcome failed, cancelled, limit_exhausted or invalid_completion respectively
 - AND a contract rejection keeps its code, permission_denied for disallowed authored fields
 - AND the caller stops the affected transition rather than retrying automatically
 
@@ -195,13 +196,15 @@ settling-is-not-completion bound](requirements.md#req.harness.execute-exit-insuf
 - GIVEN a Pi worker that settled and reported its session statistics
 - WHEN the host accepts the WorkerOutcome of a stage, review, discovery or topology-author launch
 - THEN the outcome carries an ExecutionUsage record with the reported input, cached and output tokens, cost and turns, the configured model and thinking level, the host-measured wall time and the prompt and context sizes
-- AND the host appends one JSON line labelled with the capability, stage, target, worker, change and launch identity to `.concorde/runs/<root invocation>/usage.jsonl`, where the root invocation is the top-level capability invocation of the whole Flow run
+- AND the host appends one schema-2 JSON line labelled with the operation, stage, target, worker, change and launch identity to `.concorde/runs/<root invocation>/usage.jsonl`, where the root invocation is the top-level operation invocation of the whole Graph run
 - AND the host observer receives the same record as an `agent_usage` event, and the `usage` Tool and the executable boundary summarize those lines per step, stage, target and worker
+- AND historical unversioned usage retains its original step labels and is counted explicitly without rewriting its bytes
+- AND unsupported record formats are excluded from totals and reported in an explicitly incomplete schema-2 summary
 - BUT a figure Pi did not report is recorded as unknown rather than zero, and a persistence failure never fails the launch
 
 ### scenario.harness.worker-selection — Launch each worker and child on its configured model
 
-- GIVEN `.concorde/config.json` capability configuration naming a default `model`, `thinking` and `timeout_seconds` and, under `workers`, entries keyed by a worker such as `programmer` or by a worker child such as `programmer/scout`
+- GIVEN `.concorde/config.json` operation configuration naming a default `model`, `thinking` and `timeout_seconds` and, under `workers`, entries keyed by a worker such as `programmer` or by a worker child such as `programmer/scout`
 - WHEN the host binds any worker invocation
 - THEN the worker's model and thinking level come from its worker entry, else the default, and each child's from its child entry, else its worker's entry, else the default
 - AND the worker's timeout comes from its worker entry, else the default, else its profile
@@ -213,7 +216,7 @@ See [each worker runs on its own configured selection](requirements.md#req.harne
 
 ### scenario.harness.worker-selection-reject — Reject a selection no worker can run
 
-- GIVEN a capability configuration whose `workers` map has a key naming no worker or worker child, a child entry with a timeout, a nonpositive timeout, a model that is not a Pi `provider/id` or an unknown thinking level
+- GIVEN an operation configuration whose `workers` map has a key naming no worker or worker child, a child entry with a timeout, a nonpositive timeout, a model that is not a Pi `provider/id` or an unknown thinking level
 - WHEN the configuration is proposed, applied or loaded
 - THEN it is rejected with a typed field error naming the offending entry
 - AND a rejected proposal or application leaves the stored configuration unchanged

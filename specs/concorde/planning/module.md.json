@@ -11,9 +11,9 @@
       "title": "Planning adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/context_solve.py",
-        "capabilities/plan.py",
-        "capabilities/tasks.py",
+        "operations/context_solve.py",
+        "operations/plan.py",
+        "operations/tasks.py",
         "tests/concorde/development/test_review.py"
       ],
       "meaning": "#entity.planning.adapter"

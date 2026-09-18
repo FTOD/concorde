@@ -1,1 +1,1 @@
-"""Host and run every Concorde development capability on a coding agent."""
+"""Host and run every Concorde development operation on a coding agent."""

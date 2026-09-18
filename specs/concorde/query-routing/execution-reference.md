@@ -1,6 +1,6 @@
 # Query and Routing execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Query and Routing Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -14,13 +14,13 @@ and transitions are retained here as the single detailed contract.
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Query and routing Agent Flow {#query-and-routing-query-and-routing-agent-flow}
+## Query and routing Agent Graph {#query-and-routing-query-and-routing-agent-graph}
 
 `concorde-main` accepts a question or task with optional routing hints. Main starts with the entry
 Module's complete collection, then explicitly expands other Module collections
@@ -32,7 +32,7 @@ owned or explicitly referenced document, including its inline diagrams. The disc
 source bodies directly and may reason across all selected Modules. Shared sources are included
 once, with unique owners and per-Module inclusion reasons retained. Non-main documents stay complete.
 Registered references expand once; included Modules' references and ordinary links do not expand further. Additional contexts require explicit
-selection and deterministic host resolution. A capability that owns a mutation or lifecycle result
+selection and deterministic host resolution. An operation that owns a mutation or lifecycle result
 has one main route and preserves the task and constraints unchanged. For single-target review and
 development requests the router returns only `target_id` and nullable `focus_id`; the host
 copies the original task and ordered constraints into the admitted worker request. Legacy route
@@ -46,18 +46,18 @@ question. A prohibition, contradictory requirements or execution error remains d
 from a gap. Query completion returns an answer and limitations without authoring project files.
 The concrete Concorde project routing tables belong to each Module's registered routing document.
 
-The query Flow runs discovery-worker reasoning and direct answering without reading workers or a
+The query Graph runs discovery-worker reasoning and direct answering without reading workers or a
 separate synthesis stage. Discovery requests are AI control feedback: admitted target references
 or an explicit target hint can select another complete context; when the sources suffice, the
 answerer returns completed with its direct answer and no worker routes. A missing fact is
 reported with its owning Module and current context identity rather than causing
 unbounded context expansion. The loop records its configured limits and returns an explicit limit
 outcome if additional discovery cannot be admitted. Human clarification creates a revised task or
-context and starts fresh invocations under the Flow and Loop contract.
+context and starts fresh invocations under the Graph and Loop contract.
 
 ### Design {#query-and-routing-design}
 
-#### Discovery Flow (`discovery_flow`) {#query-and-routing-discovery-flow-discovery-flow}
+#### Discovery Graph (`discovery_graph`) {#query-and-routing-discovery-graph-discovery-graph}
 
 State: `occurrence` (the bounded number of discovery decisions so far), `decision` (the
 discovery worker's last typed result), `routes` (the bound single-target routes), `route`, `result`.
@@ -72,8 +72,8 @@ The admitted Module collection grows only through `expand_context`.
 
 ```mermaid
 flowchart TB
-    %% flow: discovery_flow
-    accTitle: Discovery Flow
+    %% graph: discovery_graph
+    accTitle: Discovery Graph
     accDescr: The discovery worker decides over the admitted contexts; a request for more Modules admits them and decides again; a routing decision binds routes; every other outcome finishes.
     __start__["start"]
     decide["decide<br/>in: admitted Module contexts, task<br/>out: decision"]
@@ -92,21 +92,21 @@ flowchart TB
     finish --> __end__
 ```
 
-#### Query Flow (`query_flow`) {#query-and-routing-query-flow-query-flow}
+#### Query Graph (`query_graph`) {#query-and-routing-query-graph-query-graph}
 
 State: the discovery state above plus `output` (the main response). `concorde-main` runs this
-Flow for `ask` and `design-topology`.
+Graph for `ask` and `design-topology`.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `discover` | The discovery Flow as a subflow. | question or design task, entry Module context | decision |
+| `discover` | The discovery Graph as a subgraph. | question or design task, entry Module context | decision |
 | `respond` | Deterministic: the answer, gap, unsupported or conflicting response, or the typed topology design, from the last decision. | decision | main response |
 
 ```mermaid
 flowchart TB
-    %% flow: query_flow
-    accTitle: Query Flow
-    accDescr: Discovery runs to completion and its last decision becomes the main response; an error ends the Flow.
+    %% graph: query_graph
+    accTitle: Query Graph
+    accDescr: Discovery runs to completion and its last decision becomes the main response; an error ends the Graph.
     __start__["start"]
     discover["discover<br/>in: question or design task, entry Module context<br/>out: decision"]
     respond["respond<br/>in: decision<br/>out: main response"]
@@ -121,7 +121,7 @@ flowchart TB
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

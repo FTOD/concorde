@@ -66,7 +66,7 @@ def create_parser() -> argparse.ArgumentParser:
     usage = subparsers.add_parser("usage")
     usage.add_argument(
         "--run",
-        help="root invocation id of one capability run; default: every recorded run",
+        help="root invocation id of one operation run; default: every recorded run",
     )
     usage.add_argument("--format", choices=["json"], default="json")
     return parser
@@ -89,7 +89,7 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                         "error",
                         f".concorde/runs/{arguments.run}/usage.jsonl",
                         "no usage records exist for this run",
-                        "Pass the root invocation id printed by the capability result, or omit --run.",
+                        "Pass the root invocation id printed by the operation result, or omit --run.",
                     ),
                 ),
             )
@@ -100,9 +100,11 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             result={
                 "runs": sorted(
                     {
-                        r["root_invocation_id"]
+                        run_id
                         for r in records
-                        if r.get("root_invocation_id")
+                        if isinstance(r, dict)
+                        and isinstance(run_id := r.get("root_invocation_id"), str)
+                        and run_id
                     }
                 ),
                 "records": len(records),
@@ -255,7 +257,7 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
     current = json_module.loads(manifest_path.read_text(encoding="utf-8"))
     differences = [
         item["path"]
-        for item, fresh in zip(current["assets"], updated["assets"], strict=False)
+        for item, fresh in zip(current["assets"], updated["assets"], strict=True)
         if item["digest"] != fresh["digest"]
     ]
     artifacts: tuple[str, ...] = ()

@@ -11,7 +11,7 @@
       "title": "Implementation adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/implement.py",
+        "operations/implement.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/harness/test_worker_binding.py"
       ],

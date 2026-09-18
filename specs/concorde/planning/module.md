@@ -14,7 +14,7 @@ Planning checks whether a task is sufficiently specified, produces a plan and tu
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
 | [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
 | [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
@@ -23,7 +23,7 @@ Planning checks whether a task is sufficiently specified, produces a plan and tu
 
 ## Usage
 
-Consume Planning from a declared in-process capability, not a public Skill. First use
+Consume Planning from a declared in-process operation, not a public Skill. First use
 [context assessment](assessment.md) with the selected complete Module contract and explicit task.
 A sufficient result permits [planning](plan.md); an accepted current nonempty plan permits
 [task authoring](tasks.md). Supply current candidate identity and admitted artifact references where
@@ -41,7 +41,7 @@ neither implements work nor marks a candidate ready.
 
 <a id="entity.planning.adapter"></a><a id="entity.planning.assessment"></a><a id="entity.planning.plan"></a><a id="entity.planning.tasks"></a>
 
-The [planning Flow](execution-reference.md#plan-design) checks local dependency declarations before
+The [planning Graph](execution-reference.md#plan-design) checks local dependency declarations before
 context assessment, admits a planner only after sufficiency, and persists a nonempty revision-bound
 plan before tasks can be authored. The host then supplies reserved historical IDs and validates new
 incomplete tasks before replacing accepted state. Separate artifacts prevent planning from being
@@ -86,7 +86,7 @@ Admit bound assessment, plan and task requests, save accepted current plans and 
 
 This collaboration applies when an assessment enters or a returned plan or task list is accepted or rejected.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 

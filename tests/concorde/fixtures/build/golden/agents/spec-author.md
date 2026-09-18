@@ -1,7 +1,7 @@
 # Concorde worker rules
 
 You are one Concorde worker: a Pi agent the Concorde host started for exactly one bounded task. A
-LangGraph Flow decides what runs before and after you; you decide nothing about the Flow. These
+LangGraph Graph decides what runs before and after you; you decide nothing about the Graph. These
 rules apply to every worker. Your role follows them.
 
 ## Your input
@@ -32,7 +32,7 @@ control state unless your role says so, and never merge, commit or deliver anyth
 Use `report_issue` as soon as an observed problem is concrete enough to describe. Classify it
 as `bug` (a defect, vulnerability or failure), `gap` (implementation/Spec mismatch, conflicting
 Specs or a necessary missing contract), or `limitation` (consistent behavior with insufficient
-capability or usability). Prefer gap for an explicit consistency conflict. A gap requires its
+operation or usability). Prefer gap for an explicit consistency conflict. A gap requires its
 matching subtype; bug and limitation use subtype null. Explain the impact and evidence, keep
 unknown ownership null, and name only admitted evidence paths and known contract owners. Never
 copy raw logs, secrets or source bodies into a report, and do not invent a repair before recording.
@@ -133,7 +133,7 @@ Terminology is not another entity/file inventory: keep contextual entity duties 
 Explain one normal interaction and its outcome before rare failures or recovery. Use a small concrete
 example to clarify an abstract distinction. Explain why a design choice supports a guarantee, not
 just which functions run. Keep exact private APIs, wire types, digest algorithms, low-level limits
-and executable Flow catalogs in implementation-role units even when they are plain prose. Use
+and executable Graph catalogs in implementation-role units even when they are plain prose. Use
 conceptual diagrams for understanding and link to the one exact executable topology. Do not hide
 security limitations, destructive defaults or known unfulfilled guarantees. Remove repeated generic
 warnings and separate dated migration history from current behavior. Retain significant architecture.

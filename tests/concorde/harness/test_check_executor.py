@@ -3,17 +3,18 @@
 These tests deliberately fail (rather than skip or substitute mocks) when Linux sandbox
 enforcement is unavailable. Run them on an enforcement-capable Linux host.
 """
+
 import errno
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
 import uuid
+from pathlib import Path
+from unittest.mock import patch
 
 from concorde.harness.check_executor import CheckSandboxError, execute_check
 from concorde.spec.verification import verifies
@@ -32,8 +33,12 @@ class CheckExecutorTests(unittest.TestCase):
         (self.root / ".concorde/runs").mkdir(parents=True)
 
     def run_check(self, code, *args, timeout=10):
-        return execute_check(self.root, [sys.executable, "-c", code, *map(str, args)],
-                             timeout=timeout, environment=os.environ)
+        return execute_check(
+            self.root,
+            [sys.executable, "-c", code, *map(str, args)],
+            timeout=timeout,
+            environment=os.environ,
+        )
 
     @verifies("scenario.harness.check-read-only")
     def test_real_mutations_fail_at_the_system_call(self):
@@ -59,11 +64,14 @@ class CheckExecutorTests(unittest.TestCase):
                     "except OSError as e:\n"
                     " assert e.errno in (errno.EROFS,errno.EACCES,errno.EPERM,errno.EXDEV), e\n"
                     " print('denied',e.errno)\n"
-                    "else:\n raise AssertionError('mutation was permitted')\n")
+                    "else:\n raise AssertionError('mutation was permitted')\n"
+                )
                 self.assertEqual(0, result.returncode, result)
                 self.assertIn(b"denied", result.stdout)
                 self.assertEqual("original", self.file.read_text())
-                self.assertEqual({"unlisted.txt", ".concorde"}, {p.name for p in self.root.iterdir()})
+                self.assertEqual(
+                    {"unlisted.txt", ".concorde"}, {p.name for p in self.root.iterdir()}
+                )
                 self.assertEqual([], list((self.root / ".concorde/runs").iterdir()))
 
     @verifies("scenario.harness.check-read-only")
@@ -73,7 +81,8 @@ class CheckExecutorTests(unittest.TestCase):
         (self.root / "link").symlink_to(alias)
         with self.file.open("r+b") as writable:
             os.set_inheritable(writable.fileno(), True)
-            result = self.run_check("""
+            result = self.run_check(
+                """
 import os,sys,subprocess
 from pathlib import Path
 for path in (Path('link'), Path(sys.argv[1]), Path('/proc/self/root')/Path.cwd().relative_to('/')/'unlisted.txt'):
@@ -89,7 +98,10 @@ assert not Path('/proc',sys.argv[2],'root').exists()
 child=subprocess.run([sys.executable,'-c',"open('unlisted.txt','w').write('child')"],capture_output=True)
 assert child.returncode != 0, child
 print('child denied')
-""", alias, os.getpid())
+""",
+                alias,
+                os.getpid(),
+            )
         self.assertEqual(0, result.returncode, result)
         self.assertEqual("original", self.file.read_text())
 
@@ -99,7 +111,7 @@ print('child denied')
 import subprocess
 from pathlib import Path
 # User namespaces stay available for nested fixture checks. Inherited read-only mount flags
-# must remain locked even when a child acquires capabilities in a new user namespace.
+# must remain locked even when a child acquires operations in a new user namespace.
 result=subprocess.run(['unshare','--user','--map-root-user','--mount','mount',
                        '-o','remount,bind,rw','/'],capture_output=True)
 assert result.returncode != 0, result
@@ -137,12 +149,21 @@ print(json.dumps(str(scratch)))
 
     @verifies("scenario.harness.check-result")
     def test_exit_code_and_separate_streams_are_preserved(self):
-        result = self.run_check("import sys; print('out'); print('err',file=sys.stderr); sys.exit(17)")
-        self.assertEqual((17, b"out\n", b"err\n", False),
-                         (result.returncode, result.stdout, result.stderr, result.timed_out))
+        result = self.run_check(
+            "import sys; print('out'); print('err',file=sys.stderr); sys.exit(17)"
+        )
+        self.assertEqual(
+            (17, b"out\n", b"err\n", False),
+            (result.returncode, result.stdout, result.stderr, result.timed_out),
+        )
         # Large simultaneous streams exercise pipe draining while the monitor is awaited.
-        result = self.run_check("import os; os.write(1,b'x'*200000); os.write(2,b'y'*200000)")
-        self.assertEqual((0, 200000, 200000), (result.returncode, len(result.stdout), len(result.stderr)))
+        result = self.run_check(
+            "import os; os.write(1,b'x'*200000); os.write(2,b'y'*200000)"
+        )
+        self.assertEqual(
+            (0, 200000, 200000),
+            (result.returncode, len(result.stdout), len(result.stderr)),
+        )
 
     @verifies("scenario.harness.check-unavailable")
     def test_missing_backend_and_unsupported_os_never_launch_the_command(self):
@@ -150,36 +171,52 @@ print(json.dumps(str(scratch)))
             with self.subTest(platform=platform), patch("sys.platform", platform):
                 with self.assertRaises(CheckSandboxError):
                     self.run_check("open('new.txt','w').write('unsafe')")
-        with patch("concorde.harness.check_executor._bubblewrap",
-                   side_effect=CheckSandboxError("bubblewrap missing")):
+        with patch(
+            "concorde.harness.check_executor._bubblewrap",
+            side_effect=CheckSandboxError("bubblewrap missing"),
+        ):
             with self.assertRaises(CheckSandboxError):
                 self.run_check("open('new.txt','w').write('unsafe')")
         self.assertFalse((self.root / "new.txt").exists())
 
     @verifies("scenario.harness.check-result")
     def test_environment_reaches_real_check_without_entering_monitor_command_line(self):
-        token = 'private-environment-' + uuid.uuid4().hex
+        token = "private-environment-" + uuid.uuid4().hex
         process = subprocess.Popen
         launches = []
+
         def observe(argv, **kwargs):
-            launches.append((argv, kwargs['env']))
+            launches.append((argv, kwargs["env"]))
             return process(argv, **kwargs)
-        with patch('concorde.harness.check_executor.subprocess.Popen', observe):
-            result = execute_check(self.root, [sys.executable, '-c',
-                "import os; print(os.environ['CHECK_PRIVATE_VALUE'])"], timeout=10,
-                environment={**os.environ, 'CHECK_PRIVATE_VALUE': token})
-        self.assertEqual((0, token + '\n'), (result.returncode, result.stdout.decode()))
+
+        with patch("concorde.harness.check_executor.subprocess.Popen", observe):
+            result = execute_check(
+                self.root,
+                [
+                    sys.executable,
+                    "-c",
+                    "import os; print(os.environ['CHECK_PRIVATE_VALUE'])",
+                ],
+                timeout=10,
+                environment={**os.environ, "CHECK_PRIVATE_VALUE": token},
+            )
+        self.assertEqual((0, token + "\n"), (result.returncode, result.stdout.decode()))
         self.assertNotIn(token, json.dumps(launches))
 
     @verifies("scenario.harness.check-unavailable")
     def test_real_bubblewrap_setup_failure_never_runs_command(self):
         # A vanished project after admission causes a genuine bwrap --chdir setup failure.
         from concorde.harness.check_executor import BubblewrapBackend
-        (self.parent / 'shm').mkdir()
+
+        (self.parent / "shm").mkdir()
         with self.assertRaises(CheckSandboxError) as caught:
-            BubblewrapBackend().run(self.root / "missing", [sys.executable, "-c",
-                f"open({str(self.file)!r},'w').write('unsafe')"], self.parent,
-                dict(os.environ), 5)
+            BubblewrapBackend().run(
+                self.root / "missing",
+                [sys.executable, "-c", f"open({str(self.file)!r},'w').write('unsafe')"],
+                self.parent,
+                dict(os.environ),
+                5,
+            )
         self.assertTrue(caught.exception.stderr)
         self.assertEqual("original", self.file.read_text())
 
@@ -215,15 +252,25 @@ except CheckSandboxError as error:
 else:
     raise AssertionError('namespace denial did not fail closed')
 """
-        result = subprocess.run([sys.executable, '-c', code, str(self.root)],
-            env={**os.environ, 'TMPDIR': str(self.parent), 'PYTHONPATH': str(RUNTIME_ROOT)},
-            capture_output=True, timeout=10)
+        result = subprocess.run(
+            [sys.executable, "-c", code, str(self.root)],
+            env={
+                **os.environ,
+                "TMPDIR": str(self.parent),
+                "PYTHONPATH": str(RUNTIME_ROOT),
+            },
+            capture_output=True,
+            timeout=10,
+        )
         self.assertEqual(0, result.returncode, result)
-        self.assertIn(b'namespace-denied', result.stdout)
-        with patch('concorde.harness.check_executor._bubblewrap', return_value='/missing/concorde-bwrap'):
+        self.assertIn(b"namespace-denied", result.stdout)
+        with patch(
+            "concorde.harness.check_executor._bubblewrap",
+            return_value="/missing/concorde-bwrap",
+        ):
             with self.assertRaises(CheckSandboxError):
                 self.run_check("open('unlisted.txt','w').write('unsafe')")
-        self.assertEqual('original', self.file.read_text())
+        self.assertEqual("original", self.file.read_text())
 
     @verifies("scenario.harness.check-lifetime")
     def test_timeout_and_normal_exit_kill_detached_descendants(self):
@@ -237,10 +284,12 @@ if os.fork(): os._exit(0)
 print('descendant-ready',flush=True)
 time.sleep(60)
 """
-            code = ("import subprocess,sys,time\n"
-                    f"p=subprocess.Popen([sys.executable,'-c',{child!r},{token!r}])\n"
-                    "p.wait()\nprint('parent-ready',flush=True)\n" +
-                    ("time.sleep(60)\n" if timeout else ""))
+            code = (
+                "import subprocess,sys,time\n"
+                f"p=subprocess.Popen([sys.executable,'-c',{child!r},{token!r}])\n"
+                "p.wait()\nprint('parent-ready',flush=True)\n"
+                + ("time.sleep(60)\n" if timeout else "")
+            )
             started = time.monotonic()
             result = self.run_check(code, timeout=1.0 if timeout else 10)
             self.assertLess(time.monotonic() - started, 5)
@@ -249,9 +298,11 @@ time.sleep(60)
             self.assertIn(b"parent-ready", result.stdout)
             # PID 1 teardown reaps descendants before the monitor/pipes finish; no delayed
             # marker alone can prove this (the scratch directory has already been removed).
-            for path in Path('/proc').glob('[0-9]*/cmdline'):
-                try: command = path.read_bytes()
-                except (FileNotFoundError, PermissionError, ProcessLookupError): continue
+            for path in Path("/proc").glob("[0-9]*/cmdline"):
+                try:
+                    command = path.read_bytes()
+                except (FileNotFoundError, PermissionError, ProcessLookupError):
+                    continue
                 self.assertNotIn(token.encode(), command, str(path))
 
 

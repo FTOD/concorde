@@ -1,12 +1,12 @@
 ---
 name: concorde-review
-description: "Capability: route a standalone Spec review, code review or source diagnosis to its owning Module and return scoped, read-only findings."
-capability: review
+description: "Operation: route a standalone Spec review, code review or source diagnosis to its owning Module and return scoped, read-only findings."
+operation: review
 ---
 
 # concorde-review
 
-@include prompts/workflow-host/invoke-capability-opener.md ACTION="review the selected Spec or implementation"
+@include prompts/workflow-host/invoke-operation-opener.md ACTION="review the selected Spec or implementation"
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-review
 @include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-review

@@ -19,7 +19,7 @@ PATH_ROLES = frozenset(
         "spec-context",
         "implementation",
         # The Module's external references (Protocol 5.1): vendored documentation and source it
-        # reads but does not own, granted read-only as capability context, never written.
+        # reads but does not own, granted read-only as resource context, never written.
         "references",
         "selected-feature",
         "module-architecture",

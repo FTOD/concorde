@@ -21,7 +21,7 @@ async function main() {
   const registry = loadScopedRegistry(root);
   registry.pages.forEach((page) => rewriteLinks(registry, page));
   process.stdout.write(
-    `Validated Profile 14: ${registry.targets.length} targets, ${registry.pages.length} owned documents.\n`,
+    `Validated Profile 15: ${registry.targets.length} targets, ${registry.pages.length} owned documents.\n`,
   );
 }
 

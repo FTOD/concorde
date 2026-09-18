@@ -16,14 +16,14 @@ The Harness Module prepares and runs a worker with a defined task, information a
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec context](context.md#terminology) | Defined in What information a worker receives. |
 | [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
-| [Capability context](context.md#terminology) | Defined in What information a worker receives. |
+| [Resource context](context.md#terminology) | Defined in What information a worker receives. |
 | [Task context](context.md#terminology) | Defined in What information a worker receives. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 
@@ -48,7 +48,7 @@ an agent.
 
 <a id="entity.harness.agent-model"></a><a id="entity.harness.agent-definitions"></a><a id="entity.harness.typed-values"></a>
 
-The Capability and Harness model defines a worker's task contract, effects, workspace, tools and
+The Operation and Harness model defines a worker's task contract, effects, workspace, tools and
 children. The Model execution profiles service combines the authored role and Python profile into a reproducible
 WorkerBinding, using fresh instructions supplied by [Distribution Module](../distribution/module.md). The Typed values layer validates the
 contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
@@ -73,7 +73,7 @@ that explicit limitation is detailed in [execution](execution-reference.md#execu
 
 <a id="entity.harness.studio"></a><a id="entity.harness.worktree-lifecycle"></a><a id="entity.harness.langgraph"></a>
 
-LangGraph Graph-API [Host Flows](host.md) compose deterministic steps and worker invocations.
+LangGraph Graph-API [Host Graphs](host.md) compose deterministic steps and worker invocations.
 Studio inspects and observes those same executable graphs rather than a separate schematic model.
 Worktree lifecycle binds candidate identity, phase and progress and checks the mutation boundary.
 Only admitted typed artifacts cross stages; a model decision cannot advance lifecycle state or
@@ -84,7 +84,7 @@ broaden another invocation's permission.
 Each invocation is the unit of work this Module executes. Its Spec context is the selected
 Module's complete one-level owned/reference context; its implementation context is the
 Protocol-defined set of files the Module's own entities bind — every phase sees their names, only
-the programmer and code reviewer see authorized contents; its capability context is
+the programmer and code reviewer see authorized contents; its resource context is
 its worker's tools together with the Module's declared external references, whose readable files
 reach the planner, task author, programmer and code reviewer read-only; its task context is the
 task, constraints, stage artifacts and lifecycle metadata. The frozen closure is never empty and its
@@ -95,15 +95,15 @@ Resolution yields an `WorkerBinding` that every invocation carries and the execu
 Permissions are compiled purely from the contract's effects and host authority, guarded by the
 isolated-worktree check before any unsafe mutation, and handed to the Pi worker runtime, whose
 extension gates every tool call of the worker and its children. Every control flow is a LangGraph
-Flow whose nodes are deterministic steps or worker invocations; delegation below a worker is one
+Graph whose nodes are deterministic steps or worker invocations; delegation below a worker is one
 level of its declared children inside its own process. Failures never retry with broader
 permissions, and a settled process alone never establishes completion.
 
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: The Capability and Harness model defines the worker profile and contract records that Model execution profiles bind and that Worker execution runs. Model execution profiles resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same capability host as Worker execution. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi and bounds its delegation to one level with pi-subagents.
-    agentModel["Capability and Harness model"]
+    accDescr: The Operation and Harness model defines the worker profile and contract records that Model execution profiles bind and that Worker execution runs. Model execution profiles resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same operation host as Worker execution. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi and bounds its delegation to one level with pi-subagents.
+    agentModel["Operation and Harness model"]
     agentDefs["Model execution profiles"]
     permissions["Permissions"]
     execution["Worker execution"]
@@ -133,7 +133,7 @@ flowchart TB
     execution -->|validates typed results and schemas through| typedValues
     execution -->|schedules worker nodes and Studio graphs with| langgraph
     execution -->|launches each worker through| piRuntime
-    studio -->|starts or observes the same capability host as| execution
+    studio -->|starts or observes the same operation host as| execution
     piRuntime -->|runs each worker in RPC mode on| pi
     piRuntime -->|bounds delegation to one level with| piSubagents
 ```
@@ -149,7 +149,7 @@ acceptance cases belong to the Harness Module's [requirements](requirements.md) 
 Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; see
 [context](context.md).
 
-### Capability profile and Harness binding
+### Operation profile and Harness binding
 
 Realized by `worker_profile` and `resolve_worker`; see [Agents and Harnesses](agents-and-harnesses.md)
 and [runtime values](runtime-values.md).
@@ -160,7 +160,7 @@ Realized by `compile_policy` and the worktree boundary check; see [permissions](
 
 ### Worker execution
 
-Realized by `WorkerExecutor`, the Pi worker runtime and the capability host's worker launches; see
+Realized by `WorkerExecutor`, the Pi worker runtime and the operation host's worker launches; see
 [execution](execution.md) and [host](host.md).
 
 The deterministic check executor's read-only filesystem, scratch, result, unavailable-backend and
@@ -208,14 +208,14 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
 
 ## Unresolved information
 
-- Capability context carries only the Module's declared external references and each worker's
-  profile tools today: no worker admits a Capability or Tool reference beyond them, so those
+- Resource context carries only the Module's declared external references and each worker's
+  profile tools today: no worker admits an Operation or Tool reference beyond them, so those
   contracts are not yet snapshot fields. Materializing them in the snapshot record, with their
   identities in the context digest, is pending implementation work that must not widen any grant.
 - The tool gate is a policy boundary inside the Pi process. Shell commands of workers and children
   granted `bash` (the programmer and the verifier child) are not confined by it,
   and no operating-system sandbox yet wraps the Pi process; that stronger boundary is pending.
-- The gate and the capability ceiling are verified for foreground single delegation. Whether every
+- The gate and the operation ceiling are verified for foreground single delegation. Whether every
   other pi-subagents execution path loads the required child extension is unverified, which is why
   the host disables background runs, missions, schedules and inter-session channels.
 - Checks run by `run_checks` use the configured-check executor, but the worker receives only the tail

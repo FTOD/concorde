@@ -15,6 +15,7 @@ suffix, checked out at exactly the commit the superproject records.
 Run it once in a fresh clone (after ``python3 scripts/concorde.py build``). Host-created candidate
 worktrees do not need it: the host copies the primary worktree's checkouts into them.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,8 +27,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def git(*arguments: str, cwd: Path = ROOT, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(("git", *arguments), cwd=cwd, text=True, capture_output=True, check=check)
+def git(
+    *arguments: str, cwd: Path = ROOT, check: bool = True
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ("git", *arguments), cwd=cwd, text=True, capture_output=True, check=check
+    )
 
 
 def submodules() -> list[dict[str, str]]:
@@ -39,7 +44,7 @@ def submodules() -> list[dict[str, str]]:
         key, _, value = line.partition("=")
         if not key.startswith("submodule."):
             continue
-        name, field = key[len("submodule."):].rsplit(".", 1)
+        name, field = key[len("submodule.") :].rsplit(".", 1)
         entries.setdefault(name, {"name": name})[field] = value
     return [entry for entry in entries.values() if "path" in entry and "url" in entry]
 
@@ -59,25 +64,62 @@ def initialize(entry: dict[str, str]) -> None:
     commit = recorded_commit(path)
     if commit is None:
         raise SystemExit(f"{path} is not a submodule of this checkout")
-    module_dir = ROOT / ".git" / "modules" / path
+    # A linked worktree has a .git *file*. Git resolves a worktree-local
+    # administrative path, keeping this checkout's submodules independent.
+    module_dir = Path(
+        git(
+            "rev-parse", "--path-format=absolute", "--git-path", f"modules/{path}"
+        ).stdout.strip()
+    )
     if module_dir.exists():
-        raise SystemExit(f"{module_dir} already exists; remove it or finish the checkout by hand")
+        raise SystemExit(
+            f"{module_dir} already exists; remove it or finish the checkout by hand"
+        )
     module_dir.parent.mkdir(parents=True, exist_ok=True)
     git("submodule", "init", "--", path)
-    git("clone", "--quiet", "--filter=blob:none", "--no-checkout", "--separate-git-dir", str(module_dir),
-        url, str(ROOT / path))
+    git(
+        "clone",
+        "--quiet",
+        "--filter=blob:none",
+        "--no-checkout",
+        "--separate-git-dir",
+        str(module_dir),
+        url,
+        str(ROOT / path),
+    )
     patterns = entry.get("concorde-sparse")
     if patterns:
-        git("sparse-checkout", "set", "--no-cone", *shlex.split(patterns), cwd=ROOT / path)
-    fetch = git("fetch", "--quiet", "--depth", "1", "origin", commit, cwd=ROOT / path, check=False)
+        git(
+            "sparse-checkout",
+            "set",
+            "--no-cone",
+            *shlex.split(patterns),
+            cwd=ROOT / path,
+        )
+    fetch = git(
+        "fetch",
+        "--quiet",
+        "--depth",
+        "1",
+        "origin",
+        commit,
+        cwd=ROOT / path,
+        check=False,
+    )
     if fetch.returncode:
         raise SystemExit(f"cannot fetch {commit} for {path}: {fetch.stderr.strip()}")
     git("checkout", "--quiet", "--detach", commit, cwd=ROOT / path)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", action="store_true", help="report the state of every reference without cloning")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="report the state of every reference without cloning",
+    )
     arguments = parser.parse_args(argv)
     entries = submodules()
     if not entries:

@@ -2,11 +2,11 @@ import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Layout from "@theme/Layout";
 import Link from "@docusaurus/Link";
 import useBaseUrl from "@docusaurus/useBaseUrl";
-import type { FlowData, Graph } from "./types";
+import type { GraphData, Graph } from "./types";
 import {
-  capabilityAnchor,
+  operationAnchor,
   filterNavigation,
-  flowNavigation,
+  graphNavigation,
   selectionFromHash,
 } from "./navigation";
 import styles from "./style.module.css";
@@ -45,7 +45,7 @@ const specSteps: Record<string, Step> = {
   },
   specify: {
     title: "Write or revise Spec",
-    kind: "Model-backed capability",
+    kind: "Model-backed operation",
     agent: "spec-author",
     input:
       "Intended behavior, constraints and complete owned and referenced Module Specs.",
@@ -101,14 +101,14 @@ const specSteps: Record<string, Step> = {
       </>
     ),
     stops:
-      "This is the end of the Spec flow. Planning, implementation, code checks and delivery belong to subsequent workflows.",
+      "This is the end of the Spec graph. Planning, implementation, code checks and delivery belong to subsequent workflows.",
     spec: "/specs/concorde/specify-loop/scenarios#scenario.development.specify-loop",
   },
 };
 const steps: Record<string, Step> = {
   specify_loop: {
     title: "Specify Loop",
-    kind: "Composed capability",
+    kind: "Composed operation",
     agent: "spec-author → spec-reviewer",
     input:
       "Intended behavior, constraints, authoring/review flags and the complete Module Specs.",
@@ -130,7 +130,7 @@ const steps: Record<string, Step> = {
   },
   plan: {
     title: "Plan",
-    kind: "Composed capability",
+    kind: "Composed operation",
     agent: "context-assessor → planner",
     input:
       "Complete Specs, intended behavior, constraints and declared implementation file names.",
@@ -152,7 +152,7 @@ const steps: Record<string, Step> = {
   },
   tasks: {
     title: "Tasks",
-    kind: "Model-backed capability",
+    kind: "Model-backed operation",
     agent: "task-author",
     input:
       "Specs, the accepted plan, reserved task IDs and any admitted repair feedback.",
@@ -180,7 +180,7 @@ const steps: Record<string, Step> = {
   },
   implement: {
     title: "Implement",
-    kind: "Model-backed capability",
+    kind: "Model-backed operation",
     agent: "programmer",
     input:
       "Specs, the plan and task list, authorized code contents, and any admitted code-review feedback.",
@@ -203,7 +203,7 @@ const steps: Record<string, Step> = {
   },
   validate: {
     title: "Validate",
-    kind: "Deterministic capability",
+    kind: "Deterministic operation",
     agent: "No model call",
     input:
       "Current candidate files, Spec declarations and the project’s configured check commands.",
@@ -255,7 +255,7 @@ const steps: Record<string, Step> = {
       "Saved task completion, required reviews, configured check results and current candidate digests.",
     output: "A candidate recorded as ready for a separate delivery request.",
     detail:
-      "Verify that required evidence is complete and still matches the current task, Specs and code. Ready is an internal host readiness decision, not a separately callable capability. It does not deliver or merge the change.",
+      "Verify that required evidence is complete and still matches the current task, Specs and code. Ready is an internal host readiness decision, not a separately callable operation. It does not deliver or merge the change.",
     handoff: (
       <>
         The host updates <code>.concorde/worktree.json</code> and returns{" "}
@@ -278,7 +278,7 @@ const workerDetails: Record<string, Step> = {
   "concorde-implement": steps.implement,
   "concorde-context-solve": {
     title: "Assess context",
-    kind: "Model-backed capability",
+    kind: "Model-backed operation",
     agent: "context-assessor",
     input:
       "The complete selected Module contract, task, constraints and participant declarations.",
@@ -297,13 +297,13 @@ const workerDetails: Record<string, Step> = {
   },
 };
 
-type CapabilityDetail = {
+type OperationDetail = {
   title: string;
   detail: string;
   exchange: string;
   stops: string;
 };
-const capabilityDetails: Record<string, CapabilityDetail> = {
+const operationDetails: Record<string, OperationDetail> = {
   "concorde-main": {
     title: "Main",
     detail:
@@ -362,7 +362,7 @@ const capabilityDetails: Record<string, CapabilityDetail> = {
     title: "Configure",
     detail: "Apply the initialized project’s Pi worker model selection.",
     exchange:
-      "concorde-configure-request@1 carries concorde-capability-configuration@1. concorde-configure-response@1 returns configuration and status: applied, rather than the common stage-response fields.",
+      "concorde-configure-request@1 carries concorde-operation-configuration@1. concorde-configure-response@1 returns configuration and status: applied, rather than the common stage-response fields.",
     stops:
       "Invalid configuration, unavailable initialized project state or a failed configuration write blocks application. Preview through describe-policy is not supported by this project action.",
   },
@@ -621,22 +621,20 @@ function StepCards({
   );
 }
 
-function CapabilityRelations({ name, data }: { name: string; data: FlowData }) {
-  const info = data.capability_info[name];
-  const callers = Object.keys(data.capability_info).filter((key) =>
-    data.capability_info[key].uses.includes(name),
+function OperationRelations({ name, data }: { name: string; data: GraphData }) {
+  const info = data.operation_info[name];
+  const callers = Object.keys(data.operation_info).filter((key) =>
+    data.operation_info[key].uses.includes(name),
   );
   const links = (names: string[]) =>
     names.map((key, index) => (
       <React.Fragment key={key}>
         {index > 0 && ", "}
-        <a href={`#${capabilityAnchor(key)}`}>
-          {key.replace(/^concorde-/, "")}
-        </a>
+        <a href={`#${operationAnchor(key)}`}>{key.replace(/^concorde-/, "")}</a>
       </React.Fragment>
     ));
   return (
-    <div className={styles.capabilityRelations}>
+    <div className={styles.operationRelations}>
       <p>
         {info.public ? "Public Skill" : "Called through composition"} · Context:{" "}
         {info.context_selection} ·{" "}
@@ -662,9 +660,9 @@ function CapabilityRelations({ name, data }: { name: string; data: FlowData }) {
   );
 }
 
-export default function CapabilityFlows({ data }: { data: FlowData }) {
+export default function OperationGraphs({ data }: { data: GraphData }) {
   const [variant, setVariant] = useState(0);
-  const groups = useMemo(() => flowNavigation(data), [data]);
+  const groups = useMemo(() => graphNavigation(data), [data]);
   const [selected, setSelected] = useState("development");
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -689,7 +687,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
       try {
         anchor = decodeURIComponent(window.location.hash.slice(1));
       } catch {
-        /* Use the selected flow. */
+        /* Use the selected graph. */
       }
       (
         document.getElementById(anchor) ?? document.getElementById(selected)
@@ -701,38 +699,38 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
   const spec = useBaseUrl("/specs/concorde/query-routing/module#usage");
   return (
     <Layout
-      title="Capability Flows"
-      description="Concorde's State-based Capability execution, branches and bounded feedback loops."
+      title="Operation Graphs"
+      description="Concorde's State-based Operation execution, branches and bounded feedback loops."
     >
       <main className={styles.page}>
-        <aside className={styles.sidebar} aria-label="Flow navigation">
+        <aside className={styles.sidebar} aria-label="Graph navigation">
           <div className={styles.sidebarHeading}>
-            <strong>Capability Flows</strong>
+            <strong>Operation Graphs</strong>
             <button
               type="button"
               className={styles.sidebarToggle}
               aria-expanded={sidebarOpen}
-              aria-controls="flow-navigation"
+              aria-controls="graph-navigation"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
-              {sidebarOpen ? "Close flows" : "Browse flows"}
+              {sidebarOpen ? "Close graphs" : "Browse graphs"}
             </button>
           </div>
           <nav
             ref={navigation}
-            id="flow-navigation"
-            className={styles.flowNavigation}
+            id="graph-navigation"
+            className={styles.graphNavigation}
             data-open={sidebarOpen}
-            aria-label="All flows"
+            aria-label="All graphs"
           >
-            <label className={styles.searchLabel} htmlFor="flow-search">
-              Find a flow
+            <label className={styles.searchLabel} htmlFor="graph-search">
+              Find a graph
             </label>
             <input
-              id="flow-search"
+              id="graph-search"
               type="search"
               value={query}
-              placeholder="Search flows…"
+              placeholder="Search graphs…"
               onChange={(event) => setQuery(event.target.value)}
             />
             {visibleGroups.map((group) => (
@@ -756,20 +754,20 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
               </div>
             ))}
             {visibleGroups.length === 0 && (
-              <p role="status">No flows match “{query}”.</p>
+              <p role="status">No graphs match “{query}”.</p>
             )}
           </nav>
         </aside>
         <div className={styles.content}>
           <header className={styles.header}>
             <p className={styles.eyebrow}>CONCORDE INTERNALS</p>
-            <h1>Inside the Capability Flows.</h1>
+            <h1>Inside the Operation Graphs.</h1>
             <p>
               Follow what each step does, what it passes on, and what makes it
-              stop. The diagrams come from current Flow factories, without
+              stop. The diagrams come from current Graph factories, without
               running Agents.
             </p>
-            <p>Choose a Capability or a shared Flow in the sidebar.</p>
+            <p>Choose a Operation or a shared Graph in the sidebar.</p>
           </header>
 
           <section
@@ -778,19 +776,19 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
             hidden={selected !== "specify"}
           >
             <div className={styles.sectionHeading}>
-              <span className={styles.badge}>INDEPENDENT SPEC FLOW</span>
+              <span className={styles.badge}>INDEPENDENT SPEC GRAPH</span>
               <h2>The specify loop</h2>
-              <CapabilityRelations name="concorde-specify-loop" data={data} />
+              <OperationRelations name="concorde-specify-loop" data={data} />
               <p>
                 Write or revise a Spec, then review it independently. Run this
-                flow on its own, or call it as the first step of the development
-                loop.
+                graph on its own, or call it as the first step of the
+                development loop.
               </p>
             </div>
             <div className={styles.columns}>
               <div>
                 <Diagram
-                  graph={data.flows["Spec authoring and review"]}
+                  graph={data.graphs["Spec authoring and review"]}
                   name="Specify Loop"
                   details={specSteps}
                   anchorPrefix="spec-stage"
@@ -825,7 +823,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
                   Gaps, blocking findings or incomplete reviews stop with saved
                   progress. An interrupted reviewer produces an incomplete
                   review report and a failed Review domain outcome; the
-                  enclosing flow preserves cancelled or limit_exhausted as the
+                  enclosing graph preserves cancelled or limit_exhausted as the
                   execution and candidate lifecycle classification. No
                   interruption completes Spec preparation or selects an
                   automatic retry. Resume through admission with current inputs;
@@ -839,7 +837,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
                     Standalone execution ends here.
                   </p>
                   <p>
-                    Dev Loop calls this same capability, then proceeds to
+                    Dev Loop calls this same operation, then proceeds to
                     planning or resumes current downstream work in the same
                     change. Implementation reaches <code>ready</code> after its
                     own checks and review.
@@ -853,7 +851,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
             <details className={styles.transitions} id="specify-studio">
               <summary>Full Specify Loop invocation</summary>
               <Diagram
-                graph={data.capabilities["concorde-specify-loop"]}
+                graph={data.operations["concorde-specify-loop"]}
                 name="Specify Loop invocation"
                 studio
               />
@@ -866,9 +864,9 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
             hidden={selected !== "development"}
           >
             <div className={styles.sectionHeading}>
-              <span className={styles.badge}>EXECUTABLE FLOW</span>
+              <span className={styles.badge}>EXECUTABLE GRAPH</span>
               <h2>The development loop</h2>
-              <CapabilityRelations name="concorde-dev-loop" data={data} />
+              <OperationRelations name="concorde-dev-loop" data={data} />
               <p>
                 Start with <a href="#specify">Specify Loop</a>, then plan,
                 implement and verify the change. Select its node to explore the
@@ -876,9 +874,9 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
               </p>
             </div>
             <div className={styles.controls}>
-              <label htmlFor="flow-variant">Entry & scope</label>
+              <label htmlFor="graph-variant">Entry & scope</label>
               <select
-                id="flow-variant"
+                id="graph-variant"
                 value={variant}
                 onChange={(e) => setVariant(Number(e.target.value))}
               >
@@ -925,7 +923,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
                 <p>
                   Current plan, task and code evidence determine the entry.
                   Nodes skipped by a resume remain declared so a later repair
-                  can re-enter tasks. Internal Flows are stateless: resume
+                  can re-enter tasks. Internal Graphs are stateless: resume
                   re-enters the public admission boundary using host-saved
                   candidate evidence, not an internal LangGraph checkpoint.
                 </p>
@@ -962,7 +960,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
             <div id="handoffs" className={styles.handoffs}>
               <h3>How information moves</h3>
               <p>
-                Every Capability consumes its declared State and returns a State
+                Every Operation consumes its declared State and returns a State
                 update. The host checks the result, saves accepted artifacts and
                 prepares the next node’s input channels. Hosts, model launchers
                 and permissions stay outside State in trusted runtime context.
@@ -970,12 +968,12 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
               </p>
               <ol className={styles.sequence}>
                 <li>
-                  <strong>Capability call → response</strong>
+                  <strong>Operation call → response</strong>
                   <span>
                     Public calls use{" "}
-                    <code>concorde-capability-invocation@3</code> with a typed{" "}
+                    <code>concorde-operation-invocation@3</code> with a typed{" "}
                     <code>input</code>. The result is{" "}
-                    <code>concorde-capability-result@3</code> with a typed{" "}
+                    <code>concorde-operation-result@3</code> with a typed{" "}
                     <code>output</code> or admission errors. These wire adapters
                     preserve existing callers while nodes use State contracts.
                     Host-backed graphs retain the envelope in a result channel.
@@ -985,7 +983,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
                   </span>
                 </li>
                 <li>
-                  <strong>Model-backed Capability → worker result</strong>
+                  <strong>Model-backed Operation → worker result</strong>
                   <span>
                     Ordinary workers receive{" "}
                     <code>concorde-agent-stage-context@4</code>
@@ -1093,7 +1091,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
                   </dd>
                 </dl>
                 <p>
-                  These are capability <code>output.data.outcome</code> values.
+                  These are operation <code>output.data.outcome</code> values.
                   The outer result has its own <code>status</code> and
                   <code>errors</code>; malformed inputs, permission problems and
                   stale artifacts can stop admission before any step runs.
@@ -1112,7 +1110,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
             <details className={styles.transitions} id="studio">
               <summary>Full Dev Loop invocation</summary>
               <Diagram
-                graph={data.capabilities["concorde-dev-loop"]}
+                graph={data.operations["concorde-dev-loop"]}
                 name="Dev Loop invocation"
                 studio
               />
@@ -1124,10 +1122,10 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
             className={styles.section}
             hidden={selected !== "routing"}
           >
-            <span className={styles.badge}>EXECUTABLE DISCOVERY FLOW</span>
+            <span className={styles.badge}>EXECUTABLE DISCOVERY GRAPH</span>
             <h2>Routing a read-only diagnosis</h2>
             <p>
-              <code>Discovery Flow → owner admission → review Flow</code>. The
+              <code>Discovery Graph → owner admission → review Graph</code>. The
               coordinator selects responsibility; it has no implementation
               contents.
             </p>
@@ -1158,9 +1156,9 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
               <li>
                 <strong>Independent reviewer</strong>
                 <span>
-                  Code diagnosis uses the code-reviewer Capability with the
+                  Code diagnosis uses the code-reviewer Operation with the
                   selected Module's authorized code. Spec review uses
-                  spec-reviewer. Both model Capabilities are read-only.
+                  spec-reviewer. Both model Operations are read-only.
                 </span>
               </li>
               <li>
@@ -1201,8 +1199,8 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
           {entries
             .filter(
               (entry) =>
-                entry.kind === "capability" &&
-                data.capability_info[entry.key].public &&
+                entry.kind === "operation" &&
+                data.operation_info[entry.key].public &&
                 !["development", "specify"].includes(entry.id),
             )
             .map((entry) => (
@@ -1214,32 +1212,32 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
               >
                 {selected === entry.id && (
                   <>
-                    <span className={styles.badge}>CAPABILITY</span>
-                    <h2>{capabilityDetails[entry.key].title}</h2>
-                    <CapabilityRelations name={entry.key} data={data} />
-                    <p>{capabilityDetails[entry.key].detail}</p>
+                    <span className={styles.badge}>OPERATION</span>
+                    <h2>{operationDetails[entry.key].title}</h2>
+                    <OperationRelations name={entry.key} data={data} />
+                    <p>{operationDetails[entry.key].detail}</p>
                     <div className={styles.columns}>
                       <div>
                         <Diagram
-                          graph={data.capabilities[entry.key]}
+                          graph={data.operations[entry.key]}
                           name={`${entry.title} invocation`}
                           studio
                         />
                       </div>
                       <aside className={styles.notes}>
                         <h3>Input → result</h3>
-                        <p>{capabilityDetails[entry.key].exchange}</p>
+                        <p>{operationDetails[entry.key].exchange}</p>
                         <h3>When it stops</h3>
-                        <p>{capabilityDetails[entry.key].stops}</p>
+                        <p>{operationDetails[entry.key].stops}</p>
                         <h3>Admission and execution</h3>
                         <p>
                           The host validates the typed request, binds the
                           workspace and admits context before executing the
-                          selected flow. The result preserves permission
+                          selected graph. The result preserves permission
                           policies and stage events.
                         </p>
                         <Link to={development + "interfaces"}>
-                          Capability contracts →
+                          Operation contracts →
                         </Link>
                       </aside>
                     </div>
@@ -1251,8 +1249,8 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
           {entries
             .filter(
               (entry) =>
-                entry.kind === "capability" &&
-                !data.capability_info[entry.key].public,
+                entry.kind === "operation" &&
+                !data.operation_info[entry.key].public,
             )
             .map((entry) => (
               <section
@@ -1263,21 +1261,21 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
               >
                 {selected === entry.id && (
                   <>
-                    <span className={styles.badge}>CAPABILITY</span>
+                    <span className={styles.badge}>OPERATION</span>
                     <h2>{entry.title}</h2>
-                    <CapabilityRelations name={entry.key} data={data} />
+                    <OperationRelations name={entry.key} data={data} />
                     <p>
                       {workerDetails[entry.key]?.detail ??
-                        "This State-based model Capability runs with its own instructions, tools and permission profile. It shares the same inventory and composition relation as deterministic and composed nodes."}
+                        "This State-based model Operation runs with its own instructions, tools and permission profile. It shares the same inventory and composition relation as deterministic and composed nodes."}
                     </p>
                     <p>
-                      This Capability receives its Module from its caller and is
+                      This Operation receives its Module from its caller and is
                       available through declared composition. It has no public
                       Skill.
                     </p>
                     <Diagram
-                      graph={data.capabilities[entry.key]}
-                      name={`${entry.title} capability`}
+                      graph={data.operations[entry.key]}
+                      name={`${entry.title} operation`}
                       studio
                     />
                     {workerDetails[entry.key] && (
@@ -1303,7 +1301,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
             ))}
 
           {entries
-            .filter((entry) => entry.kind === "flow")
+            .filter((entry) => entry.kind === "graph")
             .map((entry) => (
               <section
                 id={entry.id}
@@ -1313,20 +1311,20 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
               >
                 {selected === entry.id && (
                   <>
-                    <span className={styles.badge}>SHARED FLOW</span>
+                    <span className={styles.badge}>SHARED GRAPH</span>
                     <h2>{entry.title}</h2>
                     <p>
-                      Inspect the current executable flow. Conditional
+                      Inspect the current executable graph. Conditional
                       transitions choose admitted outcomes; repeated work
-                      follows the flow’s declared limits.
+                      follows the graph’s declared limits.
                     </p>
                     <Diagram
-                      graph={data.flows[entry.key]}
+                      graph={data.graphs[entry.key]}
                       name={entry.title}
                       studio
                     />
                     <Link to="/specs/concorde/harness/graphs-and-loops">
-                      Flow and Loop contracts →
+                      Graph and Loop contracts →
                     </Link>
                   </>
                 )}
@@ -1340,17 +1338,17 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
           >
             <h2>What is implemented?</h2>
             <p>
-              Public entries execute LangGraph Flows for admission and
-              capability dispatch. Query, topology, Spec authoring and review,
-              planning, development and Issue-solving Flows are composed into
+              Public entries execute LangGraph Graphs for admission and
+              operation dispatch. Query, topology, Spec authoring and review,
+              planning, development and Issue-solving Graphs are composed into
               those entries. Component coordination, batch work and recursive
-              Agent decisions also use executable Flow factories shown in the
+              Agent decisions also use executable Graph factories shown in the
               catalog.
             </p>
             <p>
               The{" "}
               <Link to="/specs/concorde/harness/graphs-and-loops">
-                Flow and Loop contracts
+                Graph and Loop contracts
               </Link>{" "}
               define the terminology and boundaries. Runtime context selects
               concrete component and Agent instances. The catalog shows their

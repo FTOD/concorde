@@ -1,4 +1,4 @@
-# Historical capability ownership migration
+# Historical operation ownership migration
 
 ## Terminology
 
@@ -6,7 +6,7 @@
 | --- | --- |
 | [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Contract](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Requirement](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Scenario](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -18,11 +18,11 @@
 
 ## Historical scope
 
-This is a record of the earlier capability-ownership split, preserved from the pre-Protocol-8
+This is a record of the earlier operation-ownership split, preserved from the pre-Protocol-8
 source baseline. Version numbers and “current” entries below describe that migration, not the
 current runtime agreement. Read each owning Module for present behavior.
 
-In the later explanation-page consolidation, the Delivery, Development Flow, Query and Routing,
+In the later explanation-page consolidation, the Delivery, Development Graph, Query and Routing,
 and Topology topics listed below were retired into their existing Module entries. Their historical
 document IDs are not aliases for those entries. The table retains the migration's source locators
 as text and links to the surviving reading entries; requirements, scenarios and contracts retain
@@ -85,7 +85,7 @@ Review-result remains the same version-1 wire value, now owned by Review.
 
 ### Compatibility and evidence scope
 
-All new providers and flows have Concorde Framework as their sole parent; uses and local dependency
+All new providers and graphs have Concorde Framework as their sole parent; uses and local dependency
 promises describe reuse. The old Development package binding is retained and exact existing wrapper
 entries are shared by new semantic owners. No runtime source is physically extracted. Original
 checks remain registered unchanged; a missing scenario verification remains visible coverage evidence.
@@ -96,6 +96,6 @@ source bytes need fresh evidence under the normal runtime gates.
 Common host transport, invocation permissions, gap history and compatibility stay in Development.
 [Planning Module](planning/module.md) owns sufficiency, plan and tasks; [Implementation Module](implementation/module.md) owns bounded task fulfillment. Spec
 Authoring, Review, Validation, Delivery, [Query and Routing](query-routing/module.md), and Topology own their cohesive effects.
-[Specification Flow](specify-loop/module.md) and [Development Flow](dev-loop/module.md) own their sequencing and completion policy. Current repair
-and component adapters still constrain reuse; broader flow adapters require separately implemented,
+[Specification Graph](specify-loop/module.md) and [Development Graph](dev-loop/module.md) own their sequencing and completion policy. Current repair
+and component adapters still constrain reuse; broader graph adapters require separately implemented,
 reviewed and verified support.

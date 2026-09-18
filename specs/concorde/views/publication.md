@@ -54,7 +54,7 @@ Rebuilding removes obsolete generated pages only as part of successful promotion
 A project can add an introduction and independent custom-documentation tabs. These are suitable for
 onboarding, manuals and project-owned interactive pages, not for hiding Module obligations outside
 registered context. Custom docs cannot contain registered Spec sources or conflict with Spec routes.
-Concorde's independent Protocol chapters and Agent Flows page use this extension mechanism; they are
+Concorde's independent Protocol chapters and Agent Graphs page use this extension mechanism; they are
 not copied into consumer projects by the generic scaffold.
 
 Publication ignores retired unregistered instruction/wire projections, and exposes no standalone

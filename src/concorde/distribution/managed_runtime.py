@@ -1,4 +1,4 @@
-"""Installer-owned virtual environment lifecycle for paired Concorde capabilities."""
+"""Installer-owned virtual environment lifecycle for paired Concorde operations."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any, Mapping, Sequence
-
+from typing import Any
 
 MARKER_NAME = ".concorde-runtime.json"
 MARKER_SCHEMA = 2
@@ -74,7 +74,9 @@ def _safe_relative(value: object, field: str) -> str:
         raise ManagedRuntimeError(f"{field} must be a string")
     candidate = PurePosixPath(value)
     if not value or candidate.is_absolute() or ".." in candidate.parts or "\\" in value:
-        raise ManagedRuntimeError(f"{field} must be a safe project-relative path: {value!r}")
+        raise ManagedRuntimeError(
+            f"{field} must be a safe project-relative path: {value!r}"
+        )
     return candidate.as_posix()
 
 
@@ -85,7 +87,9 @@ def _json_object(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
     try:
         value = json.loads(content.decode("utf-8"))
     except (UnicodeError, json.JSONDecodeError) as error:
-        raise ManagedRuntimeError(f"{label} must be valid UTF-8 JSON: {path}") from error
+        raise ManagedRuntimeError(
+            f"{label} must be valid UTF-8 JSON: {path}"
+        ) from error
     if not isinstance(value, dict):
         raise ManagedRuntimeError(f"{label} must be one JSON object: {path}")
     return value, content
@@ -113,20 +117,36 @@ def _load_viewer_spec(package_root: Path, manifest: Mapping[str, Any]) -> Viewer
         if not isinstance(value, str) or not value:
             raise ManagedRuntimeError(f"viewer.{field} must be a non-empty string")
         strings[field] = value
-    for field in ("npm_package", "npm_lock", "install_relative", "entrypoint", "launcher"):
+    for field in (
+        "npm_package",
+        "npm_lock",
+        "install_relative",
+        "entrypoint",
+        "launcher",
+    ):
         strings[field] = _safe_relative(strings[field], f"viewer.{field}")
     if strings["node"] != ">=18":
         raise ManagedRuntimeError("viewer.node must be '>=18'")
-    if not strings["asset_url"].startswith("https://github.com/Egonex-AI/Understand-Anything/releases/download/"):
-        raise ManagedRuntimeError("viewer.asset_url must be an official immutable release URL")
+    if not strings["asset_url"].startswith(
+        "https://github.com/Egonex-AI/Understand-Anything/releases/download/"
+    ):
+        raise ManagedRuntimeError(
+            "viewer.asset_url must be an official immutable release URL"
+        )
     if _SHA256.fullmatch(strings["asset_sha256"]) is None:
         raise ManagedRuntimeError("viewer.asset_sha256 must be one sha256 digest")
     asset_bytes = configuration.get("asset_bytes")
-    if not isinstance(asset_bytes, int) or isinstance(asset_bytes, bool) or asset_bytes <= 0:
+    if (
+        not isinstance(asset_bytes, int)
+        or isinstance(asset_bytes, bool)
+        or asset_bytes <= 0
+    ):
         raise ManagedRuntimeError("viewer.asset_bytes must be a positive integer")
     graph_paths = configuration.get("graph_paths")
     if not isinstance(graph_paths, list) or len(graph_paths) != 2:
-        raise ManagedRuntimeError("viewer.graph_paths must contain legacy and modern graph paths")
+        raise ManagedRuntimeError(
+            "viewer.graph_paths must contain legacy and modern graph paths"
+        )
     normalized_graph_paths = tuple(
         _safe_relative(item, f"viewer.graph_paths[{index}]")
         for index, item in enumerate(graph_paths)
@@ -135,30 +155,54 @@ def _load_viewer_spec(package_root: Path, manifest: Mapping[str, Any]) -> Viewer
         ".understand-anything/knowledge-graph.json",
         ".ua/knowledge-graph.json",
     ):
-        raise ManagedRuntimeError("viewer.graph_paths must use the official legacy-first locations")
+        raise ManagedRuntimeError(
+            "viewer.graph_paths must use the official legacy-first locations"
+        )
 
     package_path = package_root / strings["npm_package"]
     lock_path = package_root / strings["npm_lock"]
     package_value, package_content = _json_object(package_path, "Viewer npm package")
     lock_value, lock_content = _json_object(lock_path, "Viewer npm lock")
     dependency = package_value.get("dependencies")
-    if not isinstance(dependency, Mapping) or dependency.get(strings["package"]) != strings["asset_url"]:
-        raise ManagedRuntimeError("Viewer npm package must depend on the exact official asset URL")
-    if package_value.get("private") is not True or package_value.get("engines") != {"node": ">=18"}:
-        raise ManagedRuntimeError("Viewer npm package must be private and require Node.js >=18")
+    if (
+        not isinstance(dependency, Mapping)
+        or dependency.get(strings["package"]) != strings["asset_url"]
+    ):
+        raise ManagedRuntimeError(
+            "Viewer npm package must depend on the exact official asset URL"
+        )
+    if package_value.get("private") is not True or package_value.get("engines") != {
+        "node": ">=18"
+    }:
+        raise ManagedRuntimeError(
+            "Viewer npm package must be private and require Node.js >=18"
+        )
     packages = lock_value.get("packages")
-    locked = packages.get(f"node_modules/{strings['package']}") if isinstance(packages, Mapping) else None
+    locked = (
+        packages.get(f"node_modules/{strings['package']}")
+        if isinstance(packages, Mapping)
+        else None
+    )
     if not isinstance(locked, Mapping):
         raise ManagedRuntimeError("Viewer npm lock omits the official Viewer package")
-    if locked.get("version") != strings["version"] or locked.get("resolved") != strings["asset_url"]:
-        raise ManagedRuntimeError("Viewer npm lock identity differs from the manifest pin")
+    if (
+        locked.get("version") != strings["version"]
+        or locked.get("resolved") != strings["asset_url"]
+    ):
+        raise ManagedRuntimeError(
+            "Viewer npm lock identity differs from the manifest pin"
+        )
     integrity = locked.get("integrity")
     if not isinstance(integrity, str) or not integrity.startswith("sha512-"):
         raise ManagedRuntimeError("Viewer npm lock must pin one sha512 integrity")
     if locked.get("engines") != {"node": ">=18"}:
-        raise ManagedRuntimeError("Viewer npm lock must preserve the official Node.js engine")
+        raise ManagedRuntimeError(
+            "Viewer npm lock must preserve the official Node.js engine"
+        )
     if locked.get("bin") != {"understand-anything-viewer": "bin/viewer.mjs"}:
-        raise ManagedRuntimeError("Viewer npm lock must preserve the official executable")
+        raise ManagedRuntimeError(
+            "Viewer npm lock must preserve the official executable"
+        )
     lock_sha256 = _sha256(package_content + b"\0" + lock_content)
     return ViewerSpec(
         provider=strings["provider"],
@@ -197,13 +241,19 @@ def load_runtime_spec(
     if venv != ".concorde/.venv":
         raise ManagedRuntimeError("runtime.venv must be .concorde/.venv")
     from .build import SKILL_NAMES
+
     requirement_path = package_root / requirements
     launcher_path = package_root / launcher
-    for label, path in (("requirements", requirement_path), ("launcher", launcher_path)):
+    for label, path in (
+        ("requirements", requirement_path),
+        ("launcher", launcher_path),
+    ):
         if path.is_symlink() or not path.is_file():
             raise ManagedRuntimeError(f"runtime {label} must be one real file: {path}")
     content = requirement_path.read_bytes()
-    lines = [line.strip() for line in content.decode("utf-8").splitlines() if line.strip()]
+    lines = [
+        line.strip() for line in content.decode("utf-8").splitlines() if line.strip()
+    ]
     if len(lines) != 1 or (match := _LOCK_LINE.fullmatch(lines[0])) is None:
         raise ManagedRuntimeError(
             "runtime requirements must contain exactly one pinned langgraph version"
@@ -216,16 +266,24 @@ def load_runtime_spec(
     for relative in PI_SOURCES:
         source = package_root.joinpath(*PurePosixPath(relative).parts)
         if source.is_symlink() or not source.is_file():
-            raise ManagedRuntimeError(f"Pi worker package source must be one real file: {relative}")
+            raise ManagedRuntimeError(
+                f"Pi worker package source must be one real file: {relative}"
+            )
         pi_contents.append(source.read_bytes())
     pi_package, _ = _json_object(package_root / PI_SOURCES[0], "Pi worker package")
     pi_subagents_version = (pi_package.get("dependencies") or {}).get(PI_SUBAGENTS)
-    if not isinstance(pi_subagents_version, str) or not _SEMVER.fullmatch(pi_subagents_version):
-        raise ManagedRuntimeError(f"Pi worker package must pin {PI_SUBAGENTS} to one exact version")
+    if not isinstance(pi_subagents_version, str) or not _SEMVER.fullmatch(
+        pi_subagents_version
+    ):
+        raise ManagedRuntimeError(
+            f"Pi worker package must pin {PI_SUBAGENTS} to one exact version"
+        )
     pi_lock_sha256 = _sha256(b"\0".join(pi_contents))
     requirements_sha256 = _sha256(content)
     runtime_sha256 = _sha256(
-        (requirements_sha256 + "\n" + viewer.lock_sha256 + "\n" + pi_lock_sha256).encode("utf-8")
+        (
+            requirements_sha256 + "\n" + viewer.lock_sha256 + "\n" + pi_lock_sha256
+        ).encode("utf-8")
     )
     return ManagedRuntimeSpec(
         venv=venv,
@@ -253,7 +311,9 @@ def _runtime_path(target: Path, spec: ManagedRuntimeSpec) -> Path:
     runtime = target.joinpath(*PurePosixPath(spec.venv).parts)
     expected = target / ".concorde/.venv"
     if runtime != expected:
-        raise ManagedRuntimeError(f"managed runtime escaped its fixed boundary: {runtime}")
+        raise ManagedRuntimeError(
+            f"managed runtime escaped its fixed boundary: {runtime}"
+        )
     current = target
     for part in PurePosixPath(spec.venv).parts[:-1]:
         current /= part
@@ -288,7 +348,9 @@ def _receipt_owns_runtime(receipt: Mapping[str, Any], spec: ManagedRuntimeSpec) 
     return isinstance(runtime, Mapping) and runtime.get("path") == spec.venv
 
 
-def _marker_owns_runtime(marker: Mapping[str, Any] | None, spec: ManagedRuntimeSpec) -> bool:
+def _marker_owns_runtime(
+    marker: Mapping[str, Any] | None, spec: ManagedRuntimeSpec
+) -> bool:
     return bool(marker and marker.get("path") == spec.venv)
 
 
@@ -328,7 +390,9 @@ def _viewer_root(runtime: Path, spec: ManagedRuntimeSpec) -> Path:
     try:
         root.relative_to(runtime)
     except ValueError as error:  # pragma: no cover - guarded by _safe_relative
-        raise ManagedRuntimeError(f"Viewer install path escaped the managed runtime: {root}") from error
+        raise ManagedRuntimeError(
+            f"Viewer install path escaped the managed runtime: {root}"
+        ) from error
     return root
 
 
@@ -338,11 +402,15 @@ def _viewer_entrypoint(runtime: Path, spec: ManagedRuntimeSpec) -> Path:
     )
 
 
-def _tool_version(command: str, cwd: Path, label: str) -> tuple[str, tuple[int, int, int]]:
+def _tool_version(
+    command: str, cwd: Path, label: str
+) -> tuple[str, tuple[int, int, int]]:
     try:
         result = _run([command, "--version"], cwd=cwd, environment=os.environ)
     except OSError as error:
-        raise ManagedRuntimeError(f"{label} is required for the official Viewer: {error}") from error
+        raise ManagedRuntimeError(
+            f"{label} is required for the official Viewer: {error}"
+        ) from error
     value = _checked(result, f"{label} version check").strip()
     match = _SEMVER.fullmatch(value)
     if match is None:
@@ -364,15 +432,26 @@ def _verify_viewer(
     viewer_root = _viewer_root(runtime, spec)
     package_path = viewer_root / "node_modules" / spec.viewer.package / "package.json"
     package, _ = _json_object(package_path, "installed official Viewer package")
-    if package.get("name") != spec.viewer.package or package.get("version") != spec.viewer.version:
-        raise ManagedRuntimeError("installed official Viewer package identity is mismatched")
+    if (
+        package.get("name") != spec.viewer.package
+        or package.get("version") != spec.viewer.version
+    ):
+        raise ManagedRuntimeError(
+            "installed official Viewer package identity is mismatched"
+        )
     if package.get("engines") != {"node": ">=18"}:
-        raise ManagedRuntimeError("installed official Viewer package omits its Node.js engine")
+        raise ManagedRuntimeError(
+            "installed official Viewer package omits its Node.js engine"
+        )
     entrypoint = _viewer_entrypoint(runtime, spec)
-    dashboard = viewer_root / "node_modules" / spec.viewer.package / "dist" / "index.html"
+    dashboard = (
+        viewer_root / "node_modules" / spec.viewer.package / "dist" / "index.html"
+    )
     for label, path in (("entry point", entrypoint), ("dashboard", dashboard)):
         if path.is_symlink() or not path.is_file():
-            raise ManagedRuntimeError(f"installed official Viewer {label} is missing: {path}")
+            raise ManagedRuntimeError(
+                f"installed official Viewer {label} is missing: {path}"
+            )
     result = _run(
         ["node", str(entrypoint), "--help"],
         cwd=cwd,
@@ -403,7 +482,9 @@ def _install_viewer(
     for relative, destination in sources:
         source = framework.joinpath(*PurePosixPath(relative).parts)
         if source.is_symlink() or not source.is_file():
-            raise ManagedRuntimeError(f"installed Viewer lock source is missing: {source}")
+            raise ManagedRuntimeError(
+                f"installed Viewer lock source is missing: {source}"
+            )
         shutil.copyfile(source, destination)
         destination.chmod(0o644)
     environment = os.environ.copy()
@@ -437,26 +518,57 @@ def _install_pi(runtime: Path, framework: Path, cwd: Path) -> None:
     for relative in PI_SOURCES:
         source = framework.joinpath(*PurePosixPath(relative).parts)
         if source.is_symlink() or not source.is_file():
-            raise ManagedRuntimeError(f"installed Pi worker package source is missing: {source}")
+            raise ManagedRuntimeError(
+                f"installed Pi worker package source is missing: {source}"
+            )
         destination = root / PurePosixPath(relative).name
         shutil.copyfile(source, destination)
         destination.chmod(0o644)
     environment = os.environ.copy()
-    environment.update({"NPM_CONFIG_AUDIT": "false", "NPM_CONFIG_FUND": "false",
-                        "NPM_CONFIG_UPDATE_NOTIFIER": "false"})
-    result = _run(["npm", "--prefix", str(root), "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
-                  cwd=cwd, environment=environment)
+    environment.update(
+        {
+            "NPM_CONFIG_AUDIT": "false",
+            "NPM_CONFIG_FUND": "false",
+            "NPM_CONFIG_UPDATE_NOTIFIER": "false",
+        }
+    )
+    result = _run(
+        [
+            "npm",
+            "--prefix",
+            str(root),
+            "ci",
+            "--ignore-scripts",
+            "--no-audit",
+            "--no-fund",
+        ],
+        cwd=cwd,
+        environment=environment,
+    )
     _checked(result, "Pi worker extension installation")
 
 
 def _verify_pi(runtime: Path, spec: ManagedRuntimeSpec) -> None:
-    package_root = runtime.joinpath(*PurePosixPath(PI_INSTALL_RELATIVE).parts) / "node_modules" / PI_SUBAGENTS
-    package, _ = _json_object(package_root / "package.json", "installed pi-subagents package")
-    if package.get("name") != PI_SUBAGENTS or package.get("version") != spec.pi_subagents_version:
-        raise ManagedRuntimeError("installed pi-subagents package identity is mismatched")
+    package_root = (
+        runtime.joinpath(*PurePosixPath(PI_INSTALL_RELATIVE).parts)
+        / "node_modules"
+        / PI_SUBAGENTS
+    )
+    package, _ = _json_object(
+        package_root / "package.json", "installed pi-subagents package"
+    )
+    if (
+        package.get("name") != PI_SUBAGENTS
+        or package.get("version") != spec.pi_subagents_version
+    ):
+        raise ManagedRuntimeError(
+            "installed pi-subagents package identity is mismatched"
+        )
     entry = package_root / "index.ts"
     if entry.is_symlink() or not entry.is_file():
-        raise ManagedRuntimeError(f"installed pi-subagents entry point is missing: {entry}")
+        raise ManagedRuntimeError(
+            f"installed pi-subagents entry point is missing: {entry}"
+        )
 
 
 def _healthy(runtime: Path, spec: ManagedRuntimeSpec) -> bool:
@@ -514,9 +626,7 @@ def plan_runtime(
             "reason": f"managed runtime must be a real directory: {spec.venv}",
         }
     marker = _read_marker(runtime)
-    if not (
-        _receipt_owns_runtime(receipt, spec) or _marker_owns_runtime(marker, spec)
-    ):
+    if not (_receipt_owns_runtime(receipt, spec) or _marker_owns_runtime(marker, spec)):
         return {
             **item,
             "action": "conflict",
@@ -564,25 +674,25 @@ def _verify_skills(
             cwd=target,
             environment=environment,
         )
-        output = _checked(result, f"capability runtime check for {skill}")
+        output = _checked(result, f"operation runtime check for {skill}")
         try:
             payload = json.loads(output)
         except json.JSONDecodeError as error:
             raise ManagedRuntimeError(
-                f"capability runtime check for {skill} returned invalid JSON"
+                f"operation runtime check for {skill} returned invalid JSON"
             ) from error
-        if not isinstance(payload, dict) or payload.get("capability") != skill:
+        if not isinstance(payload, dict) or payload.get("operation") != skill:
             raise ManagedRuntimeError(
-                f"capability runtime check for {skill} returned mismatched identity"
+                f"operation runtime check for {skill} returned mismatched identity"
             )
         if payload.get("langgraph") != spec.langgraph_version:
             raise ManagedRuntimeError(
-                f"capability runtime check for {skill} returned mismatched LangGraph version"
+                f"operation runtime check for {skill} returned mismatched LangGraph version"
             )
         observed_python = payload.get("python_version")
         if not isinstance(observed_python, str) or not observed_python:
             raise ManagedRuntimeError(
-                f"capability runtime check for {skill} omitted its Python version"
+                f"operation runtime check for {skill} omitted its Python version"
             )
         verified.append(skill)
     if observed_python is None:
@@ -616,7 +726,9 @@ def _write_marker(
     }
     content = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
     marker = runtime / MARKER_NAME
-    with tempfile.NamedTemporaryFile(dir=runtime, prefix=".concorde-runtime-", delete=False) as handle:
+    with tempfile.NamedTemporaryFile(
+        dir=runtime, prefix=".concorde-runtime-", delete=False
+    ) as handle:
         staged = Path(handle.name)
         handle.write(content)
     staged.replace(marker)
@@ -698,7 +810,12 @@ def provision_runtime(
         _verify_pi(runtime, spec)
         _write_marker(runtime, spec, python_version, node_version, npm_version)
     except Exception:
-        if changed and runtime.exists() and not runtime.is_symlink() and runtime.is_dir():
+        if (
+            changed
+            and runtime.exists()
+            and not runtime.is_symlink()
+            and runtime.is_dir()
+        ):
             shutil.rmtree(runtime)
         raise
     return {

@@ -16,12 +16,12 @@ Validation checks specification structure and runs configured verification comma
 | [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
 Run `concorde-validate` for the current admitted candidate with target_id and task; optionally
-choose whether to run configured checks. This deterministic capability launches no Agent. It
+choose whether to run configured checks. This deterministic operation launches no Agent. It
 returns structural and configured-check evidence tied to current bytes and evaluates existing
 readiness requirements. A directly authored candidate needs no invented plan or attempt; existing
 authored tasks and required reviews still apply.
@@ -62,7 +62,7 @@ The diagram separates Validation evidence from the Readiness decision that consu
 identifies affected consumers and checks structure, Harness executes admitted commands without
 project writes, and [Development Module](../development/module.md) records results and evaluates existing gates. A passing command
 is evidence for its checked inputs, not permission to skip required reviews or a proof of semantic
-completeness. These collaborations are capability dependencies; Validation does not own its providers.
+completeness. These collaborations are operation dependencies; Validation does not own its providers.
 
 ```mermaid
 flowchart TB
@@ -93,7 +93,7 @@ Admit deterministic validation requests, retain private check logs and store cur
 
 This collaboration applies when validation is requested, check results are recorded or existing task and review gates are evaluated.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -119,5 +119,5 @@ This collaboration applies when computing structural evidence and the affected M
 ## Precise specifications
 
 The Validation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#validation-validation-capability).
+[execution and record contracts](execution-reference.md#validation-validation-operation).
 These companions are part of the same complete Module specification, not separate topic owners.

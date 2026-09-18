@@ -35,8 +35,8 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      # A Framework source checkout builds its runtime assets before publication.
-      # Ordinary scaffolded consumers have no Framework build command at their root.
+      # Build source-checkout runtime assets before publication.
+      # Scaffolded consumers have no Framework build command at their root.
       - name: Build Concorde (Skills, roles, Protocol assets)
         if: hashFiles('scripts/concorde.py') != ''
         run: python3 scripts/concorde.py build

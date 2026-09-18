@@ -1,0 +1,123 @@
+{
+  "schema_version": 2,
+  "document": {
+    "id": "document.operations.providers",
+    "owner": "module.operations",
+    "role": "implementation"
+  },
+  "entities": [
+    {
+      "id": "entity.concorde.planning",
+      "title": "Planning",
+      "kind": "submodule",
+      "target_id": "module.planning",
+      "meaning": "#entity.concorde.planning"
+    },
+    {
+      "id": "entity.concorde.implementation",
+      "title": "Implementation",
+      "kind": "submodule",
+      "target_id": "module.implementation",
+      "meaning": "#entity.concorde.implementation"
+    },
+    {
+      "id": "entity.concorde.spec-authoring",
+      "title": "Spec Authoring",
+      "kind": "submodule",
+      "target_id": "module.spec-authoring",
+      "meaning": "#entity.concorde.spec-authoring"
+    },
+    {
+      "id": "entity.concorde.review",
+      "title": "Review",
+      "kind": "submodule",
+      "target_id": "module.review",
+      "meaning": "#entity.concorde.review"
+    },
+    {
+      "id": "entity.concorde.validation",
+      "title": "Validation",
+      "kind": "submodule",
+      "target_id": "module.validation",
+      "meaning": "#entity.concorde.validation"
+    },
+    {
+      "id": "entity.concorde.delivery",
+      "title": "Delivery",
+      "kind": "submodule",
+      "target_id": "module.delivery",
+      "meaning": "#entity.concorde.delivery"
+    },
+    {
+      "id": "entity.concorde.query-routing",
+      "title": "Query and Routing",
+      "kind": "submodule",
+      "target_id": "module.query-routing",
+      "meaning": "#entity.concorde.query-routing"
+    },
+    {
+      "id": "entity.concorde.topology",
+      "title": "Topology",
+      "kind": "submodule",
+      "target_id": "module.topology",
+      "meaning": "#entity.concorde.topology"
+    },
+    {
+      "id": "entity.concorde.dev-loop",
+      "title": "Development Graph",
+      "kind": "submodule",
+      "target_id": "module.dev-loop",
+      "meaning": "#entity.concorde.dev-loop"
+    },
+    {
+      "id": "entity.concorde.specify-loop",
+      "title": "Specification Graph",
+      "kind": "submodule",
+      "target_id": "module.specify-loop",
+      "meaning": "#entity.concorde.specify-loop"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.planning",
+      "meaning": "#agreement.document.concorde.module.7"
+    },
+    {
+      "target_id": "module.implementation",
+      "meaning": "#agreement.document.concorde.module.8"
+    },
+    {
+      "target_id": "module.spec-authoring",
+      "meaning": "#agreement.document.concorde.module.9"
+    },
+    {
+      "target_id": "module.review",
+      "meaning": "#agreement.document.concorde.module.10"
+    },
+    {
+      "target_id": "module.validation",
+      "meaning": "#agreement.document.concorde.module.11"
+    },
+    {
+      "target_id": "module.delivery",
+      "meaning": "#agreement.document.concorde.module.12"
+    },
+    {
+      "target_id": "module.query-routing",
+      "meaning": "#agreement.document.concorde.module.13"
+    },
+    {
+      "target_id": "module.topology",
+      "meaning": "#agreement.document.concorde.module.14"
+    },
+    {
+      "target_id": "module.dev-loop",
+      "meaning": "#agreement.document.concorde.module.15"
+    },
+    {
+      "target_id": "module.specify-loop",
+      "meaning": "#agreement.document.concorde.module.16"
+    }
+  ],
+  "bindings": []
+}

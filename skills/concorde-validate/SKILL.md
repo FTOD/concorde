@@ -1,12 +1,12 @@
 ---
 name: concorde-validate
-description: "Capability: run deterministic Spec and configured code checks and record readiness for the current candidate."
-capability: validate
+description: "Operation: run deterministic Spec and configured code checks and record readiness for the current candidate."
+operation: validate
 ---
 
 # concorde-validate
 
-@include prompts/workflow-host/invoke-capability-opener.md ACTION=validate
+@include prompts/workflow-host/invoke-operation-opener.md ACTION=validate
 @include prompts/workflow-host/lifecycle-no-cognition.md
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-validate

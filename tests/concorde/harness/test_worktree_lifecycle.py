@@ -7,11 +7,13 @@ import subprocess
 import sys
 import tempfile
 import threading
-from concurrent.futures import ThreadPoolExecutor
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.development.operation_service import OperationHost, run_operation
+from concorde.harness import change_worktree, worktree_delivery
 from concorde.harness.change_worktree import (
     GUIDANCE_START,
     REGISTRY_PATH,
@@ -21,11 +23,8 @@ from concorde.harness.change_worktree import (
     read_change,
 )
 from concorde.spec.typed_data import typed
-from concorde.spec.verification import verifies
-from concorde.development.capability_service import CapabilityHost, run_capability
-from concorde.harness import worktree_delivery
-from concorde.harness import change_worktree
 from concorde.spec.validation import validate_repository
+from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
     CONFIGURATION,
     PACKAGE,
@@ -62,20 +61,18 @@ class WorktreeLifecycleTests(unittest.TestCase):
         git(root, "commit", "-qm", message)
         return git_value(root, "rev-parse", "HEAD")
 
-    def call_capability(
+    def call_operation(
         self, root, name, data, callback=None, *, host=None, mode="execute"
     ):
         double = ModelProcessDouble(callback)
         self.last_double = double
-        host = host or CapabilityHost(
-            root, PACKAGE, executor=double.executor, mode=mode
-        )
-        return run_capability(
+        host = host or OperationHost(root, PACKAGE, executor=double.executor, mode=mode)
+        return run_operation(
             name, CONFIGURATION, typed(name + "-request", data), host_context=host
         )
 
     def ready(self, callback=None, task=None):
-        result = self.call_capability(
+        result = self.call_operation(
             self.change, "concorde-dev-loop", task or self.task, callback
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -92,14 +89,14 @@ class WorktreeLifecycleTests(unittest.TestCase):
             '    if amount <= 0 or amount > balance: raise ValueError("invalid transfer")\n'
             "    return balance - amount\n"
         )
-        result = self.call_capability(self.change, "concorde-validate", self.task)
+        result = self.call_operation(self.change, "concorde-validate", self.task)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"], result)
         return read_change(self.change, required=True)["change_id"]
 
     @verifies("scenario.development.workspace-inventory")
     def test_main_sees_primary_inventory_and_secondary_draft_identity(self):
-        result = self.call_capability(
+        result = self.call_operation(
             self.change, "concorde-main", {"task": "Explain transfer"}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -116,7 +113,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             self.assertEqual(1, text.count(GUIDANCE_START))
         unmanaged = self.directory / "unmanaged"
         git(self.primary, "worktree", "add", "-b", "another-change", str(unmanaged))
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-main", {"task": "Explain transfer"}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -150,7 +147,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         marker = "DRAFT_PROMISE_ONLY_IN_CANDIDATE"
         entry = self.change / "specs/bank/module.md"
         entry.write_text(entry.read_text() + f"\n{marker}\n")
-        result = self.call_capability(
+        result = self.call_operation(
             self.change, "concorde-main", {"task": "Explain transfer"}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -165,7 +162,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(digest_bytes(entry.read_bytes()), candidate_bank["digest"])
         self.assertNotIn(marker, json.dumps(candidate))
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-main", {"task": "Explain transfer"}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -180,7 +177,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             primary_bank["digest"],
         )
         self.assertNotEqual(candidate_bank["digest"], primary_bank["digest"])
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary / "app", "concorde-main", {"task": "Explain transfer"}
         )
         self.assertNotEqual("succeeded", result["status"], result)
@@ -191,7 +188,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         unversioned = self.directory / "unversioned"
         unversioned.mkdir()
         project(unversioned)
-        result = self.call_capability(
+        result = self.call_operation(
             unversioned, "concorde-main", {"task": "Explain transfer"}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -213,10 +210,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     ],
                 )
 
-        blocked = self.call_capability(self.change, "concorde-plan", self.task, missing)
+        blocked = self.call_operation(self.change, "concorde-plan", self.task, missing)
         self.assertEqual("blocked", blocked["status"], blocked)
         before = read_change(self.change, required=True)
-        rejected = self.call_capability(
+        rejected = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": before["change_id"]}
         )
         self.assertEqual("blocked", rejected["status"], rejected)
@@ -236,7 +233,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     expand_targets=[],
                 )
 
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-main", {"task": "What work is in progress?"}, status
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -256,7 +253,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             return apply(root, changes, allowed, **kwargs)
 
         with patch.object(change_worktree, "apply_files", side_effect=fail_state):
-            result = self.call_capability(
+            result = self.call_operation(
                 self.change, "concorde-main", {"task": "Explain transfer"}
             )
         self.assertNotEqual("succeeded", result["status"], result)
@@ -277,8 +274,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "return completed before planning", result["errors"][0]["message"]
         )
 
-    def assert_primary_handoff(self, capability):
-        result = self.call_capability(self.primary, capability, self.task)
+    def assert_primary_handoff(self, operation):
+        result = self.call_operation(self.primary, operation, self.task)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("worktree_handoff_required", result["errors"][0]["code"])
         self.assertEqual([], self.last_double.calls)
@@ -320,7 +317,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                         "specify": specify,
                         "run_reviews": reviews,
                     }
-                    initial = self.call_capability(
+                    initial = self.call_operation(
                         self.primary, "concorde-dev-loop", task
                     )
                     self.assertEqual(
@@ -332,7 +329,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                         state = read_change(created, required=True)
                         self.assertIsNone(state["target_id"])
                         self.assertEqual({}, state["targets"])
-                        resumed = self.call_capability(
+                        resumed = self.call_operation(
                             created,
                             "concorde-dev-loop",
                             {**task, "change_id": state["change_id"]},
@@ -370,7 +367,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "specify": False,
             "run_reviews": False,
         }
-        result = self.call_capability(self.change, "concorde-dev-loop", resumed_task)
+        result = self.call_operation(self.change, "concorde-dev-loop", resumed_task)
         self.assertEqual("succeeded", result["status"], result)
         self.assertNotIn("route", [call["stage"] for call in self.last_double.calls])
         self.assertEqual(task["focus_id"], result["output"]["data"]["focus_id"])
@@ -382,7 +379,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         ):
             with self.subTest(field=field):
                 before = (self.change / STATE_PATH).read_bytes()
-                result = self.call_capability(
+                result = self.call_operation(
                     self.change, "concorde-dev-loop", {**resumed_task, field: value}
                 )
                 self.assertEqual("blocked", result["status"], result)
@@ -408,7 +405,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         ):
             with self.subTest(field=field):
                 before = (self.change / STATE_PATH).read_bytes()
-                result = self.call_capability(
+                result = self.call_operation(
                     self.change,
                     "concorde-dev-loop",
                     {**task, "change_id": state["change_id"], field: value},
@@ -418,7 +415,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 )
                 self.assertEqual([], self.last_double.calls)
                 self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
-        result = self.call_capability(
+        result = self.call_operation(
             self.change,
             "concorde-dev-loop",
             {
@@ -447,15 +444,15 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "specify": False,
             "run_reviews": False,
         }
-        result = self.call_capability(self.change, "concorde-dev-loop", task)
+        result = self.call_operation(self.change, "concorde-dev-loop", task)
         self.assertEqual("missing_change", result["errors"][0]["code"], result)
         self.assertFalse((self.change / STATE_PATH).exists())
         state = change_worktree.ensure_change(self.change, task=self.task)
         before = (self.change / STATE_PATH).read_bytes()
-        result = self.call_capability(self.change, "concorde-dev-loop", task)
+        result = self.call_operation(self.change, "concorde-dev-loop", task)
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
         self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-dev-loop", {**task, "change_id": state["change_id"]}
         )
         self.assertEqual("missing_change", result["errors"][0]["code"], result)
@@ -475,7 +472,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 corrupted = {**state, field: value}
                 (self.change / STATE_PATH).write_text(json.dumps(corrupted))
                 damaged = (self.change / STATE_PATH).read_bytes()
-                result = self.call_capability(
+                result = self.call_operation(
                     self.change,
                     "concorde-dev-loop",
                     {**task, "change_id": state["change_id"]},
@@ -488,7 +485,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             with self.subTest(missing=field):
                 corrupted = {key: value for key, value in state.items() if key != field}
                 (self.change / STATE_PATH).write_text(json.dumps(corrupted))
-                result = self.call_capability(
+                result = self.call_operation(
                     self.change,
                     "concorde-dev-loop",
                     {**task, "change_id": state["change_id"]},
@@ -518,7 +515,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         owner = read_change(self.change, required=True)
         double = ModelProcessDouble()
-        host = CapabilityHost(
+        host = OperationHost(
             self.change,
             PACKAGE,
             executor=double.executor,
@@ -531,14 +528,14 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "change_id": change_id,
             "review_mode": "code",
         }
-        result = self.call_capability(self.change, "concorde-review", task, host=host)
+        result = self.call_operation(self.change, "concorde-review", task, host=host)
         self.assertEqual("succeeded", result["status"], result)
         self.assertNotIn("route", [call["stage"] for call in double.calls])
         current = read_change(self.change, required=True)
         for field in ("target_id", "task", "constraints", "focus_id"):
             self.assertEqual(owner[field], current[field])
         double.calls.clear()
-        result = self.call_capability(
+        result = self.call_operation(
             self.change,
             "concorde-review",
             {**task, "target_id": "service.transfer"},
@@ -549,18 +546,18 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     @verifies("scenario.development.worktree-handoff")
     def test_handoff_remains_one_json_response_on_the_paired_cli(self):
-        capability = "concorde-dev-loop"
+        operation = "concorde-dev-loop"
         task = {**self.task, "constraints": ["保留用户原文；不合并、不 push"]}
         invocation = {
-            "type_id": "concorde-capability-invocation",
+            "type_id": "concorde-operation-invocation",
             "schema_version": 3,
-            "capability_id": capability,
+            "operation_id": operation,
             "mode": "execute",
             "configuration": CONFIGURATION,
-            "input": typed(capability + "-request", task),
+            "input": typed(operation + "-request", task),
         }
         process = subprocess.run(
-            [sys.executable, str(PACKAGE / "scripts/run-capability.py"), capability],
+            [sys.executable, str(PACKAGE / "scripts/run-operation.py"), operation],
             cwd=self.primary,
             input=json.dumps(invocation),
             text=True,
@@ -584,7 +581,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     def test_second_top_level_task_cannot_share_the_same_change_worktree(self):
         self.ready()
-        result = self.call_capability(
+        result = self.call_operation(
             self.change,
             "concorde-plan",
             {
@@ -690,7 +687,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     ],
                 )
 
-        result = self.call_capability(self.change, "concorde-dev-loop", task, partial)
+        result = self.call_operation(self.change, "concorde-dev-loop", task, partial)
         self.assertEqual("blocked", result["status"], result)
         state = read_change(self.change, required=True)
         records = state["targets"]["scope.bank"]["coordination"]
@@ -730,7 +727,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     {"path": metadata, "content": json.dumps(value)},
                 ]
 
-        result = self.call_capability(
+        result = self.call_operation(
             self.change, "concorde-dev-loop", task, finish_provider
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -749,7 +746,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_source_delivery_removes_active_worktree_and_retry_does_not_republish(self):
         change_id = self.ready()
         before = git_value(self.primary, "rev-parse", "HEAD")
-        result = self.call_capability(
+        result = self.call_operation(
             self.change, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -761,7 +758,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "_verify_merged_tree",
             side_effect=AssertionError("duplicate checks"),
         ):
-            again = self.call_capability(
+            again = self.call_operation(
                 self.primary, "concorde-deliver", {"change_id": change_id}
             )
         self.assertEqual("succeeded", again["status"], again)
@@ -797,7 +794,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "def round_half_up(value):\n    return value\n"
         )
         change_id = self.ready_delivery()
-        result = self.call_capability(
+        result = self.call_operation(
             self.change,
             "concorde-deliver",
             {"change_id": change_id, "keep_worktree": True},
@@ -854,30 +851,30 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_primary_merge_requires_separate_delivery_and_primary_session(self):
         change_id = self.ready_delivery()
         request = {"change_id": change_id, "merge_primary": True}
-        result = self.call_capability(self.change, "concorde-deliver", request)
+        result = self.call_operation(self.change, "concorde-deliver", request)
         self.assertEqual(
             "primary_session_required", result["errors"][0]["code"], result
         )
-        result = self.call_capability(self.primary, "concorde-deliver", request)
+        result = self.call_operation(self.primary, "concorde-deliver", request)
         self.assertEqual("delivery_required", result["errors"][0]["code"], result)
-        staged = self.call_capability(
+        staged = self.call_operation(
             self.change,
             "concorde-deliver",
             {"change_id": change_id, "keep_worktree": True},
         )
         self.assertEqual("succeeded", staged["status"], staged)
-        result = self.call_capability(self.change, "concorde-deliver", request)
+        result = self.call_operation(self.change, "concorde-deliver", request)
         self.assertEqual(
             "primary_session_required", result["errors"][0]["code"], result
         )
-        redirected = CapabilityHost(self.primary, PACKAGE, session_root=self.change)
-        result = self.call_capability(
+        redirected = OperationHost(self.primary, PACKAGE, session_root=self.change)
+        result = self.call_operation(
             self.primary, "concorde-deliver", request, host=redirected
         )
         self.assertEqual(
             "primary_session_required", result["errors"][0]["code"], result
         )
-        merged = self.call_capability(self.primary, "concorde-deliver", request)
+        merged = self.call_operation(self.primary, "concorde-deliver", request)
         self.assertEqual("succeeded", merged["status"], merged)
         head = git_value(self.primary, "rev-parse", "HEAD")
         with patch.object(
@@ -885,7 +882,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "_verify_merged_tree",
             side_effect=AssertionError("duplicate merge checks"),
         ):
-            again = self.call_capability(self.primary, "concorde-deliver", request)
+            again = self.call_operation(self.primary, "concorde-deliver", request)
         self.assertEqual("succeeded", again["status"], again)
         self.assertEqual(head, git_value(self.primary, "rev-parse", "HEAD"))
 
@@ -896,13 +893,13 @@ class WorktreeLifecycleTests(unittest.TestCase):
         with patch.object(
             worktree_delivery, "_cleanup", side_effect=OSError("interrupted cleanup")
         ):
-            result = self.call_capability(
+            result = self.call_operation(
                 self.change,
                 "concorde-deliver",
                 {"change_id": change_id, "keep_worktree": True},
             )
         self.assertEqual("failed", result["status"], result)
-        again = self.call_capability(
+        again = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", again["status"], again)
@@ -916,22 +913,22 @@ class WorktreeLifecycleTests(unittest.TestCase):
         with patch.object(
             worktree_delivery, "_cleanup", side_effect=OSError("interrupted cleanup")
         ):
-            result = self.call_capability(
+            result = self.call_operation(
                 self.change, "concorde-deliver", {"change_id": change_id}
             )
             self.assertEqual("failed", result["status"], result)
-            result = self.call_capability(
+            result = self.call_operation(
                 self.primary,
                 "concorde-deliver",
                 {"change_id": change_id, "keep_worktree": True},
             )
         self.assertEqual("failed", result["status"], result)
-        again = self.call_capability(
+        again = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", again["status"], again)
         self.assertTrue(self.change.exists())
-        removed = self.call_capability(
+        removed = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id, "keep_worktree": False},
@@ -946,7 +943,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_independent_deliveries_do_not_update_each_other_or_primary(self):
         before = git_value(self.primary, "rev-parse", "HEAD")
         first_id = self.ready_delivery()
-        first = self.call_capability(
+        first = self.call_operation(
             self.change, "concorde-deliver", {"change_id": first_id}
         )
         self.assertEqual("succeeded", first["status"], first)
@@ -955,7 +952,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.change = self.directory / "second-change"
         git(self.primary, "worktree", "add", "-b", "second-candidate", str(self.change))
         second_id = self.ready_delivery()
-        second = self.call_capability(
+        second = self.call_operation(
             self.change, "concorde-deliver", {"change_id": second_id}
         )
         self.assertEqual("succeeded", second["status"], second)
@@ -980,21 +977,21 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
         def promote(change_id):
             start.wait(timeout=10)
-            return run_capability(
+            return run_operation(
                 "concorde-deliver",
                 CONFIGURATION,
                 typed(
                     "concorde-deliver-request",
                     {"change_id": change_id, "merge_primary": True},
                 ),
-                host_context=CapabilityHost(self.primary, PACKAGE),
+                host_context=OperationHost(self.primary, PACKAGE),
             )
 
-        with patch.object(
-            worktree_delivery, "_verify_merged_tree", side_effect=checked
+        with (
+            patch.object(worktree_delivery, "_verify_merged_tree", side_effect=checked),
+            ThreadPoolExecutor(max_workers=2) as pool,
         ):
-            with ThreadPoolExecutor(max_workers=2) as pool:
-                results = list(pool.map(promote, (first_id, second_id)))
+            results = list(pool.map(promote, (first_id, second_id)))
         for merged in results:
             self.assertEqual("succeeded", merged["status"], merged)
         for change_id in (first_id, second_id):
@@ -1014,8 +1011,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
     @verifies("scenario.development.deliver-merge-primary")
     def test_legacy_delivery_receipt_does_not_claim_primary_was_unchanged(self):
         change_id = self.ready_delivery()
-        self.call_capability(self.change, "concorde-deliver", {"change_id": change_id})
-        merged = self.call_capability(
+        self.call_operation(self.change, "concorde-deliver", {"change_id": change_id})
+        merged = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id, "merge_primary": True},
@@ -1027,7 +1024,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         receipt.pop("primary_merge")
         path.write_text(json.dumps(receipt))
         before = git_value(self.primary, "rev-parse", "HEAD")
-        again = self.call_capability(
+        again = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", again["status"], again)
@@ -1044,14 +1041,14 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self,
     ):
         change_id = self.ready_delivery()
-        staged = self.call_capability(
+        staged = self.call_operation(
             self.change, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", staged["status"], staged)
         path = self.primary / "checks/transfer_check.py"
         path.write_text(path.read_text() + "\nassert transfer(100, 20) == 40\n")
         advanced = self.commit(self.primary, "Changed acceptance after delivery")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id, "merge_primary": True},
@@ -1068,13 +1065,13 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_final_merge_conflict_preserves_primary_and_delivered_branch(self):
         (self.change / "shared.txt").write_text("candidate\n")
         change_id = self.ready_delivery()
-        staged = self.call_capability(
+        staged = self.call_operation(
             self.change, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", staged["status"], staged)
         (self.primary / "shared.txt").write_text("primary\n")
         before = self.commit(self.primary, "Conflicting change after delivery")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id, "merge_primary": True},
@@ -1094,7 +1091,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         branch = "concorde/delivered/" + change_id
         git(self.primary, "branch", branch)
         before = git_value(self.primary, "rev-parse", branch)
-        result = self.call_capability(
+        result = self.call_operation(
             self.change, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("stale_delivery", result["errors"][0]["code"], result)
@@ -1104,14 +1101,14 @@ class WorktreeLifecycleTests(unittest.TestCase):
     @verifies("scenario.development.describe-policy")
     def test_primary_merge_preview_after_source_removal_is_read_only(self):
         change_id = self.ready_delivery()
-        result = self.call_capability(
+        result = self.call_operation(
             self.change, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", result["status"], result)
         path = self.primary / result["output"]["data"]["artifacts"][0]["path"]
         receipt = path.read_bytes()
         before = git_value(self.primary, "rev-parse", "HEAD")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id, "merge_primary": True},
@@ -1123,14 +1120,14 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     def test_changed_delivery_ref_blocks_final_merge(self):
         change_id = self.ready_delivery()
-        result = self.call_capability(
+        result = self.call_operation(
             self.change, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", result["status"], result)
         branch = "concorde/delivered/" + change_id
         git(self.primary, "update-ref", "refs/heads/" + branch, "HEAD")
         before = git_value(self.primary, "rev-parse", "HEAD")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id, "merge_primary": True},
@@ -1144,7 +1141,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     )
     def test_primary_merge_recovers_receipt_after_update_without_merging_again(self):
         change_id = self.ready_delivery()
-        staged = self.call_capability(
+        staged = self.call_operation(
             self.change, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", staged["status"], staged)
@@ -1157,7 +1154,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
         request = {"change_id": change_id, "merge_primary": True}
         with patch.object(worktree_delivery, "_write_json", side_effect=interrupted):
-            result = self.call_capability(self.primary, "concorde-deliver", request)
+            result = self.call_operation(self.primary, "concorde-deliver", request)
         self.assertEqual("failed", result["status"], result)
         merged = git_value(self.primary, "rev-parse", "HEAD")
         with patch.object(
@@ -1165,7 +1162,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "_verify_merged_tree",
             side_effect=AssertionError("duplicate checks"),
         ):
-            again = self.call_capability(self.primary, "concorde-deliver", request)
+            again = self.call_operation(self.primary, "concorde-deliver", request)
         self.assertEqual("succeeded", again["status"], again)
         self.assertEqual(merged, git_value(self.primary, "rev-parse", "HEAD"))
         receipt = json.loads(
@@ -1188,16 +1185,16 @@ class WorktreeLifecycleTests(unittest.TestCase):
         third_package.mkdir(parents=True, exist_ok=True)
         old_head = git_value(self.primary, "rev-parse", "HEAD")
         hosts = [
-            CapabilityHost(third, PACKAGE),
-            CapabilityHost(self.primary, PACKAGE, session_root=third),
-            CapabilityHost(self.primary, third_package),
-            CapabilityHost(self.primary, PACKAGE, depth=1),
+            OperationHost(third, PACKAGE),
+            OperationHost(self.primary, PACKAGE, session_root=third),
+            OperationHost(self.primary, third_package),
+            OperationHost(self.primary, PACKAGE, depth=1),
         ]
         for host in hosts:
             with self.subTest(
                 root=host.project_root, origin=host.session_root, depth=host.depth
             ):
-                result = self.call_capability(
+                result = self.call_operation(
                     host.project_root,
                     "concorde-deliver",
                     {"change_id": change_id},
@@ -1212,7 +1209,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     @verifies("scenario.development.deliver-branch")
     def test_primary_delivery_can_explicitly_retain_source(self):
         change_id = self.ready()
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id, "keep_worktree": True},
@@ -1224,21 +1221,21 @@ class WorktreeLifecycleTests(unittest.TestCase):
     @verifies(
         "scenario.development.deliver-branch",
         "scenario.development.deliver-merge-primary",
-        "scenario.development.execute-capability",
+        "scenario.development.execute-operation",
     )
     def test_paired_cli_delivers_from_source_and_primary_can_clean_up(self):
         change_id = self.ready()
         invocation = {
-            "type_id": "concorde-capability-invocation",
+            "type_id": "concorde-operation-invocation",
             "schema_version": 3,
-            "capability_id": "concorde-deliver",
+            "operation_id": "concorde-deliver",
             "mode": "execute",
             "configuration": None,
             "input": typed("concorde-deliver-request", {"change_id": change_id}),
         }
         command = [
             sys.executable,
-            str(PACKAGE / "scripts/run-capability.py"),
+            str(PACKAGE / "scripts/run-operation.py"),
             "concorde-deliver",
         ]
         secondary = subprocess.run(
@@ -1272,11 +1269,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self,
     ):
         original = (self.primary / "AGENTS.md").read_text()
-        self.call_capability(self.change, "concorde-main", {"task": "Explain transfer"})
+        self.call_operation(self.change, "concorde-main", {"task": "Explain transfer"})
         path = self.change / "AGENTS.md"
         path.write_text(path.read_text() + "\nA deliberately authored convention.\n")
         change_id = self.ready()
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -1321,7 +1318,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         primary_head = git_value(self.primary, "rev-parse", "HEAD")
         source_head = git_value(self.change, "rev-parse", "HEAD")
         before = (self.change / STATE_PATH).read_bytes()
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id},
@@ -1347,13 +1344,13 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         spec = self.change / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nClarified directly in the candidate.\n")
-        result = self.call_capability(self.change, "concorde-validate", self.task)
+        result = self.call_operation(self.change, "concorde-validate", self.task)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
         state = read_change(self.change, required=True)
         self.assertEqual({}, state["targets"])
         self.assertTrue(state["validation"]["checks"])
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": state["change_id"]}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -1371,16 +1368,16 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     @verifies("scenario.development.validate-blocked")
     def test_validation_does_not_bypass_an_unfinished_authored_plan(self):
-        result = self.call_capability(self.change, "concorde-plan", self.task)
+        result = self.call_operation(self.change, "concorde-plan", self.task)
         self.assertEqual("succeeded", result["status"], result)
         state = read_change(self.change, required=True)
-        result = self.call_capability(
+        result = self.call_operation(
             self.change,
             "concorde-validate",
             {**self.task, "change_id": state["change_id"]},
         )
         self.assertNotEqual("ready", result["output"]["data"]["outcome"])
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": state["change_id"]}
         )
         self.assertEqual("incomplete_change", result["errors"][0]["code"], result)
@@ -1389,7 +1386,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         change_id = self.ready()
         (self.change / "late.txt").write_text("Unverified candidate work\n")
         before = git_value(self.primary, "rev-parse", "HEAD")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("stale_evidence", result["errors"][0]["code"], result)
@@ -1399,11 +1396,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         (self.primary / "shared.txt").write_text("Staged primary work\n")
         git(self.primary, "add", "shared.txt")
         index_before = git_value(self.primary, "diff", "--cached", "--binary")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", result["status"], result)
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary,
             "concorde-deliver",
             {"change_id": change_id, "merge_primary": True},
@@ -1426,7 +1423,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         change_id = self.ready()
         (self.primary / "another.txt").write_text("Accepted independent change\n")
         advanced = self.commit(self.primary, "Independent accepted change")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", result["status"], result)
@@ -1447,7 +1444,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         change_id = self.ready()
         (self.primary / "shared.txt").write_text("accepted\n")
         advanced = self.commit(self.primary, "Conflicting accepted change")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("merge_conflict", result["errors"][0]["code"], result)
@@ -1463,7 +1460,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
         fixture_report = validate_repository(self.primary, package_root=PACKAGE)
         self.assertEqual(fixture_report.status, "success")
-        for directory in ("prompts", "skills", "capabilities", "protocol"):
+        for directory in ("prompts", "skills", "operations", "protocol"):
             shutil.copytree(PACKAGE / directory, self.primary / directory)
         (self.primary / "concorde.json").write_text("{}")
         (self.primary / "app/transfer.py").write_text(
@@ -1488,7 +1485,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             worktree_delivery, "validate_repository", side_effect=inspect
         ):
             checks = worktree_delivery._verify_merged_tree(
-                CapabilityHost(self.primary, PACKAGE),
+                OperationHost(self.primary, PACKAGE),
                 commit,
                 tree,
                 "change.integration-build",
@@ -1505,7 +1502,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         path = self.primary / "checks/transfer_check.py"
         path.write_text(path.read_text() + "\nassert transfer(100, 20) == 40\n")
         advanced = self.commit(self.primary, "Changed acceptance")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("failed_merge_checks", result["errors"][0]["code"], result)
@@ -1528,7 +1525,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             return actual_git(root, *args, **kwargs)
 
         with patch.object(worktree_delivery, "git", side_effect=fail_cleanup):
-            result = self.call_capability(
+            result = self.call_operation(
                 self.primary, "concorde-deliver", {"change_id": change_id}
             )
         self.assertEqual("failed", result["status"], result)
@@ -1541,11 +1538,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "_verify_merged_tree",
             side_effect=AssertionError("duplicate verification"),
         ):
-            result = self.call_capability(
+            result = self.call_operation(
                 self.primary, "concorde-deliver", {"change_id": change_id}
             )
             self.assertEqual("succeeded", result["status"], result)
-            repeated = self.call_capability(
+            repeated = self.call_operation(
                 self.primary, "concorde-deliver", {"change_id": change_id}
             )
             self.assertEqual("succeeded", repeated["status"], repeated)
@@ -1568,12 +1565,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
             return actual_git(root, *args, **kwargs)
 
         with patch.object(worktree_delivery, "git", side_effect=remove_files_then_fail):
-            result = self.call_capability(
+            result = self.call_operation(
                 self.primary, "concorde-deliver", {"change_id": change_id}
             )
         self.assertEqual("failed", result["status"], result)
         merged = git_value(self.primary, "rev-parse", "HEAD")
-        result = self.call_capability(
+        result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", result["status"], result)

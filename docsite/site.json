@@ -4,248 +4,114 @@
   "projectName": "concorde",
   "repository": "https://github.com/FTOD/concorde",
   "schema_version": 1,
-  "tagline": "Architecture-aware Specs, project understanding, and scoped agents.",
+  "tagline": "Complete Operations, explicit Specs and bounded execution.",
   "title": "Concorde Framework",
   "url": "https://ftod.github.io",
   "homepage": {
-    "eyebrow": "Architecture-aware Specs · Codex + Claude",
-    "title": "Specify the architecture.",
-    "description": "Write and maintain Specs that explain your software’s behavior and architecture. Understand the project through its docsite and Understand Anything graph view. Observe agent execution with LangGraph Studio, guide agents with explicit context and permissions, use built-in agents for development, and track feedback and improvements through branch-local Issues.",
+    "eyebrow": "Complete Operations · Explicit Specs · Bounded execution",
+    "title": "Specify responsibilities. Compose Operations.",
+    "description": "Concorde provides complete Operations for understanding software, preparing contracts and developing verified changes. Modules own responsibilities and Specs; LangGraph graphs compose executable behavior. Trusted Host and Harness services enforce each task's context and permission boundaries.",
     "features": {
-      "title": "Specify, understand and improve your software.",
+      "title": "One executable concept, distinct responsibilities.",
       "items": [
         {
-          "title": "Write and maintain architecture-aware Specs.",
-          "description": "Understand each Module through Purpose, Usage, Design, Relationships and explanatory topics in Module Specs. Read its precise requirements, scenarios and interface contracts in Implementation Specs. Both reading paths belong to one complete Module specification, with stable identities and explicit ownership."
+          "title": "Read complete Module specifications.",
+          "description": "Module Specs explain purpose, terminology, correct use, design and relationships. Implementation Specs define precise requirements, scenarios and contracts. Both belong to one Module, with paired reading and metadata sources and explicit context references."
         },
         {
-          "title": "Understand the project. Observe agent execution.",
-          "description": "Browse Specs and architecture diagrams in the docsite, and explore code relationships in the Understand Anything graph view. Follow the agents’ working process with LangGraph Studio: inspect execution graphs and live stage and agent-process events, including starts, completions and failures. Recorded context, permission policies, checks and reviews make the work and its results inspectable."
+          "title": "Call complete Operations.",
+          "description": "An Operation declares input State, output updates, effects, use conditions and execution policy. Callers do not reconstruct context selection, permission boundaries, model execution or result checks to use it as a LangGraph node."
         },
         {
-          "title": "Guide agents with Specs and permissions.",
-          "description": "Give each subagent its complete Module Spec and only the file access its phase needs. The host enforces these boundaries. Good results within them increase confidence in the solution, the Spec’s sufficiency and the Modules’ decoupling; tests and review provide further evidence."
+          "title": "Keep authority outside State.",
+          "description": "Completeness still relies on trusted Runtime, Host and Harness services. Operations declare permission ceilings; the common Host and Harness narrow and enforce them for the actual task. State cannot carry or expand execution authority."
         },
         {
-          "title": "Start with built-in agents.",
-          "description": "A coordinator handles questions, routing and topology design. A Spec engineer authors and reviews Specs, plans work and defines tasks. A programmer implements, reviews and investigates code. Public Skills compose these basic agents into development workflows."
+          "title": "Compose without confusing ownership.",
+          "description": "Deterministic code, model execution and compiled graphs can implement Operations. Composition produces another Operation, including dev-loop and specify-loop. Module ownership, Operation composition and context references remain independent."
         },
         {
-          "title": "Report and solve Issues without mandatory triage.",
-          "description": "Retain project feedback and persistent Spec gaps as records attributed to a Module or scenario. Investigate with scoped access and evidence, preserve developer comments, and turn approved resolutions into fresh development tasks. Records remain available across sessions; developers explicitly decide when to resolve or dismiss them."
+          "title": "Retain evidence and explicit stopping conditions.",
+          "description": "Missing contracts, failed checks and incomplete reviews remain inspectable. Evidence binds to the exact inputs checked. A ready candidate is not a merge; delivery and any primary merge require separate authorization."
         }
       ]
     },
     "workflow": {
-      "title": "Put the Specs to work.",
-      "description": "The built-in development loop applies these foundations to a change: update its Module Spec, plan and implement within explicit permissions, then validate and review. Missing contracts and failed checks preserve inspectable progress.",
+      "title": "Choose the result you need.",
+      "description": "Use main for a question or routing, specify-loop for an independently reviewed contract, and dev-loop for a verified development candidate. Public/internal changes entry exposure, not an Operation's completeness.",
       "steps": [
-        {
-          "title": "Route & specify",
-          "description": "Select the responsible Module, establish its contract and review the Spec."
-        },
-        {
-          "title": "Plan & implement",
-          "description": "Turn the contract into tasks, then write code with the declared file access."
-        },
-        {
-          "title": "Validate & review",
-          "description": "Run configured checks and code review. Bind the resulting evidence to the actual inputs."
-        },
-        {
-          "title": "Ready to deliver",
-          "description": "Inspect the candidate. Request delivery when ready; request the primary merge separately."
-        }
+        { "title": "Route & specify", "description": "Select the responsible Module, establish its contract and review the Spec." },
+        { "title": "Plan & implement", "description": "Turn the contract into tasks, then write code within the declared file grant." },
+        { "title": "Validate & review", "description": "Run deterministic checks and independent review against current inputs." },
+        { "title": "Ready, not merged", "description": "Inspect the candidate. Request delivery separately; merging primary needs additional authorization." }
       ]
     },
     "quickstart": {
-      "title": "Start specifying your project.",
-      "description": "Clone and build Concorde, then preview installation into your Git project. Use Python 3.11+, Node.js 18+ and npm; configured checks require Linux with bubblewrap, working namespaces and pidfd support. Choose Codex or Claude and initialize through the installed Skills.",
+      "title": "Start with an explicit project contract.",
+      "description": "Clone and build Concorde, then preview installation into your Git project. Use Python 3.11+, Node.js 18+ and npm; configured checks require Linux with bubblewrap, working namespaces and pidfd support. Choose Codex or Claude for the public Skills; model-backed Operations execute through Pi workers.",
       "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\n\n# Replace the path with your Git project.\npython3 scripts/install-concorde.py \\\n  --target /absolute/path/to/project \\\n  --integration codex --preview\n\n# Review the preview, then rerun with --apply."
     },
     "reference": {
-      "title": "Agents, capabilities and executable entry points",
-      "description": "3 Agents with 12 task modes, 13 capabilities, 8 public Skills and 3 Harnesses. Capabilities orchestrate execution; Agents perform the steps that need model judgment. Public Skills provide instructions for invoking those capabilities from your agent client.",
+      "title": "Operations and executable entry points",
+      "description": "The checked inventory contains 26 Operations: 14 host adapters and 12 model-backed internal Operations. Nine public Operations have Skills; four public lifecycle entries make no model calls. A Module can own several Operations, and a composed Operation can use several provider Modules.",
       "tables": [
         {
-          "title": "Agents and task modes",
-          "description": "Three Agents provide twelve task modes. Each invocation receives fresh, explicitly bounded context and permissions.",
-          "columns": ["Agent", "Modes", "Responsibility and authority"],
+          "title": "Public Operations",
+          "description": "Every public entry uses the common admission boundary. Internal Operations remain complete building blocks available only to admitted compositions.",
+          "columns": ["Operation", "Result and boundary"],
           "rows": [
-            [
-              "coordinator",
-              "ask, route, design-topology",
-              "Answer questions, route tasks and design topology from selected complete Module Specs; read-only, with no implementation contents."
-            ],
-            [
-              "spec-engineer",
-              "specify, context-solve, plan, tasks, spec-review, topology-author",
-              "Author and review Specs, assess information sufficiency, and define plans and tasks. Returns structured results; the host applies document changes."
-            ],
-            [
-              "programmer",
-              "implementation, code-review, investigation",
-              "Implement tasks, review code and investigate problems. Only implementation may write the selected Module's implementation files."
-            ]
+            ["concorde-main", "Answer a question, route a task or propose and apply explicitly accepted topology."],
+            ["concorde-specify-loop", "Compose Spec authoring and independent review, stopping before planning and implementation."],
+            ["concorde-dev-loop", "Compose specification, planning, implementation and verification to a ready candidate, not a merge."],
+            ["concorde-review", "Return scoped, independent Spec or code review findings without starting a development change."],
+            ["concorde-issues", "Inspect, report, reopen or solve an explicit Issue; solving stops at a verified candidate."],
+            ["concorde-init", "Propose and apply initialization with a pinned Protocol and an honest Module stub."],
+            ["concorde-configure", "Apply explicit Pi worker model, thinking and timeout settings; accept an installed Protocol only when requested."],
+            ["concorde-validate", "Record current deterministic validation evidence for a candidate."],
+            ["concorde-deliver", "Publish a verified delivery branch and normally remove its source worktree; merge primary only on a separate request."]
           ]
         },
         {
-          "title": "Capability inventory",
-          "description": "Four lifecycle capabilities make no model calls; the other nine may call a model. Eight public Skills each expose one global or lifecycle capability. The five stages run only through declared host composition. Current Agents have no admitted Capability references of their own; the host composes workflows.",
-          "columns": ["Class", "Capability", "Behavior", "Public Skill"],
+          "title": "Model-backed Operations",
+          "description": "These are Operations with model execution profiles, not a second executable entity inventory. Each bounded worker is a fresh Pi execution with host-issued context, tools and limits.",
+          "columns": ["Operations", "Responsibility and authority"],
           "rows": [
-            [
-              "Global",
-              "main",
-              "Answer questions, route requests, and design and apply accepted topology changes.",
-              "concorde-main"
-            ],
-            [
-              "Global",
-              "dev-loop",
-              "Route a change through specification, planning, implementation, validation and review to a ready candidate.",
-              "concorde-dev-loop"
-            ],
-            [
-              "Global",
-              "review",
-              "Run a standalone Spec or code review, including source diagnosis.",
-              "concorde-review"
-            ],
-            [
-              "Global",
-              "issues",
-              "Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records.",
-              "concorde-issues"
-            ],
-            [
-              "Lifecycle",
-              "init",
-              "Propose and apply project initialization with a pinned Protocol.",
-              "concorde-init"
-            ],
-            [
-              "Lifecycle",
-              "configure",
-              "Apply integration and enforcement configuration.",
-              "concorde-configure"
-            ],
-            [
-              "Lifecycle",
-              "validate",
-              "Run deterministic Spec and configured code checks and record readiness.",
-              "concorde-validate"
-            ],
-            [
-              "Lifecycle",
-              "deliver",
-              "Stage a verified candidate on its own branch and clean up; merge into the primary branch on a separate explicit request.",
-              "concorde-deliver"
-            ],
-            [
-              "Stage",
-              "specify",
-              "Author Spec replacements for the bound Module.",
-              "—"
-            ],
-            [
-              "Stage",
-              "context-solve",
-              "Validate Module participant routing and assess context sufficiency.",
-              "—"
-            ],
-            [
-              "Stage",
-              "plan",
-              "Assess sufficiency and produce a revision-bound plan.",
-              "—"
-            ],
-            [
-              "Stage",
-              "tasks",
-              "Derive acceptance tasks from the accepted plan.",
-              "—"
-            ],
-            [
-              "Stage",
-              "implement",
-              "Implement component tasks or coordinate participating components.",
-              "—"
-            ]
+            ["answerer, router, topology-designer", "Reason from explicitly selected complete Module Specs without implementation contents."],
+            ["spec-author, topology-author, spec-reviewer", "Author owner-only proposals or perform independent read-only review; the Host validates and applies admitted changes."],
+            ["context-assessor, planner, task-author", "Assess contract sufficiency and produce plans and acceptance tasks without reading implementation contents."],
+            ["programmer, code-reviewer, issue-solver", "Implement within the file grant, review code read-only, or choose bounded Issue resolution. Only the implementation phase receives project write authority."]
           ]
         },
         {
-          "title": "Harnesses and native tools",
-          "description": "All three Harnesses declare native.filesystem and native.shell Tool interfaces and support Codex and Claude. The Harness and mode define authority ceilings; the host grants concrete access for each invocation.",
-          "columns": ["Harness", "Agent", "Execution environment"],
+          "title": "Shared execution services",
+          "description": "The Operations hierarchy groups behavior providers, including composed providers. Supporting Modules own their separate contracts; using them neither transfers ownership nor expands context references.",
+          "columns": ["Module", "Responsibility"],
           "rows": [
-            [
-              "discovery-capsule",
-              "coordinator",
-              "Frozen discovery and routing context."
-            ],
-            ["spec-capsule", "spec-engineer", "Frozen Module Spec context."],
-            [
-              "implementation-workspace",
-              "programmer",
-              "Project implementation workspace with access restricted by the selected mode and host grant."
-            ]
+            ["Development", "Admit public requests and enforce declared Operation composition through the common Host."],
+            ["Harness", "Prepare bounded model execution, narrow permissions and validate worker results."],
+            ["Spec", "Resolve stable identities, complete paired document units and explicit context selections."],
+            ["Distribution, Issues, Views", "Supply fresh assets, retain attributed problems and publish contracts and inspection views."]
           ]
         },
         {
           "title": "Launchers and supporting tools",
-          "description": "Commands are relative to the source checkout. Installed projects use the corresponding scripts under .concorde/framework/; Studio and development setup are documented separately. CLI validate performs direct validation; concorde-validate also manages candidate readiness evidence. Studio uses the same host and capabilities as the CLI and Skills.",
-          "columns": ["Entry point", "Available operations"],
+          "description": "Source-checkout commands are shown below. Installed projects use the corresponding scripts under .concorde/framework/. Direct CLI validation is distinct from lifecycle readiness evidence.",
+          "columns": ["Entry point", "Use"],
           "rows": [
-            [
-              "python3 scripts/run-capability.py <skill> < invocation.json",
-              "Invoke one of the eight public capabilities using a typed JSON request, in execute or describe-policy mode."
-            ],
-            [
-              "python3 scripts/concorde.py <command>",
-              "validate, build, docsite, ua-graph, protocol-manifest."
-            ],
-            [
-              "LangGraph Studio",
-              "Start, observe and debug the same eight public workflows through the shared CapabilityHost."
-            ],
-            [
-              "python3 scripts/install-concorde.py",
-              "Preview or apply installation into a project."
-            ],
-            [
-              "python3 scripts/issues.py",
-              "Inspect Issues or explicitly archive legacy Reflection history."
-            ],
-            [
-              "python3 scripts/run-ua-graph-viewer.py",
-              "Launch the code graph viewer."
-            ],
-            [
-              "npm --prefix docsite run <script>",
-              "start, build, validate, typecheck, test, check."
-            ],
-            [
-              "python3 scripts/development/run-tests.py",
-              "Run the project's test suite."
-            ],
-            [
-              "python3 scripts/worktree-guard.py",
-              "Explain or check the source-checkout worktree policy."
-            ]
+            ["python3 scripts/run-operation.py <skill> < invocation.json", "Submit a typed request for one of the nine public Operations."],
+            ["python3 scripts/concorde.py <command>", "Build, validate, publish documentation, inspect usage or explicitly refresh Protocol bindings."],
+            ["LangGraph Studio", "Inspect and execute the same admitted public graphs as the CLI and Skills."],
+            ["python3 scripts/install-concorde.py", "Preview or apply installation into a project."],
+            ["python3 scripts/issues.py", "Inspect Issues or explicitly archive historical Reflection records."],
+            ["npm --prefix docsite run <script>", "Start, build, validate, typecheck or test the documentation site."],
+            ["python3 scripts/development/run-tests.py", "Run deterministic Python tests without starting Concorde's development graphs."]
           ]
         }
       ]
     },
     "links": [
-      {
-        "label": "Spec Protocol",
-        "to": "/protocol"
-      },
-      {
-        "label": "Agent Flows",
-        "to": "/agent-flows"
-      }
+      { "label": "Spec Protocol", "to": "/protocol" },
+      { "label": "Agent Graphs", "to": "/agent-graphs" }
     ]
   },
   "customDocs": [
