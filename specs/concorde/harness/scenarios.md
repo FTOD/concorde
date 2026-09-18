@@ -303,6 +303,22 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 - AND calls inside the grants execute normally
 - AND a bash command runs with the provider credential variables unset
 
+### scenario.harness.worker-sandbox — Confine the worker process to its grant
+
+- GIVEN a launch with a workspace, write entries including a pending file and a pending directory, and a run directory
+- WHEN the runtime derives the mount plan and starts the Pi process inside it
+- THEN the process can write exactly the write entries, the pending placeholders and its run directory, while the rest of the workspace and the host filesystem are read-only
+- AND the developer's masked secret locations read as empty or absent, other worktrees of the repository are absent while its shared Git directory remains readable, the host's temporary directory is invisible, and the process starts in the workspace with a private HOME and PID namespace
+- AND a pending placeholder the worker left empty is removed after the run, while written placeholders stay
+- AND a write entry that is a symlink or leaves the workspace is refused before any process starts
+
+### scenario.harness.worker-sandbox-unavailable — An unenforceable boundary refuses the launch
+
+- GIVEN a host without a trusted bubblewrap installation, or a platform other than Linux
+- WHEN a worker launch is requested
+- THEN the runtime refuses it as `worker sandbox unavailable` before any Pi process starts
+- AND no worker ever runs unconfined
+
 ### scenario.harness.pi-worker-delegation — Delegate one level to declared children under the same gate
 
 - GIVEN a Pi worker that declares a child agent and child tools

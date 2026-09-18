@@ -14,8 +14,12 @@ that into one private run directory:
 
 The process starts with Pi's ambient discovery disabled (no sessions, context files, skills,
 prompt templates, themes or discovered extensions) and loads only the Concorde worker extension and,
-for a worker with children, pi-subagents. The result is the ``details`` of the worker's single
-successful ``submit_result`` call; the caller validates it against its own typed contract.
+for a worker with children, pi-subagents. It runs inside the worker sandbox (``worker_sandbox``):
+the host filesystem read-only with the developer's secrets, agent-client state and other
+worktrees masked, only the launch's write paths and the run directory writable, a private
+temporary directory and PID namespace; an unavailable sandbox refuses the launch. The result is
+the ``details`` of the worker's single successful ``submit_result`` call; the caller validates it
+against its own typed contract.
 """
 from __future__ import annotations
 
@@ -32,6 +36,8 @@ from typing import Any, Callable, Literal, Mapping, cast
 
 from .harness import SAFE_ENVIRONMENT
 from .pi_rpc import PiRpcCancelled, PiRpcError, PiRpcTimeout, PiRun, run_prompt
+from .worker_sandbox import (WorkerSandboxError, bubblewrap_argv, create_placeholders, plan_mounts,
+                             remove_untouched_placeholders, unavailable_reason)
 
 BUILTIN_TOOLS = frozenset({"read", "grep", "find", "ls", "edit", "write", "bash"})
 CONCORDE_TOOLS = frozenset({"submit_result", "run_checks", "report_issue"})
@@ -253,14 +259,19 @@ class PiWorkerRuntime:
             raise WorkerExecutionError(f"the Concorde worker extension is missing: {extension}")
         if launch.children and not subagents.is_file():
             raise WorkerExecutionError("pi-subagents is not installed; run `npm ci --prefix pi` in the Concorde package")
+        unavailable = unavailable_reason()
+        if unavailable:
+            # The boundary is part of the launch contract: never run a worker unconfined instead.
+            raise WorkerExecutionError(f"worker sandbox unavailable: {unavailable}")
         credentials = self.credentials_dir or Path(
             source.get("PI_CODING_AGENT_DIR") or Path(source.get("HOME", "~")).expanduser() / ".pi" / "agent")
         with tempfile.TemporaryDirectory(prefix="concorde-pi-worker-") as directory:
             run_dir = Path(directory)
-            agent_dir, temporary = run_dir / "agent", run_dir / "tmp"
+            agent_dir, temporary, home = run_dir / "agent", run_dir / "tmp", run_dir / "home"
             (agent_dir / "agents").mkdir(parents=True)
             (agent_dir / "extensions" / "subagent").mkdir(parents=True)
             temporary.mkdir()
+            home.mkdir()
             for name in ("auth.json", "models.json"):
                 if (credentials / name).is_file():
                     shutil.copyfile(credentials / name, agent_dir / name)
@@ -284,8 +295,10 @@ class PiWorkerRuntime:
             (run_dir / "policy.json").write_text(json.dumps(policy), encoding="utf-8")
             env = {key: value for key, value in source.items()
                    if key in SAFE_ENVIRONMENT or key in PROVIDER_CREDENTIALS}
+            # The process's HOME is inside the run directory: the developer's own home stays
+            # readable only where the sandbox does not mask it, and nothing is written there.
             env.update(PI_CODING_AGENT_DIR=str(agent_dir), CONCORDE_WORKER_POLICY=str(run_dir / "policy.json"),
-                       PI_OFFLINE="1", PI_SKIP_VERSION_CHECK="1", PI_TELEMETRY="0",
+                       PI_OFFLINE="1", PI_SKIP_VERSION_CHECK="1", PI_TELEMETRY="0", HOME=str(home),
                        TMPDIR=str(temporary), TMP=str(temporary), TEMP=str(temporary))
             argv = [executable, "--mode", "rpc", "--no-session", "--no-context-files", "--no-skills",
                     "--no-prompt-templates", "--no-themes", "--no-extensions", "-e", str(extension)]
@@ -296,11 +309,22 @@ class PiWorkerRuntime:
                 argv += ["--model", launch.model]
             if launch.thinking:
                 argv += ["--thinking", launch.thinking]
+            placeholders: tuple[str, ...] = ()
+            try:
+                # The mount plan is the launch's grant: workspace read-only, write paths and
+                # pending placeholders writable, run directory writable, secrets and other
+                # worktrees masked. The Pi process runs inside it.
+                plan = plan_mounts(launch.workspace, launch.write_paths, run_dir)
+                placeholders = create_placeholders(plan)
+                command = bubblewrap_argv(plan, argv)
+            except WorkerSandboxError as error:
+                remove_untouched_placeholders(placeholders)
+                raise WorkerExecutionError(f"worker sandbox unavailable: {error}") from error
             server = _HostToolServer(str(socket_path), checks, report_issue) if socket_path is not None else None
             if server is not None:
                 threading.Thread(target=server.serve_forever, daemon=True).start()
             try:
-                run = run_prompt(argv, cwd=launch.workspace, env=env, message=launch.message,
+                run = run_prompt(command, cwd=launch.workspace, env=env, message=launch.message,
                                  timeout=launch.timeout_seconds, popen=cast(Any, self.popen))
             except PiRpcTimeout as error:
                 raise WorkerExecutionError(str(error), outcome=LIMIT_EXHAUSTED) from error
@@ -312,6 +336,7 @@ class PiWorkerRuntime:
                 if server is not None:
                     server.shutdown()
                     server.server_close()
+                remove_untouched_placeholders(placeholders)
                 _return_refreshed_auth(agent_dir / "auth.json", credentials / "auth.json", issued_auth)
         submissions = [item for item in run.results_of("submit_result") if not item.get("isError")]
         if len(submissions) != 1:

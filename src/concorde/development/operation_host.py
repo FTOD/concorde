@@ -69,6 +69,7 @@ from ..harness.worker_profile import (
     external_worker_name,
     worker_profile,
 )
+from ..harness.worker_sandbox import WORKER_SANDBOX_POLICY
 from ..spec.changes import apply_files, file_change
 from ..spec.contracts import (
     DETERMINISTIC_OPERATIONS,
@@ -203,6 +204,7 @@ def _worker_description(prompt, invocation, policy, **labels) -> dict:
         "write_paths": list(policy.write_paths),
         "network": False,
         "fresh_session": True,
+        "sandbox": WORKER_SANDBOX_POLICY,
         "policy_digest": policy.digest,
         "agent": external_worker_name(agent.name),
         "agent_binding_digest": prompt.binding.digest,

@@ -115,7 +115,9 @@
         "pi/",
         "src/concorde/harness/pi_rpc.py",
         "src/concorde/harness/pi_worker.py",
+        "src/concorde/harness/worker_sandbox.py",
         "tests/concorde/harness/test_pi_worker.py",
+        "tests/concorde/harness/test_worker_sandbox.py",
         "tests/concorde/support/fake_openai_provider.py",
         "tests/concorde/support/fake_pi_rpc.py"
       ],

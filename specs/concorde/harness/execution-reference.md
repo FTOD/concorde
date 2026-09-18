@@ -467,13 +467,14 @@ shape and authority. A worker in a project workspace also receives the host chec
 
 ##### Common limits {#execution-common-limits}
 
-The Pi process itself is outside the gate: it runs as the developer's user with the developer's Pi
-credentials and talks to its model provider. The gate bounds what the model's tools can reach, not
-the process, and a shell command run by a worker granted `bash` is not confined by it. The
-credential paths the compiler always denies (`.env`, `.aws`, `.ssh` and the other listed entries)
-are project-relative entries; home-directory secrets are outside the grant because the grant is
-default-deny. Running the whole Pi process inside an operating-system sandbox that mounts only the
-granted paths is the planned stronger boundary.
+The Pi process runs as the developer's user inside the [worker sandbox](#execution-worker-sandbox)
+with the developer's Pi credentials copied into its run directory, and talks to its model provider
+over the shared network. The gate bounds what the model's tools can reach; the sandbox bounds the
+process, so a shell command run by a worker granted `bash` can write only the grant and cannot read
+the masked secret locations or other worktrees. The credential paths the compiler always denies
+(`.env`, `.aws`, `.ssh` and the other listed entries) are project-relative entries; home-directory
+secrets are masked by the sandbox's fixed list, and the credentials the process itself needs remain
+readable inside it.
 
 #### Pi worker runtime {#execution-pi-worker-runtime}
 
@@ -621,6 +622,8 @@ initial command runs, and a background process holding them open cannot prevent 
   context or policy differ from what the current build and the worker's contract admit.
 - **Tool gate.** The Concorde worker extension refuses every tool call outside the compiled grant in
   the worker and in each child ([tool gate](#execution-tool-gate)).
+- **Worker sandbox.** The Pi process runs inside the mount plan derived from its grant
+  ([worker sandbox](#execution-worker-sandbox)); an unavailable boundary refuses the launch.
 - **Result admission.** Only one submitted result that satisfies the result type and the contract
   completes the invocation; a settled process alone is not completion.
 
@@ -644,7 +647,8 @@ The process runs `pi --mode rpc --no-session --no-context-files --no-skills --no
 --offline --tools <tools> [--model <model>] [--thinking <level>]`, with pi-subagents loaded only
 for a worker with children. Its environment is the host allowlist, the provider credential
 variables Pi documents, `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK`, `PI_TELEMETRY=0`, the run
-directory's `TMPDIR` and the policy location. The host sends one `prompt` command carrying the
+directory's `TMPDIR`, a `HOME` inside the run directory and the policy location. The command runs
+inside the [worker sandbox](#execution-worker-sandbox). The host sends one `prompt` command carrying the
 worker's message, reads records split on line feed only until `agent_settled`, answers every
 extension dialog as cancelled, reads the session statistics and closes the process.
 
@@ -663,10 +667,9 @@ granted list is refused; `read`, `grep`, `find` and `ls` must target a path whos
 symlinks resolved, lies under a read or write grant, and a search without a path targets the
 workspace itself; `edit` and `write` must target a path under a write grant; each `bash` command
 first unsets the provider credential variables. A refused call returns an error result naming the
-policy, and the model continues. The gate runs inside the Pi process, so it is a policy boundary,
-not an operating-system sandbox: a shell command is not confined by it. Running the whole Pi
-process inside an operating-system sandbox that mounts only the granted paths is the planned
-stronger boundary.
+policy, and the model continues. The gate runs inside the Pi process, so it is a policy boundary
+over the model's tool calls; the [worker sandbox](#execution-worker-sandbox) around the process
+bounds shell commands and everything else the process does.
 
 ##### One-level delegation {#execution-one-level-delegation}
 
@@ -688,6 +691,25 @@ leaves the process.
 For a worker granted `run_checks`, the host serves one Unix socket in the run directory. The tool
 sends `{"tool": "run_checks"}` and returns the host's JSON reply, or an `error` field when the host
 callback fails; the host runs the configured checks under its own read-only executor.
+
+##### Worker sandbox {#execution-worker-sandbox}
+
+`worker_sandbox` derives one `MountPlan` from the launch and runs the Pi command inside bubblewrap
+(`plan_mounts`, `create_placeholders`, `bubblewrap_argv`, `remove_untouched_placeholders` and
+`unavailable_reason`); `WORKER_SANDBOX_POLICY`, `worker-mounts-v1`, names these rules and the policy
+preview records it as `sandbox`. The host filesystem is bound read-only with fresh `/proc` and
+`/dev` and a private tmpfs over `/tmp` and `/dev/shm`. The existing entries of `MASKED_HOME_PATHS`
+below the developer's home directory are masked, a directory by an empty tmpfs and a file by an
+empty file from the run directory, and so is every other worktree of the workspace's repository,
+whose shared Git directory is re-bound read-only so Git keeps working in a candidate. The workspace
+is then bound read-only, and the run directory and every write entry are bound writable in place. A
+pending entry that does not exist yet is created before the launch as an empty placeholder, a file
+below any missing directories or an empty directory, so exactly that path is writable; a placeholder
+the worker left empty is removed after the run. The process gets private user, PID, IPC and UTS
+namespaces, drops all capabilities, dies with the host and starts in the workspace with `HOME`
+inside the run directory. The network namespace is shared. A write entry that is a symlink or leaves
+the workspace, a workspace that contains the run directory, a platform other than Linux or a missing
+trusted bubblewrap refuses the launch as `worker sandbox unavailable` before any process starts.
 
 ### Precise specifications {#execution-precise-specifications}
 
@@ -837,13 +859,12 @@ resolved, under a read or write grant; `edit` and `write` must target a path und
 child cannot delegate or submit a result. A capsule worker's workspace contains only its granted
 copies, so its read grant also covers the workspace root.
 
-This is a policy boundary inside the Pi process, not an operating-system sandbox. It does not confine
-shell commands: a worker granted `bash` can reach whatever its operating-system user can, and the
-host only removes the provider credential variables from each command. The Pi process itself reaches
-its model provider over the network with the developer's Pi credentials. Running the whole worker
-process inside an operating-system sandbox that mounts only the granted paths is the planned stronger
-boundary. Configured deterministic checks already run under the host's OS-enforced read-only executor
-([execution](execution-reference.md)).
+The gate is a policy boundary inside the Pi process over the model's tool calls. The process itself
+runs inside the [worker sandbox](#execution-worker-sandbox): a worker granted `bash` can write only
+the compiled write grant, cannot read the masked secret locations or other worktrees, and the host
+removes the provider credential variables from each command. The Pi process reaches its model
+provider over the shared network with the developer's Pi credentials, which its run directory holds.
+Configured deterministic checks run under the same kind of boundary through the check executor.
 
 #### Policy compilation {#permissions-policy-compilation}
 

@@ -133,6 +133,11 @@ class PiWorkerTests(unittest.TestCase):
         turns = [{"tool": "write", "arguments": {"path": "hidden.md", "content": "overwritten"}},
                  {"tool": "write", "arguments": {"path": "src/new.py", "content": "print(1)\n"}},
                  {"tool": "bash", "arguments": {"command": "printf '%s' \"${OPENAI_API_KEY:-unset}\""}},
+                 # The sandbox, not the gate, bounds the shell: the workspace outside the write
+                 # grant is read-only, the host's files beside it are invisible, HOME is private.
+                 {"tool": "bash", "arguments": {"command": "echo pwned > hidden.md; echo status=$?"}},
+                 {"tool": "bash", "arguments": {"command": "cat ../secret.md; echo status=$?"}},
+                 {"tool": "bash", "arguments": {"command": "echo \"$HOME\"; ls -A \"$HOME\""}},
                  {"tool": "submit_result", "arguments": {"answer": "written"}}]
         launch = self.launch(tools=(*READ, "write", "bash", "submit_result"), read_paths=("granted.md",),
                              write_paths=("src/",))
@@ -143,7 +148,14 @@ class PiWorkerTests(unittest.TestCase):
         self.assertFalse(writes[1][0], writes)
         self.assertEqual("HIDDEN\n", (self.workspace / "hidden.md").read_text())
         self.assertEqual("print(1)\n", (self.workspace / "src/new.py").read_text())
-        self.assertIn("unset", self.results(result.run, "bash")[0][1])
+        shell = self.results(result.run, "bash")
+        self.assertIn("unset", shell[0][1])
+        self.assertIn("Read-only file system", shell[1][1])
+        self.assertIn("status=1", shell[1][1])
+        self.assertIn("No such file", shell[2][1])
+        self.assertNotIn("SECRET", shell[2][1])
+        self.assertNotIn(str(self.root), shell[3][1].splitlines()[0])
+        self.assertEqual("SECRET\n", (self.root / "secret.md").read_text())
 
     @verifies("scenario.harness.pi-worker-delegation")
     def test_one_level_children_run_under_the_same_gate_and_cannot_delegate(self):

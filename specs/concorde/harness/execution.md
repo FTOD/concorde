@@ -33,16 +33,20 @@ Authorized edits already made by a failed programmer can remain and need inspect
 
 ## Important security limits
 
-The worker tool gate checks tools and paths inside the agent process. **It is not an operating-system
-sandbox. A shell command granted to a worker is not confined by that gate.** The agent process uses
-the developer's credentials to contact its model provider. Stronger whole-process isolation is a
-planned boundary, not a current guarantee. Treat these limits as deployment constraints, not as
-implementation details a user can safely ignore.
+The worker tool gate checks tools and paths inside the agent process; the worker sandbox around
+that process bounds everything else it does, including a shell command it was granted. Inside the
+sandbox the host filesystem is read-only, the developer's credential locations, agent-client state
+and every other worktree of the repository are masked, only the grant and the run directory are
+writable, and the temporary directory and process namespace are private. **The network is shared,
+because the process contacts its model provider with the developer's credentials, which it can read
+inside its run directory; the masks are a fixed list.** Both boundaries require Linux with a working
+system bubblewrap/namespace setup; an unavailable sandbox refuses the launch rather than running the
+worker unconfined. Treat these limits as deployment constraints, not as implementation details a
+user can safely ignore.
 
-Configured checks use an OS-enforced read-only project mount and separate temporary storage. A check
-that needs to write a project cache must use the issued temporary area instead. Currently this
-requires Linux and a working system bubblewrap/namespace setup; an unavailable boundary blocks the
-check rather than falling back to unrestricted execution.
+Configured checks use the same kind of boundary as a read-only project mount with separate temporary
+storage. A check that needs to write a project cache must use the issued temporary area instead; an
+unavailable boundary blocks the check rather than falling back to unrestricted execution.
 
 ## Why inputs and results are checked twice
 

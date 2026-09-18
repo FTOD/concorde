@@ -36,10 +36,12 @@ access is not an automatic recovery strategy.
 
 ## Know the enforcement limit
 
-The worker's tool gate enforces its tool and path policy inside the agent process, **not an OS sandbox
-around arbitrary shell commands**. Configured deterministic checks use a separate OS-enforced
-read-only boundary. [Execution](execution.md) explains that distinction and supported platforms.
-Exact policy records and permission compilation interfaces are in Implementation Specs.
+The worker's tool gate enforces its tool and path policy inside the agent process, and the worker
+sandbox enforces the same grant on the process itself, so a shell command cannot write outside the
+grant or read the developer's secrets. **The sandbox does not restrict the network and masks a
+fixed list of secret locations.** Configured deterministic checks use a separate boundary of the
+same kind. [Execution](execution.md) explains these limits and supported platforms. Exact policy
+records and permission compilation interfaces are in Implementation Specs.
 
 ## Precise specifications
 

@@ -111,8 +111,19 @@ project, removed after its process tree has terminated.
 Every tool call of a worker and of its children SHALL be checked against the invocation's compiled
 grant before it executes.
 
-The gate is a policy boundary inside the Pi process, not an operating-system sandbox; see
+The gate is a policy boundary inside the Pi process over the model's tool calls; the process itself
+is bounded by the worker sandbox ([req.harness.worker-sandbox](#req.harness.worker-sandbox)). See
 [execution](execution-reference.md#execution-tool-gate).
+
+### req.harness.worker-sandbox — Every worker process runs inside the boundary of its grant
+
+Every worker launch SHALL run its Pi process inside the operating-system sandbox derived from the
+launch's grant, refusing the launch when that boundary cannot be enforced.
+
+The boundary mounts the host read-only with the developer's secret locations, agent-client state and
+other worktrees masked, makes only the write grant and the run directory writable, and gives the
+process private temporary storage and namespaces; see
+[worker sandbox](execution-reference.md#execution-worker-sandbox).
 
 ### req.harness.worker-selection — Each worker runs on its own configured selection
 

@@ -14,8 +14,8 @@
  * - bounds delegation to one level by registering a pi-subagents capability ceiling (only the
  *   declared children, only their tools) and this extension as a required child extension.
  *
- * This is an in-process policy gate, not an operating-system sandbox: shell commands are not
- * confined by it.
+ * This is an in-process policy gate over the model's tool calls. The process itself runs inside
+ * the host's worker sandbox (`worker_sandbox.py`), which bounds shell commands too.
  */
 import * as fs from "node:fs";
 import * as net from "node:net";

@@ -9,7 +9,8 @@ The Harness Module prepares and runs a worker with a defined task, information a
 | Term | Meaning / definition |
 | --- | --- |
 | Worker profile | The instructions and maximum tools, workspace and effects available to a kind of worker; a particular job can be narrower. |
-| Tool gate | The checks applied inside the agent process before a model-requested tool runs; it is not an OS sandbox. |
+| Tool gate | The checks applied inside the agent process before a model-requested tool runs. |
+| Worker sandbox | The operating-system boundary around a worker process: the host filesystem read-only with the developer's secret locations, agent-client state and other worktrees masked, the grant and run directory writable, a private temporary directory and process namespace. |
 | Capsule | A temporary workspace containing the documents admitted for one Spec-only worker invocation. |
 | [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Harness](../module.md#terminology) | Defined in Concorde Framework. |
@@ -38,11 +39,13 @@ accepted tasks and allowed code files; a reviewer receives read-only inputs in a
 The workers share accepted artifacts, not all of each other's knowledge or authority.
 
 Failures, cancellation, time limits and changed inputs stop dependent execution. Authorized code edits
-may remain after failure and require inspection. **The worker tool gate is not an OS sandbox and does
-not confine an authorized shell command.** Configured checks use a separate OS-enforced read-only
-boundary, currently requiring Linux and appropriate system support. Read [execution](execution.md)
-for these deployment limits before relying on isolation. Policy preview shows access without running
-an agent.
+may remain after failure and require inspection. Every worker process runs inside the worker sandbox,
+so an authorized shell command is bounded too: it can write only the grant, cannot read the
+developer's secrets or other worktrees, and never sees the host's temporary files. **The network is
+not restricted, the masked secret locations are a fixed list, and the sandbox requires Linux with
+bubblewrap; an unavailable sandbox refuses the launch.** Configured checks use a separate read-only
+boundary of the same kind. Read [execution](execution.md) for these limits before relying on
+isolation. Policy preview shows access without running an agent.
 
 ## Design
 
@@ -68,8 +71,9 @@ Worker execution independently rechecks the binding and grant before asking the 
 to start a fresh Pi RPC process. Its extension gates worker and child tool calls; pi-subagents
 allows only one level of declared child delegation under the same grant. One matching submitted
 result is required, not merely a successful exit. Cancellation, time limits and invalid completion
-remain distinct. Worker shells do not have the OS confinement supplied for deterministic checks;
-that explicit limitation is detailed in [execution](execution-reference.md#execution-design).
+remain distinct. The Pi process runs inside the worker sandbox derived from the same grant, so the
+tool gate bounds what the model may ask and the sandbox bounds what the process can reach;
+[execution](execution-reference.md#execution-design) details both boundaries and what they leave open.
 
 <a id="entity.harness.studio"></a><a id="entity.harness.worktree-lifecycle"></a><a id="entity.harness.langgraph"></a>
 
@@ -94,7 +98,8 @@ A worker definition binds its role Spec, one task contract, a workspace kind, to
 Resolution yields an `WorkerBinding` that every invocation carries and the executor reverifies.
 Permissions are compiled purely from the contract's effects and host authority, guarded by the
 isolated-worktree check before any unsafe mutation, and handed to the Pi worker runtime, whose
-extension gates every tool call of the worker and its children. Every control flow is a LangGraph
+extension gates every tool call of the worker and its children and whose sandbox confines the
+process to that same grant. Every control flow is a LangGraph
 Graph whose nodes are deterministic steps or worker invocations; delegation below a worker is one
 level of its declared children inside its own process. Failures never retry with broader
 permissions, and a settled process alone never establishes completion.
@@ -212,9 +217,10 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
   profile tools today: no worker admits an Operation or Tool reference beyond them, so those
   contracts are not yet snapshot fields. Materializing them in the snapshot record, with their
   identities in the context digest, is pending implementation work that must not widen any grant.
-- The tool gate is a policy boundary inside the Pi process. Shell commands of workers and children
-  granted `bash` (the programmer and the verifier child) are not confined by it,
-  and no operating-system sandbox yet wraps the Pi process; that stronger boundary is pending.
+- The worker sandbox shares the host network, because Pi must reach its model provider, and the
+  provider credentials the process needs are readable inside its run directory; a credential
+  broker that keeps them outside the sandbox is pending. Its secret masks are a fixed list of
+  home-directory locations, not a discovery of every credential a developer may keep.
 - The gate and the operation ceiling are verified for foreground single delegation. Whether every
   other pi-subagents execution path loads the required child extension is unverified, which is why
   the host disables background runs, missions, schedules and inter-session channels.
