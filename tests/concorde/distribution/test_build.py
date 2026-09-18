@@ -17,6 +17,7 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.distribution.build import (  # noqa: E402
     INTEGRATION_ROOTS,
     MODEL_ROOTS,
+    RETIRED_SKILL_NAMES,
     SKILL_NAMES,
     BuildError,
     build,
@@ -40,6 +41,27 @@ class BuildGoldenTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.result = build(REPOSITORY_ROOT, "all")
         cls.by_path = {output.path: output for output in cls.result.outputs}
+
+    @verifies("scenario.distribution.build-render")
+    def test_golden_inventory_matches_current_projections(self):
+        expected = {
+            path.removeprefix("generated/")
+            for path in self.by_path
+            if path.startswith("generated/agents/")
+        }
+        for integration, prefix in INTEGRATION_ROOTS.items():
+            expected.update(
+                f"{integration}/{path.removeprefix(prefix + '/')}"
+                for path in self.by_path
+                if path.startswith(prefix + "/")
+            )
+        actual = {
+            path.relative_to(GOLDEN).as_posix()
+            for path in GOLDEN.rglob("*")
+            if path.is_file()
+        }
+        self.assertEqual(actual, expected)
+        self.assertFalse(set(RETIRED_SKILL_NAMES) & set(SKILL_NAMES))
 
     @verifies("scenario.distribution.build-render")
     def test_agent_bodies_match_golden_bytes_exactly(self):
@@ -122,7 +144,7 @@ class BuildGoldenTests(unittest.TestCase):
         skill_outputs = [
             path
             for path in self.by_path
-            if path.startswith(".claude/skills/") or path.startswith(".agents/skills/")
+            if path.startswith((".claude/skills/", ".agents/skills/"))
         ]
         agent_outputs = [
             path for path in self.by_path if path.startswith("generated/agents/")
@@ -274,6 +296,160 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         current, differences = check_build(self.root, "all")
         self.assertTrue(current)
         self.assertEqual(differences, ())
+
+    @verifies(
+        "scenario.distribution.build-retired-skills",
+        "scenario.distribution.build-check",
+    )
+    def test_retired_skills_are_reported_then_removed_without_a_manifest_entry(self):
+        write_build(self.root)
+        retired = []
+        for prefix in INTEGRATION_ROOTS.values():
+            for name in RETIRED_SKILL_NAMES:
+                directory = self.root / prefix / name
+                directory.mkdir(parents=True)
+                (directory / "SKILL.md").write_text("old generated projection\n")
+                retired.append(directory)
+            for name in ("example-third-party", "concorde-custom"):
+                directory = self.root / prefix / name
+                directory.mkdir()
+                (directory / "SKILL.md").write_text("unowned skill\n")
+        before = {
+            directory: (directory / "SKILL.md").read_bytes() for directory in retired
+        }
+        current, differences = check_build(self.root)
+        self.assertFalse(current)
+        self.assertEqual(
+            set(differences),
+            {directory.relative_to(self.root).as_posix() for directory in retired},
+        )
+        for directory, content in before.items():
+            self.assertEqual((directory / "SKILL.md").read_bytes(), content)
+        write_build(self.root)
+        self.assertTrue(all(not directory.exists() for directory in retired))
+        for prefix in INTEGRATION_ROOTS.values():
+            for name in ("example-third-party", "concorde-custom"):
+                self.assertEqual(
+                    (self.root / prefix / name / "SKILL.md").read_text(),
+                    "unowned skill\n",
+                )
+        self.assertEqual(check_build(self.root), (True, ()))
+        # A second build is a no-op, including retired directories.
+        first = write_build(self.root)
+        second = write_build(self.root)
+        self.assertEqual(first.manifest, second.manifest)
+
+    @verifies("scenario.distribution.build-retired-skills")
+    def test_retirement_uses_selected_integration_and_separate_destination(self):
+        with tempfile.TemporaryDirectory() as raw_destination:
+            destination = Path(raw_destination)
+            for base in (self.root, destination):
+                for prefix in INTEGRATION_ROOTS.values():
+                    directory = base / prefix / RETIRED_SKILL_NAMES[0]
+                    directory.mkdir(parents=True)
+                    (directory / "SKILL.md").write_text("old projection\n")
+            write_build(self.root, "claude", integration_root=destination)
+            self.assertFalse(
+                (
+                    destination / INTEGRATION_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
+                ).exists()
+            )
+            self.assertTrue(
+                (
+                    destination / INTEGRATION_ROOTS["codex"] / RETIRED_SKILL_NAMES[0]
+                ).exists()
+            )
+            for prefix in INTEGRATION_ROOTS.values():
+                self.assertTrue((self.root / prefix / RETIRED_SKILL_NAMES[0]).exists())
+
+    @verifies("scenario.distribution.build-retired-skills")
+    def test_retirement_removes_an_empty_directory(self):
+        directory = self.root / INTEGRATION_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
+        directory.mkdir(parents=True)
+        write_build(self.root)
+        self.assertFalse(directory.exists())
+
+    @verifies("scenario.distribution.build-retired-skills")
+    def test_retirement_preflights_all_directories_before_deleting_or_writing(self):
+        write_build(self.root)
+        manifest = (self.root / "generated/build-manifest.json").read_bytes()
+        directories = []
+        for prefix in INTEGRATION_ROOTS.values():
+            directory = self.root / prefix / RETIRED_SKILL_NAMES[0]
+            directory.mkdir(parents=True)
+            (directory / "SKILL.md").write_text("old projection\n")
+            directories.append(directory)
+        unexpected = directories[-1] / "user-notes.txt"
+        unexpected.write_text("preserve me\n")
+        # Make the next render different to detect an early manifest/output write.
+        source = self.root / "prompts/workflow-host/gap-reporting.md"
+        source.write_text(source.read_text() + "\nChanged instructions.\n")
+        with self.assertRaisesRegex(BuildError, "unexpected retired skill content"):
+            write_build(self.root)
+        self.assertEqual(unexpected.read_text(), "preserve me\n")
+        for directory in directories:
+            self.assertEqual((directory / "SKILL.md").read_text(), "old projection\n")
+        self.assertEqual(
+            (self.root / "generated/build-manifest.json").read_bytes(), manifest
+        )
+
+    @verifies("scenario.distribution.build-retired-skills")
+    def test_retirement_refuses_symlinks_and_non_directories(self):
+        with tempfile.TemporaryDirectory() as raw_outside:
+            outside = Path(raw_outside)
+            (outside / "SKILL.md").write_text("outside instructions\n")
+            directory = self.root / INTEGRATION_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
+            directory.parent.mkdir(parents=True)
+            for kind in (
+                "directory-link",
+                "file-link",
+                "dangling-link",
+                "regular-file",
+            ):
+                with self.subTest(kind=kind):
+                    if kind == "directory-link":
+                        directory.symlink_to(outside, target_is_directory=True)
+                    elif kind == "regular-file":
+                        directory.write_text("not a directory\n")
+                    else:
+                        directory.mkdir()
+                        target = outside / (
+                            "SKILL.md" if kind == "file-link" else "missing"
+                        )
+                        (directory / "SKILL.md").symlink_to(target)
+                    current, differences = check_build(self.root)
+                    self.assertFalse(current)
+                    self.assertIn(
+                        directory.relative_to(self.root).as_posix(), differences
+                    )
+                    with self.assertRaises(BuildError):
+                        write_build(self.root)
+                    self.assertFalse((self.root / "generated").exists())
+                    self.assertEqual(
+                        (outside / "SKILL.md").read_text(), "outside instructions\n"
+                    )
+                    if directory.is_symlink() or directory.is_file():
+                        directory.unlink()
+                    else:
+                        (directory / "SKILL.md").unlink()
+                        directory.rmdir()
+
+    @verifies("scenario.distribution.build-retired-skills")
+    def test_retirement_refuses_symlinked_integration_ancestors(self):
+        with tempfile.TemporaryDirectory() as raw_outside:
+            outside = Path(raw_outside)
+            for relative in (".claude", ".claude/skills"):
+                with self.subTest(relative=relative):
+                    link = self.root / relative
+                    link.parent.mkdir(parents=True, exist_ok=True)
+                    link.symlink_to(outside, target_is_directory=True)
+                    with self.assertRaisesRegex(
+                        BuildError, "skill output directory is a symlink"
+                    ):
+                        write_build(self.root)
+                    self.assertEqual(list(outside.iterdir()), [])
+                    self.assertFalse((self.root / "generated").exists())
+                    link.unlink()
 
     @verifies("scenario.distribution.build-check")
     def test_check_ignores_an_unrelated_file_under_generated(self):

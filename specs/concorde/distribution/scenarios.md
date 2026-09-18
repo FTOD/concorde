@@ -203,7 +203,7 @@ checkout's root instructions state the rule for that runtime.
 - GIVEN a completed render
 - WHEN write_build runs
 - THEN it writes the rendered outputs plus `generated/build-manifest.json` recording every recorded source path's sha256
-- AND it removes retired outputs only within its declared owned subtrees (`generated/agents`, `generated/protocol` and `generated/docs`), preserving other generators' assets
+- AND it removes retired outputs within its declared owned subtrees (`generated/agents`, `generated/protocol` and `generated/docs`) and explicitly retired Skill projections under the retirement contract below, preserving other generators' assets
 
 ### scenario.distribution.build-check — check_build reports staleness without writing
 
@@ -211,6 +211,23 @@ checkout's root instructions state the rule for that runtime.
 - WHEN check_build runs
 - THEN it renders into a temporary directory and reports every stale or drifted output
 - AND it writes nothing to the worktree
+
+### scenario.distribution.build-retired-skills — Retired Skill projections do not survive rebuilding
+
+- GIVEN an explicitly retired Skill directory remains after its name leaves the current Skill inventory or build manifest
+- WHEN check_build or write_build runs for the selected integration
+- THEN check_build reports the retired directory without modifying it
+- AND write_build removes only its regular `SKILL.md` and empty directory at the selected Skill destination
+- AND unknown Skill directories, including names beginning with `concorde-`, and unselected integrations remain untouched
+- BUT a retired path that is not a directory, a symlink in its integration ancestors or contents, or any extra directory content causes write_build to fail before deleting or writing outputs
+
+The explicit retirement inventory currently contains `concorde-reflections-triage`; new retirements
+extend that inventory rather than authorizing deletion by prefix. An already empty retired directory
+is removed too. When `integration_root` is supplied, retirement uses that destination, not the
+source package's Skill directories. All retirement candidates are preflighted before any output
+mutation. A symlinked integration ancestor is also refused by check_build without traversing it.
+Repeated rebuilding is idempotent. Build fixture membership equals the current worker and Skill
+projection inventory; obsolete fixture files are not an alternative supported inventory.
 
 ### scenario.distribution.build-stale-blocks-execution — A stale build fails closed
 

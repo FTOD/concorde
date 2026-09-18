@@ -80,6 +80,9 @@ class BuildError(ValueError):
 
 INTEGRATIONS = ("claude", "codex")
 INTEGRATION_ROOTS = {"claude": ".claude/skills", "codex": ".agents/skills"}
+# Keep explicit ownership after a Skill leaves SKILL_NAMES, even if a newer manifest
+# has already forgotten it. A name prefix alone never authorizes deletion.
+RETIRED_SKILL_NAMES = ("concorde-reflections-triage",)
 
 MODEL_ROOTS: dict[str, str] = {
     agent.name.replace("_", "-"): agent.spec
@@ -526,6 +529,34 @@ def build(
     return BuildResult(outputs=ordered, manifest=manifest)
 
 
+def _retired_skill_directories(root: Path, integration: str) -> tuple[Path, ...]:
+    """Locate explicitly retired projections without following integration-root symlinks."""
+    integrations = INTEGRATIONS if integration == "all" else (integration,)
+    directories: list[Path] = []
+    for selected in integrations:
+        prefix = Path(INTEGRATION_ROOTS[selected])
+        for relative in (prefix.parent, prefix):
+            if (root / relative).is_symlink():
+                raise BuildError(f"skill output directory is a symlink: {relative}")
+        for name in RETIRED_SKILL_NAMES:
+            directory = root / prefix / name
+            if directory.exists() or directory.is_symlink():
+                directories.append(directory)
+    return tuple(directories)
+
+
+def _retired_skill_cleanup(root: Path, integration: str) -> tuple[Path, ...]:
+    """Preflight every retirement before writes; preserve unexpected files and links."""
+    directories = _retired_skill_directories(root, integration)
+    for directory in directories:
+        if directory.is_symlink() or not directory.is_dir():
+            raise BuildError(f"unsafe retired skill directory: {directory}")
+        for path in directory.iterdir():
+            if path.name != "SKILL.md" or path.is_symlink() or not path.is_file():
+                raise BuildError(f"unexpected retired skill content: {path}")
+    return directories
+
+
 def write_build(
     project_root: str | Path,
     integration: str = "all",
@@ -545,6 +576,7 @@ def write_build(
     root = Path(project_root)
     destination = Path(integration_root) if integration_root is not None else root
     result = build(root, integration, framework_prefix=framework_prefix)
+    retired = _retired_skill_cleanup(destination, integration)
     expected = {output.path for output in result.outputs}
     # A Protocol revision may retire a kind or role. Only these declared build-owned
     # subtrees are reconciled; diagrams and other tools' generated assets are preserved.
@@ -560,6 +592,9 @@ def write_build(
                     and path.relative_to(root).as_posix() not in expected
                 ):
                     path.unlink()
+    for directory in retired:
+        (directory / "SKILL.md").unlink(missing_ok=True)
+        directory.rmdir()
     for output in result.outputs:
         base = (
             destination
@@ -605,8 +640,8 @@ def check_build(
 
     Returns (is_current, differences) where differences names every relative path (under the
     build-owned locations in ``generated/`` -- see ``GENERATED_OWNED_DIRS``/``GENERATED_OWNED_FILES``
-    -- and, for our public skills, ``.claude/skills``/``.agents/skills``) that is missing,
-    unexpected, or byte-different. Nothing under project_root is written or modified. A third
+    -- and, for our current or explicitly retired skills, ``.claude/skills``/``.agents/skills``)
+    that is missing, unexpected, or byte-different. Nothing under project_root is written or modified. A third
     party's own Skill directories (for example ``.claude/skills/<vendor-skill>``) are never inspected or
     reported, and neither is any other path under ``generated/`` that the build does not own (for
     example diagram renders under ``generated/architecture/``): ``generated/`` is a shared, ignored
@@ -631,6 +666,10 @@ def check_build(
         for relative in set(fresh_owned) | set(current_owned)
         if fresh_owned.get(relative) != current_owned.get(relative)
     ]
+    diffs.extend(
+        directory.relative_to(root).as_posix()
+        for directory in _retired_skill_directories(root, integration)
+    )
     for prefix in INTEGRATION_ROOTS.values():
         for name in SKILL_NAMES:
             fresh_key = f"{prefix}/{name}"

@@ -40,6 +40,14 @@ carries no worktree identity: it binds to the worktree in which the developer's 
 it, and Development derives the project root from that working directory. Building or installing
 a Skill does not execute its Operation or add it to a Concorde Agent's Harness. Operation behavior remains with its providing Module.
 
+Retiring a public Skill also retires its generated entry, so a developer's runtime does not keep
+advertising a removed operation. The build remembers explicitly retired names even after they
+leave the current manifest; freshness checking reports their remaining directories and rebuilding
+removes their projections. Unknown Skills are preserved, including ones with a Concorde-like name.
+Cleanup stops before writing if a retired directory contains extra files or unsafe links, rather
+than guessing whether those files belong to the developer. See the
+[retirement contract](scenarios.md#scenario.distribution.build-retired-skills).
+
 ### Protocol and runtime support are separate
 
 The package supports Protocol 10.0.0 with source_profile 15 and document metadata schema 2. Its tracked manifest binds the exact
