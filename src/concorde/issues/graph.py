@@ -651,9 +651,8 @@ def issue_nodes(run):
             payload = {
                 **base_task(),
                 "task": verification_task if specific else task["task"],
-                "review_mode": mode,
             }
-            result = child("concorde-review", payload)
+            result = child(f"concorde-{mode}-review", payload)
             child_output = result.get("output") or {}
             if result["status"] != "succeeded":
                 if result["status"] == "failed" or result.get("errors"):

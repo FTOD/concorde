@@ -17,7 +17,8 @@ PUBLIC_SKILLS = (
     "concorde-dev-loop",
     "concorde-specify-loop",
     "concorde-issues",
-    "concorde-review",
+    "concorde-code-review",
+    "concorde-spec-review",
     "concorde-init",
     "concorde-configure",
     "concorde-validate",
@@ -84,6 +85,16 @@ class RunOperationLauncherTests(unittest.TestCase):
         output = json.loads(process.stdout)
         self.assertEqual("unknown_operation", output["errors"][0]["code"])
 
+    @verifies("scenario.review.separate-entries")
+    def test_retired_review_launcher_has_no_alias(self):
+        for argv in (["concorde-review"], ["concorde-review", "--runtime-check"]):
+            with self.subTest(argv=argv):
+                process = _run(argv)
+                self.assertEqual(3, process.returncode)
+                self.assertEqual(
+                    "unknown_operation", json.loads(process.stdout)["errors"][0]["code"]
+                )
+
     def test_refuses_zero_or_multiple_arguments(self):
         for argv in ([], ["concorde-main", "concorde-init"]):
             with self.subTest(argv=argv):
@@ -140,31 +151,28 @@ class RunOperationLauncherTests(unittest.TestCase):
                 error["code"], {"unknown_operation", "incompatible_handoff"}
             )
 
-    @verifies(
-        "scenario.review.standalone", "scenario.harness.describe-policy"
-    )
+    @verifies("scenario.review.standalone", "scenario.harness.describe-policy")
     def test_public_review_launcher_previews_scoped_code_authority(self):
         invocation = {
             "type_id": "concorde-operation-invocation",
             "schema_version": 3,
-            "operation_id": "concorde-review",
+            "operation_id": "concorde-code-review",
             "mode": "describe-policy",
             "configuration": None,
             "input": {
-                "type_id": "concorde-review-request",
+                "type_id": "concorde-code-review-request",
                 "schema_version": 1,
                 "data": {
                     "task": "Review the operation dispatch",
-                    "review_mode": "code",
                     "target_id": "module.operations",
                 },
             },
         }
-        process = _run(["concorde-review"], json.dumps(invocation))
+        process = _run(["concorde-code-review"], json.dumps(invocation))
         self.assertEqual(0, process.returncode, process.stdout + process.stderr)
         result = json.loads(process.stdout)
         self.assertEqual("described", result["status"])
-        self.assertEqual("concorde-review-response", result["output"]["type_id"])
+        self.assertEqual("concorde-code-review-response", result["output"]["type_id"])
         self.assertEqual(
             "not_run", result["output"]["data"]["reviews"][0]["data"]["status"]
         )

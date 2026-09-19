@@ -180,7 +180,8 @@ def build_dispatch_graph(node_factory, *, operation=None):
     elif operation is not None:
         entry = ["relay", "prepare_target"]
         target = {
-            "concorde-review": "review",
+            "concorde-spec-review": "review",
+            "concorde-code-review": "review",
             "concorde-issues": "issues",
             "concorde-specify": "specify",
             "concorde-plan": "plan",

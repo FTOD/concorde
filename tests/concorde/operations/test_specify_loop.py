@@ -76,9 +76,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertEqual(
             first["output"]["data"]["artifacts"], second["output"]["data"]["artifacts"]
         )
-        fresh = self.call_operation(
-            "concorde-review", {**self.task, "review_mode": "spec"}
-        )
+        fresh = self.call_operation("concorde-spec-review", {**self.task})
         self.assertEqual("succeeded", fresh["status"], fresh)
         self.assertCountEqual(
             ["service.transfer", "scope.bank"], self.spec_review_targets()
@@ -129,17 +127,13 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertEqual("succeeded", second["status"], second)
         self.assertEqual([], self.spec_review_targets())
         # An explicit standalone review never reuses graph evidence.
-        fresh = self.call_operation(
-            "concorde-review", {**self.task, "review_mode": "spec"}
-        )
+        fresh = self.call_operation("concorde-spec-review", {**self.task})
         self.assertEqual("succeeded", fresh["status"], fresh)
         self.assertCountEqual(
             ["service.transfer", "scope.bank"], self.spec_review_targets()
         )
 
-    @verifies(
-        "scenario.specify-loop.independent", "scenario.dev-loop.ready"
-    )
+    @verifies("scenario.specify-loop.independent", "scenario.dev-loop.ready")
     def test_current_spec_scope_continues_into_development_before_code_review_exists(
         self,
     ):
@@ -285,11 +279,10 @@ class SpecifyLoopTests(unittest.TestCase):
         developed = self.call_operation("concorde-dev-loop", task)
         self.assertEqual("succeeded", developed["status"], developed)
         fresh = self.call_operation(
-            "concorde-review",
+            "concorde-spec-review",
             {
                 "target_id": task["target_id"],
                 "task": task["task"],
-                "review_mode": "spec",
             },
         )
         self.assertEqual("succeeded", fresh["status"], fresh)
@@ -298,7 +291,7 @@ class SpecifyLoopTests(unittest.TestCase):
         component = state["targets"]["scope.bank"]["coordination"]["service.transfer"]
         self.assertEqual(component["task"], peer["task"])
         run = Invocation(
-            "concorde-review",
+            "concorde-spec-review",
             fixtures.CONFIGURATION,
             {
                 "target_id": "scope.bank",
@@ -415,8 +408,8 @@ class SpecifyLoopTests(unittest.TestCase):
     def test_consumer_prerequisite_gap_is_task_attributed_for_reuse_and_readiness(self):
         from dataclasses import replace
 
-        from concorde.harness.invocation import Invocation
         from concorde.harness.admission import run_operation
+        from concorde.harness.invocation import Invocation
         from concorde.review.review import current_spec_scope, verify_required
         from concorde.spec.repository import SpecError
         from concorde.spec.typed_data import typed
@@ -458,7 +451,7 @@ class SpecifyLoopTests(unittest.TestCase):
                     )
                     history = read_change(fixture.root, required=True)["issue_blockers"]
                     run = Invocation(
-                        "concorde-review",
+                        "concorde-spec-review",
                         fixture.configuration,
                         {**fixture.task, "change_id": state["change_id"]},
                         fixture.host,
@@ -503,9 +496,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertFalse(data["checks"])
         self.assertIn("concorde-specify", data["completed_operations"])
 
-    @verifies(
-        "scenario.specify-loop.independent", "scenario.dev-loop.ready"
-    )
+    @verifies("scenario.specify-loop.independent", "scenario.dev-loop.ready")
     def test_development_composes_specify_loop_and_resumes_its_evidence(self):
         from concorde.harness import admission
 
@@ -546,9 +537,7 @@ class SpecifyLoopTests(unittest.TestCase):
             "skipped", state["reviews"][self.task["target_id"]]["spec"]["status"]
         )
 
-    @verifies(
-        "scenario.specify-loop.independent", "scenario.dev-loop.spec-gap"
-    )
+    @verifies("scenario.specify-loop.independent", "scenario.dev-loop.spec-gap")
     def test_gap_stops_and_required_review_cannot_be_disabled_on_resume(self):
         first = self.call_operation(
             "concorde-specify-loop", callback=self.missing("spec-review")
@@ -593,9 +582,7 @@ class SpecifyLoopTests(unittest.TestCase):
             [item["phase"] for item in self.host.descriptions],
         )
 
-    @verifies(
-        "scenario.specify-loop.independent", "scenario.harness.graph-execution"
-    )
+    @verifies("scenario.specify-loop.independent", "scenario.harness.graph-execution")
     def test_rejected_author_preserves_the_error_and_never_reaches_review(self):
         def foreign_document(stage, snapshot, data, cwd):
             if stage == "specify":
@@ -610,9 +597,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertIn("permission_denied", result["errors"][0]["message"])
         self.assertEqual(["specify"], [item["stage"] for item in self.model.calls])
 
-    @verifies(
-        "scenario.specify-loop.independent", "scenario.harness.graph-execution"
-    )
+    @verifies("scenario.specify-loop.independent", "scenario.harness.graph-execution")
     def test_studio_exposes_independent_spec_graph_and_development_composition(self):
         from concorde.harness.studio import build_studio_graph
         from tests.concorde.spec.support import PACKAGE

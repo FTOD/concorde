@@ -1049,7 +1049,8 @@
         "specs/concorde/review/execution-reference.md"
       ],
       "files": [
-        "operations/review.py",
+        "operations/code_review.py",
+        "operations/spec_review.py",
         "src/concorde/review/",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",

@@ -258,7 +258,7 @@ flowchart TB
     select_operation -->|concorde-main apply-topology| apply_topology
     select_operation -->|target-bound operation| prepare_target
     select_operation -->|error| __end__
-    prepare_target -->|concorde-review| review
+    prepare_target -->|concorde-spec-review or concorde-code-review| review
     prepare_target -->|describe-policy mode| describe_policy
     prepare_target -->|concorde-issues| issues
     prepare_target -->|concorde-specify| specify

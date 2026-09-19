@@ -64,7 +64,8 @@ authorization.
 | --- | --- |
 | Ask about a Spec or route a task | `concorde-main` returns an answer or attributed limitation without editing Specs or code; an explicit worker Issue report is host bookkeeping. |
 | Prepare a Spec | `concorde-specify-loop` completes independent authoring and review, before planning or implementation. |
-| Review a task | `concorde-review` returns independent Spec/code coverage and findings without creating a development change. |
+| Review a Spec | `concorde-spec-review` returns independent contract and terminology-consistency findings without creating a development change. |
+| Review code | `concorde-code-review` checks the admitted implementation against its Spec without creating a development change. |
 | Develop a change | `concorde-dev-loop` composes specification, planning, implementation and verification to a ready candidate, recording explicitly authorized skips. |
 | Initialize a project | `concorde-init` proposes then applies configuration and an honest Module stub without overwriting an existing project. |
 | Configure workers | `concorde-configure` applies explicit supported model, thinking and timeout selections. |

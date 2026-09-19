@@ -10,8 +10,8 @@ from unittest.mock import Mock, patch
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 
-from concorde.query_routing.main import MainInvocation
 from concorde.harness.batch_graph import run_batch_graph
+from concorde.query_routing.main import MainInvocation
 from concorde.spec.verification import verifies
 from tests.concorde.harness import test_studio as studio_fixtures
 
@@ -61,9 +61,7 @@ class GraphTests(TestCase):
             any(name.endswith(":development_loop") for name in drawing.nodes)
         )
 
-    @verifies(
-        "scenario.harness.graph-inspection", "scenario.harness.graph-execution"
-    )
+    @verifies("scenario.harness.graph-inspection", "scenario.harness.graph-execution")
     def test_nested_updates_and_checkpoints_contain_json_not_host_objects(self):
         fixture = self.fixture()
         graph = fixture.graph("concorde-main")
@@ -139,9 +137,7 @@ class GraphTests(TestCase):
         self.assertEqual("answered", decision["outcome"])
         self.assertEqual(36, main.stage.call_count)
 
-    @verifies(
-        "scenario.harness.graph-bounds", "scenario.harness.graph-execution"
-    )
+    @verifies("scenario.harness.graph-bounds", "scenario.harness.graph-execution")
     def test_large_batch_stops_before_running_dependent_items(self):
         visited = []
 
@@ -157,8 +153,8 @@ class GraphTests(TestCase):
 
     @verifies("scenario.harness.graph-execution")
     def test_scheduler_failure_keeps_the_error_envelope_and_final_event(self):
-        from concorde.harness.host import OperationHost
         from concorde.harness.admission import run_operation
+        from concorde.harness.host import OperationHost
 
         fixture = self.fixture()
         events = []
@@ -181,13 +177,13 @@ class GraphTests(TestCase):
 
     @verifies("scenario.harness.graph-execution")
     def test_extracted_review_graph_remains_part_of_review_identity(self):
-        from concorde.review import review
-        from concorde.harness.invocation import Invocation
         from concorde.harness.host import OperationHost
+        from concorde.harness.invocation import Invocation
+        from concorde.review import review
 
         fixture = self.fixture()
         run = Invocation(
-            "concorde-review",
+            "concorde-code-review",
             studio_fixtures.CONFIGURATION,
             {"target_id": "service.transfer", "task": "Inspect transfer"},
             OperationHost(fixture.root, studio_fixtures.PACKAGE),
@@ -218,7 +214,13 @@ class GraphTests(TestCase):
                 with self.subTest(item_node=item_node, stop_at=stop_at):
                     visited, operations, drawings = [], [], []
 
-                    def instrument(factory, **options):
+                    def instrument(
+                        factory,
+                        visited=visited,
+                        operations=operations,
+                        drawings=drawings,
+                        **options,
+                    ):
                         def node(name):
                             execute = factory(name)
 
@@ -237,7 +239,7 @@ class GraphTests(TestCase):
                         drawings.append(first)
                         return graph
 
-                    def operation(item):
+                    def operation(item, operations=operations, stop_at=stop_at):
                         operations.append(item)
                         return {"outcome": "blocked"} if item == stop_at else None
 

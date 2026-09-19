@@ -61,8 +61,8 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic build's output — nine Skills exposing selected entries
-from one inventory of twenty-six Operations, including twelve model-backed nodes. Their common
+The installer distributes a deterministic build's output — ten Skills exposing selected entries
+from one inventory of twenty-seven Operations, including twelve model-backed nodes. Their common
 worker rules (`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`)
 render to the compatible `generated/agents/<hyphenated>.md` paths. Four Markdown templates and
 the selected client projections accompany them: Codex or Claude Skills, which the installer has the
@@ -143,10 +143,14 @@ required for the change. The Spec loop affects only Spec review, while developme
 code review for code-owning targets. Accepted Spec work can continue into development in the same
 change without repeating current evidence.
 
-`concorde-review` accepts a `task` and `review_mode: "spec"` or `"code"`, with optional target/focus
-routing hints. It selects the owning Module and starts a fresh read-only reviewer in the current
+`concorde-spec-review` reviews the specification itself, including every imported terminology
+restatement's semantic consistency with its canonical definition. Different wording is allowed.
+`concorde-code-review` reviews or diagnoses the admitted implementation against its Spec. Each
+separate Operation accepts a `task` and optional target/focus routing hints, with no review_mode
+selector. Each selects the owning Module and starts its own fresh read-only reviewer in the current
 worktree, without requiring a development change or preexisting Issue. The host returns structured
-findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline.
+findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline. The former combined
+review entry is removed, not retained as an alias; callers must select one of these two Operations.
 
 No Skill returns a context manifest; `describe-policy` mode previews the exact stage
 grants any operation would receive without launching an agent or mutating project state. One change
@@ -393,7 +397,7 @@ verifier) may delegate one level deep through its `subagent` tool, only in the f
 fresh context; a child runs inside the worker's sandbox under the same gate and grant, cannot
 delegate again and cannot submit the worker's result.
 
-One registry contains twenty-six Operations, nine exposed through public Skills. All use State
+One registry contains twenty-seven Operations, ten exposed through public Skills. All use State
 contracts and `run(state, runtime)`. DETERMINISTIC means no supported model-call path when true,
 including transitive USES. Only init, configure, validate and deliver are true in the current
 inventory. USES is the sole composition relation, including model nodes; it does not install

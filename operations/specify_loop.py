@@ -14,7 +14,7 @@ PUBLIC = True
 CONTEXT_SELECTION = "discover"
 DETERMINISTIC = False
 PROFILE = None
-USES = ("router", "specify", "review")
+USES = ("router", "specify", "spec_review")
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
 REQUEST = shapes.obj(

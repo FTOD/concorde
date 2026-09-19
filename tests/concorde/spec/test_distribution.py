@@ -23,7 +23,7 @@ from .support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([], validate_package(PACKAGE))
-        self.assertEqual(26, len(OPERATION_NAMES))
+        self.assertEqual(27, len(OPERATION_NAMES))
         self.assertEqual(12, len(MODEL_OPERATIONS))
         self.assertIn("concorde-main", OPERATION_NAMES)
         self.assertNotIn("concorde-ask", OPERATION_NAMES)
@@ -162,7 +162,7 @@ class DistributionTests(unittest.TestCase):
                 tempfile.TemporaryDirectory() as directory,
             ):
                 root = Path(directory)
-                for path, (content, role) in module.desired_outputs(
+                for path, (content, _role) in module.desired_outputs(
                     package, [integration]
                 ).items():
                     p = root / path

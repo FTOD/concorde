@@ -44,7 +44,7 @@ class OperationModuleContractTests(unittest.TestCase):
     @verifies("scenario.harness.operation-state")
     def test_one_inventory_includes_model_code_and_composed_nodes(self):
         modules = _modules()
-        self.assertEqual(26, len(modules))
+        self.assertEqual(27, len(modules))
         self.assertEqual(
             set(OPERATION_NAMES), {m.EXTERNAL_NAME for m in modules.values()}
         )
@@ -92,8 +92,8 @@ class OperationModuleContractTests(unittest.TestCase):
             else:
                 self.assertNotIn(name, contracts())
                 self.assertIsNotNone(module.PROFILE)
-        self.assertEqual(14, len(contracts()))  # Existing wire envelopes do not change.
-        self.assertEqual(9, len(SKILL_NAMES))
+        self.assertEqual(15, len(contracts()))
+        self.assertEqual(10, len(SKILL_NAMES))
         self.assertEqual(
             set(SKILL_NAMES), {m.EXTERNAL_NAME for m in _modules().values() if m.PUBLIC}
         )
@@ -102,10 +102,30 @@ class OperationModuleContractTests(unittest.TestCase):
                 "concorde-main",
                 "concorde-dev-loop",
                 "concorde-specify-loop",
-                "concorde-review",
+                "concorde-spec-review",
+                "concorde-code-review",
             },
             set(DISCOVERY_OPERATIONS),
         )
+
+    def test_review_entries_have_fixed_authority_and_no_legacy_selector(self):
+        modules = _modules()
+        self.assertNotIn("review", modules)
+        self.assertNotIn("concorde-review", contracts())
+        self.assertNotIn("concorde-review-request", schemas())
+        self.assertNotIn("concorde-review-response", schemas())
+        for kind in ("spec", "code"):
+            with self.subTest(kind=kind):
+                operation = f"concorde-{kind}-review"
+                module = modules[f"{kind}_review"]
+                self.assertEqual(("router", f"{kind}_reviewer"), module.USES)
+                self.assertEqual(["task"], module.REQUEST["required"])
+                self.assertNotIn("review_mode", module.REQUEST["properties"])
+                typed(operation + "-request", {"task": "Inspect"})
+                with self.assertRaises(TypedDataError):
+                    typed(
+                        operation + "-request", {"task": "Inspect", "review_mode": kind}
+                    )
 
     def test_uses_is_the_only_dependency_relation_and_is_acyclic(self):
         modules = _modules()

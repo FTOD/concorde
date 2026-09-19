@@ -6,14 +6,14 @@ from typing import Any
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from concorde.query_routing import discovery_graph
-from concorde.review import review
+from concorde.harness.host import OperationHost
 from concorde.implementation.coordination_graph import (
     build_coordination_graph,
     build_stabilization_graph,
 )
+from concorde.query_routing import discovery_graph
 from concorde.query_routing.main import MainInvocation
-from concorde.harness.host import OperationHost
+from concorde.review import review
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
 
@@ -242,7 +242,11 @@ class GraphSurfaceTests(TestCase):
         "scenario.harness.graph-inspection",
     )
     def test_fresh_discovery_uses_inspected_factory_and_preserves_intent(self):
-        for operation in ("concorde-review", "concorde-dev-loop"):
+        for operation in (
+            "concorde-spec-review",
+            "concorde-code-review",
+            "concorde-dev-loop",
+        ):
             for terminal in ("routed", "failed"):
                 with self.subTest(operation=operation, terminal=terminal):
                     run: Any = MainInvocation.__new__(MainInvocation)
@@ -299,9 +303,7 @@ class GraphSurfaceTests(TestCase):
                         self.assertEqual([], routes)
                         self.assertEqual("failed", decision["outcome"])
 
-    @verifies(
-        "scenario.harness.graph-bounds", "scenario.query-routing.discovery-limit"
-    )
+    @verifies("scenario.harness.graph-bounds", "scenario.query-routing.discovery-limit")
     def test_discovery_domain_limit_does_not_restart(self):
         run: Any = MainInvocation.__new__(MainInvocation)
         run.repository = SimpleNamespace(
@@ -313,9 +315,7 @@ class GraphSurfaceTests(TestCase):
         self.assertEqual("context_limit", caught.exception.code)
         run.stage.assert_not_called()
 
-    @verifies(
-        "scenario.harness.graph-execution", "scenario.harness.graph-inspection"
-    )
+    @verifies("scenario.harness.graph-execution", "scenario.harness.graph-inspection")
     def test_coordination_variants_stop_before_dependent_nodes(self):
         names = [
             "reconcile_specs",

@@ -8,17 +8,17 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.invocation import Invocation
-from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
-from concorde.review.review import current, inputs
 from concorde.harness.change_worktree import (
     WORK_PATH,
     ensure_change,
     read_change,
     save_change,
 )
+from concorde.harness.host import OperationHost
+from concorde.harness.invocation import Invocation
 from concorde.harness.permissions import PermissionPolicyError
+from concorde.review.review import current, inputs
 from concorde.spec.typed_data import DATA_SCHEMAS, typed
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
@@ -69,7 +69,7 @@ class ReviewTests(unittest.TestCase):
         # The failed Review result and its incomplete report survive the lost status write,
         # which is reported beside them rather than replacing them.
         self.assertEqual("failed", result["status"], result)
-        self.assertEqual("concorde-review-response", result["output"]["type_id"])
+        self.assertEqual("concorde-spec-review-response", result["output"]["type_id"])
         data = result["output"]["data"]
         self.assertEqual("failed", data["outcome"])
         self.assertEqual(
@@ -98,8 +98,8 @@ class ReviewTests(unittest.TestCase):
     def test_fresh_review_reconciles_removed_members_and_restores_required_currentness(
         self,
     ):
-        from concorde.review.review import require_reviews, verify_required
         from concorde.harness.worker_executor import OperationExecutionError
+        from concorde.review.review import require_reviews, verify_required
         from concorde.spec.initialize import empty_target
         from concorde.spec.repository import SpecError
         from tests.concorde.spec.support import module_document, write_document
@@ -468,7 +468,7 @@ class ReviewTests(unittest.TestCase):
                             event
                             for event in events
                             if event["event"] == "operation_finished"
-                            and event["operation"] == "concorde-review"
+                            and event["operation"] == f"concorde-{review_stage}"
                         ]
                         self.assertTrue(review_finished)
                         self.assertEqual(outcome, review_finished[-1]["status"])
@@ -491,7 +491,9 @@ class ReviewTests(unittest.TestCase):
         self,
     ):
         # Inspect deliberately corrupted fixture bytes without admitting them as valid host state.
-        read_change = lambda root, required=True: raw_change(root)
+        def read_change(root, required=True):
+            return raw_change(root)
+
         from copy import deepcopy
 
         from concorde.spec.repository import digest
@@ -565,11 +567,10 @@ class ReviewTests(unittest.TestCase):
             document.read_text() + "\nTransfer owns the daily-limit admission rule.\n"
         )
         reviewed = self.call_operation(
-            "concorde-review",
+            "concorde-spec-review",
             {
                 "target_id": "service.transfer",
                 "task": nested["task"],
-                "review_mode": "spec",
             },
         )
         self.assertEqual("succeeded", reviewed["status"], reviewed)
@@ -653,7 +654,9 @@ class ReviewTests(unittest.TestCase):
         self,
     ):
         # Actual operation calls still use production read_change and reject corrupt identities.
-        read_change = lambda root, required=True: raw_change(root)
+        def read_change(root, required=True):
+            return raw_change(root)
+
         from copy import deepcopy
 
         from concorde.spec.repository import digest
@@ -701,11 +704,10 @@ class ReviewTests(unittest.TestCase):
             document.read_text() + "\nTransfer owns the daily-limit admission rule.\n"
         )
         reviewed = self.call_operation(
-            "concorde-review",
+            "concorde-spec-review",
             {
                 "target_id": "service.transfer",
                 "task": cached["task"],
-                "review_mode": "spec",
             },
         )
         self.assertEqual("succeeded", reviewed["status"], reviewed)
@@ -1206,7 +1208,7 @@ class ReviewTests(unittest.TestCase):
         request = {**self.task, "repair_task_scope": {"tasks_digest": digest(original)}}
         for invalid in ("completed", "reused_id"):
 
-            def reject(stage, snapshot, data, cwd):
+            def reject(stage, snapshot, data, cwd, invalid=invalid):
                 if stage == "tasks" and invalid == "completed":
                     data["tasks"][0]["complete"] = True
 
@@ -1319,15 +1321,15 @@ class ReviewTests(unittest.TestCase):
 
     def review(self, review_mode="spec", callback=None, **kwargs):
         return self.call_operation(
-            "concorde-review",
-            {**self.task, "review_mode": review_mode},
+            f"concorde-{review_mode}-review",
+            dict(self.task),
             callback,
             **kwargs,
         )
 
     def invocation(self):
         return Invocation(
-            "concorde-review",
+            "concorde-spec-review",
             self.configuration,
             self.task,
             OperationHost(self.root, PACKAGE, routed_target=self.task["target_id"]),
@@ -1583,7 +1585,7 @@ class ReviewTests(unittest.TestCase):
         for mutate in mutations:
             with self.subTest(mutation=mutate):
 
-                def callback(stage, snapshot, data, cwd):
+                def callback(stage, snapshot, data, cwd, mutate=mutate):
                     mutate(data)
 
                 result = self.review(callback=callback)
@@ -1751,6 +1753,43 @@ class ReviewTests(unittest.TestCase):
         spec.write_text(spec.read_text() + "\nChanged contract.\n")
         self.assertIsNone(current(self.invocation(), "spec"))
 
+    @verifies("scenario.review.terminology-consistency")
+    def test_spec_review_instructions_require_semantic_terminology_coverage(self):
+        # This verifies the review contract and result handling, not a model's semantic accuracy.
+        from concorde.distribution.build import load_model_instructions
+
+        body = load_model_instructions(PACKAGE, "concorde-spec-reviewer").body
+        for obligation in (
+            "Terminology semantic consistency is a mandatory check",
+            "including directly referenced documents",
+            "text equality is not required",
+            "scope, conditions, constraints, exceptions and obligation strength",
+            "Record terminology coverage in representative_tasks",
+            "If there are no imported restatements",
+            "report incomplete rather than silently treating them as consistent",
+        ):
+            self.assertIn(obligation, body)
+        child = (
+            PACKAGE / "operations/spec_reviewer/children/consistency.md"
+        ).read_text()
+        self.assertIn("Different wording is allowed", child)
+        self.assertIn("local and canonical", child)
+        self.assertIn("unresolved comparisons", child)
+
+        def incomplete(stage, snapshot, data, cwd):
+            if stage == "spec-review":
+                data.update(
+                    status="incomplete",
+                    representative_tasks=["Terminology semantic consistency"],
+                    answer="The canonical meaning is ambiguous; one terminology comparison is unresolved.",
+                )
+
+        result = self.review(callback=incomplete)
+        self.assertEqual("failed", result["status"], result)
+        self.assertEqual(
+            "incomplete", result["output"]["data"]["reviews"][0]["data"]["status"]
+        )
+
     @verifies("scenario.dev-loop.spec-gap")
     def test_changed_review_instructions_reassess_without_erasing_gaps_on_failure(self):
         import hashlib
@@ -1887,9 +1926,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("ready", state["status"])
         self.assertNotIn("specify", [x["stage"] for x in self.model.calls])
 
-    @verifies(
-        "scenario.dev-loop.spec-gap", "scenario.planning.assessment-gap"
-    )
+    @verifies("scenario.dev-loop.spec-gap", "scenario.planning.assessment-gap")
     def test_real_task_phases_preserve_gaps_and_resume_after_repair(self):
         for phase in ("context-solve", "plan", "tasks", "implementation"):
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as temporary:
@@ -1952,7 +1989,7 @@ class ReviewTests(unittest.TestCase):
         for mode in ("spec", "code"):
             with self.subTest(mode=mode):
 
-                def independent(stage, snapshot, data, cwd):
+                def independent(stage, snapshot, data, cwd, mode=mode):
                     if stage == mode + "-review":
                         data.update(
                             status="findings",
@@ -2068,11 +2105,10 @@ class ReviewTests(unittest.TestCase):
         )
         before = read_change(self.root)
         result = self.call_operation(
-            "concorde-review",
+            "concorde-spec-review",
             {
                 **self.task,
                 "task": "Inspect a separate possible use",
-                "review_mode": "spec",
             },
             callback=self.missing("spec-review"),
         )
@@ -2331,15 +2367,15 @@ class ReviewTests(unittest.TestCase):
             root = Path(directory)
             project(root)
             peer = Invocation(
-                "concorde-review",
+                "concorde-spec-review",
                 self.configuration,
                 self.task,
                 OperationHost(root, PACKAGE),
             )
             self.assertNotEqual(original, inputs(peer, "spec")[0]["input_digest"])
         rejected = self.call_operation(
-            "concorde-review",
-            {**self.task, "review_mode": "spec", "change_id": "change.foreign"},
+            "concorde-spec-review",
+            {**self.task, "change_id": "change.foreign"},
         )
         self.assertEqual("missing_change", rejected["errors"][0]["code"])
         self.assertEqual([], self.model.calls)
@@ -2368,7 +2404,7 @@ class ReviewTests(unittest.TestCase):
         references = {ref["id"] for ref in result["output"]["data"]["artifacts"]}
         self.assertIn("review.module.ledger.code", references)
         self.assertIn("review.service.transfer.code", references)
-        result = self.call_operation("concorde-review", {**task, "review_mode": "code"})
+        result = self.call_operation("concorde-code-review", dict(task))
         self.assertEqual("succeeded", result["status"], result)
         reviews = result["output"]["data"]["reviews"]
         self.assertEqual(
@@ -2433,11 +2469,10 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(
             "succeeded",
             self.call_operation(
-                "concorde-review",
+                "concorde-spec-review",
                 {
                     **self.task,
                     "task": "Inspect a separate possible use",
-                    "review_mode": "spec",
                 },
             )["status"],
         )
@@ -2511,7 +2546,7 @@ class ReviewTests(unittest.TestCase):
                         spec.read_text() + "\nThe daily-limit owner is transfer.\n"
                     )
 
-                    def invalid(stage, snapshot, data, cwd):
+                    def invalid(stage, snapshot, data, cwd, phase=phase):
                         if stage == phase:
                             data["plan" if phase == "plan" else "tasks"] = (
                                 "" if phase == "plan" else []
@@ -2538,9 +2573,7 @@ class ReviewTests(unittest.TestCase):
                 finally:
                     self.root = previous_root
 
-    @verifies(
-        "scenario.dev-loop.spec-gap", "scenario.concorde.develop-failure"
-    )
+    @verifies("scenario.dev-loop.spec-gap", "scenario.concorde.develop-failure")
     def test_failed_plan_artifact_write_can_resume_and_resolve_the_planning_gap(self):
         from concorde.planning import plan as planning
 
@@ -2711,9 +2744,7 @@ class RepairLoopTests(unittest.TestCase):
             1, [c["stage"] for c in self.model.calls].count("implementation")
         )
 
-    @verifies(
-        "scenario.dev-loop.repair", "scenario.implementation.admitted-work"
-    )
+    @verifies("scenario.dev-loop.repair", "scenario.implementation.admitted-work")
     def test_blocking_then_clean_repairs_once_and_reaches_ready(self):
         counter = [0]
         reviews = {"count": 0}
@@ -3062,7 +3093,7 @@ class RepairLoopTests(unittest.TestCase):
 
         double.executor = fail
         result = self.call_operation(
-            "concorde-review", {**self.task, "review_mode": "code"}, double=double
+            "concorde-code-review", dict(self.task), double=double
         )
         self.assertEqual("failed", result["status"], result)
         reviewed = result["output"]["data"]["reviews"][0]["data"]

@@ -356,7 +356,7 @@ def loop_nodes(run):
             if data is None:
                 child_operation = "concorde-" + name.replace("_", "-")
                 if is_review:
-                    child_operation = "concorde-review"
+                    child_operation = f"concorde-{mode}-review"
                 payload = {
                     "target_id": run.target.id,
                     "task": run.task["task"],
@@ -379,8 +379,6 @@ def loop_nodes(run):
                     # The request only binds a list. Host-generated semantic feedback
                     # contains neither source contents nor raw validation output.
                     payload["repair_task_scope"] = scope_repair
-                if is_review:
-                    payload["review_mode"] = mode
                 if run.task.get("focus_id"):
                     payload["focus_id"] = run.task["focus_id"]
                 if run.change_id:

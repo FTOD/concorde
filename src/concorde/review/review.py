@@ -393,7 +393,7 @@ def review(run, mode: str) -> dict:
             run.repository,
             prompt,
             WorkerLaunch(
-                operation="concorde-review",
+                operation=f"concorde-{mode}-review",
                 stage=phase,
                 role=role,
                 snapshot=snapshot,
@@ -439,13 +439,17 @@ def review(run, mode: str) -> dict:
                 "semantic_completeness": "not_proven",
             },
         )
+        if result is None:
+            raise SpecError(
+                "review completed without a worker receipt", "invalid_completion"
+            )
         reference = _persist(run, reviewed, execution=result.usage)
         from ..issues.references import requires_contract_repair, review_blockers
 
         blockers = review_blockers(data["issues"])
         if data["status"] != "incomplete":
             run.record_gaps(phase, blockers, review_input_digest=info["input_digest"])
-        run.completed.append("concorde-review")
+        run.completed.append(f"concorde-{mode}-review")
         outcome = (
             "failed"
             if data["status"] == "incomplete"
@@ -689,7 +693,6 @@ def review_scope(run, mode: str) -> dict:
         task = {
             "target_id": target_id,
             "task": record["task"],
-            "review_mode": mode,
             "change_id": run.change_id,
             "constraints": run.task.get("constraints", []),
         }
@@ -702,7 +705,9 @@ def review_scope(run, mode: str) -> dict:
         )
         # Call a single target reviewer directly: recursive impact expansion would review A/B forever.
 
-        child = Invocation("concorde-review", run.configuration, task, child_host)
+        child = Invocation(
+            f"concorde-{mode}-review", run.configuration, task, child_host
+        )
         previous = retained.get(target_id)
         # Only a graph-composed continuation (track_gaps) reuses evidence; an explicit standalone
         # review is always fresh for the owner and every consumer.
@@ -918,7 +923,7 @@ def _spec_consumer_artifacts(run, state: dict) -> list[dict] | None:
         if task is None:
             return None
         reviewer = Invocation(
-            "concorde-review",
+            "concorde-spec-review",
             run.configuration,
             task,
             replace(run.host, routed_target=target_id, coordinated=True),
@@ -957,7 +962,7 @@ def _code_peer_artifacts(run, state: dict) -> list[dict] | None:
             "change_id": run.change_id,
         }
         reviewer = Invocation(
-            "concorde-review",
+            "concorde-code-review",
             run.configuration,
             task,
             replace(run.host, routed_target=target.id, coordinated=True),
@@ -1060,14 +1065,14 @@ def verify_required(run) -> None:
             if intent is None:
                 continue
             task = {**intent, "target_id": target_id, "change_id": run.change_id}
-            reviewer = Invocation(
-                "concorde-review",
-                run.configuration,
-                task,
-                replace(run.host, routed_target=target_id, coordinated=True),
-            )
             for mode, required in modes.items():
                 if required:
+                    reviewer = Invocation(
+                        f"concorde-{mode}-review",
+                        run.configuration,
+                        task,
+                        replace(run.host, routed_target=target_id, coordinated=True),
+                    )
                     current(reviewer, mode, required=True)
 
 
@@ -1109,14 +1114,13 @@ def review_candidate_contexts(
         owner = target_id == owner_id
         task = {
             "target_id": target_id,
-            "review_mode": "spec",
             "task": intent if owner else consumer_intent(intent),
             "constraints": constraints,
             **({"focus_id": focus_id} if owner and focus_id else {}),
             **({"change_id": change_id} if change_id else {}),
         }
         reviewer = Invocation(
-            "concorde-review",
+            "concorde-spec-review",
             configuration,
             task,
             replace(host, coordinated=True, track_gaps=False),
@@ -1162,7 +1166,7 @@ def review_candidate_contexts(
             )
         if result["outcome"] != "completed":
             return result
-        completed.append("concorde-review")
+        completed.append("concorde-spec-review")
 
     from ..harness.batch_graph import run_batch_graph
 

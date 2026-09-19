@@ -78,7 +78,7 @@ class ManifestContractTests(unittest.TestCase):
                 len(SKILL_NAMES),
                 len(templates),
             ),
-            (12, 26, 9, 4),
+            (12, 27, 10, 4),
         )
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),

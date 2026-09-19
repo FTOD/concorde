@@ -70,7 +70,7 @@ class SkillPrompt:
     kind: Literal["skill"]
     body: str
     effects: EffectDeclaration | None = None
-    binding: "WorkerBinding | None" = None
+    binding: WorkerBinding | None = None
 
 
 @dataclass(frozen=True)
@@ -78,7 +78,7 @@ class ModelInstructions(SkillPrompt):
     """An admitted worker projection always has explicit effects and a complete WorkerProfile binding."""
 
     effects: EffectDeclaration = field()
-    binding: "WorkerBinding" = field()
+    binding: WorkerBinding = field()
 
 
 class BuildError(ValueError):
@@ -115,7 +115,7 @@ PI_OMITTED_INCLUDES = frozenset(
 CONSUMER_RUNTIME_VENV = ".concorde/.venv"
 # Keep explicit ownership after a Skill leaves SKILL_NAMES, even if a newer manifest
 # has already forgotten it. A name prefix alone never authorizes deletion.
-RETIRED_SKILL_NAMES = ("concorde-reflections-triage",)
+RETIRED_SKILL_NAMES = ("concorde-reflections-triage", "concorde-review")
 
 MODEL_ROOTS: dict[str, str] = {
     agent.name.replace("_", "-"): agent.spec
@@ -306,9 +306,7 @@ def _render_skill_content(
         model_invocable=model_invocable,
     )
     content = (frontmatter + body.lstrip()).encode("utf-8")
-    sources = tuple(
-        sorted(set((*resolved.sources, SKILL_SOURCES[name], *schema_sources)))
-    )
+    sources = tuple(sorted({*resolved.sources, SKILL_SOURCES[name], *schema_sources}))
     return content, sources
 
 
@@ -375,8 +373,8 @@ def write_published_skills(project_root: str | Path) -> tuple[BuildOutput, ...]:
     """Write the tracked published Skills under ``skills/`` and return what was rendered.
 
     This is the explicit step that changes tracked content (``skills --write``); ``build``
-    never writes here. Directories of retired Skills are reported by ``check_published_skills``
-    and removed by the developer, since they are tracked."""
+    never writes here. Explicitly retired Skills are removed only after safety preflight;
+    unknown directories and unexpected content are preserved."""
     root = Path(project_root)
     outputs = render_published_skills(root)
     published = root / PUBLISHED_SKILLS_ROOT
@@ -384,10 +382,21 @@ def write_published_skills(project_root: str | Path) -> tuple[BuildOutput, ...]:
         raise BuildError(
             f"published skills directory is a symlink: {PUBLISHED_SKILLS_ROOT}"
         )
+    retired = tuple(
+        published / name
+        for name in RETIRED_SKILL_NAMES
+        if (published / name).exists() or (published / name).is_symlink()
+    )
+    _preflight_retired_skills(retired)
     for output in outputs:
         target = root / output.path
         if target.is_symlink() or target.parent.is_symlink():
             raise BuildError(f"published skill path is a symlink: {output.path}")
+    for directory in retired:
+        (directory / "SKILL.md").unlink(missing_ok=True)
+        directory.rmdir()
+    for output in outputs:
+        target = root / output.path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(output.content)
     return outputs
@@ -618,6 +627,7 @@ def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str,
                 # caches: build identity covers these exact trusted package source bytes.
                 loader = SourceFileLoader(module.__name__, str(location))
                 code = loader.source_to_code(location.read_bytes(), str(location))
+                # pi-lens-ignore: S102
                 exec(code, module.__dict__)
             except BuildError:
                 raise
@@ -779,13 +789,17 @@ def _retired_skill_directories(root: Path, integration: str) -> tuple[Path, ...]
 def _retired_skill_cleanup(root: Path, integration: str) -> tuple[Path, ...]:
     """Preflight every retirement before writes; preserve unexpected files and links."""
     directories = _retired_skill_directories(root, integration)
+    _preflight_retired_skills(directories)
+    return directories
+
+
+def _preflight_retired_skills(directories: tuple[Path, ...]) -> None:
     for directory in directories:
         if directory.is_symlink() or not directory.is_dir():
             raise BuildError(f"unsafe retired skill directory: {directory}")
         for path in directory.iterdir():
             if path.name != "SKILL.md" or path.is_symlink() or not path.is_file():
                 raise BuildError(f"unexpected retired skill content: {path}")
-    return directories
 
 
 def write_build(

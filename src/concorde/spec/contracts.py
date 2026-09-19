@@ -133,6 +133,11 @@ MODEL_STAGES = {
     "concorde-context-solve": ("context-solve", "concorde-context-assessor"),
     "concorde-issues": ("issue-solve", "concorde-issue-solver"),
 }
+# The two public operations fix the review kind; callers cannot select it in task data.
+REVIEW_OPERATIONS = {
+    "concorde-spec-review": "spec",
+    "concorde-code-review": "code",
+}
 REVIEW_STAGES = {
     "spec": ("spec-review", "concorde-spec-reviewer"),
     "code": ("code-review", "concorde-code-reviewer"),

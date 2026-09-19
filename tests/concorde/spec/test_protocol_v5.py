@@ -6,8 +6,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.host import OperationHost
-from concorde.harness.revisions import target_revision
 from concorde.harness.admission import run_operation
 from concorde.harness.context import (
     recheck_context,
@@ -15,6 +13,8 @@ from concorde.harness.context import (
     resolve_context,
     resolve_discovery_context,
 )
+from concorde.harness.host import OperationHost
+from concorde.harness.revisions import target_revision
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.validation import validate_repository
@@ -270,7 +270,7 @@ class ProtocolFiveTests(unittest.TestCase):
         self.reference("service.transfer", "module", "module.ledger")
         host = OperationHost(self.root, PACKAGE, allow_primary_worktree=True)
         run = Invocation(
-            "concorde-review",
+            "concorde-code-review",
             CONFIGURATION,
             {"target_id": "service.transfer", "task": "Inspect transfer"},
             host,
@@ -467,14 +467,13 @@ class ProtocolFiveTests(unittest.TestCase):
             self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
         )
         result = run_operation(
-            "concorde-review",
+            "concorde-spec-review",
             CONFIGURATION,
             typed(
-                "concorde-review-request",
+                "concorde-spec-review-request",
                 {
                     "target_id": "service.transfer",
                     "task": "Review balance reads",
-                    "review_mode": "spec",
                 },
             ),
             host_context=host,

@@ -315,7 +315,9 @@ def implement_scope(run, state: dict) -> dict:
             from ..review.review import require_reviews
 
             require_reviews(
-                Invocation("concorde-review", run.configuration, payload, child_host),
+                Invocation(
+                    "concorde-spec-review", run.configuration, payload, child_host
+                ),
                 bool(
                     read_change(run.repository.root, required=True)
                     .get("review_requirements", {})

@@ -245,7 +245,10 @@ it("publishes the configured introduction at the root while preserving direct Sp
   expect(home).toContain("concorde-issues");
   expect(home).not.toContain("concorde-reflections-triage");
   expect(home).toContain("concorde-specify-loop");
-  expect(home).toContain("26 Operations");
+  expect(home).toContain("27 Operations");
+  expect(home).toContain("concorde-spec-review");
+  expect(home).toContain("concorde-code-review");
+  expect(home).not.toContain("concorde-review");
   expect(home).not.toContain("3 Agents with 12 task modes");
   expect(home).toContain('scope="col"');
   expect(home).toMatch(/role="region"[^>]*tabindex="0"/i);

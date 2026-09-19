@@ -8,7 +8,7 @@ planning, authoring, implementation, validation and development compose these st
 from __future__ import annotations
 
 from ..distribution.build import load_model_instructions
-from ..spec.contracts import MODEL_STAGES
+from ..spec.contracts import MODEL_STAGES, REVIEW_OPERATIONS
 from ..spec.repository import SpecError, SpecRepository, digest
 from ..spec.typed_data import OPERATION_CONTRACTS, typed
 from ..spec.validation import module_dependency_findings
@@ -44,8 +44,7 @@ class Invocation:
         )
         self.candidate_review = candidate_repository is not None
         if candidate_repository is not None and (
-            operation != "concorde-review"
-            or task.get("review_mode") != "spec"
+            operation != "concorde-spec-review"
             or candidate_repository.root != host.project_root.resolve()
             or candidate_repository.package_root != host.package_root.resolve()
         ):
@@ -94,7 +93,7 @@ class Invocation:
             "artifacts": list(artifacts),
             "completed_operations": list(self.completed),
         }
-        if self.operation == "concorde-review":
+        if self.operation in REVIEW_OPERATIONS:
             data["reviews"] = list(reviews)
         if self.operation == "concorde-issues":
             data.update(issues=[], decision=None)
@@ -136,7 +135,7 @@ class Invocation:
             self.host.track_gaps
             or required_review
             or self.operation
-            not in {"concorde-main", "concorde-context-solve", "concorde-review"}
+            not in {"concorde-main", "concorde-context-solve", *REVIEW_OPERATIONS}
         ):
             from .change_worktree import record_task_gaps
 

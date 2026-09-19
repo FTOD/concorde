@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
@@ -14,7 +15,12 @@ from ..implementation.implement import implement
 from ..planning.plan import context_solve, plan, plan_nodes
 from ..planning.tasks import tasks
 from ..query_routing.main import MainInvocation
-from ..spec.contracts import DISCOVERY_OPERATIONS, MAIN_OPERATION, MODEL_STAGES
+from ..spec.contracts import (
+    DISCOVERY_OPERATIONS,
+    MAIN_OPERATION,
+    MODEL_STAGES,
+    REVIEW_OPERATIONS,
+)
 from ..spec.project import project_nodes, project_operation
 from ..spec.repository import SpecError, SpecRepository
 from ..spec_authoring.author import author
@@ -137,7 +143,7 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         readonly = operation in {
             "concorde-main",
             "concorde-context-solve",
-            "concorde-review",
+            *REVIEW_OPERATIONS,
         }
         readonly = readonly or (
             operation == "concorde-issues"
@@ -152,7 +158,7 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         bound_run().completed.extend(main_completed)
         route = (
             "review"
-            if operation == "concorde-review"
+            if operation in REVIEW_OPERATIONS
             else (
                 "describe_policy"
                 if host.mode == "describe-policy"
@@ -232,7 +238,7 @@ def dispatch_graph_nodes(operation, configuration, task, host):
     def review():
         from ..review.review import review_scope
 
-        return review_scope(bound_run(), task["review_mode"])
+        return review_scope(bound_run(), REVIEW_OPERATIONS[operation])
 
     def issues():
         from ..issues.graph import build_issue_graph, issue_nodes
@@ -279,7 +285,7 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         "development_loop": lambda: loop(bound_run()),
         "context_solve": lambda: context_solve(bound_run(), operation),
     }
-    nodes = {
+    nodes: dict[str, Callable] = {
         name: (lambda state, operation=operation: {"output": operation()})
         for name, operation in operations.items()
     }

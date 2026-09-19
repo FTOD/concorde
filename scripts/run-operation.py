@@ -31,7 +31,8 @@ SKILL_NAMES = (
     "concorde-dev-loop",
     "concorde-specify-loop",
     "concorde-issues",
-    "concorde-review",
+    "concorde-spec-review",
+    "concorde-code-review",
     "concorde-init",
     "concorde-configure",
     "concorde-validate",
@@ -87,6 +88,7 @@ def _enter_managed_runtime(arguments: list[str]) -> int | None:
         import subprocess
 
         return subprocess.call(argv)
+    # pi-lens-ignore: S606
     os.execv(argv[0], argv)
     return None  # pragma: no cover - execv does not return
 

@@ -2,7 +2,8 @@
 
 Before any project action, read and follow `AGENTS.md` in this worktree as the canonical policy.
 Developing this checkout is direct developer-authorized maintenance in the current worktree; a
-Concorde graph (`concorde-dev-loop`, `concorde-specify-loop`, `concorde-main`, `concorde-review`,
+Concorde graph (`concorde-dev-loop`, `concorde-specify-loop`, `concorde-main`,
+`concorde-spec-review`, `concorde-code-review`,
 `concorde-issues` or a lifecycle Skill) runs on this checkout only when the user
 explicitly asks for it, never because a task looks like a development change. A further worktree
 exists only when an explicitly requested graph creates it: the host runs the graph in that

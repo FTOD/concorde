@@ -60,7 +60,7 @@ class UsageRecordTests(unittest.TestCase):
             )
             record_usage(
                 host,
-                operation="concorde-review",
+                operation="concorde-code-review",
                 stage="code-review",
                 target_id="module.a",
                 agent="concorde-code-reviewer",
@@ -150,7 +150,7 @@ class UsageRecordTests(unittest.TestCase):
             {
                 "root_invocation_id": "r",
                 "schema_version": 2,
-                "operation": "concorde-review",
+                "operation": "concorde-code-review",
                 "stage": "code-review",
                 "target_id": "module.b",
                 "agent": "concorde-programmer",

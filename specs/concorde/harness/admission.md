@@ -172,7 +172,8 @@ an immutable Issue receipt plus its task-local blocked_step, never a second copy
 | `concorde-validate-request@1` / `concorde-validate-response@3` | validate | Requires `target_id` and `task`; adds optional `run_checks`. Response is the common shape only. |
 | `concorde-deliver-request@1` / `concorde-deliver-response@3` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints`, `keep_worktree` and `merge_primary`. Response is the common shape only. |
 | `concorde-specify-request@1` / `concorde-specify-response@3` | specify (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-review-request@1` / `concorde-review-response@3` | review | Requires `task` and `review_mode` (spec\|code); optional target/focus are routing hints for a new standalone task. A composing operation or current-change resumption supplies the bound target. Response adds `reviews` (`concorde-review-result@2` TypedValues). |
+| `concorde-spec-review-request@1` / `concorde-spec-review-response@3` | spec-review | Requires `task`; optional target/focus are routing hints for a new standalone task. A composing operation or current-change resumption supplies the bound target. Selects only Spec review; no review_mode request field. Response adds `reviews` (`concorde-review-result@2` TypedValues). |
+| `concorde-code-review-request@1` / `concorde-code-review-response@3` | code-review | Requires `task` with the same optional routing hints. Selects only code review; no review_mode request field. Response adds `reviews` (`concorde-review-result@2` TypedValues). |
 | `concorde-context-solve-request@1` / `concorde-context-solve-response@3` | context-solve (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-plan-request@1` / `concorde-plan-response@3` | plan (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-tasks-request@1` / `concorde-tasks-response@3` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
@@ -193,7 +194,7 @@ an immutable Issue receipt plus its task-local blocked_step, never a second copy
 | `concorde-review-input@1` | Host-produced, inside the review stage context | `{review_mode, input_digest, revision, changes: [{path,patch}]}`; binds the exact Spec/code revision under review. |
 | `concorde-review-stage-context@4` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@6, review: concorde-review-input@1}`. |
 | `concorde-review-stage-result@2` | Reviewer to host, the completion | `{context_id, input_digest, review_mode, status: no_findings\|findings\|incomplete, representative_tasks, issues, answer}`. |
-| `concorde-review-result@2` | Published in `concorde-review-response@3.reviews` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
+| `concorde-review-result@2` | Published in the `reviews` field of `concorde-spec-review-response@3` or `concorde-code-review-response@3` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
 
 ### Topology types
 
@@ -247,7 +248,7 @@ updated; a mismatched package/context is rejected instead of reinterpreted.
 | `concorde-issue-selection@1` | Host to Issue solver only | Selected issue_id/revision, problem/type, bounded host feedback/verification and explicitly admitted duplicate candidates. No code, logs or predecessor conversation. |
 | `concorde-issue-intent@1` | Host to ordinary development stages | `{intent}` carries only the selected intended behavior; it never widens a file grant. |
 | `concorde-issue-context@1` | Host to admitted tasks/implementation repair | Selected immutable receipts and their contract-level description, impact and basis. It supplies meaning for the exact review references without exposing the whole Issue history. |
-| `concorde-review-result@2` | A `stage_inputs` entry: produced by code review, consumed by the repair `tasks`/`implement` iteration | The same value published in `concorde-review-response@3.reviews` (see Review types below), re-verified from its stored artifact before reuse; only accompanies a dev-loop's bounded `review_code -> tasks` repair round. |
+| `concorde-review-result@2` | A `stage_inputs` entry: produced by code review, consumed by the repair `tasks`/`implement` iteration | The same value published in `concorde-code-review-response@3.reviews` (see Review types above), re-verified from its stored artifact before reuse; only accompanies a dev-loop's bounded `review_code -> tasks` repair round. |
 
 Unknown fields, an incompatible `type_id`, an unsupported `schema_version`, and an unsafe or
 non-project-relative path are all rejected before any agent launches, with the `TypedDataError`

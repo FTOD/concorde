@@ -167,7 +167,8 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         mutation = operation not in {
             "concorde-main",
             "concorde-context-solve",
-            "concorde-review",
+            "concorde-spec-review",
+            "concorde-code-review",
         }
         if operation == "concorde-init":
             mutation = task["action"] == "apply"

@@ -30,15 +30,14 @@ class StandaloneReviewTests(unittest.TestCase):
         from concorde.harness.worker_profile import worker_profile
 
         request = invocation(
-            "concorde-review",
+            "concorde-code-review",
             data={
                 "target_id": "service.transfer",
                 "task": "只读检查。",
                 "constraints": ["不修改文件。"],
-                "review_mode": "code",
             },
         )
-        result = self.graph("concorde-review").invoke({"invocation": request})
+        result = self.graph("concorde-code-review").invoke({"invocation": request})
         self.assertEqual("succeeded", result["result"]["status"], result)
         routers = [call for call in self.double.calls if call["stage"] == "route"]
         self.assertTrue(routers)
@@ -59,15 +58,14 @@ class StandaloneReviewTests(unittest.TestCase):
     ):
         task = "只读列出实际 LangGraph 图的 factory、节点和边。\n明确不存在的标识。"
         constraints = ["不修改文件。", "保留顺序。", "不修改文件。"]
-        actual = self.graph("concorde-review").invoke(
+        actual = self.graph("concorde-code-review").invoke(
             {
                 "invocation": invocation(
-                    "concorde-review",
+                    "concorde-code-review",
                     data={
                         "target_id": "service.transfer",
                         "task": task,
                         "constraints": constraints,
-                        "review_mode": "code",
                     },
                 )
             }
@@ -95,15 +93,14 @@ class StandaloneReviewTests(unittest.TestCase):
                         data["routes"][0].update(patch)
 
                 self.double.callback = rewrite
-                actual = self.graph("concorde-review").invoke(
+                actual = self.graph("concorde-code-review").invoke(
                     {
                         "invocation": invocation(
-                            "concorde-review",
+                            "concorde-code-review",
                             data={
                                 "target_id": "service.transfer",
                                 "task": "Inspect",
                                 "constraints": ["Read only"],
-                                "review_mode": "code",
                             },
                         )
                     }
@@ -128,15 +125,14 @@ class StandaloneReviewTests(unittest.TestCase):
 
         self.double.callback = echo
         request = invocation(
-            "concorde-review",
+            "concorde-code-review",
             data={
                 "target_id": "service.transfer",
                 "task": "Inspect",
                 "constraints": ["Read only"],
-                "review_mode": "code",
             },
         )
-        result = self.graph("concorde-review").invoke({"invocation": request})
+        result = self.graph("concorde-code-review").invoke({"invocation": request})
         self.assertEqual("succeeded", result["result"]["status"], result)
         for mutation in ("unknown-target", "foreign-focus", "multiple"):
             self.double.calls.clear()
@@ -152,7 +148,7 @@ class StandaloneReviewTests(unittest.TestCase):
                     data["routes"].append(dict(data["routes"][0]))
 
             self.double.callback = invalid
-            actual = self.graph("concorde-review").invoke({"invocation": request})
+            actual = self.graph("concorde-code-review").invoke({"invocation": request})
             self.assertEqual("blocked", actual["result"]["status"], actual)
             self.assertTrue(all(c["stage"] == "route" for c in self.double.calls))
 
@@ -188,13 +184,13 @@ class StandaloneReviewTests(unittest.TestCase):
         for mode in ("spec", "code"):
             with self.subTest(mode=mode):
                 self.double.calls.clear()
-                actual = self.graph("concorde-review").invoke(
+                operation = f"concorde-{mode}-review"
+                actual = self.graph(operation).invoke(
                     {
                         "invocation": invocation(
-                            "concorde-review",
+                            operation,
                             data={
                                 "task": "Inspect transfer for defects",
-                                "review_mode": mode,
                             },
                         )
                     }
@@ -241,18 +237,15 @@ class StandaloneReviewTests(unittest.TestCase):
                     before, {p: (self.root / p).read_bytes() for p in before}
                 )
 
-    @verifies(
-        "scenario.review.standalone", "scenario.harness.describe-policy"
-    )
+    @verifies("scenario.review.standalone", "scenario.harness.describe-policy")
     def test_public_review_preview_and_blocked_route_do_not_launch_a_reviewer(self):
-        preview = self.graph("concorde-review").invoke(
+        preview = self.graph("concorde-code-review").invoke(
             {
                 "invocation": invocation(
-                    "concorde-review",
+                    "concorde-code-review",
                     "describe-policy",
                     {
                         "task": "Inspect transfer",
-                        "review_mode": "code",
                         "target_id": "service.transfer",
                     },
                 )
@@ -274,13 +267,12 @@ class StandaloneReviewTests(unittest.TestCase):
                 )
 
         self.double.callback = block
-        blocked = self.graph("concorde-review").invoke(
+        blocked = self.graph("concorde-code-review").invoke(
             {
                 "invocation": invocation(
-                    "concorde-review",
+                    "concorde-code-review",
                     data={
                         "task": "Inspect an unknown responsibility",
-                        "review_mode": "code",
                     },
                 )
             }

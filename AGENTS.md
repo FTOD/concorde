@@ -19,7 +19,7 @@ the Specs and the code, make the change, run the build and the deterministic che
 each verified step as its own commit. Concorde's own graphs run on this checkout only when the user
 explicitly asks for one, by invoking its slash command or by naming the graph in the request; that
 covers the global Skills (`concorde-main`, `concorde-dev-loop`, `concorde-specify-loop`,
-`concorde-review`, `concorde-issues`) and the lifecycle Skills (`concorde-init`,
+`concorde-spec-review`, `concorde-code-review`, `concorde-issues`) and the lifecycle Skills (`concorde-init`,
 `concorde-configure`, `concorde-validate`, `concorde-deliver`) alike. Never select one because a
 task looks like a development change, and verify direct maintenance with
 `python3 scripts/concorde.py validate` and the test commands rather than with `concorde-validate`.

@@ -22,7 +22,15 @@ PUBLIC = True
 CONTEXT_SELECTION = "discover"
 DETERMINISTIC = False
 PROFILE = None
-USES = ("router", "specify_loop", "review", "plan", "tasks", "implement", "validate")
+USES = (
+    "router",
+    "specify_loop",
+    "code_review",
+    "plan",
+    "tasks",
+    "implement",
+    "validate",
+)
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
 # The only automatic revision edge (review_code -> tasks) is bounded by this declared policy

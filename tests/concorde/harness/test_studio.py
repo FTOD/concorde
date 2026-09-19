@@ -9,14 +9,16 @@ from unittest.mock import Mock, patch
 
 from langgraph.checkpoint.memory import InMemorySaver
 
-from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
+from concorde.harness.host import OperationHost
 from concorde.harness.studio import build_studio_graph
 from concorde.spec.contracts import INTERNAL_OPERATIONS, SKILL_NAMES
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
     CONFIGURATION as CONFIGURATION,
+)
+from tests.concorde.spec.support import (
     PACKAGE,
     ModelProcessDouble,
     project,
@@ -31,13 +33,14 @@ EXPECTED_PUBLIC = (
     "concorde-configure",
     "concorde-validate",
     "concorde-deliver",
-    "concorde-review",
+    "concorde-spec-review",
+    "concorde-code-review",
 )
 
 
 def assert_public_inventory(case, names):
     names = list(names)
-    case.assertEqual(9, len(names))
+    case.assertEqual(10, len(names))
     case.assertEqual(len(names), len(set(names)))
     case.assertEqual(set(EXPECTED_PUBLIC), set(names))
 

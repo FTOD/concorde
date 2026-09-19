@@ -37,7 +37,7 @@
         "uses": [
           "router",
           "specify_loop",
-          "review",
+          "code_review",
           "plan",
           "tasks",
           "implement",
@@ -58,7 +58,7 @@
         "uses": [
           "router",
           "specify",
-          "review"
+          "spec_review"
         ],
         "state": {
           "input": "concorde-specify-loop-request",
@@ -76,7 +76,8 @@
           "issue_solver",
           "dev_loop",
           "specify",
-          "review",
+          "spec_review",
+          "code_review",
           "validate"
         ],
         "state": {
@@ -153,18 +154,33 @@
         "profile": null
       },
       {
-        "id": "review",
+        "id": "spec-review",
         "public": true,
         "context_selection": "discover",
         "deterministic": false,
-        "skill": "concorde-review",
+        "skill": "concorde-spec-review",
         "uses": [
           "router",
-          "spec_reviewer",
+          "spec_reviewer"
+        ],
+        "state": {
+          "input": "concorde-spec-review-request",
+          "output": null
+        },
+        "profile": null
+      },
+      {
+        "id": "code-review",
+        "public": true,
+        "context_selection": "discover",
+        "deterministic": false,
+        "skill": "concorde-code-review",
+        "uses": [
+          "router",
           "code_reviewer"
         ],
         "state": {
-          "input": "concorde-review-request",
+          "input": "concorde-code-review-request",
           "output": null
         },
         "profile": null

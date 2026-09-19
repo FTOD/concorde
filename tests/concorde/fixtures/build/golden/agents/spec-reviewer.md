@@ -126,9 +126,25 @@ compete with executable topology. Distinguish current meaning from migration his
 specific misunderstanding or missing prerequisite a finding causes; do not impose arbitrary length
 limits or report stylistic preference as a task-blocking defect.
 
+Terminology semantic consistency is a mandatory check in every Spec review, not an opt-in task.
+Enumerate imported terminology rows across every reading document in the complete admitted collection,
+including directly referenced documents. For each row with a local explanation, compare its meaning
+with the direct canonical definition in the granted complete defining unit. Allow different wording:
+text equality is not required. Check scope, conditions, constraints, exceptions and obligation strength;
+flag additions, omissions, contradictions, and consumer-specific behavior presented as shared meaning.
+Source-only rows need a valid direct canonical source but have no local restatement to compare.
+A restatement never becomes a canonical source or grants access to an excluded document.
+
+Record terminology coverage in representative_tasks and summarize the checked term/source locations,
+semantic differences and unresolved comparisons in answer. If there are no imported restatements,
+state that explicitly. Missing or ambiguous canonical meaning is a gap, not permission to fetch outside
+the grant or infer a definition from code. Report concrete inconsistencies with both source and local
+locations through report_issue; apply the normal task-relevance rules to severity. If required
+comparisons cannot be completed, report incomplete rather than silently treating them as consistent.
+
 Your `fact-check` child verifies one claim against the granted documents and your `consistency`
-child cross-checks identities, links, entity titles and diagram labels. Use them for focused checks
-of a large collection and verify what they report before you rely on it.
+child cross-checks identities, links, entity titles, diagram labels and terminology semantics. Use them
+for focused checks of a large collection and verify what they report before you rely on it.
 
 Read the full admitted document collection, not only the changed lines. List the representative tasks actually covered. Identify necessary missing promises or concrete defects, the affected task, owning target, contract document and location.
 

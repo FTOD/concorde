@@ -4,12 +4,12 @@ import unittest
 from typing import Any, cast
 from unittest.mock import Mock, patch
 
-from concorde.operations import target_graph
-from concorde.query_routing.main import MainInvocation
-from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.change_worktree import read_change
+from concorde.harness.host import OperationHost
 from concorde.harness.studio import build_studio_graph
+from concorde.operations import target_graph
+from concorde.query_routing.main import MainInvocation
 from concorde.spec.repository import SpecRepository
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
@@ -83,7 +83,7 @@ class TargetDiscoveryTests(unittest.TestCase):
         self,
     ):
         for operation in (
-            "concorde-review",
+            "concorde-spec-review",
             "concorde-dev-loop",
             "concorde-specify-loop",
         ):
@@ -92,8 +92,8 @@ class TargetDiscoveryTests(unittest.TestCase):
                 graph, child = self.graph(operation, fixture, model)
                 task: dict[str, Any] = dict(fixture.task)
                 task.update(
-                    {"review_mode": "spec"}
-                    if operation == "concorde-review"
+                    {}
+                    if operation == "concorde-spec-review"
                     else {"specify": False, "run_reviews": True}
                 )
                 request = invocation(operation, data=task)
@@ -109,8 +109,8 @@ class TargetDiscoveryTests(unittest.TestCase):
                     self.assertEqual("succeeded", first["result"]["status"], first)
                     child.invoke.assert_called_once()
                     self.assertEqual(1, sum(c["stage"] == "route" for c in model.calls))
-                    if operation == "concorde-review":
-                        from operations import review as review_operation
+                    if operation == "concorde-spec-review":
+                        from operations import spec_review as review_operation
 
                         route = next(c for c in model.calls if c["stage"] == "route")
                         self.assertEqual("concorde-router", route["operation"])
@@ -121,7 +121,7 @@ class TargetDiscoveryTests(unittest.TestCase):
                 self.assertNotEqual(
                     first["result"]["invocation_id"], second["result"]["invocation_id"]
                 )
-                if operation == "concorde-review":
+                if operation == "concorde-spec-review":
                     self.assertEqual(2, child.invoke.call_count)
                     self.assertEqual(1, sum(c["stage"] == "route" for c in model.calls))
                 else:
@@ -132,9 +132,7 @@ class TargetDiscoveryTests(unittest.TestCase):
                         read_change(fixture.change, required=True)["task"],
                     )
 
-    @verifies(
-        "scenario.harness.graph-inspection", "scenario.harness.graph-execution"
-    )
+    @verifies("scenario.harness.graph-inspection", "scenario.harness.graph-execution")
     def test_blocked_discovery_keeps_typed_output_and_never_enters_dependent_work(self):
         def unsupported(stage, snapshot, data, cwd):
             if stage == "route":
@@ -147,21 +145,14 @@ class TargetDiscoveryTests(unittest.TestCase):
                 )
 
         for operation in (
-            "concorde-review",
+            "concorde-spec-review",
             "concorde-dev-loop",
             "concorde-specify-loop",
         ):
             with self.subTest(operation=operation):
                 fixture, model = self.fixture(unsupported)
                 graph, child = self.graph(operation, fixture, model)
-                task = {
-                    **fixture.task,
-                    **(
-                        {"review_mode": "spec"}
-                        if operation == "concorde-review"
-                        else {}
-                    ),
-                }
+                task = dict(fixture.task)
                 before = (fixture.change / "app/transfer.py").read_bytes()
                 result = graph.invoke({"invocation": invocation(operation, data=task)})[
                     "result"
@@ -175,9 +166,7 @@ class TargetDiscoveryTests(unittest.TestCase):
                     before, (fixture.change / "app/transfer.py").read_bytes()
                 )
 
-    @verifies(
-        "scenario.harness.graph-execution", "scenario.harness.describe-policy"
-    )
+    @verifies("scenario.harness.graph-execution", "scenario.harness.describe-policy")
     def test_trusted_bound_target_and_policy_preview_preserve_admission(self):
         fixture, model = self.fixture()
         host = OperationHost(
@@ -200,25 +189,25 @@ class TargetDiscoveryTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         model.calls.clear()
         wrong = run_operation(
-            "concorde-review",
+            "concorde-spec-review",
             CONFIGURATION,
             typed(
-                "concorde-review-request",
-                {"target_id": "scope.bank", "task": "Review", "review_mode": "spec"},
+                "concorde-spec-review-request",
+                {"target_id": "scope.bank", "task": "Review"},
             ),
             host_context=host,
         )
         self.assertEqual("incompatible_handoff", wrong["errors"][0]["code"])
         self.assertEqual([], model.calls)
         graph = build_studio_graph(
-            "concorde-review", fixture.change, PACKAGE, executor=model.executor
+            "concorde-spec-review", fixture.change, PACKAGE, executor=model.executor
         )
         preview = graph.invoke(
             {
                 "invocation": invocation(
-                    "concorde-review",
+                    "concorde-spec-review",
                     mode="describe-policy",
-                    data={**fixture.task, "review_mode": "spec"},
+                    data={**fixture.task},
                 )
             }
         )
@@ -245,7 +234,7 @@ class TargetDiscoveryTests(unittest.TestCase):
             "src/concorde/operations/dispatch_graph.py",
         ):
 
-            def revised(root, path):
+            def revised(root, path, source=source):
                 data = read(root, path)
                 return (
                     data + b"\n# changed executable Graph\n" if path == source else data

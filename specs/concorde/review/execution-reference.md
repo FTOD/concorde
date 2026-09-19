@@ -33,15 +33,17 @@ and transitions are retained here as the single detailed contract.
 [typed handoffs](../harness/admission.md#stage-handoffs) and
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-`concorde-review` is a public Operation with discover context selection requiring task and review_mode=spec|code, with
-optional target/focus routing hints, constraints and current-worktree change_id. A new standalone
+`concorde-spec-review` and `concorde-code-review` are separate public Operations with discover context
+selection, each requiring task with optional target/focus routing hints, constraints and current-worktree
+change_id. Their closed request schemas have no review_mode field. Each entry selects only its own
+reviewer; the retired concorde-review operation and its request/response types have no alias. A new standalone
 request uses Spec-only router discovery to select one owning Module, then starts a fresh
 read-only reviewer. A composing operation may supply its trusted bound target without repeating
 discovery; a current-change resumption supplies both target_id and change_id. The public launcher
 and Studio admit this operation directly. Review runs in the current worktree without creating
 a development change or requiring a preexisting Issue record. The host may persist reports and existing
 change evidence, but reviewers receive no project write authority.
-Spec mode uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code mode uses those
+Spec review uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code review uses those
 contracts, the target's exact current registered implementation-file enumeration and scoped code
 changes. Both roles have empty write grants, no network/credentials, fresh sessions, and empty
 predecessor input. Code review does not reuse implement's writable policy.
@@ -55,7 +57,9 @@ grants never expose their old contents. Full admitted current documents always a
 even when a focus or patch names only a small portion.
 
 Private `concorde-review-stage-context@4` contains a full context snapshot and a
-`concorde-review-input@1` with review_mode, input_digest, revision and changes. Each change is
+`concorde-review-input@1` with review_mode, input_digest, revision and changes. review_mode remains
+an internal evidence discriminator fixed by the selected Operation, never a public request selector.
+Each change is
 `{path, patch}`; binary changes carry only digest markers. The revision has spec_digest,
 nullable implementation_digest, nullable baseline and nullable head. spec_digest binds the selected
 target descriptor, ownership, explicit references, all inclusion reasons, pinned Protocol and ordered
@@ -117,7 +121,7 @@ recorded components and returns unsupported when it has none. The consumer selec
 
 #### Scope and feedback relevance {#review-scope-and-feedback-relevance}
 
-`concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete owned and directly referenced Specs, task and scoped Spec patches; code review additionally sees only the owning
+`concorde-spec-review` and `concorde-code-review` each use their own fresh reviewer. Spec review sees the complete owned and directly referenced Specs, task and scoped Spec patches; code review additionally sees only the owning
 target's registered implementation files, the files its declared entries currently bind, and scoped
 code patches. Neither has project write authority.
 A changed file listed by several Modules is reviewed once per listing Module, each from that
@@ -146,6 +150,24 @@ defects remain advisory findings with their scope reasoning and uncertainty; the
 or represented as complete contracts. A broad audit can make those same contracts task-relevant.
 The reviewer makes this semantic assessment from admitted inputs; the Host neither filters findings
 by changed paths nor rewrites their severity. Required coverage, gap and freshness gates still apply.
+
+#### Mandatory terminology semantic coverage
+
+Every Spec review enumerates imported terminology across all admitted reading documents, including
+unchanged and directly referenced units. For each local restatement, compare its meaning with its
+direct canonical definition in the granted complete defining unit. Different wording is permitted;
+text equality is not a requirement. Assess scope, conditions, constraints, exceptions and obligation
+strength, and detect consumer-specific behavior incorrectly presented as common meaning. Source-only
+rows require canonical-source checks but have no local restatement to compare. An intermediate
+restatement is not a canonical source, and no link grants additional context.
+
+The reviewer records terminology coverage in representative_tasks and summarizes checked term/source
+locations, semantic differences and unresolved comparisons in answer. No imported restatements is an
+explicit coverage outcome, not an omitted check. Concrete differences are reported once through
+report_issue with both locations and normal task-relevance severity. Missing or ambiguous necessary
+meaning is an attributed gap; unfinished required comparisons produce incomplete coverage rather
+than a clean conclusion. Model review is bounded semantic evidence, not a deterministic proof of
+equivalence, and structural validation does not substitute for this check.
 
 #### Reference changes and affected consumers {#review-reference-changes-and-affected-consumers}
 

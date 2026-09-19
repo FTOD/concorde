@@ -20,11 +20,20 @@ Review independently examines whether current specifications or code support the
 
 ## Usage
 
-Request `concorde-review` with a task and `review_mode=spec|code`. Optional target/focus hints help
-the router select one owner; an existing-change resumption supplies its bound target and change ID.
-A standalone review runs in the current worktree without creating a development change. Spec mode
-assesses the complete readable contract and design of the admitted contract; code mode additionally compares the
-authorized implementation with that contract. Neither reviewer can repair files.
+Use `concorde-spec-review` to assess a Module's complete specification and design, or
+`concorde-code-review` to compare its authorized implementation with that contract. These are
+separate public Operations, not modes of one entry. Both require a task; optional target/focus hints
+help the router select one owner. An existing-change resumption supplies its bound target and change
+ID. Neither accepts a review-mode selector. A standalone review runs in the current worktree without
+creating a development change, and neither reviewer can repair files.
+
+Spec review always checks terminology semantic consistency across its complete admitted reading
+collection, including referenced documents. Each local restatement is compared with its direct
+canonical definition for scope, conditions, constraints, exceptions and obligation strength. Different
+wording is allowed; text equality is not required. Source-only rows still need an admitted canonical
+source. A missing or ambiguous definition is a gap, not a reason to fetch outside the grant. The result
+records coverage, semantic differences and unresolved comparisons; an unfinished comparison is not
+silently counted as consistent.
 
 Read the typed [review result](review-result.md), including representative coverage, findings,
 gaps and exact revision. No findings is a bounded conclusion, not universal proof; skipped,
@@ -47,10 +56,10 @@ then launches a fresh Spec or code reviewer under a read-only grant. Result admi
 identity, coverage, locations and gap/finding consistency before retaining a typed report. Peer
 reviews run separately and aggregate only results, not provider code or private conversation.
 
-The two reviewers are separate model-backed Operations: `spec-reviewer` for Spec mode and
-`code-reviewer` for code mode. Each runs as one
+Each public review Operation selects its own model-backed worker: `spec-reviewer` or `code-reviewer`.
+Each worker runs as one
 [Operation node](../harness/execution-reference.md#host-operation-node-operation-node) with its own
-read-only grant. `concorde-review` has no Graph of its own. The common
+read-only grant. Neither public entry has a separate Graph of its own. The common
 [target admission Graph](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
 first binds the given owner or routes the task through the
 [discovery Graph](../query-routing/execution-reference.md#query-and-routing-discovery-graph-discovery-graph),

@@ -11,16 +11,16 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
-from concorde.harness.invocation import Invocation
-from concorde.harness.revisions import implementation_digest, target_revision
-from concorde.validation.validate import validate as validate_candidate
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.harness.context import recheck_context, resolve_context
+from concorde.harness.invocation import Invocation
+from concorde.harness.revisions import implementation_digest, target_revision
 from concorde.spec.changes import confirm_pending_files
 from concorde.spec.initialize import protocol_binding
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
+from concorde.validation.validate import validate as validate_candidate
 from tests.concorde.spec.support import (
     DocumentSource,
     module_document,
@@ -1142,12 +1142,11 @@ class ModuleImplementationTests(unittest.TestCase):
             invocation_id="shared-consumer-review",
         )
         run = Invocation(
-            "concorde-review",
+            "concorde-code-review",
             self.configuration,
             {
                 "target_id": "module.a",
                 "task": "Review the shared value change",
-                "review_mode": "code",
             },
             host,
         )
@@ -1163,9 +1162,9 @@ class ModuleImplementationTests(unittest.TestCase):
     def test_code_review_peers_are_only_the_listing_modules_of_changed_files(self):
         import subprocess
 
+        from concorde.harness.change_worktree import ensure_change
         from concorde.harness.host import OperationHost
         from concorde.review.review import code_review_peers, review_scope
-        from concorde.harness.change_worktree import ensure_change
         from tests.concorde.spec.support import ModelProcessDouble
 
         for args in [
@@ -1188,7 +1187,6 @@ class ModuleImplementationTests(unittest.TestCase):
         task = {
             "target_id": "module.a",
             "task": "Adapt the private value",
-            "review_mode": "code",
         }
         ensure_change(self.root, task=task, allow_primary=True)
         seen = []
@@ -1205,7 +1203,7 @@ class ModuleImplementationTests(unittest.TestCase):
                 executor=double.executor,
                 allow_primary_worktree=True,
             )
-            run = Invocation("concorde-review", self.configuration, task, host)
+            run = Invocation("concorde-code-review", self.configuration, task, host)
             return run, review_scope(run, "code")["data"]
 
         # Only module.a's private file changed: the shared file's other listing Module is no peer.
@@ -1322,8 +1320,8 @@ class ModuleImplementationTests(unittest.TestCase):
                     fixture.doCleanups()
 
     def test_code_writer_cannot_author_spec_documents(self):
-        from concorde.harness.host import OperationHost
         from concorde.harness.admission import run_operation
+        from concorde.harness.host import OperationHost
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble, project
 
@@ -1369,8 +1367,8 @@ class ModuleImplementationTests(unittest.TestCase):
 
     @verifies("scenario.spec.directory-entry")
     def test_a_code_writer_may_create_a_file_below_a_listed_directory(self):
-        from concorde.harness.host import OperationHost
         from concorde.harness.admission import run_operation
+        from concorde.harness.host import OperationHost
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble, project
 
@@ -1437,8 +1435,8 @@ class ModuleImplementationTests(unittest.TestCase):
             )
 
     def test_composite_keeps_its_plan_and_verifies_shared_code_after_all_writers(self):
-        from concorde.harness.host import OperationHost
         from concorde.harness.admission import run_operation
+        from concorde.harness.host import OperationHost
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble, project
 

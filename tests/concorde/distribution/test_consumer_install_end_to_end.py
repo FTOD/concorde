@@ -94,7 +94,7 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
     )
     def test_public_skills_are_placed_by_the_skills_cli_not_owned_by_the_receipt(self):
         skill_paths = {f".claude/skills/{name}/SKILL.md" for name in SKILL_NAMES}
-        self.assertEqual(9, len(skill_paths))
+        self.assertEqual(10, len(skill_paths))
         for relative in skill_paths:
             self.assertTrue((self.target / relative).is_file(), relative)
         self.assertTrue((self.target / "skills-lock.json").is_file())

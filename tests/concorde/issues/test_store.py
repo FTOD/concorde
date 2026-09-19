@@ -41,7 +41,7 @@ def source(**changes):
     return {
         "invocation_id": "worker-1",
         "agent": "spec-reviewer",
-        "operation": "concorde-review",
+        "operation": "concorde-spec-review",
         "phase": "spec-review",
         "target_id": "module.service",
         "context_id": "sha256:" + "a" * 64,

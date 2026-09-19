@@ -108,7 +108,12 @@ class MainInvocation:
                 "blockers": list(blockers),
                 "checks": [],
                 "completed_operations": list(self.completed),
-                **({"reviews": []} if self.operation == "concorde-review" else {}),
+                **(
+                    {"reviews": []}
+                    if self.operation
+                    in {"concorde-spec-review", "concorde-code-review"}
+                    else {}
+                ),
             },
         )
 

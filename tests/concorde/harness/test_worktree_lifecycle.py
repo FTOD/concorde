@@ -12,9 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.host import OperationHost
-from concorde.harness.admission import run_operation
 from concorde.harness import change_worktree, worktree_delivery
+from concorde.harness.admission import run_operation
 from concorde.harness.change_worktree import (
     GUIDANCE_START,
     REGISTRY_PATH,
@@ -23,6 +22,7 @@ from concorde.harness.change_worktree import (
     git_value,
     read_change,
 )
+from concorde.harness.host import OperationHost
 from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
@@ -339,9 +339,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(result, json.loads(json.dumps(result)))
 
-    @verifies(
-        "scenario.harness.worktree-relay", "scenario.specify-loop.independent"
-    )
+    @verifies("scenario.harness.worktree-relay", "scenario.specify-loop.independent")
     def test_specify_loop_from_primary_relays_and_stops_at_spec_completion(self):
         result = self.call_operation(
             self.primary,
@@ -386,7 +384,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     }
                     prepared = []
 
-                    def prepare_only(host, operation, invocation, candidate):
+                    def prepare_only(
+                        host, operation, invocation, candidate, prepared=prepared
+                    ):
                         # An interrupted first run: the candidate exists and records the
                         # change, but nothing was routed or executed in it.
                         prepared.append(candidate)
@@ -631,9 +631,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "target_id": "module.ledger",
             "task": "Review the admitted ledger component",
             "change_id": change_id,
-            "review_mode": "code",
         }
-        result = self.call_operation(self.change, "concorde-review", task, host=host)
+        result = self.call_operation(
+            self.change, "concorde-code-review", task, host=host
+        )
         self.assertEqual("succeeded", result["status"], result)
         self.assertNotIn("route", [call["stage"] for call in double.calls])
         current = read_change(self.change, required=True)
@@ -642,7 +643,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         double.calls.clear()
         result = self.call_operation(
             self.change,
-            "concorde-review",
+            "concorde-code-review",
             {**task, "target_id": "service.transfer"},
             host=host,
         )
@@ -1147,9 +1148,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
 
-    @verifies(
-        "scenario.delivery.branch", "scenario.delivery.conflict"
-    )
+    @verifies("scenario.delivery.branch", "scenario.delivery.conflict")
     def test_primary_merge_checks_latest_integration_and_preserves_delivery_on_failure(
         self,
     ):
@@ -1172,9 +1171,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             git_value(self.primary, "rev-parse", "concorde/delivered/" + change_id)
         )
 
-    @verifies(
-        "scenario.delivery.branch", "scenario.delivery.conflict"
-    )
+    @verifies("scenario.delivery.branch", "scenario.delivery.conflict")
     def test_final_merge_conflict_preserves_primary_and_delivered_branch(self):
         (self.change / "shared.txt").write_text("candidate\n")
         change_id = self.ready_delivery()

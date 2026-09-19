@@ -57,7 +57,7 @@
     },
     "reference": {
       "title": "Operations and executable entry points",
-      "description": "The checked inventory contains 26 Operations: 14 host-adapted and 12 model-backed. Nine public Operations have Skills and entries in the Pi session tool; init, configure, validate and deliver make no model calls. A Module can own several Operations, and a composed Operation can use several provider Modules.",
+      "description": "The checked inventory contains 27 Operations: 15 host-adapted and 12 model-backed. Ten public Operations have Skills and entries in the Pi session tool; init, configure, validate and deliver make no model calls. A Module can own several Operations, and a composed Operation can use several provider Modules.",
       "tables": [
         {
           "title": "Public Operations",
@@ -67,7 +67,8 @@
             ["concorde-main", "Answer a question, route a task or propose and apply explicitly accepted topology."],
             ["concorde-specify-loop", "Compose Spec authoring and independent review, stopping before planning and implementation."],
             ["concorde-dev-loop", "Compose specification, planning, implementation and verification in a candidate worktree, ending at a ready candidate, not a merge."],
-            ["concorde-review", "Return scoped, independent Spec or code review findings without starting a development change."],
+            ["concorde-spec-review", "Review the complete Spec and terminology semantic consistency without starting a development change."],
+            ["concorde-code-review", "Review or diagnose the granted implementation against its Spec without starting a development change."],
             ["concorde-issues", "List, show, report, reopen or solve an explicit Issue; solving stops at a verified candidate."],
             ["concorde-init", "Propose and apply initialization with a pinned Protocol, the worker model and an honest Module stub."],
             ["concorde-configure", "Apply explicit Pi worker model, thinking and timeout settings; accept an installed Protocol only when requested."],
@@ -106,8 +107,8 @@
           "description": "Source-checkout commands are shown below. Installed projects use the corresponding scripts under .concorde/framework/. Direct CLI validation is distinct from lifecycle readiness evidence.",
           "columns": ["Entry point", "Use"],
           "rows": [
-            ["python3 scripts/run-operation.py <operation> < invocation.json", "Submit a typed request to one of the nine public Operations, in execute or describe-policy mode."],
-            ["concorde tool in a Pi session", "Describe or run the same nine public Operations from the Pi coding agent."],
+            ["python3 scripts/run-operation.py <operation> < invocation.json", "Submit a typed request to one of the ten public Operations, in execute or describe-policy mode."],
+            ["concorde tool in a Pi session", "Describe or run the same ten public Operations from the Pi coding agent."],
             ["python3 scripts/concorde.py <command>", "build, validate, skills, protocol-manifest, docsite and usage: render assets, check the project, publish Skills, accept a Protocol binding, scaffold a docsite and summarize worker usage."],
             ["LangGraph Studio", "Run and observe the same admitted public graphs as the CLI and Skills."],
             ["python3 scripts/install-concorde.py", "Preview or apply installation for Claude Code, Codex or Pi."],

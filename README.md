@@ -206,12 +206,13 @@ Protocol upgrades.
 | Ask about the system, route a task or design Module topology | `concorde-main` |
 | Write or revise a Spec and have it reviewed before implementation | `concorde-specify-loop` |
 | Take a change through specification, implementation and checks to a ready candidate | `concorde-dev-loop` |
-| Review a Spec or code in a fresh read-only invocation | `concorde-review` |
+| Review a Spec, including terminology semantic consistency | `concorde-spec-review` |
+| Review or diagnose code against its Spec | `concorde-code-review` |
 | Report, inspect, reopen or solve an Issue | `concorde-issues` |
 | Initialize a project or change the worker model | `concorde-init` · `concorde-configure` |
 | Validate a candidate or deliver a verified change | `concorde-validate` · `concorde-deliver` |
 
-These nine public Operations are the Skills (or the Pi tool's operations). Every one also accepts
+These ten public Operations are the Skills (or the Pi tool's operations). Every one also accepts
 `mode: "describe-policy"`, which previews the exact context and permissions each stage would receive
 without starting a worker.
 
@@ -316,9 +317,9 @@ or [Concorde's own root Spec](specs/concorde/module.md), which applies it to thi
 
 ### Operations
 
-Concorde defines **26 Operations**, listed in [`operations/`](operations/__init__.py); the
-[operation registry](specs/concorde/operations/composition.md) describes their contracts. Nine are
-public, fourteen are host-adapted, and twelve are model-backed Operations whose execution profile
+Concorde defines **27 Operations**, listed in [`operations/`](operations/__init__.py); the
+[operation registry](specs/concorde/operations/composition.md) describes their contracts. Ten are
+public, fifteen are host-adapted, and twelve are model-backed Operations whose execution profile
 names a Pi worker:
 
 | Model-backed Operation | Responsibility and authority |
@@ -331,7 +332,7 @@ names a Pi worker:
 | `code-reviewer` | Review code independently; authorized code read-only. |
 | `issue-solver` | Choose bounded work or an evidence-grounded disposition for one selected Issue. |
 
-The host-adapted Operations are the nine public ones plus `specify`, `context-solve`, `plan`,
+The host-adapted Operations are the ten public ones plus `specify`, `context-solve`, `plan`,
 `tasks` and `implement`, which `dev-loop` composes. Four of them (`init`, `configure`, `validate`
 and `deliver`) never call a model. Each model-backed Operation keeps its role instructions in
 `operations/<name>/spec.md` and its profile (task contract, workspace kind, Pi tools, children and
@@ -347,7 +348,7 @@ Commands are relative to this checkout; installed projects use the same scripts 
 
 | Entry point | Use |
 | :--- | :--- |
-| `python3 scripts/run-operation.py <operation> < invocation.json` | Submit a typed request to one of the nine public Operations, in `execute` or `describe-policy` mode. |
+| `python3 scripts/run-operation.py <operation> < invocation.json` | Submit a typed request to one of the ten public Operations, in `execute` or `describe-policy` mode. |
 | `python3 scripts/concorde.py build` · `validate` | Render workers, Skills and schemas; run the Spec, Operation, contract and build-output checks. |
 | `python3 scripts/concorde.py skills --write` · `protocol-manifest` | Render the published Skills under `skills/`; accept a changed Protocol bundle. |
 | `python3 scripts/concorde.py docsite` · `usage` | Scaffold a project docsite; summarize recorded worker usage per run. |

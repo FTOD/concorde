@@ -1,40 +1,40 @@
 ---
-name: concorde-review
-description: "Operation: route a standalone Spec review, code review or source diagnosis to its owning Module and return scoped, read-only findings."
+name: concorde-code-review
+description: "Operation: independently review or diagnose a Module's granted implementation against its Spec and return scoped read-only findings."
 argument-hint: "Optional operation guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "prompts/skills/concorde-review.md"
+  source: "prompts/skills/concorde-code-review.md"
   kind: "skill"
-  operation: "review"
-  entrypoint: "scripts/run-operation.py concorde-review"
+  operation: "code_review"
+  entrypoint: "scripts/run-operation.py concorde-code-review"
 user-invocable: true
 disable-model-invocation: true
 ---
-# concorde-review
+# concorde-code-review
 
-Invoke this operation to review the selected Spec or implementation. The host owns context
+Invoke this operation to review or diagnose the selected implementation against its Spec. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
 
-Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-review`. Its exact fields
-are type_id, schema_version:3, operation_id:"concorde-review", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-review-request@1).
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-code-review`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-code-review", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-code-review-request@1).
 
-The request requires task and review_mode (spec or code). Use code for code review or source
-diagnosis, and spec for contract review. A new task may supply target_id and focus_id (a scenario
-ID) as routing hints, plus constraints. The router selects the owning Module. When resuming
-a bound review with change_id, supply its target_id and current-worktree change_id.
-No positional task arguments or domain flags are accepted.
+The request requires task. A new task may supply target_id and focus_id (a scenario ID) as routing
+hints, plus constraints. The router selects the owning Module. When resuming a bound review with
+change_id, supply its target_id and current-worktree change_id. There is no review_mode selector;
+use concorde-spec-review to review the specification itself. No positional task arguments or domain
+flags are accepted.
 
 Main may explicitly admit complete Module Specs for routing, but cannot read implementation files.
-It returns one typed route for this operation; the host then starts a fresh read-only reviewer.
+It returns one typed route for this operation; the host then starts a fresh read-only code reviewer.
 
-Review runs in the current worktree without creating a development change or requiring a
-preexisting Issue. Spec review reads the complete selected Module contract; code review also reads only
-its admitted implementation files and scoped changes. Reviewers have no write, network or
-credential grants. The host persists review reports separately from reviewer authority.
+Review runs in the current worktree without creating a development change or requiring a preexisting
+Issue. It reads the complete selected Module contract and only its admitted implementation files,
+external references and scoped changes. Reviewers have no write, network or credential grants.
+The host persists review reports separately from reviewer authority.
 
 A managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.
 Do not claim this compares against another branch or a merge base. Report the returned review
@@ -52,14 +52,14 @@ This complete schema is the invocation's input field. It does not grant project 
   "type": "object",
   "properties": {
     "type_id": {
-      "const": "concorde-review-request"
+      "const": "concorde-code-review-request"
     },
     "schema_version": {
       "type": "integer",
       "const": 1
     },
     "data": {
-      "$ref": "#/$defs/concorde-review-request"
+      "$ref": "#/$defs/concorde-code-review-request"
     }
   },
   "required": [
@@ -69,7 +69,7 @@ This complete schema is the invocation's input field. It does not grant project 
   ],
   "additionalProperties": false,
   "$defs": {
-    "concorde-review-request": {
+    "concorde-code-review-request": {
       "type": "object",
       "properties": {
         "target_id": {
@@ -94,17 +94,10 @@ This complete schema is the invocation's input field. It does not grant project 
         "change_id": {
           "type": "string",
           "minLength": 1
-        },
-        "review_mode": {
-          "enum": [
-            "spec",
-            "code"
-          ]
         }
       },
       "required": [
-        "task",
-        "review_mode"
+        "task"
       ],
       "additionalProperties": false
     }

@@ -170,7 +170,7 @@ class BuildGoldenTests(unittest.TestCase):
                 self.assertNotIn("disable-model-invocation", codex_front)
 
     @verifies("scenario.distribution.build-render")
-    def test_eighteen_skills_twelve_agents_and_one_langgraph_config(self):
+    def test_twenty_skills_twelve_agents_and_one_langgraph_config(self):
         skill_outputs = [
             path
             for path in self.by_path
@@ -179,7 +179,7 @@ class BuildGoldenTests(unittest.TestCase):
         agent_outputs = [
             path for path in self.by_path if path.startswith("generated/agents/")
         ]
-        self.assertEqual(len(skill_outputs), 18)
+        self.assertEqual(len(skill_outputs), 20)
         self.assertEqual(len(agent_outputs), 12)
         self.assertIn(PI_SESSION_SHIM, self.by_path)
         # One flat rendered file per worker, never a mode subdirectory.
@@ -360,6 +360,30 @@ class BuildCheckLifecycleTests(unittest.TestCase):
             (current, differences),
             (False, (f"{PUBLISHED_SKILLS_ROOT}/concorde-retired/SKILL.md",)),
         )
+
+    @verifies("scenario.distribution.skills-publish")
+    def test_publish_retires_review_only_after_safe_preflight(self):
+        retired = self.root / PUBLISHED_SKILLS_ROOT / "concorde-review"
+        retired.mkdir()
+        (retired / "SKILL.md").write_text("Old combined review\n")
+        extra = retired / "notes.md"
+        extra.write_text("Preserve user content\n")
+        live = self.root / PUBLISHED_SKILLS_ROOT / "concorde-spec-review" / "SKILL.md"
+        live.write_text("Not yet refreshed\n")
+        with self.assertRaisesRegex(BuildError, "unexpected retired skill content"):
+            write_published_skills(self.root)
+        self.assertEqual("Not yet refreshed\n", live.read_text())
+        self.assertTrue(extra.exists())
+        extra.unlink()
+        unknown = self.root / PUBLISHED_SKILLS_ROOT / "concorde-unrelated"
+        unknown.mkdir()
+        (unknown / "SKILL.md").write_text("Unrelated Skill\n")
+        write_published_skills(self.root)
+        self.assertFalse(retired.exists())
+        self.assertEqual("Unrelated Skill\n", (unknown / "SKILL.md").read_text())
+        self.assertIn("concorde-spec-review", live.read_text())
+        write_published_skills(self.root)
+        self.assertFalse(retired.exists())
 
     @verifies("scenario.distribution.build-check")
     def test_check_never_writes_under_generated_or_the_skill_roots(self):
@@ -702,8 +726,8 @@ class WireHelperBuildTests(unittest.TestCase):
             def invoke_model_backed_operation():
                 # The fixture is this invocation's package root: a top-level model-backed
                 # operation verifies the fixture build before admitting anything else.
-                from concorde.harness.host import OperationHost
                 from concorde.harness.admission import run_operation
+                from concorde.harness.host import OperationHost
                 from concorde.spec.typed_data import typed
 
                 def launched(launch):
@@ -713,14 +737,13 @@ class WireHelperBuildTests(unittest.TestCase):
                     root, root, mode="describe-policy", executor=launched
                 )
                 return run_operation(
-                    "concorde-review",
+                    "concorde-spec-review",
                     None,
                     typed(
-                        "concorde-review-request",
+                        "concorde-spec-review-request",
                         {
                             "target_id": "module.fixture",
                             "task": "Review",
-                            "review_mode": "spec",
                         },
                     ),
                     host_context=host,

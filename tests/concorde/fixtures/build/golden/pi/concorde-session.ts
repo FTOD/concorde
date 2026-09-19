@@ -14,6 +14,68 @@ const CATALOG: SessionCatalog = {
   "launcher": "scripts/run-operation.py",
   "operations": [
     {
+      "description": "Operation: independently review or diagnose a Module's granted implementation against its Spec and return scoped read-only findings.",
+      "guidance": "# concorde-code-review\n\nInvoke this operation to review or diagnose the selected implementation against its Spec. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nThe request requires task. A new task may supply target_id and focus_id (a scenario ID) as routing\nhints, plus constraints. The router selects the owning Module. When resuming a bound review with\nchange_id, supply its target_id and current-worktree change_id. There is no review_mode selector;\nuse concorde-spec-review to review the specification itself. No positional task arguments or domain\nflags are accepted.\n\nMain may explicitly admit complete Module Specs for routing, but cannot read implementation files.\nIt returns one typed route for this operation; the host then starts a fresh read-only code reviewer.\n\nReview runs in the current worktree without creating a development change or requiring a preexisting\nIssue. It reads the complete selected Module contract and only its admitted implementation files,\nexternal references and scoped changes. Reviewers have no write, network or credential grants.\nThe host persists review reports separately from reviewer authority.\n\nA managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.\nDo not claim this compares against another branch or a merge base. Report the returned review\ncoverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do\nnot authorize repairs. describe-policy previews grants without launching agents or persisting\nreview results. A separate review intent cannot replace another task's required lifecycle review.\n",
+      "name": "concorde-code-review",
+      "request_schema": {
+        "$defs": {
+          "concorde-code-review-request": {
+            "additionalProperties": false,
+            "properties": {
+              "change_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "constraints": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "focus_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "task": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "task"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/concorde-code-review-request"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "integer"
+          },
+          "type_id": {
+            "const": "concorde-code-review-request"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "type": "object"
+      },
+      "request_version": 1
+    },
+    {
       "description": "Operation: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy.",
       "guidance": "# concorde-configure\n\nInvoke this operation to configure. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\nThis is a deterministic lifecycle operation: it runs no agent cognition and selects no context.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\nInitialization uses its typed propose/apply request; use the published request schema.\nNo domain flags or positional task arguments are accepted. Configuration is never a context grant.\n\nUse the supplied target identity; if it is ambiguous, ask the user to identify it instead of\nsearching other Specs.\nA mutating request from the primary worktree runs in a candidate worktree the host creates from\nthe committed base; this session stays where it is and receives that candidate's result, whose\nworkspace names the candidate's path, branch and change_id. Continue the same change from here\nwith that change_id. Uncommitted primary edits are not carried into the candidate. Report Spec gaps\nor blocked execution as returned; do not work around the boundary. Non-implementation agents never\nreceive implementation code or raw test logs.\n",
       "name": "concorde-configure",
@@ -1430,12 +1492,12 @@ const CATALOG: SessionCatalog = {
       "request_version": 1
     },
     {
-      "description": "Operation: route a standalone Spec review, code review or source diagnosis to its owning Module and return scoped, read-only findings.",
-      "guidance": "# concorde-review\n\nInvoke this operation to review the selected Spec or implementation. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nThe request requires task and review_mode (spec or code). Use code for code review or source\ndiagnosis, and spec for contract review. A new task may supply target_id and focus_id (a scenario\nID) as routing hints, plus constraints. The router selects the owning Module. When resuming\na bound review with change_id, supply its target_id and current-worktree change_id.\nNo positional task arguments or domain flags are accepted.\n\nMain may explicitly admit complete Module Specs for routing, but cannot read implementation files.\nIt returns one typed route for this operation; the host then starts a fresh read-only reviewer.\n\nReview runs in the current worktree without creating a development change or requiring a\npreexisting Issue. Spec review reads the complete selected Module contract; code review also reads only\nits admitted implementation files and scoped changes. Reviewers have no write, network or\ncredential grants. The host persists review reports separately from reviewer authority.\n\nA managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.\nDo not claim this compares against another branch or a merge base. Report the returned review\ncoverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do\nnot authorize repairs. describe-policy previews grants without launching agents or persisting\nreview results. A separate review intent cannot replace another task's required lifecycle review.\n",
-      "name": "concorde-review",
+      "description": "Operation: independently review a Module's complete Spec, including terminology semantic consistency, and return scoped read-only findings.",
+      "guidance": "# concorde-spec-review\n\nInvoke this operation to review the selected Spec, including terminology semantic consistency. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nThe request requires task. A new task may supply target_id and focus_id (a scenario ID) as routing\nhints, plus constraints. The router selects the owning Module. When resuming a bound review with\nchange_id, supply its target_id and current-worktree change_id. There is no review_mode selector;\nuse concorde-code-review for implementation review. No positional task arguments or domain flags\nare accepted.\n\nMain may explicitly admit complete Module Specs for routing, but cannot read implementation files.\nIt returns one typed route for this operation; the host then starts a fresh read-only Spec reviewer.\n\nReview runs in the current worktree without creating a development change or requiring a preexisting\nIssue. It reads the complete selected Module contract, including owned and directly referenced\nreading and metadata, but no implementation. It checks every imported terminology restatement in\nthat admitted collection against its direct canonical definition for semantic consistency; wording\nneed not match. Report coverage and unresolved comparisons rather than assuming consistency.\nReviewers have no write, network or credential grants. The host persists review reports separately\nfrom reviewer authority.\n\nA managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.\nDo not claim this compares against another branch or a merge base. Report the returned review\ncoverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do\nnot authorize repairs. describe-policy previews grants without launching agents or persisting\nreview results. A separate review intent cannot replace another task's required lifecycle review.\n",
+      "name": "concorde-spec-review",
       "request_schema": {
         "$defs": {
-          "concorde-review-request": {
+          "concorde-spec-review-request": {
             "additionalProperties": false,
             "properties": {
               "change_id": {
@@ -1453,12 +1515,6 @@ const CATALOG: SessionCatalog = {
                 "minLength": 1,
                 "type": "string"
               },
-              "review_mode": {
-                "enum": [
-                  "spec",
-                  "code"
-                ]
-              },
               "target_id": {
                 "minLength": 1,
                 "type": "string"
@@ -1469,8 +1525,7 @@ const CATALOG: SessionCatalog = {
               }
             },
             "required": [
-              "task",
-              "review_mode"
+              "task"
             ],
             "type": "object"
           }
@@ -1479,14 +1534,14 @@ const CATALOG: SessionCatalog = {
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/$defs/concorde-review-request"
+            "$ref": "#/$defs/concorde-spec-review-request"
           },
           "schema_version": {
             "const": 1,
             "type": "integer"
           },
           "type_id": {
-            "const": "concorde-review-request"
+            "const": "concorde-spec-review-request"
           }
         },
         "required": [

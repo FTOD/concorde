@@ -93,6 +93,10 @@ def specify_nodes(run):
             )
             try:
                 command = perform(name)
+                if not isinstance(command.update, dict):
+                    raise SpecError(
+                        "Spec loop stage returned no state update", "invalid_completion"
+                    )
             except Exception:
                 run.host.observe(
                     "stage_failed",
@@ -140,7 +144,9 @@ def specify_nodes(run):
                     invalidate=True,
                 )
         if data is None:
-            operation = "concorde-specify" if name == "specify" else "concorde-review"
+            operation = (
+                "concorde-specify" if name == "specify" else "concorde-spec-review"
+            )
             payload = {
                 key: run.task[key]
                 for key in ("task", "constraints", "focus_id")
@@ -149,8 +155,6 @@ def specify_nodes(run):
             payload["target_id"] = run.target.id
             if run.change_id:
                 payload["change_id"] = run.change_id
-            if name == "review_spec":
-                payload["review_mode"] = "spec"
             host = replace(
                 run.host,
                 evidence=[],

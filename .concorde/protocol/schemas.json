@@ -1647,6 +1647,466 @@
     ],
     "type": "object"
   },
+  "concorde-code-review-request": {
+    "$defs": {
+      "concorde-code-review-request": {
+        "additionalProperties": false,
+        "properties": {
+          "change_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "constraints": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "focus_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "target_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "task": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/$defs/concorde-code-review-request"
+      },
+      "schema_version": {
+        "const": 1,
+        "type": "integer"
+      },
+      "type_id": {
+        "const": "concorde-code-review-request"
+      }
+    },
+    "required": [
+      "type_id",
+      "schema_version",
+      "data"
+    ],
+    "type": "object"
+  },
+  "concorde-code-review-response": {
+    "$defs": {
+      "concorde-code-review-response": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "artifacts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "digest"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "change_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checks": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "check_id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "exit_code": {
+                  "type": "integer"
+                },
+                "log_digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "source_digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "timeout"
+                  ]
+                },
+                "target_id": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "check_id",
+                "target_id",
+                "status",
+                "exit_code",
+                "source_digest",
+                "log_digest"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "completed_operations": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "context_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "focus_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "completed",
+              "ready",
+              "spec_incomplete",
+              "unsupported",
+              "conflicting",
+              "failed",
+              "described",
+              "delivered"
+            ]
+          },
+          "reviews": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "data": {
+                  "$ref": "#/$defs/concorde-review-result"
+                },
+                "schema_version": {
+                  "const": 2,
+                  "type": "integer"
+                },
+                "type_id": {
+                  "const": "concorde-review-result"
+                }
+              },
+              "required": [
+                "type_id",
+                "schema_version",
+                "data"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "target_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id",
+          "focus_id",
+          "change_id",
+          "context_id",
+          "outcome",
+          "answer",
+          "artifacts",
+          "blockers",
+          "checks",
+          "completed_operations",
+          "reviews"
+        ],
+        "type": "object"
+      },
+      "concorde-review-result": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "context_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "focus_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_digest": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "affected_task": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "severity": {
+                  "enum": [
+                    "blocking",
+                    "advisory"
+                  ]
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "severity",
+                "affected_task"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "representative_tasks": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "review_mode": {
+            "enum": [
+              "spec",
+              "code"
+            ]
+          },
+          "revision": {
+            "additionalProperties": false,
+            "properties": {
+              "baseline": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "head": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "implementation_digest": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "spec_digest": {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "spec_digest",
+              "implementation_digest",
+              "baseline",
+              "head"
+            ],
+            "type": "object"
+          },
+          "semantic_completeness": {
+            "const": "not_proven"
+          },
+          "status": {
+            "enum": [
+              "no_findings",
+              "findings",
+              "incomplete",
+              "skipped",
+              "not_run"
+            ]
+          },
+          "target_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "context_id",
+          "input_digest",
+          "review_mode",
+          "status",
+          "representative_tasks",
+          "issues",
+          "answer",
+          "target_id",
+          "focus_id",
+          "revision",
+          "semantic_completeness"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/$defs/concorde-code-review-response"
+      },
+      "schema_version": {
+        "const": 3,
+        "type": "integer"
+      },
+      "type_id": {
+        "const": "concorde-code-review-response"
+      }
+    },
+    "required": [
+      "type_id",
+      "schema_version",
+      "data"
+    ],
+    "type": "object"
+  },
   "concorde-configure-request": {
     "$defs": {
       "concorde-configure-request": {
@@ -4169,9 +4629,10 @@
           },
           "operation": {
             "enum": [
+              "concorde-code-review",
               "concorde-dev-loop",
               "concorde-main",
-              "concorde-review",
+              "concorde-spec-review",
               "concorde-specify-loop"
             ]
           },
@@ -8790,9 +9251,10 @@
           },
           "operation": {
             "enum": [
+              "concorde-code-review",
               "concorde-dev-loop",
               "concorde-main",
-              "concorde-review",
+              "concorde-spec-review",
               "concorde-specify-loop"
             ]
           },
@@ -10498,473 +10960,6 @@
       },
       "type_id": {
         "const": "concorde-review-input"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
-  "concorde-review-request": {
-    "$defs": {
-      "concorde-review-request": {
-        "additionalProperties": false,
-        "properties": {
-          "change_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "constraints": {
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "focus_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "review_mode": {
-            "enum": [
-              "spec",
-              "code"
-            ]
-          },
-          "target_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "task": {
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "task",
-          "review_mode"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-review-request"
-      },
-      "schema_version": {
-        "const": 1,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-review-request"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
-  "concorde-review-response": {
-    "$defs": {
-      "concorde-review-response": {
-        "additionalProperties": false,
-        "properties": {
-          "answer": {
-            "type": "string"
-          },
-          "artifacts": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "path": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "path",
-                "digest"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "blockers": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "issue_id": {
-                  "minLength": 1,
-                  "pattern": "I-[0-9a-f]{32}",
-                  "type": "string"
-                },
-                "path": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "report_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "issue_id",
-                "report_id",
-                "path",
-                "blocked_step"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "change_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "checks": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "check_id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "exit_code": {
-                  "type": "integer"
-                },
-                "log_digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "source_digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "status": {
-                  "enum": [
-                    "passed",
-                    "failed",
-                    "timeout"
-                  ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "check_id",
-                "target_id",
-                "status",
-                "exit_code",
-                "source_digest",
-                "log_digest"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "completed_operations": {
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "context_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "pattern": "^sha256:[0-9a-f]{64}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "focus_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "outcome": {
-            "enum": [
-              "completed",
-              "ready",
-              "spec_incomplete",
-              "unsupported",
-              "conflicting",
-              "failed",
-              "described",
-              "delivered"
-            ]
-          },
-          "reviews": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "data": {
-                  "$ref": "#/$defs/concorde-review-result"
-                },
-                "schema_version": {
-                  "const": 2,
-                  "type": "integer"
-                },
-                "type_id": {
-                  "const": "concorde-review-result"
-                }
-              },
-              "required": [
-                "type_id",
-                "schema_version",
-                "data"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "target_id": {
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "target_id",
-          "focus_id",
-          "change_id",
-          "context_id",
-          "outcome",
-          "answer",
-          "artifacts",
-          "blockers",
-          "checks",
-          "completed_operations",
-          "reviews"
-        ],
-        "type": "object"
-      },
-      "concorde-review-result": {
-        "additionalProperties": false,
-        "properties": {
-          "answer": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "context_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "pattern": "^sha256:[0-9a-f]{64}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "focus_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "input_digest": {
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$",
-            "type": "string"
-          },
-          "issues": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "affected_task": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "issue_id": {
-                  "minLength": 1,
-                  "pattern": "I-[0-9a-f]{32}",
-                  "type": "string"
-                },
-                "path": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "report_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "severity": {
-                  "enum": [
-                    "blocking",
-                    "advisory"
-                  ]
-                }
-              },
-              "required": [
-                "issue_id",
-                "report_id",
-                "path",
-                "severity",
-                "affected_task"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "representative_tasks": {
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "review_mode": {
-            "enum": [
-              "spec",
-              "code"
-            ]
-          },
-          "revision": {
-            "additionalProperties": false,
-            "properties": {
-              "baseline": {
-                "anyOf": [
-                  {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "head": {
-                "anyOf": [
-                  {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "implementation_digest": {
-                "anyOf": [
-                  {
-                    "minLength": 1,
-                    "pattern": "^sha256:[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "spec_digest": {
-                "minLength": 1,
-                "pattern": "^sha256:[0-9a-f]{64}$",
-                "type": "string"
-              }
-            },
-            "required": [
-              "spec_digest",
-              "implementation_digest",
-              "baseline",
-              "head"
-            ],
-            "type": "object"
-          },
-          "semantic_completeness": {
-            "const": "not_proven"
-          },
-          "status": {
-            "enum": [
-              "no_findings",
-              "findings",
-              "incomplete",
-              "skipped",
-              "not_run"
-            ]
-          },
-          "target_id": {
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "context_id",
-          "input_digest",
-          "review_mode",
-          "status",
-          "representative_tasks",
-          "issues",
-          "answer",
-          "target_id",
-          "focus_id",
-          "revision",
-          "semantic_completeness"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-review-response"
-      },
-      "schema_version": {
-        "const": 3,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-review-response"
       }
     },
     "required": [
@@ -12825,6 +12820,466 @@
       },
       "type_id": {
         "const": "concorde-review-stage-result"
+      }
+    },
+    "required": [
+      "type_id",
+      "schema_version",
+      "data"
+    ],
+    "type": "object"
+  },
+  "concorde-spec-review-request": {
+    "$defs": {
+      "concorde-spec-review-request": {
+        "additionalProperties": false,
+        "properties": {
+          "change_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "constraints": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "focus_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "target_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "task": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/$defs/concorde-spec-review-request"
+      },
+      "schema_version": {
+        "const": 1,
+        "type": "integer"
+      },
+      "type_id": {
+        "const": "concorde-spec-review-request"
+      }
+    },
+    "required": [
+      "type_id",
+      "schema_version",
+      "data"
+    ],
+    "type": "object"
+  },
+  "concorde-spec-review-response": {
+    "$defs": {
+      "concorde-review-result": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "context_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "focus_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_digest": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "affected_task": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "severity": {
+                  "enum": [
+                    "blocking",
+                    "advisory"
+                  ]
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "severity",
+                "affected_task"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "representative_tasks": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "review_mode": {
+            "enum": [
+              "spec",
+              "code"
+            ]
+          },
+          "revision": {
+            "additionalProperties": false,
+            "properties": {
+              "baseline": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "head": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "implementation_digest": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "spec_digest": {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "spec_digest",
+              "implementation_digest",
+              "baseline",
+              "head"
+            ],
+            "type": "object"
+          },
+          "semantic_completeness": {
+            "const": "not_proven"
+          },
+          "status": {
+            "enum": [
+              "no_findings",
+              "findings",
+              "incomplete",
+              "skipped",
+              "not_run"
+            ]
+          },
+          "target_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "context_id",
+          "input_digest",
+          "review_mode",
+          "status",
+          "representative_tasks",
+          "issues",
+          "answer",
+          "target_id",
+          "focus_id",
+          "revision",
+          "semantic_completeness"
+        ],
+        "type": "object"
+      },
+      "concorde-spec-review-response": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "artifacts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "digest"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "change_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checks": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "check_id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "exit_code": {
+                  "type": "integer"
+                },
+                "log_digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "source_digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "timeout"
+                  ]
+                },
+                "target_id": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "check_id",
+                "target_id",
+                "status",
+                "exit_code",
+                "source_digest",
+                "log_digest"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "completed_operations": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "context_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "focus_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "completed",
+              "ready",
+              "spec_incomplete",
+              "unsupported",
+              "conflicting",
+              "failed",
+              "described",
+              "delivered"
+            ]
+          },
+          "reviews": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "data": {
+                  "$ref": "#/$defs/concorde-review-result"
+                },
+                "schema_version": {
+                  "const": 2,
+                  "type": "integer"
+                },
+                "type_id": {
+                  "const": "concorde-review-result"
+                }
+              },
+              "required": [
+                "type_id",
+                "schema_version",
+                "data"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "target_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id",
+          "focus_id",
+          "change_id",
+          "context_id",
+          "outcome",
+          "answer",
+          "artifacts",
+          "blockers",
+          "checks",
+          "completed_operations",
+          "reviews"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/$defs/concorde-spec-review-response"
+      },
+      "schema_version": {
+        "const": 3,
+        "type": "integer"
+      },
+      "type_id": {
+        "const": "concorde-spec-review-response"
       }
     },
     "required": [

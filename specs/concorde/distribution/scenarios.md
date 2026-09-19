@@ -141,11 +141,11 @@ receipts. The locked managed Python runtime runs actual operations. Check verifi
 and required runtime identity without changing project behavior.
 
 The distributable manifest is `concorde.json` schema_version 3, Concorde 8.0.0, Architecture
-Profile 15, Workspace Protocol 16 and Delivery Proposal 10. The single inventory has 26
-Operations: 9 public Skill entries and 17 private nodes, including 12 model-backed nodes with
+Profile 15, Workspace Protocol 16 and Delivery Proposal 10. The single inventory has 27
+Operations: 10 public Skill entries and 17 private nodes, including 12 model-backed nodes with
 Pi worker profiles. It declares package roots including `prompts`/`operations`/`protocol`, with
 no separate `agents` authoring root, and 4 templates. Codex `.agents/skills` and Claude
-`.claude/skills` expose the same 9 Skills; non-public Operations remain private. Every Skill sends a typed `invocation@3` to
+`.claude/skills` expose the same 10 Skills; non-public Operations remain private. Every Skill sends a typed `invocation@3` to
 `scripts/run-operation.py` and does not inspect project context.
 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
@@ -199,6 +199,7 @@ front-matter switch; the checkout's root instructions state the rule for that ru
 - WHEN `skills --write` runs
 - THEN it renders into the tracked `skills/<name>/SKILL.md` one client-neutral Skill per public Operation: the standard front matter (`name`, `description`, `compatibility`, `metadata` naming the source, the operation and the installed framework's launcher `.concorde/framework/scripts/run-operation.py`) and no client-specific invocation field, the resolved guidance with `{OPERATION}` bound to that launcher, and the request schema
 - AND `skills --check`, `build --check` and package validation report every published Skill that is missing or differs from a fresh render, and every `skills/<dir>/SKILL.md` no public Operation publishes any more, without writing
+- AND explicitly retired published Skill directories are removed only after preflighting all retired and destination paths, preserving unknown directories and rejecting symlinks or extra retired content before any output write
 - AND `build` never writes under `skills/`: the published Skills are tracked content the Agent Skills CLI installs from this repository or from a deployed framework copy, so they change only through this explicit step and are committed with their sources
 
 ### scenario.distribution.build-pi-session — Build renders the Pi session extension shim from the Skill sources
@@ -233,7 +234,7 @@ front-matter switch; the checkout's root instructions state the rule for that ru
 - AND unknown Skill directories, including names beginning with `concorde-`, and unselected integrations remain untouched
 - BUT a retired path that is not a directory, a symlink in its integration ancestors or contents, or any extra directory content causes write_build to fail before deleting or writing outputs
 
-The explicit retirement inventory currently contains `concorde-reflections-triage`; new retirements
+The explicit retirement inventory currently contains `concorde-reflections-triage` and `concorde-review`; new retirements
 extend that inventory rather than authorizing deletion by prefix. An already empty retired directory
 is removed too. When `integration_root` is supplied, retirement uses that destination, not the
 source package's Skill directories. All retirement candidates are preflighted before any output

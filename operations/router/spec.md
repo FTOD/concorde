@@ -23,7 +23,8 @@ action `route`. An expansion of the discovery collection arrives as a fresh work
 
 Submit a `concorde-main-stage-result`: `routed` with one route, `expand` naming only explicitly
 identified Module targets whose collections the decision needs, or a blocked outcome with gaps.
-For `concorde-review`, `concorde-dev-loop` and `concorde-specify-loop` a route contains only
+For `concorde-spec-review`, `concorde-code-review`, `concorde-dev-loop` and
+`concorde-specify-loop` a route contains only
 `target_id` and `focus_id`; the host binds the original task and ordered constraints, so do not
 echo, summarize, translate or supplement them. For a review, route the observational task to a
 fresh read-only reviewer. For `concorde-main`, a route carries the task and every user constraint.
