@@ -32,8 +32,8 @@ class ProtocolGuidanceTests(unittest.TestCase):
 
     def install(self, integration="codex", cleanup=False):
         actions, desired, _ = installer.installation_plan(
-            self.root, self.package, integration, remove_protocol_guidance=cleanup)
-        return installer.apply_plan(self.root, self.package, integration, actions, desired,
+            self.root, self.package, [integration], remove_protocol_guidance=cleanup)
+        return installer.apply_plan(self.root, self.package, [integration], actions, desired,
                                     remove_protocol_guidance=cleanup)
 
     @verifies("scenario.distribution.install-apply")
@@ -59,7 +59,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
 
     @verifies(
         "scenario.distribution.install-apply",
-        "scenario.distribution.install-switch-integration",
+        "scenario.distribution.install-multiple-clients",
         "scenario.distribution.install-remove-guidance",
     )
     def test_user_bytes_modes_and_post_install_edits_survive_upgrade_switch_and_cleanup(self):
@@ -135,17 +135,17 @@ class ProtocolGuidanceTests(unittest.TestCase):
 
     @verifies("scenario.distribution.install-conflict-rejected")
     def test_stale_preview_rejects_new_user_edits_or_symlink_before_writing(self):
-        actions, desired, _ = installer.installation_plan(self.root, self.package, "codex")
+        actions, desired, _ = installer.installation_plan(self.root, self.package, ["codex"])
         path = self.root / "AGENTS.md"
         path.write_text("new user edit")
         with self.assertRaisesRegex(installer.InstallError, "changed since preview"):
-            installer.apply_plan(self.root, self.package, "codex", actions, desired)
+            installer.apply_plan(self.root, self.package, ["codex"], actions, desired)
         self.assertFalse((self.root / installer.RECEIPT_PATH).exists())
         self.assertEqual("new user edit", path.read_text())
         path.unlink()
         path.symlink_to(self.root / "missing")
         with self.assertRaises(installer.InstallError):
-            installer.apply_plan(self.root, self.package, "codex", actions, desired)
+            installer.apply_plan(self.root, self.package, ["codex"], actions, desired)
 
     def test_failure_restores_root_bytes_mode_and_receipt(self):
         path = self.root / "AGENTS.md"

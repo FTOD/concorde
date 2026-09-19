@@ -88,17 +88,26 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             ).is_file()
         )
 
-    @verifies("scenario.distribution.install-apply")
-    def test_public_skills_are_installed_and_receipt_owned(self):
+    @verifies(
+        "scenario.distribution.install-apply",
+        "scenario.distribution.install-skills-cli",
+    )
+    def test_public_skills_are_placed_by_the_skills_cli_not_owned_by_the_receipt(self):
         skill_paths = {f".claude/skills/{name}/SKILL.md" for name in SKILL_NAMES}
         self.assertEqual(9, len(skill_paths))
         for relative in skill_paths:
             self.assertTrue((self.target / relative).is_file(), relative)
+        self.assertTrue((self.target / "skills-lock.json").is_file())
         receipt = json.loads(
             (self.target / ".concorde/install.json").read_text(encoding="utf-8")
         )
-        owned = {item["path"] for item in receipt["outputs"] if item["role"] == "skill"}
-        self.assertEqual(skill_paths, owned)
+        self.assertEqual(
+            set(),
+            {item["path"] for item in receipt["outputs"] if item["role"] == "skill"},
+        )
+        self.assertEqual(["claude"], receipt["integrations"])
+        self.assertEqual(["claude-code"], receipt["skills"]["agents"])
+        self.assertEqual("./.concorde/framework", receipt["skills"]["source"])
 
     @verifies("scenario.distribution.install-apply")
     def test_no_legacy_operation_tier_roots_are_installed(self):

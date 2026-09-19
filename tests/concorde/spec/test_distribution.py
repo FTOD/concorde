@@ -163,7 +163,7 @@ class DistributionTests(unittest.TestCase):
             ):
                 root = Path(directory)
                 for path, (content, role) in module.desired_outputs(
-                    package, integration
+                    package, [integration]
                 ).items():
                     p = root / path
                     p.parent.mkdir(parents=True, exist_ok=True)

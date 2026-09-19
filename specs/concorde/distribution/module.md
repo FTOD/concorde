@@ -25,11 +25,16 @@ Distribution prepares the Framework assets that developers install and run: inst
 Use Distribution to build this checkout, install or update Concorde in a consumer project, change
 an initialized project's worker configuration, or provision the pinned runtime. Run
 `python3 scripts/concorde.py build` after authored instruction or contract changes; use
-`build --check` to check freshness without writing. Builds stay with their source worktree.
-Installation previews owned changes by default and applies them only with explicit acceptance;
-local modifications to receipt-owned output conflict rather than being silently adopted.
+`build --check` to check freshness without writing. Builds stay with their source worktree. A
+Skill is authored as a prompt, `prompts/skills/<name>.md`; after changing one, also run
+`python3 scripts/concorde.py skills --write` and commit the tracked `skills/` it renders, the
+published Skills the Agent Skills CLI installs. `skills --check` and `build --check` report a
+stale copy. Installation previews owned changes by default and applies them only with explicit
+acceptance; local modifications to receipt-owned output conflict rather than being silently
+adopted. A project may select several clients (`--integration` repeats).
 
-The build renders one projection per developer client. Claude Code and Codex read Skills. The Pi
+The build renders one projection per developer client. Claude Code and Codex read Skills, which
+the installer has the Agent Skills CLI (`npx skills`) place from the published `skills/`. The Pi
 coding agent instead loads a session extension whose single `concorde` tool describes or runs the
 same public Operations, so a Pi session needs no Skills; the tool builds the invocation envelope
 itself and runs the same launcher the Skills name. Aborting a Pi turn cancels the running
@@ -49,14 +54,23 @@ means a failed rebuild must not be assumed to have recovered the prior environme
 
 ## Design
 
-<a id="entity.distribution.build"></a><a id="entity.distribution.build-command"></a><a id="entity.distribution.authored-sources"></a><a id="entity.distribution.skill-sources"></a><a id="entity.distribution.build-manifest"></a><a id="entity.distribution.package-inventory"></a><a id="entity.distribution.installed-skills"></a><a id="entity.distribution.developer-runtime"></a>
+<a id="entity.distribution.build"></a><a id="entity.distribution.build-command"></a><a id="entity.distribution.authored-sources"></a><a id="entity.distribution.skill-sources"></a><a id="entity.distribution.build-manifest"></a><a id="entity.distribution.package-inventory"></a><a id="entity.distribution.installed-skills"></a><a id="entity.distribution.published-skills"></a><a id="entity.distribution.skills-cli"></a><a id="entity.distribution.developer-runtime"></a>
 
-The Build command resolves Authored sources, including Skill sources, into deterministic worker
-instructions, Installed Skills and runtime schemas. Build manifest binds their exact inputs and
-outputs, while Package inventory determines which assets can be distributed. The external Developer
-runtime reads an installed Skill to submit a typed operation request; Skills are not injected as
-worker context or an independent execution grant. [Build realization](build.md#design) explains
-source accounting and freshness checks.
+The Build command resolves Authored sources, including the Skill sources under `prompts/skills/`,
+into deterministic worker instructions, this checkout's own Installed Skills projections and
+runtime schemas. From the same Skill sources the explicit `skills --write` step renders the
+Published Skills: one client-neutral Skill per public Operation, bound to an installed framework's
+launcher and tracked under `skills/`, because the Agent Skills CLI installs a repository's
+`skills/` verbatim and must find the installable Skill there, not an authoring source. `build`
+never writes that folder; every freshness check reports a stale copy, so a Skill change lands as
+one commit of source and rendering. Build manifest binds the untracked outputs' exact inputs and
+outputs, while Package inventory determines which assets can be distributed. In an installed
+project the Installed Skills are what the Agent Skills CLI, the standard `npx skills` tool pinned
+by the package manifest, places for Claude Code and Codex from the deployed Published Skills, in
+its own layout with its own lock file. The external Developer runtime reads an installed Skill to
+submit a typed operation request; Skills are not injected as worker context or an independent
+execution grant. [Build realization](build.md#design) explains source accounting and freshness
+checks.
 
 <a id="entity.distribution.pi-session-extension"></a>
 
@@ -80,7 +94,12 @@ Install script exposes Installation's preview/apply boundary. An Installation pr
 exact owned changes in the Target project; an Ownership receipt records those installed bytes and
 their before-state for later updates. A fresh build is not installation acceptance, and a receipt
 is not permission to overwrite unrelated user content. Failure restores owned installation state.
-Project Specs and their accepted Protocol binding remain separately controlled.
+Project Specs and their accepted Protocol binding remain separately controlled. Skill placement is
+not an owned change: once the framework copy is in place, Installation runs the Agent Skills CLI
+against it for the selected Skill clients, records that delegation in the receipt and owns none
+of the placed files. A project may carry several clients, each with its own root entry; a later
+selection that leaves a client out removes its root entry, while the Skills the CLI placed for it
+stay until the developer removes them with that CLI.
 
 <a id="entity.distribution.managed-runtime"></a><a id="entity.distribution.runtime-provisioning"></a><a id="entity.distribution.verified-runtime"></a><a id="entity.distribution.integration-configuration"></a>
 
@@ -109,8 +128,10 @@ neither substitutes for the other. The developer agent session is the same actor
 checkout and in an installed consumer project: it works in the worktree whose build supplied its
 projections and lets the host run candidate work elsewhere.
 
-Skill sources are authored and owned here, Build renders them, and Installation places the rendered
-Skills in the target integration. The external Developer runtime consumes those instructions and
+Skill sources are authored and owned here. Build renders this checkout's own Skill projections
+from them, and the explicit publish step renders the tracked Published Skills. Installation
+deploys the Published Skills below the framework root and has the Agent Skills CLI place them as
+the target's Installed Skills; the external Developer runtime consumes those instructions and
 calls the declared operation boundary. For a Pi client, Build renders the shim of the Pi session
 extension from the same Skill sources and Installation places it under `.pi/extensions/`; the
 Developer runtime then calls the extension's `concorde` tool, which runs the same launcher. This
@@ -120,7 +141,7 @@ operation behavior to Distribution.
 ```mermaid
 flowchart TB
     accTitle: Distribution entities and relationships
-    accDescr: Build renders Authored sources and Skill sources, records freshness in the Build manifest and validates the Package inventory. Installation installs rendered Skills, or the shim of the Pi session extension, for the external Developer runtime, applies receipt-owned proposals to the Target project and reads configuration through Spec. Managed runtime provisions the Verified managed runtime. The Developer agent session loads the projections its own worktree's build rendered.
+    accDescr: Build renders Authored sources and Skill sources, records freshness in the Build manifest and validates the Package inventory; the publish step renders the tracked Published Skills. Installation deploys the Published Skills and has the Agent Skills CLI place the Installed Skills, or installs the shim of the Pi session extension, for the external Developer runtime, applies receipt-owned proposals to the Target project and reads configuration through Spec. Managed runtime provisions the Verified managed runtime. The Developer agent session loads the projections its own worktree's build rendered.
     authored["Authored sources"]
     build["Build"]
     buildCmd["Build command"]
@@ -139,12 +160,18 @@ flowchart TB
     spec["Spec"]
     skillSources["Skill sources"]
     installedSkills["Installed Skills"]
+    publishedSkills["Published Skills"]
+    skillsCli["Agent Skills CLI"]
     piSession["Pi session extension"]
     developerRuntime["Developer runtime"]
     skillSources -->|are rendered by| build
-    build -->|renders| installedSkills
+    build -->|renders the checkout projections of| installedSkills
+    build -->|renders, through the explicit publish step, the tracked| publishedSkills
     build -->|renders the project shim of| piSession
-    installation -->|installs| installedSkills
+    installation -->|deploys below the framework root| publishedSkills
+    installation -->|delegates Skill placement to| skillsCli
+    skillsCli -->|reads the deployed| publishedSkills
+    skillsCli -->|places| installedSkills
     installation -->|installs the shim of| piSession
     developerRuntime -->|reads| installedSkills
     developerRuntime -->|calls the concorde tool of| piSession
@@ -195,9 +222,9 @@ Project initialization and Protocol-binding decisions belong to `module.spec`'s 
 operation, not to this Module; installation never creates the registry or a Module stub itself.
 
 The Pi projection has three known limits. Pi reads a project's `.agents/skills` as well, so a
-project that also carries the Codex installation shows a Pi session both the `concorde` tool and
-the Codex Skills; only the tool's description asks the model to prefer the tool, and nothing hides
-the Skills from Pi. A `run` blocks the Pi turn for the whole Operation and shows no progress,
+project that also selected Codex, or a source checkout, shows a Pi session both the `concorde`
+tool and the Codex Skills; only the tool's description asks the model to prefer the tool, and
+nothing hides the Skills from Pi. A `run` blocks the Pi turn for the whole Operation and shows no progress,
 because the launcher prints only its final envelope; streaming the host's stage events through the
 tool is pending, and aborting the turn is the only way to stop a run early. The tool runs the
 launcher with the checkout's `.venv` interpreter or, failing that, the `python3` on the session's

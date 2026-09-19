@@ -146,14 +146,18 @@ provisions it into an installed project's managed runtime automatically.
 **2. Preview the installation into your project, then apply it.** Replace `/absolute/path/to/project`
 with your existing Git project's path; use `claude` instead of `codex` for Claude, or `pi` for the
 Pi coding agent, which receives a `concorde` session tool under `.pi/extensions/` instead of Skills.
+Repeat `--integration` to set up several clients in one project.
 
 ```bash
 python3 scripts/install-concorde.py --target /absolute/path/to/project --integration codex --preview
 python3 scripts/install-concorde.py --target /absolute/path/to/project --integration codex --apply
 ```
 
-The installer provisions the locked runtime, installs the public Skills (or, for Pi, the session
-extension shim) and adds Protocol guidance to the selected root instruction file. It preserves user
+The installer provisions the locked runtime, deploys the framework and adds Protocol guidance to
+each selected root instruction file. It does not copy Skills itself: for Claude Code and Codex it
+runs the standard [Agent Skills CLI](https://github.com/vercel-labs/skills) (`npx skills add`,
+pinned by the package) against the deployed framework copy, so the Skills land in that tool's usual
+layout with a `skills-lock.json`; for Pi it installs the session extension shim. It preserves user
 content outside its owned entries. The Skills start the launcher with your `python3`; it then runs
 itself inside the managed runtime at `.concorde/.venv`, so that interpreter needs no Concorde
 dependencies.
@@ -428,6 +432,7 @@ scripts under `.concorde/framework/`; Studio and development setup are documente
 | `python3 scripts/concorde.py <command>` | `validate`, `build`, `docsite`, `protocol-manifest`. |
 | [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same nine public workflows through the shared OperationHost. |
 | `python3 scripts/install-concorde.py` | Preview or apply installation into a project. |
+| `python3 scripts/concorde.py skills --write` | Render the tracked published Skills under `skills/` from their `prompts/skills/` sources; `skills --check` reports a stale copy. |
 | `python3 scripts/issues.py` | Inspect branch-local Issues or explicitly archive legacy Reflection data. |
 | `npm --prefix docsite run <script>` | `start`, `build`, `validate`, `typecheck`, `test`, `check`. |
 | `python3 scripts/development/run-tests.py` | Run the project's test suite. |

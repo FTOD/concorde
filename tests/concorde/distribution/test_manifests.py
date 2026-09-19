@@ -33,6 +33,7 @@ class ManifestContractTests(unittest.TestCase):
             {
                 "framework_root": ".concorde/framework",
                 "receipt": ".concorde/install.json",
+                "skills_cli": "skills@1.7.0",
             },
         )
         self.assertEqual(

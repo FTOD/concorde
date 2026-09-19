@@ -12,9 +12,9 @@ source), it walks ``@include`` directives, binds per-inclusion ``{KEY}`` variabl
 fully substituted text. It performs no network or process I/O beyond reading files under
 ``project_root``.
 
-Skill sources (``skills/<name>/SKILL.md``) are a distinct front-matter shape (``name``,
+Skill sources (``prompts/skills/<name>.md``) are a distinct front-matter shape (``name``,
 ``description``, ``operation``) with no ``audience`` field; they are always implicit ``ambient``
-roots. WorkerProfile Specs (``operations/<name>/spec.md``) are a third distinct shape: no front matter at all,
+roots and can never be included. WorkerProfile Specs (``operations/<name>/spec.md``) are a third distinct shape: no front matter at all,
 and always an implicit ``worker`` root -- an WorkerProfile Spec carries its own ``# concorde-<name>``
 heading and behavioral contract directly, not role/audience metadata. Every other prompt lives
 under ``prompts/`` and must declare its own ``audience``. Independent standard chapters under
@@ -36,7 +36,7 @@ RESERVED_VARIABLES = frozenset({"OPERATION", "SCRIPT", "FRAMEWORK"})
 PROTOCOL_PREFIX = "prompts/protocol/"
 PROTOCOL_TEXT_ROOT = "protocol/"
 PROMPTS_ROOT = "prompts/"
-SKILLS_ROOT = "skills/"
+SKILLS_ROOT = "prompts/skills/"
 SPECS_ROOT = "specs/"
 OPERATIONS_ROOT = "operations/"
 
@@ -159,7 +159,7 @@ def _parse_directive(rest: str | None, relative: str) -> tuple[str, dict[str, st
 
 
 def _check_scope(target: str, including: str) -> None:
-    if target.startswith(SKILLS_ROOT) or target == "skills":
+    if target.startswith(SKILLS_ROOT) or target == SKILLS_ROOT.rstrip("/"):
         raise PromptResolverError(
             "CONCORDE-PROMPT-SCOPE-001",
             f"{including}: cannot include a skill source: {target}",
@@ -318,7 +318,7 @@ def resolve_skill_source(
     *,
     omit: frozenset[str] = frozenset(),
 ) -> ResolvedPrompt:
-    """Resolve the body of one ``skills/<name>/SKILL.md`` source as an implicit ambient root.
+    """Resolve the body of one ``prompts/skills/<name>.md`` source as an implicit ambient root.
 
     ``omit`` names include targets a projection leaves out, such as another client's invocation
     mechanics; an omitted include renders nothing and is not recorded as a source."""

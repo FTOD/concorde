@@ -54,8 +54,8 @@
       "title": "Skill sources",
       "kind": "authored instructions",
       "files": [
-        "prompts/workflow-host/",
-        "skills/"
+        "prompts/skills/",
+        "prompts/workflow-host/"
       ],
       "meaning": "#entity.distribution.skill-sources"
     },
@@ -64,6 +64,21 @@
       "title": "Installed Skills",
       "kind": "instruction artifact",
       "meaning": "#entity.distribution.installed-skills"
+    },
+    {
+      "id": "entity.distribution.published-skills",
+      "title": "Published Skills",
+      "kind": "published instruction artifact",
+      "files": [
+        "skills/"
+      ],
+      "meaning": "#entity.distribution.published-skills"
+    },
+    {
+      "id": "entity.distribution.skills-cli",
+      "title": "Agent Skills CLI",
+      "kind": "external tool",
+      "meaning": "#entity.distribution.skills-cli"
     },
     {
       "id": "entity.distribution.pi-session-extension",

@@ -1,21 +1,37 @@
 ---
 name: concorde-validate
 description: "Operation: run deterministic Spec and configured code checks and record readiness for the current candidate."
-operation: validate
+compatibility: "Requires a Concorde project"
+metadata:
+  author: "concorde"
+  source: "prompts/skills/concorde-validate.md"
+  kind: "skill"
+  operation: "validate"
+  entrypoint: ".concorde/framework/scripts/run-operation.py concorde-validate"
 ---
-
 # concorde-validate
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION=validate
-@include prompts/workflow-host/lifecycle-no-cognition.md
+Invoke this operation to validate. The host owns context
+resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
+input; do not perform it directly in this ambient conversation or inspect additional project files.
+This is a deterministic lifecycle operation: it runs no agent cognition and selects no context.
 
-@include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-validate
-@include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-validate
-@include prompts/workflow-host/task-request-fields.md
-@include prompts/workflow-host/init-request-and-no-flags.md
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 .concorde/framework/scripts/run-operation.py concorde-validate`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-validate", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-validate-request@1).
+Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
+change_id.
+Initialization uses its typed propose/apply request; use the published request schema.
+No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-@include prompts/workflow-host/target-identity-opener.md
-@include prompts/workflow-host/candidate-worktree.md
+Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
+searching other Specs.
+A mutating request from the primary worktree runs in a candidate worktree the host creates from
+the committed base; this session stays where it is and receives that candidate's result, whose
+workspace names the candidate's path, branch and change_id. Continue the same change from here
+with that change_id. Uncommitted primary edits are not carried into the candidate. Report Spec gaps
+or blocked execution as returned; do not work around the boundary. Non-implementation agents never
+receive implementation code or raw test logs.
 
 Validation checks document-unit identity and ownership, the paired reading/metadata sources,
 Purpose/Usage/Design/Relationships reading structure, requirement and scenario syntax, local readable
@@ -30,3 +46,70 @@ uncovered scenarios and tests outside their scenario owner's listing are warning
 implementation entries are errors; stale pending markers and unlisted files are warnings. Warnings
 do not by themselves fail validation. No structural result proves reading completeness, semantic
 completeness or implementation conformance.
+
+## Input TypedValue schema
+
+This complete schema is the invocation's input field. It does not grant project reads.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type_id": {
+      "const": "concorde-validate-request"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "data": {
+      "$ref": "#/$defs/concorde-validate-request"
+    }
+  },
+  "required": [
+    "type_id",
+    "schema_version",
+    "data"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "concorde-validate-request": {
+      "type": "object",
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "change_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_checks": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target_id",
+        "task"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
+```

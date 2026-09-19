@@ -45,6 +45,15 @@ def create_parser() -> argparse.ArgumentParser:
     protocol_manifest.add_argument("--bind-project", action="store_true")
     protocol_manifest.add_argument("--format", choices=["json"], default="json")
 
+    skills = subparsers.add_parser("skills")
+    skills.add_argument(
+        "--write",
+        action="store_true",
+        help="render the tracked published Skills under skills/ from prompts/skills/",
+    )
+    skills.add_argument("--check", action="store_true")
+    skills.add_argument("--format", choices=["json"], default="json")
+
     usage = subparsers.add_parser("usage")
     usage.add_argument(
         "--run",
@@ -141,7 +150,8 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                             "error",
                             "generated/",
                             f"Build outputs are stale or missing: {', '.join(differences)}",
-                            "Run `python -m concorde build` to refresh generated/ outputs.",
+                            "Run `python -m concorde build` to refresh generated/ outputs and "
+                            "`python -m concorde skills --write` for the tracked skills/.",
                         ),
                     ),
                     result={"differences": list(differences)},
@@ -172,9 +182,72 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                     ),
                 ),
             )
+    if arguments.tool == "skills":
+        return _published_skills(root, arguments)
     from ..spec.validation import validate_repository
 
     return validate_repository(root, arguments.target)
+
+
+def _published_skills(root: Path, arguments: argparse.Namespace) -> ToolResult:
+    """Check or write the tracked published Skills (developer-only).
+
+    ``skills/`` is tracked content that the Agent Skills CLI installs into projects, so unlike
+    ``generated/`` it changes only through this explicit step: ``--write`` renders every public
+    Operation's published Skill from its ``prompts/skills/`` source; without it (or with
+    ``--check``) the current files are compared with a fresh render and nothing is written.
+    """
+    from .build import (
+        PUBLISHED_SKILLS_ROOT,
+        BuildError,
+        check_published_skills,
+        write_published_skills,
+    )
+
+    try:
+        if arguments.write:
+            outputs = write_published_skills(root)
+            return ToolResult(
+                "skills",
+                ".",
+                "success",
+                artifacts=tuple(output.path for output in outputs),
+                result={"outputs": len(outputs)},
+            )
+        current, differences = check_published_skills(root)
+    except BuildError as error:
+        return ToolResult(
+            "skills",
+            ".",
+            "invalid",
+            findings=(
+                Finding(
+                    "CONCORDE-SKILLS-001",
+                    "error",
+                    "prompts/skills",
+                    str(error),
+                    "Repair the Skill source or its includes and rerun `skills --write`.",
+                ),
+            ),
+        )
+    if current:
+        return ToolResult("skills", ".", "success", result={"differences": []})
+    return ToolResult(
+        "skills",
+        ".",
+        "invalid",
+        findings=(
+            Finding(
+                "CONCORDE-SKILLS-001",
+                "error",
+                f"{PUBLISHED_SKILLS_ROOT}/",
+                f"Published Skills are stale, missing or retired: {', '.join(differences)}",
+                "Run `python -m concorde skills --write` and commit skills/ with its sources; "
+                "delete the directory of a retired Skill.",
+            ),
+        ),
+        result={"differences": list(differences)},
+    )
 
 
 def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
@@ -301,6 +374,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "docsite",
                 "build",
                 "protocol-manifest",
+                "skills",
                 "usage",
             }
             else "validate",

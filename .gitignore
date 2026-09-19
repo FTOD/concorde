@@ -44,7 +44,7 @@ Thumbs.db
 .concorde/reflections/plans/
 .concorde/reflections/worktrees/
 
-# Concorde: rendered client projections (build output; source is prompts/, skills/ and pi/)
+# Concorde: rendered client projections (build output; sources are prompts/ and pi/)
 .claude/skills/concorde-*/
 .agents/skills/concorde-*/
 .pi/extensions/concorde-session.ts

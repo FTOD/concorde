@@ -80,6 +80,26 @@ installer's verified runtime is present beside the framework, and the provisione
 Skill with that same interpreter. When no verified runtime exists and the starting interpreter
 cannot import LangGraph, the launcher reports `missing_runtime` instead of a bare import failure.
 
+### req.distribution.published-skills-tracked — Published Skills are tracked renderings of their sources
+
+The repository SHALL carry under `skills/` one published, client-neutral rendering of every public
+Operation's Skill, generated from its `prompts/skills/` source by the explicit `skills --write`
+step and kept current by the freshness checks.
+
+The Agent Skills CLI copies a repository's `skills/` verbatim, so what it finds there must be the
+installable Skill, not an authoring source with unresolved includes. Unlike `generated/`, the
+folder is tracked because it is published content; the explicit step keeps a tracked change an
+explicit, committed change rather than a side effect of `build`.
+
+### req.distribution.skills-cli-places-skills — The Agent Skills CLI places the Skills
+
+Installation SHALL place the published Skills for Claude Code and Codex only through the Agent
+Skills CLI pinned by the package manifest, reading the deployed framework copy.
+
+The installer copies no Skill file into a project itself. The CLI's own layout, symlinks and lock
+file are the standard every Skill client understands, and a source inside the project keeps a
+later `npx skills update` on the installed version.
+
 ### req.distribution.root-block-ownership — Root rule ownership is block-scoped
 
 A root rule entry SHALL be owned only within its exact bounded block, including its separator.

@@ -4,7 +4,7 @@ description: "Operation: route a standalone Spec review, code review or source d
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-review/SKILL.md"
+  source: "prompts/skills/concorde-review.md"
   kind: "skill"
   operation: "review"
   entrypoint: "scripts/run-operation.py concorde-review"

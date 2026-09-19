@@ -41,6 +41,7 @@
   ],
   "install": {
     "framework_root": ".concorde/framework",
-    "receipt": ".concorde/install.json"
+    "receipt": ".concorde/install.json",
+    "skills_cli": "skills@1.7.0"
   }
 }

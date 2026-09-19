@@ -336,21 +336,26 @@ that test as suspect and rerun it alone before drawing conclusions. The worker r
 the worker sandbox tests need Linux with a trusted system bubblewrap and a Pi installation on
 PATH; the sandbox tests fail rather than skip where the boundary cannot be enforced.
 
-`prompts/`, `skills/`, `pi/extensions/` and the top-level `operations/` package produce this
-checkout's agent surfaces. Never edit `generated/`, `.agents/skills/concorde-*`,
-`.claude/skills/concorde-*`, `.pi/extensions/concorde-session.ts` or generated Issue-solving
-agents directly; they are untracked build output. After changing their sources, run the build and
-the deterministic checks in the same primary or linked worktree:
+`prompts/` (including the Skill sources `prompts/skills/`), `pi/extensions/` and the top-level
+`operations/` package produce this checkout's agent surfaces. Never edit `generated/`,
+`.agents/skills/concorde-*`, `.claude/skills/concorde-*`, `.pi/extensions/concorde-session.ts` or
+generated Issue-solving agents directly; they are untracked build output. The published Skills
+under `skills/` are tracked rendered output: never edit them by hand either; after changing a Skill
+source, run `python3 scripts/concorde.py skills --write` and commit `skills/` with the source.
+After changing their sources, run the build and the deterministic checks in the same primary or
+linked worktree:
 
 ```bash
 python3 scripts/concorde.py build
+python3 scripts/concorde.py skills --write
 python3 scripts/concorde.py build --check
 python3 scripts/concorde.py validate
 ```
 
-`build` renders every worker, Skill, Protocol asset and runtime schema deterministically from
-`protocol/`, `prompts/`, `skills/` and `operations/`; `build --check` verifies those outputs and
-`protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
+`build` renders every worker, this checkout's Skill projections, Protocol asset and runtime schema
+deterministically from `protocol/`, `prompts/` and `operations/`; `skills --write` renders the
+tracked published Skills the Agent Skills CLI installs; `build --check` verifies those outputs,
+the published Skills and `protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
 operation-module, contract, Spec-alignment and build-output checks. Top-level model-backed operations and every Agent launch require a fresh build; deterministic
 lifecycle entry points retain their separate admission/evidence checks. A freshly created worktree
 must be built once before an agent can load Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
@@ -387,8 +392,9 @@ arbitrary Operation calls as worker tools.
 
 **Operation** is the canonical name for a callable or composed Framework function; the former
 Operation name is retired. Development owns the operation invocation boundary and workflow
-composition. Distribution owns `skills/` and `prompts/workflow-host/`, renders and installs the
-public Skill instructions, and keeps their projections current. The developer's external agent
+composition. Distribution owns `prompts/skills/`, `prompts/workflow-host/` and the published
+`skills/`, renders the public Skill instructions, has the Agent Skills CLI install them, and keeps
+their projections current. The developer's external agent
 runtime reads those Skills and submits typed operation requests to Development; a Pi session
 instead loads the rendered `.pi/extensions/concorde-session.ts`, whose `concorde` tool submits the
 same requests through the launcher. Skills are not part of a worker's Harness. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)

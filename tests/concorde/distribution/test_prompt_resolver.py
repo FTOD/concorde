@@ -179,10 +179,10 @@ class PromptResolverRuleTests(unittest.TestCase):
         )
         _write(
             self.root,
-            "skills/concorde-x/SKILL.md",
+            "prompts/skills/concorde-x.md",
             '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@include prompts/workflow-host/leaf.md\n',
         )
-        result = resolve_skill_source(self.root, "skills/concorde-x/SKILL.md")
+        result = resolve_skill_source(self.root, "prompts/skills/concorde-x.md")
         self.assertIn("{OPERATION}", result.body)
         self.assertIn("{SCRIPT}", result.body)
         self.assertIn("{FRAMEWORK}", result.body)
@@ -218,11 +218,11 @@ class PromptResolverRuleTests(unittest.TestCase):
         )
         _write(
             self.root,
-            "skills/concorde-x/SKILL.md",
+            "prompts/skills/concorde-x.md",
             '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@include prompts/workflow-host/leaf.md\n',
         )
         with self.assertRaises(PromptResolverError) as context:
-            resolve_skill_source(self.root, "skills/concorde-x/SKILL.md")
+            resolve_skill_source(self.root, "prompts/skills/concorde-x.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-AUDIENCE-001")
 
     def test_shared_prompt_is_includable_from_either_audience(self):
@@ -238,11 +238,11 @@ class PromptResolverRuleTests(unittest.TestCase):
         )
         _write(
             self.root,
-            "skills/concorde-x/SKILL.md",
+            "prompts/skills/concorde-x.md",
             '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@include prompts/workflow-host/leaf.md\n',
         )
         role_result = resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
-        skill_result = resolve_skill_source(self.root, "skills/concorde-x/SKILL.md")
+        skill_result = resolve_skill_source(self.root, "prompts/skills/concorde-x.md")
         self.assertIn("Shared text", role_result.body)
         self.assertIn("Shared text", skill_result.body)
 
@@ -251,13 +251,13 @@ class PromptResolverRuleTests(unittest.TestCase):
     def test_include_of_skill_source_is_rejected(self):
         _write(
             self.root,
-            "skills/concorde-x/SKILL.md",
+            "prompts/skills/concorde-x.md",
             '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\nBody\n',
         )
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include skills/concorde-x/SKILL.md\n"),
+            _prompt("worker", "@include prompts/skills/concorde-x.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")

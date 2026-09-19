@@ -4,7 +4,7 @@ description: "Operation: apply the Pi worker model selection (model, thinking le
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-configure/SKILL.md"
+  source: "prompts/skills/concorde-configure.md"
   kind: "skill"
   operation: "configure"
   entrypoint: "scripts/run-operation.py concorde-configure"

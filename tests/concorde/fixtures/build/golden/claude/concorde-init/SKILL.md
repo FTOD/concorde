@@ -5,7 +5,7 @@ argument-hint: "Optional operation guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-init/SKILL.md"
+  source: "prompts/skills/concorde-init.md"
   kind: "skill"
   operation: "init"
   entrypoint: "scripts/run-operation.py concorde-init"

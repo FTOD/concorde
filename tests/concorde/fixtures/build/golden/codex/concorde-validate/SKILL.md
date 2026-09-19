@@ -4,7 +4,7 @@ description: "Operation: run deterministic Spec and configured code checks and r
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-validate/SKILL.md"
+  source: "prompts/skills/concorde-validate.md"
   kind: "skill"
   operation: "validate"
   entrypoint: "scripts/run-operation.py concorde-validate"

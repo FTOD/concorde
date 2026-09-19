@@ -92,16 +92,20 @@ preserves local edits. A generic request to deliver does not authorize the final
 
 ## Building this worktree
 
-Run `python3 scripts/concorde.py build` after changing `prompts/`, `skills/`, `operations/` or
-wire contracts (`src/concorde/spec/contracts.py`, `contract_shapes.py`, or a
-module under the top-level `operations/` package). This always operates on the worktree
-containing the sources; never point one worktree's build at another worktree's outputs. Run
-`python3 scripts/concorde.py build --check` to verify the outputs are current without writing.
+Run `python3 scripts/concorde.py build` after changing `prompts/` (including the Skill sources
+`prompts/skills/<name>.md`), `operations/` or wire contracts (`src/concorde/spec/contracts.py`,
+`contract_shapes.py`, or a module under the top-level `operations/` package). This always
+operates on the worktree containing the sources; never point one worktree's build at another
+worktree's outputs. Run `python3 scripts/concorde.py build --check` to verify the outputs are
+current without writing.
 
 Outputs under `generated/`, `.claude/skills/concorde-*`, `.agents/skills/concorde-*` and the Pi
 session shim `.pi/extensions/concorde-session.ts` are untracked build output, not authoring
-sources: never directly create, edit, delete, or rename them. Make the change in `prompts/`,
-`skills/`, `operations/` or `pi/extensions/` and rebuild. The host refuses to
+sources: never directly create, edit, delete, or rename them. The published Skills under
+`skills/` are tracked rendered output with the same rule: never edit them by hand; after changing
+a Skill source, run `python3 scripts/concorde.py skills --write` and commit `skills/` together
+with the source (`build --check` and `skills --check` report a stale copy). Make the change in
+`prompts/`, `operations/` or `pi/extensions/` and rebuild. The host refuses to
 execute or describe a top-level non-lifecycle operation on a stale build (error code
 `stale_build`), verified against `generated/build-manifest.json`. Deterministic lifecycle
 operations (`concorde-init`, `concorde-configure`, `concorde-validate`, `concorde-deliver`) are
@@ -111,7 +115,7 @@ built once before an agent can load Concorde Skills; the host builds the worktre
 candidate changes, and any other fresh worktree has no Concorde Skills until it is built.
 
 A project-local `concorde-*` Skill never governs a task that changes its own `prompts/`,
-`skills/`, `operations/`, or generated Skill surface, even when the user asked for a graph: such a
+`skills/`, `operations/`, or rendered Skill surface, even when the user asked for a graph: such a
 change is direct maintenance. If such a Skill body is already loaded as instructions, stop before
 the first edit and initiate a fresh maintenance session in this same worktree under P10,
 automatically by default, without loading the affected Skill bodies. Use the manual fallback above

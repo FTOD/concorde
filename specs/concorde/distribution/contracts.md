@@ -26,7 +26,11 @@ Public functions of build:
 
 ```text
 render_model_instructions(project_root: Path, agent: str) -> BuildOutput
-render_skill(project_root: Path, name: str, integration: str, *, framework_prefix: str='') -> BuildOutput
+render_skill(project_root: Path, name: str, integration: str) -> BuildOutput
+render_published_skill(project_root: Path, name: str) -> BuildOutput
+render_published_skills(project_root: str | Path) -> tuple[BuildOutput, ...]
+write_published_skills(project_root: str | Path) -> tuple[BuildOutput, ...]
+check_published_skills(project_root: str | Path) -> tuple[bool, tuple[str, ...]]
 render_langgraph(project_root: Path) -> BuildOutput
 render_protocol_principles(project_root: Path) -> BuildOutput
 render_protocol_kind(project_root: Path, kind: str) -> BuildOutput
@@ -55,7 +59,12 @@ Public functions of package_validation:
 validate_package(root: Path) -> list[Finding]
 ```
 
-The resolver (`resolve_model_instructions`, `resolve_role_prompt`, `resolve_skill_source`,
+`render_skill` renders the source checkout's own projection of a Skill for `claude` or `codex`;
+`render_published_skill` renders the client-neutral published form bound to an installed
+framework's launcher, `write_published_skills` writes every published Skill under the tracked
+`skills/` and `check_published_skills` compares that folder with a fresh render without writing.
+`build` with a framework prefix renders no Skill projection, only the Pi shim and the framework's
+own outputs. The resolver (`resolve_model_instructions`, `resolve_role_prompt`, `resolve_skill_source`,
 `find_unreachable_prompts`, `check_reachability`) expands `@include` directives, enforces
 audience/layering rules, and detects unreachable or diamond-included sources; `resolve_model_instructions`
 additionally rejects an Agent Spec that carries front matter. `package_validation` attributes its

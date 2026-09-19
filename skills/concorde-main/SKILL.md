@@ -1,9 +1,14 @@
 ---
 name: concorde-main
 description: "Operation: answer questions, route work, and design or apply system topology from complete Module Specs."
-operation: main
+compatibility: "Requires a Concorde project"
+metadata:
+  author: "concorde"
+  source: "prompts/skills/concorde-main.md"
+  kind: "skill"
+  operation: "main"
+  entrypoint: ".concorde/framework/scripts/run-operation.py concorde-main"
 ---
-
 # concorde-main
 
 This is Concorde's public main entry. It replaces the former ask operation. Its internal discovery workers (answerer, router and
@@ -21,8 +26,9 @@ private target-local Spec authors and stores the resulting exact application as 
 only its path and digest return to ambient cognition. After the developer reviews that artifact,
 action `apply-topology` accepts it and atomically applies or rolls back the registry/document set.
 
-@include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-main
-@include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-main
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 .concorde/framework/scripts/run-operation.py concorde-main`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-main", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-main-request@1).
 Ask and design-topology requests require task and accept optional target_id/focus_id (a candidate
 scenario ID) routing hints and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
 topology requires only the exact application ArtifactRef returned by accept.
@@ -30,7 +36,8 @@ The hint never grants Spec access to a discovery worker. The development loop
 (`concorde-dev-loop`) accepts the same task, with optional target_id, focus_id, constraints, and
 change_id, and uses main's discovery to select one mutation target; its internal
 stages are bound to one target by the loop and are never invoked directly.
-@include prompts/workflow-host/init-request-and-no-flags.md
+Initialization uses its typed propose/apply request; use the published request schema.
+No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Discovery expands complete Module collections only as needed and records the exact
 document-unit membership, source roles, owners and byte digests in every discovery identity.
@@ -79,3 +86,758 @@ keep_worktree:true is explicitly requested. End the source session after removal
 branch stays unchanged until the user explicitly requests a separate merge_primary:true delivery
 from the primary worktree's sole writing agent. All other agents develop in linked worktrees;
 the host serializes shared lifecycle writes and final primary merges with the repository lock.
+
+## Input TypedValue schema
+
+This complete schema is the invocation's input field. It does not grant project reads.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type_id": {
+      "const": "concorde-main-request"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "data": {
+      "$ref": "#/$defs/concorde-main-request"
+    }
+  },
+  "required": [
+    "type_id",
+    "schema_version",
+    "data"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "concorde-main-request": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "enum": [
+            "ask",
+            "design-topology",
+            "accept-topology",
+            "apply-topology"
+          ]
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "topology_proposal": {
+          "type": "object",
+          "properties": {
+            "type_id": {
+              "const": "concorde-topology-proposal"
+            },
+            "schema_version": {
+              "type": "integer",
+              "const": 1
+            },
+            "data": {
+              "$ref": "#/$defs/concorde-topology-proposal"
+            }
+          },
+          "required": [
+            "type_id",
+            "schema_version",
+            "data"
+          ],
+          "additionalProperties": false
+        },
+        "application": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "digest": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "id",
+            "path",
+            "digest"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "concorde-topology-proposal": {
+      "type": "object",
+      "properties": {
+        "proposal_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "base_registry_digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "protocol_binding": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "digest": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "version",
+            "digest"
+          ],
+          "additionalProperties": false
+        },
+        "context_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "discovered_targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "target_hint": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "focus_hint": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "design": {
+          "type": "object",
+          "properties": {
+            "type_id": {
+              "const": "concorde-topology-design"
+            },
+            "schema_version": {
+              "type": "integer",
+              "const": 1
+            },
+            "data": {
+              "$ref": "#/$defs/concorde-topology-design"
+            }
+          },
+          "required": [
+            "type_id",
+            "schema_version",
+            "data"
+          ],
+          "additionalProperties": false
+        },
+        "workspace": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "primary",
+                "change",
+                "unversioned"
+              ]
+            },
+            "current_worktree": {
+              "type": "string",
+              "minLength": 1
+            },
+            "current_branch": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "primary_worktree": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "primary_branch": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "change_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phase": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "outcome": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "blockers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "issue_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "I-[0-9a-f]{32}"
+                  },
+                  "report_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "blocked_step": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "issue_id",
+                  "report_id",
+                  "path",
+                  "blocked_step"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "target_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spec_status": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "implementation_status": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outcome": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "target_id",
+                  "spec_status",
+                  "implementation_status",
+                  "outcome"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "active_worktrees": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "branch": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "head": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "managed": {
+                    "type": "boolean"
+                  },
+                  "locked": {
+                    "type": "boolean"
+                  },
+                  "change_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "target_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "task": {
+                    "type": "string"
+                  },
+                  "phase": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outcome": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "path",
+                  "branch",
+                  "head",
+                  "managed",
+                  "locked",
+                  "change_id",
+                  "target_id",
+                  "task",
+                  "phase",
+                  "status",
+                  "outcome"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "current_worktree",
+            "current_branch",
+            "primary_worktree",
+            "primary_branch",
+            "change_id",
+            "phase",
+            "status",
+            "outcome",
+            "blockers",
+            "components",
+            "active_worktrees"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "proposal_id",
+        "base_registry_digest",
+        "protocol_binding",
+        "context_id",
+        "discovered_targets",
+        "task",
+        "constraints",
+        "target_hint",
+        "focus_hint",
+        "design",
+        "workspace"
+      ],
+      "additionalProperties": false
+    },
+    "concorde-topology-design": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "registry": {
+          "type": "object",
+          "properties": {
+            "schema_version": {
+              "const": 5
+            },
+            "project_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry_target": {
+              "type": "string",
+              "minLength": 1
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "const": "module"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "documents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "uniqueItems": true,
+                    "minItems": 1
+                  },
+                  "references": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "module",
+                                "document"
+                              ]
+                            },
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "external"
+                            },
+                            "path": {
+                              "type": "string",
+                              "minLength": 1,
+                              "pattern": "^[^/](?:[^/]*/)*[^/]*$"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "path"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "uniqueItems": true
+                  },
+                  "parent": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "uses": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "uniqueItems": true
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[^/](?:[^/]*/)*[^/]*$"
+                    },
+                    "uniqueItems": true
+                  },
+                  "checks": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "title",
+                  "documents",
+                  "references",
+                  "parent",
+                  "uses",
+                  "files",
+                  "checks"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "argv": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  },
+                  "timeout_seconds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3600
+                  },
+                  "inputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "target_id",
+                  "argv",
+                  "timeout_seconds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "schema_version",
+            "project_id",
+            "entry_target",
+            "targets",
+            "checks"
+          ],
+          "additionalProperties": false
+        },
+        "spec_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "task": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "target_id",
+              "task"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "migration_constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "acceptance": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "summary",
+        "registry",
+        "spec_tasks",
+        "migration_constraints",
+        "acceptance"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
+```

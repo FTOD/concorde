@@ -62,7 +62,7 @@ def _operations_package(
 
 
 def _skill(root: Path, *, operation: str = "alpha") -> None:
-    skill = root / "skills/concorde-alpha/SKILL.md"
+    skill = root / "prompts/skills/concorde-alpha.md"
     skill.parent.mkdir(parents=True, exist_ok=True)
     skill.write_text(
         f"---\nname: concorde-alpha\ndescription: Fixture skill.\noperation: {operation}\n---\n\n# concorde-alpha\n",
@@ -182,7 +182,7 @@ class PromptRuleTests(unittest.TestCase):
         self.assertEqual([], package_validation._validate_prompts(self.root))
 
     def test_resolver_error_is_reported_with_its_rule_id(self) -> None:
-        edited = self.root / "skills/concorde-main/SKILL.md"
+        edited = self.root / "prompts/skills/concorde-main.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n",
             encoding="utf-8",

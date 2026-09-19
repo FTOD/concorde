@@ -18,15 +18,19 @@ from concorde.distribution.build import (  # noqa: E402
     INTEGRATION_ROOTS,
     MODEL_ROOTS,
     PI_SESSION_SHIM,
+    PUBLISHED_SKILLS_ROOT,
     RETIRED_SKILL_NAMES,
     SKILL_INTEGRATIONS,
     SKILL_NAMES,
     BuildError,
     build,
     check_build,
+    check_published_skills,
     load_model_instructions,
+    render_published_skills,
     verify_fresh,
     write_build,
+    write_published_skills,
 )
 from concorde.spec.verification import verifies  # noqa: E402
 
@@ -95,18 +99,31 @@ class BuildGoldenTests(unittest.TestCase):
             mine = self.by_path[
                 f"{INTEGRATION_ROOTS[integration]}/concorde-main/SKILL.md"
             ].content.decode("utf-8")
-            self.assertIn('source: "skills/concorde-main/SKILL.md"', mine)
+            self.assertIn('source: "prompts/skills/concorde-main.md"', mine)
 
-    @verifies("scenario.distribution.build-checkout-skills-user-invoked")
-    def test_checkout_claude_skills_are_user_invoked_while_installed_ones_stay_model_invocable(
+    @verifies(
+        "scenario.distribution.build-checkout-skills-user-invoked",
+        "scenario.distribution.skills-publish",
+    )
+    def test_checkout_claude_skills_are_user_invoked_while_published_ones_stay_neutral(
         self,
     ):
-        installed = {
-            output.path: output
-            for output in build(
-                REPOSITORY_ROOT, "all", framework_prefix=".concorde/framework"
-            ).outputs
+        installed = build(
+            REPOSITORY_ROOT, "all", framework_prefix=".concorde/framework"
+        ).outputs
+        # An installed project gets no Skill projection from the build; the Agent Skills CLI
+        # installs the published Skills instead.
+        self.assertFalse(
+            any(output.path.startswith(SKILL_ROOTS) for output in installed)
+        )
+        self.assertTrue(any(output.path == PI_SESSION_SHIM for output in installed))
+        published = {
+            output.path: output for output in render_published_skills(REPOSITORY_ROOT)
         }
+        self.assertEqual(
+            set(published),
+            {f"{PUBLISHED_SKILLS_ROOT}/{name}/SKILL.md" for name in SKILL_NAMES},
+        )
         for name in SKILL_NAMES:
             claude_path = f"{INTEGRATION_ROOTS['claude']}/{name}/SKILL.md"
             codex_path = f"{INTEGRATION_ROOTS['codex']}/{name}/SKILL.md"
@@ -122,26 +139,35 @@ class BuildGoldenTests(unittest.TestCase):
                 self.assertIn(
                     f"python3 scripts/run-operation.py {name}", checkout_claude
                 )
-                installed_claude = installed[claude_path].content.decode("utf-8")
-                installed_front, _, _ = installed_claude.removeprefix(
-                    "---\n"
-                ).partition("\n---\n")
-                self.assertIn("\nuser-invocable: true\n", "\n" + installed_front + "\n")
-                self.assertIn(
-                    "\ndisable-model-invocation: false\n", "\n" + installed_front + "\n"
+                published_skill = published[
+                    f"{PUBLISHED_SKILLS_ROOT}/{name}/SKILL.md"
+                ].content.decode("utf-8")
+                published_front, _, _ = published_skill.removeprefix("---\n").partition(
+                    "\n---\n"
                 )
+                # One client-neutral rendering for every client the CLI installs it for: no
+                # client-specific invocation fields, the installed framework's launcher.
+                for field in (
+                    "user-invocable",
+                    "disable-model-invocation",
+                    "argument-hint",
+                ):
+                    self.assertNotIn(field, published_front)
+                self.assertIn(f"\nname: {name}\n", "\n" + published_front)
+                self.assertIn(f'source: "prompts/skills/{name}.md"', published_front)
                 self.assertIn(
                     f"python3 .concorde/framework/scripts/run-operation.py {name}",
-                    installed_claude,
+                    published_skill,
                 )
-                for codex in (self.by_path[codex_path], installed[codex_path]):
-                    codex_front, _, _ = (
-                        codex.content.decode("utf-8")
-                        .removeprefix("---\n")
-                        .partition("\n---\n")
-                    )
-                    self.assertNotIn("user-invocable", codex_front)
-                    self.assertNotIn("disable-model-invocation", codex_front)
+                self.assertIn("## Input TypedValue schema", published_skill)
+                codex_front, _, _ = (
+                    self.by_path[codex_path]
+                    .content.decode("utf-8")
+                    .removeprefix("---\n")
+                    .partition("\n---\n")
+                )
+                self.assertNotIn("user-invocable", codex_front)
+                self.assertNotIn("disable-model-invocation", codex_front)
 
     @verifies("scenario.distribution.build-render")
     def test_eighteen_skills_twelve_agents_and_one_langgraph_config(self):
@@ -221,7 +247,9 @@ class BuildDeterminismTests(unittest.TestCase):
                 if output.path.startswith(projected):
                     self.assertEqual(all_paths[output.path], output.content)
                     seen.add(output.path)
-        self.assertEqual(seen, {path for path in all_paths if path.startswith(projected)})
+        self.assertEqual(
+            seen, {path for path in all_paths if path.startswith(projected)}
+        )
 
 
 class BuildCheckLifecycleTests(unittest.TestCase):
@@ -282,6 +310,56 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
         self.assertIn("generated/protocol/principles.md", differences)
+
+    @verifies(
+        "scenario.distribution.skills-publish", "scenario.distribution.build-check"
+    )
+    def test_published_skills_are_checked_by_build_check_and_written_only_explicitly(
+        self,
+    ):
+        write_build(self.root, "all")
+        current, differences = check_published_skills(self.root)
+        self.assertTrue(current, differences)
+
+        # Every Skill source includes the invocation opener, so editing it changes all of them.
+        edited = self.root / "prompts/workflow-host/stdin-invocation-open.md"
+        edited.write_text(
+            edited.read_text(encoding="utf-8") + "One more sentence.\n",
+            encoding="utf-8",
+        )
+        before = {
+            path: path.read_bytes()
+            for path in (self.root / PUBLISHED_SKILLS_ROOT).rglob("SKILL.md")
+        }
+        write_build(self.root, "all")
+        # `build` refreshed generated/ and the client projections but left the tracked
+        # skills/ alone; check_build still reports them, naming the published paths.
+        self.assertEqual(
+            before,
+            {
+                path: path.read_bytes()
+                for path in (self.root / PUBLISHED_SKILLS_ROOT).rglob("SKILL.md")
+            },
+        )
+        current, differences = check_build(self.root, "all")
+        self.assertFalse(current)
+        self.assertTrue(
+            any(item.startswith(f"{PUBLISHED_SKILLS_ROOT}/") for item in differences),
+            differences,
+        )
+        outputs = write_published_skills(self.root)
+        self.assertEqual(len(outputs), len(SKILL_NAMES))
+        current, differences = check_build(self.root, "all")
+        self.assertTrue(current, differences)
+
+        retired = self.root / PUBLISHED_SKILLS_ROOT / "concorde-retired" / "SKILL.md"
+        retired.parent.mkdir()
+        retired.write_text("---\nname: concorde-retired\n---\n", encoding="utf-8")
+        current, differences = check_published_skills(self.root)
+        self.assertEqual(
+            (current, differences),
+            (False, (f"{PUBLISHED_SKILLS_ROOT}/concorde-retired/SKILL.md",)),
+        )
 
     @verifies("scenario.distribution.build-check")
     def test_check_never_writes_under_generated_or_the_skill_roots(self):
@@ -711,6 +789,18 @@ class WireHelperBuildTests(unittest.TestCase):
                 self.assertNotEqual(before[schema_path], schema)
                 self.assertIn("Fixture helper schema change", schema.decode())
                 verify_fresh(root)
+                # The published Skills embed the request schemas too; the tracked copy is
+                # refreshed by the explicit publish step, never by `build`.
+                current, differences = check_build(root)
+                self.assertFalse(current)
+                self.assertTrue(
+                    all(
+                        item.startswith(f"{PUBLISHED_SKILLS_ROOT}/")
+                        for item in differences
+                    ),
+                    differences,
+                )
+                write_published_skills(root)
                 self.assertEqual((True, ()), check_build(root))
                 self.assertEqual(rebuilt, build(root))
 
@@ -723,13 +813,15 @@ class BuildErrorTests(unittest.TestCase):
             shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol")
             shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
-            main = root / "skills/concorde-main/SKILL.md"
+            main = root / "prompts/skills/concorde-main.md"
             main.write_text(
                 main.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n",
                 encoding="utf-8",
             )
             with self.assertRaises(BuildError):
                 build(root, "all")
+            with self.assertRaises(BuildError):
+                render_published_skills(root)
 
     def test_broken_schema_helper_fails_the_build_with_build_error(self):
         with tempfile.TemporaryDirectory() as temporary:

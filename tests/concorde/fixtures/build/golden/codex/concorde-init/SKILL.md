@@ -4,7 +4,7 @@ description: "Operation: propose and apply explicit project initialization with 
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-init/SKILL.md"
+  source: "prompts/skills/concorde-init.md"
   kind: "skill"
   operation: "init"
   entrypoint: "scripts/run-operation.py concorde-init"

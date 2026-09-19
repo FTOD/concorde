@@ -24,6 +24,7 @@ from ..spec.frontmatter import FrontMatterError, parse_document
 from ..spec.model import Finding
 from . import build
 from .build import BuildError, check_build, verify_fresh
+from .prompt_resolver import SKILLS_ROOT
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -74,7 +75,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
     findings: list[Finding] = []
     for relative in _prompt_roots():
         try:
-            if relative.startswith("skills/"):
+            if relative.startswith(SKILLS_ROOT):
                 resolve_skill_source(root, relative)
             elif relative.startswith("operations/"):
                 resolve_model_instructions(root, relative)
@@ -121,7 +122,6 @@ def _validate_prompts(root: Path) -> list[Finding]:
         if (root / "prompts").is_dir()
         else []
     )
-    sources.extend(sorted(build.SKILL_SOURCES.values()))
     sources.extend(
         sorted(
             path.relative_to(root).as_posix()
@@ -198,21 +198,18 @@ def _operation_modules(
 
 
 def _skill_operations(root: Path) -> dict[str, list[str]]:
-    """Return {operation_module_name: [skill_name, ...]} from every skills/*/SKILL.md.
+    """Return {operation_module_name: [skill_name, ...]} from every prompts/skills/*.md source.
 
-    Discovers whatever skill directories actually exist at ``root`` rather than assuming the
-    real package's fixed public names, so a temporary fixture package with its own skill set is
+    Discovers whatever Skill sources actually exist at ``root`` rather than assuming the real
+    package's fixed public names, so a temporary fixture package with its own skill set is
     validated on its own terms.
     """
 
     result: dict[str, list[str]] = {}
-    skills_root = root / "skills"
+    skills_root = root / SKILLS_ROOT
     if skills_root.is_symlink() or not skills_root.is_dir():
         return result
-    for directory in sorted(skills_root.iterdir()):
-        if directory.is_symlink() or not directory.is_dir():
-            continue
-        path = directory / "SKILL.md"
+    for path in sorted(skills_root.glob("*.md")):
         if path.is_symlink() or not path.is_file():
             continue
         relative = path.relative_to(root).as_posix()
@@ -222,7 +219,7 @@ def _skill_operations(root: Path) -> dict[str, list[str]]:
             continue
         operation = metadata.get("operation")
         if isinstance(operation, str) and operation.strip():
-            result.setdefault(operation.strip(), []).append(directory.name)
+            result.setdefault(operation.strip(), []).append(path.stem)
     return result
 
 
@@ -427,7 +424,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                     "CONCORDE-OPERATION-SKILL-001",
                     source,
                     f"public operation {name!r} must have exactly one skill naming it; found {skills}.",
-                    "Add or deduplicate the skills/<name>/SKILL.md declaring operation: "
+                    "Add or deduplicate the prompts/skills/<name>.md source declaring operation: "
                     + name
                     + ".",
                 )
@@ -1154,7 +1151,8 @@ def _validate_build_outputs(root: Path) -> list[Finding]:
                 "CONCORDE-BUILD-DRIFT-001",
                 "generated/",
                 f"rebuilding into a temporary directory differs from recorded outputs: {list(differences)}.",
-                "Run `python -m concorde build` and commit no rendered output; it is derived.",
+                "Run `python -m concorde build` for generated/ and the client projections, and "
+                "`python -m concorde skills --write` for the tracked published Skills.",
             )
         )
     return findings

@@ -4,7 +4,7 @@ description: "Operation: stage a verified change, remove its worktree, and expli
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-deliver/SKILL.md"
+  source: "prompts/skills/concorde-deliver.md"
   kind: "skill"
   operation: "deliver"
   entrypoint: "scripts/run-operation.py concorde-deliver"

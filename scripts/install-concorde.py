@@ -6,6 +6,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import re
+import shutil
+import subprocess
 import sys
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -52,6 +56,14 @@ RUNTIME = {
     "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv",
 }
+# The Agent Skills CLI (`npx skills`) places the published Skills for these clients; the installer
+# never copies a Skill itself. It reads them from the deployed framework copy, so the CLI's
+# `skills-lock.json` names a source inside the project and a later `npx skills update` re-reads
+# the installed version's Skills, wherever the source checkout has moved meanwhile.
+SKILLS_CLI_AGENTS = {"claude": "claude-code", "codex": "codex"}
+SKILLS_CLI_SOURCE = f"./{FRAMEWORK_ROOT}"
+SKILLS_CLI_PIN = re.compile(r"^skills@[0-9]+\.[0-9]+\.[0-9]+$")
+SKILL_PROJECTION_ROOTS = (".claude/skills/", ".agents/skills/")
 
 
 class InstallError(ValueError):
@@ -137,6 +149,11 @@ def load_package(root: Path) -> Package:
     ):
         raise InstallError(
             "Concorde manifest declares an unsupported installation layout"
+        )
+    skills_cli = install.get("skills_cli")
+    if not isinstance(skills_cli, str) or SKILLS_CLI_PIN.fullmatch(skills_cli) is None:
+        raise InstallError(
+            "Concorde manifest must pin the Agent Skills CLI as install.skills_cli = skills@<version>"
         )
     integrations = manifest.get("integrations")
     if integrations != ["claude", "codex", "pi"]:
@@ -260,32 +277,51 @@ def _package_files(package: Package) -> dict[str, bytes]:
     return desired
 
 
-def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes, str]]:
-    if integration not in package.manifest["integrations"]:
-        raise InstallError(f"unsupported integration: {integration}")
+def selected_integrations(package: Package, integrations: Sequence[str]) -> list[str]:
+    """The distinct requested clients, in request order; a project may carry several."""
+    selected: list[str] = []
+    for integration in integrations:
+        if integration not in package.manifest["integrations"]:
+            raise InstallError(f"unsupported integration: {integration}")
+        if integration not in selected:
+            selected.append(integration)
+    if not selected:
+        raise InstallError("select at least one integration")
+    return selected
+
+
+def skill_agents(package: Package, integrations: Sequence[str]) -> list[str]:
+    """The Agent Skills CLI agent names of the selected clients that read Skills."""
+    return [
+        SKILLS_CLI_AGENTS[integration]
+        for integration in selected_integrations(package, integrations)
+        if integration in SKILLS_CLI_AGENTS
+    ]
+
+
+def desired_outputs(
+    package: Package, integrations: Sequence[str]
+) -> dict[str, tuple[bytes, str]]:
+    selected = selected_integrations(package, integrations)
     outputs = {
         path: (content, "framework")
         for path, content in _package_files(package).items()
     }
-    # The build is the only instruction source: it renders the framework's generated/**
-    # (role bodies, the build manifest, the Studio graph list) and, for this integration,
-    # the client projection: the public skill wrappers for Claude Code and Codex, or the Pi
-    # session extension shim. Consumers never run this build themselves.
+    # The build is the only instruction source: it renders the framework's generated/** (role
+    # bodies, the build manifest, the Studio graph list) and, for a Pi client, the session
+    # extension shim. Claude Code and Codex receive no rendered Skill from the build: the Agent
+    # Skills CLI installs the package's tracked published skills/, deployed below the framework
+    # root, when the plan is applied. Consumers never run this build themselves.
     try:
         build_result = concorde_build.build(
-            package.root, integration, framework_prefix=FRAMEWORK_ROOT
+            package.root, "all", framework_prefix=FRAMEWORK_ROOT
         )
     except concorde_build.BuildError as error:
         raise InstallError(str(error)) from error
-    skill_roots = tuple(
-        f"{concorde_build.INTEGRATION_ROOTS[name]}/"
-        for name in concorde_build.SKILL_INTEGRATIONS
-    )
     for output in build_result.outputs:
-        if output.path.startswith(skill_roots):
-            outputs[output.path] = (output.content, "skill")
-        elif output.path.startswith(f"{concorde_build.INTEGRATION_ROOTS['pi']}/"):
-            outputs[output.path] = (output.content, "extension")
+        if output.path.startswith(f"{concorde_build.INTEGRATION_ROOTS['pi']}/"):
+            if "pi" in selected:
+                outputs[output.path] = (output.content, "extension")
         else:
             outputs[f"{FRAMEWORK_ROOT}/{output.path}"] = (output.content, "framework")
     outputs[f"{FRAMEWORK_ROOT}/generated/build-manifest.json"] = (
@@ -309,7 +345,12 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
     # the receipt. Initialization creates none of them; it produces only the user's project files.
     for path, content in project_default_files(package.root).items():
         outputs[path] = (content, "project-default")
-    outputs[guidance.FILES[integration]] = (guidance.entry(integration), guidance.ROLE)
+    # One root entry per selected client's instruction file; Codex and Pi share AGENTS.md.
+    for integration in selected:
+        outputs[guidance.FILES[integration]] = (
+            guidance.entry(integration),
+            guidance.ROLE,
+        )
     return dict(sorted(outputs.items()))
 
 
@@ -365,14 +406,14 @@ def _file_digest(path: Path) -> str | None:
 def installation_plan(
     target: Path,
     package: Package,
-    integration: str,
+    integrations: Sequence[str],
     *,
     remove_protocol_guidance: bool = False,
 ) -> tuple[list[dict[str, str]], dict[str, tuple[bytes, str]], dict[str, Any]]:
     target = target.resolve()
     receipt = _load_receipt(target)
     prior = _prior_outputs(receipt)
-    desired = {} if remove_protocol_guidance else desired_outputs(package, integration)
+    desired = {} if remove_protocol_guidance else desired_outputs(package, integrations)
     prior_guidance = {}
     for item in receipt.get("outputs", []):
         if item.get("role") == guidance.ROLE:
@@ -477,9 +518,75 @@ def installation_plan(
                 "reason": str(error),
             }
         )
+    agents = skill_agents(package, integrations)
+    if agents:
+        # Not an owned output: the Agent Skills CLI places the published Skills and keeps its
+        # own record, skills-lock.json, at the project root. The plan names the delegation so a
+        # preview shows it; applying runs the CLI after the framework copy it reads is in place.
+        actions.append(
+            {
+                "path": "skills-lock.json",
+                "action": "delegate",
+                "role": "skills",
+                "sha256": "",
+                "cli": package.manifest["install"]["skills_cli"],
+                "source": SKILLS_CLI_SOURCE,
+                "agents": ",".join(agents),
+            }
+        )
     actions.extend(guidance_actions)
     desired.update(guidance_desired)
     return sorted(actions, key=lambda item: item["path"]), desired, receipt
+
+
+def _install_skills(target: Path, item: Mapping[str, str]) -> dict[str, Any]:
+    """Run the pinned Agent Skills CLI so it installs the deployed framework's published Skills."""
+    agents = item["agents"].split(",")
+    command = ["npx", "-y", item["cli"], "add", item["source"]]
+    for agent in agents:
+        command.extend(["-a", agent])
+    command.append("-y")
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "NPM_CONFIG_AUDIT": "false",
+            "NPM_CONFIG_FUND": "false",
+            "NPM_CONFIG_UPDATE_NOTIFIER": "false",
+        }
+    )
+    try:
+        result = subprocess.run(
+            command,
+            cwd=target,
+            capture_output=True,
+            text=True,
+            env=environment,
+            check=False,
+        )
+    except OSError as error:
+        raise InstallError(
+            f"cannot run the Agent Skills CLI ({' '.join(command)}): {error}"
+        ) from error
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        if len(detail) > 1200:
+            detail = detail[-1200:]
+        raise InstallError(
+            f"Agent Skills CLI failed with exit {result.returncode}: {detail}"
+        )
+    return {"cli": item["cli"], "source": item["source"], "agents": agents}
+
+
+def _prune_skill_directories(target: Path, path: Path) -> None:
+    """Remove the directories a superseded Skill projection leaves empty, up to its root.
+
+    Earlier installers owned `.claude/skills/concorde-*/SKILL.md` and `.agents/skills/...`;
+    removing those files must not leave empty `concorde-*` directories where the Agent Skills
+    CLI is about to place its own copies and links."""
+    current = path.parent
+    while current != target and current.is_dir() and not any(current.iterdir()):
+        current.rmdir()
+        current = current.parent
 
 
 def _check_target(target: Path) -> None:
@@ -507,17 +614,21 @@ def _check_parent(target: Path, relative: str) -> Path:
 
 def _receipt(
     package: Package,
-    integration: str,
+    integrations: Sequence[str],
     desired: Mapping[str, tuple[bytes, str]],
     runtime: Mapping[str, Any],
+    skills: Mapping[str, Any] | None,
 ) -> bytes:
     value = {
         "schema_version": INSTALL_SCHEMA,
         "concorde_version": package.version,
-        "integration": integration,
+        "integrations": list(selected_integrations(package, integrations)),
         "architecture_profile": package.manifest["architecture_profile"],
         "workspace_protocol": package.manifest["workspace_protocol"],
         "runtime": dict(runtime),
+        # The Skills the Agent Skills CLI placed are not owned outputs; the receipt records the
+        # delegation (pinned CLI, in-project source and agents) rather than their bytes.
+        "skills": dict(skills) if skills is not None else None,
         "outputs": [
             {
                 "path": path,
@@ -536,7 +647,7 @@ def _receipt(
 def apply_plan(
     target: Path,
     package: Package,
-    integration: str,
+    integrations: Sequence[str],
     actions: Sequence[Mapping[str, str]],
     desired: Mapping[str, tuple[bytes, str]],
     *,
@@ -586,6 +697,7 @@ def apply_plan(
     created: list[str] = []
     created_directories: set[Path] = set()
     staged_files: set[Path] = set()
+    runtime_created = False
     try:
         for item in mutable:
             relative = item["path"]
@@ -595,6 +707,8 @@ def apply_plan(
                 backups[relative] = (path.read_bytes(), path.stat().st_mode & 0o777)
             if action == "remove":
                 path.unlink()
+                if relative.startswith(SKILL_PROJECTION_ROOTS):
+                    _prune_skill_directories(target, path)
                 continue
             content = desired[relative][0]
             current = path.parent
@@ -639,7 +753,14 @@ def apply_plan(
                 )
             except ManagedRuntimeError as error:
                 raise InstallError(str(error)) from error
-            receipt_content = _receipt(package, integration, desired, runtime)
+            runtime_created = runtime_action["action"] == "create"
+            # The CLI reads the framework copy written above, so it runs after every owned
+            # output is in place; its failure rolls those outputs back like any other failure.
+            skills_item = next(
+                (item for item in actions if item["role"] == "skills"), None
+            )
+            skills = _install_skills(target, skills_item) if skills_item else None
+            receipt_content = _receipt(package, integrations, desired, runtime, skills)
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
             dir=receipt_path.parent, prefix=".concorde-receipt-", delete=False
@@ -653,6 +774,12 @@ def apply_plan(
     except Exception:
         for staged in staged_files:
             staged.unlink(missing_ok=True)
+        if runtime_created:
+            # A runtime this apply created is part of its failed installation; an existing
+            # runtime (unchanged or rebuilt in place) stays, as provisioning documents.
+            runtime_path = target / RUNTIME["venv"]
+            if runtime_path.is_dir() and not runtime_path.is_symlink():
+                shutil.rmtree(runtime_path)
         for relative in reversed(created):
             path = target / relative
             if path.is_symlink():
@@ -688,7 +815,7 @@ def apply_plan(
 
 def _print_plan(
     package: Package,
-    integration: str,
+    integrations: Sequence[str],
     actions: Sequence[Mapping[str, str]],
     status: str,
 ) -> None:
@@ -697,13 +824,18 @@ def _print_plan(
         counts[item["action"]] = counts.get(item["action"], 0) + 1
     print("Concorde installation plan")
     print(f"  version: {package.version}")
-    print(f"  integration: {integration}")
+    print(f"  integrations: {', '.join(integrations)}")
     print(f"  status: {status}")
     print(
         "  actions: "
         + ", ".join(f"{name}={count}" for name, count in sorted(counts.items()))
     )
     for item in actions:
+        if item["role"] == "skills":
+            print(
+                f"  skills: `npx -y {item['cli']} add {item['source']}` places the published "
+                f"Skills for {item['agents'].replace(',', ', ')}"
+            )
         if item["action"] == "conflict":
             print(f"  conflict: {item['path']} — {item['reason']}")
 
@@ -712,7 +844,10 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="install-concorde")
     parser.add_argument("--target", required=True)
     parser.add_argument(
-        "--integration", choices=["codex", "claude", "pi"], default="codex"
+        "--integration",
+        action="append",
+        choices=["codex", "claude", "pi"],
+        help="a client to install for; repeat for several (default: codex)",
     )
     parser.add_argument("--checkout", default=str(SCRIPT_ROOT))
     mode = parser.add_mutually_exclusive_group()
@@ -736,10 +871,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         target = requested_target.resolve()
         _check_target(target)
         package = load_package(Path(arguments.checkout))
+        integrations = selected_integrations(
+            package, arguments.integration or ["codex"]
+        )
         actions, desired, _ = installation_plan(
             target,
             package,
-            arguments.integration,
+            integrations,
             remove_protocol_guidance=arguments.remove_protocol_guidance,
         )
         conflicts = [item for item in actions if item["action"] == "conflict"]
@@ -748,7 +886,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             status = apply_plan(
                 target,
                 package,
-                arguments.integration,
+                integrations,
                 actions,
                 desired,
                 remove_protocol_guidance=arguments.remove_protocol_guidance,
@@ -757,7 +895,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "schema_version": INSTALL_SCHEMA,
             "status": status,
             "version": package.version,
-            "integration": arguments.integration,
+            "integrations": integrations,
             "target": str(target),
             "receipt": RECEIPT_PATH,
             "actions": actions,
@@ -765,7 +903,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.format == "json":
             print(json.dumps(result, indent=2, sort_keys=True))
         else:
-            _print_plan(package, arguments.integration, actions, status)
+            _print_plan(package, integrations, actions, status)
             if not arguments.apply and not conflicts:
                 print("  next: rerun with --apply to accept this exact ownership plan")
         return 2 if conflicts else 0

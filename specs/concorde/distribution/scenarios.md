@@ -27,36 +27,49 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ### scenario.distribution.install-preview — Preview reports current owned output integrity without writing
 
-- GIVEN a supported integration and a target directory
+- GIVEN one or more supported integrations and a target directory
 - WHEN the installer runs without `--apply`
-- THEN it returns a read-only preview of owned Framework, Skill and root-guidance changes
+- THEN it returns a read-only preview of owned Framework and root-guidance changes and names the Skill placement it will delegate to the Agent Skills CLI
 - AND repeating the preview reports current owned output integrity without writing anything
 
 ### scenario.distribution.install-apply — Applying an accepted current proposal installs owned outputs
 
 - GIVEN a reviewed installation or update proposal that is still current
 - WHEN the installer runs with `--apply`
-- THEN it writes the accepted receipt-owned Framework, Skill and root-guidance changes
+- THEN it writes the accepted receipt-owned Framework and root-guidance changes and then has the pinned Agent Skills CLI place the published Skills for the selected Skill clients
 - AND it deploys the Protocol bundle under `.concorde/protocol/` as receipt-owned output, refreshed on every install and update, without touching the project's Protocol binding
 - AND it preserves project Specs, configuration, reflection history and unrelated user files
 - AND a `node_modules` directory below the package's `pi/` directory is neither deployed nor inspected
 
-Installation places rendered Skill entries in the selected project's `.agents/skills/` or
-`.claude/skills/` directory. Framework code, role instructions, rule assets, templates and
-supporting tools are deployed under `.concorde/framework/`; the managed runtime is provisioned
-separately. The Protocol bundle the project binds and grants to agents, the tracked manifest and
+Framework code, role instructions, rule assets, templates, the published Skills and supporting
+tools are deployed under `.concorde/framework/`; the managed runtime is provisioned separately.
+The installer copies no Skill into `.agents/skills/` or `.claude/skills/` itself: after the owned
+outputs are in place it runs the Agent Skills CLI pinned by the package manifest against the
+deployed framework copy, as [install-skills-cli](#scenario.distribution.install-skills-cli)
+specifies. The Protocol bundle the project binds and grants to agents, the tracked manifest and
 its rendered assets, is deployed at `.concorde/protocol/`, a stable project path independent of
 the Framework layout. A `node_modules` directory below the package's `pi/` directory, left by
 a local install in a source checkout, is neither deployed nor inspected, because the managed runtime
 provisions the Pi worker extensions from their own `package.json` and lock; every other
-entry below `pi/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
-read `.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of
-the same file. Only the selected integration's entry is installed. It seeds the Concorde-owned
-defaults a project starts from, `.concorde/issues/.gitignore` and
-`.concorde/topology-proposals/.gitignore`, only when absent; these defaults are
-excluded from the installation receipt and never overwritten on update. Everything that exists only
-because Concorde is installed is the installer's output; initialization creates only what the
-user's project generates through Concorde, its configuration, registry and Module stub.
+entry below `pi/` is deployed like the rest of the package. It also installs each selected client's
+root rule entry: `AGENTS.md` explicitly directs Codex and Pi to read
+`.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of the
+same file. It seeds the Concorde-owned defaults a project starts from,
+`.concorde/issues/.gitignore` and `.concorde/topology-proposals/.gitignore`, only when absent;
+these defaults are excluded from the installation receipt and never overwritten on update.
+Everything that exists only because Concorde is installed is the installer's output or its
+delegation to the Skills CLI; initialization creates only what the user's project generates
+through Concorde, its configuration, registry and Module stub.
+
+### scenario.distribution.install-skills-cli — The Agent Skills CLI places the published Skills
+
+- GIVEN a selection that includes a Skill client, Claude Code or Codex, and an applied plan whose framework copy is in place
+- WHEN the installer places the Skills
+- THEN it runs the Agent Skills CLI version pinned in the package manifest (`install.skills_cli`) with the deployed framework copy `./.concorde/framework` as the source and the selected clients as agents, so the CLI installs the framework's published `skills/` into `.agents/skills/` or `.claude/skills/` in its own layout and records the in-project source in its `skills-lock.json`
+- AND the receipt records the delegation, the pinned CLI, the source and the agents, but owns none of the placed Skill files or the CLI's lock file
+- AND a Skill file an earlier installer still owns is removed first, together with the directories it leaves empty, so the CLI finds no foreign directory in its way
+- AND a CLI failure fails the installation and rolls back the owned outputs like any other failure; the Skills the CLI may have placed are not receipt state
+- BUT a selection of only Pi delegates nothing, because Pi receives the session extension shim
 
 ### scenario.distribution.install-conflict-rejected — Conflicting or stale ownership blocks acceptance
 
@@ -85,12 +98,12 @@ conflicts.
 
 This is the root-entry cleanup step for uninstall, not a full-package removal command.
 
-### scenario.distribution.install-switch-integration — Switching integration replaces only the previous entry
+### scenario.distribution.install-multiple-clients — One project may carry several clients
 
-- GIVEN an existing installation for one supported integration
-- WHEN installation is applied for a different integration
-- THEN the previous integration's owned root entry is removed under the same ownership checks
-- AND the new integration's entry is installed
+- GIVEN an existing installation for one or more clients
+- WHEN installation is applied with a selection of clients, repeating `--integration` for several
+- THEN every selected client's root entry is installed and the receipt records exactly that selection
+- AND the root entry of a client selected earlier but left out now is removed under the same ownership checks, while the Skills the Agent Skills CLI placed for it stay until the developer removes them with that CLI, because the installer owns no placed Skill
 - AND old receipts without root entries can upgrade by adding them without adopting arbitrary preexisting marked content
 
 ### scenario.distribution.install-pi-session — Installing for Pi places the session extension shim instead of Skills
@@ -98,8 +111,8 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 - GIVEN the `pi` integration is selected
 - WHEN installation is applied
 - THEN it installs `.pi/extensions/concorde-session.ts` as a receipt-owned output that imports the extension deployed below `.concorde/framework/pi/extensions/` and names the framework launcher and the managed runtime's interpreter
-- AND it installs no Skill under `.agents/skills/` or `.claude/skills/`, and the `AGENTS.md` root entry that Pi reads as a context file
-- AND switching from a Skill integration removes those Skills and installs the shim under the same ownership checks
+- AND it delegates no Skill placement for Pi, and installs the `AGENTS.md` root entry that Pi reads as a context file
+- AND selecting Pi beside a Skill client adds the shim without touching that client's Skills
 
 ### scenario.distribution.configure-apply — Configuration changes an initialized project's Pi worker selection atomically
 
@@ -151,9 +164,9 @@ that need persistent source or dependency changes must prepare them in the imple
 
 ### scenario.distribution.build-render — Build renders deterministic projections from authored sources
 
-- GIVEN the current `prompts/`, `skills/`, `operations/` and Protocol chapter sources
+- GIVEN the current `prompts/` (including the Skill sources `prompts/skills/`), `operations/` and Protocol chapter sources
 - WHEN build runs for a selected integration
-- THEN it renders Agent instructions, Skill files, the Studio graph configuration, Protocol assets and runtime schemas deterministically
+- THEN it renders Agent instructions, the checkout's Skill projections, the Studio graph configuration, Protocol assets and runtime schemas deterministically
 - AND repeated renders of unchanged inputs are byte-identical and perform no network or process I/O
 
 ### scenario.distribution.build-checkout-skills-user-invoked — The source checkout's Skills wait for the developer's explicit request
@@ -161,18 +174,26 @@ that need persistent source or dependency changes must prepare them in the imple
 - GIVEN a build without a framework prefix, whose Skill launcher is the checkout's own `scripts/run-operation.py`
 - WHEN build renders the Claude Skill projections
 - THEN every rendered `SKILL.md` declares `user-invocable: true` and `disable-model-invocation: true`, so Claude Code offers the Skill to the developer's own `/concorde-<name>` invocation and never lists it for the model
-- AND a build with a framework prefix, the installed consumer projection, declares `disable-model-invocation: false`
-- BUT Codex projections carry no invocation fields in either case
+- AND a build with a framework prefix, an installed project's build, renders no Skill projection at all, because the published Skills reach an installed project through the Agent Skills CLI
+- BUT Codex projections carry no invocation fields
 
 A build without a framework prefix projects the Skills into the Concorde source checkout itself.
 Developing that checkout is direct developer-authorized maintenance by default, and one of
 Concorde's own graphs runs there only when the developer explicitly asks for it, by its slash
 command or by naming it in prose; in the latter case the developer's session reads the rendered
 Skill file under `.claude/skills/<name>/` and submits the typed request it describes. Hiding the
-Skill from the model keeps that choice with the developer. An installed consumer project receives
-the same Skills through a framework prefix and keeps model-initiated invocation, because there the
-Skills are the intended everyday entry points. Codex has no equivalent front-matter switch; the
-checkout's root instructions state the rule for that runtime.
+Skill from the model keeps that choice with the developer. An installed project receives the
+published Skills instead, which carry no such switch and stay model-invocable by each client's
+default, because there the Skills are the intended everyday entry points. Codex has no equivalent
+front-matter switch; the checkout's root instructions state the rule for that runtime.
+
+### scenario.distribution.skills-publish — The tracked published Skills are rendered by an explicit step
+
+- GIVEN the Skill sources `prompts/skills/<name>.md` of the public Operations and the exported request schemas
+- WHEN `skills --write` runs
+- THEN it renders into the tracked `skills/<name>/SKILL.md` one client-neutral Skill per public Operation: the standard front matter (`name`, `description`, `compatibility`, `metadata` naming the source, the operation and the installed framework's launcher `.concorde/framework/scripts/run-operation.py`) and no client-specific invocation field, the resolved guidance with `{OPERATION}` bound to that launcher, and the request schema
+- AND `skills --check`, `build --check` and package validation report every published Skill that is missing or differs from a fresh render, and every `skills/<dir>/SKILL.md` no public Operation publishes any more, without writing
+- AND `build` never writes under `skills/`: the published Skills are tracked content the Agent Skills CLI installs from this repository or from a deployed framework copy, so they change only through this explicit step and are committed with their sources
 
 ### scenario.distribution.build-pi-session — Build renders the Pi session extension shim from the Skill sources
 

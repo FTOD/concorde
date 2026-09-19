@@ -1,14 +1,22 @@
 """Deterministic rendering of model Operation instructions and public client projections.
 
-The build renders the WorkerProfile and client projections from ``operations/``/``prompts/``/``skills/``
-sources into ``generated/`` and, for the developer's clients, directly into the project: Skills at
-``.claude/skills/<name>/SKILL.md`` and ``.agents/skills/<name>/SKILL.md`` for Claude Code and Codex,
-and the Pi session extension shim at ``.pi/extensions/concorde-session.ts``, which binds the tracked
-extension to this project and carries the same public Operations as one typed tool. After Stage B1
-these rendered files are the only instruction source the host and the agent runtimes consume:
-``run_operation`` and ``load_model_instructions`` verify build freshness before using them and fail
-closed with ``BuildError(code="stale_build")`` when the recorded sources have drifted. The build
-must be byte-identical across repeated runs and must not perform any network or process I/O.
+The build renders the WorkerProfile and client projections from ``operations/`` and ``prompts/``
+sources (the Skill sources are ``prompts/skills/<name>.md``) into ``generated/`` and, for the
+developer's clients, directly into the project: Skills at ``.claude/skills/<name>/SKILL.md`` and
+``.agents/skills/<name>/SKILL.md`` for Claude Code and Codex, and the Pi session extension shim at
+``.pi/extensions/concorde-session.ts``, which binds the tracked extension to this project and
+carries the same public Operations as one typed tool. After Stage B1 these rendered files are the
+only instruction source the host and the agent runtimes consume: ``run_operation`` and
+``load_model_instructions`` verify build freshness before using them and fail closed with
+``BuildError(code="stale_build")`` when the recorded sources have drifted. The build must be
+byte-identical across repeated runs and must not perform any network or process I/O.
+
+The published Skills are rendered separately from the same sources into the tracked ``skills/``
+folder (``render_published_skills``/``write_published_skills``): one client-neutral rendering per
+public Operation, bound to an installed project's framework at ``.concorde/framework``, which the
+Agent Skills CLI (``npx skills add``) installs from this repository or from an installed framework
+copy. Being tracked, it is written only by the explicit ``skills --write`` step and its freshness
+is reported by ``check_build`` and ``check_published_skills``; ``build`` never writes it.
 """
 
 from __future__ import annotations
@@ -117,8 +125,12 @@ MODEL_ROOTS: dict[str, str] = {
 WORKER_RULES = "prompts/workers/common.md"
 
 SKILL_SOURCES: dict[str, str] = {
-    name: f"skills/{name}/SKILL.md" for name in SKILL_NAMES
+    name: f"prompts/skills/{name}.md" for name in SKILL_NAMES
 }
+# The tracked published Skills the Agent Skills CLI installs, and the installed project layout
+# they are bound to (the installer's FRAMEWORK_ROOT).
+PUBLISHED_SKILLS_ROOT = "skills"
+INSTALLED_FRAMEWORK_PREFIX = ".concorde/framework"
 
 SCHEMA_INTRO = "This complete schema is the invocation's input field. It does not grant project reads.\n"
 
@@ -248,29 +260,20 @@ def _skill_frontmatter(
     return "\n".join(values)
 
 
-def render_skill(
-    project_root: Path, name: str, integration: str, *, framework_prefix: str = ""
-) -> BuildOutput:
-    """Render one public Skill for one integration.
-
-    Without a ``framework_prefix`` the Skill is projected into the Concorde source checkout
-    itself, whose launcher is the checkout's own ``scripts/run-operation.py``. Developing that
-    checkout is direct maintenance by default and a Concorde graph runs there only on the
-    developer's explicit request, so the Claude projection is rendered user-invocable only:
-    hidden from the model, reachable through the developer's own ``/name`` invocation. With a
-    framework prefix the Skill is the installed consumer projection and stays model-invocable.
-    """
-    if integration not in INTEGRATIONS:
-        raise BuildError(f"unsupported integration: {integration}")
+def _render_skill_content(
+    project_root: Path,
+    name: str,
+    integration: str,
+    launcher: str,
+    *,
+    model_invocable: bool,
+) -> tuple[bytes, tuple[str, ...]]:
+    """Render one Skill's bytes for ``launcher`` and return them with their sources."""
     metadata = _skill_metadata(project_root, name)
     try:
         resolved = resolve_skill_source(project_root, SKILL_SOURCES[name])
     except PromptResolverError as error:
         raise BuildError(f"skill {name}: {error.rule_id}: {error}") from error
-    prefix = framework_prefix.strip("/")
-    launcher = (
-        f"{prefix}/scripts/run-operation.py" if prefix else "scripts/run-operation.py"
-    )
     entrypoint = f"{launcher} {name}"
     body = resolved.body.replace("{OPERATION}", f"python3 {launcher} {name}")
     unresolved = [
@@ -300,17 +303,118 @@ def render_skill(
         integration,
         str(metadata["operation"]),
         entrypoint,
-        model_invocable=bool(prefix),
+        model_invocable=model_invocable,
     )
     content = (frontmatter + body.lstrip()).encode("utf-8")
-    target = f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md"
-    return BuildOutput(
-        path=target,
-        content=content,
-        sources=tuple(
-            sorted(set((*resolved.sources, SKILL_SOURCES[name], *schema_sources)))
-        ),
+    sources = tuple(
+        sorted(set((*resolved.sources, SKILL_SOURCES[name], *schema_sources)))
     )
+    return content, sources
+
+
+def render_skill(project_root: Path, name: str, integration: str) -> BuildOutput:
+    """Render one public Skill as the Concorde source checkout's own projection.
+
+    The checkout's launcher is its own ``scripts/run-operation.py``. Developing that checkout is
+    direct maintenance by default and a Concorde graph runs there only on the developer's
+    explicit request, so the Claude projection is rendered user-invocable only: hidden from the
+    model, reachable through the developer's own ``/name`` invocation. An installed project never
+    receives these projections; it receives the published Skills (``render_published_skill``).
+    """
+    if integration not in SKILL_INTEGRATIONS:
+        raise BuildError(f"unsupported skill integration: {integration}")
+    content, sources = _render_skill_content(
+        project_root,
+        name,
+        integration,
+        "scripts/run-operation.py",
+        model_invocable=False,
+    )
+    return BuildOutput(
+        path=f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md",
+        content=content,
+        sources=sources,
+    )
+
+
+def render_published_skill(project_root: Path, name: str) -> BuildOutput:
+    """Render one public Skill in its published, client-neutral form.
+
+    The published Skill lives in the tracked ``skills/<name>/SKILL.md`` and is what the Agent
+    Skills CLI installs into a project, whichever client that project uses, so it carries only
+    the standard front matter (no client-specific invocation fields) and names the launcher of
+    an installed framework, ``.concorde/framework/scripts/run-operation.py``; there the Skills
+    are the everyday entry points and stay model-invocable by the clients' defaults.
+    """
+    content, sources = _render_skill_content(
+        project_root,
+        name,
+        "published",
+        f"{INSTALLED_FRAMEWORK_PREFIX}/scripts/run-operation.py",
+        model_invocable=True,
+    )
+    return BuildOutput(
+        path=f"{PUBLISHED_SKILLS_ROOT}/{name}/SKILL.md",
+        content=content,
+        sources=sources,
+    )
+
+
+def render_published_skills(project_root: str | Path) -> tuple[BuildOutput, ...]:
+    """Render every published Skill, sorted by path; raise BuildError on any failure."""
+    root = Path(project_root)
+    return tuple(
+        sorted(
+            (render_published_skill(root, name) for name in SKILL_NAMES),
+            key=lambda item: item.path,
+        )
+    )
+
+
+def write_published_skills(project_root: str | Path) -> tuple[BuildOutput, ...]:
+    """Write the tracked published Skills under ``skills/`` and return what was rendered.
+
+    This is the explicit step that changes tracked content (``skills --write``); ``build``
+    never writes here. Directories of retired Skills are reported by ``check_published_skills``
+    and removed by the developer, since they are tracked."""
+    root = Path(project_root)
+    outputs = render_published_skills(root)
+    published = root / PUBLISHED_SKILLS_ROOT
+    if published.is_symlink():
+        raise BuildError(
+            f"published skills directory is a symlink: {PUBLISHED_SKILLS_ROOT}"
+        )
+    for output in outputs:
+        target = root / output.path
+        if target.is_symlink() or target.parent.is_symlink():
+            raise BuildError(f"published skill path is a symlink: {output.path}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(output.content)
+    return outputs
+
+
+def check_published_skills(project_root: str | Path) -> tuple[bool, tuple[str, ...]]:
+    """Compare the tracked published Skills with a fresh render, writing nothing.
+
+    Returns (is_current, differences): every ``skills/<name>/SKILL.md`` that is missing or
+    byte-different, and every other ``skills/<dir>/SKILL.md`` the CLI would install although no
+    public Operation publishes it any more."""
+    root = Path(project_root)
+    differences: list[str] = []
+    for output in render_published_skills(root):
+        path = root / output.path
+        current = (
+            path.read_bytes() if path.is_file() and not path.is_symlink() else None
+        )
+        if current != output.content:
+            differences.append(output.path)
+    published = root / PUBLISHED_SKILLS_ROOT
+    if published.is_dir() and not published.is_symlink():
+        for directory in sorted(published.iterdir()):
+            if directory.name in SKILL_NAMES or not (directory / "SKILL.md").exists():
+                continue
+            differences.append(f"{PUBLISHED_SKILLS_ROOT}/{directory.name}/SKILL.md")
+    return (not differences, tuple(sorted(differences)))
 
 
 def _interpreters(prefix: str) -> list[str]:
@@ -608,12 +712,12 @@ def build(
         if one_integration == "pi":
             outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
             continue
+        if framework_prefix:
+            # An installed project receives no rendered Skill projection from the build: the
+            # Agent Skills CLI installs the tracked published Skills (``skills/``) instead.
+            continue
         for name in SKILL_NAMES:
-            outputs.append(
-                render_skill(
-                    root, name, one_integration, framework_prefix=framework_prefix
-                )
-            )
+            outputs.append(render_skill(root, name, one_integration))
     outputs.append(render_langgraph(root))
     outputs.append(render_protocol_principles(root))
     for kind in PROTOCOL_KINDS:
@@ -800,7 +904,11 @@ def check_build(
         prefix = INTEGRATION_ROOTS[selected_integration]
         if selected_integration == "pi":
             fresh = next(
-                (output.content for output in result.outputs if output.path == PI_SESSION_SHIM),
+                (
+                    output.content
+                    for output in result.outputs
+                    if output.path == PI_SESSION_SHIM
+                ),
                 None,
             )
             shim = root / PI_SESSION_SHIM
@@ -836,6 +944,11 @@ def check_build(
                 content = fresh_owned.get(relative)
                 if content is None or _sha256_bytes(content) != item.get("digest"):
                     diffs.append(f"{PROTOCOL_MANIFEST_PATH}:{relative}")
+    # The tracked published Skills are rendered from the same sources; a stale copy would be
+    # what the Agent Skills CLI installs, so staleness there is build staleness too, repaired
+    # by the explicit `skills --write` step rather than by `build`.
+    _, published = check_published_skills(root)
+    diffs.extend(published)
     return (not diffs, tuple(sorted(diffs)))
 
 

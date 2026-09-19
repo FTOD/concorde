@@ -47,8 +47,25 @@ class NativeInstallerTests(unittest.TestCase):
     def test_parser_previews_by_default_and_apply_is_explicit(self):
         arguments = installer.create_parser().parse_args(["--target", "sample"])
         self.assertFalse(arguments.apply)
-        self.assertEqual(arguments.integration, "codex")
+        self.assertIsNone(arguments.integration)
+        self.assertEqual(
+            installer.selected_integrations(
+                self.package, arguments.integration or ["codex"]
+            ),
+            ["codex"],
+        )
         self.assertEqual(arguments.checkout, str(REPOSITORY_ROOT))
+        several = installer.create_parser().parse_args(
+            ["--target", "sample", "--integration", "claude", "--integration", "pi"]
+        )
+        self.assertEqual(
+            installer.selected_integrations(self.package, several.integration),
+            ["claude", "pi"],
+        )
+        self.assertEqual(
+            installer.skill_agents(self.package, ["claude", "codex", "pi", "claude"]),
+            ["claude-code", "codex"],
+        )
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
         self.assertEqual(self.package.version, "8.0.0")
@@ -62,7 +79,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertNotIn("viewer", self.package.manifest)
 
     def test_desired_codex_outputs_use_native_paths_only(self):
-        outputs = installer.desired_outputs(self.package, "codex")
+        outputs = installer.desired_outputs(self.package, ["codex"])
         self.assertIn(".concorde/framework/src/concorde/distribution/cli.py", outputs)
         self.assertIn(".concorde/framework/src/concorde/spec/validation.py", outputs)
         self.assertIn(".concorde/framework/docsite/docusaurus.config.ts", outputs)
@@ -84,8 +101,17 @@ class NativeInstallerTests(unittest.TestCase):
                 for path in outputs
             )
         )
-        self.assertIn(".agents/skills/concorde-validate/SKILL.md", outputs)
-        self.assertIn(".agents/skills/concorde-dev-loop/SKILL.md", outputs)
+        # No Skill is an installer output: the Agent Skills CLI installs the published skills/
+        # deployed below the framework root.
+        self.assertFalse(
+            any(
+                path.startswith((".agents/skills/", ".claude/skills/"))
+                for path in outputs
+            )
+        )
+        self.assertIn(".concorde/framework/skills/concorde-validate/SKILL.md", outputs)
+        self.assertIn(".concorde/framework/skills/concorde-dev-loop/SKILL.md", outputs)
+        self.assertIn(".concorde/framework/prompts/skills/concorde-main.md", outputs)
         self.assertIn(".concorde/framework/scripts/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
         self.assertIn(".concorde/framework/pi/package-lock.json", outputs)
@@ -105,27 +131,35 @@ class NativeInstallerTests(unittest.TestCase):
                 for path in outputs
             )
         )
-        # The build is the only instruction source for the consumer's own skill wrappers and for
-        # the framework's own generated/** projections; consumers never run it themselves.
+        # The build is the only instruction source for the framework's own generated/**
+        # projections; consumers never run it themselves. The deployed published Skills are
+        # the tracked skills/ bytes, bound to the installed framework's launcher.
         self.assertIn(".concorde/framework/generated/build-manifest.json", outputs)
-        plan = outputs[".agents/skills/concorde-validate/SKILL.md"][0].decode()
+        plan = outputs[".concorde/framework/skills/concorde-validate/SKILL.md"][
+            0
+        ].decode()
         self.assertIn('operation: "validate"', plan)
         self.assertIn('kind: "skill"', plan)
         self.assertNotIn("concorde-validate-context", outputs)
         self.assertNotIn("concorde-validate-author", outputs)
         self.assertNotIn(".specify", plan)
-        skill_body = outputs[".agents/skills/concorde-dev-loop/SKILL.md"][0].decode()
+        skill_body = outputs[".concorde/framework/skills/concorde-dev-loop/SKILL.md"][
+            0
+        ].decode()
         self.assertIn('operation: "dev_loop"', skill_body)
         self.assertIn(
             "python3 .concorde/framework/scripts/run-operation.py concorde-dev-loop",
             skill_body,
         )
         self.assertEqual(
-            outputs[".agents/skills/concorde-validate/SKILL.md"][1], "skill"
+            skill_body,
+            (REPOSITORY_ROOT / "skills/concorde-dev-loop/SKILL.md").read_text(
+                encoding="utf-8"
+            ),
         )
         self.assertEqual(
-            outputs[".agents/skills/concorde-dev-loop/SKILL.md"][1],
-            "skill",
+            outputs[".concorde/framework/skills/concorde-validate/SKILL.md"][1],
+            "framework",
         )
         self.assertTrue(
             all(
@@ -144,30 +178,41 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             self.assertTrue(actions)
-            self.assertEqual({item["action"] for item in actions}, {"create"})
+            self.assertEqual(
+                {item["action"] for item in actions}, {"create", "delegate"}
+            )
             runtime_action = next(item for item in actions if item["role"] == "runtime")
             self.assertEqual(runtime_action["path"], ".concorde/.venv")
             self.assertEqual(
-                installer.apply_plan(target, self.package, "codex", actions, desired),
+                installer.apply_plan(target, self.package, ["codex"], actions, desired),
                 "installed",
             )
             second, desired_again, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             self.assertEqual(
-                {item["action"] for item in second}, {"unchanged", "preserve"}
+                {item["action"] for item in second},
+                {"unchanged", "preserve", "delegate"},
             )
             self.assertEqual(
                 installer.apply_plan(
-                    target, self.package, "codex", second, desired_again
+                    target, self.package, ["codex"], second, desired_again
                 ),
                 "unchanged",
             )
             receipt = json.loads((target / ".concorde/install.json").read_text())
-            self.assertEqual(receipt["integration"], "codex")
+            self.assertEqual(receipt["integrations"], ["codex"])
+            self.assertEqual(
+                receipt["skills"],
+                {
+                    "cli": "skills@1.7.0",
+                    "source": "./.concorde/framework",
+                    "agents": ["codex"],
+                },
+            )
             self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
             self.assertEqual(
                 receipt["runtime"]["verified_skills"],
@@ -252,7 +297,7 @@ class NativeInstallerTests(unittest.TestCase):
             legacy.parent.mkdir(parents=True)
             legacy.write_text("Unresolved historical report\n")
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             item = next(
                 entry
@@ -260,7 +305,7 @@ class NativeInstallerTests(unittest.TestCase):
                 if entry["path"] == ".concorde/issues/.gitignore"
             )
             self.assertEqual(item["action"], "preserve")
-            installer.apply_plan(target, self.package, "codex", actions, desired)
+            installer.apply_plan(target, self.package, ["codex"], actions, desired)
             self.assertEqual("# developer custom\n", config.read_text())
             self.assertEqual("Unresolved historical report\n", legacy.read_text())
             paths = {
@@ -290,9 +335,9 @@ class NativeInstallerTests(unittest.TestCase):
             user_sentinel.write_text("user-owned\n", encoding="utf-8")
             before = user_sentinel.read_bytes()
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
-            installer.apply_plan(target, self.package, "codex", actions, desired)
+            installer.apply_plan(target, self.package, ["codex"], actions, desired)
             obsolete = target / ".concorde/.venv/obsolete-package.txt"
             obsolete.write_text("obsolete\n", encoding="utf-8")
             marker = target / ".concorde/.venv/.concorde-runtime.json"
@@ -301,7 +346,7 @@ class NativeInstallerTests(unittest.TestCase):
             marker.write_text(json.dumps(value), encoding="utf-8")
 
             rebuild, desired_again, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             runtime_action = next(item for item in rebuild if item["role"] == "runtime")
             self.assertEqual(runtime_action["action"], "rebuild")
@@ -317,7 +362,7 @@ class NativeInstallerTests(unittest.TestCase):
                 side_effect=verify_after_cleanup,
             ):
                 installer.apply_plan(
-                    target, self.package, "codex", rebuild, desired_again
+                    target, self.package, ["codex"], rebuild, desired_again
                 )
 
             self.assertEqual(user_sentinel.read_bytes(), before)
@@ -342,13 +387,13 @@ class NativeInstallerTests(unittest.TestCase):
                     runtime.mkdir()
                     (runtime / "user.txt").write_text("mine\n", encoding="utf-8")
                 actions, desired, _ = installer.installation_plan(
-                    target, self.package, "codex"
+                    target, self.package, ["codex"]
                 )
                 item = next(entry for entry in actions if entry["role"] == "runtime")
                 self.assertEqual(item["action"], "conflict")
                 with self.assertRaises(installer.InstallError):
                     installer.apply_plan(
-                        target, self.package, "codex", actions, desired
+                        target, self.package, ["codex"], actions, desired
                     )
                 self.assertTrue(runtime.exists() or runtime.is_symlink())
 
@@ -364,7 +409,7 @@ class NativeInstallerTests(unittest.TestCase):
             ):
                 target = Path(temporary)
                 actions, desired, _ = installer.installation_plan(
-                    target, self.package, "codex"
+                    target, self.package, ["codex"]
                 )
                 if failure == "pip":
                     real_run = managed_runtime._run
@@ -410,7 +455,7 @@ class NativeInstallerTests(unittest.TestCase):
                     )
                 with patcher, self.assertRaises(installer.InstallError):
                     installer.apply_plan(
-                        target, self.package, "codex", actions, desired
+                        target, self.package, ["codex"], actions, desired
                     )
                 self.assertFalse((target / ".concorde/.venv").exists())
                 self.assertFalse((target / ".concorde/install.json").exists())
@@ -421,7 +466,7 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             real_run = managed_runtime._run
 
@@ -436,7 +481,7 @@ class NativeInstallerTests(unittest.TestCase):
                     installer.InstallError, "npm is required to install the Pi"
                 ),
             ):
-                installer.apply_plan(target, self.package, "codex", actions, desired)
+                installer.apply_plan(target, self.package, ["codex"], actions, desired)
             self.assertFalse((target / ".concorde/.venv").exists())
             self.assertFalse((target / ".concorde/install.json").exists())
 
@@ -445,37 +490,37 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
-            installer.apply_plan(target, self.package, "codex", actions, desired)
+            installer.apply_plan(target, self.package, ["codex"], actions, desired)
             marker = target / ".concorde/.venv/.concorde-runtime.json"
             value = json.loads(marker.read_text(encoding="utf-8"))
             value["pi_lock_sha256"] = "sha256:" + "0" * 64
             marker.write_text(json.dumps(value), encoding="utf-8")
 
-            rebuild, _, _ = installer.installation_plan(target, self.package, "codex")
+            rebuild, _, _ = installer.installation_plan(target, self.package, ["codex"])
             runtime = next(item for item in rebuild if item["role"] == "runtime")
             self.assertEqual(runtime["action"], "rebuild")
 
     def test_exact_existing_desired_bytes_are_adopted(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            desired = installer.desired_outputs(self.package, "codex")
-            relative = ".agents/skills/concorde-validate/SKILL.md"
+            desired = installer.desired_outputs(self.package, ["codex"])
+            relative = ".concorde/framework/skills/concorde-validate/SKILL.md"
             path = target / relative
             path.parent.mkdir(parents=True)
             path.write_bytes(desired[relative][0])
-            actions, _, _ = installer.installation_plan(target, self.package, "codex")
+            actions, _, _ = installer.installation_plan(target, self.package, ["codex"])
             action = next(item for item in actions if item["path"] == relative)
             self.assertEqual(action["action"], "adopt")
 
     def test_unowned_or_modified_owned_file_is_a_conflict(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            collision = target / ".agents/skills/concorde-validate/SKILL.md"
+            collision = target / ".concorde/framework/skills/concorde-validate/SKILL.md"
             collision.parent.mkdir(parents=True)
             collision.write_text("developer file\n")
-            actions, _, _ = installer.installation_plan(target, self.package, "codex")
+            actions, _, _ = installer.installation_plan(target, self.package, ["codex"])
             item = next(
                 entry
                 for entry in actions
@@ -485,7 +530,7 @@ class NativeInstallerTests(unittest.TestCase):
 
     @verifies("scenario.distribution.install-pi-session")
     def test_desired_pi_outputs_project_the_session_shim_instead_of_skills(self):
-        outputs = installer.desired_outputs(self.package, "pi")
+        outputs = installer.desired_outputs(self.package, ["pi"])
         content, role = outputs[".pi/extensions/concorde-session.ts"]
         self.assertEqual("extension", role)
         shim = content.decode("utf-8")
@@ -506,25 +551,21 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(b"Read and follow", outputs["AGENTS.md"][0])
 
     @verifies(
-        "scenario.distribution.install-switch-integration",
+        "scenario.distribution.install-multiple-clients",
         "scenario.distribution.install-pi-session",
     )
-    def test_switching_to_pi_removes_skills_and_installs_the_shim(self):
+    def test_adding_pi_beside_codex_keeps_the_skills_and_installs_the_shim(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
-            installer.apply_plan(target, self.package, "codex", actions, desired)
+            installer.apply_plan(target, self.package, ["codex"], actions, desired)
             pi_actions, pi_desired, _ = installer.installation_plan(
-                target, self.package, "pi"
+                target, self.package, ["codex", "pi"]
             )
-            self.assertTrue(
-                any(
-                    item["action"] == "remove"
-                    and item["path"].startswith(".agents/skills/concorde-")
-                    for item in pi_actions
-                )
+            self.assertFalse(
+                any(item["action"] == "remove" for item in pi_actions), pi_actions
             )
             self.assertTrue(
                 any(
@@ -539,9 +580,11 @@ class NativeInstallerTests(unittest.TestCase):
                     for item in pi_actions
                 )
             )
-            installer.apply_plan(target, self.package, "pi", pi_actions, pi_desired)
-            self.assertFalse(
-                (target / ".agents/skills/concorde-validate/SKILL.md").exists()
+            installer.apply_plan(
+                target, self.package, ["codex", "pi"], pi_actions, pi_desired
+            )
+            self.assertTrue(
+                (target / ".agents/skills/concorde-validate/SKILL.md").is_file()
             )
             self.assertTrue((target / ".pi/extensions/concorde-session.ts").is_file())
             self.assertTrue(
@@ -550,46 +593,171 @@ class NativeInstallerTests(unittest.TestCase):
                 ).is_file()
             )
             receipt = json.loads((target / ".concorde/install.json").read_text())
-            self.assertEqual("pi", receipt["integration"])
+            self.assertEqual(["codex", "pi"], receipt["integrations"])
+            self.assertEqual(["codex"], receipt["skills"]["agents"])
             self.assertIn(
                 ".pi/extensions/concorde-session.ts",
-                {item["path"] for item in receipt["outputs"] if item["role"] == "extension"},
+                {
+                    item["path"]
+                    for item in receipt["outputs"]
+                    if item["role"] == "extension"
+                },
             )
+            # Pi alone: the shim and AGENTS.md, no Skill delegation at all.
+            pi_only = installer.desired_outputs(self.package, ["pi"])
+            self.assertIn(".pi/extensions/concorde-session.ts", pi_only)
+            only_actions, _, _ = installer.installation_plan(
+                Path(temporary) / "pi-only", self.package, ["pi"]
+            )
+            self.assertFalse(any(item["role"] == "skills" for item in only_actions))
 
-    @verifies("scenario.distribution.install-switch-integration")
-    def test_integration_change_removes_only_prior_unchanged_outputs(self):
+    @verifies("scenario.distribution.install-skills-cli")
+    def test_apply_delegates_the_skills_to_the_pinned_skills_cli(self):
         with tempfile.TemporaryDirectory() as temporary:
-            target = Path(temporary)
+            target = Path(temporary).resolve()
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["claude", "codex"]
             )
-            installer.apply_plan(target, self.package, "codex", actions, desired)
-            claude_actions, claude_desired, _ = installer.installation_plan(
-                target, self.package, "claude"
+            delegation = next(item for item in actions if item["role"] == "skills")
+            self.assertEqual(
+                {key: delegation[key] for key in ("action", "cli", "source", "agents")},
+                {
+                    "action": "delegate",
+                    "cli": "skills@1.7.0",
+                    "source": "./.concorde/framework",
+                    "agents": "claude-code,codex",
+                },
             )
-            self.assertTrue(
+            self.assertFalse(
                 any(
-                    item["action"] == "remove"
-                    and item["path"].startswith(".agents/skills/concorde-")
-                    for item in claude_actions
-                )
-            )
-            self.assertTrue(
-                any(
-                    item["action"] == "create"
-                    and item["path"].startswith(".claude/skills/concorde-")
-                    for item in claude_actions
+                    path.startswith((".agents/skills/", ".claude/skills/"))
+                    for path in desired
                 )
             )
             installer.apply_plan(
-                target, self.package, "claude", claude_actions, claude_desired
+                target, self.package, ["claude", "codex"], actions, desired
             )
-            self.assertFalse(
-                (target / ".agents/skills/concorde-validate/SKILL.md").exists()
+            for name in installer.concorde_build.SKILL_NAMES:
+                canonical = target / ".agents/skills" / name / "SKILL.md"
+                self.assertTrue(canonical.is_file(), name)
+                self.assertEqual(
+                    canonical.read_bytes(),
+                    (
+                        target / ".concorde/framework/skills" / name / "SKILL.md"
+                    ).read_bytes(),
+                )
+                self.assertTrue((target / ".claude/skills" / name).is_symlink(), name)
+                self.assertTrue(
+                    (target / ".claude/skills" / name / "SKILL.md").is_file()
+                )
+            self.assertIn(
+                "python3 .concorde/framework/scripts/run-operation.py concorde-main",
+                (target / ".claude/skills/concorde-main/SKILL.md").read_text(
+                    encoding="utf-8"
+                ),
             )
+            lock = json.loads((target / "skills-lock.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                {"./.concorde/framework"},
+                {item["source"] for item in lock["skills"].values()},
+            )
+            receipt = json.loads((target / ".concorde/install.json").read_text())
+            self.assertEqual(["claude", "codex"], receipt["integrations"])
+            self.assertEqual(
+                {
+                    "cli": "skills@1.7.0",
+                    "source": "./.concorde/framework",
+                    "agents": ["claude-code", "codex"],
+                },
+                receipt["skills"],
+            )
+            self.assertEqual(
+                set(),
+                {
+                    item["path"]
+                    for item in receipt["outputs"]
+                    if item["role"] == "skill"
+                },
+            )
+            self.assertNotIn(
+                "skills-lock.json", {item["path"] for item in receipt["outputs"]}
+            )
+            # Both selected clients get their root entry.
+            self.assertIn(
+                b"@.concorde/protocol/principles.md",
+                (target / "CLAUDE.md").read_bytes(),
+            )
+            self.assertIn(b"Read and follow", (target / "AGENTS.md").read_bytes())
+
+    @verifies("scenario.distribution.install-skills-cli")
+    def test_skills_cli_failure_rolls_back_the_installation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, ["codex"]
+            )
+            with (
+                mock.patch.dict(os.environ, {"FAKE_NPX_FAIL": "1"}),
+                self.assertRaisesRegex(
+                    installer.InstallError, "Agent Skills CLI failed"
+                ),
+            ):
+                installer.apply_plan(target, self.package, ["codex"], actions, desired)
+            self.assertFalse((target / ".concorde/install.json").exists())
+            self.assertFalse((target / ".concorde/.venv").exists())
+            self.assertEqual(list(target.rglob("*")), [])
+
+    @verifies("scenario.distribution.install-skills-cli")
+    def test_update_retires_installer_owned_skill_projections_before_the_cli_runs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            # An earlier installer owned the Skill files itself; its receipt still lists them.
+            legacy = target / ".claude/skills/concorde-validate/SKILL.md"
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text("legacy installer projection\n", encoding="utf-8")
+            receipt_path = target / ".concorde/install.json"
+            receipt_path.parent.mkdir(parents=True)
+            receipt_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "outputs": [
+                            {
+                                "path": ".claude/skills/concorde-validate/SKILL.md",
+                                "role": "skill",
+                                "sha256": installer._sha256(legacy.read_bytes()),
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, ["claude"]
+            )
+            superseded = next(
+                item
+                for item in actions
+                if item["path"] == legacy.relative_to(target).as_posix()
+            )
+            self.assertEqual(
+                ("remove", "superseded"), (superseded["action"], superseded["role"])
+            )
+            installer.apply_plan(target, self.package, ["claude"], actions, desired)
+            # The legacy file and its emptied directories are gone before the CLI places its own
+            # copy there, so the CLI finds no foreign directory in its way.
             self.assertTrue(
                 (target / ".claude/skills/concorde-validate/SKILL.md").is_file()
             )
+            self.assertNotEqual(
+                b"legacy installer projection\n",
+                (target / ".claude/skills/concorde-validate/SKILL.md").read_bytes(),
+            )
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            self.assertFalse(
+                any(item["role"] == "skill" for item in receipt["outputs"])
+            )
+            self.assertEqual(["claude-code"], receipt["skills"]["agents"])
 
     @verifies("scenario.distribution.install-apply")
     def test_update_removes_only_unchanged_owned_legacy_operation_paths(self):
@@ -620,7 +788,7 @@ class NativeInstallerTests(unittest.TestCase):
             receipt_path.parent.mkdir(exist_ok=True)
             receipt_path.write_text(json.dumps(receipt))
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             removed = {item["path"] for item in actions if item["action"] == "remove"}
             self.assertEqual(
@@ -630,7 +798,7 @@ class NativeInstallerTests(unittest.TestCase):
                     ".concorde/framework/examples/standard_dev_loop.py",
                 },
             )
-            installer.apply_plan(target, self.package, "codex", actions, desired)
+            installer.apply_plan(target, self.package, ["codex"], actions, desired)
             self.assertFalse(legacy.exists())
             self.assertFalse(examples.exists())
 
@@ -643,7 +811,7 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             original = installer.tempfile.NamedTemporaryFile
             calls = 0
@@ -660,7 +828,7 @@ class NativeInstallerTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(OSError, "injected write failure"):
                     installer.apply_plan(
-                        target, self.package, "codex", actions, desired
+                        target, self.package, ["codex"], actions, desired
                     )
             self.assertEqual(list(target.rglob("*")), [])
 
@@ -669,7 +837,7 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary).resolve()
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             real_run = managed_runtime._run
             checks: list[list[str]] = []
@@ -680,7 +848,7 @@ class NativeInstallerTests(unittest.TestCase):
                 return real_run(command, **kwargs)
 
             with mock.patch.object(managed_runtime, "_run", side_effect=record):
-                installer.apply_plan(target, self.package, "codex", actions, desired)
+                installer.apply_plan(target, self.package, ["codex"], actions, desired)
             python = managed_runtime.runtime_python(target / ".concorde/.venv")
             self.assertEqual(
                 [command[2] for command in checks],
@@ -695,7 +863,7 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary).resolve()
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
             real_run = managed_runtime._run
 
@@ -712,7 +880,7 @@ class NativeInstallerTests(unittest.TestCase):
                     installer.InstallError, "outside the managed runtime"
                 ),
             ):
-                installer.apply_plan(target, self.package, "codex", actions, desired)
+                installer.apply_plan(target, self.package, ["codex"], actions, desired)
             self.assertEqual(list(target.rglob("*")), [])
 
     @verifies("scenario.distribution.launcher-managed-runtime")
@@ -720,9 +888,9 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary).resolve()
             actions, desired, _ = installer.installation_plan(
-                target, self.package, "codex"
+                target, self.package, ["codex"]
             )
-            installer.apply_plan(target, self.package, "codex", actions, desired)
+            installer.apply_plan(target, self.package, ["codex"], actions, desired)
             launcher = target / ".concorde/framework/scripts/run-operation.py"
             runtime = target / ".concorde/.venv"
 

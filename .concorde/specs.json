@@ -728,6 +728,7 @@
         "operations/__init__.py",
         "operations/configure.py",
         "pi/extensions/concorde-session.ts",
+        "prompts/skills/",
         "prompts/workflow-host/",
         "pyproject.toml",
         "scripts/concorde.ps1",

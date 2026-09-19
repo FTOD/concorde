@@ -20,9 +20,12 @@ step after installation.
 ## A normal installation
 
 Start by previewing the proposed installation into the intended project. Inspect the target and
-owned changes before applying. The installer deploys Framework tools, the chosen client's
-projection (Skills for Claude Code or Codex, the session extension shim for Pi) and the Protocol
-copy, and prepares the required runtime. It preserves project Specs,
+owned changes before applying. The installer deploys Framework tools and the Protocol copy,
+prepares the required runtime, and installs each chosen client's projection: for the Pi coding
+agent the session extension shim, for Claude Code and Codex the Skills, which it does not copy
+itself but has the Agent Skills CLI (`npx skills`, pinned by the package) place from the deployed
+framework copy, in that tool's own layout with its own `skills-lock.json`. Several clients may be
+chosen at once, and each gets its root instruction entry. The installer preserves project Specs,
 configuration and unrelated files. The Skills name the launcher with the ambient `python3`; once
 installed, the launcher runs itself inside the managed runtime, so that interpreter needs no
 Concorde dependencies. Then initialize the project's own registry and first Spec, and
@@ -37,7 +40,10 @@ Spec authoring establishes the actual promises.
 An update compares the receipt with current bytes. A local change to an installer-owned output is a
 conflict, not permission to discard it. Project-owned content remains outside that replacement scope.
 A failed installation transaction attempts to recover its owned changes rather than present partial
-state as a completed installation.
+state as a completed installation. The Skills the Agent Skills CLI placed are not owned outputs:
+an update runs the CLI again so it refreshes them from the updated framework copy. Each run names
+the complete client selection; a client left out loses its root entry, while the Skills the CLI
+placed for it stay until you remove them with `npx skills remove`.
 
 An installed Protocol update does not silently accept new rules for the project. Review any required
 Spec migration, then explicitly accept the new binding. This separates receiving software from agreeing

@@ -1,10 +1,12 @@
 # Build
 
 `build(project_root, integration="all", *, framework_prefix="")` renders Agent instructions,
-integration-specific Skill files (Codex `.agents/skills` and Claude `.claude/skills`),
-`generated/langgraph.json`, the rule assets (`generated/protocol/principles.md`, its kind
-definition, and `generated/protocol/schemas.json`) deterministically from
-`operations/`, `protocol/`, `prompts/`, `skills/` and the operation contracts. The principles asset
+this checkout's integration-specific Skill projections (Codex `.agents/skills` and Claude
+`.claude/skills`), `generated/langgraph.json`, the rule assets (`generated/protocol/principles.md`,
+its kind definition, and `generated/protocol/schemas.json`) deterministically from
+`operations/`, `protocol/`, `prompts/` (the Skill sources are `prompts/skills/<name>.md`) and the
+operation contracts. The tracked published Skills under `skills/` come from the same sources
+through the separate `skills --write` step, explained below. The principles asset
 bundles the Protocol principles, Spec management (including Spec and Context) and Required format
 chapters with the separate Framework execution profile. The kind asset contains the Module chapter
 and its canonical templates. Framework configuration, phase authority and Mermaid authoring
@@ -31,14 +33,29 @@ runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.
 
 ## Rendering and freshness
 
-Distribution owns a Skill's authored source under `skills/`, shared invocation instructions under
-`prompts/workflow-host/`, and rendered integration-specific installation. Each public Skill maps to
-one public Operation; non-public operations have no Skill. The external runtime reads
-the Skill and submits the declared typed request through `scripts/run-operation.py`; the [Development Module](../development/module.md)
-admits and executes that request. That entry path is project-relative, so a rendered Skill
-carries no worktree identity: it binds to the worktree in which the developer's runtime executes
-it, and Development derives the project root from that working directory. Building or installing
-a Skill does not execute its Operation or add it to a Concorde Agent's Harness. Operation behavior remains with its providing Module.
+Distribution owns a Skill's authored source under `prompts/skills/`, shared invocation
+instructions under `prompts/workflow-host/`, the published Skills under `skills/` and this
+checkout's rendered integration-specific projections. Each public Skill maps to one public
+Operation; non-public operations have no Skill. The external runtime reads the Skill and submits
+the declared typed request through `scripts/run-operation.py`; the
+[Development Module](../development/module.md) admits and executes that request. That entry path
+is project-relative, so a rendered Skill carries no worktree identity: it binds to the worktree in
+which the developer's runtime executes it, and Development derives the project root from that
+working directory. Building or installing a Skill does not execute its Operation or add it to a
+Concorde Agent's Harness. Operation behavior remains with its providing Module.
+
+The checkout's own projections are untracked build output, written by `build` with the checkout's
+launcher and, for Claude Code, hidden from the model. The published Skills are different: they are
+what the Agent Skills CLI (`npx skills add`) installs, from this repository or from the framework
+copy an installer deployed, and that CLI copies a repository's `skills/` verbatim. So `skills/`
+holds one client-neutral rendering per public Operation, bound to an installed framework's launcher
+`.concorde/framework/scripts/run-operation.py` and carrying only the standard front matter, and it
+is tracked. Like the tracked Protocol copy, it changes only through an explicit step,
+`python3 scripts/concorde.py skills --write`, committed together with the source it renders;
+`skills --check`, `build --check` and package validation report a stale, missing or retired
+published Skill, and `build` itself never writes there. A build with a framework prefix, the build
+an installer runs for a project, renders no Skill projection at all for the same reason. See the
+[publish contract](scenarios.md#scenario.distribution.skills-publish).
 
 For the Pi coding agent the build renders no Skills but one shim, `.pi/extensions/concorde-session.ts`,
 from the same Skill sources: it imports the tracked Pi session extension and embeds every public

@@ -2,8 +2,8 @@
 """Executable boundary for Concorde's public skills (proposal section 6.3).
 
 Only skills are directly invocable. This launcher accepts exactly one of the public skill names,
-maps it to its operation module through the `operation:` front-matter field of
-`skills/<name>/SKILL.md`, and runs the shared trusted stdin/envelope handling
+maps it to its operation module through the `operation:` front-matter field of its Skill source
+`prompts/skills/<name>.md`, and runs the shared trusted stdin/envelope handling
 (`concorde.development.operation_host.json_main`) through that module's own `run`. Stage
 operations have no launcher and no direct invocation. `<skill-name> --runtime-check` is a
 lightweight offline smoke check used by the managed runtime provisioner: it loads the operation
@@ -94,7 +94,7 @@ def _enter_managed_runtime(arguments: list[str]) -> int | None:
 def _declared_operation(package_root: Path, skill_name: str) -> str:
     from concorde.spec.frontmatter import FrontMatterError, parse_document
 
-    source = package_root / "skills" / skill_name / "SKILL.md"
+    source = package_root / "prompts" / "skills" / f"{skill_name}.md"
     try:
         metadata, _ = parse_document(
             source.read_text(encoding="utf-8"), source.as_posix()

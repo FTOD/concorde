@@ -1,25 +1,16 @@
 ---
 name: concorde-deliver
 description: "Operation: stage a verified change, remove its worktree, and explicitly merge from the primary session."
-argument-hint: "Optional operation guidance"
-compatibility: "Requires a Concorde project"
-metadata:
-  author: "concorde"
-  source: "prompts/skills/concorde-deliver.md"
-  kind: "skill"
-  operation: "deliver"
-  entrypoint: "scripts/run-operation.py concorde-deliver"
-user-invocable: true
-disable-model-invocation: true
+operation: deliver
 ---
+
 # concorde-deliver
 
 Invoke delivery from an agent whose initial working directory is either the selected source
 worktree or the primary Git worktree. A third-worktree or nested invocation cannot deliver this
 change. Keep the session and its loaded Skills bound to their original participant.
 
-Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-deliver`. Its exact fields
-are type_id, schema_version:3, operation_id:"concorde-deliver", mode:"execute" or "describe-policy",
+@include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-deliver
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1),
 and input (concorde-deliver-request@1). Supply the selected change_id from the primary worktree's
 `.concorde/worktrees.json` inventory or its saved delivery receipt. Optional target/task metadata
@@ -51,72 +42,3 @@ another branch merge. Retry an already completed primary merge without merging t
 removal, retry from the primary session using the receipt's change_id. Conflicts or failed checks
 preserve the candidate or delivered branch for repair in a new change worktree. Report the returned
 branch, outcome, cleanup status and whether final primary merging remains pending faithfully.
-
-## Input TypedValue schema
-
-This complete schema is the invocation's input field. It does not grant project reads.
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "type_id": {
-      "const": "concorde-deliver-request"
-    },
-    "schema_version": {
-      "type": "integer",
-      "const": 1
-    },
-    "data": {
-      "$ref": "#/$defs/concorde-deliver-request"
-    }
-  },
-  "required": [
-    "type_id",
-    "schema_version",
-    "data"
-  ],
-  "additionalProperties": false,
-  "$defs": {
-    "concorde-deliver-request": {
-      "type": "object",
-      "properties": {
-        "change_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "target_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "task": {
-          "type": "string",
-          "minLength": 1
-        },
-        "focus_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "constraints": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "keep_worktree": {
-          "type": "boolean"
-        },
-        "merge_primary": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "change_id"
-      ],
-      "additionalProperties": false
-    }
-  }
-}
-```

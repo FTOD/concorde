@@ -5,7 +5,7 @@ argument-hint: "Optional operation guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-dev-loop/SKILL.md"
+  source: "prompts/skills/concorde-dev-loop.md"
   kind: "skill"
   operation: "dev_loop"
   entrypoint: "scripts/run-operation.py concorde-dev-loop"
