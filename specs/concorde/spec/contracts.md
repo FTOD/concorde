@@ -308,20 +308,28 @@ failures are failed, with no successful output.
 `concorde-init` and `concorde-configure` run this Graph; their behavior is owned by this Module's
 [initialization](initialize.md) and the [Distribution Module](../distribution/module.md).
 
-**State.** `route`, `output` (the typed response), `result`.
+**State.** `route` (selected node name), `output` (typed initialization/configuration response),
+`result` (guard failure envelope or None), all with replacement updates. The operation name,
+action, configuration, proposal, project roots and current files are Host-bound inputs, not
+Graph channels. `none` below means no Graph-channel read. Every admitted guard writes `result`;
+on exception it also sets `route=__end__`, possibly before a normal output exists.
 
 **Nodes.** All three leaves are deterministic Operations; none calls a model.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `select_action` | Deterministic: the operation and action select one deterministic operation; describe-policy is refused because proposals are the preview. | request | route |
-| `configure` | Deterministic: writes the typed operation configuration into the project settings. | configuration | applied configuration |
-| `propose` | Deterministic: the initialization proposal with its base digest and files. | name, configuration | proposal |
-| `apply` | Deterministic: applies an unchanged proposal atomically. | proposal | applied files |
+| `select_action` | Reads Host-bound operation/action; refuses describe-policy because proposals are the preview. | none | route, result |
+| `configure` | Writes the Host-bound typed configuration into project settings, optionally rebinding explicitly accepted Protocol bytes. | none | route, output, result |
+| `propose` | Uses Host-bound name/configuration to produce the initialization proposal, base digest and files without applying it. | none | route, output, result |
+| `apply` | Applies the Host-bound unchanged proposal atomically and returns applied paths. | none | route, output, result |
 
 **Edges.** `select_action` writes `route` from the operation and its action, and a conditional
 edge follows it to `configure`, `propose` or `apply`; a refused describe-policy request or an error
-ends the Graph. Each leaf ends the Graph with its typed response.
+ends the Graph. The conditional edge reads `state["route"]`: configure takes precedence when
+that Operation was requested, otherwise init's `action=apply` selects apply and `propose` selects
+propose. Each leaf writes `route=__end__` and its typed response, but its outgoing edge is
+unconditional. Proposing and applying are separate requests, not an automatic propose-to-apply
+edge or a checkpointed human-approval interrupt.
 
 ```mermaid
 flowchart TB
@@ -329,16 +337,16 @@ flowchart TB
     accTitle: Project Graph
     accDescr: The operation selects configuration, an initialization proposal or its application; each ends the Graph with its typed response.
     __start__["start"]
-    select_action["select_action<br/>in: request<br/>out: route"]
-    configure["configure<br/>in: configuration<br/>out: applied configuration"]
-    propose["propose<br/>in: name, configuration<br/>out: proposal"]
-    apply["apply<br/>in: proposal<br/>out: applied files"]
+    select_action["select_action<br/>in: none<br/>out: route, result"]
+    configure["configure<br/>in: none<br/>out: route, output, result"]
+    propose["propose<br/>in: none<br/>out: route, output, result"]
+    apply["apply<br/>in: none<br/>out: route, output, result"]
     __end__["end"]
     __start__ --> select_action
-    select_action -->|concorde-configure| configure
-    select_action -->|concorde-init propose| propose
-    select_action -->|concorde-init apply| apply
-    select_action -->|error| __end__
+    select_action -->|route = configure: concorde-configure| configure
+    select_action -->|route = propose: concorde-init propose| propose
+    select_action -->|route = apply: concorde-init apply| apply
+    select_action -->|route = __end__: guard error including describe-policy| __end__
     configure --> __end__
     propose --> __end__
     apply --> __end__

@@ -181,37 +181,65 @@ owning Modules. Each Graph Spec follows the
 Nodes and Edges are stated in turn, and its diagram is bound to its compiled Graph by `%% graph:`
 and kept equal to it by the configured Graph Spec check.
 
+The following index maps public entry points to their internal Graphs without duplicating their
+executable diagrams. Every entry first uses admission and dispatch; target-bound entries also
+use target admission, with discovery only where that Operation declares it.
+
+| Public entry | Internal flow after dispatch |
+| --- | --- |
+| `concorde-main` (`ask`, `design-topology`) | [Query and discovery](../query-routing/execution-reference.md#query-and-routing-query-graph-query-graph). |
+| `concorde-main` (`accept-topology`, `apply-topology`) | [Topology preparation](../topology/execution-reference.md#topology-topology-preparation-graph-topology-graph) and [application](../topology/execution-reference.md#topology-topology-application-graph-topology-apply-graph), separately invoked. |
+| `concorde-specify-loop` | [Specification Graph](../specify-loop/execution-reference.md#specify-loop-specification-graph-specify-graph). |
+| `concorde-dev-loop` | [Development Graph](../dev-loop/execution-reference.md#development-development-graph-development-graph), calling specification and [planning](../planning/execution-reference.md#plan-planning-graph-plan-graph); composite implementation calls [coordination and stabilization](../implementation/execution-reference.md#graphs-component-coordination-graph-coordination-graph). |
+| `concorde-issues` | [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph); solve may call development, authoring and its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph). |
+| `concorde-spec-review`, `concorde-code-review` | The review leaf scopes independent invocations; sequential scope work uses the [batch Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph), not a separate repair loop. |
+| `concorde-init`, `concorde-configure` | [Project Graph](../spec/contracts.md#graphs-project-graph-project-graph). |
+| `concorde-validate`, `concorde-deliver` | Deterministic dispatch leaves; no separate multi-node domain Graph is implied by their internal functions. |
+
+Model-backed leaves use the [Operation node](../harness/execution-reference.md#host-operation-node-operation-node)
+contract. Private adapters (`specify`, `plan`, `tasks`, `implement`, `context_solve`) are reached
+only through declared composition; appearing in the union dispatch diagram does not expose a
+public entry. Studio wraps a public entry with invocation validation and displays these same
+operation/subgraph factories, rather than defining another business workflow.
+
 #### Operation dispatch Graph (`dispatch_graph`) {#graphs-operation-dispatch-graph-dispatch-graph}
 
 **State.** `route` (the leaf or subgraph selected for the admitted operation), `output` (the
 operation's typed response), `relayed` (the complete result envelope a candidate worktree's
 launcher returned for a relayed mutation, which the admission Graph adopts as its own result),
-`result`.
+`result` (guard failure or None). These channels use replacement updates. Operation, request,
+configuration, bound invocation and relay target are Host-held, not dispatch State. `none` below
+means a node reads only those Host inputs. `?` means a conditional channel or update. Guards
+write `result` on every guarded step and set `route=__end__` on errors. For registered subgraphs,
+`in`/`out` list channels crossing the parent boundary; their own Graph Specs give node-level
+reads/writes. Child-only counters, decisions and artifact reducers do not become parent channels.
+In particular, development/specification accumulate artifacts internally and export them inside
+`output`, not as a dispatch `artifacts` channel.
 
 **Nodes.** Each leaf below is the entry of one Operation, or of one action of `concorde-main`.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `select_operation` | Deterministic: the admitted operation selects its entry leaf or target admission; a mutation admitted in the primary worktree selects the relay. | admitted task, relay target | route |
-| `relay` | Deterministic: runs the same invocation through the prepared candidate worktree's launcher and adopts its complete result envelope. | relay target, invocation | relayed result |
-| `prepare_target` | The target admission Graph (below) as a subgraph: binds or discovers the owning Module and selects the bound leaf. | admitted task, change | route, bound invocation |
-| `deliver` | Deterministic: worktree delivery under the repository lock. | change, worktrees | delivery receipt |
-| `project` | The [project Graph](../spec/contracts.md#graphs-project-graph-project-graph): initialization proposal or application, or configuration. | request | proposal or applied files |
-| `answer` | The query Graph with the answerer. | question, Module contexts | answer |
-| `design_topology` | The query Graph with the topology-designer. | task, Module contexts, registry | topology design |
-| `prepare_topology` | The topology preparation Graph. | accepted design | prepared application |
-| `apply_topology` | The topology application Graph. | prepared application | applied topology |
-| `review` | Deterministic scope over Review invocations: owner and changed-file peers. | bound target, changes | review results |
-| `describe_policy` | Deterministic: the exact grants each stage would receive, without launching an Agent. | bound target | policy descriptions |
-| `issues` | The Issue management and solving Graph. | bound target, selected Issue | Issue result |
-| `specify` | Spec Authoring: one spec-author invocation and the affected-consumer reviews. | bound target, Spec context | replaced Spec documents |
-| `plan` | The planning Graph. | bound target, Spec context | plan |
-| `tasks` | One task-author invocation and task admission. | plan, reserved ids, review feedback | tasks |
-| `implement` | One programmer `implementation` invocation, or component coordination. | tasks, implementation files | completed tasks |
-| `validate` | Deterministic checks and readiness gates for the candidate. | candidate | checks, readiness |
-| `development_loop` | The development Graph. | bound target, change | ready candidate or stop |
-| `specify_loop` | The specification Graph. | bound target, change | Spec completion |
-| `context_solve` | One context-assessor invocation. | bound target, Spec context | sufficiency or gaps |
+| `select_operation` | Selects from the Host-bound operation/action, giving relay precedence when a candidate relay target exists. | none | route, result |
+| `relay` | Calls the candidate's launcher with the Host-bound invocation and adopts its full envelope. | none | relayed, result |
+| `prepare_target` | Registered target subgraph: discovers/restores owner, stores the bound invocation in the Host and selects the leaf. | route?, output?, result? | route, output?, result |
+| `deliver` | Deterministic delivery under the repository lock, using Host-bound change/worktrees. | none | output, result |
+| `project` | Registered project subgraph using the Host-bound initialization/configuration request. | route?, output?, result? | route, output?, result |
+| `answer` | Registered query subgraph with the answerer and Host-bound question/context. | route?, output?, result? | route, output?, result |
+| `design_topology` | Registered query subgraph with topology-designer and Host-bound task/context/registry. | route?, output?, result? | route, output?, result |
+| `prepare_topology` | Registered preparation subgraph using the Host-bound accepted design. | route?, output?, result? | route, output?, result |
+| `apply_topology` | Registered application subgraph using the Host-bound prepared application. | route?, output?, result? | route, output?, result |
+| `review` | Reviews the Host-bound owner and affected peers in separate contexts. | none | output, result |
+| `describe_policy` | Describes grants for the bound invocation without launching workers. | none | output, result |
+| `issues` | Registered Issue subgraph using the Host-bound action and selection. | route?, output?, result? | route, output?, result |
+| `specify` | Calls Spec Authoring and affected-consumer reviews for the bound invocation; applies admitted replacements. | none | output, result |
+| `plan` | Registered planning subgraph using the bound task/Spec context and candidate. | route?, output?, result? | route, output?, result |
+| `tasks` | Calls task authoring with stored plan, reserved IDs and repair feedback; admits tasks. | none | output, result |
+| `implement` | Calls programmer or component coordination with stored tasks and granted files. | none | output, result |
+| `validate` | Checks the bound candidate and readiness gates. | none | output, result |
+| `development_loop` | Registered development subgraph using the bound target/change; its route channel is not used for its Command transitions. | route?, output?, result? | route?, output?, result |
+| `specify_loop` | Registered specification subgraph using the bound target/change; no shared route channel. | output?, result? | output?, result |
+| `context_solve` | Calls the context assessor for the bound task and complete Spec. | none | output, result |
 
 **Edges.** `select_operation` writes `route`, and a conditional edge follows it to one entry leaf:
 the relay for a mutation admitted in the primary worktree, delivery, the project Graph, one of
@@ -219,7 +247,11 @@ main's four actions, or target admission for every target-bound operation; an er
 Graph. `prepare_target` writes `route` again once the owner is bound and selects that operation's
 leaf, or ends the Graph when binding is blocked. Every leaf ends the Graph with its typed output.
 The Studio and CLI compile one dispatch Graph per public operation containing only the leaves that
-operation can reach; the diagram shows the complete topology they are drawn from.
+operation can reach; the diagram shows the complete topology they are drawn from. Both branching
+edges read exactly `state["route"]`; edge labels below explain how the source sets that channel.
+Review dispatch takes precedence over describe-policy so the review provider describes its own
+policy. A target-binding business stop writes `output` and `route=__end__`; a guard failure writes
+`result` and the same route. Leaf completion itself is not proof of a successful business outcome.
 
 ```mermaid
 flowchart TB
@@ -227,26 +259,26 @@ flowchart TB
     accTitle: Operation dispatch Graph
     accDescr: The admitted operation selects one entry leaf, or target admission first and then one bound leaf; every leaf ends the Graph with its typed output.
     __start__["start"]
-    select_operation["select_operation<br/>in: admitted task, relay target<br/>out: route"]
-    relay["relay<br/>in: relay target, invocation<br/>out: relayed result"]
-    prepare_target["prepare_target<br/>in: admitted task, change<br/>out: route, bound invocation"]
-    deliver["deliver<br/>in: change, worktrees<br/>out: delivery receipt"]
-    project["project<br/>in: request<br/>out: proposal or applied files"]
-    answer["answer<br/>in: question, Module contexts<br/>out: answer"]
-    design_topology["design_topology<br/>in: task, Module contexts, registry<br/>out: topology design"]
-    prepare_topology["prepare_topology<br/>in: accepted design<br/>out: prepared application"]
-    apply_topology["apply_topology<br/>in: prepared application<br/>out: applied topology"]
-    review["review<br/>in: bound target, changes<br/>out: review results"]
-    describe_policy["describe_policy<br/>in: bound target<br/>out: policy descriptions"]
-    issues["issues<br/>in: bound target, selected Issue<br/>out: Issue result"]
-    specify["specify<br/>in: bound target, Spec context<br/>out: replaced Spec documents"]
-    plan["plan<br/>in: bound target, Spec context<br/>out: plan"]
-    tasks["tasks<br/>in: plan, reserved ids, review feedback<br/>out: tasks"]
-    implement["implement<br/>in: tasks, implementation files<br/>out: completed tasks"]
-    validate["validate<br/>in: candidate<br/>out: checks, readiness"]
-    development_loop["development_loop<br/>in: bound target, change<br/>out: ready candidate or stop"]
-    specify_loop["specify_loop<br/>in: bound target, change<br/>out: Spec completion"]
-    context_solve["context_solve<br/>in: bound target, Spec context<br/>out: sufficiency or gaps"]
+    select_operation["select_operation<br/>in: none<br/>out: route, result"]
+    relay["relay<br/>in: none<br/>out: relayed, result"]
+    prepare_target["prepare_target<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    deliver["deliver<br/>in: none<br/>out: output, result"]
+    project["project<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    answer["answer<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    design_topology["design_topology<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    prepare_topology["prepare_topology<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    apply_topology["apply_topology<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    review["review<br/>in: none<br/>out: output, result"]
+    describe_policy["describe_policy<br/>in: none<br/>out: output, result"]
+    issues["issues<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    specify["specify<br/>in: none<br/>out: output, result"]
+    plan["plan<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    tasks["tasks<br/>in: none<br/>out: output, result"]
+    implement["implement<br/>in: none<br/>out: output, result"]
+    validate["validate<br/>in: none<br/>out: output, result"]
+    development_loop["development_loop<br/>in: route?, output?, result?<br/>out: route?, output?, result"]
+    specify_loop["specify_loop<br/>in: output?, result?<br/>out: output?, result"]
+    context_solve["context_solve<br/>in: none<br/>out: output, result"]
     __end__["end"]
     __start__ --> select_operation
     select_operation -->|mutation admitted in the primary worktree| relay
@@ -259,7 +291,7 @@ flowchart TB
     select_operation -->|target-bound operation| prepare_target
     select_operation -->|error| __end__
     prepare_target -->|concorde-spec-review or concorde-code-review| review
-    prepare_target -->|describe-policy mode| describe_policy
+    prepare_target -->|describe-policy mode, non-review operation| describe_policy
     prepare_target -->|concorde-issues| issues
     prepare_target -->|concorde-specify| specify
     prepare_target -->|concorde-plan| plan
@@ -293,21 +325,30 @@ flowchart TB
 #### Target admission Graph (`target_graph`) {#graphs-target-admission-graph-target-graph}
 
 **State.** `route`, `occurrence`, `routes` and `decision` (the discovery subgraph's counters and
-routed selection), `output`, `result`.
+routed selection), `output`, `result`, all with replacement updates. `occurrence` is an integer;
+`routes` is a list; `decision` is result data or None. The restored task, bound invocation and
+candidate ownership are Host-held effects, not State channels. Initializing discovery writes
+`occurrence=0, routes=[], decision=None`; the already-bound path writes only `route` plus the
+guard's `result`. The subgraph boundary admits discovery's five shared channels; `output` is
+written only when binding turns a discovery business stop into the Operation response.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `initialize_target` | Deterministic: a recorded change restores its owner and intent; a trusted routed target is checked against the request; an unbound discovering operation enters discovery. | admitted task, change | route, restored task |
-| `discover` | The discovery Graph as a subgraph (the router). | task, entry Module context | routes, decision |
-| `bind_target` | Deterministic: the single route or restored owner binds the candidate, and the bound leaf is selected. | routes, task | bound invocation, route |
+| `initialize_target` | Restores Host-bound owner/intent or checks the trusted route; initializes discovery channels only for an unbound discovering request. | none | route, occurrence?, routes?, decision?, result |
+| `discover` | Registered discovery subgraph (router), using the Host-bound task and entry Module context. | occurrence?, routes?, decision?, route?, result? | occurrence, routes, decision, route, result |
+| `bind_target` | Reads discovery selection when discovery ran; otherwise uses restored Host owner. Binds the invocation and selects the leaf, or writes a business-stop response. | routes?, decision? | route, output?, result |
 
 **Edges.** `initialize_target` writes `route`: an owner that is already bound or recorded goes
 straight to `bind_target`, an unbound discovering request enters `discover`, and an error ends the
-Graph. After the discovery subgraph a conditional edge reads `result`: a gap, a missing route or an
-exhausted limit ends the Graph, and one selected route continues to `bind_target`, which always
-ends it. A target-bound operation that never discovers compiles this Graph without `discover`.
+Graph. After discovery, the conditional edge tests the truthiness of `result`, not route count
+or the business outcome: only a guard failure ends the Graph there. Otherwise `bind_target`
+interprets `routes` and `decision`. A non-None decision produces a business-stop `output` and
+`route=__end__`; absent a decision, exactly one route is required or binding raises
+`ambiguous_route`. Successful binding stores the invocation in the Host and writes the parent's
+leaf name to `route`. `bind_target` always ends this child Graph; the dispatch parent then reads
+that route. A target-bound operation that never discovers compiles without `discover`.
 
 ```mermaid
 flowchart TB
@@ -315,16 +356,16 @@ flowchart TB
     accTitle: Target admission Graph
     accDescr: A request with a bound or recorded owner is bound directly; an unbound request first runs router discovery, and the selected route binds the owner.
     __start__["start"]
-    initialize_target["initialize_target<br/>in: admitted task, change<br/>out: route, restored task"]
-    discover["discover<br/>in: task, entry Module context<br/>out: routes, decision"]
-    bind_target["bind_target<br/>in: routes, task<br/>out: bound invocation, route"]
+    initialize_target["initialize_target<br/>in: none<br/>out: route, occurrence?, routes?, decision?, result"]
+    discover["discover<br/>in: occurrence?, routes?, decision?, route?, result?<br/>out: occurrence, routes, decision, route, result"]
+    bind_target["bind_target<br/>in: routes?, decision?<br/>out: route, output?, result"]
     __end__["end"]
     __start__ --> initialize_target
-    initialize_target -->|owner bound or recorded| bind_target
-    initialize_target -->|no owner: discover| discover
-    initialize_target -->|error| __end__
-    discover -->|one route selected| bind_target
-    discover -->|no route, gap or limit| __end__
+    initialize_target -->|route = bind_target: bound or recorded owner| bind_target
+    initialize_target -->|route = discover: unbound discovering request| discover
+    initialize_target -->|route = __end__: guard error| __end__
+    discover -->|result falsey: interpret routes or business stop| bind_target
+    discover -->|result truthy: guard error or limit| __end__
     bind_target --> __end__
 ```
 

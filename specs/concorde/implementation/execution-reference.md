@@ -88,24 +88,32 @@ State, Nodes and Edges are stated in turn, and its diagram is bound to its compi
 
 A composite Module's implementation runs this Graph when its tasks name submodules or used Modules.
 
-**State.** `output` (a blocking result, or none while the Graph advances), `route`; the candidate's
-target record carries the coordination table (per component: task, Spec and implementation
-status, digests, gaps) and the local task list.
+**State.** `output` (a typed blocking response, or None while the Graph advances; the final node
+writes the completion response), `route` (shared schema field, unused by coordination). Both use
+replacement updates. The candidate's target record carries the coordination table (component
+tasks, Spec/implementation status, digests and gaps) and local tasks. The admitted `run`, component
+list, local task list and accumulated review artifacts live in the Host/node closures. These are
+not Graph channels, even though the implementation calls the durable target record `state`.
+`none` below means no Graph-channel read, not an absence of those external inputs/effects.
 
 **Nodes.** The work-item nodes run the [Sequential work items Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph).
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `reconcile_specs` | Sequential work items: each component runs `concorde-specify` from its own contract until its Spec is current. | component tasks, component Specs | reconciled Specs, coordination table |
-| `validate_specs` | Deterministic repository validation across every participant's contract. | Spec collections | validation, phase |
-| `implement_components` | Sequential work items: each component runs its own development Graph (`specify=false`) in this candidate. | component tasks, component grants | component implementations, review artifacts |
-| `implement_local` | One programmer `implementation` invocation for the composite's own tasks. | local tasks, local files | completed local tasks |
-| `finalize_components` | The stabilization Graph (below): every participant's final checks and reviews until the shared candidate is stable. | candidate | component revisions, evidence |
-| `record_completion` | Deterministic: tasks marked complete, component revisions and implementation digest recorded. | coordination table | completed target record |
+| `reconcile_specs` | Calls the batch Graph over Host-bound component tasks; runs/reuses owner-local authoring and updates durable coordination records. | none | output |
+| `validate_specs` | Validates participant contracts and updates the durable phase; returns output=None on success or raises on incompatibility. | none | output |
+| `implement_components` | Calls the batch Graph: each component develops from its own grant with specify=false; retains review artifacts outside Graph State. | none | output |
+| `implement_local` | Runs/reuses the local programmer invocation and persists exact completed local tasks/digest. | none | output |
+| `finalize_components` | Calls stabilization below unless the Host defers component checks; records component revisions/evidence outside State. | none | output |
+| `record_completion` | Persists completed tasks, component revisions and implementation digest; returns the completion response with review artifact references. | none | output |
 
-**Edges.** After every step a conditional edge reads `output`: a step that recorded a blocking
-result ends the Graph with it, and a step that left `output` empty advances to the next step, so
-the steps run strictly in the order of the table. `record_completion` always ends the Graph.
+**Edges.** After every nonfinal step, the conditional edge tests `state.get("output") is not None`:
+a returned blocking response ends the Graph, while None advances. This is not a truthiness test.
+`record_completion` always ends the Graph with its successful response. Invalid contracts and
+other raised exceptions unwind to the enclosing admission guard; these helper nodes have no
+`result` channel and do not convert exceptions into the displayed output-based branches.
+When the Host defers final checks, `finalize_components` writes None without running stabilization;
+this continuation records a draft, not final shared-candidate verification.
 
 ```mermaid
 flowchart TB
@@ -113,46 +121,52 @@ flowchart TB
     accTitle: Component coordination Graph
     accDescr: Component Specs are reconciled and validated, components and local code are implemented, and every participant is finalized until stable before completion is recorded; a blocked step ends the Graph with that result.
     __start__["start"]
-    reconcile_specs["reconcile_specs<br/>in: component tasks, component Specs<br/>out: reconciled Specs, coordination table"]
-    validate_specs["validate_specs<br/>in: Spec collections<br/>out: validation, phase"]
-    implement_components["implement_components<br/>in: component tasks, component grants<br/>out: component implementations, review artifacts"]
-    implement_local["implement_local<br/>in: local tasks, local files<br/>out: completed local tasks"]
-    finalize_components["finalize_components<br/>in: candidate<br/>out: component revisions, evidence"]
-    record_completion["record_completion<br/>in: coordination table<br/>out: completed target record"]
+    reconcile_specs["reconcile_specs<br/>in: none<br/>out: output"]
+    validate_specs["validate_specs<br/>in: none<br/>out: output"]
+    implement_components["implement_components<br/>in: none<br/>out: output"]
+    implement_local["implement_local<br/>in: none<br/>out: output"]
+    finalize_components["finalize_components<br/>in: none<br/>out: output"]
+    record_completion["record_completion<br/>in: none<br/>out: output"]
     __end__["end"]
     __start__ --> reconcile_specs
-    reconcile_specs -->|every component Spec current| validate_specs
-    reconcile_specs -->|component blocked| __end__
-    validate_specs -->|contracts consistent| implement_components
-    validate_specs -->|incompatible contracts| __end__
-    implement_components -->|components implemented| implement_local
-    implement_components -->|component blocked| __end__
-    implement_local -->|local tasks complete| finalize_components
-    implement_local -->|local work blocked| __end__
-    finalize_components -->|candidate stable| record_completion
-    finalize_components -->|verification failed| __end__
+    reconcile_specs -->|output is None| validate_specs
+    reconcile_specs -->|output is not None| __end__
+    validate_specs -->|output is None| implement_components
+    validate_specs -->|output is not None| __end__
+    implement_components -->|output is None| implement_local
+    implement_components -->|output is not None| __end__
+    implement_local -->|output is None| finalize_components
+    implement_local -->|output is not None| __end__
+    finalize_components -->|output is None: stable or checks deferred| record_completion
+    finalize_components -->|output is not None| __end__
     record_completion --> __end__
 ```
 
 #### Shared candidate stabilization Graph (`stabilization_graph`) {#graphs-shared-candidate-stabilization-graph-stabilization-graph}
 
-**State.** `output` (a failed participant's result), `route`; the enclosing coordination holds the
-participant set and a bounded remaining-round counter, because a later participant's repair can
-stale an earlier participant's evidence.
+**State.** `output` (a failed participant's typed response or None), `route` (`snapshot` or
+`__end__`), both using replacement updates. The enclosing closure holds the participant set,
+before-round implementation digest, finalized set and remaining-round counter, initially
+`1 + 2 * participant_count`. None of those is a Graph channel. A later participant's repair can
+stale an earlier participant's evidence, so the Host compares implementation digests each round.
+`snapshot` returns no channel update; the previous output/route values are retained until their
+next writer. All nodes obtain business inputs from the enclosing coordination.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `snapshot` | Deterministic: digest of every participant's implementation before this round; an exhausted round budget fails. | participant implementations | round digest |
-| `verify_components` | Sequential work items: each participant's final development Graph (`specify=false`, `finalize_components`) runs its checks and required reviews. | participant records | evidence, review artifacts |
-| `check_stability` | Deterministic: the candidate digest after verification equals the round digest. | round digest, participant implementations | route |
+| `snapshot` | Decrements the closure-held budget, captures the before-round digest and clears the finalized set; raises if no rounds remain. | none | none |
+| `verify_components` | Calls the batch Graph over Host-held participants; final development calls run checks/reviews and update durable evidence and closure-held artifacts. | none | output |
+| `check_stability` | Compares current participant implementation digest to the closure-held before-round digest; selects repeat or end. | none | route |
 
 **Edges.** `snapshot` always continues to `verify_components`. After verification a conditional
 edge reads `output`: a failed participant ends the Graph, otherwise `check_stability` runs.
 `check_stability` writes `route`: when verification changed the candidate the round repeats from
 `snapshot`, and when it did not the Graph ends. The round budget checked in `snapshot` bounds the
-loop.
+loop. The output predicate is `is not None`; the stability predicate is equality of the before
+and after implementation digests. Exhausting the budget raises to the enclosing invocation; it
+does not traverse an additional `snapshot` error edge or produce a successful stable result.
 
 ```mermaid
 flowchart TB
@@ -160,16 +174,16 @@ flowchart TB
     accTitle: Shared candidate stabilization Graph
     accDescr: Each round snapshots the candidate, verifies every participant and repeats while a repair changed the candidate; a failed participant ends the Graph.
     __start__["start"]
-    snapshot["snapshot<br/>in: participant implementations<br/>out: round digest"]
-    verify_components["verify_components<br/>in: participant records<br/>out: evidence, review artifacts"]
-    check_stability["check_stability<br/>in: round digest, participant implementations<br/>out: route"]
+    snapshot["snapshot<br/>in: none<br/>out: none"]
+    verify_components["verify_components<br/>in: none<br/>out: output"]
+    check_stability["check_stability<br/>in: none<br/>out: route"]
     __end__["end"]
     __start__ --> snapshot
     snapshot --> verify_components
-    verify_components -->|every participant verified| check_stability
-    verify_components -->|participant failed| __end__
-    check_stability -->|candidate changed| snapshot
-    check_stability -->|candidate stable| __end__
+    verify_components -->|output is None| check_stability
+    verify_components -->|output is not None| __end__
+    check_stability -->|route = snapshot: implementation digest changed| snapshot
+    check_stability -->|route = __end__: implementation digest unchanged| __end__
 ```
 
 ### Precise specifications {#implementation-precise-specifications}

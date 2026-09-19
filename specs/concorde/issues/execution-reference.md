@@ -284,25 +284,30 @@ Candidate-local completion does not mean primary was changed; delivery remains s
 #### Issue Graph (`issue_graph`) {#lifecycle-issue-graph-issue-graph}
 
 **State.** `route`, `output` and the guarded failure `result`. Selected record bytes, decision
-count, intended behavior and current verification are bound by the host; durable attempt history
-belongs to the candidate.
+count, intended behavior, solver decision and current verification are bound by the Host/closures;
+durable attempt history belongs to the candidate. All three Graph channels use replacement
+updates. No node reads an incoming Graph channel directly: `none` below means Host-bound inputs,
+not an empty task. Edges read `route`/`result` after each update. In admitted execution every
+node's guard resets `result` to None on success, or records a failure and `route=__end__` on
+exception. `close` has an empty normal update: the disposition and write-ahead journal are file
+effects, not a `disposition` State channel.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `select_operation` | Deterministic action selection. | action | route |
-| `inspect` | Deterministic record lookup. | selection | output |
-| `report` | Deterministic scoped reporting. | report | output |
-| `reopen` | Deterministic explicit reopening. | revision, note | output |
-| `prepare` | Deterministic selection, pending-disposition recovery and attempt binding. | selected issue | route |
-| `decide` | One fresh Issue solver invocation. | problem, Spec, evidence | route |
-| `develop` | Ordinary [Development Graph](../dev-loop/module.md). | intended behavior | route |
-| `repair_spec` | Ordinary owner-only [Spec Authoring](../spec-authoring/module.md). | intended contract | route |
-| `verify` | Fresh Issue-specific reviews. | problem, current inputs | route |
-| `close` | Deterministic write-ahead journaling and disposition with stale checks. | decision, evidence | disposition |
-| `ready` | Final validation including disposition bytes. | candidate | output |
-| `finish` | Deterministic stopped or already-completed response. | reason | output |
+| `select_operation` | Selects the Host-bound action. | none | route, result |
+| `inspect` | Looks up the Host-bound selection in branch-local records. | none | output, result |
+| `report` | Records the Host-bound report under its scoped grant. | none | output, result |
+| `reopen` | Reopens the selected revision with the developer's note. | none | output, result |
+| `prepare` | Reads selected bytes, recovers a pending disposition and binds durable attempts/current inputs. | none | route, result |
+| `decide` | Invokes a fresh Issue solver with the Host-held problem, Spec and evidence; records decision/history outside State. | none | route, result |
+| `develop` | Calls the Development Operation through admission with bound intent; retains child output/feedback outside State. | none | route, result |
+| `repair_spec` | Calls owner-only Spec Authoring with intended contract; resets stale verification and records feedback. | none | route, result |
+| `verify` | Calls the verification Graph below with Issue-specific and lifecycle review intents; records current evidence outside State. | none | route, result |
+| `close` | Uses Host-held decision/evidence to write the recovery journal and disposition after stale checks. | none | result |
+| `ready` | Validates the candidate including disposition bytes; restores the Issue if validation fails, otherwise records completion. | none | output, result |
+| `finish` | Builds the stopped/already-completed response from Host-held reason, Issue records and any child blockers. | none | output, result |
 
 **Edges.** `select_operation`, `prepare`, `decide`, `develop`, `repair_spec` and `verify` write
 `route`, and a conditional edge follows it. The requested action selects inspection, reporting,
@@ -313,24 +318,34 @@ next bounded decision or stop at `finish`. After `close`, a conditional edge rea
 accepted disposition proceeds to `ready`. An error in any routing node ends the Graph, and no edge
 delivers the candidate.
 
+`decide` checks the durable attempt count against six before launching and increments it before
+the worker starts. A non-successful worker outcome or `needs-decision` chooses `finish`.
+`develop`, `spec-repair` and `verify` decisions select their corresponding nodes; `resolved`
+selects `verify` instead of `close` unless `verified_inputs == current_inputs()`. `duplicate`
+and `not-actionable` select `close`, whose own stale/duplicate checks can still fail. Development
+returns to decision after a non-error child result (including a business blocker), but execution
+errors or changed bound intent stop at `finish`. Verification similarly returns blockers as
+feedback to `decide`, while execution errors stop. The close edge tests result truthiness;
+failed final validation is a business `output` from `ready`, not a retry edge.
+
 ```mermaid
 flowchart TB
     %% graph: issue_graph
     accTitle: Bounded Issue solving
     accDescr: Explicit operations select read-only inspection, reporting, reopening or bounded solving. Decisions compose ordinary providers, disposition precedes final validation, and no edge delivers the candidate.
     __start__["start"]
-    select_operation["select_operation<br/>in: action<br/>out: route"]
-    inspect["inspect<br/>in: selection<br/>out: output"]
-    report["report<br/>in: report<br/>out: output"]
-    reopen["reopen<br/>in: revision, note<br/>out: output"]
-    prepare["prepare<br/>in: selected issue<br/>out: route"]
-    decide["decide<br/>in: problem, Spec, evidence<br/>out: route"]
-    develop["develop<br/>in: intended behavior<br/>out: route"]
-    repair_spec["repair_spec<br/>in: intended contract<br/>out: route"]
-    verify["verify<br/>in: problem, current inputs<br/>out: route"]
-    close["close<br/>in: decision, evidence<br/>out: disposition"]
-    ready["ready<br/>in: candidate<br/>out: output"]
-    finish["finish<br/>in: reason<br/>out: output"]
+    select_operation["select_operation<br/>in: none<br/>out: route, result"]
+    inspect["inspect<br/>in: none<br/>out: output, result"]
+    report["report<br/>in: none<br/>out: output, result"]
+    reopen["reopen<br/>in: none<br/>out: output, result"]
+    prepare["prepare<br/>in: none<br/>out: route, result"]
+    decide["decide<br/>in: none<br/>out: route, result"]
+    develop["develop<br/>in: none<br/>out: route, result"]
+    repair_spec["repair_spec<br/>in: none<br/>out: route, result"]
+    verify["verify<br/>in: none<br/>out: route, result"]
+    close["close<br/>in: none<br/>out: result"]
+    ready["ready<br/>in: none<br/>out: output, result"]
+    finish["finish<br/>in: none<br/>out: output, result"]
     __end__["end"]
     __start__ --> select_operation
     select_operation -->|list or show| inspect
@@ -344,17 +359,17 @@ flowchart TB
     prepare -->|already disposed| finish
     decide -->|development| develop
     decide -->|contract repair| repair_spec
-    decide -->|verification needed| verify
-    decide -->|supported disposition| close
-    decide -->|decision or limit| finish
-    develop -->|bounded continuation| decide
-    develop -->|failure| finish
+    decide -->|verify, or resolved without current verification| verify
+    decide -->|verified resolved, duplicate or not-actionable| close
+    decide -->|worker stop, needs-decision or six-attempt limit| finish
+    develop -->|child result without execution errors| decide
+    develop -->|execution failure or changed intent| finish
     repair_spec -->|repair accepted| decide
     repair_spec -->|blocked or failed| finish
     verify -->|verification result| decide
     verify -->|execution failed| finish
-    close -->|disposition accepted| ready
-    close -->|error| __end__
+    close -->|result falsey: disposition accepted| ready
+    close -->|result truthy: guard error| __end__
     select_operation -->|error| __end__
     prepare -->|error| __end__
     decide -->|error| __end__
@@ -374,16 +389,25 @@ gates; a private targeted review cannot replace another task's required review. 
 separate [Review Module](../review/module.md) operation invocation, and a blocked or failed item prevents dependent items.
 
 **State.** `index` (the next review), `stop` and `output` (the result that stopped the sequence).
-The host owns the finite list and its review input bindings.
+All channels use replacement updates: integer `index`, boolean `stop`, and `output` containing
+an outer Issue-node route update or None. The Host owns the finite list, review input bindings
+and collected evidence. Initial State is `index=0, stop=false, output=None`; a code-owning Module
+has four items (specific Spec, specific code, ordinary Spec, ordinary code), otherwise two Spec
+items. This helper has no local guard/result channel; exceptions reach the enclosing `verify`
+node's guard.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `review_item` | One ordinary Review operation for the selected mode and intent. | index, review list | index, stop, output |
+| `review_item` | Reviews Host-held items[index], collects evidence outside State, increments index and sets stop on a returned route update or list exhaustion. | index | index, stop, output |
 
 **Edges.** After each review a conditional edge reads `stop`: while reviews remain and none has
-blocked or failed, `review_item` runs again on the next item; otherwise the Graph ends.
+blocked or failed, `review_item` runs again on the next item; otherwise the Graph ends. The exact
+update is `stop = output is not None or next_index == len(items)`. On a blocking review, output
+is `{route: decide}`; on execution failure it is `{route: finish}`. The enclosing `verify` node
+returns that update to the Issue Graph. Successful completion leaves output None and lets the
+Host bind verification to the unchanged input digest before returning to `decide`.
 
 ```mermaid
 flowchart TB
@@ -391,11 +415,11 @@ flowchart TB
     accTitle: Issue verification sequence
     accDescr: One review runs per transition. Failure stops the sequence and completion advances until every admitted review is covered.
     __start__["start"]
-    review_item["review_item<br/>in: index, review list<br/>out: index, stop, output"]
+    review_item["review_item<br/>in: index<br/>out: index, stop, output"]
     __end__["end"]
     __start__ --> review_item
-    review_item -->|reviews remain| review_item
-    review_item -->|finished or blocked| __end__
+    review_item -->|stop = false: more items and output is None| review_item
+    review_item -->|stop = true: exhausted or output is not None| __end__
 ```
 
 ### Precise specifications {#lifecycle-precise-specifications}

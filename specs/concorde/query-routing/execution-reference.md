@@ -61,22 +61,32 @@ context and starts fresh invocations under the Graph and Loop contract.
 
 **State.** `occurrence` (the bounded number of discovery decisions so far), `decision` (the
 discovery worker's last typed result), `routes` (the bound single-target routes), `route`, `result`.
-The admitted Module collection grows only through `expand_context`.
+All channels use replacement updates: `occurrence` is an integer, `decision` is worker-result
+data or None, `routes` is a list, `route` is a node name and `result` is the guard envelope or None.
+`decide` defaults a missing occurrence to zero. The admitted Module collection, task, registry and
+context snapshots are Host-held; the collection grows only through `expand_context`, not by a
+State reducer. The node table shows Graph-channel reads/updates, with `none` for Host-only inputs
+and `?` for conditional updates. Admitted dispatch guards also write `result` and set `route` to
+`__end__` on error. Standalone helper calls without those guards propagate exceptions.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `decide` | One discovery-worker invocation (the router, answerer or topology-designer) over the admitted complete Module contexts; the decision limit is the number of Modules. | admitted Module contexts, task | decision |
-| `expand_context` | Deterministic: admits the requested Modules named in the admitted Specs and counts the occurrence. | decision, registry | admitted Module contexts, occurrence |
-| `bind_routes` | Deterministic: validates each route's target and focus and binds the original task and constraints to it. | decision, task | routes |
-| `finish` | Deterministic: records completion for an answer, gap, unsupported or conflicting outcome, or the policy preview. | decision | empty routes |
+| `decide` | Invokes router, answerer or topology-designer over Host-admitted contexts; checks the decision bound before launch and selects route from the outcome/mode. | occurrence? | occurrence, decision, route, result |
+| `expand_context` | Validates decision.expand_targets against Host-admitted text/hints and registry; adds contexts to the Host collection and increments occurrence. | decision, occurrence | occurrence, result |
+| `bind_routes` | Validates decision.routes and binds original task/constraints from the Host; clears decision after binding. | decision | routes, decision, result |
+| `finish` | Records completion outside State and writes empty routes; a non-ask policy preview with a target hint instead binds that hinted route and clears decision. | none | routes, decision?, result |
 
 **Edges.** `decide` writes `route` from the worker's decision, and a conditional edge follows it: a
 request for more Modules goes to `expand_context`, a routing decision to `bind_routes`, every other
 outcome to `finish`, and an exhausted decision limit or an error ends the Graph. `expand_context`
 returns to `decide` unless it recorded a failure in `result`, which ends the Graph. `bind_routes`
-and `finish` always end the Graph.
+and `finish` always end the Graph. The pre-launch bound is `occurrence > number_of_modules`;
+successful expansion increments it by one. Describe-policy selects `finish` regardless of the
+worker outcome. Otherwise `expand` selects `expand_context`, `routed` selects `bind_routes`, and
+all other admitted outcomes select `finish`. A business gap is still a `decision`, not a guard
+`result`; the caller interprets it after discovery. `finish` normally preserves that decision.
 
 ```mermaid
 flowchart TB
@@ -84,18 +94,18 @@ flowchart TB
     accTitle: Discovery Graph
     accDescr: The discovery worker decides over the admitted contexts; a request for more Modules admits them and decides again; a routing decision binds routes; every other outcome finishes.
     __start__["start"]
-    decide["decide<br/>in: admitted Module contexts, task<br/>out: decision"]
-    expand_context["expand_context<br/>in: decision, registry<br/>out: admitted Module contexts, occurrence"]
-    bind_routes["bind_routes<br/>in: decision, task<br/>out: routes"]
-    finish["finish<br/>in: decision<br/>out: empty routes"]
+    decide["decide<br/>in: occurrence?<br/>out: occurrence, decision, route, result"]
+    expand_context["expand_context<br/>in: decision, occurrence<br/>out: occurrence, result"]
+    bind_routes["bind_routes<br/>in: decision<br/>out: routes, decision, result"]
+    finish["finish<br/>in: none<br/>out: routes, decision?, result"]
     __end__["end"]
     __start__ --> decide
-    decide -->|expand: more Modules requested| expand_context
-    decide -->|routed| bind_routes
-    decide -->|answered, gap, unsupported, conflicting or described| finish
-    decide -->|limit or error| __end__
-    expand_context -->|contexts admitted| decide
-    expand_context -->|error| __end__
+    decide -->|route = expand_context: expand in execute mode| expand_context
+    decide -->|route = bind_routes: routed in execute mode| bind_routes
+    decide -->|route = finish: preview or other admitted outcome| finish
+    decide -->|route = __end__: limit or guard error| __end__
+    expand_context -->|result falsey: contexts admitted| decide
+    expand_context -->|result truthy: guard error| __end__
     bind_routes --> __end__
     finish --> __end__
 ```
@@ -104,14 +114,18 @@ flowchart TB
 
 `concorde-main` runs this Graph for `ask` and `design-topology`.
 
-**State.** The discovery state above plus `output` (the main response).
+**State.** The discovery state above plus `output` (the typed main response), all with replacement
+updates. The registered `discover` subgraph shares `occurrence`, `decision`, `routes`, `route`
+and `result`; its own table explains their reads/writes. Task/context inputs and any topology
+proposal persistence belong to the Host. Neither a business gap nor a design proposal is a
+new Graph channel.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `discover` | The discovery Graph as a subgraph. | question or design task, entry Module context | decision |
-| `respond` | Deterministic: the answer, gap, unsupported or conflicting response, or the typed topology design, from the last decision. | decision | main response |
+| `discover` | Registered discovery subgraph over the Host-bound question/design task and entry context; input lists the shared boundary channels. | occurrence?, decision?, routes?, route?, result? | occurrence, decision, routes, route, result |
+| `respond` | Wraps decision as the main answer/stop response or typed topology proposal; the Host supplies task and context identity. | decision | output, result |
 
 **Edges.** When the discovery subgraph finishes, a conditional edge reads `result`: a recorded
 failure ends the Graph, otherwise `respond` turns the last decision into the main response and the
@@ -123,12 +137,12 @@ flowchart TB
     accTitle: Query Graph
     accDescr: Discovery runs to completion and its last decision becomes the main response; an error ends the Graph.
     __start__["start"]
-    discover["discover<br/>in: question or design task, entry Module context<br/>out: decision"]
-    respond["respond<br/>in: decision<br/>out: main response"]
+    discover["discover<br/>in: occurrence?, decision?, routes?, route?, result?<br/>out: occurrence, decision, routes, route, result"]
+    respond["respond<br/>in: decision<br/>out: output, result"]
     __end__["end"]
     __start__ --> discover
-    discover -->|discovery finished| respond
-    discover -->|error| __end__
+    discover -->|result falsey: decision available, including business stops| respond
+    discover -->|result truthy: guard error| __end__
     respond --> __end__
 ```
 

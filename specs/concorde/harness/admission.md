@@ -375,23 +375,40 @@ State, Nodes and Edges are stated in turn, and its diagram is bound to the compi
 **State.** `invocation` (the admitted `concorde-operation-invocation@3`), `result` (the
 `concorde-operation-result@3` envelope, filled by `finalize` or by a guard that caught an
 error), `policies` and `events` (the host's policy descriptions and observed events, Studio only),
-`expected_workspace`.
+`expected_workspace` (the optional Studio root-identity assertion). All channels use replacement
+updates. Local execution starts with empty State; the request, configuration, task, workspace,
+relay target, lifecycle and in-progress response envelope live in the trusted Host closure.
+Studio supplies `invocation` and optionally `expected_workspace`; initialization validates them
+and builds that same Host session. Policies/events are copied out on finalization, not appended
+by a Graph reducer.
 
-**Nodes.** Every node runs under a guard: an error records the typed failure envelope in `result`.
+The dispatch child has `route`, `output`, `relayed` and `result`, but only `result` intersects this
+parent's schema. Its typed `output` or relay envelope is captured by the trusted dispatch adapter
+into the Host-held response; `finalize` publishes that envelope as `result`. There is deliberately
+no parent `output` channel. The table names channel reads/updates; `?` denotes a conditional or
+Studio-only channel use, and `none` denotes Host-bound inputs rather than Graph-channel reads.
+
+**Nodes.** Admission and dispatch steps run under the Host guard: an error records the typed
+failure envelope in `result`; success clears it to None. Initialization/finalization are boundary
+steps, with Studio's own initialization failure handling.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `initialize` | Deterministic: fresh host identity, root invocation id and lifecycle record for this invocation. | invocation | cleared result |
-| `admit_request` | Deterministic: operation name, mode, configuration and request are validated against the registered contracts; a stale build is refused for model-backed operations. | invocation | admitted task, configuration |
-| `bind_workspace` | Deterministic: primary, change or unversioned workspace identity; a mutating primary request prepares a candidate worktree and marks the invocation for relay into it. | admitted task, worktree | workspace, relay target |
-| `check_configuration` | Deterministic: the invocation configuration equals the initialized project settings and the host snapshot. | configuration, project settings | configuration snapshot |
-| `execute` | The dispatch Graph (below) as a subgraph. | admitted task, workspace | output |
-| `finalize` | Deterministic: status from the output outcome or the recorded error, execution-error propagation, lifecycle progress. | output, result, lifecycle | result envelope |
+| `initialize` | Deterministic: clears result; Studio also checks invocation/workspace and creates a fresh Host session, or clears policies/events on rejection. Local Host setup precedes Graph entry. | invocation?, expected_workspace? | result, policies?, events? |
+| `admit_request` | Validates Host-bound operation, mode, configuration and request; rejects stale builds where required; retains admitted task/configuration outside State. | none | result |
+| `bind_workspace` | Binds the Host's workspace; a mutating primary request prepares a candidate and Host relay target. | none | result |
+| `check_configuration` | Compares Host configuration to initialized settings and binds its snapshot. | none | result |
+| `execute` | Registered dispatch subgraph; only result crosses this parent State boundary, while the Host captures typed output/relay data. | result | result |
+| `finalize` | Publishes the Host-held envelope and lifecycle outcome; Studio copies observed policies/events, or preserves initialization failure if no session exists. | result? | result, policies?, events? |
 
 **Edges.** Each admission step is followed by a conditional edge that reads `result`: when the step
 or its guard recorded a failure envelope, the Graph goes straight to `finalize`; otherwise it
-continues to the next step. `execute` always hands its output to `finalize`, and `finalize` always
+continues to the next step. `execute` always continues to `finalize` with its Host-captured output
+and shared `result`, and `finalize` always
 ends the Graph, so every invocation, admitted or not, ends with one typed result envelope.
+The admission predicate is exactly `state.get("result") is not None`, not the business outcome
+inside an Operation response. A blocked business outcome can therefore pass through dispatch to
+normal finalization without being mistaken for a guard exception.
 
 ```mermaid
 flowchart TB
@@ -399,22 +416,22 @@ flowchart TB
     accTitle: Operation admission Graph
     accDescr: Every invocation is initialized, admitted, bound to a workspace and checked against the initialized configuration before the dispatch subgraph executes; any error routes to finalize, which always writes the typed result envelope.
     __start__["start"]
-    initialize["initialize<br/>in: invocation<br/>out: cleared result"]
-    admit_request["admit_request<br/>in: invocation<br/>out: admitted task, configuration"]
-    bind_workspace["bind_workspace<br/>in: admitted task, worktree<br/>out: workspace, relay target"]
-    check_configuration["check_configuration<br/>in: configuration, project settings<br/>out: configuration snapshot"]
-    execute["execute<br/>in: admitted task, workspace<br/>out: output"]
-    finalize["finalize<br/>in: output, result, lifecycle<br/>out: result envelope"]
+    initialize["initialize<br/>in: invocation?, expected_workspace?<br/>out: result, policies?, events?"]
+    admit_request["admit_request<br/>in: none<br/>out: result"]
+    bind_workspace["bind_workspace<br/>in: none<br/>out: result"]
+    check_configuration["check_configuration<br/>in: none<br/>out: result"]
+    execute["execute<br/>in: result<br/>out: result"]
+    finalize["finalize<br/>in: result?<br/>out: result, policies?, events?"]
     __end__["end"]
     __start__ --> initialize
-    initialize -->|initialized| admit_request
-    initialize -->|error| finalize
-    admit_request -->|request admitted| bind_workspace
-    admit_request -->|rejected| finalize
-    bind_workspace -->|workspace bound| check_configuration
-    bind_workspace -->|blocked| finalize
-    check_configuration -->|configuration matches| execute
-    check_configuration -->|mismatch| finalize
+    initialize -->|result is None| admit_request
+    initialize -->|result is not None| finalize
+    admit_request -->|result is None| bind_workspace
+    admit_request -->|result is not None| finalize
+    bind_workspace -->|result is None| check_configuration
+    bind_workspace -->|result is not None| finalize
+    check_configuration -->|result is None| execute
+    check_configuration -->|result is not None| finalize
     execute --> finalize
     finalize --> __end__
 ```

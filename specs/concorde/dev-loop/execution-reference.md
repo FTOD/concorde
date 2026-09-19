@@ -193,26 +193,33 @@ callable [specification Graph](../specify-loop/execution-reference.md#specify-lo
 which the `specify_loop` node composes; delivery is a separately invoked operation after `ready`.
 
 **State.** `output` (the last stage's typed response data, including its outcome), `artifacts`
-(review and stage artifact references accumulated across stages under a merge reducer that keeps
-the newest reference per artifact id), `result` (a terminal failure envelope when a guard caught an
-error), `route`. The candidate record in `.concorde/worktree.json` carries the durable state every
-stage reads and advances: the bound owner and intent, the plan, the task list and history, the
-implementation digest, check evidence, review requirements and results, gap history and the
+(review artifact references accumulated across stages under a merge reducer that keeps the
+newest reference per artifact id), `result` (a terminal failure envelope when a guard caught an
+error), `route` (declared but not used to select successors in this Graph).
+`output`, `result` and `route` use replacement updates; only `artifacts` has a merge reducer.
+A stage writes response **data** to `output`; `summarize` replaces it with the typed response
+wrapper. Node `in`/`out` below name Graph channels, not child-operation requests or file effects.
+`none` means no Graph channel is read: these nodes obtain their inputs from the admitted `run`
+and Host-bound candidate records, not from the preceding node's `output`. Every guarded node also
+writes `result=None` on success or a failure envelope on error. The candidate record in
+`.concorde/worktree.json` carries the durable state every stage reads and advances: the bound
+owner and intent, the plan, the task list and history, the implementation digest, check evidence,
+review requirements and results, gap history and the
 per-target graph record with its repair iteration and last feedback fingerprint.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `initialize` | Deterministic: records the graph policy and enters the Graph. | task, candidate | route |
-| `specify_loop` | The specification Graph: Spec authoring (unless `specify=false` or already accepted) and independent Spec review with consumer reuse. Its result also selects where a resumed candidate re-enters. | task, Spec context, candidate | Spec, Spec review evidence, entry stage |
-| `plan` | The planning Graph: context assessment, then one planner invocation. | Spec, task | plan |
-| `tasks` | One task-author invocation with the plan, reserved task ids and, in a repair round, the blocking review result. | plan, reserved ids, review result | tasks |
-| `implement` | One programmer `implementation` invocation, or component coordination for a composite. | tasks, implementation files, Spec | completed tasks, changed files |
-| `validate` | Deterministic: Spec validation and configured checks for the owner and every Module sharing a changed file. | candidate | checks, readiness gate |
-| `review_code` | Independent code review of the owner and every changed-file peer, each from its own contract, reusing current evidence. | Spec, changed files, tasks | code review results |
-| `ready` | Deterministic: verifies current evidence for every affected Module and marks the candidate ready. | evidence, reviews | ready candidate |
-| `summarize` | Deterministic: the operation response with review coverage and every artifact reference. | output, artifacts | response |
+| `initialize` | Deterministic: enters the Graph; Host setup has already bound the task, resume stage and repair policy. | none | result |
+| `specify_loop` | Calls the specification Operation's Graph through admission: authoring (unless skipped or accepted) and independent Spec review. Host-bound current evidence selects the resume stage. | none | output, artifacts, result |
+| `plan` | Calls the planning Operation's Graph: context assessment, then a planner; persists the plan in the candidate. | none | output, artifacts, result |
+| `tasks` | Calls the task author with the stored plan, reserved IDs and any blocking review; persists accepted tasks. | none | output, artifacts, result |
+| `implement` | Calls implementation with stored tasks and granted code: one programmer or component coordination; records completed tasks and changed files. | none | output, artifacts, result |
+| `validate` | Calls deterministic validation for the owner and changed-file peers; records checks without marking ready yet. | none | output, artifacts, result |
+| `review_code` | Independent owner and changed-file peer reviews, or reuse/explicit skip; records review evidence and any bounded repair decision. | none | output, artifacts, result |
+| `ready` | Verifies current stored evidence, refreshing validation if Issue bytes changed, then marks the candidate ready or returns the validation stop. | none | output, result |
+| `summarize` | Wraps the last response data with accumulated artifact references and review coverage; leaves output unchanged if result is already a failure. | output, artifacts, result | output?, result |
 
 **Edges.** Every node except `summarize` chooses its own successor: it returns a LangGraph
 `Command` naming the next node together with its State update, and its declared destinations bound
@@ -222,7 +229,15 @@ already covers the earlier stages. A successful stage hands over to the next one
 `review_code` when the Module lists no code to review. Any stop routes to `summarize`, which writes
 the response, and a guard-caught error goes straight to `__end__`. Only `review_code` may route back
 to `tasks`: the automatic repair edge, bounded by the declared `max_repair_iterations` and the
-unchanged-feedback rule.
+unchanged-feedback rule. `Command.goto`, not the `route` channel, selects all of these stage
+transitions; `Command.update` supplies the channel deltas in the table. An accepted stage means
+`output.outcome` is `completed` or `ready`. For coordinated drafts, the Host's
+`defer_component_checks` also selects `summarize` after successful `implement`, or after successful
+`specify_loop` when the resume entry is `validate`; final shared checks belong to the coordinator.
+The repair edge requires the owner's conflicting code findings, no blocking peer findings, a
+changed feedback digest and remaining recorded repair budget. Explicit skips and reused reviews
+can also advance: advancing does not claim a fresh review ran. The `ready` edge to `summarize`
+also carries a failed refresh of validation; it does not always mean readiness succeeded.
 
 ```mermaid
 flowchart TB
@@ -230,15 +245,15 @@ flowchart TB
     accTitle: Development Graph
     accDescr: After initialization the specification Graph runs, then planning, tasks, implementation, validation, code review and readiness in order; a resumed candidate re-enters at the stage its current evidence permits; blocking code review routes back to tasks within the repair budget; every other non-advancing outcome stops at summarize, and a guard-caught error ends the Graph.
     __start__["start"]
-    initialize["initialize<br/>in: task, candidate<br/>out: route"]
-    specify_loop["specify_loop<br/>in: task, Spec context, candidate<br/>out: Spec, Spec review evidence, entry stage"]
-    plan["plan<br/>in: Spec, task<br/>out: plan"]
-    tasks["tasks<br/>in: plan, reserved ids, review result<br/>out: tasks"]
-    implement["implement<br/>in: tasks, implementation files, Spec<br/>out: completed tasks, changed files"]
-    validate["validate<br/>in: candidate<br/>out: checks, readiness gate"]
-    review_code["review_code<br/>in: Spec, changed files, tasks<br/>out: code review results"]
-    ready["ready<br/>in: evidence, reviews<br/>out: ready candidate"]
-    summarize["summarize<br/>in: output, artifacts<br/>out: response"]
+    initialize["initialize<br/>in: none<br/>out: result"]
+    specify_loop["specify_loop<br/>in: none<br/>out: output, artifacts, result"]
+    plan["plan<br/>in: none<br/>out: output, artifacts, result"]
+    tasks["tasks<br/>in: none<br/>out: output, artifacts, result"]
+    implement["implement<br/>in: none<br/>out: output, artifacts, result"]
+    validate["validate<br/>in: none<br/>out: output, artifacts, result"]
+    review_code["review_code<br/>in: none<br/>out: output, artifacts, result"]
+    ready["ready<br/>in: none<br/>out: output, result"]
+    summarize["summarize<br/>in: output, artifacts, result<br/>out: output?, result"]
     __end__["end"]
     __start__ --> initialize
     initialize -->|admitted| specify_loop
@@ -246,8 +261,8 @@ flowchart TB
     specify_loop -->|Spec complete, no current plan| plan
     specify_loop -->|current plan, resume at tasks| tasks
     specify_loop -->|current tasks, resume at implementation| implement
-    specify_loop -->|implementation current, resume at validation| validate
-    specify_loop -->|Spec gap, blocked or failed| summarize
+    specify_loop -->|accepted, validation entry, checks not deferred| validate
+    specify_loop -->|stop outcome or coordinated draft at validation entry| summarize
     specify_loop -->|error| __end__
     plan -->|plan accepted| tasks
     plan -->|gap, conflict or failure| summarize
@@ -255,18 +270,18 @@ flowchart TB
     tasks -->|tasks accepted| implement
     tasks -->|gap or failure| summarize
     tasks -->|error| __end__
-    implement -->|every task complete| validate
-    implement -->|gap, blocked or failed| summarize
+    implement -->|accepted, checks not deferred| validate
+    implement -->|stop outcome or coordinated draft complete| summarize
     implement -->|error| __end__
     validate -->|checks pass, Module lists code| review_code
     validate -->|checks pass, no code to review| ready
     validate -->|checks failed| summarize
     validate -->|error| __end__
-    review_code -->|no blocking findings| ready
-    review_code -->|blocking findings, feedback changed, repairs left| tasks
-    review_code -->|unchanged feedback, limit exhausted, gap or failure| summarize
+    review_code -->|completed or ready: reviewed, reused or skipped| ready
+    review_code -->|owner conflict only, feedback changed, repairs left| tasks
+    review_code -->|peer blocks, unchanged feedback, limit, gap or failure| summarize
     review_code -->|error| __end__
-    ready -->|candidate ready| summarize
+    ready -->|ready result or validation-refresh stop| summarize
     ready -->|error| __end__
     summarize --> __end__
 ```

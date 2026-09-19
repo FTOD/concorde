@@ -90,20 +90,28 @@ having to explain its purpose by reference to dev-loop.
 #### Planning Graph (`plan_graph`) {#plan-planning-graph-plan-graph}
 
 **State.** `route`, `output` (the planning response), `result`; the candidate record receives the
-accepted plan, its Spec digest and intent.
+accepted plan, its Spec digest and intent. All three Graph channels use replacement updates.
+The admitted `run`, prior artifacts and planner result are Host/closure-held inputs, not channels:
+`author_plan` stores its result in the closure, and `persist_plan` reads that result rather than
+`output`. `output` carries a typed stop/preview response or the final plan response. `none` below
+means no Graph-channel read; `?` marks an update present only on a stop path. The admission guard
+writes `result=None` on success, or a failure envelope and `route=__end__` on exception.
 
 **Nodes.** Both model-backed nodes run their worker as an [Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `assess_context` | The deterministic dependency-declaration check, then one context-assessor invocation. | Spec context, task | sufficiency or gaps |
-| `author_plan` | One planner invocation with an optional prior plan artifact. | Spec context, task, prior plan | plan |
-| `persist_plan` | Deterministic: a nonempty plan replaces the target's plan and clears dependent tasks and coordination. | plan, candidate | plan artifact, target record |
+| `assess_context` | Checks required Spec review and dependency declarations, then assesses the Host-bound task/Spec; chooses author_plan or writes a stop response. | none | route, output?, result |
+| `author_plan` | Invokes the planner with Host-bound context/prior artifact; retains result outside State and chooses persistence or a stop/preview response. | none | route, output?, result |
+| `persist_plan` | Reads the closure-held nonempty plan, writes its artifact and candidate revision/intent, and clears dependent tasks/coordination. | none | route, output, result |
 
 **Edges.** `assess_context` and `author_plan` each write `route`, and a conditional edge follows it.
 Only a sufficient assessment continues to `author_plan`, and only a returned plan continues to
 `persist_plan`; a gap, conflict, unsupported task, failure or policy preview ends the Graph with
-the response already written. `persist_plan` always ends the Graph.
+the response already written. The two advancing predicates accept worker `outcome` in
+`{completed, sufficient}`; authoring also requires execution rather than describe-policy to
+select persistence. The conditional edges read `state["route"]`, not `output.outcome`.
+`persist_plan` writes `route=__end__` but has an unconditional edge to the end.
 
 ```mermaid
 flowchart TB
@@ -111,15 +119,15 @@ flowchart TB
     accTitle: Planning Graph
     accDescr: Context assessment admits planning only when the contract is sufficient; a returned plan is persisted; a gap, conflict, failure or policy preview ends the Graph.
     __start__["start"]
-    assess_context["assess_context<br/>in: Spec context, task<br/>out: sufficiency or gaps"]
-    author_plan["author_plan<br/>in: Spec context, task, prior plan<br/>out: plan"]
-    persist_plan["persist_plan<br/>in: plan, candidate<br/>out: plan artifact, target record"]
+    assess_context["assess_context<br/>in: none<br/>out: route, output?, result"]
+    author_plan["author_plan<br/>in: none<br/>out: route, output?, result"]
+    persist_plan["persist_plan<br/>in: none<br/>out: route, output, result"]
     __end__["end"]
     __start__ --> assess_context
-    assess_context -->|sufficient| author_plan
-    assess_context -->|gap, conflict, unsupported or failed| __end__
-    author_plan -->|plan returned| persist_plan
-    author_plan -->|gap or failure, or policy described| __end__
+    assess_context -->|route = author_plan: completed or sufficient assessment| author_plan
+    assess_context -->|route = __end__: other outcome or guard error| __end__
+    author_plan -->|route = persist_plan: accepted result in execute mode| persist_plan
+    author_plan -->|route = __end__: stop, preview or guard error| __end__
     persist_plan --> __end__
 ```
 

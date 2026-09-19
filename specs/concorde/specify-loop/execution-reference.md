@@ -65,23 +65,31 @@ ready. [Development Graph](../dev-loop/module.md) may consume that completed res
 references under a merge reducer that keeps the newest reference per artifact id), `result` (a
 terminal failure envelope when a guard caught an error). The candidate record carries the accepted
 authoring (task, focus, constraints, Spec digest), the review requirements and intents, the owner's
-and each consumer's review evidence and the gap history.
+and each consumer's review evidence and the gap history. These records, the task and the complete
+Spec context are Host-bound inputs/effects, not Graph channels. All channels except `artifacts`
+use replacement updates. `output` holds response data during stages and the typed response wrapper
+after `summarize`. In the table, `none` means no Graph-channel read, and `?` means a conditional
+update. Every guarded node writes `result=None` on success or the failure envelope on error.
+There is no `route` channel: `Command.goto` carries the successor outside the State update.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `initialize` | Deterministic: authoring is needed unless `specify=false` or the same intent was already accepted without an open gap. | task, candidate | route |
-| `specify` | Spec Authoring: one spec-author invocation; the owner's and every affected consumer's candidate reviews admit the replacements before they are applied and are recorded for reuse. | task, Spec context | replaced Spec documents, candidate review evidence |
-| `review_spec` | Independent Spec review of the owner and every consumer whose evidence is missing or stale; an explicit skip or fully current evidence is recorded instead. | task, Spec, review evidence | Spec review results |
-| `summarize` | Deterministic: the operation response with every artifact reference. | output, artifacts | response |
+| `initialize` | Deterministic: reads Host-bound task and candidate; authoring is needed unless `specify=false` or the same intent was already accepted without an open gap. | none | result |
+| `specify` | Calls Spec Authoring through admission; affected-context candidate reviews admit replacements before application and are recorded for reuse. | none | output, artifacts, result |
+| `review_spec` | Reads current Spec/review records; independently reviews missing or stale owner/consumer evidence, or records an explicit skip or current-evidence reuse. | none | output, artifacts, result |
+| `summarize` | Wraps response data with every artifact reference unless result is already a failure. | output, artifacts, result | output?, result |
 
 **Edges.** Like the development Graph, every node except `summarize` returns a LangGraph `Command`
 naming its successor, within its declared destinations. `initialize` goes to `specify` when
 authoring is needed and straight to `review_spec` otherwise. Accepted replacements go on to
 `review_spec`; a gap, blocker or failure in `specify` stops at `summarize`. `review_spec` always
 hands its outcome, reviewed, retained, skipped or stopped, to `summarize`. A guard-caught error in
-any stage ends the Graph directly.
+any stage ends the Graph directly. The authoring branch is exactly `task.specify` (default true)
+and no matching accepted authoring record without an open authoring gap. The success edge out of
+`specify` requires `output.outcome == completed`; all other outcomes go to `summarize`.
+`review_spec` has no repair edge, even when its review blocks.
 
 ```mermaid
 flowchart TB
@@ -89,16 +97,16 @@ flowchart TB
     accTitle: Specification Graph
     accDescr: Initialization selects authoring or goes straight to review; accepted authoring is followed by independent review; every stop routes to summarize and a guard-caught error ends the Graph.
     __start__["start"]
-    initialize["initialize<br/>in: task, candidate<br/>out: route"]
-    specify["specify<br/>in: task, Spec context<br/>out: replaced Spec documents, candidate review evidence"]
-    review_spec["review_spec<br/>in: task, Spec, review evidence<br/>out: Spec review results"]
-    summarize["summarize<br/>in: output, artifacts<br/>out: response"]
+    initialize["initialize<br/>in: none<br/>out: result"]
+    specify["specify<br/>in: none<br/>out: output, artifacts, result"]
+    review_spec["review_spec<br/>in: none<br/>out: output, artifacts, result"]
+    summarize["summarize<br/>in: output, artifacts, result<br/>out: output?, result"]
     __end__["end"]
     __start__ --> initialize
     initialize -->|authoring needed| specify
     initialize -->|specify=false or authoring accepted| review_spec
     initialize -->|error| __end__
-    specify -->|replacements applied| review_spec
+    specify -->|output.outcome = completed| review_spec
     specify -->|gap, blocked or failed| summarize
     specify -->|error| __end__
     review_spec -->|reviewed, retained, skipped or stopped| summarize

@@ -338,6 +338,27 @@ parts in this order, each opening a paragraph with its bold label:
    `out:`; every edge leaving a node with several successors is labeled with the condition that
    selects it, and an edge leaving a node with one successor carries no label.
 
+**Reading the state labels.** `in` lists Graph channels actually read by the node, not every
+channel present in its input dictionary. `out` lists its possible channel updates, not the whole
+post-node State; an omitted channel retains its previous value. `none` means no channel read or
+no update, not no business input or effect. `?` marks a conditional input/update or an optional
+subgraph boundary channel. For a registered subgraph node, the labels name channels admitted at
+that boundary, and the child's own Nodes table explains the actual reads/writes inside it. Unless a
+Graph declares a reducer, updates replace the channel value (LangGraph's single-writer/last-value
+semantics); this is not an implicit list append or concurrent merge. Tables describe normal node
+updates plus the admitted invocation's guard updates; an error can stop before normal updates exist.
+
+The `Executes` column and State prose separately identify inputs and effects held by trusted Host
+objects, node closures or durable candidate records. They are not serialized State channels. A
+`Command(goto=..., update=...)` separates control from data: `goto` is a destination, not a write
+to `route`. Conditional edges instead read the updated State. A subgraph shares only the channels
+admitted by its parent/child schemas; calling another Operation inside a node through admission
+is not the same as registering that Operation as a compiled subgraph node. Internal Graphs disable
+checkpointing; these diagrams do not promise that Host closures can be recovered from State alone.
+A guarded admission/dispatch node resets `result` to None on success; on error it writes the
+failure envelope and selects `__end__` through `route` or `Command.goto` where applicable.
+Nested helpers without that guard propagate exceptions to the enclosing guarded invocation.
+
 An Operation that runs a Graph is explained in the reading of the Module that owns the Operation,
 and the owning Module's module-role reading links to the Graph Spec's explicit heading anchor. The
 Graph Spec is the only place its nodes, state and routing are drawn: no separate page or generated
@@ -805,13 +826,15 @@ compiles the planner as its representative; the node name is the Operation's ide
 
 **State.** The contract's context fields in (for a stage context: `snapshot`, `change_id`,
 `expected_artifacts`) and the contract's result fields out (`context_id`, `outcome`, `answer`,
-`blockers`, `documents`, `plan`, `tasks`, `issue_decision`).
+`blockers`, `documents`, `plan`, `tasks`, `issue_decision`). These channels use replacement updates;
+there is no implicit merge reducer. The diagram shows the planner contract, not the unrelated
+request/output fields of every other Operation.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `planner` | One Pi worker under the host launcher, which runs the worker executor and records usage outside the graph state. | admitted context | validated result data |
+| `planner` | One Pi worker under the host launcher, which validates the input/result contract and records usage outside Graph State. | snapshot, change_id, expected_artifacts | context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision |
 
 **Edges.** None branch: the Graph runs its one node from `__start__` to `__end__`. What runs next is
 decided by the enclosing Graph that embeds the Operation as one of its nodes.
@@ -822,7 +845,7 @@ flowchart TB
     accTitle: Operation node
     accDescr: One worker invocation: the admitted typed context enters, the launcher runs the Pi worker, and the validated typed result leaves.
     __start__["start"]
-    planner["planner<br/>in: admitted context<br/>out: validated result data"]
+    planner["planner<br/>in: snapshot, change_id, expected_artifacts<br/>out: context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision"]
     __end__["end"]
     __start__ --> planner
     planner --> __end__
@@ -836,18 +859,22 @@ participant finalization) run one at a time through this Graph; the item node is
 `execute_item`).
 
 **State.** `index` (the next item), `output` (the first non-None item result, which stops the
-Graph), `stop`.
+Graph), `stop`. `index` is an integer and `stop` a boolean; `output` admits the caller's item
+result or None. All use replacement updates. Invocation starts with `index=0, output=None`.
+The finite item tuple and the callable are held by the Host closure, not in State.
 
 **Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `select_item` | Deterministic: stops when no item remains. | index, items | stop |
-| `execute_item` | The item operation; a non-None result stops the Graph. | item | output, index, stop |
+| `select_item` | Deterministic: compares index to the length of the Host-bound item tuple. | index | stop |
+| `execute_item` | Calls the Host-bound operation on items[index], increments index and sets stop when its result is not None. | index | output, index, stop |
 
 **Edges.** Both nodes route on `stop` through conditional edges: `select_item` ends the Graph when no
 item remains and runs `execute_item` otherwise, and `execute_item` ends it when the item returned a
-result and returns to `select_item` when it returned None.
+result and returns to `select_item` when it returned None. Exhaustion is `index >= len(items)`;
+an item stop is `output is not None` (even a falsey dictionary is a stop). Exceptions propagate
+to the enclosing caller; they are not an unshown `result` channel or another batch transition.
 
 ```mermaid
 flowchart TB
@@ -855,14 +882,14 @@ flowchart TB
     accTitle: Sequential work items Graph
     accDescr: Items are selected and executed one at a time until none remain or an item returns a stopping result.
     __start__["start"]
-    select_item["select_item<br/>in: index, items<br/>out: stop"]
-    execute_item["execute_item<br/>in: item<br/>out: output, index, stop"]
+    select_item["select_item<br/>in: index<br/>out: stop"]
+    execute_item["execute_item<br/>in: index<br/>out: output, index, stop"]
     __end__["end"]
     __start__ --> select_item
-    select_item -->|items remain| execute_item
-    select_item -->|no item left| __end__
-    execute_item -->|item returned None| select_item
-    execute_item -->|item returned a result| __end__
+    select_item -->|stop = false: index below item count| execute_item
+    select_item -->|stop = true: items exhausted| __end__
+    execute_item -->|stop = false: output is None| select_item
+    execute_item -->|stop = true: output is not None| __end__
 ```
 
 ## Permissions {#permissions-permissions}
