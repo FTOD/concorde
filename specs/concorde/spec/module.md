@@ -54,6 +54,32 @@ Selection and implementation lookup are separate because permission to understan
 permission to modify its code. Exact source identities make changed inputs invalidate dependent
 results, while explicit one-level references keep the boundary understandable and reproducible.
 
+### Flow overview
+
+This conceptual view covers project initialization and configuration, not every responsibility
+of the Spec Module or an exact runtime topology. Initialization deliberately separates a proposed
+starting draft from permission to apply it. Configuration is a separate explicit request; neither
+path silently invents product behavior. Stale or invalid proposals leave the project unchanged.
+
+The full [Project Graph Spec](contracts.md#graphs-project-graph-project-graph) defines the State
+channels, node inputs/outputs and routing for `concorde-init` and `concorde-configure`.
+[Initialization](initialize.md) explains the normal proposal and acceptance interaction.
+
+```mermaid
+flowchart LR
+    accTitle: Project initialization and configuration flow overview
+    accDescr: A developer either requests an initialization proposal, reviews it and separately applies unchanged bytes, or explicitly configures the existing project. The acceptance arrow is a developer decision, not an automatic runtime transition.
+    request["Choose the project setup task"]
+    proposal["Prepare an honest initialization proposal"]
+    inspect["Review the proposed files"]
+    apply["Apply the explicitly accepted proposal"]
+    configure["Apply explicit project configuration"]
+    request -->|initialize a project| proposal
+    proposal -->|no project changes yet| inspect
+    inspect -->|developer requests application of unchanged bytes| apply
+    request -->|configure an existing project| configure
+```
+
 ## Relationships
 
 The registry separates semantic Module identities from implementation-file ownership: Modules register documents and entities, entities bind listing entries that are exact files or directory prefixes, and a file may be bound by several Modules while belonging to one entity within each, the owner of its most specific entry. Admission creates immutable selection records and reverse indexes from exact declarations; overlay bytes support candidate inspection without writes. Selection never walks a dependency to read another Module's body. The Spec model's own package entry points, the Validator and the Initialization operation are three ways of using the same admitted Registry and Protocol binding; the Protocol assets entity packages the authored Protocol text for runtime distribution without becoming a second authority over its meaning.

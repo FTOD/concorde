@@ -96,7 +96,7 @@ export async function materializeScoped(registry: ScopedRegistry) {
           page.readingCollection === "implementation"
             ? "implementationSpecsSidebar"
             : "moduleSpecsSidebar",
-        toc_max_heading_level: page.primaryOf ? 2 : 3,
+        toc_max_heading_level: 3,
       }),
     );
   }

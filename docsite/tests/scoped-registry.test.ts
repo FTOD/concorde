@@ -617,6 +617,14 @@ it("materialized navigation preserves Module category and leaf links", async () 
     ),
   );
   expect(materialized.moduleSpecsSidebar).toEqual(sidebar);
+  for (const page of registry.pages) {
+    const staged = readFileSync(
+      resolve(root, "docsite/.generated/content/specs", page.stagedPath),
+      "utf8",
+    );
+    // Module entry subsections, including flow overviews, must be discoverable too.
+    expect(staged, page.sourcePath).toContain("toc_max_heading_level: 3\n");
+  }
   expect(
     all.some((item) => item.label === "Graph" || item.href === "/graph"),
   ).toBe(false);

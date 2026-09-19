@@ -64,6 +64,33 @@ skips. There is no automatic Spec-repair edge and no implementation/readiness no
 whether to continue into development. Fresh author and reviewer invocations preserve independence
 even when the host reuses current evidence.
 
+### Flow overview
+
+This conceptual view separates deciding whether authoring is needed from obtaining review evidence.
+The boxes group responsibilities, not runtime nodes. Accepted authoring and current reviews can
+be reused; an explicitly permitted review skip is recorded as a skip, never as a passing review.
+A stopped review does not automatically launch another authoring attempt.
+
+For State channels, node inputs/outputs and exact skip, reuse and stop conditions, open the
+[full Specification Graph Spec](execution-reference.md#specify-loop-specification-graph-specify-graph).
+
+```mermaid
+flowchart TB
+    accTitle: Specification flow overview
+    accDescr: Select the contract work still needed, author if required, then obtain or reuse independent review evidence. Completion stops before planning or code; gaps and blocking results preserve progress without automatic repair.
+    intent["Admitted Spec task and current progress"]
+    author["Author and admit owned Spec changes"]
+    review["Obtain independent review evidence"]
+    complete["Spec work complete; no implementation or readiness"]
+    stop["Preserve progress for an explicit decision"]
+    intent -->|authoring is needed| author
+    intent -->|authoring is skipped or already accepted| review
+    author -->|replacements accepted| review
+    author -->|gap, rejection or failure| stop
+    review -->|reviews accepted, current or explicitly skipped| complete
+    review -->|blocking, incomplete or failed review| stop
+```
+
 ## Relationships
 
 The diagram shows the sibling operations that contribute to Spec completion. [Query and Routing](../query-routing/module.md)

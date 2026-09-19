@@ -59,6 +59,34 @@ Each non-code worker has a fresh complete Spec context without source contents. 
 name declared children or used Modules; separately admitted component work, not a wider planner
 grant, supplies their implementations. Existing host repair admission remains an adapter limit.
 
+### Flow overview
+
+This conceptual view shows the artifacts a caller obtains before implementation, not a single
+executable Graph spanning every box. Planning checks contract sufficiency before accepting a plan;
+task authoring is a separate Operation that consumes that current plan. This separation prevents
+an attractive plan from disguising missing behavior or being mistaken for completed code.
+
+For the planning node inputs/outputs, State channels and exact stop conditions, open the
+[full Planning Graph Spec](execution-reference.md#plan-planning-graph-plan-graph).
+The [task-authoring explanation](tasks.md) covers the separate next Operation.
+
+```mermaid
+flowchart LR
+    accTitle: Planning flow overview
+    accDescr: Assess whether the task is sufficiently specified, produce and admit a current plan, and let a separate task-authoring call derive acceptance tasks. Gaps or rejected plans stop before implementation.
+    assess["Assess the task against its Spec"]
+    plan["Produce and admit a current plan"]
+    tasks["Derive and admit acceptance tasks"]
+    ready["Hand accepted tasks to implementation"]
+    stop["Report why planning cannot advance"]
+    assess -->|contract suffices| plan
+    assess -->|gap, conflict or failure| stop
+    plan -->|caller requests task authoring| tasks
+    plan -->|plan rejected or inputs stale| stop
+    tasks -->|task list accepted| ready
+    tasks -->|acceptance or identity checks fail| stop
+```
+
 ## Relationships
 
 The diagram separates Planning's reusable outputs from the providers that admit and produce them.

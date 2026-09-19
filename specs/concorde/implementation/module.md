@@ -69,6 +69,37 @@ composite's own tasks, and finishes with the
 A later participant's repair can invalidate evidence an earlier participant already produced, so
 that Graph repeats final verification until one consistently checked candidate remains.
 
+### Flow overview
+
+This conceptual view explains why coordinated work reconciles contracts before writing code and
+waits for all writers before final shared checks. Boxes group responsibilities, not runtime nodes.
+Local-only implementation uses one programmer invocation; the additional reconciliation and
+stabilization work applies when accepted tasks involve participating Modules. Nested coordination
+may return a draft to its enclosing coordinator rather than claiming final verification.
+
+For exact State channels, node inputs/outputs and stopping predicates, open the full
+[Component coordination Graph Spec](execution-reference.md#graphs-component-coordination-graph-coordination-graph)
+and [Shared candidate stabilization Graph Spec](execution-reference.md#graphs-shared-candidate-stabilization-graph-stabilization-graph).
+Local worker execution uses the [Operation node contract](../harness/execution-reference.md#host-operation-node-operation-node).
+
+```mermaid
+flowchart TB
+    accTitle: Coordinated implementation flow overview
+    accDescr: Reconcile participating contracts before component and local code work. After the writers finish, verify the shared candidate and repeat within bounds when a repair changes shared code. Preserve incomplete work on a stop; task completion is not delivery.
+    contracts["Reconcile participating contracts"]
+    writers["Implement component and local tasks"]
+    verify["Verify the final shared candidate"]
+    complete["Record task completion; no delivery"]
+    stop["Preserve incomplete work and explain the stop"]
+    contracts -->|contracts agree| writers
+    contracts -->|gap or incompatibility| stop
+    writers -->|all writers finished; final checks are due| verify
+    writers -->|incomplete or failed work| stop
+    verify -->|repair changes shared code within the bound| verify
+    verify -->|evidence covers a stable candidate| complete
+    verify -->|verification blocks or repairs do not converge| stop
+```
+
 ## Relationships
 
 This view follows an admitted Implementation task to Task completion. [Spec Module](../spec/module.md) determines the selected

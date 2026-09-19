@@ -56,6 +56,35 @@ The [query Graph](execution-reference.md#query-and-routing-query-graph-query-gra
 Expansion limits and stop edges bound missing-context reasoning. Provider references expand once;
 links and implementation files never become implicit discovery routes.
 
+### Flow overview
+
+This conceptual view explains how a question or owner-selection request gains enough knowledge
+without unrestricted searching. The boxes group reasoning and admission responsibilities, not
+runtime nodes. Additional context must be explicitly admitted; a missing contract remains a gap
+even after all relevant existing documents have been read. Topology design uses the same discovery
+mechanism but returns its proposal through [Topology](../topology/module.md#flow-overview).
+
+The full [Discovery Graph Spec](execution-reference.md#query-and-routing-discovery-graph-discovery-graph)
+and [Query Graph Spec](execution-reference.md#query-and-routing-query-graph-query-graph) give State,
+node inputs/outputs, expansion bounds and the distinction between business stops and execution errors.
+
+```mermaid
+flowchart TB
+    accTitle: Query and routing flow overview
+    accDescr: Reason from explicitly admitted Module Specs. Admit a further relevant context only when permitted, then reason again. Sufficient knowledge produces an answer or owner selection; missing promises or unavailable expansion produce an attributed stop.
+    context["Begin with selected complete Module Specs"]
+    reason["Assess the question or owning responsibility"]
+    expand["Admit additional relevant Module context"]
+    result["Return an answer or bind the selected owner"]
+    stop["Report the gap, conflict or limit"]
+    context -->|use only admitted knowledge| reason
+    reason -->|additional existing context is needed| expand
+    expand -->|selection is permitted and within bounds| reason
+    reason -->|knowledge suffices| result
+    reason -->|necessary promise is missing or conflicting| stop
+    expand -->|selection is rejected or the limit is reached| stop
+```
+
 ## Relationships
 
 The diagram shows how an Admitted selection reaches a discovery worker. [Spec Module](../spec/module.md) resolves complete

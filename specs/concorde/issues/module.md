@@ -71,6 +71,41 @@ LangGraph compiles the declared `issue_graph` nodes and routes before execution.
 attempt counts before model calls, current intended behavior and evidence in candidate bookkeeping.
 No autonomous nested repair escapes the selected goal or the declared iteration limit.
 
+### Flow overview
+
+This conceptual view follows an explicitly requested solve, not the runtime's complete node/edge
+catalog. Listing, reporting and reopening do not start this repair loop. The solver chooses work
+but does not perform it: development, contract authoring and independent review retain their own
+authority. Resolution needs current Issue-specific evidence; duplicate and not-actionable
+outcomes instead need their own supported reasons. Any final readiness claim includes the
+written disposition, and never means the primary branch has changed.
+
+For State channels, node inputs/outputs, decision limits and exact disposition conditions, open
+the full [Issue Graph Spec](execution-reference.md#lifecycle-issue-graph-issue-graph) and
+[Issue verification Graph Spec](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
+
+```mermaid
+flowchart TB
+    accTitle: Issue solving flow overview
+    accDescr: Select one Issue, make bounded decisions, and use ordinary development, Spec repair or independent verification as needed. A supported disposition is written before final candidate validation. Stops retain progress; failed final validation leaves the Issue open subject to safe restoration.
+    selection["Select the current Issue and goal"]
+    decision["Choose the next bounded action"]
+    work["Develop, clarify the Spec or verify the Issue"]
+    close["Record a supported disposition"]
+    check["Validate the candidate including disposition"]
+    ready["Ready candidate; delivery is separate"]
+    stop["Retain progress and report the needed decision"]
+    selection -->|admitted open Issue| decision
+    decision -->|more work or evidence is needed| work
+    work -->|return current results and feedback| decision
+    decision -->|disposition has its required support| close
+    decision -->|human choice, blocked execution or exhausted limit| stop
+    work -->|execution cannot continue| stop
+    close -->|disposition safely recorded| check
+    check -->|current candidate passes| ready
+    check -->|failure: safely restore open status or report conflict| stop
+```
+
 ## Relationships
 
 This view shows the selected Issue's collaborators, not the inventory of the repaired Module. Each

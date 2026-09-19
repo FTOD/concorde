@@ -95,6 +95,35 @@ Worktree lifecycle binds candidate identity, phase and progress and checks the m
 Only admitted typed artifacts cross stages; a model decision cannot advance lifecycle state or
 broaden another invocation's permission.
 
+### Flow overview
+
+This conceptual view shows the common boundary around an Operation, not its executable node
+catalog. Admission fixes which request may run and where; each worker then receives its own
+narrow grant. A successful process exit alone is not an accepted result. The Host preserves the
+difference between a business stop, invalid output and execution failure when reporting back.
+
+For exact State channels, node inputs/outputs and routing, open the full
+[Operation admission Graph Spec](admission.md#graphs-operation-admission-graph-operation-graph).
+The [Operation node Graph Spec](execution-reference.md#host-operation-node-operation-node) defines
+one embedded worker's input/output boundary; the
+[Sequential work items Graph Spec](execution-reference.md#host-sequential-work-items-graph-batch-graph)
+defines how repeated reviews or component jobs stop at the first blocking item. Neither grants
+one item another item's context.
+
+```mermaid
+flowchart LR
+    accTitle: Operation admission and execution flow overview
+    accDescr: Check the request, workspace and configuration before dispatching the selected behavior. Workers receive separate bounded invocations as needed. Return the admitted result or a precise stop without widening authority.
+    request["Receive an Operation request"]
+    admit["Check request, workspace and configuration"]
+    execute["Run the selected behavior with bounded invocations"]
+    finish["Return accepted output or an explicit stop"]
+    request -->|enter the common boundary| admit
+    admit -->|admitted in the correct workspace| execute
+    admit -->|rejected or unavailable boundary| finish
+    execute -->|validate results and preserve failure distinctions| finish
+```
+
 ## Relationships
 
 Each invocation is the unit of work this Module executes. Its Spec context is the selected

@@ -25,6 +25,10 @@ Spec Authoring proposes a contract; Planning produces a plan and tasks; Implemen
 accepted tasks; Review and Validation produce different kinds of evidence. Topology changes ownership
 and registered structure. Delivery publishes a verified candidate only with separate authorization.
 
+For diagrams, start with the [flow overview](#flow-overview) and
+[Operation flow guide](#operation-flow-guide) on this page. Each provider's Module Spec shows its
+conceptual flow and links directly to the full State, Nodes and Edges in its Implementation Specs.
+
 For a complete development task, select `concorde-dev-loop`. This composed Operation coordinates
 specification, planning, implementation and checks, returning a ready candidate rather than a merge.
 For specification work alone, select `concorde-specify-loop`; it returns before implementation.
@@ -86,6 +90,54 @@ Operation runs a Graph, that owner's Implementation Specs also hold the Graph Sp
 Nodes and Edges.
 The [ownership table](execution-reference.md#operations-behavioral-ownership-and-composition-limits)
 maps every Operation, including each model-backed worker, to its owner and to the Graph it runs.
+
+### Flow overview
+
+This conceptual view answers how a request reaches the right behavior provider; it is not the
+compiled dispatch topology. Some requests act on the whole project, while others need one bound
+Module. A primary-worktree mutation is relayed to its candidate before the provider changes files.
+A provider's completion is returned to admission, which preserves business stops and execution
+failures rather than treating every finished call as success.
+
+For exact State channels, node inputs/outputs and branching predicates, open the full
+[Operation dispatch Graph Spec](execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)
+and [Target admission Graph Spec](execution-reference.md#graphs-target-admission-graph-target-graph).
+
+```mermaid
+flowchart TB
+    accTitle: Operation dispatch flow overview
+    accDescr: Common admission accepts a request in the right workspace. Dispatch either binds its owning Module before selecting a provider, or selects project-wide behavior directly. The provider's result returns through the common boundary; a rejected owner selection stops before execution.
+    admitted["Request admitted in the correct workspace"]
+    owner["Restore or discover the owning Module"]
+    provider["Run the selected behavior provider"]
+    result["Return the result through common admission"]
+    admitted -->|one Module must own the task| owner
+    admitted -->|project-wide or lifecycle behavior| provider
+    owner -->|owner and intent accepted| provider
+    owner -->|selection is blocked or invalid| result
+    provider -->|completed work or explicit stop| result
+```
+
+### Operation flow guide
+
+These links stay in **Module Specs** first. Each overview names the corresponding full Graph
+Spec next to its diagram, so readers can move from purpose and sequence to exact State and routing
+without searching for an `execution-reference` page. The overview boxes are explanatory groups,
+not another executable-node catalog.
+
+| Operation or shared work | Module Spec overview |
+| --- | --- |
+| `concorde-dev-loop` | [Development flow](../dev-loop/module.md#flow-overview): Spec preparation through a ready candidate, with bounded code repair. |
+| `concorde-specify-loop` | [Specification flow](../specify-loop/module.md#flow-overview): author or reuse the contract, then obtain review evidence. |
+| `concorde-main` questions and owner discovery | [Query and routing flow](../query-routing/module.md#flow-overview): explicitly select knowledge before answering or binding an owner. |
+| `concorde-main` topology actions | [Topology flow](../topology/module.md#flow-overview): separate acceptance of the design and the exact edits. |
+| `concorde-issues` solving | [Issue solving flow](../issues/module.md#flow-overview): bounded decisions, ordinary repair providers and verification before disposition/readiness. |
+| `concorde-init`, `concorde-configure` | [Project setup flow](../spec/module.md#flow-overview): initialization proposal/acceptance or explicit configuration. |
+| Internal planning and task authoring | [Planning flow](../planning/module.md#flow-overview): sufficiency, accepted plan and separately admitted tasks. |
+| Internal coordinated implementation | [Implementation flow](../implementation/module.md#flow-overview): reconcile contracts, finish writers and stabilize shared evidence. |
+| Every Operation; repeated review/component work | [Harness flow](../harness/module.md#flow-overview): admission, worker boundaries and links to the shared sequential-work Graph. |
+| `concorde-spec-review`, `concorde-code-review` | [Review usage](../review/module.md#usage): independent scoped evidence, not an automatic repair workflow. |
+| `concorde-validate`, `concorde-deliver` | [Validation](../validation/module.md#usage) and [Delivery](../delivery/module.md#usage): deterministic providers behind common admission/dispatch, not additional multi-node domain Graphs. |
 
 ## Relationships
 

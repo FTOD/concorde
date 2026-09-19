@@ -40,27 +40,6 @@ For example, moving a shared interface from one owner to another requires more t
 Its stable identity must remain unique, its consumers must include the new canonical unit, and their
 local obligations must still make sense. Consumers do not copy it into competing contracts.
 
-### Two decisions
-
-This conceptual view explains the two human decisions, not the runtime's exact nodes or error edges.
-The [executable Graph](execution-reference.md#topology-topology-preparation-graph-topology-graph)
-is defined once in Implementation Specs.
-
-```mermaid
-flowchart LR
-    accTitle: Two acceptances for a topology change
-    accDescr: Agree on the responsibility design, prepare and review the affected specifications, then approve and apply the exact edits.
-    design["Propose responsibilities"]
-    agree["Accept the design"]
-    prepare["Prepare and review Specs"]
-    approve["Accept exact edits"]
-    apply["Apply together"]
-    design -->|developer decides| agree
-    agree -->|authors and reviewers work| prepare
-    prepare -->|developer inspects| approve
-    approve -->|host verifies and writes| apply
-```
-
 ## Design
 
 <a id="entity.topology.adapter"></a><a id="entity.topology.application"></a>
@@ -87,6 +66,35 @@ prepared bytes separate from accepted effects lets validation and review find co
 exposing a half-updated registry. Rechecking inputs prevents an old proposal from overwriting a
 later edit. These boundaries support the two-acceptance and no-partial-application promises; they
 do not add arbitrary graph configuration or provider write grants.
+
+### Flow overview
+
+This conceptual view explains the two human decisions, not runtime nodes or an automatic sequence
+of requests. Accepting the responsibility design allows preparation; accepting the exact prepared
+edits allows application. A rejected, stale or incompatible proposal does not authorize writes.
+Keeping these decisions separate lets the developer inspect both the intended boundaries and the
+actual transaction before the project changes.
+
+For State channels, node inputs/outputs and exact routing, open the full
+[design discovery](../query-routing/execution-reference.md#query-and-routing-query-graph-query-graph),
+[Topology preparation](execution-reference.md#topology-topology-preparation-graph-topology-graph)
+and [Topology application](execution-reference.md#topology-topology-application-graph-topology-apply-graph)
+Graph Specs.
+
+```mermaid
+flowchart LR
+    accTitle: Topology flow overview
+    accDescr: Agree on the responsibility design, prepare and review the affected specifications, then separately approve and apply the exact edits. The arrows include developer decisions, not automatic runtime transitions.
+    design["Propose responsibilities"]
+    agree["Accept the design"]
+    prepare["Prepare and review Specs"]
+    approve["Accept exact edits"]
+    apply["Apply together"]
+    design -->|developer decides| agree
+    agree -->|authors and reviewers work| prepare
+    prepare -->|developer inspects| approve
+    approve -->|host rechecks and applies accepted bytes| apply
+```
 
 ## Relationships
 

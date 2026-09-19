@@ -281,6 +281,7 @@ Spec equals its compiled Graph is proven by the configured Graph Spec check, not
 - GIVEN a loaded registry model
 - WHEN `materializeScoped` runs
 - THEN it replaces the disposable generated content and static directories, writes each reading page under `content/specs/<stagedPath>` without an appended machine inventory, and writes the sidebar projection
+- AND every registered page, including Module entries, exposes level-2 sections and level-3 subsections in its page table of contents
 - AND only after every asset and the sidebar succeed does it write the materialization identity record
 - AND a failed write can leave partial derived assets that a fresh materialization replaces on retry
 

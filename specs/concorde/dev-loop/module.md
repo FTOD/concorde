@@ -77,6 +77,39 @@ Authoring decides intended meaning, implementation fulfills it, and independent 
 that result. Keeping their authority and conversations separate helps prevent a worker from silently
 weakening the contract to fit its own code. An explicit delivery decision follows readiness.
 
+### Flow overview
+
+This conceptual view follows a change from intent to a ready candidate; the boxes group work,
+not executable nodes. Specification and implementation use separate authority so a code change
+cannot silently redefine its contract. Resume reuses only current accepted work. A code-free
+Module has no code-review step, and explicit review skips remain distinct from passing reviews.
+
+For exact node inputs/outputs, State channels, resume choices and repair conditions, open the
+[full Development Graph Spec](execution-reference.md#development-development-graph-development-graph).
+
+```mermaid
+flowchart TB
+    accTitle: Development flow overview
+    accDescr: Prepare the contract, plan accepted tasks, implement them, and check and review the candidate. Repairable owner findings return to task preparation; gaps, failures or exhausted repair preserve progress for a decision. Readiness never delivers automatically.
+    intent["Admitted change and current progress"]
+    contract["Prepare and review the Spec"]
+    work["Plan or revise acceptance tasks"]
+    code["Implement within each Module's grant"]
+    evidence["Check and independently review"]
+    ready["Ready candidate; delivery is separate"]
+    stop["Preserve progress and report the stop"]
+    intent -->|resolve what remains current| contract
+    contract -->|contract permits development| work
+    work -->|tasks accepted| code
+    code -->|writers have finished| evidence
+    evidence -->|required evidence is current and accepted| ready
+    evidence -->|owner findings admit bounded repair| work
+    contract -->|necessary gap or blocking review| stop
+    work -->|planning or task admission blocks| stop
+    code -->|incomplete work or execution failure| stop
+    evidence -->|failed checks, peer findings or no further repair| stop
+```
+
 ## Relationships
 
 This is a responsibility and collaboration view; the detailed development Graph defines execution

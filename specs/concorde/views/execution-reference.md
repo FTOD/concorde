@@ -164,8 +164,10 @@ Profile 15 publication requires one local `module.md` per Module starting with t
 Purpose, Terminology, Usage, Design and Relationships sections, each with explanatory prose. The entry and
 explanatory topics have role module; formal requirements, scenarios and canonical contracts are
 permitted only in directly Module-owned implementation-role companions. Every unit has schema-2
-metadata with an explicit role, and the retired publication extension is rejected. The publisher's primary-page table of contents shows major sections rather than flooding
-navigation with every formal definition ID. All definitions remain readable, searchable and linked.
+metadata with an explicit role, and the retired publication extension is rejected. Every registered
+page's table of contents includes level-2 sections and level-3 subsections, including on Module
+entry pages, so a Design flow overview is directly reachable without searching the article.
+Deeper headings remain readable, searchable and linkable without flooding the page navigation.
 
 Every reading file has a matching metadata companion. Invalid ownership, metadata shapes, local
 meaning anchors, requirement/scenario syntax or scoped diagram entities/labels reject publication.
