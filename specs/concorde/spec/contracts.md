@@ -303,6 +303,78 @@ workspace/output, status and `errors: list[{code, field, message}]`. Successful 
 `status: "succeeded"` and the typed output above; admission failures are blocked and execution
 failures are failed, with no successful output.
 
+### Project Graph (`project_graph`) {#graphs-project-graph-project-graph}
+
+`concorde-init` and `concorde-configure` run this Graph; their behavior is owned by this Module's
+[initialization](initialize.md) and the [Distribution Module](../distribution/module.md).
+
+**State.** `route`, `output` (the typed response), `result`.
+
+**Nodes.** All three leaves are deterministic Operations; none calls a model.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `select_action` | Deterministic: the operation and action select one deterministic operation; describe-policy is refused because proposals are the preview. | request | route |
+| `configure` | Deterministic: writes the typed operation configuration into the project settings. | configuration | applied configuration |
+| `propose` | Deterministic: the initialization proposal with its base digest and files. | name, configuration | proposal |
+| `apply` | Deterministic: applies an unchanged proposal atomically. | proposal | applied files |
+
+**Edges.** `select_action` writes `route` from the operation and its action, and a conditional
+edge follows it to `configure`, `propose` or `apply`; a refused describe-policy request or an error
+ends the Graph. Each leaf ends the Graph with its typed response.
+
+```mermaid
+flowchart TB
+    %% graph: project_graph
+    accTitle: Project Graph
+    accDescr: The operation selects configuration, an initialization proposal or its application; each ends the Graph with its typed response.
+    __start__["start"]
+    select_action["select_action<br/>in: request<br/>out: route"]
+    configure["configure<br/>in: configuration<br/>out: applied configuration"]
+    propose["propose<br/>in: name, configuration<br/>out: proposal"]
+    apply["apply<br/>in: proposal<br/>out: applied files"]
+    __end__["end"]
+    __start__ --> select_action
+    select_action -->|concorde-configure| configure
+    select_action -->|concorde-init propose| propose
+    select_action -->|concorde-init apply| apply
+    select_action -->|error| __end__
+    configure --> __end__
+    propose --> __end__
+    apply --> __end__
+```
+
+## File transactions {#structure-file-transactions}
+
+File transactions (this Module's `entity.spec.file-transactions`, a file also listed by Views):
+`file_change(root: Path, path: str, content: str) ->
+{path,before_digest,content}` captures current bytes (null digest for new files).
+`apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]` requires
+nonempty unique allowed paths, UTF-8 replacement text and exact before digests. It rechecks before
+writes, optionally calls the zero-argument verifier, and restores written bytes on failure.
+Stale or foreign proposals raise SpecError; no partial transaction is reported successful.
+
+## Diagrams as part of registered documents {#structure-diagrams-in-registered-documents}
+
+Relationships diagrams in this project are inline Mermaid flowchart fences inside a registered
+Markdown document, with `accTitle` and `accDescr` accessible text stated beside the fence. A
+Module's main diagram, in its `module.md` Relationships subsection, describes its principal entities
+and directed relationships; further diagrams may appear in other registered documents. The entire
+containing Markdown document is the diagram's only authored source.
+
+The diagram's bytes already occur in `documents` and participate in document,
+revision and context digests; no separate diagram-source pool or result field exists. Authors
+return a changed fence as part of the changed `documents` entry that contains it. Shared Markdown
+changes are authored once by the sole owner and reviewed for all affected direct context consumers; non-author roles
+cannot replace these sources; and rendered SVG/HTML is never a cognitive input or another
+authority.
+
+Spec review receives scoped Markdown changes, including any diagram fence they touch, and
+attributes findings to that registered document and owning Module. A blocked author returns no
+replacements. A prepared application binds the complete accepted document set and every
+before-digest. Syntax and publication failures remain distinct from an incomplete or contradictory
+behavioral contract. Publication renders the same Mermaid source as part of the Markdown page.
+
 ## Framework configuration and storage versions {#values-framework-configuration-and-storage-versions}
 
 `Profile 15` is the Framework's project-configuration compatibility version for the complete content model and its human-readable subset. It is distinct from Spec Protocol 10.0.0 and from registry schema 5, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.

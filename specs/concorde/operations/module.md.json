@@ -24,8 +24,42 @@
         "tests/concorde/operations/test_run_operation.py",
         "tests/concorde/operations/test_target_discovery.py"
       ]
+    },
+    {
+      "id": "entity.operations.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.operations.harness"
+    },
+    {
+      "id": "entity.operations.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.operations.spec"
+    },
+    {
+      "id": "entity.operations.issues",
+      "title": "Issues",
+      "kind": "used module",
+      "target_id": "module.issues",
+      "meaning": "#entity.operations.issues"
     }
   ],
-  "dependencies": [],
+  "dependencies": [
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.operations.module.1"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.operations.module.2"
+    },
+    {
+      "target_id": "module.issues",
+      "meaning": "#agreement.document.operations.module.3"
+    }
+  ],
   "bindings": []
 }

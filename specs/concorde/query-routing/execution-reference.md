@@ -132,11 +132,22 @@ flowchart TB
     respond --> __end__
 ```
 
+## Main routing view {#query-and-routing-main-routing-view}
+
+Select `module.harness` for context resolution, permission compilation, typed-value admission,
+worker binding and Pi worker execution. Select `module.spec` for registry selection, structural
+validation and initialization. Select `module.distribution` for build, installation and runtime
+provisioning. Select `module.operations` for the Operation catalog and dispatch, and `module.issues` for recorded
+feedback and gaps. The main router may use
+these stable IDs to route a worker but may not expand their Module targets.
+
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new graph requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
+This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+its own package `src/concorde/query_routing/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
+creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+artifacts and permissions remain mandatory. A new graph requires declared composition and an
+implementation of its sequencing, artifact admission, recovery and completion policies before it
+can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
+host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
+that reaches this provider.

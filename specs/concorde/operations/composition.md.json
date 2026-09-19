@@ -2,7 +2,7 @@
   "schema_version": 2,
   "document": {
     "id": "document.development.operations",
-    "owner": "module.development",
+    "owner": "module.operations",
     "role": "module"
   },
   "entities": [],
@@ -16,7 +16,12 @@
         "context_selection": "discover",
         "deterministic": false,
         "skill": "concorde-main",
-        "uses": ["answerer", "router", "topology_designer", "topology_author"],
+        "uses": [
+          "answerer",
+          "router",
+          "topology_designer",
+          "topology_author"
+        ],
         "state": {
           "input": "concorde-main-request",
           "output": null
@@ -50,7 +55,11 @@
         "context_selection": "discover",
         "deterministic": false,
         "skill": "concorde-specify-loop",
-        "uses": ["router", "specify", "review"],
+        "uses": [
+          "router",
+          "specify",
+          "review"
+        ],
         "state": {
           "input": "concorde-specify-loop-request",
           "output": null
@@ -63,7 +72,13 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-issues",
-        "uses": ["issue_solver", "dev_loop", "specify", "review", "validate"],
+        "uses": [
+          "issue_solver",
+          "dev_loop",
+          "specify",
+          "review",
+          "validate"
+        ],
         "state": {
           "input": "concorde-issues-request",
           "output": null
@@ -128,7 +143,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": null,
-        "uses": ["spec_author"],
+        "uses": [
+          "spec_author"
+        ],
         "state": {
           "input": "concorde-specify-request",
           "output": null
@@ -141,7 +158,11 @@
         "context_selection": "discover",
         "deterministic": false,
         "skill": "concorde-review",
-        "uses": ["router", "spec_reviewer", "code_reviewer"],
+        "uses": [
+          "router",
+          "spec_reviewer",
+          "code_reviewer"
+        ],
         "state": {
           "input": "concorde-review-request",
           "output": null
@@ -154,7 +175,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": null,
-        "uses": ["context_assessor"],
+        "uses": [
+          "context_assessor"
+        ],
         "state": {
           "input": "concorde-context-solve-request",
           "output": null
@@ -167,7 +190,10 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": null,
-        "uses": ["context_assessor", "planner"],
+        "uses": [
+          "context_assessor",
+          "planner"
+        ],
         "state": {
           "input": "concorde-plan-request",
           "output": null
@@ -180,7 +206,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": null,
-        "uses": ["task_author"],
+        "uses": [
+          "task_author"
+        ],
         "state": {
           "input": "concorde-tasks-request",
           "output": null
@@ -193,7 +221,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": null,
-        "uses": ["programmer"],
+        "uses": [
+          "programmer"
+        ],
         "state": {
           "input": "concorde-implement-request",
           "output": null
@@ -213,7 +243,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
           "children": []
         }
       },
@@ -230,7 +265,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
           "children": []
         }
       },
@@ -247,7 +287,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
           "children": []
         }
       },
@@ -264,7 +309,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
           "children": []
         }
       },
@@ -281,7 +331,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
           "children": []
         }
       },
@@ -298,8 +353,16 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": ["consistency", "fact-check"]
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": [
+            "consistency",
+            "fact-check"
+          ]
         }
       },
       {
@@ -315,7 +378,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
           "children": []
         }
       },
@@ -332,8 +400,15 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": ["scout"]
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": [
+            "scout"
+          ]
         }
       },
       {
@@ -349,7 +424,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
           "children": []
         }
       },
@@ -376,7 +456,11 @@
             "run_checks",
             "write"
           ],
-          "children": ["planner", "scout", "verifier"]
+          "children": [
+            "planner",
+            "scout",
+            "verifier"
+          ]
         }
       },
       {
@@ -392,8 +476,16 @@
         },
         "profile": {
           "workspace": "project",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": ["scout", "verifier"]
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": [
+            "scout",
+            "verifier"
+          ]
         }
       },
       {
@@ -409,7 +501,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
           "children": []
         }
       }

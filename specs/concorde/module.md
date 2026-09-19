@@ -106,10 +106,11 @@ Three relationships stay independent:
 - **Context references** select knowledge supplied to a task. They neither compose Operations nor
   grant execution permission or transfer ownership.
 
-The Framework has seven direct responsibility owners. [Operations](operations/module.md) groups
-ten provider Modules, including the owners of composed development and specification Operations.
-[Development](development/module.md) provides the common admission Host; [Harness](harness/module.md)
-provides bounded model execution; [Spec](spec/module.md) resolves identities and complete contexts.
+The Framework has six direct responsibility owners. [Operations](operations/module.md) keeps the
+catalog of every Operation, dispatches each admitted request to its provider and groups ten
+provider Modules, including the owners of composed development and specification Operations.
+[Harness](harness/module.md) admits every request at one boundary and provides bounded model
+execution; [Spec](spec/module.md) resolves identities and complete contexts.
 [Distribution](distribution/module.md) supplies fresh runnable assets, [Issues](issues/module.md)
 retains problems and [Views](views/module.md) publishes contracts.
 
@@ -130,19 +131,18 @@ context references stay independent as described in Design.
 ```mermaid
 flowchart TB
     accTitle: Operations and shared execution services
-    accDescr: Operations groups behavior providers. Development admits requests, Harness bounds execution, and Spec supplies complete contracts. Distribution, Issues and Views support this work without creating additional executable entity kinds.
+    accDescr: Harness admits every request and hands it to Operations, which dispatches it to the behavior provider that owns it. Operations bounds model execution through Harness and selects contracts through Spec. Distribution, Issues and Views support this work without creating additional executable entity kinds.
     operations["Operations"]
-    host["Development"]
     harness["Harness"]
     spec["Spec"]
     distribution["Distribution"]
     issues["Issues"]
     views["Views"]
-    operations -->|enters through| host
-    host -->|bounds model execution through| harness
-    host -->|selects contracts through| spec
+    harness -->|admits requests and hands them to| operations
+    operations -->|bounds model execution through| harness
+    operations -->|selects contracts through| spec
     harness -->|loads fresh assets from| distribution
-    issues -->|requests admitted resolution through| host
+    issues -->|requests admitted resolution through| harness
     views -->|publishes contracts from| spec
 ```
 
@@ -162,7 +162,7 @@ permission declaration.
 
 Protocol 10/Profile 15 uses Operations and graphs consistently. Old executable names and record
 formats require the explicit refusal or migration described in the
-[Host boundary](development/interfaces.md#wire-contracts); byte-bound evidence must be rebuilt.
+[Host boundary](harness/admission.md#wire-contracts); byte-bound evidence must be rebuilt.
 The source-maintenance record is `docs/changes/operations-graphs.md`, separate from current Spec
 context and execution evidence.
 Unresolved behavioral facts remain with their provider owners. Structural validation does not

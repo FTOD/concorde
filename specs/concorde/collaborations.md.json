@@ -21,13 +21,6 @@
       "meaning": "#entity.concorde.harness"
     },
     {
-      "id": "entity.concorde.development",
-      "title": "Development",
-      "kind": "submodule",
-      "target_id": "module.development",
-      "meaning": "#entity.concorde.development"
-    },
-    {
       "id": "entity.concorde.issues",
       "title": "Issues",
       "kind": "submodule",
@@ -64,10 +57,6 @@
     {
       "target_id": "module.harness",
       "meaning": "#agreement.document.concorde.module.2"
-    },
-    {
-      "target_id": "module.development",
-      "meaning": "#agreement.document.concorde.module.3"
     },
     {
       "target_id": "module.issues",

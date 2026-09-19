@@ -57,7 +57,7 @@ This separation keeps a command's success from granting writes, proving semantic
 previously required review.
 
 `validate` runs as a single deterministic node that calls no model. Invoked directly, it is the
-`validate` leaf the [dispatch Graph](../development/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)
+`validate` leaf the [dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)
 selects once target admission has bound the candidate's owner; inside the development Graph it is
 the `validate` stage between implementation and code review.
 
@@ -65,7 +65,7 @@ the `validate` stage between implementation and code review.
 
 The diagram separates Validation evidence from the Readiness decision that consumes it. The [Spec Module](../spec/module.md)
 identifies affected consumers and checks structure, Harness executes admitted commands without
-project writes, and [Development Module](../development/module.md) records results and evaluates existing gates. A passing command
+project writes, and [Harness admission](../harness/admission.md) records results and evaluates existing gates. A passing command
 is evidence for its checked inputs, not permission to skip required reviews or a proof of semantic
 completeness. These collaborations are operation dependencies; Validation does not own its providers.
 
@@ -74,11 +74,9 @@ flowchart TB
     accTitle: Validation entities and dependencies
     accDescr: Validation resolves affected users and validates Spec structure, runs configured checks through the isolated Harness executor and records evidence and readiness decisions through the host.
     e0["Validation adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
-    e0 -->|records evidence and readiness through| e1
-    e0 -->|runs isolated configured checks through| e2
+    e0 -->|runs isolated configured checks, and records evidence and readiness through| e2
     e0 -->|validates structure and resolves affected users through| e3
     domain_evidence["Validation evidence"]
     e0 -->|records current check results as| domain_evidence
@@ -90,16 +88,6 @@ flowchart TB
 
 Validation relies on these providers while retaining responsibility for its own readiness decision.
 
-### Development
-
-<a id="entity.validation.development"></a><a id="agreement.document.validation.module.1"></a>
-
-Admit deterministic validation requests, retain private check logs and store current candidate evidence and readiness decisions.
-
-This collaboration applies when validation is requested, check results are recorded or existing task and review gates are evaluated.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
-
 ### Harness
 
 <a id="entity.validation.harness"></a><a id="agreement.document.validation.module.2"></a>
@@ -108,7 +96,12 @@ Execute configured checks with OS-enforced read-only project access, external sc
 
 This collaboration applies when run_checks admits a configured command whose result is needed for candidate evidence.
 
+Admit deterministic validation requests, retain private check logs and store current candidate evidence and readiness decisions.
+
+This collaboration applies when validation is requested, check results are recorded or existing task and review gates are evaluated.
+
 - [Isolated configured-check execution](../harness/execution-reference.md#execution-configured-deterministic-checks); Supply the registered command and timeout; keep raw diagnostics in host records and refuse checks when isolation is unavailable.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

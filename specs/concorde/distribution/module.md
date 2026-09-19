@@ -115,7 +115,7 @@ when the developer asks, `accept_protocol` to rebind the installed Protocol copy
 applied configuration with `status: applied`. An unsupported value, an uninitialized project, a
 Protocol mismatch without `accept_protocol` or a failed write leaves the previous configuration in
 place. It runs as a single deterministic node that calls no model: the `configure` leaf of the
-host's [project Graph](../development/execution-reference.md#graphs-project-graph-project-graph),
+host's [project Graph](../spec/contracts.md#graphs-project-graph-project-graph),
 which refuses a describe-policy preview with `use_proposal`.
 
 <a id="entity.distribution.developer-session"></a>

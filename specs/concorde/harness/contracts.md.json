@@ -12,7 +12,7 @@
       "id": "contract.context.selection",
       "version": 3,
       "role": "provided",
-      "peer": "module.development",
+      "peer": "module.operations",
       "meaning": "#participation.document.harness.context.1"
     }
   ]

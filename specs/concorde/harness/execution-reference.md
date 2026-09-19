@@ -135,7 +135,7 @@ The build combines `prompts/workers/common.md` with the Operation's own instruct
 its child definitions as sources. [Distribution Module](../distribution/module.md) still publishes `generated/agents/<name>.md` to
 preserve the installed instruction layout. The host appends the granted Protocol rule bundle.
 
-The single inventory is defined by [Operation registry](../development/execution-reference.md).
+The single inventory is defined by the [Operation registry](../operations/execution-reference.md#operations-operation-registry).
 Its metadata includes each model Operation's optional workspace, tools and children alongside
 its State and USES declarations. There is no separate `concorde.agents` metadata collection.
 
@@ -188,8 +188,9 @@ Only explicitly admitted structured artifacts cross stages.
 
 #### Responsibilities and implementation boundaries {#agents-and-harnesses-responsibilities-and-implementation-boundaries}
 
-The common [Development Module](../development/module.md) host dispatches the declared provider and Graph contracts and schedules
-invocations. [Planning Module](../planning/module.md) owns plan/task semantics, [Implementation Module](../implementation/module.md) owns task fulfillment, and each
+[Harness admission](admission.md) admits every request, the
+[Operations dispatch](../operations/execution-reference.md#graphs-dispatch-graphs) routes it to
+the declared provider and Graph contracts, and the invocation host schedules their invocations. [Planning Module](../planning/module.md) owns plan/task semantics, [Implementation Module](../implementation/module.md) owns task fulfillment, and each
 composing Graph owns its ordering and stopping policy. This Module's worker executor verifies and
 launches workers through the Pi worker runtime and admits their results; its permissions service
 compiles effective boundaries; its context service supplies the admitted context kinds; its model-profile
@@ -525,7 +526,7 @@ check service; `report_issue`, which requires both its host callback and report 
 grant, and child tools are built-ins or `run_checks`, never `report_issue`. An inconsistent launch
 is refused before any process starts. The executor accepts an optional host reporter with a
 `schema` property and callable report handler, forwards it only to the admitted runtime, and does
-not convert reporting authority into any file write grant. The common Development host supplies
+not convert reporting authority into any file write grant. The invocation host supplies
 this service for actual worker launches, including capsule workers, but not policy previews.
 
 The private Unix socket dispatches only explicitly granted `run_checks` and `report_issue` calls.
@@ -753,7 +754,7 @@ stage and worker events (`agent_started`, `agent_finished`, `agent_failed` namin
 stage, worker and invocation). Pausing or replaying a run does not waive permissions, checks or the
 worktree lifecycle, and replay may execute effects again. Ordinary local CLI and Skill calls do not
 require a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
-This execution view participates in Developer view and feedback through the Development host.
+This execution view participates in Developer view and feedback through the same admission.
 
 ### Design {#host-design}
 

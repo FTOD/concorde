@@ -20,13 +20,6 @@
       "meaning": "#entity.specify-loop.adapter"
     },
     {
-      "id": "entity.specify-loop.development",
-      "title": "Development",
-      "kind": "used module",
-      "target_id": "module.development",
-      "meaning": "#entity.specify-loop.development"
-    },
-    {
       "id": "entity.specify-loop.harness",
       "title": "Harness",
       "kind": "used module",
@@ -69,10 +62,6 @@
     }
   ],
   "dependencies": [
-    {
-      "target_id": "module.development",
-      "meaning": "#agreement.document.specify-loop.module.1"
-    },
     {
       "target_id": "module.harness",
       "meaning": "#agreement.document.specify-loop.module.2"

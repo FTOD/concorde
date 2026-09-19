@@ -18,13 +18,6 @@
       "meaning": "#entity.delivery.adapter"
     },
     {
-      "id": "entity.delivery.development",
-      "title": "Development",
-      "kind": "used module",
-      "target_id": "module.development",
-      "meaning": "#entity.delivery.development"
-    },
-    {
       "id": "entity.delivery.harness",
       "title": "Harness",
       "kind": "used module",
@@ -53,10 +46,6 @@
     }
   ],
   "dependencies": [
-    {
-      "target_id": "module.development",
-      "meaning": "#agreement.document.delivery.module.1"
-    },
     {
       "target_id": "module.harness",
       "meaning": "#agreement.document.delivery.module.2"

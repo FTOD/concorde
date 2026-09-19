@@ -216,8 +216,8 @@ consumer contributes separate compatibility evidence from its own complete conte
 replacement bytes. An implementation file may be listed by several Modules; a topology change to
 its bindings reconciles every listing Module without transferring ownership or widening grants.
 
-[Operation registry](../specs/concorde/development/operations.md) ·
-[Development host boundary](../specs/concorde/development/interfaces.md)
+[Operation registry](../specs/concorde/operations/composition.md) ·
+[Operation admission boundary](../specs/concorde/harness/admission.md)
 
 ## Developer view and feedback
 
@@ -337,7 +337,7 @@ writes a summary). The plain serial command
 checks with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`.
 
 Known intermittent failure: under the parallel runner,
-`tests.concorde.development.test_review.ReviewTests.test_changed_review_instructions_reassess_without_erasing_gaps_on_failure`
+`tests.concorde.operations.test_review.ReviewTests.test_changed_review_instructions_reassess_without_erasing_gaps_on_failure`
 has failed once with `review_required` ("required spec review is missing, incomplete, blocking, or
 stale") and passed on every isolated rerun. The cause is undiagnosed; treat a single failure of
 that test as suspect and rerun it alone before drawing conclusions. The worker runtime tests and
@@ -399,14 +399,14 @@ including transitive USES. Only init, configure, validate and deliver are true i
 inventory. USES is the sole composition relation, including model nodes; it does not install
 arbitrary Operation calls as worker tools.
 
-**Operation** is the canonical name for a callable or composed Framework function. Development owns the operation invocation boundary and workflow
-composition. Distribution owns `prompts/skills/`, `prompts/workflow-host/` and the published
+**Operation** is the canonical name for a callable or composed Framework function. Harness owns the operation invocation boundary, and
+Operations owns the Operation catalog and the dispatch to each provider. Distribution owns `prompts/skills/`, `prompts/workflow-host/` and the published
 `skills/`, renders the public Skill instructions, has the Agent Skills CLI install them, and keeps
 their projections current. The developer's external agent
-runtime reads those Skills and submits typed operation requests to Development; a Pi session
+runtime reads those Skills and submits typed operation requests to Harness admission; a Pi session
 instead loads the rendered `.pi/extensions/concorde-session.ts`, whose `concorde` tool submits the
 same requests through the launcher. Skills are not part of a worker's Harness. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
-and the [Operation registry](../specs/concorde/development/operations.md) for definitions and mappings.
+and the [Operation registry](../specs/concorde/operations/composition.md) for definitions and mappings.
 
 Developing this checkout is direct developer-authorized maintenance in the current worktree,
 verified with the commands above and landed as one commit per verified step. Concorde's own graphs

@@ -135,9 +135,11 @@ membership or agent permissions. Only the sole owner proposes shared source byte
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new graph requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
+This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+its own package `src/concorde/topology/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
+creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+artifacts and permissions remain mandatory. A new graph requires declared composition and an
+implementation of its sequencing, artifact admission, recovery and completion policies before it
+can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
+host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
+that reaches this provider.

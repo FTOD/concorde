@@ -19,8 +19,8 @@ conventions belong to the execution profile, not the independent standard.
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](../development/module.md#terminology) | Defined in Development operation host. |
-| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
+| [Public operation](../operations/module.md#terminology) | Defined in Operations. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
 | [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
@@ -38,9 +38,9 @@ instructions under `prompts/workflow-host/`, the published Skills under `skills/
 checkout's rendered integration-specific projections. Each public Skill maps to one public
 Operation; non-public operations have no Skill. The external runtime reads the Skill and submits
 the declared typed request through `scripts/run-operation.py`; the
-[Development Module](../development/module.md) admits and executes that request. That entry path
+[Harness admission](../harness/admission.md) admits and executes that request. That entry path
 is project-relative, so a rendered Skill carries no worktree identity: it binds to the worktree in
-which the developer's runtime executes it, and Development derives the project root from that
+which the developer's runtime executes it, and Harness admission derives the project root from that
 working directory. Building or installing a Skill does not execute its Operation or add it to a
 Concorde Agent's Harness. Operation behavior remains with its providing Module.
 

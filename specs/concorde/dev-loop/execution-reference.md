@@ -102,7 +102,7 @@ again before Module delivery.
 
 Checks use deterministic argv declared by project configuration. [Harness Module](../harness/module.md) enforces read-only project
 access for the entire check process tree and gives each check external temporary/cache/report space;
-unsupported enforcement blocks execution. [Development Module](../development/module.md) persists output outside that sandbox, and
+unsupported enforcement blocks execution. [Harness admission](../harness/admission.md) persists output outside that sandbox, and
 raw logs stay out of later Spec-only sessions. A stale Spec, changed task intent, modified
 code, failed check or missing completion blocks delivery and preserves the candidate worktree. Resuming a
 change reuses its target records and typed artifacts but starts a fresh agent session. The host does not copy unrelated
@@ -170,7 +170,7 @@ findings/gaps. Changed Spec invalidates its dependent plan/reviews and rebuilds 
 invalidates code review/check evidence. Explicitly required reviews also apply to directly authored
 candidates without inventing plans. Review does not edit files, run repair steps or deliver changes.
 
-Common [gap history](../development/execution-reference.md) retains attributed blockers and accepts resolution only after current successful output. The graph stops dependent work until those conditions hold.
+Common [gap history](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) retains attributed blockers and accepts resolution only after current successful output. The graph stops dependent work until those conditions hold.
 
 A change's `status` may also become `cancelled` or `limit_exhausted` after an executor outcome of
 the same name (`execution_cancelled`/`execution_limit`), distinguishing a cancelled or time-limited
@@ -307,9 +307,11 @@ are stable. Incompatible contracts or exhausted repair attempts leave the candid
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new graph requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
+This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+its own package `src/concorde/dev_loop/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
+creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+artifacts and permissions remain mandatory. A new graph requires declared composition and an
+implementation of its sequencing, artifact admission, recovery and completion policies before it
+can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
+host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
+that reaches this provider.

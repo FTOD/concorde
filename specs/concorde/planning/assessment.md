@@ -13,7 +13,7 @@ question.
 | [Module](../module.md#terminology) | Defined in Concorde Framework. |
 | [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Before planning

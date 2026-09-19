@@ -1,6 +1,6 @@
 # Issue interface
 
-`concorde-issues-request@1` uses the [Development Module](../development/module.md) common invocation envelope and accepts `action` plus optional
+`concorde-issues-request@1` uses the [Harness admission](../harness/admission.md) common invocation envelope and accepts `action` plus optional
 `target_id`, `task`, `focus_id`, `constraints`, `change_id`, `issue_id`, `report`, `expected_revision`
 and `note`. Actions are `list`, `show`, `report`, `reopen` and `solve`. Unknown fields fail typed
 admission. A report field is accepted only by report. A supplied revision must match current bytes. A solve

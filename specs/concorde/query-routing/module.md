@@ -60,7 +60,7 @@ links and implementation files never become implicit discovery routes.
 
 The diagram shows how an Admitted selection reaches a discovery worker. [Spec Module](../spec/module.md) resolves complete
 Module contexts and their provenance, [Harness Module](../harness/module.md) binds the fresh worker to that selection, and
-[Development Module](../development/module.md) admits expansion and returns its typed outcome. Dependency arrows describe provider
+[Harness admission](../harness/admission.md) admits expansion and returns its typed outcome. Dependency arrows describe provider
 use, not extra context: links, hints and provider implementation files are not implicit expansion
 routes. The selected originals remain the source of the answer rather than generated summaries.
 
@@ -69,25 +69,13 @@ flowchart TB
     accTitle: Query and Routing entities and dependencies
     accDescr: Query and Routing resolves explicit complete Module contexts through Spec, binds fresh discovery workers through Harness and returns admitted answers routes or stopping outcomes through the host.
     e0["Query and Routing adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
-    e0 -->|admits discovery and returns typed outcomes through| e1
-    e0 -->|binds isolated discovery workers through| e2
+    e0 -->|binds isolated discovery workers, and admits discovery and returns typed outcomes through| e2
     e0 -->|resolves complete discovery contexts through| e3
     domain_selection["Admitted selection"]
     e0 -->|expands only explicitly admitted| domain_selection
 ```
-
-### Development
-
-<a id="entity.query-routing.development"></a><a id="agreement.document.query-routing.module.1"></a>
-
-Admit question and routing requests, bound discovery expansion and return answers, routes or attributed stopping outcomes.
-
-This collaboration applies when main answers a question or a discovery consumer requests owner selection.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -97,7 +85,12 @@ Freeze explicitly selected complete contexts and run fresh isolated discovery-wo
 
 This collaboration applies at the initial discovery-worker call and each admitted discovery expansion.
 
+Admit question and routing requests, bound discovery expansion and return answers, routes or attributed stopping outcomes.
+
+This collaboration applies when main answers a question or a discovery consumer requests owner selection.
+
 - [Explicit complete-context discovery](../harness/contracts.md#context-global-spec-context-assembly); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

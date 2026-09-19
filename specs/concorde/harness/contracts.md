@@ -256,7 +256,7 @@ into the worker snapshot.
 
 ### Context selection agreement {#context-context-selection-agreement}
 
-This is the sole canonical definition of the selection agreement. Development references this
+This is the sole canonical definition of the selection agreement. Operations references this
 owned document and declares its local binding. Version 3 selects complete reading/metadata units;
 older reading-only or membership-based snapshots are incompatible and must be resolved again.
 
@@ -299,8 +299,8 @@ in characters. The example’s target ID illustrates a separately registered con
 
 The canonical [review-result record](../review/review-result.md)
 is owned by Review and included by Harness's explicit document reference. Harness validates
-and freezes it only in admitted tasks/implementation repair contexts; [Development Module](../development/module.md) checks current
-review intent and evidence before providing it. Neither party copies or widens its definition.
+and freezes it only in admitted tasks/implementation repair contexts, after the composing Graph
+has checked current review intent and evidence before providing it. Neither party copies or widens its definition.
 
 ### Global Spec context assembly {#context-global-spec-context-assembly}
 
@@ -368,9 +368,9 @@ preview; actual launch admission requires every mode-required input.
 
 <a id="participation.document.harness.context.1"></a>
 
-**Interface participation.** This Module has the provided role for `contract.context.selection` version 3 with `module.development`.
+**Interface participation.** This Module has the provided role for `contract.context.selection` version 3 with `module.operations`.
 
-**When this applies.** When Development asks the host to freeze a bounded Module context.
+**When this applies.** When Operations' target admission asks the host to freeze a bounded Module context.
 
 **Relied-upon guarantee.** [Selection](#contract.context.selection) supplies the admitted context for task assessment.
 

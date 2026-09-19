@@ -23,9 +23,9 @@ and transitions are retained here as the single detailed contract.
 
 ## Specification Graph {#specify-loop-specification-graph}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
-[typed handoffs](../development/interfaces.md#stage-handoffs) and
-[gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
+[Harness admission](../harness/admission.md) owns the entry. Its [common invocation envelope](../harness/admission.md#operation-execution-boundary),
+[typed handoffs](../harness/admission.md#stage-handoffs) and
+[gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 `concorde-specify-loop` routes one owning Module, authors or revises its owned Spec documents
 and independently reviews its complete context and affected consumers. It returns the common
@@ -114,9 +114,11 @@ router service, not an additional callable query operation.
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new graph requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
+This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+its own package `src/concorde/specify_loop/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
+creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+artifacts and permissions remain mandatory. A new graph requires declared composition and an
+implementation of its sequencing, artifact admission, recovery and completion policies before it
+can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
+host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
+that reaches this provider.

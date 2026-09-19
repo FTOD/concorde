@@ -47,24 +47,15 @@ This collaboration applies when any entry must identify a Module, resolve its do
 
 <a id="entity.concorde.harness"></a><a id="agreement.document.concorde.module.2"></a>
 
-The [Harness Module](harness/module.md) configures and runs every Agent invocation: freezes its context kinds, binds its Agent and Harness definition, compiles its effective permissions, launches its Pi worker and coordinates it through LangGraph control flow.
+The [Harness Module](harness/module.md) admits every operation request at one typed boundary and configures and runs every Agent invocation: freezes its context kinds, binds its Agent and Harness definition, compiles its effective permissions, launches its Pi worker and coordinates it through LangGraph control flow.
 
 This collaboration applies when an entry needs an Agent to reason or act.
 
+- [Admit typed requests, preserve current worktree binding and distinct outcomes](harness/admission.md#operation-execution-boundary)
 - [Freeze the selected contract before invocation](harness/contracts.md#contract.context.selection)
 - [Keep invocation authority bounded](harness/requirements.md#req.harness.permission-no-widen)
 - [Require typed completion before reporting success](harness/requirements.md#req.harness.execute-exit-insufficient)
 - [Compose inspectable bounded control flow](harness/graphs-and-loops.md)
-
-### Development
-
-<a id="entity.concorde.development"></a><a id="agreement.document.concorde.module.3"></a>
-
-The [Development Module](development/module.md) supplies common operation admission, dispatch, typed outcomes and host-owned state mechanics.
-
-Whenever an operation enters or resumes through the common boundary.
-
-- [Admit typed requests, preserve current worktree binding and distinct outcomes](development/interfaces.md#operation-execution-boundary)
 
 ### Issues
 
@@ -104,4 +95,4 @@ This collaboration applies when a developer wants to read Specs.
 
 <a id="entity.concorde.operations"></a><a id="operations-collaboration"></a>
 
-The [Operations Module](operations/module.md) groups the responsibilities that provide reusable and composed Operations. This collaboration applies when a developer selects behavior such as planning, authoring, development or delivery. The Framework relies on the [complete Operation contract](operations/module.md#design), supplies explicit intent to the common Host, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
+The [Operations Module](operations/module.md) keeps the catalog of every Operation, dispatches each admitted request to its provider and groups the responsibilities that provide reusable and composed Operations. This collaboration applies when a developer selects behavior such as planning, authoring, development or delivery. The Framework relies on the [complete Operation contract](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.

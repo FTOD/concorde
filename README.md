@@ -268,7 +268,7 @@ in to LangSmith for run interactions and allow local network access if your brow
       "schema_version": 1,
       "data": {
         "task": "Explain Concorde's workflow host",
-        "target_id": "module.development"
+        "target_id": "module.harness"
       }
     }
   }
@@ -317,7 +317,7 @@ or [Concorde's own root Spec](specs/concorde/module.md), which applies it to thi
 ### Operations
 
 Concorde defines **26 Operations**, listed in [`operations/`](operations/__init__.py); the
-[operation registry](specs/concorde/development/operations.md) describes their contracts. Nine are
+[operation registry](specs/concorde/operations/composition.md) describes their contracts. Nine are
 public, fourteen are host-adapted, and twelve are model-backed Operations whose execution profile
 names a Pi worker:
 

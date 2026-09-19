@@ -19,7 +19,7 @@ Spec Authoring proposes changes to a Module’s intended behavior and design. It
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
 | [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Usage
@@ -63,14 +63,14 @@ independent review ordering belong to the consuming Graph.
 which the owner's and each affected consumer's candidate compatibility reviews run one at a time
 before the host applies the replacements. Composing Graphs use that node as one step: the
 specification Graph's `specify` node, the Issue Graph's `repair_spec` node, and the
-[component coordination Graph](../development/execution-reference.md#graphs-component-coordination-graph-coordination-graph)'s
+[component coordination Graph](../implementation/execution-reference.md#graphs-component-coordination-graph-coordination-graph)'s
 `reconcile_specs` step, which runs it once per component.
 
 ## Relationships
 
 The diagram distinguishes proposing Owned replacements from applying them. [Spec Module](../spec/module.md) supplies document
 ownership and affected-consumer scope; the [Harness Module](../harness/module.md) gives the fresh author read-only contract access;
-[Development Module](../development/module.md) checks and applies accepted proposals. The author itself never gains a project write
+[Harness admission](../harness/admission.md) checks and applies accepted proposals. The author itself never gains a project write
 grant. These are dependencies on sibling responsibilities, not structural ownership of providers,
 and a provider reference does not permit a replacement of that provider's documents.
 
@@ -79,25 +79,13 @@ flowchart TB
     accTitle: Spec Authoring entities and dependencies
     accDescr: Spec Authoring resolves owned documents and consumers through Spec, runs an isolated author through Harness and applies accepted replacements only through the host.
     e0["Spec Authoring adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
-    e0 -->|applies accepted owned replacements through| e1
-    e0 -->|binds an isolated Spec author through| e2
+    e0 -->|binds an isolated Spec author, and applies accepted owned replacements through| e2
     e0 -->|resolves owned documents and consumers through| e3
     domain_replacements["Owned replacements"]
     e0 -->|proposes and applies accepted| domain_replacements
 ```
-
-### Development
-
-<a id="entity.spec-authoring.development"></a><a id="agreement.document.spec-authoring.module.1"></a>
-
-Admit the bound authoring request, check returned replacement identity and apply only accepted owned document replacements.
-
-This collaboration applies when ordinary specify enters, accepts replacement output or preserves blockers after rejection.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -107,7 +95,12 @@ The Harness Module runs a fresh isolated Spec author with complete Spec inputs, 
 
 This collaboration applies before invoking the spec-author Operation for the specify phase and when validating its completion.
 
+Admit the bound authoring request, check returned replacement identity and apply only accepted owned document replacements.
+
+This collaboration applies when ordinary specify enters, accepts replacement output or preserves blockers after rejection.
+
 - [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

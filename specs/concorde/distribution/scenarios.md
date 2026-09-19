@@ -11,8 +11,8 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
 | [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](../development/module.md#terminology) | Defined in Development operation host. |
-| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
+| [Public operation](../operations/module.md#terminology) | Defined in Operations. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
 | [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 | [Candidate](../module.md#terminology) | Defined in Concorde Framework. |

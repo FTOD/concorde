@@ -60,7 +60,7 @@ from Spec authoring. Decisions bind the selected record revision and current inp
 <a id="entity.issues.langgraph"></a>
 
 `concorde-issues` runs after
-[target admission](../development/execution-reference.md#graphs-target-admission-graph-target-graph)
+[target admission](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
 has bound the owning Module, as the [Issue Graph](execution-reference.md#lifecycle-issue-graph-issue-graph).
 Listing, showing, reporting and reopening are single deterministic nodes. Solving is a bounded loop
 around the `decide` node, where one Issue solver worker chooses the next action: the ordinary
@@ -84,7 +84,7 @@ flowchart TB
     runtime["Issue runtime"]
     store["Issue store"]
     solver["Issue solver"]
-    development["Development"]
+    harness["Harness"]
     spec["Spec"]
     loop["Development Graph"]
     author["Spec Authoring"]
@@ -93,7 +93,7 @@ flowchart TB
     langgraph["LangGraph"]
     runtime -->|persists observations through| store
     runtime -->|requests bounded decisions from| solver
-    runtime -->|admits workers through| development
+    runtime -->|admits workers through| harness
     runtime -->|resolves attribution with| spec
     runtime -->|implements intended behavior through| loop
     runtime -->|repairs necessary contracts through| author
@@ -104,10 +104,10 @@ flowchart TB
 
 ## Collaborations
 
-<a id="entity.issues.development"></a>
+<a id="entity.issues.harness"></a>
 
-[Development Module](../development/module.md) owns typed admission, phase results and candidate progress. Issue operations use its
-[execution boundary](../development/interfaces.md#operation-execution-boundary), preserving its
+[Harness Module](../harness/module.md) owns typed admission, phase results and candidate progress. Issue operations use its
+[execution boundary](../harness/admission.md#operation-execution-boundary), preserving its
 configuration, context, permission and failure distinctions. Reporting is a separate limited host
 effect, never worker filesystem write authority or permission to advance a failed stage.
 

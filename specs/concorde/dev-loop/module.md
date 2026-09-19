@@ -54,7 +54,7 @@ the single ready transition. Durable candidate state records intent, progress, r
 feedback identity so resume can choose the first stage whose inputs need renewal.
 
 `concorde-dev-loop` runs as two Graphs in turn. First,
-[target admission](../development/execution-reference.md#graphs-target-admission-graph-target-graph)
+[target admission](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
 binds the recorded owner or routes a new change. The development Graph then runs its stages as
 nodes. `initialize`, `validate`, `ready` and `summarize` are deterministic host steps.
 `specify_loop` and `plan` are the specification and
@@ -62,7 +62,7 @@ nodes. `initialize`, `validate`, `ready` and `summarize` are deterministic host 
 steps. `tasks` is one task-author worker and `implement` one programmer worker, each run as an
 [Operation node](../harness/execution-reference.md#host-operation-node-operation-node); a composite
 Module implements through the
-[component coordination Graph](../development/execution-reference.md#graphs-component-coordination-graph-coordination-graph)
+[component coordination Graph](../implementation/execution-reference.md#graphs-component-coordination-graph-coordination-graph)
 instead. `review_code` runs a code-reviewer for the owner and for each Module sharing a changed file.
 Each stage names its own successor, and a stop passes through `summarize`.
 
@@ -83,7 +83,7 @@ This is a responsibility and collaboration view; the detailed development Graph 
 order and routing. The adapter composes sibling providers rather than owning copies of their
 contracts: [Query and Routing](../query-routing/module.md) selects the owner, [Specification Graph](../specify-loop/module.md) prepares its Spec, [Planning](../planning/module.md)
 produces tasks, [Implementation Module](../implementation/module.md) fulfills them, and [Validation Module](../validation/module.md) and [Review](../review/module.md) supply current evidence.
-[Development Module](../development/module.md) retains the candidate and repair state, [Harness Module](../harness/module.md) isolates invocations, and [Spec Module](../spec/module.md) resolves
+[Harness admission](../harness/admission.md) retains the candidate and repair state, [Harness Module](../harness/module.md) isolates invocations, and [Spec Module](../spec/module.md) resolves
 participants and affected users. The Repair policy constrains feedback-driven transitions; reaching
 a ready Development candidate does not invoke Delivery.
 
@@ -92,7 +92,6 @@ flowchart TB
     accTitle: Development Graph entities and dependencies
     accDescr: Development Graph records one candidate and bounded repair policy while sibling providers route intent, prepare Specs, plan tasks, implement code, validate the candidate and independently review code.
     e0["Development Graph adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
     e4["Query and Routing"]
@@ -101,8 +100,7 @@ flowchart TB
     e7["Implementation"]
     e8["Validation"]
     e9["Review"]
-    e0 -->|maintains candidate progress through| e1
-    e0 -->|binds fresh stage invocations through| e2
+    e0 -->|binds fresh stage invocations, and maintains candidate progress through| e2
     e0 -->|resolves participants and affected consumers through| e3
     e0 -->|selects the change owner through| e4
     e0 -->|prepares and reviews Specs through| e5
@@ -116,16 +114,6 @@ flowchart TB
     e0 -->|selects bounded transitions under| domain_repair
 ```
 
-### Development
-
-<a id="entity.dev-loop.development"></a><a id="agreement.document.dev-loop.module.1"></a>
-
-Admit or resume the change intent, maintain candidate and component progress and record bounded repair transitions and evidence.
-
-This collaboration applies at graph entry, each accepted stage result, a stopping outcome and a current-state resume.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
-
 ### Harness
 
 <a id="entity.dev-loop.harness"></a><a id="agreement.document.dev-loop.module.2"></a>
@@ -134,7 +122,12 @@ Bind each routed or composed Agent invocation to a fresh complete context and it
 
 This collaboration applies when discovery or a composed stage launches an Agent; stage grants remain separate across repairs and reviews.
 
+Admit or resume the change intent, maintain candidate and component progress and record bounded repair transitions and evidence.
+
+This collaboration applies at graph entry, each accepted stage result, a stopping outcome and a current-state resume.
+
 - [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

@@ -91,7 +91,7 @@ do not add arbitrary graph configuration or provider write grants.
 ## Relationships
 
 This diagram separates preparing a topology change from applying the Prepared application. [Query and Routing](../query-routing/module.md) supplies explicit discovery, [Spec Module](../spec/module.md) resolves old and candidate ownership and references,
-and [Harness Module](../harness/module.md) isolates designers, owner-local authors and independent reviewers. [Development Module](../development/module.md) retains
+and [Harness Module](../harness/module.md) isolates designers, owner-local authors and independent reviewers. [Harness admission](../harness/admission.md) retains
 the exact proposal and applies only the accepted transaction. These provider collaborations do not
 transfer document ownership to Topology or turn a designer's proposed paths into write authority.
 
@@ -100,27 +100,15 @@ flowchart TB
     accTitle: Topology entities and dependencies
     accDescr: Topology selects complete design contexts, binds separate designers authors and reviewers, validates the registry and document overlay and applies the exact accepted transaction through the host.
     e0["Topology adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
     e4["Query and Routing"]
-    e0 -->|prepares and applies accepted transactions through| e1
-    e0 -->|binds isolated designers authors and reviewers through| e2
+    e0 -->|binds isolated designers authors and reviewers, and prepares and applies accepted transactions through| e2
     e0 -->|resolves and validates candidate topology through| e3
     e0 -->|selects topology design contexts through| e4
     domain_application["Prepared application"]
     e0 -->|prepares exact accepted replacements in| domain_application
 ```
-
-### Development
-
-<a id="entity.topology.development"></a><a id="agreement.document.topology.module.1"></a>
-
-Admit topology actions and exact acceptance artifacts, store before-digest-bound applications and apply accepted replacements atomically.
-
-This collaboration applies when design-topology, accept-topology or apply-topology crosses its existing host boundary.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -130,7 +118,12 @@ Run an isolated topology designer and separate candidate-local Spec authors and 
 
 During design and accepted preparation, before each fresh topology designer, author or consumer-review invocation.
 
+Admit topology actions and exact acceptance artifacts, store before-digest-bound applications and apply accepted replacements atomically.
+
+This collaboration applies when design-topology, accept-topology or apply-topology crosses its existing host boundary.
+
 - [Explicit complete-context discovery](../harness/contracts.md#context-global-spec-context-assembly); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

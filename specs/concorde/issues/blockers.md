@@ -12,7 +12,7 @@ continue where it is safe without pretending that every recorded problem has bee
 | [Spec](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
 
 ## A concrete example
 
@@ -23,8 +23,8 @@ advisory Issue without blocking either task.
 
 ## Repair and reassessment
 
-The [Issues Module](../issues/module.md) manages problem reports and their dispositions;
-Development retains the task's dependency and decides when reassessment releases it.
+The [Issues Module](module.md) manages problem reports and their dispositions;
+the host retains the task's dependency, and the phase's reassessment decides when it is released.
 
 After a necessary promise is supplied, the dependent phase reassesses its task against the current
 Spec. Its old blocker is released only when the new accepted result supports proceeding. A failed

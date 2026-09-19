@@ -18,13 +18,6 @@
       "meaning": "#entity.topology.adapter"
     },
     {
-      "id": "entity.topology.development",
-      "title": "Development",
-      "kind": "used module",
-      "target_id": "module.development",
-      "meaning": "#entity.topology.development"
-    },
-    {
       "id": "entity.topology.harness",
       "title": "Harness",
       "kind": "used module",
@@ -53,10 +46,6 @@
     }
   ],
   "dependencies": [
-    {
-      "target_id": "module.development",
-      "meaning": "#agreement.document.topology.module.1"
-    },
     {
       "target_id": "module.harness",
       "meaning": "#agreement.document.topology.module.2"

@@ -24,14 +24,14 @@ and transitions are retained here as the single detailed contract.
 | [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
 | [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 | [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](../development/module.md#terminology) | Defined in Development operation host. |
+| [Public operation](../operations/module.md#terminology) | Defined in Operations. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Independent review operation {#review-independent-review-operation}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
-[typed handoffs](../development/interfaces.md#stage-handoffs) and
-[gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
+[Harness admission](../harness/admission.md) owns the entry. Its [common invocation envelope](../harness/admission.md#operation-execution-boundary),
+[typed handoffs](../harness/admission.md#stage-handoffs) and
+[gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 `concorde-review` is a public Operation with discover context selection requiring task and review_mode=spec|code, with
 optional target/focus routing hints, constraints and current-worktree change_id. A new standalone
@@ -98,7 +98,7 @@ reviewer still produces an `incomplete` review report and a `failed` Review doma
 The trusted host separately preserves the `cancelled` or `limit_exhausted` execution
 classification supplied by the [Harness Module](../harness/module.md), as defined in its
 [execution outcomes](../harness/execution-reference.md#execution-outcomes), for the enclosing Graph, persisted candidate lifecycle and final events, following the
-[Development boundary](../development/interfaces.md#operation-execution-boundary).
+[admission boundary](../harness/admission.md#operation-execution-boundary).
 Ordinary reviewer failures remain `failed`.
 
 These execution/lifecycle classifications are not additional values of the published
@@ -147,11 +147,27 @@ or represented as complete contracts. A broad audit can make those same contract
 The reviewer makes this semantic assessment from admitted inputs; the Host neither filters findings
 by changed paths nor rewrites their severity. Required coverage, gap and freshness gates still apply.
 
+#### Reference changes and affected consumers {#review-reference-changes-and-affected-consumers}
+
+Before review/readiness, compute affected Spec consumers from the union of old and candidate
+one-level contexts. A provider document edit, ownership transfer, changed reference or changed
+provider document inventory invalidates each affected context and dependent plan/review. Changed
+code additionally uses the independent listing reverse index. A reference is never a code grant.
+Review attribution follows the [canonical review-result interface](review-result.md). The composing
+Graph routes a provider repair to its sole owner and retains the consumer's blocked-step evidence;
+included-file read scope never grants authority to write the provider definition.
+
+The host uses version-3 context wrappers and owner-only author proposals. Candidate overlays receive
+separate consumer compatibility reviews; plans, review records and readiness checks bind the complete
+owner/reference resolution. Old and candidate consumers are retained for evidence rechecks.
+
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new graph requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
+This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+its own package `src/concorde/review/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
+creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+artifacts and permissions remain mandatory. A new graph requires declared composition and an
+implementation of its sequencing, artifact admission, recovery and completion policies before it
+can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
+host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
+that reaches this provider.

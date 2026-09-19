@@ -5,7 +5,21 @@
     "owner": "module.harness",
     "role": "module"
   },
-  "entities": [],
+  "entities": [
+    {
+      "id": "entity.harness.admission",
+      "title": "Operation admission",
+      "kind": "program",
+      "files": [
+        "src/concorde/harness/admission.py",
+        "src/concorde/harness/configuration.py",
+        "src/concorde/harness/entry.py",
+        "src/concorde/harness/operation_graph.py",
+        "src/concorde/harness/relay.py"
+      ],
+      "meaning": "#entity.harness.admission"
+    }
+  ],
   "dependencies": [],
   "bindings": []
 }

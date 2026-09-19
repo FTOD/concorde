@@ -63,7 +63,7 @@ grant, supplies their implementations. Existing host repair admission remains an
 
 The diagram separates Planning's reusable outputs from the providers that admit and produce them.
 [Spec Module](../spec/module.md) resolves the contract and declared participants; [Harness Module](../harness/module.md) isolates each non-code worker;
-[Development Module](../development/module.md) accepts and persists the returned state. Context assessment, Accepted plan and
+[Harness admission](../harness/admission.md) accepts and persists the returned state. Context assessment, Accepted plan and
 Acceptance tasks are successive, distinct records, not three names for completed implementation.
 A provider dependency does not make that provider a child of Planning or grant its code to a planner.
 
@@ -72,11 +72,9 @@ flowchart TB
     accTitle: Planning entities and dependencies
     accDescr: Planning uses the host to save current plans and tasks, Harness to isolate assessors and authors, and Spec to resolve contracts and participants. Assessment, plans and tasks remain distinct outputs.
     e0["Planning adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
-    e0 -->|admits requests and saves plans and tasks through| e1
-    e0 -->|binds isolated assessors and authors through| e2
+    e0 -->|binds isolated assessors and authors, and admits requests and saves plans and tasks through| e2
     e0 -->|resolves planning contracts and participants through| e3
     domain_assessment["Context assessment"]
     e0 -->|records task sufficiency in| domain_assessment
@@ -86,16 +84,6 @@ flowchart TB
     e0 -->|derives implementation obligations as| domain_tasks
 ```
 
-### Development
-
-<a id="entity.planning.development"></a><a id="agreement.document.planning.module.1"></a>
-
-Admit bound assessment, plan and task requests, save accepted current plans and task artifacts, and preserve prior state on rejected output.
-
-This collaboration applies when an assessment enters or a returned plan or task list is accepted or rejected.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
-
 ### Harness
 
 <a id="entity.planning.harness"></a><a id="agreement.document.planning.module.2"></a>
@@ -104,7 +92,12 @@ Freeze Spec-only inputs and run separate isolated context assessors, planners an
 
 This collaboration applies before invoking the context assessor, planner or task author, including admitted repair task authoring.
 
+Admit bound assessment, plan and task requests, save accepted current plans and task artifacts, and preserve prior state on rejected output.
+
+This collaboration applies when an assessment enters or a returned plan or task list is accepted or rejected.
+
 - [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

@@ -53,14 +53,14 @@ actual state rather than assuming that a missing acknowledgement means nothing h
 and pending-entry confirmation remain currentness gates, not inferred success from a branch name.
 
 `deliver` runs as a single deterministic node that calls no model: the `deliver` leaf of the
-[dispatch Graph](../development/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph),
+[dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph),
 entered directly from operation selection without target admission, because the change identity
 already names the candidate. No development, specification or Issue Graph has an edge into it.
 
 ## Relationships
 
 This view shows the providers needed to verify and record delivery, not an automatic merge into
-primary. [Development Module](../development/module.md) admits the participating session and requested transition; [Harness Module](../harness/module.md) supplies
+primary. [Harness admission](../harness/admission.md) admits the participating session and requested transition; [Harness Module](../harness/module.md) supplies
 worktree mechanics and isolated checks; [Spec Module](../spec/module.md) validates integrated contracts and affected users.
 [Distribution Module](../distribution/module.md) is involved when the integration is a Concorde package checkout that needs its own
 build. The Delivery receipt keeps publication, cleanup and explicitly authorized primary merging
@@ -71,27 +71,15 @@ flowchart TB
     accTitle: Delivery entities and dependencies
     accDescr: Delivery admits participating sessions, verifies worktrees and integration checks, validates integrated contracts and builds Concorde package sources before recording publication cleanup and merge receipts.
     e0["Delivery adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
     e4["Distribution"]
-    e0 -->|admits delivery and saves receipts through| e1
-    e0 -->|verifies worktrees and isolates integration checks through| e2
+    e0 -->|verifies worktrees and isolates integration checks, and admits delivery and saves receipts through| e2
     e0 -->|validates integration contracts through| e3
     e0 -->|builds and verifies integrated package sources through| e4
     domain_receipt["Delivery receipt"]
     e0 -->|records publication cleanup and merge in| domain_receipt
 ```
-
-### Development
-
-<a id="entity.delivery.development"></a><a id="agreement.document.delivery.module.1"></a>
-
-Admit participating delivery sessions and explicit primary-merge intent, and persist publication, cleanup and merge receipts.
-
-This collaboration applies when staging the selected change, resuming cleanup or processing a separately authorized primary merge.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -101,8 +89,13 @@ Inspect participating worktree identities and supply shared worktree mechanics a
 
 This collaboration applies when verifying the source and primary participants, integrating their candidate or running configured merge checks.
 
+Admit participating delivery sessions and explicit primary-merge intent, and persist publication, cleanup and merge receipts.
+
+This collaboration applies when staging the selected change, resuming cleanup or processing a separately authorized primary merge.
+
 - [Isolated configured-check execution](../harness/execution-reference.md#execution-configured-deterministic-checks); Supply the registered command and timeout; keep raw diagnostics in host records and refuse checks when isolation is unavailable.
 - [Worktree identity](../harness/execution-reference.md#permissions-policy-compilation); reject mismatched participants before integration or cleanup.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

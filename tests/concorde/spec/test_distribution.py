@@ -44,7 +44,7 @@ class DistributionTests(unittest.TestCase):
         repo = SpecRepository(PACKAGE)
         report = validate_repository(PACKAGE)
         self.assertEqual("success", report.status, [f.message for f in report.findings])
-        self.assertEqual(18, len(repo.targets))
+        self.assertEqual(17, len(repo.targets))
         self.assertTrue(all(t.kind == "module" for t in repo.targets.values()))
         self.assertEqual("module.concorde", repo.select("module.views").parent)
         self.assertIn(
@@ -65,6 +65,7 @@ class DistributionTests(unittest.TestCase):
             )
         self.assertEqual(
             {
+                "module.harness",
                 "module.dev-loop",
                 "module.specify-loop",
                 "module.spec-authoring",
@@ -78,7 +79,7 @@ class DistributionTests(unittest.TestCase):
         )
         text = "\n".join(
             repo.source_bytes(path).decode()
-            for path in repo.spec_files("module.development")
+            for path in repo.spec_files("module.harness")
         )
         for op in contracts():
             self.assertIn(op + "-request", text)

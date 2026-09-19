@@ -51,11 +51,11 @@ The two reviewers are separate model-backed Operations: `spec-reviewer` for Spec
 `code-reviewer` for code mode. Each runs as one
 [Operation node](../harness/execution-reference.md#host-operation-node-operation-node) with its own
 read-only grant. `concorde-review` has no Graph of its own. The common
-[target admission Graph](../development/execution-reference.md#graphs-target-admission-graph-target-graph)
+[target admission Graph](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
 first binds the given owner or routes the task through the
 [discovery Graph](../query-routing/execution-reference.md#query-and-routing-discovery-graph-discovery-graph),
 and the router returns only the owner and focus, never a rewritten task. The
-[dispatch Graph](../development/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)'s
+[dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)'s
 `review` leaf then reviews the owner, followed by each affected Module one at a time through the
 [Sequential work items Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph);
 the first review that does not complete stops the rest. A code review skips an affected Module that
@@ -72,7 +72,7 @@ its wire representation does not authorize a repair or override lifecycle gates.
 
 This view covers selection, review admission and the resulting evidence, not a repair workflow.
 [Query and Routing](../query-routing/module.md) selects the owner of an unbound standalone request; [Spec Module](../spec/module.md) supplies current scope
-and finding ownership; [Harness Module](../harness/module.md) isolates the reviewer with read-only access. [Development Module](../development/module.md) accepts
+and finding ownership; [Harness Module](../harness/module.md) isolates the reviewer with read-only access. [Harness admission](../harness/admission.md) accepts
 and stores the Review result against the frozen Review input. None of these dependency edges gives
 the reviewer write authority, and the result does not itself advance delivery or repair files.
 
@@ -81,12 +81,10 @@ flowchart TB
     accTitle: Review entities and dependencies
     accDescr: Review routes unbound tasks, resolves current review scope and finding owners, binds independent read-only reviewers and publishes coverage and findings through the host.
     e0["Review adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
     e4["Query and Routing"]
-    e0 -->|admits review intent and saves reports through| e1
-    e0 -->|binds independent reviewers with read access through| e2
+    e0 -->|binds independent reviewers with read access, and admits review intent and saves reports through| e2
     e0 -->|resolves review scope and finding owners through| e3
     e0 -->|routes standalone review through| e4
     domain_review_input["Review input"]
@@ -94,16 +92,6 @@ flowchart TB
     domain_result["Review result"]
     e0 -->|publishes coverage and findings as| domain_result
 ```
-
-### Development
-
-<a id="entity.review.development"></a><a id="agreement.document.review.module.1"></a>
-
-Admit review intent and current revision, validate returned review identities and persist reports without changing reviewed project files.
-
-This collaboration applies when standalone or composed review enters and when its report is accepted or refused.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -113,7 +101,12 @@ Run independent fresh Spec or code reviewers with read-only grants and no author
 
 This collaboration applies before each selected review mode and target is invoked, including recorded component reviews.
 
+Admit review intent and current revision, validate returned review identities and persist reports without changing reviewed project files.
+
+This collaboration applies when standalone or composed review enters and when its report is accepted or refused.
+
 - [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

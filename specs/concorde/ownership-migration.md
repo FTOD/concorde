@@ -99,3 +99,57 @@ Authoring, Review, Validation, Delivery, [Query and Routing](query-routing/modul
 [Specification Graph](specify-loop/module.md) and [Development Graph](dev-loop/module.md) own their sequencing and completion policy. Current repair
 and component adapters still constrain reuse; broader graph adapters require separately implemented,
 reviewed and verified support.
+
+## Development dissolution
+
+The `module.development` Module was later dissolved. After the earlier split it kept only the
+common operation host: admission, dispatch, the Operation registry, the shared wire contracts and
+gap history, together with the source package that still realized most providers. Admission,
+workspace binding, the candidate relay, the wire contracts and the admission Graph now belong to
+the [Harness Module](harness/module.md); the Operation catalog, public/internal exposure, declared
+composition and the dispatch and target admission Graphs belong to the
+[Operations Module](operations/module.md); task blockers and their history belong to the
+[Issues Module](issues/module.md). The component coordination and stabilization Graphs moved to
+[Implementation](implementation/module.md) and the project Graph to [Spec](spec/module.md). Each
+provider's realization moved from `src/concorde/development/` into its own package, and its
+adapter entity lists that package. The statements above that host transport, invocation permissions
+and gap history stay in Development, and that the Development package binding is retained, describe
+the earlier split only.
+
+Transferred document units keep their identities, as ownership transfer requires. The entry, the
+host coordination topic and the collaboration agreements were retired; their content now lives in
+the owners above, and their identities `document.development.module`,
+`document.development.graphs` and `document.development.collaborations` are not aliases of any
+current document. The canonical `contract.context.selection` version 3 keeps its definition and
+version; its required participant is now Operations, which binds a Module-bound invocation, with
+Harness as the provider.
+
+| Stable definition | Previous owner and source | Current owner and definition |
+| --- | --- | --- |
+| `document.development.interfaces` | `module.development` · `specs/concorde/development/interfaces.md` | `module.harness` · [admission contracts](harness/admission.md) |
+| `document.development.execution-reference` | `module.development` · `specs/concorde/development/execution-reference.md` | `module.operations` · [catalog and dispatch contracts](operations/execution-reference.md) |
+| `document.development.operations` | `module.development` · `specs/concorde/development/operations.md` | `module.operations` · [composition topic](operations/composition.md) |
+| `document.development.requirements` | `module.development` · `specs/concorde/development/requirements.md` | `module.operations` · [requirements](operations/requirements.md) |
+| `document.development.scenarios` | `module.development` · `specs/concorde/development/scenarios.md` | `module.operations` · [scenarios](operations/scenarios.md) |
+| `document.development.review-and-gaps` | `module.development` · `specs/concorde/development/review-and-gaps.md` | `module.issues` · [blockers topic](issues/blockers.md) |
+| `req.development.single-boundary` | `module.development` · `specs/concorde/development/requirements.md` | `module.harness` · [definition](harness/requirements.md#req.development.single-boundary) |
+| `req.development.project-root-is-working-directory` | `module.development` · `specs/concorde/development/requirements.md` | `module.harness` · [definition](harness/requirements.md#req.development.project-root-is-working-directory) |
+| `req.development.distinct-outcomes` | `module.development` · `specs/concorde/development/requirements.md` | `module.harness` · [definition](harness/requirements.md#req.development.distinct-outcomes) |
+| `req.development.langgraph-control-flow` | `module.development` · `specs/concorde/development/requirements.md` | `module.harness` · [definition](harness/requirements.md#req.development.langgraph-control-flow) |
+| `req.development.no-implementation-for-non-code` | `module.development` · `specs/concorde/development/requirements.md` | `module.harness` · [definition](harness/requirements.md#req.development.no-implementation-for-non-code) |
+| `req.development.stage-no-skill` | `module.development` · `specs/concorde/development/requirements.md` | `module.operations` · [definition](operations/requirements.md#req.development.stage-no-skill) |
+| `req.development.stage-in-process-only` | `module.development` · `specs/concorde/development/requirements.md` | `module.operations` · [definition](operations/requirements.md#req.development.stage-in-process-only) |
+| `req.development.stage-no-reselect` | `module.development` · `specs/concorde/development/requirements.md` | `module.operations` · [definition](operations/requirements.md#req.development.stage-no-reselect) |
+| `scenario.development.execute-operation` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.execute-operation) |
+| `scenario.development.execute-blocked-launch` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.execute-blocked-launch) |
+| `scenario.development.describe-policy` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.describe-policy) |
+| `scenario.development.invocation-worktree-binding` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.invocation-worktree-binding) |
+| `scenario.development.workspace-inventory` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.workspace-inventory) |
+| `scenario.development.worktree-relay` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.worktree-relay) |
+| `scenario.development.graph-specs` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.graph-specs) |
+| `scenario.development.graph-api-only` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.graph-api-only) |
+| `scenario.development.graph-execution` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.graph-execution) |
+| `scenario.development.graph-bounds` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.graph-bounds) |
+| `scenario.development.operation-state` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.operation-state) |
+| `scenario.development.operation-result-state` | `module.development` · `specs/concorde/development/scenarios.md` | `module.harness` · [definition](harness/scenarios.md#scenario.development.operation-result-state) |
+| `scenario.development.execute-unregistered` | `module.development` · `specs/concorde/development/scenarios.md` | `module.operations` · [definition](operations/scenarios.md#scenario.development.execute-unregistered) |

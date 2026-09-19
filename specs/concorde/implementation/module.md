@@ -17,7 +17,7 @@ Implementation fulfills accepted tasks by changing the code that its worker is a
 | [Ready](../module.md#terminology) | Defined in Concorde Framework. |
 | [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
 | [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
-| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 | [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 | [Entity](../module.md#terminology) | Defined in Concorde Framework. |
@@ -62,15 +62,17 @@ completion conditions to the reusable local task contract.
 single node: one programmer worker run as an
 [Operation node](../harness/execution-reference.md#host-operation-node-operation-node). For a
 composite Module whose tasks name submodules or used Modules, it is the
-[component coordination Graph](../development/execution-reference.md#graphs-component-coordination-graph-coordination-graph),
+[component coordination Graph](execution-reference.md#graphs-component-coordination-graph-coordination-graph),
 which reconciles and implements each component in its own context, runs the programmer for the
 composite's own tasks, and finishes with the
-[stabilization Graph](../development/execution-reference.md#graphs-shared-candidate-stabilization-graph-stabilization-graph).
+[stabilization Graph](execution-reference.md#graphs-shared-candidate-stabilization-graph-stabilization-graph).
+A later participant's repair can invalidate evidence an earlier participant already produced, so
+that Graph repeats final verification until one consistently checked candidate remains.
 
 ## Relationships
 
 This view follows an admitted Implementation task to Task completion. [Spec Module](../spec/module.md) determines the selected
-Module's implementation boundary, [Harness Module](../harness/module.md) enforces the programmer's grant, and [Development Module](../development/module.md) admits
+Module's implementation boundary, [Harness Module](../harness/module.md) enforces the programmer's grant, and [Harness admission](../harness/admission.md) admits
 the exact task list and retains its progress. The adapter's use of these sibling providers does not
 merge their ownership or permissions. Task completion reports fulfilled acceptance only; validation,
 review and delivery remain separate decisions of the composing Graph.
@@ -80,27 +82,15 @@ flowchart TB
     accTitle: Implementation entities and dependencies
     accDescr: Implementation consumes admitted tasks, resolves code ownership through Spec, binds a programmer through Harness and records task fulfillment through the host. Completion does not mark ready.
     e0["Implementation adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
-    e0 -->|admits tasks and preserves progress through| e1
-    e0 -->|runs the bounded programmer through| e2
+    e0 -->|runs the bounded programmer, and admits tasks and preserves progress through| e2
     e0 -->|resolves code ownership and components through| e3
     domain_task_input["Implementation task"]
     e0 -->|consumes| domain_task_input
     domain_completion["Task completion"]
     e0 -->|reports fulfilled acceptance as| domain_completion
 ```
-
-### Development
-
-<a id="entity.implementation.development"></a><a id="agreement.document.implementation.module.1"></a>
-
-Admit the current implementation task and permitted repair feedback, persist exact task progress and preserve the candidate on failure.
-
-This collaboration applies before implementation starts and when its returned task completion or execution failure is recorded.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -110,7 +100,12 @@ Bind a fresh programmer to the complete selected contract and enforce writes onl
 
 This collaboration applies when launching the programmer or admitting its matching completion under the current grant.
 
+Admit the current implementation task and permitted repair feedback, persist exact task progress and preserve the candidate on failure.
+
+This collaboration applies before implementation starts and when its returned task completion or execution failure is recorded.
+
 - [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

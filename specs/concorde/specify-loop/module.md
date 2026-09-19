@@ -33,7 +33,7 @@ returns Spec-stage artifacts and blockers, not tasks, code-check evidence, readi
 [Development Graph](../dev-loop/module.md) can continue the same task/change afterward.
 
 For example, clarifying which failures allow a retry can be completed here without also writing the
-retry mechanism. Development may later use that current accepted Spec work for the same task and
+retry mechanism. The Development Graph may later use that current accepted Spec work for the same task and
 change, rather than starting a second unrelated authoring attempt.
 
 ## Design
@@ -46,7 +46,7 @@ owner or consumer evidence, and summarizes typed artifacts. Accepted candidate c
 reviews are rechecked against applied bytes rather than repeated blindly.
 
 `concorde-specify-loop` runs as two Graphs in turn. First,
-[target admission](../development/execution-reference.md#graphs-target-admission-graph-target-graph)
+[target admission](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
 binds a recorded owner or routes a new task through the
 [discovery Graph](../query-routing/execution-reference.md#query-and-routing-discovery-graph-discovery-graph).
 The specification Graph then runs four nodes. `initialize` and `summarize` are deterministic host
@@ -69,7 +69,7 @@ even when the host reuses current evidence.
 The diagram shows the sibling operations that contribute to Spec completion. [Query and Routing](../query-routing/module.md)
 selects an unbound owner, [Spec Module](../spec/module.md) resolves its contract and affected consumers, and the [Harness Module](../harness/module.md) keeps
 routing, authoring and review invocations separate. Spec Authoring supplies owned replacements;
-[Review Module](../review/module.md) independently assesses current contracts; [Development Module](../development/module.md) retains accepted progress and review
+[Review Module](../review/module.md) independently assesses current contracts; [Harness admission](../harness/admission.md) retains accepted progress and review
 requirements. The adapter owns their sequencing and reuse decisions, not their contracts, and
 Spec completion does not imply planning, implementation or readiness.
 
@@ -78,14 +78,12 @@ flowchart TB
     accTitle: Specification Graph entities and dependencies
     accDescr: Specification Graph routes the Spec task, resolves owner and consumer contracts, binds isolated stages and composes owned authoring and independent review before returning Spec completion.
     e0["Specification Graph adapter"]
-    e1["Development"]
     e2["Harness"]
     e3["Spec"]
     e4["Query and Routing"]
     e5["Spec Authoring"]
     e6["Review"]
-    e0 -->|retains Spec progress and completion through| e1
-    e0 -->|binds isolated Spec stage invocations through| e2
+    e0 -->|binds isolated Spec stage invocations, and retains Spec progress and completion through| e2
     e0 -->|resolves Spec ownership and consumers through| e3
     e0 -->|routes the Spec task through| e4
     e0 -->|authors owned Specs through| e5
@@ -93,16 +91,6 @@ flowchart TB
     domain_completion["Spec completion"]
     e0 -->|returns current Spec evidence as| domain_completion
 ```
-
-### Development
-
-<a id="entity.specify-loop.development"></a><a id="agreement.document.specify-loop.module.1"></a>
-
-Admit or resume the Spec task, persist accepted authoring and Spec-review requirements and return completed or preserved blockers.
-
-This collaboration applies at Spec-graph entry, accepted authoring or review completion, skip recording and current-intent resume.
-
-- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -112,7 +100,12 @@ The Harness Module binds the router, author and each independent Spec reviewer t
 
 This collaboration applies when routing or a composed authoring/review stage requires an Agent; reviewers inherit no author artifacts.
 
+Admit or resume the Spec task, persist accepted authoring and Spec-review requirements and return completed or preserved blockers.
+
+This collaboration applies at Spec-graph entry, accepted authoring or review completion, skip recording and current-intent resume.
+
 - [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
 

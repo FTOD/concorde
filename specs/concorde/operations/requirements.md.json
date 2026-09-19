@@ -2,7 +2,7 @@
   "schema_version": 2,
   "document": {
     "id": "document.development.requirements",
-    "owner": "module.development",
+    "owner": "module.operations",
     "role": "implementation"
   },
   "entities": [],

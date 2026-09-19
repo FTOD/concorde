@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Harness Module prepares and runs a worker with a defined task, information and permissions, then checks the result. It also runs configured checks in a separate read-only environment. Other Modules rely on it to execute work without treating an agent answer as permission for unrelated actions.
+The Harness Module admits every operation request at one common boundary, then prepares and runs each worker the request needs with a defined task, information and permissions, and checks the result. It also runs configured checks in a separate read-only environment. Other Modules rely on it to execute work without treating an agent answer as permission for unrelated actions.
 
 ## Terminology
 
@@ -29,6 +29,12 @@ The Harness Module prepares and runs a worker with a defined task, information a
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 
 ## Usage
+
+Every public operation request first passes [Operation admission](host.md): it checks the request
+and configuration, binds the worktree the request was started in, relays a mutation from the
+primary worktree into a host-created candidate, and hands the admitted request to the
+[Operations dispatch](../operations/module.md). The request's result envelope always keeps
+admission, domain and execution outcomes apart.
 
 A calling workflow gives the Harness Module one worker job or one configured check. Harness fixes the allowed
 inputs and permissions, starts the job, and validates its matching result before the caller proceeds.
@@ -75,6 +81,12 @@ remain distinct. The Pi process runs inside the worker sandbox derived from the 
 tool gate bounds what the model may ask and the sandbox bounds what the process can reach;
 [execution](execution-reference.md#execution-design) details both boundaries and what they leave open.
 
+Operation admission, explained in [preparing and coordinating work](host.md), runs every request
+through the [admission Graph](admission.md#graphs-operation-admission-graph-operation-graph)
+before the Operations dispatch selects a provider. Keeping admission in the Module that also
+binds workers means the same boundary decides which request may run, in which workspace and with
+which configuration, and later decides what each of its workers may read and write.
+
 <a id="entity.harness.studio"></a><a id="entity.harness.worktree-lifecycle"></a><a id="entity.harness.langgraph"></a>
 
 LangGraph Graph-API [Host Graphs](host.md) compose deterministic steps and worker invocations.
@@ -107,7 +119,7 @@ permissions, and a settled process alone never establishes completion.
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: The Operation and Harness model defines the worker profile and contract records that Model execution profiles bind and that Worker execution runs. Model execution profiles resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same operation host as Worker execution. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi and bounds its delegation to one level with pi-subagents.
+    accDescr: The Operation and Harness model defines the worker profile and contract records that Model execution profiles bind and that Worker execution runs. Model execution profiles resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same operation host as Worker execution. Operation admission binds candidate workspaces through Worktree lifecycle, validates envelopes and requests through Typed values and hands admitted requests to the Operations dispatch. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi and bounds its delegation to one level with pi-subagents.
     agentModel["Operation and Harness model"]
     agentDefs["Model execution profiles"]
     permissions["Permissions"]
@@ -116,6 +128,8 @@ flowchart TB
     typedValues["Typed values"]
     worktree["Worktree lifecycle"]
     studio["Studio"]
+    admission["Operation admission"]
+    operations["Operations"]
     spec["Spec"]
     distribution["Distribution"]
     langgraph["LangGraph"]
@@ -139,6 +153,9 @@ flowchart TB
     execution -->|schedules worker nodes and Studio graphs with| langgraph
     execution -->|launches each worker through| piRuntime
     studio -->|starts or observes the same operation host as| execution
+    admission -->|binds candidate workspaces through| worktree
+    admission -->|hands admitted requests to the dispatch of| operations
+    admission -->|validates envelopes and requests through| typedValues
     piRuntime -->|runs each worker in RPC mode on| pi
     piRuntime -->|bounds delegation to one level with| piSubagents
 ```
@@ -162,6 +179,11 @@ and [runtime values](runtime-values.md).
 ### Permission compilation
 
 Realized by `compile_policy` and the worktree boundary check; see [permissions](permissions.md).
+
+### Operation admission
+
+Realized by `run_operation`, `operation_graph_nodes`, `bind_worktree` and `json_main`; see
+[host](host.md) and the [admission contracts](admission.md).
 
 ### Worker execution
 
@@ -198,6 +220,19 @@ Admit the registry and resolve identities, document collections, entity file lis
 This collaboration applies when freezing any context kind or checking a target, focus or binding.
 
 - [Resolve the full one-level context and own implementation bindings; rebuild snapshots after changes](../spec/contracts.md#registry-stable-id-spec-context-queries)
+
+### Operations
+
+<a id="entity.harness.operations"></a><a id="agreement.document.harness.module.3"></a>
+
+The [Operations Module](../operations/module.md) owns the catalog of every Operation and the dispatch that routes an admitted request to its provider.
+
+Admit only registered public entries and declared composition, then hand each admitted request to the dispatch Graph as the admission Graph's execute step.
+
+This collaboration applies when admission executes an admitted request or checks a child Operation against its parent's declared composition.
+
+- [Operation catalog](../operations/execution-reference.md#operations-operation-registry); refuse unknown and non-public entries with `unknown_operation` and undeclared composition with `undeclared_operation`, never routing by name outside the catalog.
+- [Dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph); adopt its typed output, or a relayed candidate's complete envelope, as the invocation's result.
 
 ### Distribution
 
@@ -239,6 +274,21 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
 - The gate and the operation ceiling are verified for foreground single delegation. Whether every
   other pi-subagents execution path loads the required child extension is unverified, which is why
   the host disables background runs, missions, schedules and inter-session channels.
+- Operation admission and the Module-bound `Invocation.stage` launch are realized here, but three
+  providers still assemble their own worker launch from the Harness launch helpers: Query and
+  Routing's discovery stage, Topology's owner-local author and Review's reviewer. Moving those
+  sequences behind one Harness launch service is pending; it does not change their promises.
+- A mutation relayed into a host-created candidate has these known limits. The candidate's
+  launcher runs with the invoking framework's Python interpreter and installed dependencies even
+  when it runs the candidate's own Concorde code, so a candidate that changes the locked
+  dependencies only sees them after that environment is rebuilt. A self-hosted candidate is
+  rebuilt from its own sources by the invoking checkout's build code, so a change to the build
+  renderer itself takes effect only after delivery. The candidate's worker events, usage records
+  and run directories stay in the candidate, under its own `.concorde/runs/`; the invoking session
+  receives only the result envelope and the forwarded stderr lines, and a Studio run of the
+  primary shows the relay as one node. A host interrupt gives the relayed launcher thirty seconds
+  to cancel its worker and print its result before the process is killed. A consumer project
+  whose installed framework is not tracked always runs the invoking framework in its candidates.
 - Checks run by `run_checks` use the configured-check executor, but the worker receives only the tail
   of each check's log; whether a longer or structured report is needed is unresolved.
 

@@ -21,13 +21,6 @@
       "meaning": "#entity.review.adapter"
     },
     {
-      "id": "entity.review.development",
-      "title": "Development",
-      "kind": "used module",
-      "target_id": "module.development",
-      "meaning": "#entity.review.development"
-    },
-    {
       "id": "entity.review.harness",
       "title": "Harness",
       "kind": "used module",
@@ -62,10 +55,6 @@
     }
   ],
   "dependencies": [
-    {
-      "target_id": "module.development",
-      "meaning": "#agreement.document.review.module.1"
-    },
     {
       "target_id": "module.harness",
       "meaning": "#agreement.document.review.module.2"

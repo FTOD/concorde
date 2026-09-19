@@ -11,14 +11,19 @@
       "title": "Issue runtime",
       "kind": "program",
       "meaning": "#entity.issues.runtime",
-      "files": ["operations/issues.py", "scripts/issues.py"]
+      "files": [
+        "operations/issues.py",
+        "scripts/issues.py"
+      ]
     },
     {
       "id": "entity.issues.solver",
       "title": "Issue solver",
       "kind": "agent",
       "meaning": "#entity.issues.solver",
-      "files": ["operations/issue_solver/"]
+      "files": [
+        "operations/issue_solver/"
+      ]
     },
     {
       "id": "entity.issues.langgraph",
@@ -27,11 +32,11 @@
       "meaning": "#entity.issues.langgraph"
     },
     {
-      "id": "entity.issues.development",
-      "title": "Development",
+      "id": "entity.issues.harness",
+      "title": "Harness",
       "kind": "used module",
-      "meaning": "#entity.issues.development",
-      "target_id": "module.development"
+      "meaning": "#entity.issues.harness",
+      "target_id": "module.harness"
     },
     {
       "id": "entity.issues.spec",
@@ -71,8 +76,8 @@
   ],
   "dependencies": [
     {
-      "target_id": "module.development",
-      "meaning": "#entity.issues.development"
+      "target_id": "module.harness",
+      "meaning": "#entity.issues.harness"
     },
     {
       "target_id": "module.spec",

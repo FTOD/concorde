@@ -8,8 +8,8 @@ for every worker or library function.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Public operation](module.md#terminology) | Defined in Development operation host. |
-| [Internal operation](module.md#terminology) | Defined in Development operation host. |
+| [Public operation](module.md#terminology) | Defined in Operations. |
+| [Internal operation](module.md#terminology) | Defined in Operations. |
 | [Operation](../module.md#terminology) | Defined in Concorde Framework. |
 | [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Graph](../module.md#terminology) | Defined in Concorde Framework. |

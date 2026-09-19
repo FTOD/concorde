@@ -187,10 +187,6 @@
           "kind": "module"
         },
         {
-          "id": "module.development",
-          "kind": "module"
-        },
-        {
           "id": "module.issues",
           "kind": "module"
         },
@@ -334,6 +330,7 @@
         "specs/concorde/harness/permissions.md",
         "specs/concorde/harness/execution.md",
         "specs/concorde/harness/host.md",
+        "specs/concorde/harness/admission.md",
         "specs/concorde/harness/runtime-values.md",
         "specs/concorde/harness/typed-values.md",
         "specs/concorde/harness/requirements.md",
@@ -350,11 +347,16 @@
         "scripts/development/check-reference-versions.py",
         "scripts/development/studio.py",
         "src/concorde/harness/",
+        "src/concorde/harness/admission.py",
         "src/concorde/harness/change_worktree.py",
+        "src/concorde/harness/configuration.py",
         "src/concorde/harness/context.py",
+        "src/concorde/harness/entry.py",
+        "src/concorde/harness/operation_graph.py",
         "src/concorde/harness/permissions.py",
         "src/concorde/harness/pi_rpc.py",
         "src/concorde/harness/pi_worker.py",
+        "src/concorde/harness/relay.py",
         "src/concorde/harness/studio.py",
         "src/concorde/harness/studio_client.py",
         "src/concorde/harness/worker_executor.py",
@@ -384,6 +386,9 @@
         "tests/concorde/operations/test_graph_surfaces.py",
         "tests/concorde/operations/test_operation_modules.py",
         "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_run_operation.py",
+        "tests/concorde/operations/test_specify_loop.py",
+        "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/operations/test_target_discovery.py",
         "tests/concorde/operations/test_typed_graphs.py",
         "tests/concorde/spec/test_operations_migration.py",
@@ -411,10 +416,6 @@
         {
           "id": "document.reflections.issues",
           "kind": "document"
-        },
-        {
-          "id": "module.development",
-          "kind": "module"
         },
         {
           "id": "module.specify-loop",
@@ -491,117 +492,21 @@
         {
           "kind": "document",
           "id": "document.planning.tasks"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
         }
       ],
       "title": "Harness",
       "uses": [
         "module.spec",
-        "module.distribution"
-      ]
-    },
-    {
-      "checks": [],
-      "documents": [
-        "specs/concorde/development/module.md",
-        "specs/concorde/development/interfaces.md",
-        "specs/concorde/development/operations.md",
-        "specs/concorde/development/review-and-gaps.md",
-        "specs/concorde/development/graphs.md",
-        "specs/concorde/development/requirements.md",
-        "specs/concorde/development/scenarios.md",
-        "specs/concorde/development/execution-reference.md",
-        "specs/concorde/development/collaborations.md"
-      ],
-      "files": [],
-      "id": "module.development",
-      "kind": "module",
-      "parent": "module.concorde",
-      "references": [
-        {
-          "id": "module.harness",
-          "kind": "module"
-        },
-        {
-          "id": "module.spec",
-          "kind": "module"
-        },
-        {
-          "id": "module.issues",
-          "kind": "module"
-        },
-        {
-          "id": "module.distribution",
-          "kind": "module"
-        },
-        {
-          "id": "module.planning",
-          "kind": "module"
-        },
-        {
-          "id": "module.implementation",
-          "kind": "module"
-        },
-        {
-          "id": "module.spec-authoring",
-          "kind": "module"
-        },
-        {
-          "id": "module.review",
-          "kind": "module"
-        },
-        {
-          "id": "module.validation",
-          "kind": "module"
-        },
-        {
-          "id": "module.delivery",
-          "kind": "module"
-        },
-        {
-          "id": "module.query-routing",
-          "kind": "module"
-        },
-        {
-          "id": "module.topology",
-          "kind": "module"
-        },
-        {
-          "id": "module.dev-loop",
-          "kind": "module"
-        },
-        {
-          "id": "module.specify-loop",
-          "kind": "module"
-        },
-        {
-          "kind": "external",
-          "path": "reference/langchain-docs/"
-        },
-        {
-          "kind": "external",
-          "path": "reference/langgraph/"
-        },
-        {
-          "kind": "document",
-          "id": "document.concorde.module"
-        }
-      ],
-      "title": "Development",
-      "uses": [
-        "module.harness",
-        "module.spec",
-        "module.issues",
         "module.distribution",
-        "module.planning",
-        "module.implementation",
-        "module.spec-authoring",
-        "module.review",
-        "module.validation",
-        "module.delivery",
-        "module.query-routing",
-        "module.topology",
-        "module.dev-loop",
-        "module.specify-loop"
+        "module.operations"
       ]
     },
     {
@@ -610,6 +515,7 @@
         "specs/concorde/issues/module.md",
         "specs/concorde/issues/interfaces.md",
         "specs/concorde/issues/lifecycle.md",
+        "specs/concorde/issues/blockers.md",
         "specs/concorde/issues/issues.md",
         "specs/concorde/issues/requirements.md",
         "specs/concorde/issues/scenarios.md",
@@ -628,10 +534,6 @@
       "kind": "module",
       "parent": "module.concorde",
       "references": [
-        {
-          "kind": "module",
-          "id": "module.development"
-        },
         {
           "kind": "module",
           "id": "module.spec"
@@ -675,11 +577,19 @@
         {
           "kind": "document",
           "id": "document.planning.tasks"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Issues",
       "uses": [
-        "module.development",
+        "module.harness",
         "module.spec",
         "module.dev-loop",
         "module.spec-authoring",
@@ -752,10 +662,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.harness.module"
         },
         {
@@ -769,6 +675,10 @@
         {
           "kind": "document",
           "id": "document.views.pipeline"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Distribution",
@@ -818,11 +728,11 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
-          "id": "document.concorde.module"
+          "id": "document.operations.module"
         }
       ],
       "title": "Views",
@@ -862,10 +772,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -883,10 +789,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -910,10 +812,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.distribution.installation"
         },
         {
@@ -923,11 +821,18 @@
         {
           "kind": "document",
           "id": "document.review.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Planning",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec"
       ]
@@ -960,10 +865,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -985,10 +886,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1016,10 +913,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.distribution.installation"
         },
         {
@@ -1029,11 +922,18 @@
         {
           "kind": "document",
           "id": "document.review.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Implementation",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec"
       ]
@@ -1069,10 +969,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -1090,10 +986,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1117,10 +1009,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.topology.module"
         },
         {
@@ -1134,11 +1022,18 @@
         {
           "kind": "document",
           "id": "document.review.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Spec Authoring",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec"
       ]
@@ -1178,10 +1073,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -1195,10 +1086,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1222,10 +1109,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.issues.lifecycle"
         },
         {
@@ -1235,11 +1118,18 @@
         {
           "kind": "document",
           "id": "document.distribution.installation"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Review",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec",
         "module.query-routing"
@@ -1276,10 +1166,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -1297,10 +1183,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1324,10 +1206,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.distribution.installation"
         },
         {
@@ -1337,11 +1215,18 @@
         {
           "kind": "document",
           "id": "document.review.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Validation",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec"
       ]
@@ -1377,10 +1262,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -1398,10 +1279,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1425,20 +1302,23 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.issues.lifecycle"
         },
         {
           "kind": "document",
           "id": "document.review.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Delivery",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec",
         "module.distribution"
@@ -1473,10 +1353,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -1494,10 +1370,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1521,10 +1393,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.topology.module"
         },
         {
@@ -1538,11 +1406,18 @@
         {
           "kind": "document",
           "id": "document.review.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Query and Routing",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec"
       ]
@@ -1578,10 +1453,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -1599,10 +1470,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1630,10 +1497,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.distribution.installation"
         },
         {
@@ -1643,11 +1506,18 @@
         {
           "kind": "document",
           "id": "document.review.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Topology",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec",
         "module.query-routing"
@@ -1708,10 +1578,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -1729,10 +1595,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1756,20 +1618,23 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.distribution.installation"
         },
         {
           "kind": "document",
           "id": "document.issues.lifecycle"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Development Graph",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec",
         "module.query-routing",
@@ -1821,10 +1686,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
-        },
-        {
-          "kind": "document",
           "id": "document.development.operations"
         },
         {
@@ -1842,10 +1703,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.scenarios"
         },
         {
           "kind": "document",
@@ -1873,20 +1730,23 @@
         },
         {
           "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
           "id": "document.distribution.installation"
         },
         {
           "kind": "document",
           "id": "document.issues.lifecycle"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.operations.module"
         }
       ],
       "title": "Specification Graph",
       "uses": [
-        "module.development",
         "module.harness",
         "module.spec",
         "module.query-routing",
@@ -1899,10 +1759,18 @@
       "kind": "module",
       "title": "Operations",
       "parent": "module.concorde",
-      "uses": [],
+      "uses": [
+        "module.harness",
+        "module.spec",
+        "module.issues"
+      ],
       "documents": [
         "specs/concorde/operations/module.md",
-        "specs/concorde/operations/providers.md"
+        "specs/concorde/operations/composition.md",
+        "specs/concorde/operations/providers.md",
+        "specs/concorde/operations/execution-reference.md",
+        "specs/concorde/operations/requirements.md",
+        "specs/concorde/operations/scenarios.md"
       ],
       "files": [
         "src/concorde/operations/",
@@ -1961,26 +1829,6 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.development.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.harness.context"
-        },
-        {
-          "kind": "document",
-          "id": "document.harness.module"
-        },
-        {
-          "kind": "document",
           "id": "document.issues.lifecycle"
         },
         {
@@ -1994,6 +1842,34 @@
         {
           "kind": "document",
           "id": "document.spec.values"
+        },
+        {
+          "kind": "module",
+          "id": "module.harness"
+        },
+        {
+          "kind": "document",
+          "id": "document.spec.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.spec.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.spec.initialize"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.installation"
         }
       ]
     }

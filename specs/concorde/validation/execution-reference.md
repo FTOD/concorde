@@ -23,9 +23,9 @@ and transitions are retained here as the single detailed contract.
 
 ## Validation operation {#validation-validation-operation}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
-[typed handoffs](../development/interfaces.md#stage-handoffs) and
-[gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
+[Harness admission](../harness/admission.md) owns the entry. Its [common invocation envelope](../harness/admission.md#operation-execution-boundary),
+[typed handoffs](../harness/admission.md#stage-handoffs) and
+[gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 
 `concorde-validate` is public, deterministic and uses no Agent context selection. Its request
@@ -61,7 +61,7 @@ deletion by the check and its descendants, including transient writes that are l
 The rule covers listed and unlisted files, ignored caches, `.concorde/runs` and lifecycle records.
 
 Harness returns byte `stdout`, byte `stderr`, integer `returncode` and boolean `timed_out` after
-terminating the check's descendants. [Development Module](../development/module.md) alone writes `stdout + b"\n" + stderr` to
+terminating the check's descendants. [Harness admission](../harness/admission.md) alone writes `stdout + b"\n" + stderr` to
 `.concorde/runs/<invocation_id>/<check_id>.log`. No project log handle or lifecycle write grant enters
 the sandbox. Public evidence contains exactly `check_id`, `target_id`, `status` (`passed`, `failed`
 or `timeout`), `exit_code`, `source_digest` and `log_digest`; raw output remains private. Timeout
@@ -83,11 +83,24 @@ participates in the digest, invalidating evidence from the former unrestricted r
 tree and affected-Module revision comparisons remain additional defenses against concurrent
 external changes; they do not supply the write boundary or claim semantic completeness.
 
+#### Implementation revisions and consumer evidence {#validation-implementation-revisions-and-consumer-evidence}
+
+Implementation revisions hash each Module's declared entries together with the current digests of
+the files they bind. Validation derives every listing Module from the reverse index, in which a
+directory entry covers every path below it, runs their configured checks and records each
+Module's contract and implementation revisions. Code review uses a separate Module-only contract
+context for each consumer plus its authorized code. Required peer review artifacts are retained
+with their own intent; later source, Spec or membership changes invalidate those results. A single
+consumer's completion never establishes compatibility for every Module that lists the same shared
+file.
+
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new graph requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
+This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+its own package `src/concorde/validation/` and the Harness check runner it shares, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
+creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+artifacts and permissions remain mandatory. A new graph requires declared composition and an
+implementation of its sequencing, artifact admission, recovery and completion policies before it
+can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
+host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
+that reaches this provider.

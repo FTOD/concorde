@@ -1,20 +1,26 @@
-# Development host boundary
+# Operation admission contracts
+
+These precise contracts belong to the [Harness Module](module.md): the boundary every operation
+request crosses, the typed values the host admits at that boundary and between stages, the result
+and error vocabulary, workspace binding and the admission Graph. [Preparing and coordinating
+work](host.md) explains their purpose; the [Operations Module](../operations/module.md) owns the
+catalog of Operations and the dispatch this admission hands each request to.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
 | [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](module.md#terminology) | Defined in Development operation host. |
-| [Internal operation](module.md#terminology) | Defined in Development operation host. |
+| [Public operation](../operations/module.md#terminology) | Defined in Operations. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
 | [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
+| [Worker profile](module.md#terminology) | Defined in Harness. |
 | [Grant](../module.md#terminology) | Defined in Concorde Framework. |
 | [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Capsule](../harness/module.md#terminology) | Defined in Harness. |
+| [Capsule](module.md#terminology) | Defined in Harness. |
 | [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 | [Ready](../module.md#terminology) | Defined in Concorde Framework. |
@@ -23,21 +29,21 @@
 | [Issue](../module.md#terminology) | Defined in Concorde Framework. |
 | [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Implementation context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
+| [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 
-### Operation execution boundary
+## Operation execution boundary
 
 An Operation is a State-based LangGraph node under the Operation and Harness contract supplied by
-the [Harness Module](../harness/module.md). Each
+the [Harness Module](module.md). Each
 registered entry declares its State, USES and optional model execution profile. Existing host
 adapters additionally retain versioned request/response transport contracts; model-only nodes do
 not acquire new wire envelopes. Rendered public Skills expose exactly one public Operation.
 Non-public Operations have no Skill or direct launcher entry. Every external request passes
-through this host. The operation registry is a member of this complete Spec; exact wire
-schemas are code, exported by the build for runtime/API use, and this document states
-their promises.
+through this admission boundary. The [operation catalog](../operations/execution-reference.md#operations-operation-registry)
+names every Operation; exact wire schemas are code, exported by the build for runtime/API use,
+and this document states their promises.
 
 Executable entry: `python3 scripts/run-operation.py <skill-name>`, no task command-line arguments.
 In an installed project the launcher first re-executes itself inside the managed runtime, as the
@@ -126,24 +132,11 @@ The [Specification Graph](../specify-loop/module.md#usage) and
 [Development Graph](../dev-loop/module.md#usage) own ordering and lifecycle policy.
 The host rechecks registry, context and initialized configuration after every stage.
 
-The canonical [context selection agreement](../harness/contracts.md#contract.context.selection)
-is included through Development's Module reference to Harness.
-
-<a id="participation.document.development.interfaces.1"></a>
-
-**Interface participation.** This Module has the required role for `contract.context.selection` version 3 with `module.harness`.
-
-**When this applies.** Before assessment, planning, authoring or review for a selected Module.
-
-**Relied-upon guarantee.** [Selection](../harness/contracts.md#contract.context.selection) determines the complete admitted contract and its original owners.
-
-**Local obligation.** Supply the explicit Module and task; stop dependent transitions on gaps or stale context, and never treat included provider definitions as writable local Specs.
-
 Each reported Spec gap carries host-bound target_id and context_id provenance. A Module coordinator
 retains that provenance when a component stage is blocked, so callers can author the correct local
 Spec before retrying. Agent-supplied mismatched gap provenance is rejected.
 
-### Wire contracts
+## Wire contracts
 
 Every TypedValue is `{type_id, schema_version, data}`; `schema_version` is pinned per type below and
 `data` must satisfy that type's JSON Schema. The invocation envelope wraps every request and
@@ -151,15 +144,15 @@ response; the fourteen operation request/response pairs carry each operation's o
 result; the remaining types are internal handoffs, review records, topology artifacts, the project
 proposal and the stage-input artifacts that pass between stages inside one operation.
 
-#### Invocation envelope
+### Invocation envelope
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-operation-invocation@3` | Every request, on stdin | `{type_id, schema_version: 3, operation_id, mode: execute\|describe-policy, configuration, input}`. `operation_id` must name a Skill; a non-public or unknown name is refused with `unknown_operation`. `configuration` is a `concorde-operation-configuration@1` TypedValue or null (falls back to the initialized project settings); `input` is the named operation's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`. |
 | `concorde-operation-result@3` | Every response, on stdout | `{type_id, schema_version: 3, operation_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named operation's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`. |
-| `concorde-operation-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@2`/`-response@2` | `{model?, thinking?: off\|minimal\|low\|medium\|high\|xhigh\|max, timeout_seconds?, workers?: {<worker> or <worker>/<child>: {model?, thinking?, timeout_seconds?}}}`; `model` is Pi's `provider/id`. The top-level values are the project default; a worker entry overrides them for one worker and a child entry for one worker child, which inherits its worker's entry (see [the worker selection scenario](../harness/scenarios.md#scenario.harness.worker-selection)). An absent model or thinking level keeps Pi's default and an absent timeout the worker profile's. A key naming no worker or worker child, a timeout on a child, a nonpositive timeout or a model without a provider is rejected. Stored at initialization under `.concorde/config.json`'s `operation_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
+| `concorde-operation-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@2`/`-response@2` | `{model?, thinking?: off\|minimal\|low\|medium\|high\|xhigh\|max, timeout_seconds?, workers?: {<worker> or <worker>/<child>: {model?, thinking?, timeout_seconds?}}}`; `model` is Pi's `provider/id`. The top-level values are the project default; a worker entry overrides them for one worker and a child entry for one worker child, which inherits its worker's entry (see [the worker selection scenario](scenarios.md#scenario.harness.worker-selection)). An absent model or thinking level keeps Pi's default and an absent timeout the worker profile's. A key naming no worker or worker child, a timeout on a child, a nonpositive timeout or a model without a provider is rejected. Stored at initialization under `.concorde/config.json`'s `operation_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
 
-#### Operation requests and responses
+### Operation requests and responses
 
 Common request task fields (named once, not repeated per row): `target_id` (required for every
 bound Module request; an optional routing hint for `main`, `dev-loop`, `specify-loop` and `review`), `task`,
@@ -185,15 +178,15 @@ an immutable Issue receipt plus its task-local blocked_step, never a second copy
 | `concorde-tasks-request@1` / `concorde-tasks-response@3` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-implement-request@1` / `concorde-implement-response@3` | implement (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 
-#### Stage handoffs
+### Stage handoffs
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@6` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/contracts.md#context-context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
+| `concorde-context-snapshot@6` | Every bound worker invocation's frozen input | [Canonical snapshot](contracts.md#context-context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
 | `concorde-agent-stage-context@4` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@6, change_id, expected_artifacts}`. |
 | `concorde-agent-stage-result@2` | Worker to host, the completion | `{context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision?}`; `documents`/`plan`/`tasks`/`issue_decision` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
-#### Review types
+### Review types
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
@@ -202,11 +195,11 @@ an immutable Issue receipt plus its task-local blocked_step, never a second copy
 | `concorde-review-stage-result@2` | Reviewer to host, the completion | `{context_id, input_digest, review_mode, status: no_findings\|findings\|incomplete, representative_tasks, issues, answer}`. |
 | `concorde-review-result@2` | Published in `concorde-review-response@3.reviews` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
 
-#### Topology types
+### Topology types
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-discovery-context@6` | Host to discovery worker | [Canonical discovery context](../harness/contracts.md#context-global-spec-context-assembly); only explicit selections may expand discovery. |
+| `concorde-discovery-context@6` | Host to discovery worker | [Canonical discovery context](contracts.md#context-global-spec-context-assembly); only explicit selections may expand discovery. |
 | `concorde-main-stage-context@5` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@6}`. |
 | `concorde-main-stage-result@2` | Discovery worker to host, the completion | `{context_id, outcome, answer, expand_targets, routes, blockers, topology_design (nullable)}`. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
@@ -215,8 +208,8 @@ an immutable Issue receipt plus its task-local blocked_step, never a second copy
 | `concorde-topology-author-result@2` | Author to host, the completion | `{context_id, target_id, outcome, answer, blockers, documents}`. |
 | `concorde-topology-application@1` | Host-private, produced by accept-topology and consumed by apply-topology | `{application_id, topology_proposal: concorde-topology-proposal@1, base_registry_digest, protocol_binding, files (nonempty)}`; the public response exposes only its ArtifactRef, never these bytes. |
 
-The canonical [discovery record](../harness/contracts.md#context-global-spec-context-assembly) defines
-deduplicated source pools and per-Module provenance. Development retains it unchanged in each
+The canonical [discovery record](contracts.md#context-global-spec-context-assembly) defines
+deduplicated source pools and per-Module provenance. The host retains it unchanged in each
 handoff and checks currentness before using its result; it does not define a second record shape.
 The topology-author context's `candidate_references` is the candidate Module's explicit references;
 `spec_resolution` is its candidate one-level resolution. Providers are read-only unless the author
@@ -230,20 +223,20 @@ Old reading-worker results and the synthesis phase are not accepted; clients mus
 build-bound schemas and instructions. Existing Protocol bindings remain pinned until explicitly
 updated; a mismatched package/context is rejected instead of reinterpreted.
 
-#### Project proposal
+### Project proposal
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-project-proposal@1` | `concorde-init-request@2.proposal` and `-response@1.proposal` | `{action: "initialize", base_digest (nullable), files: [{path, before_digest (nullable), content}]}`. |
 
-#### Issue reporting values
+### Issue reporting values
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-issue-report@1` | Worker reporting tool to the host | [Classified observation](../issues/execution-reference.md#issues-store-boundary), without caller-supplied provenance or a graph-control effect. |
 | `concorde-issue-receipt@1` | Host to the reporting worker | Immutable `{issue_id, report_id, path}` identity for the exact accepted observation; the tool additionally returns the current record revision for a subsequent append. |
 
-#### Stage-input artifacts
+### Stage-input artifacts
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
@@ -346,15 +339,7 @@ context forms; package/schema alignment checks verify those identities.
 | `relay_failed` | The candidate worktree's launcher, running a mutation relayed from the primary worktree, returned no result envelope. |
 | `execution_failed` | The host caught an exception outside the named Spec/typed-data/build error vocabulary. |
 
-### Main routing view
-
-Select `module.harness` for context resolution, permission compilation, typed-value admission,
-worker binding and Pi worker execution. Select `module.spec` for registry selection, structural
-validation and initialization. Select `module.distribution` for build, installation and runtime
-provisioning. Select `module.issues` for recorded feedback and gaps. The main router may use
-these stable IDs to route a worker but may not expand their Module targets.
-
-### Worktree awareness
+## Worktree awareness
 
 One schema-2 `.concorde/worktree.json` owns a managed change, root intent, target records, phase/status,
 gaps and validation identity. Plans and auxiliary artifacts live under
@@ -376,30 +361,69 @@ workspace-status question directly from this metadata; target-behavior answers s
 answerer invocation. The current workspace identity and status are rechecked after a stage. Other live worktree
 summaries are frozen observations and their progress does not invalidate unrelated main cognition.
 
-### Configured check execution
+## Admission Graph
 
-The canonical configured-check and evidence contract is owned by [Validation](../validation/execution-reference.md#validation-configured-check-execution).
+The admission Graph runs every invocation, admitted or not, around the Operations
+[dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph).
+It follows the [Graph Spec convention](execution-reference.md#graphs-and-loops-graph-specs): its
+State, Nodes and Edges are stated in turn, and its diagram is bound to the compiled Graph by
+`%% graph:` and kept equal to it by the configured Graph Spec check.
 
-### Independent review contract
+### Operation admission Graph (`operation_graph`) {#graphs-operation-admission-graph-operation-graph}
 
-The canonical contract is owned by [Review](../review/execution-reference.md#review-independent-review-operation).
+**State.** `invocation` (the admitted `concorde-operation-invocation@3`), `result` (the
+`concorde-operation-result@3` envelope, filled by `finalize` or by a guard that caught an
+error), `policies` and `events` (the host's policy descriptions and observed events, Studio only),
+`expected_workspace`.
 
-### Review gates, gap history and recovery
+**Nodes.** Every node runs under a guard: an error records the typed failure envelope in `result`.
 
-[Development Graph](../dev-loop/module.md#usage) owns its review gates; [Specification Graph](../specify-loop/module.md#usage) owns Spec-only completion. Common attributed gap retention is defined in [Gap handling](review-and-gaps.md).
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `initialize` | Deterministic: fresh host identity, root invocation id and lifecycle record for this invocation. | invocation | cleared result |
+| `admit_request` | Deterministic: operation name, mode, configuration and request are validated against the registered contracts; a stale build is refused for model-backed operations. | invocation | admitted task, configuration |
+| `bind_workspace` | Deterministic: primary, change or unversioned workspace identity; a mutating primary request prepares a candidate worktree and marks the invocation for relay into it. | admitted task, worktree | workspace, relay target |
+| `check_configuration` | Deterministic: the invocation configuration equals the initialized project settings and the host snapshot. | configuration, project settings | configuration snapshot |
+| `execute` | The dispatch Graph (below) as a subgraph. | admitted task, workspace | output |
+| `finalize` | Deterministic: status from the output outcome or the recorded error, execution-error propagation, lifecycle progress. | output, result, lifecycle | result envelope |
 
-### Canonical review-result value
+**Edges.** Each admission step is followed by a conditional edge that reads `result`: when the step
+or its guard recorded a failure envelope, the Graph goes straight to `finalize`; otherwise it
+continues to the next step. `execute` always hands its output to `finalize`, and `finalize` always
+ends the Graph, so every invocation, admitted or not, ends with one typed result envelope.
 
-The [review-result interface](../review/review-result.md) is the single definition of the public review
-record. Harness explicitly references that document for repair stage admission. The Development Graph, through the common host,
-checks task intent, evidence currentness and permitted repair transitions before supplying it.
+```mermaid
+flowchart TB
+    %% graph: operation_graph
+    accTitle: Operation admission Graph
+    accDescr: Every invocation is initialized, admitted, bound to a workspace and checked against the initialized configuration before the dispatch subgraph executes; any error routes to finalize, which always writes the typed result envelope.
+    __start__["start"]
+    initialize["initialize<br/>in: invocation<br/>out: cleared result"]
+    admit_request["admit_request<br/>in: invocation<br/>out: admitted task, configuration"]
+    bind_workspace["bind_workspace<br/>in: admitted task, worktree<br/>out: workspace, relay target"]
+    check_configuration["check_configuration<br/>in: configuration, project settings<br/>out: configuration snapshot"]
+    execute["execute<br/>in: admitted task, workspace<br/>out: output"]
+    finalize["finalize<br/>in: output, result, lifecycle<br/>out: result envelope"]
+    __end__["end"]
+    __start__ --> initialize
+    initialize -->|initialized| admit_request
+    initialize -->|error| finalize
+    admit_request -->|request admitted| bind_workspace
+    admit_request -->|rejected| finalize
+    bind_workspace -->|workspace bound| check_configuration
+    bind_workspace -->|blocked| finalize
+    check_configuration -->|configuration matches| execute
+    check_configuration -->|mismatch| finalize
+    execute --> finalize
+    finalize --> __end__
+```
 
 ## Design
 
 ### Required orchestration model
 
-The registered companion documents of the Harness Module define the Agent model (A1–A5) and the
-Graph and Loop model (G1–G4) this host composes. The Harness resolves worker definitions, their
+The [execution reference](execution-reference.md) defines the Agent model (A1–A5) and the Graph
+and Loop model (G1–G4) that admission composes. The Harness resolves worker definitions, their
 `spec.md` sources, profiles and child definitions into a reproducible `AgentBinding` that every
 worker invocation carries, and its executor verifies that binding before any process starts. This
 Module MUST coordinate declared Graph transitions and bounded loops with attributed AI feedback and
@@ -409,61 +433,23 @@ worker's external name.
 
 ### Required collaborator interfaces
 
-Canonical interfaces are supplied by the Module references in Development's registration. These
-links state local uses and obligations; providers own the definitions, schemas and error semantics.
+Canonical interfaces are supplied by the Module references in Harness's registration. These links
+state admission's local uses and obligations; providers own the definitions, schemas and error
+semantics.
 
-| Provider definition | Development use and obligation |
+| Provider definition | Admission use and obligation |
 | --- | --- |
 | [Registry and resolution](../spec/registry.md), [values](../spec/values.md) | Select the unique task owner, freeze its complete resolved context, reconstruct after changes and stop on failed admission. |
-| [Context](../harness/contracts.md#contract.context.selection) | Bind every stage to the current task and exact snapshot; handle gaps and stale-context failures before progressing. |
-| [Runtime values](../harness/runtime-values.md) and [permissions](../harness/permissions.md) | Compile bounded role permissions and preserve empty reviewer writes; never widen a policy after rejection. |
-| [Execution](../harness/execution.md) | Require the bound fresh worker process and its single matching result; stop on failure and retain private evidence. |
-| [Typed values](../harness/typed-values.md) | Validate every handoff before state mutation; never use raw logs or code as later Spec-only input. |
 | [Build](../distribution/build.md) and [installation](../distribution/installation.md) | Require fresh projections and the pinned Protocol assets before launch; a mismatch blocks the invocation. |
 | [Validation](../spec/structure.md) | Require structural evidence and separately configured checks; never interpret it as semantic proof. |
+| [Operation catalog](../operations/execution-reference.md#operations-operation-registry) | Admit only a registered public Operation at the boundary, and a child Operation only through its parent's declared composition. |
 | [Issue interface](../issues/interfaces.md) | Preserve immutable report references and task-local blocker judgments; only explicit solving starts repair. |
 
-Configuration loading remains Development-owned: `load_configuration(project_root: str|Path)`
-returns the initialized configuration TypedValue. Ordinary invocations and child stages must equal
-that snapshot; mismatch stops the transition without fallback or expanded authority.
+Configuration loading is Harness-owned: `load_configuration(project_root: str|Path)` returns the
+initialized configuration TypedValue. Ordinary invocations and child stages must equal that
+snapshot; mismatch stops the transition without fallback or expanded authority.
 
-#### File transactions
-
-- File transactions (this Module's own `entity.development.file-transactions`, also listed by Spec, Issues and Views): `file_change(root: Path, path: str, content: str) ->
-  {path,before_digest,content}` captures current bytes (null digest for new files).
-  `apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]` requires
-  nonempty unique allowed paths, UTF-8 replacement text and exact before digests. It rechecks before
-  writes, optionally calls the zero-argument verifier, and restores written bytes on failure.
-  Stale or foreign proposals raise SpecError; no partial transaction is reported successful.
-
-#### Gap capture
-
-The [Issue interface](../issues/interfaces.md) owns report, inspection, reopening and solving semantics.
-Development passes host-bound gap provenance, retains history and treats capture as a link to
-feedback, never as resolution or approval to implement.
-
-### Diagrams as part of registered documents
-
-Relationships diagrams in this project are inline Mermaid flowchart fences inside a registered
-Markdown document, with `accTitle` and `accDescr` accessible text stated beside the fence. A
-Module's main diagram, in its `module.md` Relationships subsection, describes its principal entities
-and directed relationships; further diagrams may appear in other registered documents. The entire
-containing Markdown document is the diagram's only authored source.
-
-The diagram's bytes already occur in `documents` and participate in document,
-revision and context digests; no separate diagram-source pool or result field exists. Authors
-return a changed fence as part of the changed `documents` entry that contains it. Shared Markdown
-changes are authored once by the sole owner and reviewed for all affected direct context consumers; non-author roles
-cannot replace these sources; and rendered SVG/HTML is never a cognitive input or another
-authority.
-
-Spec review receives scoped Markdown changes, including any diagram fence they touch, and
-attributes findings to that registered document and owning Module. A blocked author returns no
-replacements. A prepared application binds the complete accepted document set and every
-before-digest. Syntax and publication failures remain distinct from an incomplete or contradictory
-behavioral contract. Publication renders the same Mermaid source as part of the Markdown page.
-
-### Reusable implementation context and evidence
+### Implementation context and code writers
 
 Each Module's entities carry its file bindings directly in its own Spec, as exact files or as
 directory prefixes that bind every regular file below them; the registry's `files` field mirrors
@@ -474,27 +460,3 @@ Code writers may create or change the files their Module's own entries bind, inc
 below a listed directory, but cannot change entity identity, membership, the registry, or a Module
 Spec document. Non-code authors never read those files' contents, only the declared entries and
 bound names through the entity declarations they can already see.
-
-Implementation revisions hash each Module's declared entries together with the current digests of
-the files they bind. Validation derives every listing Module from the reverse index, in which a
-directory entry covers every path below it, runs their configured checks and records each
-Module's contract and implementation revisions. Code review uses a separate Module-only contract
-context for each consumer plus its authorized code. Required peer review artifacts are retained
-with their own intent; later source, Spec or membership changes invalidate those results. A single
-consumer's completion never establishes compatibility for every Module that lists the same shared
-file.
-
-### Reference changes and implementation status
-
-Before review/readiness, compute affected Spec consumers from the union of old and candidate
-one-level contexts. A provider document edit, ownership transfer, changed reference or changed
-provider document inventory invalidates each affected context and dependent plan/review. Changed
-code additionally uses the independent listing reverse index. A reference is never a code grant.
-Review attribution follows the [canonical review-result interface](../review/review-result.md). Development
-routes a provider repair to its sole owner and retains the consumer's blocked-step evidence;
-included-file read scope never grants authority to write the provider definition.
-
-The host uses version-3 context wrappers and owner-only author proposals. Candidate overlays receive
-separate consumer compatibility reviews; plans, review records and readiness checks bind the complete
-owner/reference resolution. Old and candidate consumers are retained for evidence rechecks.
-No lifecycle readiness or delivery is established by this documentation maintenance.

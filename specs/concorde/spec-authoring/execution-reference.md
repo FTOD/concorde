@@ -20,16 +20,16 @@ and transitions are retained here as the single detailed contract.
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
 | [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Spec authoring operation {#authoring-spec-authoring-operation}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
-[typed handoffs](../development/interfaces.md#stage-handoffs) and
-[gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
+[Harness admission](../harness/admission.md) owns the entry. Its [common invocation envelope](../harness/admission.md#operation-execution-boundary),
+[typed handoffs](../harness/admission.md#stage-handoffs) and
+[gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound operation in the [current adapter inventory](../development/execution-reference.md).
+This is a private, bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
 Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
@@ -61,9 +61,11 @@ These companions are part of the same complete Module specification, not separat
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new graph requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
+This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+its own package `src/concorde/spec_authoring/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
+creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+artifacts and permissions remain mandatory. A new graph requires declared composition and an
+implementation of its sequencing, artifact admission, recovery and completion policies before it
+can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
+host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
+that reaches this provider.

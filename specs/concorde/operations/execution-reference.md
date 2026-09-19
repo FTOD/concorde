@@ -1,16 +1,18 @@
-# Development execution and record contracts
+# Operation catalog and dispatch contracts
 
 These are the precise implementation agreements and executable Graph specifications owned by the
-[Development Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
-and transitions are retained here as the single detailed contract.
+[Operations Module](module.md): the catalog of every Operation, the ownership of each Operation's
+behavior and the dispatch that routes an admitted request to its provider. Explanatory topics
+introduce their purposes; exact identities, limits and transitions are retained here as the single
+detailed contract.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
 | [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](module.md#terminology) | Defined in Development operation host. |
-| [Internal operation](module.md#terminology) | Defined in Development operation host. |
+| [Public operation](module.md#terminology) | Defined in Operations. |
+| [Internal operation](module.md#terminology) | Defined in Operations. |
 | [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker](../module.md#terminology) | Defined in Concorde Framework. |
@@ -74,7 +76,8 @@ spellings. They identify the executing model Operation and do not recreate an Ag
 
 Each public Operation has exactly one Skill invoking `scripts/run-operation.py <skill>`.
 Non-public Operations have no Skill or direct launcher entry. [Distribution Module](../distribution/module.md) owns the Skill
-sources and projection; Development owns shared admission and dispatch. A Skill is an instruction
+sources and projection; [Harness](../harness/admission.md) owns shared admission and this Module owns
+dispatch. A Skill is an instruction
 artifact for the developer's external runtime, not the worker's task context or a node kind.
 
 | Operation | Public | Context selection | Deterministic | Uses | Behavior |
@@ -133,7 +136,7 @@ children. Validation compares it with code. There is no independent `concorde.ag
 Every Operation, including each model-backed worker, has exactly one canonical behavioral owner.
 The owner's Specs explain what the Operation is for, what it takes and returns and when it stops;
 this table only maps each Operation to that owner and to the Graph it runs. Every public entry first
-passes the [admission](#graphs-operation-admission-graph-operation-graph) and
+passes the [admission](../harness/admission.md#graphs-operation-admission-graph-operation-graph) and
 [dispatch](#graphs-operation-dispatch-graph-dispatch-graph) Graphs, and every model-backed worker
 runs as one [Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
 
@@ -145,12 +148,12 @@ runs as one [Operation node](../harness/execution-reference.md#host-operation-no
 | specify-loop | [Specification Graph](../specify-loop/module.md) | Target admission, then the [specification Graph](../specify-loop/execution-reference.md#specify-loop-specification-graph-specify-graph) |
 | specify; spec-author | [Spec Authoring](../spec-authoring/module.md) | One spec-author node, whose replacements pass affected-consumer reviews |
 | context-solve, plan, tasks; context-assessor, planner, task-author | [Planning](../planning/module.md) | The [planning Graph](../planning/execution-reference.md#plan-planning-graph-plan-graph) for plan; one worker node each for context-solve and tasks |
-| implement; programmer | [Implementation](../implementation/module.md) | One programmer node, or the [component coordination Graph](#graphs-component-coordination-graph-coordination-graph) for a composite |
+| implement; programmer | [Implementation](../implementation/module.md) | One programmer node, or the [component coordination Graph](../implementation/execution-reference.md#graphs-component-coordination-graph-coordination-graph) for a composite |
 | review; spec-reviewer, code-reviewer | [Review](../review/module.md) | Target admission, then one reviewer node for the owner and each changed-file peer |
 | validate | [Validation](../validation/module.md) | One deterministic node |
 | deliver | [Delivery](../delivery/module.md) | One deterministic node |
 | issues; issue-solver | [Issues](../issues/module.md) | The [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph) and its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph) |
-| init | [Spec](../spec/initialize.md) | The [project Graph](#graphs-project-graph-project-graph) |
+| init | [Spec](../spec/initialize.md) | The [project Graph](../spec/contracts.md#graphs-project-graph-project-graph) |
 | configure | [Distribution](../distribution/module.md) | The project Graph |
 
 Module ownership is distinct from node composition. `USES` is the executable composition relation;
@@ -160,70 +163,23 @@ and its own grant. Only admitted structured artifacts cross node boundaries.
 
 ### Precise specifications {#operations-precise-specifications}
 
-The Development Module owns the exact obligations and interface details in [scenarios](scenarios.md).
-These companions are part of the same complete Module specification, not separate topic owners.
+The Operations Module owns the exact obligations in [requirements](requirements.md) and
+[scenarios](scenarios.md). The request and response types each Operation admits are listed with
+[Harness's wire contracts](../harness/admission.md#operation-requests-and-responses).
 
-## Development host Graphs {#graphs-development-host-graphs}
+## Dispatch Graphs {#graphs-dispatch-graphs}
 
 ### Design {#graphs-design}
 
-The Development host executes every operation invocation as LangGraph Graphs. The six Graphs
-below are its own: admission, dispatch, target admission, project initialization and
-configuration, component coordination and shared-candidate stabilization. The composed Graphs they
-dispatch to (discovery, query, topology, planning, specification, development and issues) are
-specified by their owning Modules. Each Graph Spec follows the
-[Graph Spec convention](../harness/execution-reference.md#graphs-and-loops-graph-specs): its
-State, Nodes and Edges are stated in turn. Every diagram is bound to its compiled Graph by
-`%% graph:` and kept equal to it by the configured Graph Spec check.
-
-#### Operation admission Graph (`operation_graph`) {#graphs-operation-admission-graph-operation-graph}
-
-**State.** `invocation` (the admitted `concorde-operation-invocation@3`), `result` (the
-`concorde-operation-result@3` envelope, filled by `finalize` or by a guard that caught an
-error), `policies` and `events` (the host's policy descriptions and observed events, Studio only),
-`expected_workspace`.
-
-**Nodes.** Every node runs under a guard: an error records the typed failure envelope in `result`.
-
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `initialize` | Deterministic: fresh host identity, root invocation id and lifecycle record for this invocation. | invocation | cleared result |
-| `admit_request` | Deterministic: operation name, mode, configuration and request are validated against the registered contracts; a stale build is refused for model-backed operations. | invocation | admitted task, configuration |
-| `bind_workspace` | Deterministic: primary, change or unversioned workspace identity; a mutating primary request prepares a candidate worktree and marks the invocation for relay into it. | admitted task, worktree | workspace, relay target |
-| `check_configuration` | Deterministic: the invocation configuration equals the initialized project settings and the host snapshot. | configuration, project settings | configuration snapshot |
-| `execute` | The dispatch Graph (below) as a subgraph. | admitted task, workspace | output |
-| `finalize` | Deterministic: status from the output outcome or the recorded error, execution-error propagation, lifecycle progress. | output, result, lifecycle | result envelope |
-
-**Edges.** Each admission step is followed by a conditional edge that reads `result`: when the step
-or its guard recorded a failure envelope, the Graph goes straight to `finalize`; otherwise it
-continues to the next step. `execute` always hands its output to `finalize`, and `finalize` always
-ends the Graph, so every invocation, admitted or not, ends with one typed result envelope.
-
-```mermaid
-flowchart TB
-    %% graph: operation_graph
-    accTitle: Operation admission Graph
-    accDescr: Every invocation is initialized, admitted, bound to a workspace and checked against the initialized configuration before the dispatch subgraph executes; any error routes to finalize, which always writes the typed result envelope.
-    __start__["start"]
-    initialize["initialize<br/>in: invocation<br/>out: cleared result"]
-    admit_request["admit_request<br/>in: invocation<br/>out: admitted task, configuration"]
-    bind_workspace["bind_workspace<br/>in: admitted task, worktree<br/>out: workspace, relay target"]
-    check_configuration["check_configuration<br/>in: configuration, project settings<br/>out: configuration snapshot"]
-    execute["execute<br/>in: admitted task, workspace<br/>out: output"]
-    finalize["finalize<br/>in: output, result, lifecycle<br/>out: result envelope"]
-    __end__["end"]
-    __start__ --> initialize
-    initialize -->|initialized| admit_request
-    initialize -->|error| finalize
-    admit_request -->|request admitted| bind_workspace
-    admit_request -->|rejected| finalize
-    bind_workspace -->|workspace bound| check_configuration
-    bind_workspace -->|blocked| finalize
-    check_configuration -->|configuration matches| execute
-    check_configuration -->|mismatch| finalize
-    execute --> finalize
-    finalize --> __end__
-```
+Operations dispatches every admitted request through two LangGraph Graphs: the dispatch Graph and
+the target admission Graph it composes. Harness runs its
+[admission Graph](../harness/admission.md#graphs-operation-admission-graph-operation-graph) around
+them. The composed Graphs a dispatch leaf runs (discovery, query, topology, planning,
+specification, development, component coordination, project and Issues) are specified by their
+owning Modules. Each Graph Spec follows the
+[Graph Spec convention](../harness/execution-reference.md#graphs-and-loops-graph-specs): its State,
+Nodes and Edges are stated in turn, and its diagram is bound to its compiled Graph by `%% graph:`
+and kept equal to it by the configured Graph Spec check.
 
 #### Operation dispatch Graph (`dispatch_graph`) {#graphs-operation-dispatch-graph-dispatch-graph}
 
@@ -240,7 +196,7 @@ launcher returned for a relayed mutation, which the admission Graph adopts as it
 | `relay` | Deterministic: runs the same invocation through the prepared candidate worktree's launcher and adopts its complete result envelope. | relay target, invocation | relayed result |
 | `prepare_target` | The target admission Graph (below) as a subgraph: binds or discovers the owning Module and selects the bound leaf. | admitted task, change | route, bound invocation |
 | `deliver` | Deterministic: worktree delivery under the repository lock. | change, worktrees | delivery receipt |
-| `project` | The project Graph (below): initialization proposal or application, or configuration. | request | proposal or applied files |
+| `project` | The [project Graph](../spec/contracts.md#graphs-project-graph-project-graph): initialization proposal or application, or configuration. | request | proposal or applied files |
 | `answer` | The query Graph with the answerer. | question, Module contexts | answer |
 | `design_topology` | The query Graph with the topology-designer. | task, Module contexts, registry | topology design |
 | `prepare_topology` | The topology preparation Graph. | accepted design | prepared application |
@@ -372,185 +328,15 @@ flowchart TB
     bind_target --> __end__
 ```
 
-#### Project Graph (`project_graph`) {#graphs-project-graph-project-graph}
+## Context selection participation
 
-`concorde-init` and `concorde-configure` run this Graph; their behavior is owned by the
-[Spec Module](../spec/initialize.md) and the [Distribution Module](../distribution/module.md).
+<a id="participation.document.development.execution-reference.1"></a>
 
-**State.** `route`, `output` (the typed response), `result`.
+**Interface participation.** This Module has the required role for `contract.context.selection` version 3 with `module.harness`.
 
-**Nodes.** All three leaves are deterministic Operations; none calls a model.
+**When this applies.** When target admission binds a Module-bound invocation, before assessment,
+planning, authoring or review for the selected Module.
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `select_action` | Deterministic: the operation and action select one deterministic operation; describe-policy is refused because proposals are the preview. | request | route |
-| `configure` | Deterministic: writes the typed operation configuration into the project settings. | configuration | applied configuration |
-| `propose` | Deterministic: the initialization proposal with its base digest and files. | name, configuration | proposal |
-| `apply` | Deterministic: applies an unchanged proposal atomically. | proposal | applied files |
+**Relied-upon guarantee.** [Selection](../harness/contracts.md#contract.context.selection) determines the complete admitted contract and its original owners.
 
-**Edges.** `select_action` writes `route` from the operation and its action, and a conditional
-edge follows it to `configure`, `propose` or `apply`; a refused describe-policy request or an error
-ends the Graph. Each leaf ends the Graph with its typed response.
-
-```mermaid
-flowchart TB
-    %% graph: project_graph
-    accTitle: Project Graph
-    accDescr: The operation selects configuration, an initialization proposal or its application; each ends the Graph with its typed response.
-    __start__["start"]
-    select_action["select_action<br/>in: request<br/>out: route"]
-    configure["configure<br/>in: configuration<br/>out: applied configuration"]
-    propose["propose<br/>in: name, configuration<br/>out: proposal"]
-    apply["apply<br/>in: proposal<br/>out: applied files"]
-    __end__["end"]
-    __start__ --> select_action
-    select_action -->|concorde-configure| configure
-    select_action -->|concorde-init propose| propose
-    select_action -->|concorde-init apply| apply
-    select_action -->|error| __end__
-    configure --> __end__
-    propose --> __end__
-    apply --> __end__
-```
-
-#### Component coordination Graph (`coordination_graph`) {#graphs-component-coordination-graph-coordination-graph}
-
-A composite Module's implementation runs this Graph when its tasks name submodules or used Modules.
-
-**State.** `output` (a blocking result, or none while the Graph advances), `route`; the candidate's
-target record carries the coordination table (per component: task, Spec and implementation
-status, digests, gaps) and the local task list.
-
-**Nodes.** The work-item nodes run the [Sequential work items Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph).
-
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `reconcile_specs` | Sequential work items: each component runs `concorde-specify` from its own contract until its Spec is current. | component tasks, component Specs | reconciled Specs, coordination table |
-| `validate_specs` | Deterministic repository validation across every participant's contract. | Spec collections | validation, phase |
-| `implement_components` | Sequential work items: each component runs its own development Graph (`specify=false`) in this candidate. | component tasks, component grants | component implementations, review artifacts |
-| `implement_local` | One programmer `implementation` invocation for the composite's own tasks. | local tasks, local files | completed local tasks |
-| `finalize_components` | The stabilization Graph (below): every participant's final checks and reviews until the shared candidate is stable. | candidate | component revisions, evidence |
-| `record_completion` | Deterministic: tasks marked complete, component revisions and implementation digest recorded. | coordination table | completed target record |
-
-**Edges.** After every step a conditional edge reads `output`: a step that recorded a blocking
-result ends the Graph with it, and a step that left `output` empty advances to the next step, so
-the steps run strictly in the order of the table. `record_completion` always ends the Graph.
-
-```mermaid
-flowchart TB
-    %% graph: coordination_graph
-    accTitle: Component coordination Graph
-    accDescr: Component Specs are reconciled and validated, components and local code are implemented, and every participant is finalized until stable before completion is recorded; a blocked step ends the Graph with that result.
-    __start__["start"]
-    reconcile_specs["reconcile_specs<br/>in: component tasks, component Specs<br/>out: reconciled Specs, coordination table"]
-    validate_specs["validate_specs<br/>in: Spec collections<br/>out: validation, phase"]
-    implement_components["implement_components<br/>in: component tasks, component grants<br/>out: component implementations, review artifacts"]
-    implement_local["implement_local<br/>in: local tasks, local files<br/>out: completed local tasks"]
-    finalize_components["finalize_components<br/>in: candidate<br/>out: component revisions, evidence"]
-    record_completion["record_completion<br/>in: coordination table<br/>out: completed target record"]
-    __end__["end"]
-    __start__ --> reconcile_specs
-    reconcile_specs -->|every component Spec current| validate_specs
-    reconcile_specs -->|component blocked| __end__
-    validate_specs -->|contracts consistent| implement_components
-    validate_specs -->|incompatible contracts| __end__
-    implement_components -->|components implemented| implement_local
-    implement_components -->|component blocked| __end__
-    implement_local -->|local tasks complete| finalize_components
-    implement_local -->|local work blocked| __end__
-    finalize_components -->|candidate stable| record_completion
-    finalize_components -->|verification failed| __end__
-    record_completion --> __end__
-```
-
-#### Shared candidate stabilization Graph (`stabilization_graph`) {#graphs-shared-candidate-stabilization-graph-stabilization-graph}
-
-**State.** `output` (a failed participant's result), `route`; the enclosing coordination holds the
-participant set and a bounded remaining-round counter, because a later participant's repair can
-stale an earlier participant's evidence.
-
-**Nodes.**
-
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `snapshot` | Deterministic: digest of every participant's implementation before this round; an exhausted round budget fails. | participant implementations | round digest |
-| `verify_components` | Sequential work items: each participant's final development Graph (`specify=false`, `finalize_components`) runs its checks and required reviews. | participant records | evidence, review artifacts |
-| `check_stability` | Deterministic: the candidate digest after verification equals the round digest. | round digest, participant implementations | route |
-
-**Edges.** `snapshot` always continues to `verify_components`. After verification a conditional
-edge reads `output`: a failed participant ends the Graph, otherwise `check_stability` runs.
-`check_stability` writes `route`: when verification changed the candidate the round repeats from
-`snapshot`, and when it did not the Graph ends. The round budget checked in `snapshot` bounds the
-loop.
-
-```mermaid
-flowchart TB
-    %% graph: stabilization_graph
-    accTitle: Shared candidate stabilization Graph
-    accDescr: Each round snapshots the candidate, verifies every participant and repeats while a repair changed the candidate; a failed participant ends the Graph.
-    __start__["start"]
-    snapshot["snapshot<br/>in: participant implementations<br/>out: round digest"]
-    verify_components["verify_components<br/>in: participant records<br/>out: evidence, review artifacts"]
-    check_stability["check_stability<br/>in: round digest, participant implementations<br/>out: route"]
-    __end__["end"]
-    __start__ --> snapshot
-    snapshot --> verify_components
-    verify_components -->|every participant verified| check_stability
-    verify_components -->|participant failed| __end__
-    check_stability -->|candidate changed| snapshot
-    check_stability -->|candidate stable| __end__
-```
-
-## Attributed Issue blockers and host history {#review-and-gaps-attributed-issue-blockers-and-host-history}
-
-A problem is recorded once as an Issue, through the [Issues Module](../issues/module.md) host reporting service. Its reporter classifies
-it as bug, gap or limitation and supplies evidence within its admitted context. A missing necessary
-contract is gap/missing-contract; conflicting contracts and implementation/Spec mismatches have
-their respective gap subtypes. Classification alone does not stop a worker or start a repair.
-
-Stage results carry `blockers`: an immutable Issue receipt and a task-local blocked_step. A worker
-can report several nonblocking problems and still complete its work; completed/sufficient results
-cannot simultaneously claim blockers. Necessary missing contracts use spec_incomplete, other
-blocking contradictions can use conflicting, and execution failures remain failed. The [Review Module](../review/module.md) owns
-[its independent judgments](../review/execution-reference.md), which reference Issues with severity and
-affected_task rather than repeating problem text in findings and gaps.
-
-The host retains candidate `issue_blockers` keyed by change, accepted work scope, Module, phase and Issue identity.
-Task text is an observation label, never the problem identity or join key. Root and registered
-component/review intents select stable candidate scopes; unrelated standalone work gets its own
-scope and cannot block or clear the accepted candidate task. Each relation keeps its exact
-report reference, phase input revision, observed contexts and source-ownership/inclusion evidence.
-Coordinators forward those references rather than creating another problem or copying it under a
-new owner. Replanning cannot strand a dependency solely because its task wording changed.
-
-An unchanged necessary-contract dependency waits for repair. Fresh successful phase assessment
-can release the phase's earlier relations after the relevant inputs change; review evidence uses
-its independently bound review input identity. Missing original review identity is never inferred
-from a later mutable review record. Ordinary code-review defect feedback follows the bounded
-repair/review loop rather than the unchanged-contract wait rule. A completed fresh code review can
-release such a dependency even when it corrects an earlier judgment without further code changes.
-Failed, incomplete and unrelated assessments cannot erase unresolved dependencies. Successful Spec
-authoring can release its own phase's dependencies; other affected phases still need reassessment.
-
-Releasing a relation means the current work no longer depends on that problem. It does not close
-its Issue, imply delivery or erase history. A workaround can therefore permit work to continue
-while the original problem remains open. Issue disposition belongs to an explicitly authorized
-solving decision with evidence. Neither an open Issue elsewhere in the project nor an advisory
-report is a blanket gate on readiness.
-
-Target-bound snapshots expose only their Module's blocker references, never another Module's
-problem text. Discovery may observe aggregate bookkeeping identities but receives no implicit Issue
-file grant. A reporter's known provider owner remains distinct from the consumer task and context
-that encountered the problem. Fixing that provider requires its own authoring or implementation
-boundary. No problem record permits reading outside the admitted context.
-
-Reports are acknowledged during execution and survive cancellation, timeout or invalid final
-output. These observations do not establish review coverage or stage success. Description-only
-previews launch no reporter. Query workers may explicitly report an Issue, but have no code/Spec
-write authority. The former two-step gap-history-to-Reflection capture path is removed.
-
-Review inputs remain bound to Spec, code, task/focus/constraints, configuration, worker instructions,
-Protocol/build binding, candidate identity and scoped patches. Changed relevant inputs invalidate
-required evidence. A report received after preliminary checks changes deliverable metadata; the
-ready node refreshes deterministic validation when the Issue collection changed, then rechecks all
-ordinary completion gates. It never rewrites a review as passed because an Issue was closed.
+**Local obligation.** Supply the explicit Module and task; stop dependent transitions on gaps or stale context, and never treat included provider definitions as writable local Specs.

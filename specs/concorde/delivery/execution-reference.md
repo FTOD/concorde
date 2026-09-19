@@ -24,7 +24,7 @@ and transitions are retained here as the single detailed contract.
 ## Delivery operation {#delivery-delivery-operation}
 
 Delivery consumes host-recorded candidate identity, progress and current validation/review evidence.
-The [common worktree metadata](../development/interfaces.md#worktree-awareness) supplies those
+The [common worktree metadata](../harness/admission.md#worktree-awareness) supplies those
 records; the producer graph owns its ordering and progress policy. A candidate's draft Spec bytes
 are not visible in the primary worktree before delivery.
 
@@ -87,9 +87,11 @@ The producer graph need not be dev-loop. A directly authored verified candidate 
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new graph requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
+This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+the worktree delivery module it shares with Harness, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
+creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+artifacts and permissions remain mandatory. A new graph requires declared composition and an
+implementation of its sequencing, artifact admission, recovery and completion policies before it
+can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
+host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
+that reaches this provider.

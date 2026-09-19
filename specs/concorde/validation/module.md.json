@@ -22,13 +22,6 @@
       "meaning": "#entity.validation.adapter"
     },
     {
-      "id": "entity.validation.development",
-      "title": "Development",
-      "kind": "used module",
-      "target_id": "module.development",
-      "meaning": "#entity.validation.development"
-    },
-    {
       "id": "entity.validation.harness",
       "title": "Harness",
       "kind": "used module",
@@ -56,10 +49,6 @@
     }
   ],
   "dependencies": [
-    {
-      "target_id": "module.development",
-      "meaning": "#agreement.document.validation.module.1"
-    },
     {
       "target_id": "module.harness",
       "meaning": "#agreement.document.validation.module.2"

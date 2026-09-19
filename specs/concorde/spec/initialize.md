@@ -31,7 +31,7 @@ It creates no invented acceptance cases to satisfy a template. Existing projects
 maintenance or topology changes, not reinitialization, to migrate their document collections.
 
 `concorde-init` makes no model call. It runs as the host's
-[project Graph](../development/execution-reference.md#graphs-project-graph-project-graph): a
+[project Graph](contracts.md#graphs-project-graph-project-graph): a
 deterministic `select_action` node sends `propose` to the node that builds the proposal and `apply`
 to the node that applies an unchanged proposal atomically. Each is a single deterministic node. A
 describe-policy request is refused with `use_proposal`, because the proposal already is the preview.

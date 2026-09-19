@@ -93,8 +93,8 @@
           "description": "The Operations hierarchy groups behavior providers, including composed providers. Supporting Modules own their separate contracts; using them neither transfers ownership nor expands context references.",
           "columns": ["Module", "Responsibility"],
           "rows": [
-            ["Development", "Admit public requests, run primary-worktree mutations in candidate worktrees and enforce declared Operation composition through the common Host."],
-            ["Harness", "Prepare bounded worker context, run each Pi worker and configured check in a sandbox, validate results and record usage."],
+            ["Operations", "Keep the catalog of every Operation, enforce public exposure and declared composition, and dispatch each admitted request to its provider."],
+            ["Harness", "Admit every request at one boundary, run primary-worktree mutations in candidate worktrees, prepare bounded worker context, run each Pi worker and configured check in a sandbox, validate results and record usage."],
             ["Spec", "Resolve stable identities, complete paired document units, explicit references and scenario coverage from test declarations."],
             ["Distribution", "Build fresh assets, publish Skills for the Agent Skills CLI, install the Pi session tool and provision the managed runtime."],
             ["Issues", "Retain attributed problems and solve an explicitly selected Issue to a verified candidate."],

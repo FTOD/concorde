@@ -20,13 +20,6 @@
       "meaning": "#entity.query-routing.adapter"
     },
     {
-      "id": "entity.query-routing.development",
-      "title": "Development",
-      "kind": "used module",
-      "target_id": "module.development",
-      "meaning": "#entity.query-routing.development"
-    },
-    {
       "id": "entity.query-routing.harness",
       "title": "Harness",
       "kind": "used module",
@@ -48,10 +41,6 @@
     }
   ],
   "dependencies": [
-    {
-      "target_id": "module.development",
-      "meaning": "#agreement.document.query-routing.module.1"
-    },
     {
       "target_id": "module.harness",
       "meaning": "#agreement.document.query-routing.module.2"

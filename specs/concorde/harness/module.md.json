@@ -27,6 +27,9 @@
         "src/concorde/harness/",
         "tests/concorde/harness/",
         "tests/concorde/operations/test_operation_modules.py",
+        "tests/concorde/operations/test_run_operation.py",
+        "tests/concorde/operations/test_specify_loop.py",
+        "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/operations/test_typed_graphs.py",
         "tests/concorde/spec/test_operations_migration.py",
         "tests/concorde/support/operation_json.py"
@@ -158,6 +161,13 @@
       "title": "LangGraph",
       "kind": "external library",
       "meaning": "#entity.harness.langgraph"
+    },
+    {
+      "id": "entity.harness.operations",
+      "title": "Operations",
+      "kind": "used module",
+      "target_id": "module.operations",
+      "meaning": "#entity.harness.operations"
     }
   ],
   "dependencies": [
@@ -168,6 +178,10 @@
     {
       "target_id": "module.distribution",
       "meaning": "#agreement.document.harness.module.2"
+    },
+    {
+      "target_id": "module.operations",
+      "meaning": "#agreement.document.harness.module.3"
     }
   ],
   "bindings": []

@@ -26,20 +26,20 @@ describe("Explicit Concorde self specification", () => {
   it("distinguishes Operation dispatch from conditional worker execution", () => {
     const registry = loadScopedRegistry(root);
     const entry = registry.pages.find(
-      (page) => page.primaryOf === "module.development",
+      (page) => page.primaryOf === "module.operations",
     )!;
     const relationships = entry.content
       .split("## Relationships\n")[1]
-      .split("\n## Provider collaboration")[0];
-    expect(relationships).toContain('operations["Development operations"]');
+      .split("\n## Local collaboration agreements")[0];
+    expect(relationships).toContain('dispatch["Operation dispatch"]');
     expect(relationships).toContain(
-      "host -->|dispatches admitted requests to| operations",
+      "harness -->|hands admitted requests to| dispatch",
     );
     expect(relationships).toContain(
-      "host -.->|prepares and runs worker invocations through<br/>when model execution is needed| harness",
+      "dispatch -->|routes each request to the entry of| operations",
     );
     expect(relationships).toContain(
-      "A deterministic operation need not start a worker.",
+      "a deterministic\noperation need not start a worker.",
     );
     expect(relationships).toContain("such as isolated checks");
     expect(relationships).not.toContain("runs admitted work through");
@@ -47,17 +47,15 @@ describe("Explicit Concorde self specification", () => {
   it("contains independently complete public Skill and business scope descriptions", () => {
     const r = loadScopedRegistry(root);
     const host = r.pages
-      .filter((p) => p.owner === "module.development")
+      .filter((p) => p.owner === "module.harness")
       .map((p) => p.content)
       .join("\n");
     expect(host).toContain("concorde-context-solve-request");
     expect(host).toContain("concorde-operation-invocation");
-    const hostEntry = r.pages.find(
-      (p) => p.primaryOf === "module.development",
-    )!;
+    const hostEntry = r.pages.find((p) => p.primaryOf === "module.harness")!;
     expect(hostEntry.content).not.toMatch(/^#{2,5} (?:req|scenario)\./m);
     expect(
-      r.pages.find((p) => p.documentId === "document.development.scenarios")!
+      r.pages.find((p) => p.documentId === "document.harness.scenarios")!
         .content,
     ).toContain("scenario.development.execute-operation");
     const specGraph = r.pages.find(

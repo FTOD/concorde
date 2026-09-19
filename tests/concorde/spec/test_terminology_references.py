@@ -158,7 +158,7 @@ class TerminologyReferenceTests(unittest.TestCase):
     def test_semantically_selected_reader_dependencies_have_definition_entries(self):
         # These are editorial cases, not a rule that every matching word needs a link.
         required = {
-            "development/review-and-gaps.md": {"Issue", "Blocker", "Evidence"},
+            "issues/blockers.md": {"Issue", "Blocker", "Evidence"},
             "harness/graphs-and-loops.md": {"Graph"},
             "harness/host.md": {"Host", "Graph", "Skill"},
             "harness/module.md": {
@@ -240,7 +240,7 @@ class TerminologyReferenceTests(unittest.TestCase):
 
     def test_unrelated_template_rows_do_not_return(self):
         forbidden = {
-            "development/review-and-gaps.md": {
+            "issues/blockers.md": {
                 "Operation",
                 "Host",
                 "Graph",
@@ -257,10 +257,10 @@ class TerminologyReferenceTests(unittest.TestCase):
                 self.assertNotIn("Candidate", self.tables[path])
 
     def test_problem_definitions_and_module_navigation_are_distinct(self):
-        path = PREFIX + "development/review-and-gaps.md"
+        path = PREFIX + "issues/blockers.md"
         for term in ("Issue", "Blocker"):
             self.assertEqual("../module.md#terminology", self.tables[path][term])
-        self.assertIn("[Issues Module](../issues/module.md)", self.pages[path])
+        self.assertIn("[Issues Module](module.md)", self.pages[path])
         self.assertIn(
             "[Issues Module](../issues/module.md)",
             self.pages[PREFIX + "harness/execution.md"],
