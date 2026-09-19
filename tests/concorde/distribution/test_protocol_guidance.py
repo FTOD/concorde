@@ -79,13 +79,44 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.install("claude")
         self.assertEqual(preserved, root.read_bytes())
         self.assertEqual("installed", self.install("claude", cleanup=True))
-        self.assertEqual(b"", (self.root / "CLAUDE.md").read_bytes())
+        # CLAUDE.md existed only because the installer created it for its entry.
+        self.assertFalse((self.root / "CLAUDE.md").exists())
         self.assertEqual("unchanged", self.install("claude", cleanup=True))
         self.assertTrue((self.root / guidance.PROTOCOL).is_file())
         receipt = json.loads((self.root / installer.RECEIPT_PATH).read_text())
         self.assertFalse(any(item["role"] == guidance.ROLE for item in receipt["outputs"]))
         self.install()
         self.assertEqual(preserved, b"".join(guidance.split(root.read_bytes())[::2]))
+
+    @verifies(
+        "scenario.distribution.install-remove-guidance",
+        "scenario.distribution.install-multiple-clients",
+    )
+    def test_root_file_the_installer_created_goes_with_its_entry_but_a_user_file_stays(self):
+        agents = self.root / "AGENTS.md"
+        agents.write_bytes(b"")  # the developer's own file, empty
+        self.install("claude")  # CLAUDE.md did not exist: the installer creates it
+        receipt = json.loads((self.root / installer.RECEIPT_PATH).read_text())
+        by_path = {item["path"]: item for item in receipt["outputs"]}
+        self.assertTrue(by_path["CLAUDE.md"].get("created"))
+        # A later selection without Claude removes its entry, and with it the file that held
+        # nothing else; the receipt no longer lists CLAUDE.md.
+        self.install("codex")
+        self.assertFalse((self.root / "CLAUDE.md").exists())
+        receipt = json.loads((self.root / installer.RECEIPT_PATH).read_text())
+        by_path = {item["path"]: item for item in receipt["outputs"]}
+        self.assertNotIn("CLAUDE.md", by_path)
+        self.assertFalse(by_path["AGENTS.md"].get("created", False))
+        # The developer's AGENTS.md keeps existing after cleanup, empty as they left it.
+        self.assertEqual("installed", self.install("codex", cleanup=True))
+        self.assertTrue(agents.is_file())
+        self.assertEqual(b"", agents.read_bytes())
+        # A created file the developer wrote into keeps their text instead of disappearing.
+        self.install("claude")
+        claude = self.root / "CLAUDE.md"
+        claude.write_bytes(claude.read_bytes() + b"My own rules\n")
+        self.assertEqual("installed", self.install("claude", cleanup=True))
+        self.assertEqual(b"My own rules\n", claude.read_bytes())
 
     @verifies("scenario.distribution.install-conflict-rejected", "scenario.concorde.adopt-conflict")
     def test_markers_symlinks_and_modified_owned_blocks_conflict_without_writes(self):

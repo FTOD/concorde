@@ -414,13 +414,14 @@ def installation_plan(
     receipt = _load_receipt(target)
     prior = _prior_outputs(receipt)
     desired = {} if remove_protocol_guidance else desired_outputs(package, integrations)
-    prior_guidance = {}
+    # Owned root entries: the block digest and whether the installer created the file itself.
+    prior_guidance: dict[str, tuple[str, bool]] = {}
     for item in receipt.get("outputs", []):
         if item.get("role") == guidance.ROLE:
             relative = item["path"]
             if relative not in guidance.FILES.values() or relative in prior_guidance:
                 raise InstallError("invalid or duplicate Protocol guidance receipt")
-            prior_guidance[relative] = item["sha256"]
+            prior_guidance[relative] = (item["sha256"], item.get("created") is True)
     guidance_actions = []
     guidance_desired = {}
     roots = set(prior_guidance) | {
@@ -428,9 +429,10 @@ def installation_plan(
     }
     for relative in sorted(roots):
         wanted = desired.pop(relative, (None, None))[0]
+        prior_digest, prior_created = prior_guidance.get(relative, (None, False))
         try:
             item, merged = guidance.plan(
-                target, relative, wanted, prior_guidance.get(relative)
+                target, relative, wanted, prior_digest, prior_created
             )
             guidance_desired[relative] = (merged, item["role"])
         except (guidance.GuidanceError, UnicodeError) as error:
@@ -618,7 +620,15 @@ def _receipt(
     desired: Mapping[str, tuple[bytes, str]],
     runtime: Mapping[str, Any],
     skills: Mapping[str, Any] | None,
+    actions: Sequence[Mapping[str, str]],
 ) -> bytes:
+    # A root file the installer created for its entry alone is remembered, so removing the
+    # entry later may remove the empty file it leaves; a developer's file is never removed.
+    created_roots = {
+        item["path"]
+        for item in actions
+        if item.get("role") == guidance.ROLE and item.get("created") == "yes"
+    }
     value = {
         "schema_version": INSTALL_SCHEMA,
         "concorde_version": package.version,
@@ -636,6 +646,7 @@ def _receipt(
                 "sha256": _sha256(
                     guidance.split(content)[1] if role == guidance.ROLE else content
                 ),
+                **({"created": True} if path in created_roots else {}),
             }
             for path, (content, role) in sorted(desired.items())
             if role not in {"project-default", "protocol-guidance-cleanup"}
@@ -760,7 +771,9 @@ def apply_plan(
                 (item for item in actions if item["role"] == "skills"), None
             )
             skills = _install_skills(target, skills_item) if skills_item else None
-            receipt_content = _receipt(package, integrations, desired, runtime, skills)
+            receipt_content = _receipt(
+                package, integrations, desired, runtime, skills, actions
+            )
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
             dir=receipt_path.parent, prefix=".concorde-receipt-", delete=False

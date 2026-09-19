@@ -86,17 +86,23 @@ Root entries are shared files with block ownership, not whole-file ownership. Ne
 user text; upgrades retain an existing block's position. Bytes outside the block and existing modes
 survive reinstall, update and integration changes. Root symlinks (including dangling ones),
 directories, malformed/duplicate/misordered markers, unowned blocks and modified owned blocks are
-conflicts.
+conflicts. The one whole-file act the installer performs is removing a root file it created itself
+when its entry's removal leaves that file empty; the receipt records that creation, and a file the
+developer created is never removed.
 
 ### scenario.distribution.install-remove-guidance — Root-guidance cleanup removes only receipt-owned entries
 
 - GIVEN an installed receipt with owned root entries
 - WHEN `--remove-protocol-guidance --apply` is requested
 - THEN only the receipt-owned root entries are removed
+- AND a root file the installer itself created for its entry, which the receipt records, is removed with the entry when nothing else remains in it, while a file the developer created stays even when the removal leaves it empty
 - AND the runtime, Framework and other receipt records are left in place
 - AND repeating the cleanup leaves the result unchanged
 
-This is the root-entry cleanup step for uninstall, not a full-package removal command.
+This is the root-entry cleanup step for uninstall, not a full-package removal command. The same
+entry removal happens when a later selection leaves a client out
+([install-multiple-clients](#scenario.distribution.install-multiple-clients)), with the same rule
+for the file the entry leaves behind.
 
 ### scenario.distribution.install-multiple-clients — One project may carry several clients
 

@@ -43,7 +43,9 @@ A failed installation transaction attempts to recover its owned changes rather t
 state as a completed installation. The Skills the Agent Skills CLI placed are not owned outputs:
 an update runs the CLI again so it refreshes them from the updated framework copy. Each run names
 the complete client selection; a client left out loses its root entry, while the Skills the CLI
-placed for it stay until you remove them with `npx skills remove`.
+placed for it stay until you remove them with `npx skills remove`. A root file the installer
+created only to hold its entry disappears with that entry; a file you created keeps your text, or
+stays empty, and is never removed.
 
 An installed Protocol update does not silently accept new rules for the project. Review any required
 Spec migration, then explicitly accept the new binding. This separates receiving software from agreeing

@@ -42,7 +42,11 @@ def split(content: bytes) -> tuple[bytes, bytes, bytes]:
     return before, START + middle + END, after
 
 
-def plan(target: Path, relative: str, wanted: bytes | None, prior_digest: str | None):
+def plan(target: Path, relative: str, wanted: bytes | None, prior_digest: str | None,
+         prior_created: bool = False):
+    """Plan one root entry. ``prior_created`` says the receipt records that the installer itself
+    created this file for its entry, which is the only case in which removing the entry may
+    remove the file: a developer's own file stays, even when the removal leaves it empty."""
     if relative not in FILES.values():
         raise GuidanceError("Protocol guidance receipt path must be AGENTS.md or CLAUDE.md")
     path = target / relative
@@ -58,8 +62,16 @@ def plan(target: Path, relative: str, wanted: bytes | None, prior_digest: str | 
     # do not hide it. Existing owned blocks stay at their original position.
     merged = (wanted + content if wanted is not None and not block
               else before + (wanted or b"") + after)
-    action = "unchanged" if merged == content else "update" if path.exists() else "create"
+    if merged == content:
+        action = "unchanged"
+    elif not path.exists():
+        action = "create"
+    elif wanted is None and merged == b"" and prior_created:
+        action = "remove"
+    else:
+        action = "update"
     return ({"path": relative, "action": action,
              "role": ROLE if wanted is not None else "protocol-guidance-cleanup",
              "sha256": digest(wanted or b""), "before_sha256": digest(content),
-             "before_exists": "yes" if path.exists() else "no"}, merged)
+             "before_exists": "yes" if path.exists() else "no",
+             "created": "yes" if action == "create" or prior_created else "no"}, merged)
