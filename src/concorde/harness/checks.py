@@ -5,8 +5,15 @@ from __future__ import annotations
 import os
 import sys
 
-from ..spec.repository import SpecError, SpecRepository, digest, read_file
-from ..spec.typed_data import checked_path
+from ..spec.repository import (
+    SpecError,
+    SpecRepository,
+    check_input_error,
+    check_input_members,
+    digest,
+    read_file,
+)
+from ..spec.typed_data import TypedDataError, checked_path
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 from .revisions import implementation_digest
 
@@ -37,24 +44,14 @@ def check_revision(repository: SpecRepository, target) -> str:
         check = repository.checks[check_id]
         inputs.append((check_id, check))
         for relative in check.get("inputs", []):
-            path = checked_path(repository.root, relative)
-            members = (
-                sorted(
-                    p.relative_to(repository.root).as_posix()
-                    for p in path.rglob("*")
-                    if p.is_file()
-                    and "__pycache__" not in p.parts
-                    and p.suffix not in {".pyc", ".pyo"}
+            try:
+                members = check_input_members(repository.root, relative)
+                inputs.extend(
+                    (member, digest(read_file(repository.root, member)))
+                    for member in members
                 )
-                if path.is_dir()
-                else [relative]
-            )
-            if path.is_dir() and any(p.is_symlink() for p in path.rglob("*")):
-                raise SpecError("check input cannot contain symlinks", "unsafe_path")
-            inputs.extend(
-                (member, digest(read_file(repository.root, member)))
-                for member in members
-            )
+            except (SpecError, TypedDataError, OSError) as error:
+                raise check_input_error(check, relative, error) from error
     return digest(
         {
             "implementation": implementation_digest(repository, target),
