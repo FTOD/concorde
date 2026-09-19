@@ -173,16 +173,19 @@ extension under `.pi/extensions/` whose `concorde` tool runs the same Operations
 content outside the entries it owns, and the Skills need no Concorde dependencies in your own
 `python3`: the launcher re-runs itself inside the managed runtime.
 
-**3. Initialize the project.** In an agent session inside your project:
+**3. Commit the installation, then initialize the project.** Every change, initialization included,
+runs in a candidate worktree created from the committed `HEAD`, so commit the installed framework and
+root guidance first. Then, in an agent session inside your project:
 
 ```text
 Use concorde-init to initialize this project. Propose the setup for my review.
 ```
 
-Review and apply the proposal. It records the Pi model and thinking level your workers use (change
-them later with `concorde-configure`) and creates an honest stub of the root Module Spec. Fill in its
-Purpose, Terminology, Usage, Design and Relationships, then commit the installed framework, the
-guidance and the Specs so that candidate worktrees inherit them.
+Review the proposal and ask to apply it. Applying runs in a candidate worktree and returns its path,
+branch and `change_id`. It records the Pi model and thinking level your workers use (change them later
+with `concorde-configure`) and creates an honest stub of the root Module Spec. Complete the stub's
+Purpose, Terminology, Usage, Design and Relationships in that candidate, then bring it into your
+primary branch with `concorde-validate`, `concorde-deliver` and a separate merge request.
 
 **4. Ask, specify and develop.**
 

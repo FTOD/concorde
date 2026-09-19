@@ -5,28 +5,31 @@
 Detailed installation, execution, delivery and maintenance reference. Shell commands assume
 the Concorde checkout root unless an installed consumer path is shown.
 
-Concorde centers on writing and maintaining **architecture-aware Specs**. Its docsite and Understand
-Anything graph view help developers understand the project. **Agent observability** covers the
-working process: [LangGraph Studio](../scripts/development/STUDIO.md) exposes execution graphs and
-live stage and agent-process events, while recorded context, permission policies, checks and reviews
-make the work and its results inspectable. Specs guide each worker's task, while the host limits its context
-and permissions to the declared scope. Twelve built-in Pi workers — one per lifecycle role, from
-answering questions and routing through Spec authoring, review, planning and task definition to
-implementation, code review and investigation — support this work through installable Skills. The
-Issue system retains classified problems and persistent
-Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
+Concorde centers on writing and maintaining **architecture-aware Specs**. Its docsite publishes
+them so developers can understand the project. **Agent observability** covers the working process:
+[LangGraph Studio](../scripts/development/STUDIO.md) exposes execution graphs and live stage and
+agent-process events, recorded usage shows what each worker launch consumed, and recorded context,
+permission policies, checks and reviews make the work and its results inspectable. Specs guide each
+worker's task, while the host limits its context and permissions to the declared scope and a
+bubblewrap sandbox bounds every worker process. Twelve built-in Pi workers — one per lifecycle role,
+from answering questions and routing through Spec authoring, review, planning and task definition to
+implementation, code review and Issue solving — do this work behind the public Operations that
+installed Skills or the Pi session tool invoke. The Issue system records classified bugs, contract
+gaps and limitations as soon as a worker reports them, without stopping its task, and solves an
+explicitly selected Issue to a verified candidate.
 
 The development and delivery workflows below use **Spec Protocol 10.0.0**. It defines one Module
 Spec content model and the human-readable subset of that content. Reading begins with Purpose,
-Usage, Design and Relationships in module-role entries and explanatory topics. Formal requirements,
+Terminology, Usage, Design and Relationships in module-role entries, followed by explanatory topics
+that each open with their own Terminology table. Formal requirements,
 scenarios and canonical interfaces belong only in implementation-role companions owned directly by
 the same Module. Both roles remain normative reading and complete agent context; a topic does not
 own a separate set of obligations. Identity, explicit roles, mappings and file bindings live in
 paired schema-2 `.md.json` metadata,
 which points to canonical readable meaning. Neither an inventory nor a summary replaces design.
 
-Each Module has one structural parent at most. Shared operations are independent siblings;
-`uses` does not create another parent. Module composition and file reuse are separate
+Each Module has one structural parent at most. A shared provider is owned by none of its
+consumers and may sit at any level of the hierarchy; `uses` does not create another parent. Module composition and file reuse are separate
 relationships: several Modules may bind the same implementation file. Within one Module the most
 specific entry owns a file, an exact path before a directory prefix, so a directory prefix can list a
 whole package while a shared file keeps its own entry. Every Module registers its
@@ -62,17 +65,18 @@ The installer distributes a deterministic build's output — nine Skills exposin
 from one inventory of twenty-six Operations, including twelve model-backed nodes. Their common
 worker rules (`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`)
 render to the compatible `generated/agents/<hyphenated>.md` paths. Four Markdown templates and
-the selected client projection accompany them: Codex or Claude Skills, or for the Pi coding agent
-the session extension shim under `.pi/extensions/`, whose `concorde` tool describes and runs the
-same public Operations.
+the selected client projections accompany them: Codex or Claude Skills, which the installer has the
+Agent Skills CLI (`npx skills add`) place, or for the Pi coding agent the session extension shim under
+`.pi/extensions/`, whose `concorde` tool describes and runs the same public Operations.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
-project, then invoke the paired init entry (or use the trusted host's explicit primary-worktree
-authorization). A mutation requested from the primary worktree prepares a linked worktree from
-committed HEAD, runs the same request through that candidate's own launcher and returns the
-candidate's result; its workspace names the candidate's path, branch and change_id, with which the
-same session continues the change. The originating session never follows the task into a different
-checkout.
+project and commit the installed framework and root guidance, then invoke the paired init entry.
+A mutation requested from the primary worktree, including an initialization `apply`, prepares a
+linked worktree from committed HEAD, runs the same request through that candidate's own launcher and
+returns the candidate's result; its workspace names the candidate's path, branch and change_id, with
+which the same session continues the change. The originating session never follows the task into a
+different checkout. An initialized candidate reaches the primary branch like any other change:
+validate it, deliver it, and request the primary merge separately.
 
 ```json
 {
@@ -120,9 +124,9 @@ while preserving each Module's membership. A supplied target_id is a routing hin
 not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
 
-Every callable entry is a Operation. Each independently declares public exposure, context
-selection, determinism, launched Agents and composed operations; its size or position in a Graph
-does not create a separate type. A Graph organizes calls, branches and loops. A Skill exposes a
+Every callable entry is an Operation. Each independently declares public exposure, context
+selection, determinism, an optional model execution profile and the Operations it uses; its size or
+position in a Graph does not create a separate type. A Graph organizes calls, branches and loops. A Skill exposes a
 public Operation to the developer's external agent runtime.
 
 Operations with `CONTEXT_SELECTION="discover"` use the router to discover complete Module
@@ -235,15 +239,15 @@ clarification. A successful candidate-local close is not a claim about primary. 
 [Issue lifecycle](../specs/concorde/issues/lifecycle.md). Legacy data can be preserved explicitly with
 `scripts/issues.py archive-reflections`; it is never automatically classified or approved.
 
-Concorde 7 uses Package Manifest 3, Architecture Profile 15, registry schema 5, Workspace Protocol
-15 and Delivery Proposal 10. Older profiles require an explicit migration; normal execution never
+Concorde 8 uses Package Manifest 3, Architecture Profile 15, registry schema 5, Workspace Protocol
+16 and Delivery Proposal 10. Older profiles require an explicit migration; normal execution never
 reinterprets old formats. The offline migration planner is not a second supported runtime.
 
 The docsite publishes one canonical reading page per document unit, with parallel Module Specs and
 Implementation Specs tabs sharing the same Module-parent hierarchy,
 inline scoped diagrams and optional source-provenance disclosure. Reading and metadata both bind
-build identity, but machine inventories do not appear in the main reading graph. Spec Protocol and
-Concorde-only Agent Graphs use independent custom-document tabs. There is no docsite Graph page or
+build identity, but machine inventories do not appear in the main reading graph. Spec Protocol is an
+independent custom-document tab, and Concorde's own site adds an Agent Graphs page. There is no docsite Graph page or
 unregistered Projections group. Source and link validation precede candidate promotion; human
 navigation grants no extra agent context.
 
@@ -260,6 +264,7 @@ The installer adds a receipt-owned `concorde-protocol` block at the start of the
   `.concorde/protocol/principles.md`. A Markdown link is not treated as an automatic import.
 - Claude: `CLAUDE.md` uses the native `@.concorde/protocol/principles.md` import outside a
   code span or fence. The path is relative to that root file.
+- Pi: shares the Codex entry in `AGENTS.md`.
 
 These loading choices follow the [Codex instruction discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 and [Claude import documentation](https://code.claude.com/docs/en/memory), checked on 2026-09-07.
@@ -281,8 +286,10 @@ To preview removal of root entries during uninstall, run:
 python3 /path/to/concorde/scripts/install-concorde.py --target /absolute/project --remove-protocol-guidance
 ```
 
-Add `--apply` to remove those entries and their receipt records. This cleanup keeps user text, empty
-root files, framework/runtime files and all other receipt records. It is not a full-package uninstaller.
+Add `--apply` to remove those entries and their receipt records. This cleanup keeps user text,
+framework/runtime files and all other receipt records. A root file you created stays even when the
+removal leaves it empty; a root file the installer created for its entry alone is removed with that
+entry unless you have written into it. It is not a full-package uninstaller.
 Remove the entry before separately removing the framework; do not delete whole user instruction files.
 
 Installing an updated package never rewrites `.concorde/config.json`. Existing projects remain bound
@@ -377,12 +384,13 @@ spec-review, context-solve, plan and tasks; programmer and code-reviewer handle 
 code review, while the Spec-only issue-solver selects bounded actions for an explicit Issue. Each worker's task contract explicitly
 pairs input and output types, admits specific stage artifacts and narrows its permission ceiling.
 The Host applies structured Spec replacements. Only the programmer may write granted code; reviews
-and investigations remain read-only. Every phase and target gets a fresh invocation and context
+and the Issue solver remain read-only. Every phase and target gets a fresh invocation and context
 identity, so a reviewer never inherits the author's conversation, artifacts or write authority
 merely because they share the common worker rules. A worker with declared children (spec-reviewer:
 fact-check, consistency; planner: scout; programmer: scout, planner, verifier; code-reviewer: scout,
-verifier) may delegate one level deep through its `subagent` tool; a child runs
-inside the worker's own process, under the same gate, and cannot submit the worker's result.
+verifier) may delegate one level deep through its `subagent` tool, only in the foreground and with
+fresh context; a child runs inside the worker's sandbox under the same gate and grant, cannot
+delegate again and cannot submit the worker's result.
 
 One registry contains twenty-six Operations, nine exposed through public Skills. All use State
 contracts and `run(state, runtime)`. DETERMINISTIC means no supported model-call path when true,
@@ -390,8 +398,7 @@ including transitive USES. Only init, configure, validate and deliver are true i
 inventory. USES is the sole composition relation, including model nodes; it does not install
 arbitrary Operation calls as worker tools.
 
-**Operation** is the canonical name for a callable or composed Framework function; the former
-Operation name is retired. Development owns the operation invocation boundary and workflow
+**Operation** is the canonical name for a callable or composed Framework function. Development owns the operation invocation boundary and workflow
 composition. Distribution owns `prompts/skills/`, `prompts/workflow-host/` and the published
 `skills/`, renders the public Skill instructions, has the Agent Skills CLI install them, and keeps
 their projections current. The developer's external agent
