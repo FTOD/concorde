@@ -256,7 +256,11 @@ digest-bound to the package. It neither requires nor creates a project README.
 - npm with lockfile support
 
 Install dependencies with `npm ci`. `node_modules/`, `.docusaurus/`, `.generated/`, `coverage/`
-and `build/` are disposable.
+and `build/` are disposable. Webpack filesystem caches live inside the matching generated directory:
+`.docusaurus/webpack` for preview and `.generated/docusaurus-production/webpack` for production.
+Each `start` or `build` launch clears its own generated modules and compiled cache together, avoiding
+stale local-search exports without clearing the other mode's cache. This means a cold compilation
+on each launch; incremental recompilation within a running preview still uses Webpack's cache.
 
 ## Commands
 

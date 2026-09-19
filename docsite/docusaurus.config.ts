@@ -5,6 +5,7 @@ import type { Options as ClassicOptions } from "@docusaurus/preset-classic";
 
 import { customDocsConfiguration } from "./plugins/scoped-content/custom-docs";
 
+import generatedCache from "./plugins/generated-cache";
 import scopedContent from "./plugins/scoped-content";
 import {
   loadScopedRegistry,
@@ -66,6 +67,7 @@ const config: Config = {
     ],
   ],
   plugins: [
+    generatedCache,
     ...custom.plugins,
     [scopedContent as PluginModule, { projectRoot }],
     [
