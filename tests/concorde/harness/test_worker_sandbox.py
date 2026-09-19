@@ -30,7 +30,9 @@ from concorde.spec.verification import verifies
 
 
 def git(root: Path, *arguments: str) -> None:
-    subprocess.run(["git", "-C", str(root), *arguments], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(root), *arguments], check=True, capture_output=True
+    )
 
 
 class SandboxFixture(unittest.TestCase):
@@ -62,7 +64,15 @@ class SandboxFixture(unittest.TestCase):
         git(self.primary, "add", "-A")
         git(self.primary, "commit", "-qm", "fixture")
         self.candidate = self.temp / "candidate"
-        git(self.primary, "worktree", "add", "-q", "-b", "candidate", str(self.candidate))
+        git(
+            self.primary,
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "candidate",
+            str(self.candidate),
+        )
         self.run_dir = self.temp / "run"
         (self.run_dir / "home").mkdir(parents=True)
         (self.run_dir / "tmp").mkdir()
@@ -72,12 +82,18 @@ class SandboxFixture(unittest.TestCase):
 class MountPlanTests(SandboxFixture):
     @verifies("scenario.harness.worker-sandbox")
     def test_plan_masks_secrets_and_other_worktrees_and_binds_only_the_grant(self):
-        plan = plan_mounts(self.candidate, self.write_paths, self.run_dir, home=self.home)
+        plan = plan_mounts(
+            self.candidate, self.write_paths, self.run_dir, home=self.home
+        )
         self.assertEqual(WORKER_SANDBOX_POLICY, plan.policy)
         self.assertEqual(str(self.candidate), plan.workspace)
         self.assertEqual(str(self.run_dir / "home"), plan.home)
         self.assertEqual(
-            {str(self.home / ".ssh"), str(self.home / ".netrc"), str(self.home / ".pi")},
+            {
+                str(self.home / ".ssh"),
+                str(self.home / ".netrc"),
+                str(self.home / ".pi"),
+            },
             set(plan.masks),
         )
         self.assertEqual((str(self.primary),), plan.other_worktrees)
@@ -98,25 +114,45 @@ class MountPlanTests(SandboxFixture):
         self.assertIn(f"--ro-bind {self.run_dir / 'mask'} {self.home / '.netrc'}", text)
         self.assertEqual(0, (self.run_dir / "mask").stat().st_size)
         self.assertIn(f"--tmpfs {self.primary}", text)
-        self.assertIn(f"--ro-bind {self.primary / '.git'} {self.primary / '.git'}", text)
+        self.assertIn(
+            f"--ro-bind {self.primary / '.git'} {self.primary / '.git'}", text
+        )
         self.assertIn(f"--ro-bind {self.candidate} {self.candidate}", text)
         self.assertIn(f"--bind {self.run_dir} {self.run_dir}", text)
         self.assertIn(f"--bind {self.candidate / 'src'} {self.candidate / 'src'}", text)
-        self.assertIn(f"--bind {self.candidate / 'app.py'} {self.candidate / 'app.py'}", text)
+        self.assertIn(
+            f"--bind {self.candidate / 'app.py'} {self.candidate / 'app.py'}", text
+        )
         # Later mounts stack on earlier ones: the shared Git directory reappears inside the
         # masked primary, and the workspace and run directory follow the private /tmp.
-        self.assertLess(text.index(f"--tmpfs {self.primary}"), text.index(f"--ro-bind {self.primary / '.git'}"))
-        self.assertLess(text.index("--tmpfs /tmp"), text.index(f"--ro-bind {self.candidate}"))
-        self.assertLess(text.index(f"--ro-bind {self.candidate}"), text.index(f"--bind {self.candidate / 'src'}"))
+        self.assertLess(
+            text.index(f"--tmpfs {self.primary}"),
+            text.index(f"--ro-bind {self.primary / '.git'}"),
+        )
+        self.assertLess(
+            text.index("--tmpfs /tmp"), text.index(f"--ro-bind {self.candidate}")
+        )
+        self.assertLess(
+            text.index(f"--ro-bind {self.candidate}"),
+            text.index(f"--bind {self.candidate / 'src'}"),
+        )
         self.assertEqual(["--chdir", str(self.candidate), "--", "true"], argv[-4:])
         self.assertNotIn("--setenv", argv)
 
     @verifies("scenario.harness.worker-sandbox")
-    def test_placeholders_are_created_for_pending_entries_and_removed_when_untouched(self):
-        plan = plan_mounts(self.candidate, self.write_paths, self.run_dir, home=self.home)
+    def test_placeholders_are_created_for_pending_entries_and_removed_when_untouched(
+        self,
+    ):
+        plan = plan_mounts(
+            self.candidate, self.write_paths, self.run_dir, home=self.home
+        )
         created = create_placeholders(plan)
         self.assertEqual(
-            [str(self.candidate / "docs"), str(self.candidate / "pkg/new.py"), str(self.candidate / "pkg")],
+            [
+                str(self.candidate / "docs"),
+                str(self.candidate / "pkg/new.py"),
+                str(self.candidate / "pkg"),
+            ],
             list(created),
         )
         self.assertTrue((self.candidate / "pkg/new.py").is_file())
@@ -176,14 +212,28 @@ print(json.dumps(out))
 """
 
     @verifies("scenario.harness.worker-sandbox")
-    def test_the_process_writes_only_the_grant_and_sees_no_secret_or_other_worktree(self):
-        plan = plan_mounts(self.candidate, self.write_paths, self.run_dir, home=self.home)
+    def test_the_process_writes_only_the_grant_and_sees_no_secret_or_other_worktree(
+        self,
+    ):
+        plan = plan_mounts(
+            self.candidate,
+            self.write_paths,
+            self.run_dir,
+            home=self.home,
+            # This fixture can itself be below /tmp in a candidate checkout. Restore
+            # only its explicitly trusted toolchain asset, never its fake home tree.
+            runtime_files=(self.home / "toolchain/tool.txt",),
+        )
         created = create_placeholders(plan)
-        with tempfile.NamedTemporaryFile(prefix="concorde-host-marker-", dir="/tmp") as marker:
+        with tempfile.NamedTemporaryFile(
+            prefix="concorde-host-marker-", dir="/tmp"
+        ) as marker:
             argv = bubblewrap_argv(
                 plan,
                 [
-                    sys.executable,
+                    # This tests the OS boundary using only the standard library, not
+                    # venv package semantics. Its /tmp venv alias is intentionally hidden.
+                    str(Path(sys.executable).resolve()),
                     "-c",
                     self.PROBE,
                     str(self.candidate),
@@ -231,9 +281,13 @@ print(json.dumps(out))
 
     @verifies("scenario.harness.worker-sandbox-unavailable")
     def test_an_unavailable_boundary_refuses_the_launch(self):
-        plan = plan_mounts(self.candidate, self.write_paths, self.run_dir, home=self.home)
+        plan = plan_mounts(
+            self.candidate, self.write_paths, self.run_dir, home=self.home
+        )
         with patch.object(
-            worker_sandbox, "_bubblewrap", side_effect=CheckSandboxError("no bubblewrap")
+            worker_sandbox,
+            "_bubblewrap",
+            side_effect=CheckSandboxError("no bubblewrap"),
         ):
             self.assertIn("no bubblewrap", unavailable_reason() or "")
             with self.assertRaisesRegex(WorkerSandboxError, "no bubblewrap"):

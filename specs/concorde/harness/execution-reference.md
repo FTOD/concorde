@@ -550,6 +550,18 @@ is refused before any process starts. The executor accepts an optional host repo
 not convert reporting authority into any file write grant. The invocation host supplies
 this service for actual worker launches, including capsule workers, but not policy previews.
 
+An RPC failure retains the finished `PiRun` on the exception through the runtime and executor,
+including the process exit status and a bounded stderr tail. Public error messages contain only
+host-authored summaries, never raw RPC rejection details or stderr. For a failed worker launch,
+the host preserves the last 20,000 UTF-8 bytes of stderr with the launch identity, worker, outcome,
+exit status and elapsed time in a mode-0600 `worker-*.json` diagnostic under
+`.concorde/runs/<root invocation id>/`. The public error may name this host-only artifact but does
+not embed its contents. Prompts, RPC events, tool results and credential files are not serialized
+into that artifact or observer events. These diagnostics confer no worker read grant, do not count
+as successful execution evidence, and a persistence failure preserves the original execution
+failure without retrying. EOF, cancellation, timeout and protocol failure keep their existing
+outcome distinctions.
+
 The private Unix socket dispatches only explicitly granted `run_checks` and `report_issue` calls.
 Requests must be complete newline-terminated JSON frames of at most 128 KiB, received within ten
 seconds. Reporting parameters are validated by the bound host callback, which returns only a
@@ -738,7 +750,16 @@ preview records it as `sandbox`. The host filesystem is bound read-only with fre
 below the developer's home directory are masked, a directory by an empty tmpfs and a file by an
 empty file from the run directory, and so is every other worktree of the workspace's repository,
 whose shared Git directory is re-bound read-only so Git keeps working in a candidate. The workspace
-is then bound read-only, and the run directory and every write entry are bound writable in place. A
+is then bound read-only. Separately from the task's read/write grants, the trusted Pi runtime names
+its exact worker extension file and installed dependency subtree: TypeBox for a leaf worker, or
+the pinned Pi dependency tree when the launch declares children. The mount plan validates their
+absolute canonical paths, existence and file/directory kinds, rejects escaped dependency symlinks
+and overlap with masked paths, other worktrees, writable entries or the run directory, and rejects
+an asset that contains the workspace. These runtime assets are re-bound read-only after the private
+`/tmp` mount so a package installed under `/tmp` remains executable without exposing its project
+source, control records, enclosing repository or unrelated temporary files. Task input cannot add
+runtime mounts, and these paths are not Spec or implementation grants. The run directory and every
+write entry are bound writable in place. A
 pending entry that does not exist yet is created before the launch as an empty placeholder, a file
 below any missing directories or an empty directory, so exactly that path is writable; a placeholder
 the worker left empty is removed after the run. The process gets private user, PID, IPC and UTS

@@ -9,9 +9,11 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
+from concorde.harness.pi_rpc import PiRun
 from concorde.harness.pi_worker import Outcome, WorkerExecutionError
 from concorde.harness.worker_executor import (
     OperationExecutionError,
@@ -245,6 +247,61 @@ class WorkerExecutorTests(unittest.TestCase):
                 )
             },
             outcomes,
+        )
+
+    @verifies("scenario.harness.execute-failure")
+    def test_failure_diagnostics_persist_privately_without_output_in_public_error(self):
+        run = PiRun(
+            stderr="x" * 30000 + "PRIVATE STDERR",
+            exit_code=23,
+            events=[{"prompt": "PRIVATE PROMPT", "auth": "PRIVATE AUTH"}],
+        )
+
+        def probe(invocation, checks):
+            def runtime(launch, **services):
+                raise WorkerExecutionError("safe failure", run=run)
+
+            WorkerExecutor(PACKAGE, runtime=runtime)(invocation, checks=checks)
+
+        result = self.plan(probe)
+        self.assertEqual("failed", result["status"], result)
+        self.assertEqual("execution_failed", result["errors"][0]["code"])
+        self.assertNotIn("PRIVATE", json.dumps(result))
+        logs = list((self.root / ".concorde/runs").glob("*/worker-*.json"))
+        self.assertEqual(1, len(logs))
+        self.assertIn(
+            logs[0].relative_to(self.root).as_posix(), result["errors"][0]["message"]
+        )
+        self.assertEqual(0o600, logs[0].stat().st_mode & 0o777)
+        data = json.loads(logs[0].read_text())
+        self.assertEqual(23, data["exit_code"])
+        self.assertTrue(data["stderr_tail"].endswith("PRIVATE STDERR"))
+        self.assertLessEqual(len(data["stderr_tail"].encode()), 20000)
+        self.assertNotIn("PRIVATE PROMPT", logs[0].read_text())
+        self.assertNotIn("PRIVATE AUTH", logs[0].read_text())
+        self.assertEqual("planner", data["agent"])
+
+    @verifies("scenario.harness.execute-failure")
+    def test_diagnostic_write_failure_does_not_replace_execution_failure(self):
+        def probe(invocation, checks):
+            def runtime(launch, **services):
+                raise WorkerExecutionError(
+                    "safe timeout",
+                    outcome="limit_exhausted",
+                    run=PiRun(stderr="PRIVATE STDERR", exit_code=-9),
+                )
+
+            WorkerExecutor(PACKAGE, runtime=runtime)(invocation, checks=checks)
+
+        with patch(
+            "concorde.harness.host.tempfile.NamedTemporaryFile",
+            side_effect=OSError("PRIVATE PERSISTENCE ERROR"),
+        ):
+            result = self.plan(probe)
+        self.assertEqual("failed", result["status"])
+        self.assertEqual(
+            [{"code": "execution_limit", "field": "", "message": "safe timeout"}],
+            result["errors"],
         )
 
     @verifies("scenario.harness.execute-failure", "scenario.harness.worker-contract")

@@ -21,6 +21,7 @@ temporary directory and PID namespace; an unavailable sandbox refuses the launch
 the ``details`` of the worker's single successful ``submit_result`` call; the caller validates it
 against its own typed contract.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,8 +37,14 @@ from typing import Any, Callable, Literal, Mapping, cast
 
 from .harness import SAFE_ENVIRONMENT
 from .pi_rpc import PiRpcCancelled, PiRpcError, PiRpcTimeout, PiRun, run_prompt
-from .worker_sandbox import (WorkerSandboxError, bubblewrap_argv, create_placeholders, plan_mounts,
-                             remove_untouched_placeholders, unavailable_reason)
+from .worker_sandbox import (
+    WorkerSandboxError,
+    bubblewrap_argv,
+    create_placeholders,
+    plan_mounts,
+    remove_untouched_placeholders,
+    unavailable_reason,
+)
 
 BUILTIN_TOOLS = frozenset({"read", "grep", "find", "ls", "edit", "write", "bash"})
 CONCORDE_TOOLS = frozenset({"submit_result", "run_checks", "report_issue"})
@@ -47,21 +54,48 @@ THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 # Provider credentials Pi reads from the environment (Pi's providers documentation). They reach the
 # Pi process so it can call its model; the worker extension unsets them before every shell command.
 PROVIDER_CREDENTIALS = (
-    "AI_GATEWAY_API_KEY", "ANTHROPIC_API_KEY", "ANT_LING_API_KEY", "AWS_BEARER_TOKEN_BEDROCK",
-    "AZURE_OPENAI_API_KEY", "CEREBRAS_API_KEY", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_KEY",
-    "CLOUDFLARE_GATEWAY_ID", "DEEPSEEK_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY", "HF_TOKEN",
-    "MISTRAL_API_KEY", "NVIDIA_API_KEY", "OPENAI_API_KEY", "OPENCODE_API_KEY", "OPENROUTER_API_KEY",
-    "RADIUS_API_KEY", "XAI_API_KEY", "ZAI_API_KEY", "ZAI_CODING_CN_API_KEY",
+    "AI_GATEWAY_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "ANT_LING_API_KEY",
+    "AWS_BEARER_TOKEN_BEDROCK",
+    "AZURE_OPENAI_API_KEY",
+    "CEREBRAS_API_KEY",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "CLOUDFLARE_API_KEY",
+    "CLOUDFLARE_GATEWAY_ID",
+    "DEEPSEEK_API_KEY",
+    "GEMINI_API_KEY",
+    "GROQ_API_KEY",
+    "HF_TOKEN",
+    "MISTRAL_API_KEY",
+    "NVIDIA_API_KEY",
+    "OPENAI_API_KEY",
+    "OPENCODE_API_KEY",
+    "OPENROUTER_API_KEY",
+    "RADIUS_API_KEY",
+    "XAI_API_KEY",
+    "ZAI_API_KEY",
+    "ZAI_CODING_CN_API_KEY",
 )
 
-PI_SETTINGS = {"defaultProjectTrust": "never", "quietStartup": True, "enableInstallTelemetry": False,
-               "subagents": {"disableBuiltins": True}}
+PI_SETTINGS = {
+    "defaultProjectTrust": "never",
+    "quietStartup": True,
+    "enableInstallTelemetry": False,
+    "subagents": {"disableBuiltins": True},
+}
 # One level of delegation, in the foreground, into fresh contexts, with every background, mission,
 # schedule and inter-session channel feature of pi-subagents switched off.
-SUBAGENT_CONFIG = {"maxSubagentDepth": 1, "asyncByDefault": False, "forceTopLevelAsync": False,
-                   "defaultSubagentContext": "fresh", "missions": {"enabled": False},
-                   "scheduledRuns": {"enabled": False}, "intercomBridge": {"mode": "off"},
-                   "artifactDir": "temp"}
+SUBAGENT_CONFIG = {
+    "maxSubagentDepth": 1,
+    "asyncByDefault": False,
+    "forceTopLevelAsync": False,
+    "defaultSubagentContext": "fresh",
+    "missions": {"enabled": False},
+    "scheduledRuns": {"enabled": False},
+    "intercomBridge": {"mode": "off"},
+    "artifactDir": "temp",
+}
 
 Outcome = Literal["failed", "cancelled", "limit_exhausted", "invalid_completion"]
 # Execution outcomes classify why a run produced no result; they are not error codes.
@@ -74,7 +108,9 @@ INVALID_COMPLETION: Outcome = "invalid_completion"
 class WorkerExecutionError(RuntimeError):
     """A worker launch was refused, failed, was cancelled, ran out of time or returned no result."""
 
-    def __init__(self, message: str, outcome: Outcome = FAILED, run: PiRun | None = None):
+    def __init__(
+        self, message: str, outcome: Outcome = FAILED, run: PiRun | None = None
+    ):
         super().__init__(message)
         self.outcome: Outcome = outcome
         self.run = run
@@ -113,36 +149,54 @@ class WorkerResult:
     usage: dict[str, Any]
 
 
-def validate_launch(launch: WorkerLaunch, *, has_checks: bool, has_reporter: bool = False) -> None:
+def validate_launch(
+    launch: WorkerLaunch, *, has_checks: bool, has_reporter: bool = False
+) -> None:
     known = BUILTIN_TOOLS | CONCORDE_TOOLS | {DELEGATION_TOOL}
     tools, child_tools = set(launch.tools), set(launch.child_tools)
     if len(tools) != len(launch.tools) or len(child_tools) != len(launch.child_tools):
         raise WorkerExecutionError("worker tool lists contain duplicates")
     if tools - known or child_tools - (BUILTIN_TOOLS | {"run_checks"}):
-        raise WorkerExecutionError(f"unknown worker tools: {sorted((tools - known) | (child_tools - BUILTIN_TOOLS - {'run_checks'}))}")
+        raise WorkerExecutionError(
+            f"unknown worker tools: {sorted((tools - known) | (child_tools - BUILTIN_TOOLS - {'run_checks'}))}"
+        )
     if "submit_result" not in tools:
         raise WorkerExecutionError("every worker must be granted submit_result")
     if (DELEGATION_TOOL in tools) != bool(launch.children):
-        raise WorkerExecutionError("a worker is granted subagent exactly when it declares children")
+        raise WorkerExecutionError(
+            "a worker is granted subagent exactly when it declares children"
+        )
     if bool(child_tools) != bool(launch.children):
-        raise WorkerExecutionError("child tools are declared exactly when the worker declares children")
+        raise WorkerExecutionError(
+            "child tools are declared exactly when the worker declares children"
+        )
     if "run_checks" in tools | child_tools and not has_checks:
         raise WorkerExecutionError("run_checks requires a host check service")
     if ("report_issue" in tools) != (has_reporter and launch.report_schema is not None):
-        raise WorkerExecutionError("report_issue requires exactly a host reporter and its schema")
+        raise WorkerExecutionError(
+            "report_issue requires exactly a host reporter and its schema"
+        )
     if launch.report_schema is not None and "report_issue" not in tools:
-        raise WorkerExecutionError("a report schema cannot grant an unlisted reporting tool")
+        raise WorkerExecutionError(
+            "a report schema cannot grant an unlisted reporting tool"
+        )
     if {"edit", "write"} & tools and not launch.write_paths:
         raise WorkerExecutionError("edit and write require a write grant")
     names = [child.name for child in launch.children]
     if len(names) != len(set(names)) or any(
-            not child.definition.startswith("---\n") or f"\nname: {child.name}\n" not in child.definition
-            for child in launch.children):
-        raise WorkerExecutionError("each child needs a unique name and a definition that declares it")
+        not child.definition.startswith("---\n")
+        or f"\nname: {child.name}\n" not in child.definition
+        for child in launch.children
+    ):
+        raise WorkerExecutionError(
+            "each child needs a unique name and a definition that declares it"
+        )
     if launch.thinking is not None and launch.thinking not in THINKING_LEVELS:
         raise WorkerExecutionError(f"unsupported thinking level: {launch.thinking}")
     if not Path(launch.workspace).is_absolute() or not Path(launch.workspace).is_dir():
-        raise WorkerExecutionError("the worker workspace must be an existing absolute directory")
+        raise WorkerExecutionError(
+            "the worker workspace must be an existing absolute directory"
+        )
     if launch.timeout_seconds <= 0:
         raise WorkerExecutionError("the worker timeout must be positive")
 
@@ -150,8 +204,12 @@ def validate_launch(launch: WorkerLaunch, *, has_checks: bool, has_reporter: boo
 class _HostToolServer(socketserver.ThreadingUnixStreamServer):
     daemon_threads = True
 
-    def __init__(self, path: str, checks: Callable[[], Any] | None,
-                 reporter: Callable[[dict], Any] | None):
+    def __init__(
+        self,
+        path: str,
+        checks: Callable[[], Any] | None,
+        reporter: Callable[[dict], Any] | None,
+    ):
         self.checks, self.reporter = checks, reporter
         super().__init__(path, _HostToolHandler)
 
@@ -165,16 +223,24 @@ class _HostToolHandler(socketserver.StreamRequestHandler):
             self.connection.settimeout(10)
             raw = self.rfile.readline(128 * 1024 + 1)
             if len(raw) > 128 * 1024 or not raw.endswith(b"\n"):
-                raise ValueError("host tool request exceeds its frame limit or is incomplete")
+                raise ValueError(
+                    "host tool request exceeds its frame limit or is incomplete"
+                )
             request = json.loads(raw)
             if request == {"tool": "run_checks"} and server.checks is not None:
                 reply = server.checks()
-            elif (isinstance(request, dict) and set(request) == {"tool", "report"}
-                  and request["tool"] == "report_issue" and server.reporter is not None):
+            elif (
+                isinstance(request, dict)
+                and set(request) == {"tool", "report"}
+                and request["tool"] == "report_issue"
+                and server.reporter is not None
+            ):
                 reply = server.reporter(request["report"])
             else:
                 raise ValueError("unknown or ungranted host tool")
-        except Exception as error:  # explicit rejection, never a successful report receipt
+        except (
+            Exception
+        ) as error:  # explicit rejection, never a successful report receipt
             reply = {"error": f"{type(error).__name__}: {error}"}
         try:
             self.wfile.write(json.dumps(reply).encode("utf-8"))
@@ -193,22 +259,38 @@ def _usage(launch: WorkerLaunch, run: PiRun) -> dict[str, Any]:
 
     cost = stats.get("cost")
     try:
-        cost_usd = float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost >= 0 else None
+        cost_usd = (
+            float(cost)
+            if isinstance(cost, (int, float))
+            and not isinstance(cost, bool)
+            and cost >= 0
+            else None
+        )
     except OverflowError:
         cost_usd = None
-    return {"model": launch.model, "input_tokens": count(tokens.get("input")),
-            "cached_input_tokens": count(tokens.get("cacheRead")), "output_tokens": count(tokens.get("output")),
-            "total_tokens": count(tokens.get("total")),
-            "cost_usd": cost_usd,
-            "turns": count(stats.get("assistantMessages")), "wall_seconds": round(run.wall_seconds, 3)}
+    return {
+        "model": launch.model,
+        "input_tokens": count(tokens.get("input")),
+        "cached_input_tokens": count(tokens.get("cacheRead")),
+        "output_tokens": count(tokens.get("output")),
+        "total_tokens": count(tokens.get("total")),
+        "cost_usd": cost_usd,
+        "turns": count(stats.get("assistantMessages")),
+        "wall_seconds": round(run.wall_seconds, 3),
+    }
 
 
 def subagents_entry(package_root: Path) -> Path:
     """The pi-subagents entry point: a source checkout's ``npm ci --prefix pi`` install, else the one
     the installer provisioned in the project's managed runtime beside ``.concorde/framework``."""
     local = package_root / "pi/node_modules/pi-subagents/index.ts"
-    managed = package_root.parent / ".venv/share/concorde/pi/node_modules/pi-subagents/index.ts"
-    return (local if local.is_file() or not managed.is_file() else managed).resolve()
+    managed = (
+        package_root.parent
+        / ".venv/share/concorde/pi/node_modules/pi-subagents/index.ts"
+    )
+    # Keep aliases visible to the mount-plan admission check rather than resolving
+    # away a symlink that could escape the installed runtime subtree.
+    return (local if local.is_file() or not managed.is_file() else managed).absolute()
 
 
 def _read_bytes(path: Path) -> bytes | None:
@@ -223,7 +305,12 @@ def _return_refreshed_auth(copy: Path, original: Path, issued: bytes | None) -> 
     the developer's file still holds the bytes the run was issued, so a concurrent refresh wins.
     """
     refreshed = _read_bytes(copy)
-    if issued is None or refreshed is None or refreshed == issued or _read_bytes(original) != issued:
+    if (
+        issued is None
+        or refreshed is None
+        or refreshed == issued
+        or _read_bytes(original) != issued
+    ):
         return
     try:
         if not isinstance(json.loads(refreshed), dict):
@@ -246,28 +333,47 @@ class PiWorkerRuntime:
     credentials_dir: Path | None = None
     popen: Callable[..., Any] = subprocess.Popen
 
-    def __call__(self, launch: WorkerLaunch, *, checks: Callable[[], Any] | None = None,
-                 report_issue: Callable[[dict], Any] | None = None) -> WorkerResult:
-        validate_launch(launch, has_checks=checks is not None, has_reporter=report_issue is not None)
+    def __call__(
+        self,
+        launch: WorkerLaunch,
+        *,
+        checks: Callable[[], Any] | None = None,
+        report_issue: Callable[[dict], Any] | None = None,
+    ) -> WorkerResult:
+        validate_launch(
+            launch, has_checks=checks is not None, has_reporter=report_issue is not None
+        )
         source = dict(os.environ if self.environment is None else self.environment)
         executable = self.pi_executable or shutil.which("pi", path=source.get("PATH"))
         if not executable:
             raise WorkerExecutionError("the pi executable is not on PATH")
-        extension = (Path(self.package_root) / "pi/extensions/concorde-worker.ts").resolve()
+        extension = (
+            Path(self.package_root) / "pi/extensions/concorde-worker.ts"
+        ).absolute()
         subagents = subagents_entry(Path(self.package_root))
         if not extension.is_file():
-            raise WorkerExecutionError(f"the Concorde worker extension is missing: {extension}")
+            raise WorkerExecutionError(
+                f"the Concorde worker extension is missing: {extension}"
+            )
         if launch.children and not subagents.is_file():
-            raise WorkerExecutionError("pi-subagents is not installed; run `npm ci --prefix pi` in the Concorde package")
+            raise WorkerExecutionError(
+                "pi-subagents is not installed; run `npm ci --prefix pi` in the Concorde package"
+            )
         unavailable = unavailable_reason()
         if unavailable:
             # The boundary is part of the launch contract: never run a worker unconfined instead.
             raise WorkerExecutionError(f"worker sandbox unavailable: {unavailable}")
         credentials = self.credentials_dir or Path(
-            source.get("PI_CODING_AGENT_DIR") or Path(source.get("HOME", "~")).expanduser() / ".pi" / "agent")
+            source.get("PI_CODING_AGENT_DIR")
+            or Path(source.get("HOME", "~")).expanduser() / ".pi" / "agent"
+        )
         with tempfile.TemporaryDirectory(prefix="concorde-pi-worker-") as directory:
             run_dir = Path(directory)
-            agent_dir, temporary, home = run_dir / "agent", run_dir / "tmp", run_dir / "home"
+            agent_dir, temporary, home = (
+                run_dir / "agent",
+                run_dir / "tmp",
+                run_dir / "home",
+            )
             (agent_dir / "agents").mkdir(parents=True)
             (agent_dir / "extensions" / "subagent").mkdir(parents=True)
             temporary.mkdir()
@@ -277,31 +383,74 @@ class PiWorkerRuntime:
                     shutil.copyfile(credentials / name, agent_dir / name)
                     os.chmod(agent_dir / name, 0o600)
             issued_auth = _read_bytes(agent_dir / "auth.json")
-            (agent_dir / "settings.json").write_text(json.dumps(PI_SETTINGS), encoding="utf-8")
-            (agent_dir / "extensions" / "subagent" / "config.json").write_text(json.dumps(SUBAGENT_CONFIG), encoding="utf-8")
+            (agent_dir / "settings.json").write_text(
+                json.dumps(PI_SETTINGS), encoding="utf-8"
+            )
+            (agent_dir / "extensions" / "subagent" / "config.json").write_text(
+                json.dumps(SUBAGENT_CONFIG), encoding="utf-8"
+            )
             for child in launch.children:
-                (agent_dir / "agents" / f"{child.name}.md").write_text(child.definition, encoding="utf-8")
-            (run_dir / "system-prompt.md").write_text(launch.system_prompt, encoding="utf-8")
-            socket_path = run_dir / "host.sock" if checks is not None or report_issue is not None else None
-            policy = {"schema_version": 1, "worker": launch.worker, "workspace": launch.workspace,
-                      "read_paths": list(launch.read_paths), "write_paths": list(launch.write_paths),
-                      "tools": list(launch.tools), "child_tools": list(launch.child_tools),
-                      "children": [child.name for child in launch.children],
-                      "system_prompt_path": str(run_dir / "system-prompt.md"),
-                      "result_schema": dict(launch.result_schema),
-                      "report_schema": dict(launch.report_schema) if launch.report_schema is not None else None,
-                      "host_socket": str(socket_path) if socket_path else None,
-                      "extension_path": str(extension), "scrub_environment": list(PROVIDER_CREDENTIALS)}
+                (agent_dir / "agents" / f"{child.name}.md").write_text(
+                    child.definition, encoding="utf-8"
+                )
+            (run_dir / "system-prompt.md").write_text(
+                launch.system_prompt, encoding="utf-8"
+            )
+            socket_path = (
+                run_dir / "host.sock"
+                if checks is not None or report_issue is not None
+                else None
+            )
+            policy = {
+                "schema_version": 1,
+                "worker": launch.worker,
+                "workspace": launch.workspace,
+                "read_paths": list(launch.read_paths),
+                "write_paths": list(launch.write_paths),
+                "tools": list(launch.tools),
+                "child_tools": list(launch.child_tools),
+                "children": [child.name for child in launch.children],
+                "system_prompt_path": str(run_dir / "system-prompt.md"),
+                "result_schema": dict(launch.result_schema),
+                "report_schema": dict(launch.report_schema)
+                if launch.report_schema is not None
+                else None,
+                "host_socket": str(socket_path) if socket_path else None,
+                "extension_path": str(extension),
+                "scrub_environment": list(PROVIDER_CREDENTIALS),
+            }
             (run_dir / "policy.json").write_text(json.dumps(policy), encoding="utf-8")
-            env = {key: value for key, value in source.items()
-                   if key in SAFE_ENVIRONMENT or key in PROVIDER_CREDENTIALS}
+            env = {
+                key: value
+                for key, value in source.items()
+                if key in SAFE_ENVIRONMENT or key in PROVIDER_CREDENTIALS
+            }
             # The process's HOME is inside the run directory: the developer's own home stays
             # readable only where the sandbox does not mask it, and nothing is written there.
-            env.update(PI_CODING_AGENT_DIR=str(agent_dir), CONCORDE_WORKER_POLICY=str(run_dir / "policy.json"),
-                       PI_OFFLINE="1", PI_SKIP_VERSION_CHECK="1", PI_TELEMETRY="0", HOME=str(home),
-                       TMPDIR=str(temporary), TMP=str(temporary), TEMP=str(temporary))
-            argv = [executable, "--mode", "rpc", "--no-session", "--no-context-files", "--no-skills",
-                    "--no-prompt-templates", "--no-themes", "--no-extensions", "-e", str(extension)]
+            env.update(
+                PI_CODING_AGENT_DIR=str(agent_dir),
+                CONCORDE_WORKER_POLICY=str(run_dir / "policy.json"),
+                PI_OFFLINE="1",
+                PI_SKIP_VERSION_CHECK="1",
+                PI_TELEMETRY="0",
+                HOME=str(home),
+                TMPDIR=str(temporary),
+                TMP=str(temporary),
+                TEMP=str(temporary),
+            )
+            argv = [
+                executable,
+                "--mode",
+                "rpc",
+                "--no-session",
+                "--no-context-files",
+                "--no-skills",
+                "--no-prompt-templates",
+                "--no-themes",
+                "--no-extensions",
+                "-e",
+                str(extension),
+            ]
             if launch.children:
                 argv += ["-e", str(subagents)]
             argv += ["--no-approve", "--offline", "--tools", ",".join(launch.tools)]
@@ -314,36 +463,76 @@ class PiWorkerRuntime:
                 # The mount plan is the launch's grant: workspace read-only, write paths and
                 # pending placeholders writable, run directory writable, secrets and other
                 # worktrees masked. The Pi process runs inside it.
-                plan = plan_mounts(launch.workspace, launch.write_paths, run_dir)
+                dependency_root = subagents.parent.parent
+                # A leaf worker loads only TypeBox; declared delegation needs the pinned
+                # pi-subagents dependency tree too. Neither is task/Spec visibility.
+                dependencies = (
+                    dependency_root if launch.children else dependency_root / "typebox"
+                )
+                plan = plan_mounts(
+                    launch.workspace,
+                    launch.write_paths,
+                    run_dir,
+                    runtime_files=(extension,),
+                    runtime_directories=(dependencies,),
+                )
                 placeholders = create_placeholders(plan)
                 command = bubblewrap_argv(plan, argv)
             except WorkerSandboxError as error:
                 remove_untouched_placeholders(placeholders)
-                raise WorkerExecutionError(f"worker sandbox unavailable: {error}") from error
-            server = _HostToolServer(str(socket_path), checks, report_issue) if socket_path is not None else None
+                raise WorkerExecutionError(
+                    f"worker sandbox unavailable: {error}"
+                ) from error
+            server = (
+                _HostToolServer(str(socket_path), checks, report_issue)
+                if socket_path is not None
+                else None
+            )
             if server is not None:
                 threading.Thread(target=server.serve_forever, daemon=True).start()
             try:
-                run = run_prompt(command, cwd=launch.workspace, env=env, message=launch.message,
-                                 timeout=launch.timeout_seconds, popen=cast(Any, self.popen))
+                run = run_prompt(
+                    command,
+                    cwd=launch.workspace,
+                    env=env,
+                    message=launch.message,
+                    timeout=launch.timeout_seconds,
+                    popen=cast(Any, self.popen),
+                )
             except PiRpcTimeout as error:
-                raise WorkerExecutionError(str(error), outcome=LIMIT_EXHAUSTED) from error
+                raise WorkerExecutionError(
+                    str(error), outcome=LIMIT_EXHAUSTED, run=error.run
+                ) from error
             except PiRpcCancelled as error:
-                raise WorkerExecutionError(str(error), outcome=CANCELLED) from error
+                raise WorkerExecutionError(
+                    str(error), outcome=CANCELLED, run=error.run
+                ) from error
             except PiRpcError as error:
-                raise WorkerExecutionError(str(error), outcome=FAILED) from error
+                raise WorkerExecutionError(
+                    str(error), outcome=FAILED, run=error.run
+                ) from error
             finally:
                 if server is not None:
                     server.shutdown()
                     server.server_close()
                 remove_untouched_placeholders(placeholders)
-                _return_refreshed_auth(agent_dir / "auth.json", credentials / "auth.json", issued_auth)
-        submissions = [item for item in run.results_of("submit_result") if not item.get("isError")]
+                _return_refreshed_auth(
+                    agent_dir / "auth.json", credentials / "auth.json", issued_auth
+                )
+        submissions = [
+            item for item in run.results_of("submit_result") if not item.get("isError")
+        ]
         if len(submissions) != 1:
             raise WorkerExecutionError(
                 f"worker {launch.worker} submitted {len(submissions)} results; exactly one is required",
-                outcome=INVALID_COMPLETION, run=run)
+                outcome=INVALID_COMPLETION,
+                run=run,
+            )
         value = (submissions[0].get("result") or {}).get("details")
         if not isinstance(value, dict):
-            raise WorkerExecutionError("the submitted result is not a JSON object", outcome=INVALID_COMPLETION, run=run)
+            raise WorkerExecutionError(
+                "the submitted result is not a JSON object",
+                outcome=INVALID_COMPLETION,
+                run=run,
+            )
         return WorkerResult(value=value, run=run, usage=_usage(launch, run))

@@ -77,6 +77,7 @@ class MountPlan:
     git_common_dir: str | None
     writable: tuple[str, ...]
     pending: tuple[str, ...]
+    runtime_readonly: tuple[str, ...] = ()
 
     def wire(self) -> dict:
         return asdict(self)
@@ -129,12 +130,16 @@ def plan_mounts(
     run_dir: str | Path,
     *,
     home: str | Path | None = None,
+    runtime_files: Sequence[str | Path] = (),
+    runtime_directories: Sequence[str | Path] = (),
 ) -> MountPlan:
-    """Derive the mount plan of one launch; ``home`` defaults to the developer's home directory."""
+    """Derive a launch's mounts; runtime assets are trusted host inputs, not task grants."""
     root = Path(workspace).resolve()
     run = Path(run_dir).resolve()
     if not root.is_dir() or not run.is_dir():
-        raise WorkerSandboxError("the workspace and run directory must be existing directories")
+        raise WorkerSandboxError(
+            "the workspace and run directory must be existing directories"
+        )
     if root == Path("/") or run == Path("/") or run.is_relative_to(root):
         raise WorkerSandboxError(
             "the workspace cannot be the root directory or contain the run directory"
@@ -143,7 +148,8 @@ def plan_mounts(
     masks = tuple(
         str(developer_home / relative)
         for relative in MASKED_HOME_PATHS
-        if (developer_home / relative).is_symlink() or (developer_home / relative).exists()
+        if (developer_home / relative).is_symlink()
+        or (developer_home / relative).exists()
     )
     others = _other_worktrees(root)
     common = _git_common_dir(root)
@@ -154,12 +160,59 @@ def plan_mounts(
         if target.is_symlink():
             raise WorkerSandboxError(f"a write entry cannot be a symlink: {entry}")
         if not target.resolve().is_relative_to(root):
-            raise WorkerSandboxError(f"a write entry cannot leave the workspace: {entry}")
+            raise WorkerSandboxError(
+                f"a write entry cannot leave the workspace: {entry}"
+            )
         if target.exists():
             writable.append(str(target))
         else:
             # A pending directory keeps its trailing slash so the placeholder is a directory.
             pending.append(str(target) + ("/" if entry.endswith("/") else ""))
+    runtime_readonly = []
+    forbidden = [Path(path) for path in (*masks, *others, *writable, *pending)]
+    forbidden.append(run)
+    for entries, directory in ((runtime_files, False), (runtime_directories, True)):
+        for raw in entries:
+            path = Path(raw)
+            try:
+                canonical = path.resolve(strict=True)
+            except (OSError, RuntimeError) as error:
+                raise WorkerSandboxError(
+                    f"runtime asset is unavailable: {path}"
+                ) from error
+            if not path.is_absolute() or path != canonical:
+                raise WorkerSandboxError(
+                    f"runtime asset must have a canonical absolute path: {path}"
+                )
+            if not (path.is_dir() if directory else path.is_file()):
+                raise WorkerSandboxError(f"runtime asset has the wrong kind: {path}")
+            if root.is_relative_to(path) or any(
+                path.is_relative_to(blocked) or blocked.is_relative_to(path)
+                for blocked in forbidden
+            ):
+                raise WorkerSandboxError(
+                    f"runtime asset conflicts with a sandbox boundary: {path}"
+                )
+            if directory:
+                # npm's local executable aliases are allowed only within this dependency
+                # subtree. Never use an ancestor bind or an escaped link to restore a mask.
+                for member in path.rglob("*"):
+                    if member.is_symlink():
+                        try:
+                            destination = member.resolve(strict=True)
+                        except (OSError, RuntimeError) as error:
+                            raise WorkerSandboxError(
+                                f"invalid runtime asset link: {member}"
+                            ) from error
+                        if not destination.is_relative_to(path):
+                            raise WorkerSandboxError(
+                                f"runtime asset link escapes its subtree: {member}"
+                            )
+                    if not member.is_file() and not member.is_dir():
+                        raise WorkerSandboxError(
+                            f"runtime asset is not a file or directory: {member}"
+                        )
+            runtime_readonly.append(str(path))
     return MountPlan(
         policy=WORKER_SANDBOX_POLICY,
         workspace=str(root),
@@ -171,6 +224,7 @@ def plan_mounts(
         git_common_dir=str(common) if common is not None else None,
         writable=tuple(dict.fromkeys(writable)),
         pending=tuple(dict.fromkeys(pending)),
+        runtime_readonly=tuple(dict.fromkeys(runtime_readonly)),
     )
 
 
@@ -259,6 +313,8 @@ def bubblewrap_argv(plan: MountPlan, command: Sequence[str]) -> list[str]:
     if plan.git_common_dir is not None and Path(plan.git_common_dir).is_dir():
         argv += ["--ro-bind", plan.git_common_dir, plan.git_common_dir]
     argv += ["--ro-bind", plan.workspace, plan.workspace]
+    for path in plan.runtime_readonly:
+        argv += ["--ro-bind", path, path]
     argv += ["--bind", plan.run_dir, plan.run_dir]
     for path in (*plan.writable, *plan.pending):
         mount = path.rstrip("/")
