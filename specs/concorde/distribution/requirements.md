@@ -68,6 +68,18 @@ A developer's client, such as the Pi session extension aborting a turn, ends a r
 wants with SIGTERM; dying mid-write would leave the worker process and the change's lifecycle
 record behind.
 
+### req.distribution.launcher-managed-runtime — The installed launcher runs inside the managed runtime
+
+In an installed project the launcher SHALL execute under the managed runtime's interpreter,
+whatever interpreter started it.
+
+A Skill names the launcher with the ambient `python3`, which need not carry LangGraph, and the
+managed runtime `.concorde/.venv` is the only environment the installer verified for the installed
+framework. The launcher therefore re-executes itself with that runtime's interpreter when the
+installer's verified runtime is present beside the framework, and the provisioner verifies each
+Skill with that same interpreter. When no verified runtime exists and the starting interpreter
+cannot import LangGraph, the launcher reports `missing_runtime` instead of a bare import failure.
+
 ### req.distribution.root-block-ownership — Root rule ownership is block-scoped
 
 A root rule entry SHALL be owned only within its exact bounded block, including its separator.

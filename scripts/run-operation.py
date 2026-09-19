@@ -8,15 +8,23 @@ maps it to its operation module through the `operation:` front-matter field of
 operations have no launcher and no direct invocation. `<skill-name> --runtime-check` is a
 lightweight offline smoke check used by the managed runtime provisioner: it loads the operation
 module and confirms LangGraph is importable, without touching stdin or launching an agent.
+
+In an installed project the launcher runs inside the managed runtime the installer provisioned
+beside the framework, whatever interpreter started it: a Skill names it with the ambient
+`python3`, which need not carry LangGraph, so the launcher re-executes itself with
+`.concorde/.venv`'s interpreter first. The source checkout keeps the interpreter that started it.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
 
 FRAMEWORK_ROOT = Path(__file__).resolve().parent.parent
+# The installer's verified runtime leaves this owner marker (managed_runtime.MARKER_NAME).
+MANAGED_RUNTIME_MARKER = ".concorde-runtime.json"
 
 SKILL_NAMES = (
     "concorde-main",
@@ -33,6 +41,54 @@ SKILL_NAMES = (
 
 class UnknownOperationError(ValueError):
     code = "unknown_operation"
+
+
+class MissingRuntimeError(ValueError):
+    code = "missing_runtime"
+
+
+def _managed_runtime_python(package_root: Path) -> Path | None:
+    """The interpreter of an installed project's verified managed runtime, or None.
+
+    The installer deploys the framework at ``<project>/.concorde/framework`` and provisions the
+    locked runtime beside it at ``<project>/.concorde/.venv`` (the manifest's ``runtime.venv``),
+    writing its owner marker there only after verification. The source checkout matches neither
+    layout, and an unverified or foreign environment is never entered.
+    """
+    if package_root.name != "framework" or package_root.parent.name != ".concorde":
+        return None
+    venv = package_root.parent / ".venv"
+    marker = venv / MANAGED_RUNTIME_MARKER
+    if (
+        venv.is_symlink()
+        or not venv.is_dir()
+        or marker.is_symlink()
+        or not marker.is_file()
+    ):
+        return None
+    try:
+        value = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return None
+    if not isinstance(value, dict) or value.get("owner") != "concorde":
+        return None
+    python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    return python if python.is_file() else None
+
+
+def _enter_managed_runtime(arguments: list[str]) -> int | None:
+    """Re-execute this launcher inside the managed runtime unless it already runs there."""
+    python = _managed_runtime_python(FRAMEWORK_ROOT)
+    if python is None or Path(sys.prefix).resolve() == python.parent.parent.resolve():
+        return None
+    argv = [str(python), str(Path(__file__).resolve()), *arguments]
+    # execv does not replace the process on Windows; run the runtime's launcher as a child there.
+    if os.name == "nt":  # pragma: no cover
+        import subprocess
+
+        return subprocess.call(argv)
+    os.execv(argv[0], argv)
+    return None  # pragma: no cover - execv does not return
 
 
 def _declared_operation(package_root: Path, skill_name: str) -> str:
@@ -55,7 +111,6 @@ def _declared_operation(package_root: Path, skill_name: str) -> str:
 
 def _runtime_check(skill_name: str, operation: str, module) -> int:
     import importlib.metadata
-    import json
     import platform
 
     if not callable(getattr(module, "run", None)) or not isinstance(
@@ -76,6 +131,9 @@ def _runtime_check(skill_name: str, operation: str, module) -> int:
             {
                 "langgraph": importlib.metadata.version("langgraph"),
                 "operation": skill_name,
+                # The interpreter and the environment it runs in: the provisioner checks that
+                # the prefix is the managed runtime itself, not the interpreter that started it.
+                "prefix": sys.prefix,
                 "python": sys.executable,
                 "python_version": platform.python_version(),
                 "status": "ok",
@@ -98,10 +156,13 @@ def main(argv: list[str] | None = None) -> int:
     # ambient bytecode caches beside a skill/operation source.
     sys.dont_write_bytecode = True
     os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    exit_code = _enter_managed_runtime(arguments)
+    if exit_code is not None:
+        return exit_code
     import signal
 
     signal.signal(signal.SIGTERM, _terminated)
-    arguments = list(sys.argv[1:] if argv is None else argv)
     package_root = FRAMEWORK_ROOT
     source = str(package_root / "src")
     # A pre-existing sys.path entry for src/ (for example from an inherited PYTHONPATH=src,
@@ -112,6 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.path.remove(source)
     sys.path.insert(0, source)
     import importlib
+    import importlib.util
 
     from concorde.development.operation_host import invocation_failure, json_main
     from concorde.spec.contracts import load_operation_inventory
@@ -134,6 +196,24 @@ def main(argv: list[str] | None = None) -> int:
         print(canonical(result))
         return 3
     skill_name = arguments[0]
+
+    if importlib.util.find_spec("langgraph") is None:
+        # No managed runtime was entered and this interpreter lacks the locked dependencies:
+        # say so before the host would surface it as an unrelated failure.
+        print(
+            canonical(
+                invocation_failure(
+                    skill_name,
+                    MissingRuntimeError(
+                        f"the launcher's interpreter {sys.executable} cannot import LangGraph: "
+                        "an installed project needs the managed runtime that "
+                        "install-concorde.py --apply provisions at .concorde/.venv, and the "
+                        "Concorde source checkout needs its locked environment"
+                    ),
+                )
+            )
+        )
+        return 3
 
     try:
         operation = _declared_operation(package_root, skill_name)

@@ -4,6 +4,7 @@ import base64
 import hashlib
 import os
 import sys
+import sysconfig
 import zipfile
 from pathlib import Path
 
@@ -11,20 +12,26 @@ LANGGRAPH_VERSION = "1.2.11"
 
 
 def create_langgraph_index(root: Path) -> Path:
-    """Create a tiny local wheel that exercises Concorde's linear LangGraph contract."""
+    """Create a tiny local wheel that satisfies the locked ``langgraph==<version>`` requirement.
+
+    The wheel carries only the distribution metadata and one ``.pth`` file that puts this test
+    process's own site-packages, where the real LangGraph and its dependencies are installed, on
+    the managed runtime's path. A runtime provisioned from this index therefore runs the real
+    host inside ``.concorde/.venv``, as a consumer's does, without a network install; the
+    launcher's ``--runtime-check`` and re-execution into that runtime are exercised for real.
+    """
 
     index = root / "runtime-index"
     index.mkdir(parents=True, exist_ok=True)
     wheel = index / f"langgraph-{LANGGRAPH_VERSION}-py3-none-any.whl"
     dist_info = f"langgraph-{LANGGRAPH_VERSION}.dist-info"
     files = {
-        "langgraph/__init__.py": f'__version__ = "{LANGGRAPH_VERSION}"\n'.encode(),
-        "langgraph/graph/__init__.py": _graph_source().encode(),
+        "concorde_test_runtime.pth": (sysconfig.get_paths()["purelib"] + "\n").encode(),
         f"{dist_info}/METADATA": (
             "Metadata-Version: 2.1\n"
             "Name: langgraph\n"
             f"Version: {LANGGRAPH_VERSION}\n"
-            "Summary: Minimal Concorde installer test fixture\n"
+            "Summary: Concorde installer test fixture forwarding to the test environment\n"
         ).encode(),
         f"{dist_info}/WHEEL": (
             b"Wheel-Version: 1.0\n"
@@ -103,46 +110,3 @@ def _create_npm_tools(root: Path) -> Path:
     )
     npm_script.chmod(0o755)
     return tools
-
-
-def _graph_source() -> str:
-    return """from __future__ import annotations
-
-START = "__start__"
-END = "__end__"
-
-
-class StateGraph:
-    def __init__(self, state_type):
-        self.state_type = state_type
-        self.nodes = {}
-        self.edges = {}
-
-    def add_node(self, name, callback):
-        self.nodes[name] = callback
-
-    def add_edge(self, source, target):
-        self.edges[source] = target
-
-    def compile(self):
-        return _CompiledGraph(dict(self.nodes), dict(self.edges))
-
-
-class _CompiledGraph:
-    def __init__(self, nodes, edges):
-        self.nodes = nodes
-        self.edges = edges
-
-    def invoke(self, state):
-        value = dict(state)
-        current = self.edges[START]
-        while current != END:
-            update = self.nodes[current](value)
-            for key, item in update.items():
-                if key == "operation_results":
-                    value[key] = [*value.get(key, []), *item]
-                else:
-                    value[key] = item
-            current = self.edges[current]
-        return value
-"""

@@ -154,7 +154,9 @@ python3 scripts/install-concorde.py --target /absolute/path/to/project --integra
 
 The installer provisions the locked runtime, installs the public Skills (or, for Pi, the session
 extension shim) and adds Protocol guidance to the selected root instruction file. It preserves user
-content outside its owned entries.
+content outside its owned entries. The Skills start the launcher with your `python3`; it then runs
+itself inside the managed runtime at `.concorde/.venv`, so that interpreter needs no Concorde
+dependencies.
 
 **3. Open an agent session in your project and initialize it.**
 

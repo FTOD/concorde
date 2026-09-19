@@ -392,15 +392,21 @@ def _verify_skills(
     target: Path,
     framework: Path,
     spec: ManagedRuntimeSpec,
-    bootstrap_python: str,
+    runtime: Path,
 ) -> tuple[str, ...]:
+    """Run every public Skill's launcher runtime check inside the managed runtime itself.
+
+    The check must exercise the environment being verified, not the interpreter that runs the
+    installer: it is started with the runtime's own interpreter and must report that runtime as
+    its prefix, so a launcher that ended up in another environment fails verification."""
     launcher = framework.joinpath(*PurePosixPath(spec.launcher).parts)
+    python = runtime_python(runtime)
     environment = _offline_environment()
     observed_python: str | None = None
     verified: list[str] = []
     for skill in spec.skills:
         result = _run(
-            [bootstrap_python, str(launcher), skill, "--runtime-check"],
+            [str(python), str(launcher), skill, "--runtime-check"],
             cwd=target,
             environment=environment,
         )
@@ -418,6 +424,15 @@ def _verify_skills(
         if payload.get("langgraph") != spec.langgraph_version:
             raise ManagedRuntimeError(
                 f"operation runtime check for {skill} returned mismatched LangGraph version"
+            )
+        prefix = payload.get("prefix")
+        if (
+            not isinstance(prefix, str)
+            or not prefix
+            or Path(prefix).resolve() != runtime.resolve()
+        ):
+            raise ManagedRuntimeError(
+                f"operation runtime check for {skill} ran outside the managed runtime: {prefix!r}"
             )
         observed_python = payload.get("python_version")
         if not isinstance(observed_python, str) or not observed_python:
@@ -525,7 +540,7 @@ def provision_runtime(
             _install_pi(runtime, framework, target)
         python = runtime_python(runtime)
         python_version = _python_version(python, target)
-        verified = _verify_skills(target, framework, spec, bootstrap)
+        verified = _verify_skills(target, framework, spec, runtime)
         if verified != spec.skills:
             raise ManagedRuntimeError("managed runtime did not verify every skill")
         _verify_pi(runtime, spec)

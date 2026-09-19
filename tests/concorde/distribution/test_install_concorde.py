@@ -664,6 +664,105 @@ class NativeInstallerTests(unittest.TestCase):
                     )
             self.assertEqual(list(target.rglob("*")), [])
 
+    @verifies("scenario.distribution.runtime-provision")
+    def test_runtime_verification_runs_the_launcher_inside_the_managed_runtime(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary).resolve()
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            real_run = managed_runtime._run
+            checks: list[list[str]] = []
+
+            def record(command, **kwargs):
+                if "--runtime-check" in command:
+                    checks.append(list(command))
+                return real_run(command, **kwargs)
+
+            with mock.patch.object(managed_runtime, "_run", side_effect=record):
+                installer.apply_plan(target, self.package, "codex", actions, desired)
+            python = managed_runtime.runtime_python(target / ".concorde/.venv")
+            self.assertEqual(
+                [command[2] for command in checks],
+                list(installer.concorde_build.SKILL_NAMES),
+            )
+            # The check exercises the runtime being verified, never the installer's interpreter.
+            self.assertEqual({command[0] for command in checks}, {str(python)})
+            self.assertNotEqual(str(python), sys.executable)
+
+    @verifies("scenario.distribution.runtime-provision-failure")
+    def test_runtime_check_outside_the_managed_runtime_fails_verification(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary).resolve()
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            real_run = managed_runtime._run
+
+            def elsewhere(command, **kwargs):
+                if "--runtime-check" in command:
+                    # The check answers from the installer's interpreter, which also carries
+                    # LangGraph, instead of from the runtime under verification.
+                    command = [sys.executable, *command[1:]]
+                return real_run(command, **kwargs)
+
+            with (
+                mock.patch.object(managed_runtime, "_run", side_effect=elsewhere),
+                self.assertRaisesRegex(
+                    installer.InstallError, "outside the managed runtime"
+                ),
+            ):
+                installer.apply_plan(target, self.package, "codex", actions, desired)
+            self.assertEqual(list(target.rglob("*")), [])
+
+    @verifies("scenario.distribution.launcher-managed-runtime")
+    def test_installed_launcher_reexecutes_inside_the_managed_runtime(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary).resolve()
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            installer.apply_plan(target, self.package, "codex", actions, desired)
+            launcher = target / ".concorde/framework/scripts/run-operation.py"
+            runtime = target / ".concorde/.venv"
+
+            def check(*interpreter: str) -> subprocess.CompletedProcess:
+                return subprocess.run(
+                    [*interpreter, str(launcher), "concorde-main", "--runtime-check"],
+                    cwd=target,
+                    capture_output=True,
+                    text=True,
+                )
+
+            # A Skill names the launcher with the ambient `python3`, which need not carry
+            # LangGraph at all; `-S` gives such an interpreter.
+            for started_with in ([sys.executable], [sys.executable, "-S"]):
+                with self.subTest(started_with=started_with):
+                    process = check(*started_with)
+                    self.assertEqual(
+                        0, process.returncode, process.stderr or process.stdout
+                    )
+                    payload = json.loads(process.stdout)
+                    self.assertEqual(Path(payload["prefix"]).resolve(), runtime)
+                    self.assertEqual(
+                        payload["python"], str(managed_runtime.runtime_python(runtime))
+                    )
+
+            # Without the installer's verified runtime the launcher keeps the interpreter that
+            # started it and names the missing runtime instead of failing inside the host.
+            (runtime / managed_runtime.MARKER_NAME).unlink()
+            process = check(sys.executable, "-S")
+            self.assertEqual(3, process.returncode, process.stderr or process.stdout)
+            result = json.loads(process.stdout)
+            self.assertEqual("blocked", result["status"])
+            self.assertEqual("missing_runtime", result["errors"][0]["code"])
+            self.assertIn(sys.executable, result["errors"][0]["message"])
+            process = check(sys.executable)
+            self.assertEqual(0, process.returncode, process.stderr or process.stdout)
+            self.assertNotEqual(
+                Path(json.loads(process.stdout)["prefix"]).resolve(), runtime
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

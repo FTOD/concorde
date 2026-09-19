@@ -23,7 +23,9 @@ Start by previewing the proposed installation into the intended project. Inspect
 owned changes before applying. The installer deploys Framework tools, the chosen client's
 projection (Skills for Claude Code or Codex, the session extension shim for Pi) and the Protocol
 copy, and prepares the required runtime. It preserves project Specs,
-configuration and unrelated files. Then initialize the project's own registry and first Spec, and
+configuration and unrelated files. The Skills name the launcher with the ambient `python3`; once
+installed, the launcher runs itself inside the managed runtime, so that interpreter needs no
+Concorde dependencies. Then initialize the project's own registry and first Spec, and
 supply the business intent that the initial draft deliberately leaves unknown.
 
 For example, installing Concorde into a service does not mean Concorde knows that service's retry or

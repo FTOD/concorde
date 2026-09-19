@@ -134,8 +134,10 @@ string fields `path`, `role="runtime"`, `sha256` and `action`, with optional `re
 the returned action to provisioning; a conflict is not an admissible provisioning action.
 
 `provision_runtime` takes a trusted target, installed Framework root, loaded specification and
-current reviewed action. Optional `bootstrap_python` chooses the host bootstrap interpreter;
-omission uses the current interpreter. Success returns `path`, `python`, `python_version`,
+current reviewed action. Optional `bootstrap_python` chooses the host bootstrap interpreter that
+creates the environment; omission uses the current interpreter. Skill verification never uses it:
+each public Skill's `--runtime-check` runs with the managed runtime's own interpreter and must
+report that runtime as its prefix. Success returns `path`, `python`, `python_version`,
 `requirements`, `requirements_sha256`, `runtime_sha256`, `launcher`, `verified_skills` and a `pi`
 object (`install_relative` = `share/concorde/pi`, `lock_sha256`, `pi_subagents`).
 The result records what was verified, not just requested. Accepted state has a schema-2,

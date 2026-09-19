@@ -33,7 +33,11 @@ The build renders one projection per developer client. Claude Code and Codex rea
 coding agent instead loads a session extension whose single `concorde` tool describes or runs the
 same public Operations, so a Pi session needs no Skills; the tool builds the invocation envelope
 itself and runs the same launcher the Skills name. Aborting a Pi turn cancels the running
-Operation, because the launcher treats termination like Ctrl-C.
+Operation, because the launcher treats termination like Ctrl-C. Both paths reach the same
+launcher, and in an installed project that launcher runs itself inside the managed runtime
+`.concorde/.venv` the installer verified: a Skill's `python3` only has to start it and needs no
+Concorde dependencies of its own. A project whose runtime is missing gets a `missing_runtime`
+result rather than an import failure; re-run the installer to provision it.
 
 Installation deploys Framework assets and the Protocol copy, not project business Specs or a
 registry. Initialize those separately. An update does not accept a new Protocol binding for you:
@@ -197,8 +201,9 @@ the Skills from Pi. A `run` blocks the Pi turn for the whole Operation and shows
 because the launcher prints only its final envelope; streaming the host's stage events through the
 tool is pending, and aborting the turn is the only way to stop a run early. The tool runs the
 launcher with the checkout's `.venv` interpreter or, failing that, the `python3` on the session's
-PATH, and in a consumer project with the managed runtime's interpreter; a checkout whose
-environment lives elsewhere must expose LangGraph on that `python3`, as the Skills assume too.
+PATH, and in a consumer project with the managed runtime's interpreter. Only an installed
+project's launcher switches to a managed runtime by itself; a checkout whose environment lives
+elsewhere must expose LangGraph on that `python3`, as the checkout's Skills assume too.
 
 ## Ownership, context and implementation status
 

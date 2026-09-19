@@ -313,6 +313,7 @@ validation cannot certify its determinism.
 - GIVEN a current reviewed plan_runtime action that is not conflict
 - WHEN provision_runtime runs
 - THEN it stages the locked Python interpreter and the pinned Pi worker extensions, verifies their identity, and records the resulting receipt
+- AND it runs every public Skill's launcher runtime check with the managed runtime's own interpreter and rejects a check that reports another environment as its prefix, so the verified inventory describes the runtime rather than the installer's interpreter
 - AND an unchanged verified runtime may be reused, though even `unchanged` rechecks health and may refresh the marker
 
 ### scenario.distribution.runtime-provision-failure — Failed acquisition or verification does not replace a valid runtime
@@ -322,3 +323,12 @@ validation cannot certify its determinism.
 - THEN it must not replace a previously valid runtime or mark partial state usable
 - AND a create destination that appears after planning is rejected rather than adopted
 - AND the returned result carries no successful runtime metadata, so a caller cannot infer recovery from its absence
+
+### scenario.distribution.launcher-managed-runtime — The installed launcher re-executes itself inside the managed runtime
+
+- GIVEN an installed project whose framework lives at `.concorde/framework` and whose verified managed runtime, with the installer's owner marker, lives at `.concorde/.venv`
+- WHEN `.concorde/framework/scripts/run-operation.py` is started with any other interpreter, such as the `python3` a Skill names, even one that cannot import LangGraph
+- THEN it re-executes itself with the managed runtime's interpreter before reading its invocation, so the Operation runs with the locked dependencies and the runtime check reports that runtime as its prefix
+- AND a launcher already running inside that runtime, such as the one the Pi session tool starts, is not re-executed
+- AND the source checkout, which matches neither layout, keeps the interpreter that started it
+- AND when no verified managed runtime exists and the starting interpreter cannot import LangGraph, the launcher prints a blocked envelope with `missing_runtime` naming that interpreter instead of failing inside the host

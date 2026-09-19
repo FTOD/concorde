@@ -40,6 +40,9 @@ schemas are code, exported by the build for runtime/API use, and this document s
 their promises.
 
 Executable entry: `python3 scripts/run-operation.py <skill-name>`, no task command-line arguments.
+In an installed project the launcher first re-executes itself inside the managed runtime, as the
+[Distribution Module](../distribution/scenarios.md#scenario.distribution.launcher-managed-runtime)
+specifies; an interpreter without LangGraph and without that runtime is refused with `missing_runtime`.
 A name that is not a Skill is refused with `unknown_operation`. stdin is exactly one JSON object
 `concorde-operation-invocation@3` with fields type_id, schema_version=3, operation_id (the Skill's
 name), mode=execute|describe-policy, configuration and input. Maximum input is 1 MiB. Schema 2
@@ -310,6 +313,7 @@ context forms; package/schema alignment checks verify those identities.
 | `limit_exhausted` | `OperationExecutionError.outcome` when a worker ran past its timeout; the host maps this to the `execution_limit` result error code. |
 | `merge_conflict` | Integration conflicts with the primary branch. Resolve and revalidate in the candidate worktree, or a new candidate if delivery already removed the source. |
 | `missing_change` | A requested existing change or task authoring has no managed change in the current worktree. |
+| `missing_runtime` | The launcher's interpreter cannot import LangGraph and no verified managed runtime exists beside the installed framework to switch into; provision it with the installer, or give the source checkout its locked environment. |
 | `missing_plan` | Task authoring was requested without an authored plan. |
 | `missing_tasks` | Implementation was requested without authored tasks. |
 | `permission_denied` | A request or worker tried to act outside its granted target, Module composition/dependencies, or write scope. |

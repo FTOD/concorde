@@ -85,7 +85,9 @@ checkout.
 }
 ```
 
-Send the JSON on stdin to `python .concorde/framework/scripts/run-operation.py concorde-init`.
+Send the JSON on stdin to `python3 .concorde/framework/scripts/run-operation.py concorde-init`;
+the launcher re-executes itself inside the managed runtime `.concorde/.venv`, so any Python 3.11+
+can start it.
 Review the returned proposal, then send action apply and that complete proposal. Initialization creates
 an honest reading/metadata pair. Supply Purpose, Terminology, Usage, Design and Relationships before precise
 requirements/scenarios and implementation. Topic documents have their own metadata companions and
