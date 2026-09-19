@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "document": {
-    "id": "document.development.requirements",
+    "id": "document.operations.requirements",
     "owner": "module.operations",
     "role": "implementation"
   },

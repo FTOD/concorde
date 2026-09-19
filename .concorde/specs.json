@@ -410,7 +410,7 @@
           "kind": "module"
         },
         {
-          "id": "document.development.review-result",
+          "id": "document.review.review-result",
           "kind": "document"
         },
         {
@@ -499,7 +499,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         }
       ],
       "title": "Harness",
@@ -580,7 +580,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.interfaces"
+          "id": "document.harness.admission"
         },
         {
           "kind": "document",
@@ -772,15 +772,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "document",
@@ -804,7 +804,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -865,15 +865,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "module",
@@ -901,7 +901,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -969,15 +969,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "document",
@@ -1001,7 +1001,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -1073,11 +1073,11 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
@@ -1101,7 +1101,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -1166,15 +1166,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "document",
@@ -1198,7 +1198,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -1262,15 +1262,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "document",
@@ -1294,7 +1294,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -1353,15 +1353,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "document",
@@ -1385,7 +1385,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -1453,15 +1453,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "document",
@@ -1485,7 +1485,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -1578,15 +1578,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "document",
@@ -1610,7 +1610,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",
@@ -1686,15 +1686,15 @@
         },
         {
           "kind": "document",
-          "id": "document.development.operations"
+          "id": "document.operations.composition"
         },
         {
           "kind": "document",
-          "id": "document.development.review-and-gaps"
+          "id": "document.issues.blockers"
         },
         {
           "kind": "document",
-          "id": "document.development.review-result"
+          "id": "document.review.review-result"
         },
         {
           "kind": "document",
@@ -1718,7 +1718,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.execution-reference"
+          "id": "document.operations.execution-reference"
         },
         {
           "kind": "document",

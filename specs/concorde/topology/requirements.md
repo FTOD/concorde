@@ -13,7 +13,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Topology
 
-### req.development.shared-document-agreement — Shared changes require owner authoring and consumer agreement
+### req.topology.shared-document-agreement — Shared changes require owner authoring and consumer agreement
 
 A referenced document change SHALL be applied only from its sole owner's proposal after compatibility
 review in every affected consumer's resolved context.

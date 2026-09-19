@@ -19,7 +19,7 @@ from concorde.spec.verification import verifies
 
 
 class GraphSurfaceTests(TestCase):
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_review_membership_retirement_preserves_unvisited_applicable_receipts(self):
         from copy import deepcopy
 
@@ -140,7 +140,7 @@ class GraphSurfaceTests(TestCase):
                                 records["peer"],
                             )
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_code_owner_is_reviewed_with_and_without_recorded_components(self):
         for coordinated in (False, True):
             with self.subTest(coordinated=coordinated):
@@ -237,8 +237,8 @@ class GraphSurfaceTests(TestCase):
         )
 
     @verifies(
-        "scenario.development.graph-execution",
-        "scenario.development.graph-bounds",
+        "scenario.harness.graph-execution",
+        "scenario.harness.graph-bounds",
         "scenario.harness.graph-inspection",
     )
     def test_fresh_discovery_uses_inspected_factory_and_preserves_intent(self):
@@ -300,7 +300,7 @@ class GraphSurfaceTests(TestCase):
                         self.assertEqual("failed", decision["outcome"])
 
     @verifies(
-        "scenario.development.graph-bounds", "scenario.development.discovery-limit"
+        "scenario.harness.graph-bounds", "scenario.query-routing.discovery-limit"
     )
     def test_discovery_domain_limit_does_not_restart(self):
         run: Any = MainInvocation.__new__(MainInvocation)
@@ -314,7 +314,7 @@ class GraphSurfaceTests(TestCase):
         run.stage.assert_not_called()
 
     @verifies(
-        "scenario.development.graph-execution", "scenario.harness.graph-inspection"
+        "scenario.harness.graph-execution", "scenario.harness.graph-inspection"
     )
     def test_coordination_variants_stop_before_dependent_nodes(self):
         names = [
@@ -340,7 +340,7 @@ class GraphSurfaceTests(TestCase):
             )
             self.assert_path(drawings[0], visited)
 
-    @verifies("scenario.development.graph-bounds", "scenario.harness.graph-inspection")
+    @verifies("scenario.harness.graph-bounds", "scenario.harness.graph-inspection")
     def test_stabilization_repeats_without_leaking_state(self):
         for _ in range(2):
             visited, drawings, rounds = [], [], []
@@ -362,8 +362,8 @@ class GraphSurfaceTests(TestCase):
             self.assert_path(drawings[0], visited)
 
     @verifies(
-        "scenario.development.graph-execution",
-        "scenario.development.graph-bounds",
+        "scenario.harness.graph-execution",
+        "scenario.harness.graph-bounds",
         "scenario.harness.graph-inspection",
     )
     def test_scoped_review_stops_after_first_unsuccessful_result(self):

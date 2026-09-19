@@ -333,7 +333,7 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 
 ## Operation admission and Graph execution
 
-### scenario.development.execute-operation — Successful operation execution
+### scenario.harness.execute-operation — Successful operation execution
 
 - GIVEN an installed `concorde-*` Skill names one registered public Operation
 - AND stdin carries a well-formed `concorde-operation-invocation@3` envelope in `execute` mode
@@ -341,23 +341,23 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 - THEN it selects the operation's declared execution Graph and obtains every Agent invocation it needs, bound to current instructions, context and compiled authority, from the invocation host
 - AND it returns a `concorde-operation-result@3` with status `succeeded` and the operation's own typed output
 
-See [single boundary](requirements.md#req.development.single-boundary) and [distinct outcomes](requirements.md#req.development.distinct-outcomes).
+See [single boundary](requirements.md#req.harness.single-boundary) and [distinct outcomes](requirements.md#req.harness.distinct-outcomes).
 
-### scenario.development.execute-blocked-launch — Stale build or unenforceable permission blocks launch
+### scenario.harness.execute-blocked-launch — Stale build or unenforceable permission blocks launch
 
 - GIVEN the recorded build manifest no longer matches its sources, or the compiled policy for the bound Agent cannot be enforced by the Pi worker extension gate
 - WHEN the host would otherwise launch an Agent for an admitted request
 - THEN it blocks the request with `stale_build` or the applicable permission error before any process starts
 - AND any existing candidate is preserved unchanged
 
-### scenario.development.describe-policy — Preview an operation's grants without executing it
+### scenario.harness.describe-policy — Preview an operation's grants without executing it
 
 - GIVEN a request with `mode: describe-policy`
 - WHEN the host processes it
 - THEN it returns status `described`, naming the bound Agent, Harness, `agent_binding_digest`, `instructions_digest` and effective loop timeout for each previewed stage
 - AND no Agent is launched and no project file changes
 
-### scenario.development.invocation-worktree-binding — An invocation binds to the worktree at its working directory
+### scenario.harness.invocation-worktree-binding — An invocation binds to the worktree at its working directory
 
 - GIVEN a public Skill submits an invocation through the entry script from some working directory
 - WHEN the host admits the request
@@ -367,9 +367,9 @@ See [single boundary](requirements.md#req.development.single-boundary) and [dist
 - AND a working directory inside a Git worktree that is not its root is refused with `workspace_mismatch` and no Agent is launched
 - BUT the worktree in which the developer's agent session started, the worktree whose rendered Skill supplied the instructions and every other linked worktree contribute no registry, document or file to the invocation
 
-See [project root is the entry process's working directory](requirements.md#req.development.project-root-is-working-directory).
+See [project root is the entry process's working directory](requirements.md#req.harness.project-root-is-working-directory).
 
-### scenario.development.workspace-inventory — The primary inventory reads only linked worktrees' lifecycle state
+### scenario.harness.workspace-inventory — The primary inventory reads only linked worktrees' lifecycle state
 
 - GIVEN the primary worktree and one or more live linked worktrees, some managed by their own `.concorde/worktree.json` and some not
 - WHEN an operation invoked in the primary worktree resolves its `workspace` metadata
@@ -379,7 +379,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - BUT no linked worktree's registry, Spec document or implementation file is read, so a candidate's draft Spec edits stay invisible to the primary until they are delivered
 - AND an operation invoked in a linked worktree instead sees kind `change` with its own candidate identity and status
 
-### scenario.development.worktree-relay — Mutating request in the primary worktree runs in a host-created candidate
+### scenario.harness.worktree-relay — Mutating request in the primary worktree runs in a host-created candidate
 
 - GIVEN a mutating operation request is admitted while the current session's worktree is the primary worktree
 - WHEN the host would otherwise start development work there
@@ -389,7 +389,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND a later request from the primary worktree that names the recorded change_id runs in that candidate again, while a change_id no live candidate records is refused with missing_change
 - AND a candidate that carries its own Concorde runs that code, rebuilt from its own sources before the launch, and any other candidate runs the invoking framework with the candidate as its project root
 
-### scenario.development.graph-specs — Every Graph Spec equals its compiled Graph
+### scenario.harness.graph-specs — Every Graph Spec equals its compiled Graph
 
 - GIVEN the Graph catalog compiles every executable Graph with inert nodes
 - WHEN the Graph Spec check reads every Mermaid flowchart bound with `%% graph: <name>` in the registered Spec documents
@@ -400,7 +400,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND every compiled Graph has exactly one bound diagram and every bound name is a compiled Graph
 - BUT a passing check proves only that the Spec and the executed topology agree, not that the routing is right
 
-### scenario.development.graph-api-only — Every Graph is built with the Graph API
+### scenario.harness.graph-api-only — Every Graph is built with the Graph API
 
 - GIVEN the Graph catalog compiles every executable Graph with inert nodes
 - WHEN the Graph Spec check inspects each compiled Graph and parses every Python file under `src/` and `scripts/` without executing it
@@ -408,7 +408,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND no file imports LangGraph's Functional API, `langgraph.func` or its `entrypoint` and `task` decorators
 - AND a Graph of any other kind, an import of the Functional API and a file that cannot be parsed are each an error finding naming the Graph or the file and line
 
-### scenario.development.graph-execution — Execute the inspected Graph
+### scenario.harness.graph-execution — Execute the inspected Graph
 
 - GIVEN an admitted operation request through a local or Studio entry
 - WHEN the host executes the request
@@ -418,14 +418,14 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND existing task identity, context isolation, review requirements and delivery authorization remain enforced
 - AND a change to the Graph that schedules scoped reviews invalidates their recorded input identity
 
-### scenario.development.graph-bounds — Preserve domain limits across Graph composition
+### scenario.harness.graph-bounds — Preserve domain limits across Graph composition
 
 - GIVEN a Graph whose admitted work requires more than LangGraph's default scheduling limit
 - WHEN the host executes its bounded discovery, batch or review-repair transitions
 - THEN the configured scheduling allowance permits the admitted sequence to reach its domain completion or limit outcome
 - AND exhausting a declared domain limit does not silently restart the Graph or widen its authority
 
-### scenario.development.operation-state — One executable identity and State boundary
+### scenario.harness.operation-state — One executable identity and State boundary
 
 - GIVEN a registered deterministic, model-backed or composed Operation
 - WHEN its node is embedded in a LangGraph with a larger parent State
@@ -434,7 +434,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND a model invocation still validates phase, artifacts, output fields and effective authority
 - AND its composition dependencies use the same Operation inventory
 
-### scenario.development.operation-result-state — Host graph failures remain explicit
+### scenario.harness.operation-result-state — Host graph failures remain explicit
 
 - GIVEN a host-backed Operation invoked through its State interface
 - WHEN admission or execution returns a blocked or failed operation envelope

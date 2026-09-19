@@ -208,7 +208,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("module.ledger", SpecRepository(self.root).entry_target)
 
     @verifies(
-        "scenario.development.answer-question", "scenario.concorde.inspect-answer"
+        "scenario.query-routing.answer-question", "scenario.concorde.inspect-answer"
     )
     def test_main_answers_directly_from_complete_injected_contexts(self):
         double = ModelProcessDouble()
@@ -257,10 +257,10 @@ class ScopedProtocolTests(unittest.TestCase):
             self.assertNotIn("PRIVATE_CODE", text)
 
     @verifies(
-        "scenario.development.topology-design",
-        "scenario.development.topology-accept",
-        "scenario.development.topology-apply",
-        "scenario.development.topology-stale",
+        "scenario.topology.design",
+        "scenario.topology.accept",
+        "scenario.topology.apply",
+        "scenario.topology.stale",
     )
     def test_main_design_accept_and_exact_apply_create_topology_atomically(self):
         def callback(stage, snapshot, data, cwd):
@@ -466,10 +466,10 @@ class ScopedProtocolTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.topology-design",
-        "scenario.development.topology-accept",
-        "scenario.development.topology-apply",
-        "scenario.development.topology-stale",
+        "scenario.topology.design",
+        "scenario.topology.accept",
+        "scenario.topology.apply",
+        "scenario.topology.stale",
     )
     def test_canonical_owner_authors_once_and_consumer_reviews_its_context(self):
         def design_callback(stage, snapshot, data, cwd):
@@ -588,7 +588,7 @@ class ScopedProtocolTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.topology-accept", "scenario.development.topology-stale"
+        "scenario.topology.accept", "scenario.topology.stale"
     )
     def test_topology_acceptance_stops_before_writes_on_gap_or_stale_design(self):
         def design_callback(stage, snapshot, data, cwd):
@@ -676,7 +676,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("blocked", stale["status"])
         self.assertEqual("stale_proposal", stale["errors"][0]["code"])
 
-    @verifies("scenario.development.describe-policy")
+    @verifies("scenario.harness.describe-policy")
     def test_topology_policy_description_is_read_only_at_both_acceptance_gates(self):
         def callback(stage, snapshot, data, cwd):
             if stage == "route" and snapshot["action"] == "design-topology":
@@ -867,7 +867,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("invalid_proposal", result["errors"][0]["code"])
         self.assertIn("Module tasks", result["errors"][0]["message"])
 
-    @verifies("scenario.development.answer-question")
+    @verifies("scenario.query-routing.answer-question")
     def test_main_can_admit_modules_and_answer_but_not_read_implementation_code(self):
         double = ModelProcessDouble()
         result = self.call_operation(
@@ -902,7 +902,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 task="Read one entity",
             )
 
-    @verifies("scenario.development.answer-question")
+    @verifies("scenario.query-routing.answer-question")
     def test_main_combines_original_sources_from_multiple_target_contexts(self):
         def answer(stage, snapshot, data, cwd):
             discovered = {item["target_id"] for item in snapshot["targets"]}
@@ -945,7 +945,7 @@ class ScopedProtocolTests(unittest.TestCase):
             result["output"]["data"]["answer"],
         )
 
-    @verifies("scenario.development.answer-gap", "scenario.concorde.inspect-gap")
+    @verifies("scenario.query-routing.answer-gap", "scenario.concorde.inspect-gap")
     def test_main_reports_gaps_with_owning_module_and_complete_context_identity(self):
         def routing_gap(stage, snapshot, data, cwd):
             data.update(
@@ -1014,7 +1014,7 @@ class ScopedProtocolTests(unittest.TestCase):
             result["output"]["data"]["context_id"], observation["source"]["context_id"]
         )
 
-    @verifies("scenario.development.answer-question")
+    @verifies("scenario.query-routing.answer-question")
     def test_main_questions_reject_worker_routes(self):
         def route(stage, snapshot, data, cwd):
             data.update(
@@ -1359,7 +1359,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 task="Explain architecture",
             )
 
-    @verifies("scenario.development.answer-question")
+    @verifies("scenario.query-routing.answer-question")
     def test_main_can_answer_from_initial_spec_context_in_one_invocation(self):
         def answer(stage, snapshot, data, cwd):
             self.assertIn(
@@ -1448,7 +1448,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual({}, state["targets"])
 
     @verifies(
-        "scenario.development.dev-loop-ready",
+        "scenario.dev-loop.ready",
         "scenario.harness.context-freeze",
         "scenario.concorde.develop-change",
     )
@@ -1496,7 +1496,7 @@ class ScopedProtocolTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.development.validate-blocked")
+    @verifies("scenario.validation.blocked")
     def test_failed_behavioral_check_prevents_delivery(self):
         def broken(stage, snapshot, data, cwd):
             if stage == "implementation":

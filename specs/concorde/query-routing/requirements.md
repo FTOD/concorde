@@ -15,14 +15,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Query and Routing
 
-### req.development.global-discovery — Discovery workers discover complete Module contexts
+### req.query-routing.global-discovery — Discovery workers discover complete Module contexts
 
 An Operation with discover context selection SHALL use a discovery-phase worker to discover complete Module Spec contexts.
 
-### req.development.routing-hint-not-context — Routing hints only steer selection
+### req.query-routing.routing-hint-not-context — Routing hints only steer selection
 
 A target or focus hint SHALL only steer selection.
 
-### req.development.routing-hint-no-grant — Routing hints never grant context
+### req.query-routing.routing-hint-no-grant — Routing hints never grant context
 
 A target or focus hint SHALL NOT itself grant context or replace explicit resolution.

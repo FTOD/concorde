@@ -166,12 +166,12 @@ so identical values always digest identically.
 
 ## Operation admission
 
-### req.development.single-boundary — Every invocation passes through admission
+### req.harness.single-boundary — Every invocation passes through admission
 
 Every operation invocation SHALL pass through the Harness admission boundary, with no direct
 agent-to-agent channel bypassing it.
 
-### req.development.project-root-is-working-directory — Project root is the entry process's working directory
+### req.harness.project-root-is-working-directory — Project root is the entry process's working directory
 
 The host SHALL bind every invocation's project root to the working directory of its entry
 process, exactly as resolved and without searching parent directories.
@@ -180,21 +180,21 @@ The registry, Spec collections, lifecycle state and listed implementation files 
 reads are therefore those of the worktree at that directory. The worktree in which the
 developer's agent session started, the worktree whose rendered Skill supplied the instructions
 and every other linked worktree are not inputs; see
-[invocation worktree binding](scenarios.md#scenario.development.invocation-worktree-binding).
+[invocation worktree binding](scenarios.md#scenario.harness.invocation-worktree-binding).
 
-### req.development.distinct-outcomes — Results distinguish admission, domain and execution outcomes
+### req.harness.distinct-outcomes — Results distinguish admission, domain and execution outcomes
 
 An operation result SHALL distinguish admission, domain and execution outcomes instead of collapsing
 them into one generic failure.
 
-### req.development.langgraph-control-flow — Orchestration executes as a LangGraph Graph
+### req.harness.langgraph-control-flow — Orchestration executes as a LangGraph Graph
 
 Every operation's orchestration SHALL execute as a LangGraph Graph of deterministic operations,
 Agent invocations and explicitly represented transitions.
 
 [Graphs and feedback](graphs-and-loops.md) explains Graph execution; the term's canonical definition is linked above.
 
-### req.development.no-implementation-for-non-code — No implementation contents for non-code phases
+### req.harness.no-implementation-for-non-code — No implementation contents for non-code phases
 
 A planner, task author or Spec-only reviewer SHALL NOT receive the contents of the selected Module's or
 any other Module's listed implementation files.

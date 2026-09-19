@@ -41,7 +41,7 @@ def _modules():
 
 
 class OperationModuleContractTests(unittest.TestCase):
-    @verifies("scenario.development.operation-state")
+    @verifies("scenario.harness.operation-state")
     def test_one_inventory_includes_model_code_and_composed_nodes(self):
         modules = _modules()
         self.assertEqual(26, len(modules))
@@ -134,7 +134,7 @@ class OperationModuleContractTests(unittest.TestCase):
         for name in modules:
             visit(name, ())
 
-    @verifies("scenario.development.operation-state")
+    @verifies("scenario.harness.operation-state")
     def test_model_subgraph_projects_parent_state_and_preserves_unrelated_channels(
         self,
     ):
@@ -179,7 +179,7 @@ class OperationModuleContractTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             node.graph().invoke(data)  # State cannot supply the trusted launcher.
 
-    @verifies("scenario.development.operation-state")
+    @verifies("scenario.harness.operation-state")
     def test_deterministic_state_only_node_uses_the_same_adapter(self):
         module = ModuleType("operations.normalize_plan")
         module.__dict__["STATE"] = StateContract(
@@ -201,7 +201,7 @@ class OperationModuleContractTests(unittest.TestCase):
             with self.assertRaises(TypedDataError):
                 node.graph().invoke({"plan": "ready"})
 
-    @verifies("scenario.development.operation-state")
+    @verifies("scenario.harness.operation-state")
     def test_module_run_is_directly_a_langgraph_node(self):
         from tests.concorde.harness.test_operation_node import _stage_context
 
@@ -216,7 +216,7 @@ class OperationModuleContractTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             graph.compile().invoke(_stage_context()["data"])
 
-    @verifies("scenario.development.operation-result-state")
+    @verifies("scenario.harness.operation-result-state")
     def test_host_state_node_preserves_failure_envelope_and_runtime_context(self):
         from operations import validate
 
@@ -245,7 +245,7 @@ class OperationModuleContractTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             validate.run({"task": "Check"}, Runtime(context=None))
 
-    @verifies("scenario.development.operation-result-state")
+    @verifies("scenario.harness.operation-result-state")
     def test_wire_adapter_rejects_wrong_identity_before_state_projection(self):
         from concorde.harness.admission import run_host_node
 

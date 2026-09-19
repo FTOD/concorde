@@ -1207,7 +1207,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.development.interfaces",
+            "document.harness.admission",
             "Mentions `concorde-not-a-real-type@1` here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1222,7 +1222,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.development.interfaces",
+            "document.harness.admission",
             "Mentions `concorde-operation-invocation@2` here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1238,7 +1238,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.development.interfaces",
+            "document.harness.admission",
             "Nothing about types here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1280,7 +1280,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.development.interfaces",
+            "document.harness.admission",
             "No error table here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1306,7 +1306,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.development.interfaces",
+            "document.harness.admission",
             "No error table here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1324,7 +1324,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.development.interfaces",
+            "document.harness.admission",
             "| Error code | Meaning |\n| --- | --- |\n| `fixture_code` | Something. |",
         )
         _registry(self.root, documents=["specs/boundary.md"])

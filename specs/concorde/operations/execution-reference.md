@@ -330,7 +330,7 @@ flowchart TB
 
 ## Context selection participation
 
-<a id="participation.document.development.execution-reference.1"></a>
+<a id="participation.document.operations.execution-reference.1"></a>
 
 **Interface participation.** This Module has the required role for `contract.context.selection` version 3 with `module.harness`.
 

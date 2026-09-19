@@ -95,7 +95,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("ready", result["output"]["data"]["outcome"], result)
         return read_change(self.change, required=True)["change_id"]
 
-    @verifies("scenario.development.workspace-inventory")
+    @verifies("scenario.harness.workspace-inventory")
     def test_main_sees_primary_inventory_and_secondary_draft_identity(self):
         result = self.call_operation(
             self.change, "concorde-main", {"task": "Explain transfer"}
@@ -143,7 +143,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(workspace["active_worktrees"], stored["worktrees"])
         self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
 
-    @verifies("scenario.development.invocation-worktree-binding")
+    @verifies("scenario.harness.invocation-worktree-binding")
     def test_invocation_binds_to_the_worktree_at_its_working_directory(self):
         marker = "DRAFT_PROMISE_ONLY_IN_CANDIDATE"
         entry = self.change / "specs/bank/module.md"
@@ -223,7 +223,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before["blockers"], after["blockers"])
         self.assertTrue(after["blockers"])
 
-    @verifies("scenario.development.answer-question")
+    @verifies("scenario.query-routing.answer-question")
     def test_main_answers_workspace_metadata_directly(self):
         def status(stage, snapshot, data, cwd):
             if stage == "route":
@@ -297,7 +297,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         git(self.primary, "worktree", "remove", "--force", str(created))
         created.parent.rmdir()
 
-    @verifies("scenario.development.worktree-relay")
+    @verifies("scenario.harness.worktree-relay")
     def test_primary_mutation_runs_in_a_host_created_candidate(self):
         result = self.call_operation(
             self.primary,
@@ -340,7 +340,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(result, json.loads(json.dumps(result)))
 
     @verifies(
-        "scenario.development.worktree-relay", "scenario.development.specify-loop"
+        "scenario.harness.worktree-relay", "scenario.specify-loop.independent"
     )
     def test_specify_loop_from_primary_relays_and_stops_at_spec_completion(self):
         result = self.call_operation(
@@ -357,7 +357,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertNotIn("implementation", stages)
         self.assertEqual([], self.outer_double.calls)
 
-    @verifies("scenario.development.worktree-relay")
+    @verifies("scenario.harness.worktree-relay")
     def test_primary_mutation_with_an_unknown_change_id_is_refused(self):
         result = self.call_operation(
             self.primary,
@@ -370,9 +370,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual([], self.relayed)
 
     @verifies(
-        "scenario.development.resume-unbound",
+        "scenario.dev-loop.resume-unbound",
         "scenario.harness.change-owner",
-        "scenario.development.worktree-relay",
+        "scenario.harness.worktree-relay",
     )
     def test_primary_resume_by_change_id_relays_into_the_recorded_candidate(self):
         for specify in (False, True):
@@ -448,7 +448,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                         git(self.primary, "worktree", "remove", "--force", str(created))
                         created.parent.rmdir()
 
-    @verifies("scenario.development.resume-bound", "scenario.harness.change-owner")
+    @verifies("scenario.dev-loop.resume-bound", "scenario.harness.change-owner")
     def test_bound_resume_restores_focus_and_constraints_and_rejects_conflicts(self):
         task = {
             **self.task,
@@ -485,7 +485,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 self.assertEqual([], self.last_double.calls)
                 self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
 
-    @verifies("scenario.development.resume-unbound", "scenario.harness.change-owner")
+    @verifies("scenario.dev-loop.resume-unbound", "scenario.harness.change-owner")
     def test_unbound_resume_retains_hints_and_refuses_changed_intent(self):
         task = {
             **self.task,
@@ -533,7 +533,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(task["focus_id"], result["output"]["data"]["focus_id"])
 
-    @verifies("scenario.development.resume-bound", "scenario.harness.change-owner")
+    @verifies("scenario.dev-loop.resume-bound", "scenario.harness.change-owner")
     def test_resume_rejects_missing_wrong_and_malformed_worktree_state(self):
         task = {
             "task": self.task["task"],
@@ -613,7 +613,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             self.assertEqual(field, caught.exception.field)
         self.assertIsNone(read_change(self.change, required=True)["target_id"])
 
-    @verifies("scenario.development.resume-bound", "scenario.harness.change-owner")
+    @verifies("scenario.dev-loop.resume-bound", "scenario.harness.change-owner")
     def test_trusted_component_route_keeps_root_owner_and_rejects_mismatch(self):
         change_id = self.ready(
             task={**self.task, "specify": False, "run_reviews": False}
@@ -649,7 +649,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
         self.assertEqual([], double.calls)
 
-    @verifies("scenario.development.worktree-relay")
+    @verifies("scenario.harness.worktree-relay")
     def test_primary_relay_is_one_json_response_on_the_paired_cli(self):
         """The default relay runs the candidate's launcher in a subprocess; validate needs no agent."""
         operation = "concorde-validate"
@@ -707,8 +707,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("ready", read_change(self.change, required=True)["status"])
 
     @verifies(
-        "scenario.development.dev-loop-spec-gap",
-        "scenario.development.dev-loop-coordinated",
+        "scenario.dev-loop.spec-gap",
+        "scenario.dev-loop.coordinated",
         "scenario.concorde.develop-gap",
     )
     def test_partial_spec_reconciliation_is_explicit_and_resumes_completed_authors(
@@ -855,7 +855,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertTrue(self.change.exists())
 
-    @verifies("scenario.development.deliver-branch", "scenario.concorde.deliver-stage")
+    @verifies("scenario.delivery.branch", "scenario.concorde.deliver-stage")
     def test_source_delivery_removes_active_worktree_and_retry_does_not_republish(self):
         change_id = self.ready()
         before = git_value(self.primary, "rev-parse", "HEAD")
@@ -958,8 +958,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.deliver-branch",
-        "scenario.development.deliver-merge-primary",
+        "scenario.delivery.branch",
+        "scenario.delivery.merge-primary",
     )
     def test_primary_merge_requires_separate_delivery_and_primary_session(self):
         change_id = self.ready_delivery()
@@ -999,7 +999,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("succeeded", again["status"], again)
         self.assertEqual(head, git_value(self.primary, "rev-parse", "HEAD"))
 
-    @verifies("scenario.development.deliver-branch")
+    @verifies("scenario.delivery.branch")
     def test_explicit_retention_survives_interrupted_initial_cleanup(self):
         change_id = self.ready_delivery()
         before = git_value(self.primary, "rev-parse", "HEAD")
@@ -1020,7 +1020,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertIn("retained", again["output"]["data"]["answer"])
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
 
-    @verifies("scenario.development.deliver-branch")
+    @verifies("scenario.delivery.branch")
     def test_cleanup_retry_persists_a_changed_retention_choice_before_cleanup(self):
         change_id = self.ready_delivery()
         with patch.object(
@@ -1050,8 +1050,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertFalse(self.change.exists())
 
     @verifies(
-        "scenario.development.deliver-branch",
-        "scenario.development.deliver-merge-primary",
+        "scenario.delivery.branch",
+        "scenario.delivery.merge-primary",
     )
     def test_independent_deliveries_do_not_update_each_other_or_primary(self):
         before = git_value(self.primary, "rev-parse", "HEAD")
@@ -1121,7 +1121,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 ).returncode,
             )
 
-    @verifies("scenario.development.deliver-merge-primary")
+    @verifies("scenario.delivery.merge-primary")
     def test_legacy_delivery_receipt_does_not_claim_primary_was_unchanged(self):
         change_id = self.ready_delivery()
         self.call_operation(self.change, "concorde-deliver", {"change_id": change_id})
@@ -1148,7 +1148,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
 
     @verifies(
-        "scenario.development.deliver-branch", "scenario.development.deliver-conflict"
+        "scenario.delivery.branch", "scenario.delivery.conflict"
     )
     def test_primary_merge_checks_latest_integration_and_preserves_delivery_on_failure(
         self,
@@ -1173,7 +1173,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.deliver-branch", "scenario.development.deliver-conflict"
+        "scenario.delivery.branch", "scenario.delivery.conflict"
     )
     def test_final_merge_conflict_preserves_primary_and_delivered_branch(self):
         (self.change / "shared.txt").write_text("candidate\n")
@@ -1211,7 +1211,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, git_value(self.primary, "rev-parse", branch))
         self.assertTrue(self.change.exists())
 
-    @verifies("scenario.development.describe-policy")
+    @verifies("scenario.harness.describe-policy")
     def test_primary_merge_preview_after_source_removal_is_read_only(self):
         change_id = self.ready_delivery()
         result = self.call_operation(
@@ -1249,8 +1249,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
 
     @verifies(
-        "scenario.development.deliver-branch",
-        "scenario.development.deliver-merge-primary",
+        "scenario.delivery.branch",
+        "scenario.delivery.merge-primary",
     )
     def test_primary_merge_recovers_receipt_after_update_without_merging_again(self):
         change_id = self.ready_delivery()
@@ -1289,7 +1289,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             (self.primary / ".concorde/deliveries" / change_id / "primary").is_dir()
         )
 
-    @verifies("scenario.development.deliver-session-rejected")
+    @verifies("scenario.delivery.session-rejected")
     def test_third_worktree_redirected_runtime_and_nested_delivery_are_rejected(self):
         change_id = self.ready()
         third = self.directory / "third"
@@ -1319,7 +1319,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(old_head, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue(self.change.exists())
 
-    @verifies("scenario.development.deliver-branch")
+    @verifies("scenario.delivery.branch")
     def test_primary_delivery_can_explicitly_retain_source(self):
         change_id = self.ready()
         result = self.call_operation(
@@ -1332,9 +1332,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("delivered", read_change(self.change, required=True)["status"])
 
     @verifies(
-        "scenario.development.deliver-branch",
-        "scenario.development.deliver-merge-primary",
-        "scenario.development.execute-operation",
+        "scenario.delivery.branch",
+        "scenario.delivery.merge-primary",
+        "scenario.harness.execute-operation",
     )
     def test_paired_cli_delivers_from_source_and_primary_can_clean_up(self):
         change_id = self.ready()
@@ -1377,7 +1377,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertFalse(self.change.exists())
 
-    @verifies("scenario.development.deliver-branch")
+    @verifies("scenario.delivery.branch")
     def test_primary_delivery_stages_separate_branch_and_removes_only_transient_guidance(
         self,
     ):
@@ -1425,7 +1425,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("delivered", receipt["status"])
         self.assertTrue(all(c["status"] == "passed" for c in receipt["checks"]))
 
-    @verifies("scenario.development.describe-policy")
+    @verifies("scenario.harness.describe-policy")
     def test_delivery_preview_does_not_merge_or_change_state(self):
         change_id = self.ready()
         primary_head = git_value(self.primary, "rev-parse", "HEAD")
@@ -1444,8 +1444,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual([], self.last_double.calls)
 
     @verifies(
-        "scenario.development.validate-ready",
-        "scenario.development.deliver-branch",
+        "scenario.validation.ready",
+        "scenario.delivery.branch",
         "scenario.concorde.validate-record",
     )
     def test_directly_authored_candidate_can_be_validated_and_delivered_without_a_plan(
@@ -1479,7 +1479,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertFalse(self.change.exists())
 
-    @verifies("scenario.development.validate-blocked")
+    @verifies("scenario.validation.blocked")
     def test_validation_does_not_bypass_an_unfinished_authored_plan(self):
         result = self.call_operation(self.change, "concorde-plan", self.task)
         self.assertEqual("succeeded", result["status"], result)
@@ -1531,7 +1531,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertFalse(self.change.exists())
 
-    @verifies("scenario.development.deliver-branch")
+    @verifies("scenario.delivery.branch")
     def test_primary_can_advance_before_a_clean_verified_merge(self):
         change_id = self.ready()
         (self.primary / "another.txt").write_text("Accepted independent change\n")
@@ -1551,7 +1551,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             ),
         )
 
-    @verifies("scenario.development.deliver-conflict")
+    @verifies("scenario.delivery.conflict")
     def test_merge_conflict_does_not_change_primary_or_discard_candidate(self):
         (self.change / "shared.txt").write_text("candidate\n")
         change_id = self.ready()
@@ -1609,7 +1609,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertTrue(all(check["status"] == "passed" for check in checks))
         self.assertFalse((self.primary / "generated").exists())
 
-    @verifies("scenario.development.deliver-conflict")
+    @verifies("scenario.delivery.conflict")
     def test_actual_integration_checks_run_after_primary_advances(self):
         change_id = self.ready()
         path = self.primary / "checks/transfer_check.py"
@@ -1625,7 +1625,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue((self.change / STATE_PATH).exists())
 
-    @verifies("scenario.development.deliver-branch")
+    @verifies("scenario.delivery.branch")
     def test_cleanup_failure_resumes_without_a_second_merge_or_check_run(self):
         change_id = self.ready()
         actual_git = worktree_delivery.git
@@ -1662,7 +1662,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(merged, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertFalse(self.change.exists())
 
-    @verifies("scenario.development.deliver-branch")
+    @verifies("scenario.delivery.branch")
     def test_cleanup_can_finish_after_files_were_removed_but_git_registration_remains(
         self,
     ):

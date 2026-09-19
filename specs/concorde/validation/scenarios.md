@@ -17,20 +17,20 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Validation
 
-### scenario.development.validate-ready — Deterministic checks record readiness
+### scenario.validation.ready — Deterministic checks record readiness
 
 - GIVEN the current candidate
 - WHEN `concorde-validate` runs
 - THEN the host runs deterministic Spec validation and every configured implementation check of every affected Module, and records readiness evidence bound to the exact candidate bytes
 - AND validation never claims semantic completeness
 
-### scenario.development.validate-blocked — A failed or stale check blocks readiness
+### scenario.validation.blocked — A failed or stale check blocks readiness
 
 - GIVEN a configured implementation check fails, is missing, or its previously recorded evidence no longer matches the current candidate bytes
 - WHEN readiness is evaluated
 - THEN the candidate is not recorded ready and the failing or stale check is reported
 
-### scenario.development.validate-check-isolation — Checks cannot write their inputs or host logs
+### scenario.validation.check-isolation — Checks cannot write their inputs or host logs
 
 - GIVEN a configured implementation check and the current candidate
 - WHEN validation runs the check

@@ -18,7 +18,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Planning
 
-### scenario.development.task-history-identities — Task authors receive reserved identities
+### scenario.planning.task-history-identities — Task authors receive reserved identities
 
 - GIVEN a target may retain task lists from earlier repair rounds
 - WHEN the Host invokes a fresh task author, including after replanning

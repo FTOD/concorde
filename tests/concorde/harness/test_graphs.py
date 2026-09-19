@@ -62,7 +62,7 @@ class GraphTests(TestCase):
         )
 
     @verifies(
-        "scenario.harness.graph-inspection", "scenario.development.graph-execution"
+        "scenario.harness.graph-inspection", "scenario.harness.graph-execution"
     )
     def test_nested_updates_and_checkpoints_contain_json_not_host_objects(self):
         fixture = self.fixture()
@@ -112,7 +112,7 @@ class GraphTests(TestCase):
             ids = {event["invocation_id"] for event in value["events"]}
             self.assertEqual({value["result"]["invocation_id"]}, ids)
 
-    @verifies("scenario.development.graph-bounds")
+    @verifies("scenario.harness.graph-bounds")
     def test_discovery_can_expand_beyond_the_default_langgraph_limit(self):
         # Deliberately partial duck-typed fixture; exercise routing without a real Host.
         main: Any = MainInvocation.__new__(MainInvocation)
@@ -140,7 +140,7 @@ class GraphTests(TestCase):
         self.assertEqual(36, main.stage.call_count)
 
     @verifies(
-        "scenario.development.graph-bounds", "scenario.development.graph-execution"
+        "scenario.harness.graph-bounds", "scenario.harness.graph-execution"
     )
     def test_large_batch_stops_before_running_dependent_items(self):
         visited = []
@@ -155,7 +155,7 @@ class GraphTests(TestCase):
         self.assertEqual({"outcome": "blocked"}, result)
         self.assertEqual(list(range(38)), visited)
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_scheduler_failure_keeps_the_error_envelope_and_final_event(self):
         from concorde.harness.host import OperationHost
         from concorde.harness.admission import run_operation
@@ -179,7 +179,7 @@ class GraphTests(TestCase):
         self.assertEqual(["operation_started", "operation_finished"], events)
         self.assertEqual([], fixture.double.calls)
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_extracted_review_graph_remains_part_of_review_identity(self):
         from concorde.review import review
         from concorde.harness.invocation import Invocation

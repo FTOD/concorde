@@ -45,7 +45,7 @@ def issue_observation(root, reference):
 
 
 class ReviewTests(unittest.TestCase):
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_interrupted_review_reports_status_persistence_failure(self):
         from concorde.harness.worker_executor import OperationExecutionError
 
@@ -94,7 +94,7 @@ class ReviewTests(unittest.TestCase):
             before["status"], read_change(self.root, required=True)["status"]
         )
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_fresh_review_reconciles_removed_members_and_restores_required_currentness(
         self,
     ):
@@ -244,7 +244,7 @@ class ReviewTests(unittest.TestCase):
                 finally:
                     fixture.doCleanups()
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_scope_scheduler_change_invalidates_accepted_review(self):
         from concorde.review import review
         from concorde.spec.repository import SpecError
@@ -299,7 +299,7 @@ class ReviewTests(unittest.TestCase):
                     self.assertEqual(before, inputs(run, mode)[0])
                     self.assertEqual(accepted, current(run, mode, required=True))
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_reviewer_interruptions_survive_enclosing_graphs_and_final_events(self):
         from typing import Literal
 
@@ -483,9 +483,9 @@ class ReviewTests(unittest.TestCase):
                         fixture.doCleanups()
 
     @verifies(
-        "scenario.development.task-scope-repair",
-        "scenario.development.dev-loop-coordinated",
-        "scenario.development.dev-loop-spec-gap",
+        "scenario.dev-loop.task-scope-repair",
+        "scenario.dev-loop.coordinated",
+        "scenario.dev-loop.spec-gap",
     )
     def test_nested_scope_repair_requires_resolved_gap_from_recorded_component_intent(
         self,
@@ -644,10 +644,10 @@ class ReviewTests(unittest.TestCase):
         self.assertTrue(all(item["complete"] for item in parent["tasks"]))
 
     @verifies(
-        "scenario.development.task-scope-repair",
-        "scenario.development.dev-loop-coordinated",
-        "scenario.development.dev-loop-spec-gap",
-        "scenario.development.standalone-review",
+        "scenario.dev-loop.task-scope-repair",
+        "scenario.dev-loop.coordinated",
+        "scenario.dev-loop.spec-gap",
+        "scenario.review.standalone",
     )
     def test_scope_repair_accepts_cached_component_gap_only_after_attributed_resolution(
         self,
@@ -766,8 +766,8 @@ class ReviewTests(unittest.TestCase):
             self.assertIn(("service.transfer", phase), calls)
 
     @verifies(
-        "scenario.development.task-scope-repair",
-        "scenario.development.dev-loop-coordinated",
+        "scenario.dev-loop.task-scope-repair",
+        "scenario.dev-loop.coordinated",
     )
     def test_coordinated_scope_repair_preserves_state_on_rerouting_or_component_gap(
         self,
@@ -836,8 +836,8 @@ class ReviewTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.dev-loop-spec-gap",
-        "scenario.development.standalone-review",
+        "scenario.dev-loop.spec-gap",
+        "scenario.review.standalone",
     )
     def test_lifecycle_only_standalone_review_cannot_resolve_a_required_gap(self):
         first = self.call_operation(
@@ -863,7 +863,7 @@ class ReviewTests(unittest.TestCase):
             any(call["stage"] == "spec-review" for call in self.model.calls)
         )
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.dev-loop.spec-gap")
     def test_legacy_gap_identity_is_not_inferred_from_a_later_review(self):
         self.call_operation("concorde-dev-loop", callback=self.missing("spec-review"))
         state = read_change(self.root, required=True)
@@ -886,8 +886,8 @@ class ReviewTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.task-scope-repair",
-        "scenario.development.dev-loop-coordinated",
+        "scenario.dev-loop.task-scope-repair",
+        "scenario.dev-loop.coordinated",
     )
     def test_coordinated_scope_repair_rebinds_changed_intent_without_redoing_unchanged_component(
         self,
@@ -972,8 +972,8 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual(content, (self.root / path).read_bytes())
 
     @verifies(
-        "scenario.development.task-history-identities",
-        "scenario.development.task-scope-repair",
+        "scenario.planning.task-history-identities",
+        "scenario.dev-loop.task-scope-repair",
         "scenario.planning.tasks-from-plan",
         "scenario.planning.tasks-id-conflict",
     )
@@ -1075,7 +1075,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("task.round.2.replanned", state["tasks"][0]["id"])
         self.assertEqual(history, state["task_history"])
 
-    @verifies("scenario.development.validate-blocked")
+    @verifies("scenario.validation.blocked")
     def test_deferred_repository_verification_still_requires_passing_host_checks(self):
         # The programmer cannot read this repository-level dependency, but the Host must
         # still execute it after accepting the implementation's fulfilled tasks.
@@ -1190,7 +1190,7 @@ class ReviewTests(unittest.TestCase):
             {stage: described[stage] for stage in expected if stage in described},
         )
 
-    @verifies("scenario.development.task-scope-repair")
+    @verifies("scenario.dev-loop.task-scope-repair")
     def test_invalid_scope_repair_cannot_replace_or_complete_original_tasks(self):
         from concorde.spec.repository import digest
 
@@ -1217,7 +1217,7 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual([], state.get("task_history", []))
             self.assertIsNone(state.get("implementation_digest"))
 
-    @verifies("scenario.development.task-scope-repair")
+    @verifies("scenario.dev-loop.task-scope-repair")
     def test_incomplete_phase_tasks_repair_then_implementation_validation_review_ready(
         self,
     ):
@@ -1388,7 +1388,7 @@ class ReviewTests(unittest.TestCase):
 
         return callback
 
-    @verifies("scenario.development.execute-operation")
+    @verifies("scenario.harness.execute-operation")
     def test_modes_use_full_collection_fresh_sessions_and_no_write_grants(self):
         self.registry["targets"][3]["references"].append(
             {"kind": "document", "id": "document.transfer.promises"}
@@ -1536,7 +1536,7 @@ class ReviewTests(unittest.TestCase):
             [item["path"] for item in snapshot["implementation_files"]],
         )
 
-    @verifies("scenario.development.describe-policy")
+    @verifies("scenario.harness.describe-policy")
     def test_describe_policy_is_not_a_completed_review(self):
         for mode in ("spec", "code"):
             result = self.review(mode, mode="describe-policy")
@@ -1547,7 +1547,7 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual([], self.model.calls)
         self.assertFalse((self.root / ".concorde/runs").exists())
 
-    @verifies("scenario.development.execute-blocked-launch")
+    @verifies("scenario.harness.execute-blocked-launch")
     def test_failed_policy_preview_does_not_persist_artifacts_or_change_state(self):
         # A reviewer grant the compiler refuses is simulated at policy compilation.
         ensure_change(self.root, task=self.task, allow_primary=True)
@@ -1697,7 +1697,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("failed", result["status"])
         self.assertIn("stale_context", result["output"]["data"]["answer"])
 
-    @verifies("scenario.development.dev-loop-ready")
+    @verifies("scenario.dev-loop.ready")
     def test_required_reviews_surround_planning_and_follow_checks_before_ready(self):
         observed = []
 
@@ -1751,7 +1751,7 @@ class ReviewTests(unittest.TestCase):
         spec.write_text(spec.read_text() + "\nChanged contract.\n")
         self.assertIsNone(current(self.invocation(), "spec"))
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.dev-loop.spec-gap")
     def test_changed_review_instructions_reassess_without_erasing_gaps_on_failure(self):
         import hashlib
         from contextlib import contextmanager
@@ -1857,7 +1857,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(original["blocker"], state["issue_blockers"][0]["blocker"])
         self.assertEqual([], state["blockers"])
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.dev-loop.spec-gap")
     def test_gap_persists_deduplicates_and_requires_spec_repair_before_resume(self):
         result = self.call_operation(
             "concorde-dev-loop", callback=self.missing("spec-review")
@@ -1888,7 +1888,7 @@ class ReviewTests(unittest.TestCase):
         self.assertNotIn("specify", [x["stage"] for x in self.model.calls])
 
     @verifies(
-        "scenario.development.dev-loop-spec-gap", "scenario.planning.assessment-gap"
+        "scenario.dev-loop.spec-gap", "scenario.planning.assessment-gap"
     )
     def test_real_task_phases_preserve_gaps_and_resume_after_repair(self):
         for phase in ("context-solve", "plan", "tasks", "implementation"):
@@ -1944,7 +1944,7 @@ class ReviewTests(unittest.TestCase):
             ]["spec"]
         )
 
-    @verifies("scenario.development.standalone-review")
+    @verifies("scenario.review.standalone")
     def test_independent_contract_findings_remain_visible_without_claiming_completeness(
         self,
     ):
@@ -2273,7 +2273,7 @@ class ReviewTests(unittest.TestCase):
                 finally:
                     self.root = previous_root
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.dev-loop.spec-gap")
     def test_upstream_task_gaps_block_standalone_dependents_but_allow_independent_queries(
         self,
     ):
@@ -2324,7 +2324,7 @@ class ReviewTests(unittest.TestCase):
                 finally:
                     self.root = previous_root
 
-    @verifies("scenario.development.resume-bound")
+    @verifies("scenario.dev-loop.resume-bound")
     def test_review_binds_actual_worktree_even_with_identical_unversioned_bytes(self):
         original = inputs(self.invocation(), "spec")[0]["input_digest"]
         with tempfile.TemporaryDirectory() as directory:
@@ -2344,7 +2344,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("missing_change", rejected["errors"][0]["code"])
         self.assertEqual([], self.model.calls)
 
-    @verifies("scenario.development.dev-loop-coordinated")
+    @verifies("scenario.dev-loop.coordinated")
     def test_domain_review_aggregates_only_separate_recorded_component_contexts(self):
         task = {
             "target_id": "scope.bank",
@@ -2386,7 +2386,7 @@ class ReviewTests(unittest.TestCase):
                 self.assertNotIn("app/transfer.py", paths)
         self.assertNotIn("def transfer", json.dumps(result))
 
-    @verifies("scenario.development.dev-loop-coordinated")
+    @verifies("scenario.dev-loop.coordinated")
     def test_domain_resume_upgrades_component_reviews_before_reusing_completed_work(
         self,
     ):
@@ -2446,7 +2446,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("specify", self.model.calls[0]["stage"])
 
     @verifies(
-        "scenario.development.dev-loop-spec-gap",
+        "scenario.dev-loop.spec-gap",
         "scenario.spec-authoring.invalid-output",
     )
     def test_rejected_authoring_preserves_gaps_until_the_host_accepts_the_repair(self):
@@ -2492,7 +2492,7 @@ class ReviewTests(unittest.TestCase):
             read_change(self.root, required=True)["issue_blockers"][0]["status"],
         )
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.dev-loop.spec-gap")
     def test_rejected_plan_tasks_and_implementation_cannot_resolve_previous_gaps(self):
         for phase in ("plan", "tasks", "implementation"):
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
@@ -2539,7 +2539,7 @@ class ReviewTests(unittest.TestCase):
                     self.root = previous_root
 
     @verifies(
-        "scenario.development.dev-loop-spec-gap", "scenario.concorde.develop-failure"
+        "scenario.dev-loop.spec-gap", "scenario.concorde.develop-failure"
     )
     def test_failed_plan_artifact_write_can_resume_and_resolve_the_planning_gap(self):
         from concorde.planning import plan as planning
@@ -2676,8 +2676,8 @@ class RepairLoopTests(unittest.TestCase):
             ]
 
     @verifies(
-        "scenario.development.task-history-identities",
-        "scenario.development.dev-loop-repair",
+        "scenario.planning.task-history-identities",
+        "scenario.dev-loop.repair",
         "scenario.planning.tasks-id-conflict",
     )
     def test_code_review_repair_reserves_current_ids_before_archiving_them(self):
@@ -2712,7 +2712,7 @@ class RepairLoopTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.dev-loop-repair", "scenario.implementation.admitted-work"
+        "scenario.dev-loop.repair", "scenario.implementation.admitted-work"
     )
     def test_blocking_then_clean_repairs_once_and_reaches_ready(self):
         counter = [0]
@@ -2863,7 +2863,7 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"], result)
         return result
 
-    @verifies("scenario.development.dev-loop-repair-exhausted")
+    @verifies("scenario.dev-loop.repair-exhausted")
     def test_unchanged_blocking_feedback_stops_waiting_after_one_repair(self):
         result = self._reach_unchanged_feedback_waiting()
         self.assertEqual("conflicting", result["output"]["data"]["outcome"])
@@ -2875,8 +2875,8 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual(2, stages.count("code-review"))
 
     @verifies(
-        "scenario.development.dev-loop-repair",
-        "scenario.development.dev-loop-repair-exhausted",
+        "scenario.dev-loop.repair",
+        "scenario.dev-loop.repair-exhausted",
     )
     def test_repeated_different_blocking_feedback_stops_at_the_declared_limit(self):
         review_counter = [0]
@@ -2914,7 +2914,7 @@ class RepairLoopTests(unittest.TestCase):
             2, state["graph"]["service.transfer"]["policy"]["max_repair_iterations"]
         )
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.dev-loop.spec-gap")
     def test_spec_gap_in_spec_review_stops_waiting_before_planning(self):
         def callback(stage, snapshot, data, cwd):
             if stage == "spec-review":
@@ -3002,7 +3002,7 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual(1, len(human_transitions))
         self.assertEqual("spec_changed", human_transitions[0]["outcome"])
 
-    @verifies("scenario.development.dev-loop-repair-exhausted")
+    @verifies("scenario.dev-loop.repair-exhausted")
     def test_human_implementation_edit_resets_the_repair_record(self):
         self._reach_unchanged_feedback_waiting()
         before = read_change(self.root, required=True)

@@ -30,7 +30,7 @@ class CheckIntegrationTests(unittest.TestCase):
         repo = SpecRepository(self.root, PACKAGE)
         return repo, repo.select("service.transfer"), check["id"]
 
-    @verifies("scenario.development.validate-check-isolation")
+    @verifies("scenario.validation.check-isolation")
     def test_check_cannot_forge_logs_but_host_persists_private_output_and_digest(self):
         repo, target, check_id = self.configure("""
 from pathlib import Path
@@ -56,7 +56,7 @@ sys.exit(17)
         self.assertEqual(digest(log.read_bytes()), result[0]["log_digest"])
         self.assertNotIn("PRIVATE_CHECK", json.dumps(result))
 
-    @verifies("scenario.development.validate-check-isolation")
+    @verifies("scenario.validation.check-isolation")
     def test_real_project_write_fails_validation_and_never_records_ready(self):
         self.configure("open('unlisted-new.txt','w').write('unsafe')")
         result = run_operation(
@@ -75,7 +75,7 @@ sys.exit(17)
         if state.exists():
             self.assertNotEqual("ready", json.loads(state.read_text())["status"])
 
-    @verifies("scenario.development.validate-check-isolation")
+    @verifies("scenario.validation.check-isolation")
     def test_unavailable_sandbox_blocks_without_leaking_private_diagnostics(self):
         repo, target, check_id = self.configure(
             "open('unlisted-new.txt','w').write('unsafe')"
@@ -94,7 +94,7 @@ sys.exit(17)
         )
         self.assertFalse((self.root / "unlisted-new.txt").exists())
 
-    @verifies("scenario.development.validate-check-isolation")
+    @verifies("scenario.validation.check-isolation")
     def test_timeout_retains_output_and_status(self):
         repo, target, check_id = self.configure(
             "import time; print('partial',flush=True); time.sleep(60)", 1
@@ -106,7 +106,7 @@ sys.exit(17)
             (self.root / f".concorde/runs/timeout/{check_id}.log").read_bytes(),
         )
 
-    @verifies("scenario.development.validate-blocked")
+    @verifies("scenario.validation.blocked")
     def test_external_host_change_still_invalidates_post_check_digest(self):
         repo, target, _ = self.configure("print('read-only check')")
 

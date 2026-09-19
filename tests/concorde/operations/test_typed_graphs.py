@@ -17,7 +17,7 @@ from concorde.spec.verification import verifies
 
 
 class TypedGraphStateTests(unittest.TestCase):
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_artifact_reducer_keeps_the_newest_reference_per_id_in_order(self):
         current = [{"id": "review.a.spec", "path": "old"}, {"id": "plan", "path": "p"}]
         update = [
@@ -37,7 +37,7 @@ class TypedGraphStateTests(unittest.TestCase):
             set(DevelopmentState.__annotations__),
         )
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_stage_commands_select_declared_destinations_and_stops_summarize(self):
         successors = loop_successors(include_specify=True, entry="plan", has_code=True)
         self.assertEqual(
@@ -59,7 +59,7 @@ class TypedGraphStateTests(unittest.TestCase):
         )
         self.assertEqual("tasks", stage_command("tasks", output={}).goto)
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_loop_and_specify_graphs_run_on_commands_and_accumulate_artifacts(self):
         visited = []
 

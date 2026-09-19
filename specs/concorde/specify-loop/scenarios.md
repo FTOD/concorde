@@ -15,7 +15,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Specification Graph
 
-### scenario.development.specify-loop — Author and review a Spec independently
+### scenario.specify-loop.independent — Author and review a Spec independently
 
 - GIVEN a developer supplies a Spec-writing or Spec-revision task and constraints
 - WHEN concorde-specify-loop routes the owning Module and runs the selected Spec stages

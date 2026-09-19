@@ -57,12 +57,12 @@ describe("Explicit Concorde self specification", () => {
     expect(
       r.pages.find((p) => p.documentId === "document.harness.scenarios")!
         .content,
-    ).toContain("scenario.development.execute-operation");
+    ).toContain("scenario.harness.execute-operation");
     const specGraph = r.pages.find(
       (p) => p.documentId === "document.specify-loop.scenarios",
     )!;
     expect(specGraph.readingCollection).toBe("implementation");
-    expect(specGraph.content).toContain("scenario.development.specify-loop");
+    expect(specGraph.content).toContain("scenario.specify-loop.independent");
     for (const module of r.targets.filter((t) => t.kind === "module")) {
       expect(
         module.documents.some(

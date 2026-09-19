@@ -15,15 +15,15 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Operation catalog
 
-### req.development.stage-no-skill — Non-public operations have no installed Skill
+### req.operations.stage-no-skill — Non-public operations have no installed Skill
 
 A non-public Operation SHALL have no installed Skill.
 
-### req.development.stage-in-process-only — Non-public operations require declared composition
+### req.operations.stage-in-process-only — Non-public operations require declared composition
 
 A non-public Operation SHALL be reachable only in-process from an operation that declares it in its
 composition.
 
-### req.development.stage-no-reselect — Bound operations preserve their context
+### req.operations.stage-no-reselect — Bound operations preserve their context
 
 An Operation with bound context selection SHALL NOT reselect or expand the frozen context its composing operation gave it.

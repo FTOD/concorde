@@ -748,7 +748,7 @@ _ENVELOPE_VERSIONS = {
     "concorde-operation-result": 3,
 }
 
-_OPERATION_HOST_BOUNDARY_ID = "document.development.interfaces"
+_OPERATION_HOST_BOUNDARY_ID = "document.harness.admission"
 
 
 def _registered_documents(root: Path) -> dict[str, str] | None:
@@ -971,7 +971,7 @@ def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]
                 "CONCORDE-SPEC-TYPES-001",
                 ".concorde/specs.json",
                 f"no registered document declares id {_OPERATION_HOST_BOUNDARY_ID}.",
-                "Register the Development interfaces document with that document id.",
+                "Register the Harness admission document with that document id.",
             )
         ]
     path, text = boundary
@@ -1109,7 +1109,7 @@ def _validate_spec_alignment(root: Path) -> list[Finding]:
                 "CONCORDE-SPEC-OPERATIONS-001",
                 ".concorde/specs.json",
                 "no readable Spec registry was found.",
-                "Register the operation registry and Development interfaces documents.",
+                "Register the operation registry and Harness admission documents.",
             )
         ]
     findings: list[Finding] = []

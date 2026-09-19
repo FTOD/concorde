@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "document": {
-    "id": "document.development.review-and-gaps",
+    "id": "document.issues.blockers",
     "owner": "module.issues",
     "role": "module"
   },

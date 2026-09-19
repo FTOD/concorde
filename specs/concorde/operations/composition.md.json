@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "document": {
-    "id": "document.development.operations",
+    "id": "document.operations.composition",
     "owner": "module.operations",
     "role": "module"
   },

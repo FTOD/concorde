@@ -62,7 +62,7 @@ class RunOperationLauncherTests(unittest.TestCase):
                     process.stdout,
                 )
 
-    @verifies("scenario.development.execute-unregistered")
+    @verifies("scenario.operations.execute-unregistered")
     def test_refuses_a_nonpublic_operation_name(self):
         process = _run(["concorde-plan"], "")
         self.assertEqual(3, process.returncode)
@@ -70,14 +70,14 @@ class RunOperationLauncherTests(unittest.TestCase):
         self.assertEqual("blocked", output["status"])
         self.assertEqual("unknown_operation", output["errors"][0]["code"])
 
-    @verifies("scenario.development.execute-unregistered")
+    @verifies("scenario.operations.execute-unregistered")
     def test_refuses_a_bare_operation_word(self):
         process = _run(["plan"], "")
         self.assertEqual(3, process.returncode)
         output = json.loads(process.stdout)
         self.assertEqual("unknown_operation", output["errors"][0]["code"])
 
-    @verifies("scenario.development.execute-unregistered")
+    @verifies("scenario.operations.execute-unregistered")
     def test_refuses_an_unknown_name(self):
         process = _run(["concorde-does-not-exist"], "")
         self.assertEqual(3, process.returncode)
@@ -141,7 +141,7 @@ class RunOperationLauncherTests(unittest.TestCase):
             )
 
     @verifies(
-        "scenario.development.standalone-review", "scenario.development.describe-policy"
+        "scenario.review.standalone", "scenario.harness.describe-policy"
     )
     def test_public_review_launcher_previews_scoped_code_authority(self):
         invocation = {

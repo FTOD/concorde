@@ -52,7 +52,7 @@ class SpecifyLoopTests(unittest.TestCase):
             "affected_task": "Review bank reliance",
         }
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_unchanged_spec_scope_reuses_owner_and_consumers_but_explicit_review_is_fresh(
         self,
     ):
@@ -84,7 +84,7 @@ class SpecifyLoopTests(unittest.TestCase):
             ["service.transfer", "scope.bank"], self.spec_review_targets()
         )
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_candidate_consumer_reviews_are_reused_by_the_review_stage(self):
         self.add_spec_consumer()
         task = {**self.task, "specify": True, "run_reviews": True}
@@ -138,7 +138,7 @@ class SpecifyLoopTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.specify-loop", "scenario.development.dev-loop-ready"
+        "scenario.specify-loop.independent", "scenario.dev-loop.ready"
     )
     def test_current_spec_scope_continues_into_development_before_code_review_exists(
         self,
@@ -157,7 +157,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertIn("implementation", [c["stage"] for c in self.model.calls])
         self.assertIn("code-review", [c["stage"] for c in self.model.calls])
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_changed_consumer_contract_requires_a_fresh_scope_review(self):
         self.add_spec_consumer()
         task = {**self.task, "specify": False, "run_reviews": True}
@@ -170,7 +170,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         self.assertIn("scope.bank", self.spec_review_targets())
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_missing_corrupt_or_incomplete_consumer_evidence_cannot_be_reused(self):
         for defect in (
             "missing_record",
@@ -244,7 +244,7 @@ class SpecifyLoopTests(unittest.TestCase):
                 finally:
                     fixture.doCleanups()
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_failed_consumer_review_is_retried_and_only_success_can_be_reused(self):
         from concorde.harness.worker_executor import OperationExecutionError
 
@@ -265,7 +265,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertEqual("succeeded", repeat["status"], repeat)
         self.assertEqual([], self.spec_review_targets())
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_current_component_consumer_overlap_is_valid_for_reuse_and_readiness(self):
         from concorde.harness.invocation import Invocation
         from concorde.review.review import current_spec_scope, verify_required
@@ -366,7 +366,7 @@ class SpecifyLoopTests(unittest.TestCase):
             history, read_change(self.root, required=True)["issue_blockers"]
         )
 
-    @verifies("scenario.development.specify-loop", "scenario.spec-authoring.gap")
+    @verifies("scenario.specify-loop.independent", "scenario.spec-authoring.gap")
     def test_same_task_author_gap_blocks_cached_review_until_admitted_author_repairs_it(
         self,
     ):
@@ -411,7 +411,7 @@ class SpecifyLoopTests(unittest.TestCase):
         resumed = self.call_operation("concorde-specify-loop", task)
         self.assertEqual("succeeded", resumed["status"], resumed)
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_consumer_prerequisite_gap_is_task_attributed_for_reuse_and_readiness(self):
         from dataclasses import replace
 
@@ -484,7 +484,7 @@ class SpecifyLoopTests(unittest.TestCase):
                 finally:
                     fixture.doCleanups()
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_standalone_authors_and_reviews_without_implementation_or_readiness(self):
         result = self.call_operation("concorde-specify-loop")
         self.assertEqual("succeeded", result["status"], result)
@@ -504,7 +504,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertIn("concorde-specify", data["completed_operations"])
 
     @verifies(
-        "scenario.development.specify-loop", "scenario.development.dev-loop-ready"
+        "scenario.specify-loop.independent", "scenario.dev-loop.ready"
     )
     def test_development_composes_specify_loop_and_resumes_its_evidence(self):
         from concorde.harness import admission
@@ -529,7 +529,7 @@ class SpecifyLoopTests(unittest.TestCase):
             [call.args[:2] for call in invoke.call_args_list],
         )
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_skip_options_record_only_spec_evidence(self):
         result = self.call_operation(
             "concorde-specify-loop",
@@ -547,7 +547,7 @@ class SpecifyLoopTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.specify-loop", "scenario.development.dev-loop-spec-gap"
+        "scenario.specify-loop.independent", "scenario.dev-loop.spec-gap"
     )
     def test_gap_stops_and_required_review_cannot_be_disabled_on_resume(self):
         first = self.call_operation(
@@ -581,7 +581,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertEqual("succeeded", resumed["status"], resumed)
         self.assertEqual([], read_change(self.root, required=True)["blockers"])
 
-    @verifies("scenario.development.specify-loop")
+    @verifies("scenario.specify-loop.independent")
     def test_policy_preview_contains_only_spec_agents_and_does_not_create_change(self):
         result = self.call_operation("concorde-specify-loop", mode="describe-policy")
         self.assertEqual("described", result["status"], result)
@@ -594,7 +594,7 @@ class SpecifyLoopTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.development.specify-loop", "scenario.development.graph-execution"
+        "scenario.specify-loop.independent", "scenario.harness.graph-execution"
     )
     def test_rejected_author_preserves_the_error_and_never_reaches_review(self):
         def foreign_document(stage, snapshot, data, cwd):
@@ -611,7 +611,7 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertEqual(["specify"], [item["stage"] for item in self.model.calls])
 
     @verifies(
-        "scenario.development.specify-loop", "scenario.development.graph-execution"
+        "scenario.specify-loop.independent", "scenario.harness.graph-execution"
     )
     def test_studio_exposes_independent_spec_graph_and_development_composition(self):
         from concorde.harness.studio import build_studio_graph

@@ -167,7 +167,7 @@ class StudioTests(unittest.TestCase):
                     )
         self.assertEqual([], self.double.calls)
 
-    @verifies("scenario.development.execute-operation")
+    @verifies("scenario.harness.execute-operation")
     def test_real_context_execution_matches_local_json(self):
         value = invocation()
         actual = self.graph().invoke({"invocation": value})
@@ -355,7 +355,7 @@ class StudioTests(unittest.TestCase):
         )
         self.assertEqual("succeeded", result["status"])
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_loop_emits_child_operations_and_deterministic_phases(self):
         from tests.concorde.harness.test_worktree_lifecycle import (
             WorktreeLifecycleTests,

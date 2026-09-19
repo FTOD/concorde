@@ -24,7 +24,7 @@ class StandaloneReviewTests(unittest.TestCase):
             operation, self.root, PACKAGE, executor=self.double.executor
         )
 
-    @verifies("scenario.development.standalone-review")
+    @verifies("scenario.review.standalone")
     def test_pi_worker_route_result_schema_requests_only_routing_judgment(self):
         from concorde.harness.worker_executor import worker_result_parameters
         from concorde.harness.worker_profile import worker_profile
@@ -53,7 +53,7 @@ class StandaloneReviewTests(unittest.TestCase):
             self.assertEqual({"target_id", "focus_id"}, set(route["required"]))
             self.assertFalse(route["additionalProperties"])
 
-    @verifies("scenario.development.standalone-review")
+    @verifies("scenario.review.standalone")
     def test_selection_only_route_binds_exact_unicode_intent_to_read_only_reviewer(
         self,
     ):
@@ -80,7 +80,7 @@ class StandaloneReviewTests(unittest.TestCase):
         self.assertEqual([], actual["policies"][-1]["write_paths"])
         self.assertNotIn("app/ledger.py", actual["policies"][-1]["read_paths"])
 
-    @verifies("scenario.development.standalone-review")
+    @verifies("scenario.review.standalone")
     def test_explicit_route_rewrites_fail_with_field_diagnostics_before_reviewer(self):
         for patch in (
             {"task": "Rewrite code"},
@@ -116,7 +116,7 @@ class StandaloneReviewTests(unittest.TestCase):
                     self.assertIn("routes[0]." + field, errors[0]["field"])
                 self.assertTrue(all(c["stage"] == "route" for c in self.double.calls))
 
-    @verifies("scenario.development.standalone-review")
+    @verifies("scenario.review.standalone")
     def test_legacy_exact_echo_is_accepted_but_target_focus_and_cardinality_remain_checked(
         self,
     ):
@@ -156,7 +156,7 @@ class StandaloneReviewTests(unittest.TestCase):
             self.assertEqual("blocked", actual["result"]["status"], actual)
             self.assertTrue(all(c["stage"] == "route" for c in self.double.calls))
 
-    @verifies("scenario.development.standalone-review")
+    @verifies("scenario.review.standalone")
     def test_public_review_routes_without_a_change_and_preserves_read_only_scope(self):
         for args in [
             ("init",),
@@ -242,7 +242,7 @@ class StandaloneReviewTests(unittest.TestCase):
                 )
 
     @verifies(
-        "scenario.development.standalone-review", "scenario.development.describe-policy"
+        "scenario.review.standalone", "scenario.harness.describe-policy"
     )
     def test_public_review_preview_and_blocked_route_do_not_launch_a_reviewer(self):
         preview = self.graph("concorde-review").invoke(

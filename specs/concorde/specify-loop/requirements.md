@@ -12,6 +12,6 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Specification Graph
 
-### req.development.specify-loop-boundary — Spec completion is independently available
+### req.specify-loop.boundary — Spec completion is independently available
 
 Concorde-specify-loop SHALL complete Spec preparation independently of implementation readiness.

@@ -17,7 +17,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Review
 
-### scenario.development.standalone-review — Public review without a development change
+### scenario.review.standalone — Public review without a development change
 
 - GIVEN an initialized project without a managed development change or preexisting Issue record
 - AND a task with review_mode spec or code and optional target/focus routing hints

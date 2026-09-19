@@ -12,10 +12,10 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Delivery
 
-### req.development.single-primary-writer — Only one agent writes to primary
+### req.delivery.single-primary-writer — Only one agent writes to primary
 
 At most one agent SHALL own writes in the primary worktree at a time.
 
-### req.development.primary-writes-serialized — Repository lock serializes primary writes
+### req.delivery.primary-writes-serialized — Repository lock serializes primary writes
 
 The host SHALL serialize shared lifecycle writes and final primary merges with the repository lock.

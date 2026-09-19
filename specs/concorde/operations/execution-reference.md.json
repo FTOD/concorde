@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "document": {
-    "id": "document.development.execution-reference",
+    "id": "document.operations.execution-reference",
     "owner": "module.operations",
     "role": "implementation"
   },
@@ -13,7 +13,7 @@
       "version": 3,
       "role": "required",
       "peer": "module.harness",
-      "meaning": "#participation.document.development.execution-reference.1"
+      "meaning": "#participation.document.operations.execution-reference.1"
     }
   ]
 }

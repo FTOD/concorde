@@ -42,7 +42,7 @@ class OperationsMigrationTests(unittest.TestCase):
                 }
             )
 
-    @verifies("scenario.development.operation-state")
+    @verifies("scenario.harness.operation-state")
     def test_retired_envelope_and_identity_field_are_not_current_aliases(self):
         current = {
             "type_id": "concorde-operation-invocation",

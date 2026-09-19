@@ -259,7 +259,7 @@ class StudioServerTests(unittest.TestCase):
                         )
                     )
 
-    @verifies("scenario.development.execute-operation")
+    @verifies("scenario.harness.execute-operation")
     def test_direct_execution_and_cli_skill_launcher_json_parity(self):
         value = invocation()
         _, direct = self.run_graph(value)
@@ -357,7 +357,7 @@ class StudioServerTests(unittest.TestCase):
             "workspace_mismatch", json.loads(result.stdout)["errors"][0]["code"]
         )
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_loop_executes_mutations_and_checkpoints_only_inside_fixture_worktree(self):
         primary_transfer = self.change_fixture.primary / "app/transfer.py"
         primary_before = primary_transfer.read_bytes()
@@ -390,7 +390,7 @@ class StudioServerTests(unittest.TestCase):
         )
         self.assertEqual(primary_before, primary_transfer.read_bytes())
 
-    @verifies("scenario.development.specify-loop", "scenario.harness.graph-inspection")
+    @verifies("scenario.specify-loop.independent", "scenario.harness.graph-inspection")
     def test_standalone_specify_loop_finishes_spec_only_in_its_own_fixture(self):
         fixture = self.spec_fixture
 

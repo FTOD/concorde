@@ -75,9 +75,9 @@ class TargetDiscoveryTests(unittest.TestCase):
 
     @verifies(
         "scenario.harness.graph-inspection",
-        "scenario.development.graph-execution",
-        "scenario.development.resume-bound",
-        "scenario.development.standalone-review",
+        "scenario.harness.graph-execution",
+        "scenario.dev-loop.resume-bound",
+        "scenario.review.standalone",
     )
     def test_public_parent_executes_its_inspected_child_and_resume_skips_discovery(
         self,
@@ -133,7 +133,7 @@ class TargetDiscoveryTests(unittest.TestCase):
                     )
 
     @verifies(
-        "scenario.harness.graph-inspection", "scenario.development.graph-execution"
+        "scenario.harness.graph-inspection", "scenario.harness.graph-execution"
     )
     def test_blocked_discovery_keeps_typed_output_and_never_enters_dependent_work(self):
         def unsupported(stage, snapshot, data, cwd):
@@ -176,7 +176,7 @@ class TargetDiscoveryTests(unittest.TestCase):
                 )
 
     @verifies(
-        "scenario.development.graph-execution", "scenario.development.describe-policy"
+        "scenario.harness.graph-execution", "scenario.harness.describe-policy"
     )
     def test_trusted_bound_target_and_policy_preview_preserve_admission(self):
         fixture, model = self.fixture()
@@ -225,7 +225,7 @@ class TargetDiscoveryTests(unittest.TestCase):
         self.assertEqual("described", preview["result"]["status"], preview)
         self.assertEqual([], model.calls)
 
-    @verifies("scenario.development.graph-execution")
+    @verifies("scenario.harness.graph-execution")
     def test_target_and_dispatch_graph_revisions_invalidate_review_evidence(self):
         from concorde.review import review
         from tests.concorde.operations.test_review import ReviewTests
