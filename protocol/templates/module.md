@@ -18,7 +18,11 @@ not business facts, semantic completeness or a required website layout.
 | Term | Meaning / definition |
 | --- | --- |
 | Coordinator | [Define this page's new concept in familiar language.] |
-| [Provider term](provider.md#terminology) | Defined in the provider's Terminology table; include that document explicitly. |
+| [Provider term](provider.md#terminology) | [Optionally repeat or faithfully restate the canonical meaning without changing its constraints.] Source: Provider. |
+
+[Imported terms retain direct canonical links and source attribution. Include each defining unit
+explicitly even when its meaning is repeated here; check restatements when the source changes.
+A source-only row is also permitted. This allowance is not for copying formal contracts or schemas.]
 
 ## Usage
 

@@ -126,9 +126,14 @@ keeps schema, semantics and example once; participant metadata binds ID/version/
 readable obligations. Necessary provider definitions must be included by explicit references.
 
 Write for someone who knows general software but none of this project's implementation. Start
-with what problem the page solves, then an early Terminology table. Define each needed concept once;
-imported terms link directly to the defining document's #terminology table without copied definitions.
-Include required definition units explicitly in references; never follow links as a context grant.
+with what problem the page solves, then an early Terminology table. Give each needed concept one
+canonical definition. Imported terms link directly to the defining document's #terminology table and
+name that source; their rows may repeat or faithfully restate the meaning for reading convenience.
+Preserve the source's meaning and constraints, without adding a competing definition; check affected
+restatements when the canonical source changes. Link-only imports remain permitted. This allowance is
+only for terminology, not duplicate formal requirements, scenarios, interface contracts or schemas.
+Include required definition units explicitly in references even when their meaning is repeated locally;
+neither links nor restatements grant context.
 Terminology is not another entity/file inventory: keep contextual entity duties in Design/Relationships.
 
 Explain one normal interaction and its outcome before rare failures or recovery. Use a small concrete

@@ -10,7 +10,7 @@ behavior is correct or fully implemented.
 | --- | --- |
 | Structural validation | Deterministic checks of document shape, identity, ownership, references and other declared consistency rules. |
 | Semantic completeness | Whether the specification supplies the meaning needed for a task; valid syntax alone cannot establish it. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | One cohesive software responsibility, such as planning a change or publishing documentation. It need not be a separate package. Source: Concorde Framework. |
 | [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Reference](registry.md#terminology) | Defined in Registry. |
 | [Document role](values.md#terminology) | Defined in Identities and versions. |
@@ -37,10 +37,13 @@ provider does not satisfy that requirement. Complementary participants must sele
 version, and a diagram cannot invent undeclared entities. Scoped diagrams can omit irrelevant entities;
 they need not become a second inventory.
 
-Terminology follows the same rule: an imported term links directly to its defining table, and that
-unit must be explicitly included. A table of unexplained names or forwarding links is not a substitute
-for readable meaning. Structural checks verify placement and links; review still asks whether the
-terms and explanations help the intended reader.
+Terminology follows the same rule: an imported term links directly to its defining table and names
+that source. Its row may repeat or faithfully restate the meaning for reading convenience, but the
+complete defining unit must still be explicitly included. The restatement creates no new authority
+and cannot add, remove or change the source's constraints. Check affected restatements when a canonical
+definition changes. This allowance does not extend to duplicate formal obligations or schemas.
+Structural checks verify placement and direct canonical links, not semantic equivalence; review checks
+source attribution, consistency and whether the terms and explanations help the intended reader.
 
 ## Interpreting the result
 

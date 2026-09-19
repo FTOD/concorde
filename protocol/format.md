@@ -40,9 +40,15 @@ explicitly; the presence of prose is not proof that its explanation is sufficien
 Every module-role topic starts with a short orienting introduction followed by `## Terminology` as
 its first level-2 section; the entry puts Terminology immediately after Purpose. There is exactly one
 Terminology section, with a nonempty two-column Markdown table headed `Term` and `Meaning / definition`.
-A term is either defined plainly in its row or linked to its canonical table by a relative Markdown
-link ending in `#terminology`. Imported rows say where the term is defined rather than copy its
-meaning. Qualify distinct meanings instead of merging them. Do not list files, implementation IDs or
+A local term is defined plainly in its row. An imported term in the `Term` column links directly to
+its canonical table by a relative Markdown link ending in `#terminology`. Its `Meaning / definition`
+cell identifies the source and MAY also repeat or faithfully restate the definition for reading
+convenience. A restatement preserves the canonical meaning and constraints, creates no new authority,
+and must be checked for consistency when its source changes. Link-only imports remain permitted.
+For example: `| [Reservation](inventory.md#terminology) | Stock held before checkout. Source: Inventory. |`
+The source remains explicitly included even when the meaning is repeated locally. This permission
+does not extend to duplicate formal obligations, interface contracts or schemas.
+Qualify distinct meanings instead of merging them. Do not list files, implementation IDs or
 all declared entities to fill the table. If no specialized terms are needed, state that explicitly
 instead of inventing rows. Implementation-role units MAY use the same convention for orientation.
 The heading publishes the stable `terminology` anchor. Necessary linked tables must belong to the

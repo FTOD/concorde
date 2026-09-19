@@ -98,11 +98,17 @@ start with Purpose, Terminology, Usage, Design and Relationships. Topics have a 
 then Terminology as their first level-2 section. Use a nonempty `Term` / `Meaning / definition` table;
 if genuinely unnecessary, state `No specialized terminology.` rather than invent terms.
 
-Define a concept once in its canonical table. Other pages link the term directly to that document's
-`#terminology` table and do not copy its definition. Include the defining unit explicitly in the
-Module's context; a link cannot silently grant it. Both validators reject missing/noncanonical table
-links or links to excluded definitions. Entity identity/file listings remain metadata, and contextual
-entity duties remain in Design/Relationships; the term table is not another inventory.
+Give a concept one canonical definition. Other pages link the term directly to that document's
+`#terminology` table and name the source in the meaning cell. They may repeat or faithfully restate
+the meaning for reading convenience, without changing its constraints or creating a second authority.
+For example: `| [Reservation](inventory.md#terminology) | Stock held before checkout. Source: Inventory. |`
+Link-only imports remain permitted. Check affected restatements when the canonical definition changes;
+this allowance does not extend to duplicate formal obligations, interface contracts or schemas.
+Include the defining unit explicitly in the Module's context even when its meaning is repeated;
+neither a link nor a restatement grants it. Both validators reject noncanonical table links or links
+to excluded definitions; semantic review checks faithful meaning and source attribution. Entity
+identity/file listings remain metadata, and contextual entity duties remain in Design/Relationships;
+the term table is not another inventory.
 
 Explain a normal interaction before advanced recovery, use concrete illustrations, and connect design
 choices to the problems they prevent. Private API catalogs, serialization algorithms and exact

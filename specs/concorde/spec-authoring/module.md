@@ -29,8 +29,11 @@ Spec documents. Supply the task, constraints and current complete owned/direct-r
 this private bound provider has no direct Skill/CLI entry and does not select a different owner.
 Its author returns full Markdown replacements for host acceptance, never direct project writes.
 Explain consumer usage, important guarantees and design in Module Specs; define exact obligations
-and internal constraints in Implementation Specs. Keep Terminology definitions canonical and
-preserve stable identities.
+and internal constraints in Implementation Specs. Keep one canonical definition per term and
+preserve stable identities. Imported Terminology rows may repeat or faithfully restate the meaning
+with a direct link to the canonical table and explicit source attribution. Preserve its constraints,
+check affected restatements when the source changes, and include the complete defining unit explicitly
+in context. This reading aid does not permit duplicate formal obligations, interface contracts or schemas.
 
 Unknown meaning returns attributed gaps without replacements. Foreign, malformed or stale output
 is rejected with prior document bytes and blockers preserved. Referencing a provider permits

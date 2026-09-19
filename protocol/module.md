@@ -24,12 +24,23 @@ A composite Module may delegate all realization and bind no implementation files
 ### Terminology
 
 Introduce the concepts a reader needs before use and design. Use a `Term` / `Meaning / definition`
-table, not an entity inventory. Define a concept only in its canonical table; a later page links to
-that table without copying the definition. For example, a Checkout topic can link Inventory's
-Terminology table for Reservation while explaining Checkout's own duty to handle a rejected request
-in Usage. The table defines the word; the collaboration prose explains what this Module does with it.
-Required definitions must be explicitly included in context. Avoid circular or forwarding-only
-chains, and do not require a reader to know a private class to understand its domain concept.
+table, not an entity inventory. Give a concept one canonical definition; a later page links the term
+directly to that table and names the source. It may also repeat or faithfully restate the meaning so
+the reader can understand the page without jumping away. For example, if Inventory defines Reservation
+as "Stock held before checkout", a Checkout topic can use:
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Reservation](inventory.md#terminology) | Stock held before checkout. Source: Inventory. |
+
+This illustrative link stands for the project's actual defining document. The imported row is a
+reading aid, not a second authority: preserve the source's meaning and constraints, and check affected
+restatements when that source changes. Link-only imports are also permitted. Explain Checkout's own
+duty to handle a rejected request in Usage, not by extending the imported term's definition.
+Required defining units must still be explicitly included in context; a local restatement cannot
+replace them. This allowance does not duplicate formal obligations, interface contracts or schemas.
+Avoid circular or forwarding chains, and do not require a reader to know a private class to understand
+its domain concept.
 
 ### Usage
 

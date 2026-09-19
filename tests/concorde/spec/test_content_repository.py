@@ -10,7 +10,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.review.review import _changes
 from concorde.harness.context import (
     _stale_on_resolution_error,
     context_documents,
@@ -19,6 +18,7 @@ from concorde.harness.context import (
 )
 from concorde.harness.effects import EffectDeclaration
 from concorde.harness.permissions import PolicyBinding, compile_policy
+from concorde.review.review import _changes
 from concorde.spec.content_changes import (
     apply_author_changes,
     author_candidate,
@@ -235,13 +235,22 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
                 "| Term | Meaning / definition |\n| --- | --- |\n| Reservation | Stock held before checkout. |",
             )
         )
-        topic.write_text(
-            topic.read_text().replace(
-                "No specialized terminology.",
-                "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../b/module.md#terminology) | Defined by B. |",
-            )
-        )
-        self.repository().validate()
+        topic_original = topic.read_text()
+        for meaning in (
+            "Defined by B.",
+            "Stock held before checkout. Source: B.",
+            "Stock set aside before checkout. Source: B.",
+        ):
+            with self.subTest(meaning=meaning):
+                topic.write_text(
+                    topic_original.replace(
+                        "No specialized terminology.",
+                        "| Term | Meaning / definition |\n| --- | --- |\n"
+                        f"| [Reservation](../b/module.md#terminology) | {meaning} |",
+                    )
+                )
+                self.repository().validate()
+        # A local restatement neither replaces the source nor relaxes its context checks.
         before = self.repository().spec_context("module.a")
         definition.write_text(
             definition.read_text().replace(
@@ -263,7 +272,7 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         definition.write_text(
             original.replace(
                 "No specialized terminology.",
-                "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../c/module.md#terminology) | Defined by C. |",
+                "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../c/module.md#terminology) | Stock set aside before checkout. Source: C. |",
             )
         )
         with self.assertRaisesRegex(SpecError, "no local canonical definition"):

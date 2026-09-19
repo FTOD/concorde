@@ -26,8 +26,9 @@ Reading content MUST explain:
 
 - **Purpose:** responsibility, intended consumers, scope and relevant non-goals.
 - **Terminology:** the concepts needed to understand this document, introduced before detailed use.
-  Define a term once in its canonical Terminology table; elsewhere link to that table instead of
-  repeating a definition. This is a reader aid, not an entity inventory or file-binding declaration.
+  Give each term one canonical Terminology definition; elsewhere link directly to that table and
+  MAY repeat or faithfully restate its meaning with explicit source attribution for reading convenience.
+  This is a reader aid, not an entity inventory or file-binding declaration.
 - **Usage:** when and how to use the Module, concepts and prerequisites, actual entry points,
   inputs, results, effects, errors and applicable repeat, cancellation and compatibility behavior.
   Start with a coherent explanation rather than asking readers to assemble instructions from formal
@@ -91,8 +92,14 @@ of current behavior; preserve any still-applicable obligations in the current sp
 
 Terminology tables MUST contain only concepts relevant to the page. A local definition uses familiar
 language rather than another chain of unexplained terms. An imported term links directly to its
-canonical document's Terminology table; an intermediate glossary that only forwards the reader is
-not its definition. Table links grant no context: required defining units must be explicitly included.
+canonical document's Terminology table and identifies that source. Its row MAY repeat or faithfully
+restate the definition so readers need not navigate away to understand the term. Such a restatement
+MUST preserve the canonical meaning without adding, removing or changing its constraints; it is not
+another authoritative definition. Changes to the canonical definition MUST include checking affected
+restatements for consistency. An intermediate glossary, even one containing a restatement, is not the
+canonical source. This permission applies only to terminology explanations, not duplicate formal
+requirements, scenarios, interface contracts or schemas. Neither links nor restatements grant context:
+required defining units must still be explicitly included.
 Entity identities and realization bindings stay in metadata; Design and Relationships explain how
 particular entities participate. A glossary neither duplicates those declarations nor replaces that
 contextual explanation. Identical words with distinct meanings must be qualified explicitly.
@@ -166,7 +173,8 @@ The resolved reading subset MUST explain purpose, correct use, design and obliga
 undeclared reading or source code supplying missing meaning. For every child and direct dependency,
 state responsibility, use conditions, canonical promises relied upon and local obligations/reactions.
 Necessary provider definitions must be included through explicit references; use ordinary links,
-not copies or transclusion. Included entities keep their owner and do not join the consumer's local
+not copies or transclusion as a substitute for inclusion. Attributed terminology restatements under
+P1 aid reading but do not replace those complete defining units. Included entities keep their owner and do not join the consumer's local
 entity inventory, diagram or implementation listing.
 
 Record exact source-byte digests, member roles, document identity, owner and inclusion provenance,
@@ -495,9 +503,15 @@ explicitly; the presence of prose is not proof that its explanation is sufficien
 Every module-role topic starts with a short orienting introduction followed by `## Terminology` as
 its first level-2 section; the entry puts Terminology immediately after Purpose. There is exactly one
 Terminology section, with a nonempty two-column Markdown table headed `Term` and `Meaning / definition`.
-A term is either defined plainly in its row or linked to its canonical table by a relative Markdown
-link ending in `#terminology`. Imported rows say where the term is defined rather than copy its
-meaning. Qualify distinct meanings instead of merging them. Do not list files, implementation IDs or
+A local term is defined plainly in its row. An imported term in the `Term` column links directly to
+its canonical table by a relative Markdown link ending in `#terminology`. Its `Meaning / definition`
+cell identifies the source and MAY also repeat or faithfully restate the definition for reading
+convenience. A restatement preserves the canonical meaning and constraints, creates no new authority,
+and must be checked for consistency when its source changes. Link-only imports remain permitted.
+For example: `| [Reservation](inventory.md#terminology) | Stock held before checkout. Source: Inventory. |`
+The source remains explicitly included even when the meaning is repeated locally. This permission
+does not extend to duplicate formal obligations, interface contracts or schemas.
+Qualify distinct meanings instead of merging them. Do not list files, implementation IDs or
 all declared entities to fill the table. If no specialized terms are needed, state that explicitly
 instead of inventing rows. Implementation-role units MAY use the same convention for orientation.
 The heading publishes the stable `terminology` anchor. Necessary linked tables must belong to the

@@ -259,13 +259,7 @@ function classify(path: string, value: unknown) {
 it("terminology links select an admitted canonical table, not an implicit or forwarding read", () => {
   const source = "specs/bank/module.md",
     provider = "specs/transfer/module.md";
-  put(
-    source,
-    readFileSync(resolve(root, source), "utf8").replace(
-      "No specialized terminology.",
-      "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../transfer/module.md#terminology) | Defined by Transfer. |",
-    ),
-  );
+  const sourceOriginal = readFileSync(resolve(root, source), "utf8");
   const original = readFileSync(resolve(root, provider), "utf8");
   put(
     provider,
@@ -274,17 +268,33 @@ it("terminology links select an admitted canonical table, not an implicit or for
       "| Term | Meaning / definition |\n| --- | --- |\n| Reservation | Stock held before checkout. |",
     ),
   );
-  expect(() => loadScopedRegistry(root)).toThrow(
-    /Terminology definition outside/,
-  );
-  targets[0].references = [{ kind: "module", id: "service.transfer" }];
-  save();
-  expect(() => loadScopedRegistry(root)).not.toThrow();
+  for (const meaning of [
+    "Defined by Transfer.",
+    "Stock held before checkout. Source: Transfer.",
+    "Stock set aside before checkout. Source: Transfer.",
+  ]) {
+    put(
+      source,
+      sourceOriginal.replace(
+        "No specialized terminology.",
+        `| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../transfer/module.md#terminology) | ${meaning} |`,
+      ),
+    );
+    targets[0].references = [];
+    save();
+    expect(() => loadScopedRegistry(root)).toThrow(
+      /Terminology definition outside/,
+    );
+    targets[0].references = [{ kind: "module", id: "service.transfer" }];
+    save();
+    expect(() => loadScopedRegistry(root)).not.toThrow();
+  }
+  // A restatement still cannot turn an intermediate glossary into the canonical source.
   put(
     provider,
     original.replace(
       "No specialized terminology.",
-      "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../ledger/module.md#terminology) | Defined elsewhere. |",
+      "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../ledger/module.md#terminology) | Stock set aside before checkout. Source: Ledger. |",
     ),
   );
   expect(() => loadScopedRegistry(root)).toThrow(/no canonical definition/);
