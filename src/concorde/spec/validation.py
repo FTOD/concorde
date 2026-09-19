@@ -19,6 +19,8 @@ from .repository_base import (
     SpecError,
     SpecTarget,
     digest,
+    check_input_error,
+    check_input_members,
     entry_exists,
     is_directory_entry,
     read_file,
@@ -27,7 +29,7 @@ from .repository_base import (
 from .repository import SpecRepository
 from .content_model import reading_problems
 
-from .typed_data import checked_path
+from .typed_data import TypedDataError, checked_path
 from .verification import DeclarationError, scan_declarations
 
 
@@ -868,6 +870,37 @@ def definition_ids(repository: RepositoryCore) -> set[str]:
     return ids
 
 
+def check_input_findings(
+    repository: RepositoryCore, inputs: list[tuple[str, str]] | None = None
+) -> tuple[Finding, ...]:
+    """Preflight every registered required input without executing checks or reading content.
+
+    Availability/membership joins validation identity when the caller collects assessed inputs;
+    byte contents remain the configured runner's check-revision evidence.
+    """
+    findings = []
+    for check_id, check in sorted(repository.checks.items()):
+        for relative in check.get("inputs", []):
+            try:
+                state = check_input_members(repository.root, relative)
+            except (SpecError, TypedDataError, OSError) as problem:
+                error = check_input_error(check, relative, problem)
+                findings.append(
+                    Finding(
+                        "CONCORDE-CHECK-001",
+                        "error",
+                        error.field,
+                        f"{error.code}: {error}",
+                        "Restore the required input or reconcile its check registration; do not skip missing inputs.",
+                        subject_id=check_id,
+                    )
+                )
+                state = (error.code, error.field, str(error))
+            if inputs is not None:
+                inputs.append((f"check-input:{check_id}:{relative}", digest(state)))
+    return tuple(findings)
+
+
 def validate_repository(
     root: str | Path,
     target_id: str | None = None,
@@ -897,6 +930,7 @@ def validate_repository(
         )
         if target_id and target_id != ".":
             repository.select(target_id)
+        findings.extend(check_input_findings(repository, inputs))
         definitions = {}
         bindings = []
         contexts = {}
@@ -1004,6 +1038,7 @@ def validate_repository(
             "source_digest": digest(sorted(inputs)),
             "claims": [
                 "registry structure",
+                "configured check input availability and path safety",
                 "document-unit identity/ownership and complete source members",
                 "Protocol-defined reading subset and reading-entry structure",
                 "requirement, scenario and entity syntax",

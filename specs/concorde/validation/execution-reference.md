@@ -77,6 +77,15 @@ backend is implemented. There is no task/configuration option to disable enforce
 or report writers must migrate to the issued scratch paths, while source-formatting writes belong
 to implementation. Finer read, network and credential policy is outside this interface's scope.
 
+Before executing commands, structural validation preflights every registered explicit input for
+existence and safe file/directory membership. An empty directory is valid; a missing input, symlink
+(including a dangling link or one under a bytecode-excluded directory), or non-regular file blocks
+validation. Directory revision membership excludes `__pycache__`, `.pyc` and `.pyo` as before; it does
+not skip unsafe aliases. Both preflight findings and revision failures identify the owning
+`check_id`, `target_id` and offending path. Missing inputs retain `missing_source`; canonical-path
+and direct symlink admission retain `invalid_field`, and unsafe directory members use `unsafe_path`.
+No missing-file placeholder or implicit optional-input policy is introduced.
+
 Before and after execution, check freshness covers registered commands and explicit inputs plus
 the selected Module's implementation. The execution-policy identity `project-read-only-v1` also
 participates in the digest, invalidating evidence from the former unrestricted runner. Candidate

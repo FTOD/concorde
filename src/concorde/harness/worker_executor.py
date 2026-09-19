@@ -21,6 +21,7 @@ from typing import Any, Literal
 from . import worker_profile
 from .model_selection import WorkerSelection
 from .permissions import NormalizedPolicy
+from .pi_rpc import PiRun
 from .pi_worker import ChildAgent, PiWorkerRuntime, WorkerExecutionError, WorkerLaunch
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]
@@ -39,11 +40,13 @@ class OperationExecutionError(RuntimeError):
         outcome: Outcome = "failed",
         code: str | None = None,
         usage: ExecutionUsage | None = None,
+        run: PiRun | None = None,
     ):
         super().__init__(message)
         self.outcome: Outcome = outcome
         self.code = code
         self.usage = usage
+        self.run = run
 
 
 @dataclass(frozen=True)
@@ -406,7 +409,9 @@ class WorkerExecutor:
             )
             result = runtime(launch, checks=checks, **services)
         except WorkerExecutionError as error:
-            raise OperationExecutionError(str(error), outcome=error.outcome) from error
+            raise OperationExecutionError(
+                str(error), outcome=error.outcome, run=error.run
+            ) from error
         reported = result.usage
         usage = ExecutionUsage(
             model=invocation.selection.model,

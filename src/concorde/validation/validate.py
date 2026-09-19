@@ -41,9 +41,15 @@ def validate(run, run_checks: bool = True) -> dict:
     )
     if report.status != "success":
         progress(run.repository.root, status="blocked", outcome="invalid_spec")
+        input_errors = [
+            finding.message
+            for finding in report.findings
+            if finding.rule_id == "CONCORDE-CHECK-001"
+        ]
         return run.response(
             "failed",
-            "Spec structure or shared contracts failed deterministic validation.",
+            "Spec structure or shared contracts failed deterministic validation."
+            + (" " + "; ".join(input_errors) if input_errors else ""),
         )
     checked_targets = (
         tuple(run.repository.targets.values())

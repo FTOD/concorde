@@ -20,7 +20,7 @@ from .frontmatter import parse_document as parse_document
 from .schema import ContractError as ContractError
 from .schema import admit as admit
 from .schema import validate as validate
-from .typed_data import canonical, checked_path, decode, safe_path
+from .typed_data import TypedDataError, canonical, checked_path, decode, safe_path
 
 PROFILE_VERSION = 15
 PROTOCOL_VERSION = "10.0.0"
@@ -109,6 +109,52 @@ def read_file(root: Path, relative: str) -> bytes:
     descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     with os.fdopen(descriptor, "rb") as stream:
         return stream.read()
+
+
+def check_input_error(check: dict, relative: str, error: Exception) -> SpecError:
+    """Attribute input admission/read failures without changing their error identifier."""
+    return SpecError(
+        f"configured check {check['id']} (target {check['target_id']}) input {relative}: {error}",
+        getattr(error, "code", "invalid_spec"),
+        getattr(error, "field", "") or relative,
+    )
+
+
+def check_input_members(root: Path, relative: str) -> tuple[str, ...]:
+    """Required check files, using the same exclusions for preflight and revision hashing.
+
+    Unlike optional implementation bindings, every explicit input must exist. Directory
+    inputs may be empty, but symlinks (even excluded members) cannot alias another source.
+    """
+    path = checked_path(root, relative, relative)
+    if not path.exists():
+        raise SpecError(
+            f"required check input is missing: {relative}", "missing_source", relative
+        )
+    if path.is_file():
+        return (relative,)
+    if not path.is_dir():
+        raise SpecError(
+            f"check input must be a regular file or directory: {relative}",
+            "unsafe_path",
+            relative,
+        )
+    members = []
+    for member in sorted(path.rglob("*")):
+        name = member.relative_to(root).as_posix()
+        if member.is_symlink():
+            raise SpecError(
+                f"check input cannot contain symlinks: {name}", "unsafe_path", name
+            )
+        if member.is_dir():
+            continue
+        if not member.is_file():
+            raise SpecError(
+                f"check input is not a regular file: {name}", "unsafe_path", name
+            )
+        if "__pycache__" not in member.parts and member.suffix not in {".pyc", ".pyo"}:
+            members.append(name)
+    return tuple(members)
 
 
 def strings(value: Any, label: str, *, nonempty: bool = False) -> tuple[str, ...]:
@@ -629,7 +675,10 @@ class RepositoryCore:
             ):
                 raise SpecError("check timeout must be 1..3600 seconds")
             for path in strings(raw.get("inputs", []), "check inputs"):
-                safe_path(path)
+                try:
+                    safe_path(path, path)
+                except TypedDataError as error:
+                    raise check_input_error(raw, path, error) from error
             self.checks[key] = raw
         for target in self.targets.values():
             if any(

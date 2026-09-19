@@ -8,6 +8,7 @@ separators, which may occur inside JSON strings) and an optional trailing ``\\r`
 the session statistics and ends the process. It knows nothing about Concorde contracts: the caller
 interprets the collected tool results.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,11 @@ from typing import Any, Mapping, Sequence
 
 
 class PiRpcError(RuntimeError):
-    """The Pi process failed, broke the protocol or exited before the run settled."""
+    """A safe failure summary with the completed run retained for host-only diagnostics."""
+
+    def __init__(self, message: str, run: PiRun | None = None):
+        super().__init__(message)
+        self.run = run
 
 
 class PiRpcTimeout(PiRpcError):
@@ -51,7 +56,9 @@ def _records(stream, sink: queue.Queue) -> None:
     buffer = b""
     try:
         while True:
-            chunk = stream.read1(65536) if hasattr(stream, "read1") else stream.read(65536)
+            chunk = (
+                stream.read1(65536) if hasattr(stream, "read1") else stream.read(65536)
+            )
             if not chunk:
                 break
             buffer += chunk
@@ -64,22 +71,46 @@ def _records(stream, sink: queue.Queue) -> None:
         sink.put(("eof", None))
 
 
-def run_prompt(argv: Sequence[str], *, cwd: str, env: Mapping[str, str], message: str,
-               timeout: float, popen=subprocess.Popen) -> PiRun:
+def run_prompt(
+    argv: Sequence[str],
+    *,
+    cwd: str,
+    env: Mapping[str, str],
+    message: str,
+    timeout: float,
+    popen=subprocess.Popen,
+) -> PiRun:
     """Run one prompt to settlement and return everything the process reported."""
     started = monotonic()
     deadline = started + timeout
-    process = popen(list(argv), cwd=cwd, env=dict(env), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE, bufsize=0)
+    process = popen(
+        list(argv),
+        cwd=cwd,
+        env=dict(env),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=0,
+    )
     records: queue.Queue = queue.Queue()
-    stderr_chunks: list[bytes] = []
-    threading.Thread(target=_records, args=(process.stdout, records), daemon=True).start()
-    stderr_reader = threading.Thread(target=lambda: stderr_chunks.append(process.stderr.read()), daemon=True)
+    stderr_tail = bytearray()
+
+    def read_stderr() -> None:
+        while chunk := process.stderr.read(65536):
+            stderr_tail.extend(chunk)
+            del stderr_tail[:-20000]
+
+    threading.Thread(
+        target=_records, args=(process.stdout, records), daemon=True
+    ).start()
+    stderr_reader = threading.Thread(target=read_stderr, daemon=True)
     stderr_reader.start()
     run = PiRun()
 
     def send(command: dict[str, Any]) -> None:
-        process.stdin.write((json.dumps(command, separators=(",", ":")) + "\n").encode("utf-8"))
+        process.stdin.write(
+            (json.dumps(command, separators=(",", ":")) + "\n").encode("utf-8")
+        )
         process.stdin.flush()
 
     def stop() -> None:
@@ -94,7 +125,7 @@ def run_prompt(argv: Sequence[str], *, cwd: str, env: Mapping[str, str], message
                 stream.close()
             except OSError:
                 pass
-        run.stderr = b"".join(stderr_chunks).decode("utf-8", "replace")
+        run.stderr = bytes(stderr_tail).decode("utf-8", "replace")
         run.exit_code = process.returncode
         run.wall_seconds = monotonic() - started
         return run
@@ -108,11 +139,17 @@ def run_prompt(argv: Sequence[str], *, cwd: str, env: Mapping[str, str], message
         except queue.Empty as error:
             raise PiRpcTimeout(f"Pi run did not settle within {timeout}s") from error
         if kind == "eof":
+            # EOF can precede process reaping. Keep a natural startup exit status when
+            # available, but never wait indefinitely for a process that only closed stdout.
+            try:
+                process.wait(timeout=max(0.0, min(0.1, deadline - monotonic())))
+            except subprocess.TimeoutExpired:
+                pass
             raise PiRpcError("Pi process closed its output before the run settled")
         try:
             record = json.loads(line.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
-            raise PiRpcError(f"Pi wrote a record that is not JSON: {error}") from error
+            raise PiRpcError("Pi wrote a record that is not JSON") from error
         if not isinstance(record, dict):
             raise PiRpcError("Pi wrote a record that is not a JSON object")
         return record
@@ -122,7 +159,8 @@ def run_prompt(argv: Sequence[str], *, cwd: str, env: Mapping[str, str], message
             record = next_record()
             if record.get("type") == "response" and record.get("id") == request_id:
                 if record.get("success") is not True:
-                    raise PiRpcError(f"Pi rejected {record.get('command')}: {record.get('error')}")
+                    run.events.append(record)
+                    raise PiRpcError("Pi rejected an RPC command")
                 return record
             observe(record)
 
@@ -133,7 +171,13 @@ def run_prompt(argv: Sequence[str], *, cwd: str, env: Mapping[str, str], message
         kind = record.get("type")
         if kind == "extension_ui_request" and record.get("method") in _DIALOG_METHODS:
             # A worker has no human at the other end: every dialog is answered as cancelled.
-            send({"type": "extension_ui_response", "id": record.get("id"), "cancelled": True})
+            send(
+                {
+                    "type": "extension_ui_response",
+                    "id": record.get("id"),
+                    "cancelled": True,
+                }
+            )
             return
         run.events.append(record)
         if kind == "tool_execution_end":
@@ -155,14 +199,12 @@ def run_prompt(argv: Sequence[str], *, cwd: str, env: Mapping[str, str], message
             stop()
     except KeyboardInterrupt as error:
         stop()
-        finish()
-        raise PiRpcCancelled("Pi run cancelled by the host") from error
-    except PiRpcError:
+        raise PiRpcCancelled("Pi run cancelled by the host", run=finish()) from error
+    except PiRpcError as error:
         stop()
-        finish()
+        error.run = finish()
         raise
     except OSError as error:
         stop()
-        finish()
-        raise PiRpcError(f"Pi process I/O failed: {error}") from error
+        raise PiRpcError("Pi process I/O failed", run=finish()) from error
     return finish()

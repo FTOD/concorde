@@ -9,6 +9,8 @@ and admit its single typed result.
 from __future__ import annotations
 
 import importlib
+import json
+import tempfile
 import uuid
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -144,6 +146,49 @@ def worker_description(prompt, invocation, policy, **labels) -> dict:
     }
 
 
+def _record_worker_failure(host, invocation, error) -> str | None:
+    """Keep bounded stderr in a private run artifact, never in events or public State.
+
+    No prompts, RPC events, tool results or credential files are serialized. A diagnostic
+    write failure must not replace the original execution failure or cause a retry.
+    """
+    if error.run is None:
+        return None
+    try:
+        from ..spec.typed_data import checked_path
+
+        directory = checked_path(
+            host.project_root,
+            f".concorde/runs/{host.root_invocation_id or host.invocation_id}",
+        )
+        directory.mkdir(parents=True, exist_ok=True)
+        record = {
+            "launch_invocation_id": invocation.invocation_id,
+            "agent": invocation.agent,
+            "outcome": error.outcome,
+            "exit_code": error.run.exit_code,
+            "wall_seconds": error.run.wall_seconds,
+            "stderr_tail": error.run.stderr.encode("utf-8")[-20000:].decode(
+                "utf-8", "ignore"
+            ),
+        }
+        # Exclusive creation with mode 0600 avoids exposing diagnostics through umask
+        # defaults, existing files or symlink aliases. These are not worker grants.
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix="worker-",
+            suffix=".json",
+            dir=directory,
+            delete=False,
+        ) as stream:
+            json.dump(record, stream, sort_keys=True)
+            stream.write("\n")
+            return Path(stream.name).relative_to(host.project_root).as_posix()
+    except (OSError, ValueError):
+        return None
+
+
 def run_worker(
     host,
     invocation,
@@ -158,7 +203,7 @@ def run_worker(
 ) -> tuple[WorkerOutcome, dict]:
     """Run a bound worker with report-only issue authority; retain reports even on failure."""
     from ..issues.reporting import reporter_for_invocation
-    from .worker_executor import WorkerExecutor
+    from .worker_executor import OperationExecutionError, WorkerExecutor
 
     executor = host.executor or WorkerExecutor(host.package_root)
     reporter = reporter_for_invocation(
@@ -166,6 +211,17 @@ def run_worker(
     )
     try:
         outcome = executor(invocation, checks=checks, report_issue=reporter)
+    except OperationExecutionError as error:
+        diagnostic = _record_worker_failure(host, invocation, error)
+        if diagnostic is not None:
+            raise OperationExecutionError(
+                f"{error}; see host diagnostic {diagnostic}",
+                outcome=error.outcome,
+                code=error.code,
+                usage=error.usage,
+                run=error.run,
+            ) from error
+        raise
     finally:
         # Already accepted observations survive invalid completion, cancellation and time limits.
         for receipt in reporter.receipts:

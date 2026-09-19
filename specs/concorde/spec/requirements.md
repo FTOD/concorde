@@ -95,6 +95,14 @@ Validation SHALL NOT claim to prove semantic completeness.
 Configured implementation checks SHALL execute separately on the host using their registered argv
 and timeout_seconds.
 
+Structural validation preflights every registered explicit check input without running commands or
+reading input content. Inputs are required existing regular files or directories, never pending.
+Directory membership uses the check revision's bytecode exclusions, but symlinks remain forbidden
+even in excluded members. A missing or unsafe input produces a deterministic error finding naming
+the owning check, Module and offending path; a missing input is not an optional skipped source.
+Availability and admitted membership participate in the validation source identity; content-byte
+freshness remains separate configured-check evidence.
+
 ### req.spec.host-check-not-a-read-substitute — Check results never substitute for reading source
 
 A configured check's result SHALL NOT substitute for an agent reading source.
