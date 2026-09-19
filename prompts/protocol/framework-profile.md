@@ -94,10 +94,9 @@ code-writing invocations receive file contents with write authority, and only fo
 selected Module lists; they never change Spec documents, entity declarations or the registry. Code
 review and deterministic checks have separately declared read authority. The registry's reverse
 index never grants a writer another Module's Spec or unrelated code. How the host keeps an
-invocation within that authority belongs to the Harness Module's Specs, not to this profile. An
-outer developer-authorized maintenance session may read and modify the project directly;
-its explicit authorization does not silently widen normal worker permissions or become a project
-business contract.
+invocation within that authority belongs to the Harness Module's Specs, not to this profile. Task-authorized outer sessions may edit files, including `.concorde`, within their own workspace
+and task grant; the directory name creates no blanket host-only prohibition. Truthful evidence,
+concurrency safety and bounded worker phase permissions remain mandatory.
 
 Operation is the Framework's only executable entity. Each Operation declares input State, output
 State updates, effects, use conditions, execution policy and a permission ceiling. A caller can use
@@ -145,31 +144,45 @@ contracts are reviewed separately. An atomic application checks source versions 
 bytes if applying the proposed structure fails. Human acceptance is explicit where the selected
 workflow requires it; direct maintenance follows the developer's explicit task authorization.
 
-### P9. Candidate and delivery evidence belong to a worktree
+### P9. Task status and evidence have one primary authority
 
-One candidate worktree holds one change, including its component progress, gaps and implementation
-impact evidence. Partial work is inspectable and resumable, not represented as completed delivery.
-Validation and review evidence bind to actual candidate inputs. Changes to a file listed by several
-Modules invalidate evidence for every listing Module even if only one Module initiated the change.
-Shared Spec document changes invalidate evidence for the owner and every direct context consumer;
-inclusion never gives those consumers provider implementation files or write authority. Delivery
-preserves unrelated local changes, checks the actual integration and records incomplete cleanup
-separately from a completed merge. After the candidate is verified, delivery confirms pending
-entries: every declared pending file or directory that now exists has its marker removed by a
-deterministic host edit included in the delivered commit, and the receipt names the confirmed
-entries; an entry that still does not exist stays pending and is reported. No component
-independently delivers its enclosing change.
+One stable task/change ID owns a change; branch and path are mutable locators, not identity.
+Only the primary worktree keeps authoritative local `.concorde/status/` records and durable
+`.concorde/runs/` evidence, including candidate executions. A status records mode, goal, base,
+candidate, child ownership, phase, blockers and run references. Delivery and ordinary-Git manual
+merge are distinct outcomes; cleanup is separate and terminal records survive candidate deletion.
+Direct primary tasks need no secondary worktree. These local ignored records are not project
+configuration and are never merged between branches. Host persistence uses repository locking and
+atomic writes without granting a child access to primary source or index. Missing primary authority
+blocks persistence until recovery; it never creates a candidate-local replacement archive.
 
-### P10. Candidate worktrees, not session moves
+Evidence binds actual source worktree, branch, commit, dirty input identity and runtime/build/Skill
+provenance when known. A catalog is not execution evidence. Shared-file and shared-Spec edits
+invalidate all affected consumers' evidence. Delivery verifies actual integration, preserves
+unrelated changes and confirms pending entries only when they exist. Completed integration with
+cleanup pending is not an integration failure. Legacy worktrees, deliveries and candidate-local
+runs require explicit collision-checked migration, preserving history and retrying interruption;
+old readiness never becomes fresh validation implicitly.
 
-A mutating Operation requested from the primary worktree runs in a candidate worktree the host
-creates from the committed base: the host relays the same request to that candidate's own launcher
-and returns its result, whose workspace names the candidate. The requesting session stays in the
-worktree it started in and continues the change with the returned change identity; a session
-opened inside a candidate may also continue it. No workflow requires a new outer session, and
-changing a session's working directory does not erase prior cognitive inputs, so a session never
-moves between worktrees to follow work. A direct maintenance task explicitly authorized by the
-developer runs in the current worktree.
+### P10. Fresh task sessions, never session moves
+
+The user-facing main session understands needs and coordinates. It may delegate complete tasks
+to at most one layer of fresh task subagents; a task child may run a series of public Operations
+and continue one change to delivery, but never delegates tasks or moves worktrees. Bounded
+Operation workers are distinct from task children, not a way to evade actual harness depth or
+permissions. An Operation in an assigned candidate reuses it instead of creating a nested one.
+Ordinary consumer projects may use direct primary editing for simple authorized tasks.
+
+Concorde source maintenance defaults to a new candidate and a fresh Skill-free maintenance child.
+The main stays in its initial worktree and does not use its own Skills to govern that authoring.
+Disable inherited/discovered Concorde catalogs for both maintenance and test children; never fork
+old Skill bodies. After the writer builds, checks and commits, it stops writing. The main starts a
+separate fresh sibling test child in that same candidate with only explicitly selected candidate
+Skills, build and runtime provenance. Missing, stale, unreadable or out-of-candidate selections
+fail closed without name-based fallback. The tester cannot rewrite its governing Skills. Failed
+tests return to maintenance followed by another fresh tester. One writer owns a worktree at a time.
+Maintenance may end through ordinary Git; it is not required to use Concorde delivery. Integration
+requires explicit merge authorization and cleanup remains a separate action.
 
 ### Framework authoring and publication conventions
 

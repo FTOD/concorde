@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 
 from ..harness.change_worktree import (
-    STATE_PATH,
+    status_path,
     progress,
     read_change,
     save_change,
@@ -249,5 +249,13 @@ def tasks(run) -> dict:
     run.record_gaps("tasks", [])
     return run.response(
         answer=result["answer"],
-        artifacts=[artifact(run.repository.root, "change", STATE_PATH)],
+        artifacts=[
+            artifact(
+                run.repository.root,
+                "change",
+                status_path(
+                    read_change(run.repository.root, required=True)["change_id"]
+                ),
+            )
+        ],
     )

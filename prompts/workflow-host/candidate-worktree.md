@@ -2,9 +2,25 @@
 audience: ambient
 ---
 
-A mutating request from the primary worktree runs in a candidate worktree the host creates from
-the committed base; this session stays where it is and receives that candidate's result, whose
-workspace names the candidate's path, branch and change_id. Continue the same change from here
-with that change_id. Uncommitted primary edits are not carried into the candidate. Report Spec gaps
-or blocked execution as returned; do not work around the boundary. Non-implementation agents never
-receive implementation code or raw test logs.
+The user-facing session coordinates needs and may delegate a complete task to one fresh task
+child, or handle a simple consumer-project task directly. Task children never delegate tasks or
+move worktrees. They may run several public Operations on the same change through delivery;
+bounded Operation workers still obey the actual harness's depth and permission limits.
+
+A mutating Operation requested from a consumer primary normally runs in a host-created candidate;
+an Operation already in an assigned candidate reuses it. The requesting session stays where it
+started and receives path, branch and stable change_id. Uncommitted primary edits are not copied.
+Durable status and runs belong only to the primary coordinator, not duplicate candidate archives.
+Task-authorized `.concorde` edits in the owned workspace are not forbidden by directory name;
+preserve task scope, truthful evidence and concurrency safety, and obey actual worker grants.
+
+For Concorde source maintenance, the main creates a candidate and a fresh Skill-free maintenance
+child with inherited/discovered catalogs disabled. After the writer checks, commits and stops,
+a separate fresh sibling test child receives only exact candidate-built Skills and runtime
+provenance. Neither forks old Skill bodies or delegates tasks. The tester never rewrites governing
+Skills; failures return to maintenance and then a new tester. Maintenance may finish through
+ordinary Git with explicit merge authorization, without Concorde delivery. Skill metadata alone
+is not evidence of loading or execution. Never fall back to global or primary Skills.
+
+Report Spec gaps or blocked execution as returned. Non-implementation workers never receive
+implementation code or raw test logs.

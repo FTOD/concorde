@@ -154,7 +154,7 @@ review entry is removed, not retained as an alias; callers must select one of th
 
 No Skill returns a context manifest; `describe-policy` mode previews the exact stage
 grants any operation would receive without launching an agent or mutating project state. One change
-belongs to one linked worktree. `.concorde/worktree.json` records
+belongs to one linked worktree. the primary-owned `.concorde/status/<change_id>.json` records
 its task, phase/status, per-target plans and progress, gaps and verified revision. Auxiliary artifacts
 live under `.concorde/work/`; there is no separate attempt lifecycle.
 Context solving reports missing or inconsistent local dependency promises as structured Module Spec
@@ -165,7 +165,7 @@ facts through an explicit local Spec task, reconcile affected consumer/provider 
 new context. Completed component work can be resumed when its bound inputs remain current. Partial
 Spec changes stay in the explicitly marked candidate worktree; they do not change the accepted
 primary revision. Changed Spec/intent invalidates stale plan or check evidence.
-The primary worktree maintains `.concorde/worktrees.json` with every live linked worktree's basic
+The primary worktree maintains `.concorde/status/` with every live linked worktree's basic
 metadata and change status. `concorde-main` receives this inventory and identifies whether its own
 session is in the primary or a candidate worktree. Secondary AGENTS.md/CLAUDE.md guidance also points
 to the local state and the primary worktree, without granting access to other worktrees' contents.
@@ -412,17 +412,19 @@ instead loads the rendered `.pi/extensions/concorde-session.ts`, whose `concorde
 same requests through the launcher. Skills are not part of a worker's Harness. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
 and the [Operation registry](../specs/concorde/operations/composition.md) for definitions and mappings.
 
-Developing this checkout is direct developer-authorized maintenance in the current worktree,
-verified with the commands above and landed as one commit per verified step. Concorde's own graphs
-run on this checkout only when the developer explicitly asks for one. The build therefore renders
-the checkout's Claude Skills with `disable-model-invocation: true`, so the model never selects
-`concorde-dev-loop` on its own and the developer invokes a graph with its slash command or by naming
-it; installed consumer projections keep model-initiated invocation.
+Concorde source maintenance defaults to a new candidate and a fresh Skill-free maintenance child.
+The main stays in its initial worktree. The writer edits, formats, checks and commits, then stops.
+A separate fresh sibling test child receives only explicit candidate-built private Skills from
+`generated/session/`, with runtime and build provenance checked through `select-session`. Neither
+child inherits/discovers Concorde catalogs, forks old Skill bodies or delegates tasks. Failed tests
+return to maintenance and then another fresh tester. Ordinary Git integration is permitted after
+checks and explicit merge authorization; maintenance is not required to use Concorde delivery.
 
-Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree whose build supplied its projections.
-A further worktree exists only when the developer explicitly asks for a Concorde graph that changes
-the project: the host creates the candidate worktree from the committed base, runs the graph there
-through the candidate's own launcher and returns its result to the requesting session, which never
-moves. User-authorized delivery is a bounded action on both participating worktrees: a session in
-either can complete the integration while retaining its own Skills.
-See [source-checkout distribution](../specs/concorde/distribution/build.md).
+Consumers may delegate complete tasks one layer deep or edit simple authorized tasks directly in
+primary. Bounded Operation workers are not task delegates and never bypass actual harness limits.
+Task-authorized edits may include `.concorde` files in the owned workspace; preserve truthful
+evidence, task scope and concurrency safety. Primary-only `.concorde/status/<change_id>.json`
+records stable task coordination, delivery or manual merge and separate cleanup. Durable runs,
+including candidate executions, remain primary-only in `.concorde/runs/`. Terminal status remains
+after candidate deletion. Preview legacy migration with `migrate-status`; accept explicitly with
+`--apply` only after inspecting collisions and preserving backups. No live migration is automatic.

@@ -74,7 +74,7 @@ Every main invocation receives host-supplied workspace metadata. In the primary 
 all live linked worktrees and their basic change status, so ongoing work is visible without loading
 other worktrees' Spec or implementation bodies. In a secondary worktree it identifies the current
 candidate, its phase/status, and the primary worktree. The primary inventory is
-`.concorde/worktrees.json`; secondary lifecycle state is `.concorde/worktree.json`.
+`.concorde/status/`; secondary lifecycle state is the primary-owned `.concorde/status/<change_id>.json`.
 A worktree is a mutable candidate until its exact version is verified and delivered. Do not treat
 partial drafts as the accepted primary revision. Read-only awareness does not authorize cross-worktree
 reads or a continuation of the same agent session in another checkout.

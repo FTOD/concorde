@@ -119,6 +119,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         root_invocation_id=host_context.root_invocation_id or invocation_id,
     )
     record_progress = False
+    run_started = False
     task = None
     mutation = False
     host.observe(
@@ -228,7 +229,14 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         )
         if mutation and operation != "concorde-deliver":
             change = read_change(host.project_root)
-            if change and change["status"] in {"delivering", "cleanup_pending"}:
+            if change and (
+                change["status"] in {"delivering", "cleanup_pending"}
+                or (
+                    change.get("delivery")
+                    and change.get("cleanup", {}).get("status") == "pending"
+                    and change.get("outcome") == "delivered"
+                )
+            ):
                 record_progress = False
                 raise SpecError(
                     "this candidate is being delivered; resume delivery from either participating worktree",
@@ -236,7 +244,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                 )
 
     def check_configuration():
-        nonlocal host
+        nonlocal host, run_started
         if operation != "concorde-init" and configuration != load_configuration(
             host.project_root
         ):
@@ -252,6 +260,12 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                 "configuration_mismatch",
             )
         host = replace(host, configuration_snapshot=canonical(configuration))
+        if host.mode == "execute" and host.relay_target is None:
+            from .status_store import primary_root, record_run
+
+            host = replace(host, archive_root=primary_root(host.project_root))
+            record_run(host, operation=operation, task=task if mutation else None)
+            run_started = True
 
     def accept_output(output):
         outcome = output["data"].get("outcome", "completed")
@@ -429,6 +443,21 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                         "message": str(error),
                     }
                 )
+        if run_started:
+            try:
+                from .status_store import record_run
+
+                record_run(host, operation=operation, result=result)
+            except (ValueError, OSError) as error:
+                result["errors"].append(
+                    {
+                        "code": "state_persistence_failed",
+                        "field": "",
+                        "message": str(error),
+                    }
+                )
+                if result["status"] == "succeeded":
+                    result["status"] = "blocked"
         host_context.evidence.extend(host.evidence)
         host.observe(
             "operation_finished",

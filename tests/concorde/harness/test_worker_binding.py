@@ -292,7 +292,10 @@ class AgentBindingTests(unittest.TestCase):
             [
                 path
                 for path in sorted(call["launch"].read_paths)
-                if not path.startswith(".concorde/runs/")
+                if not (
+                    path.startswith(".concorde/work/")
+                    and path.endswith("/context.json")
+                )
             ]
             for call in (first, second)
         ]

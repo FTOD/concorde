@@ -11,6 +11,7 @@ import copy
 import os
 import subprocess
 import tempfile
+import threading
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
@@ -19,6 +20,14 @@ from typing import Literal, overload
 from ..spec.changes import apply_files, file_change
 from ..spec.repository import SpecError, identifier, read_file
 from ..spec.typed_data import canonical, checked_path, decode
+from .status_store import (
+    STATUS_PATH,
+    all_status,
+    primary_root,
+    read_status,
+    status_path,
+    write_status,
+)
 
 STATE_PATH = ".concorde/worktree.json"
 REGISTRY_PATH = ".concorde/worktrees.json"
@@ -27,10 +36,12 @@ DELIVERIES_PATH = ".concorde/deliveries"
 LOCAL_PATHS = (
     STATE_PATH,
     REGISTRY_PATH,
+    STATUS_PATH,
     WORK_PATH,
     DELIVERIES_PATH,
     ".concorde/runs",
     ".concorde/topology-proposals",
+    ".concorde/*.legacy-archive",
 )
 GUIDANCE_START = "\n<!-- concorde-change-worktree:start -->\n"
 GUIDANCE_END = "<!-- concorde-change-worktree:end -->\n"
@@ -94,6 +105,11 @@ def list_worktrees(root: Path) -> list[dict]:
 def workspace_identity(root: Path) -> tuple[dict | None, dict | None]:
     records = list_worktrees(root)
     if not records:
+        if (root / ".git").exists() or (root / ".git").is_symlink():
+            raise SpecError(
+                "Git primary authority is unavailable; restore it before retrying",
+                "primary_unavailable",
+            )
         return None, None
     current = next(
         (item for item in records if item["path"] == str(root.resolve())), None
@@ -102,27 +118,64 @@ def workspace_identity(root: Path) -> tuple[dict | None, dict | None]:
         raise SpecError(
             "An operation must start at its Git worktree root", "workspace_mismatch"
         )
-    return records[0], current
+    common = git_value(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    primary = None
+    for item in records:
+        if not item["alive"]:
+            continue
+        gitdir = git(Path(item["path"]), "rev-parse", "--absolute-git-dir", check=False)
+        if (
+            gitdir.returncode == 0
+            and Path(gitdir.stdout.strip()).resolve() == Path(common).resolve()
+        ):
+            primary = item
+            break
+    if primary is None:
+        raise SpecError(
+            "primary unavailable; restore its Git worktree and retry",
+            "primary_unavailable",
+        )
+    return primary, current
+
+
+_LOCKS: dict[str, threading.RLock] = {}
+_LOCK_DEPTH = threading.local()
 
 
 @contextmanager
 def repository_lock(root: Path):
-    """Serialize host registry updates and deliveries across linked worktrees."""
+    """Serialize coordinator writes, reentrant within one host thread."""
     common = git(
         root, "rev-parse", "--path-format=absolute", "--git-common-dir", check=False
     )
-    if common.returncode:
-        yield
-        return
-    import fcntl
+    key = common.stdout.strip() if common.returncode == 0 else str(root.resolve())
+    lock = _LOCKS.setdefault(key, threading.RLock())
+    with lock:
+        depths = getattr(_LOCK_DEPTH, "values", {})
+        _LOCK_DEPTH.values = depths
+        if depths.get(key, 0):
+            depths[key] += 1
+            try:
+                yield
+            finally:
+                depths[key] -= 1
+            return
+        import fcntl
 
-    lock = Path(common.stdout.strip()) / "concorde-worktrees.lock"
-    with lock.open("a+b") as stream:
-        fcntl.flock(stream, fcntl.LOCK_EX)
-        try:
+        location = (
+            Path(key) / "concorde-worktrees.lock" if common.returncode == 0 else None
+        )
+        if location is None:
             yield
-        finally:
-            fcntl.flock(stream, fcntl.LOCK_UN)
+            return
+        with location.open("a+b") as stream:
+            fcntl.flock(stream, fcntl.LOCK_EX)
+            depths[key] = 1
+            try:
+                yield
+            finally:
+                depths.pop(key)
+                fcntl.flock(stream, fcntl.LOCK_UN)
 
 
 def _write_json(root: Path, relative: str, value: dict) -> None:
@@ -170,14 +223,60 @@ def read_change(root: Path, *, required: bool) -> dict | None: ...
 
 
 def read_change(root: Path, *, required: bool = False) -> dict | None:
-    path = checked_path(root, STATE_PATH)
-    if not path.exists():
+    legacy = checked_path(root, STATE_PATH)
+    if legacy.exists():
+        historical = decode(legacy.read_text())
+        if isinstance(historical, dict) and historical.get("schema_version") == 1:
+            raise SpecError(
+                "schema-1 worktree history requires explicit archival",
+                "unsupported_worktree_version",
+            )
+        raise SpecError(
+            "legacy lifecycle state requires migrate-status --apply",
+            "migration_required",
+        )
+    primary, current = workspace_identity(root)
+    if (
+        primary is not None
+        and primary["path"] != str(root.resolve())
+        and checked_path(root, ".concorde/runs").exists()
+    ):
+        raise SpecError(
+            "candidate-local durable runs require explicit migration",
+            "migration_required",
+        )
+    git_id = git_value(root, "rev-parse", "--absolute-git-dir") if current else None
+    candidates = [
+        item
+        for item in all_status(root)
+        if item.get("path") == str(root.resolve())
+        and item.get("git_worktree_id", git_id) == git_id
+    ]
+    matches = [
+        item for item in candidates if item.get("status") not in {"merged", "delivered"}
+    ]
+    if not matches and primary is not None and primary["path"] != str(root.resolve()):
+        # A retained candidate remains inspectable; terminal primary tasks do not own
+        # every future direct task in that same primary workspace.
+        matches = [
+            item
+            for item in candidates
+            if item.get("cleanup", {}).get("status") != "removed"
+        ]
+    if len(matches) > 1:
+        raise SpecError("multiple tasks claim this workspace", "workspace_mismatch")
+    if not matches:
+        if checked_path(root, STATE_PATH).exists():
+            raise SpecError(
+                "legacy lifecycle state requires migrate-status --apply",
+                "migration_required",
+            )
         if required:
             raise SpecError(
                 "this operation requires a managed change worktree", "missing_change"
             )
         return None
-    state = decode(read_file(root, STATE_PATH).decode())
+    state = matches[0]
     if isinstance(state, dict) and state.get("schema_version") == 1:
         raise SpecError(
             "legacy worktree state requires explicit archival and fresh validation; "
@@ -264,9 +363,7 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
         ) from error
     primary, current = workspace_identity(root)
     if current is not None and (
-        primary is None
-        or state.get("branch") != current["branch"]
-        or state.get("primary_worktree") != primary["path"]
+        primary is None or state.get("primary_worktree") != primary["path"]
     ):
         raise SpecError(
             "worktree state belongs to a different branch or primary worktree",
@@ -319,27 +416,40 @@ def _summary(item: dict, primary_path: str) -> dict:
 
 
 def _inventory(root: Path, *, persist: bool) -> dict:
-    records = list_worktrees(root)
-    if not records:
-        return {
-            "schema_version": 1,
-            "primary_worktree": None,
-            "primary_branch": None,
-            "worktrees": [],
-        }
-    primary = records[0]
-    inventory = {
-        "schema_version": 1,
-        "primary_worktree": primary["path"],
-        "primary_branch": primary["branch"],
+    primary, current = workspace_identity(root)
+    records = all_status(root)
+    live = {item["path"]: item for item in list_worktrees(root) if item["alive"]}
+    return {
+        "schema_version": 2,
+        "primary_worktree": primary["path"] if primary else None,
+        "primary_branch": primary["branch"] if primary else None,
         "worktrees": [
-            _summary(item, primary["path"]) for item in records[1:] if item["alive"]
+            {
+                "path": state["path"],
+                "branch": live.get(state["path"], {}).get(
+                    "branch", state.get("branch")
+                ),
+                "head": live.get(state["path"], {}).get("head"),
+                "managed": True,
+                "locked": live.get(state["path"], {}).get("locked", False),
+                "change_id": state["change_id"],
+                "target_id": state.get("target_id"),
+                "task": state.get("task") or "",
+                "phase": state["phase"],
+                "status": state["status"],
+                "outcome": state.get("outcome"),
+            }
+            for state in records
+            if state["path"] in live
+            and (not primary or state["path"] != primary["path"])
+        ]
+        + [
+            _summary(item, primary["path"] if primary else "")
+            for item in live.values()
+            if item["path"] not in {state["path"] for state in records}
+            and (not primary or item["path"] != primary["path"])
         ],
     }
-    if persist:
-        _exclude_control_files(root)
-        _write_json(Path(primary["path"]), REGISTRY_PATH, inventory)
-    return inventory
 
 
 def refresh_registry(root: Path, *, persist: bool = True) -> dict:
@@ -359,7 +469,22 @@ def save_change(
 
     def write():
         _exclude_control_files(root)
-        _write_json(root, STATE_PATH, state)
+        persisted = read_status(root, state["change_id"])
+        if persisted:
+            for field in (
+                "delivery",
+                "manual_merge",
+                "cleanup",
+                "runs",
+                "child",
+                "mode",
+            ):
+                if field in persisted:
+                    state[field] = persisted[field]
+        _, current = workspace_identity(root)
+        if current:
+            state["branch"] = current["branch"]
+        write_status(root, state)
         if publish:
             _inventory(root, persist=True)
 
@@ -390,7 +515,7 @@ def _guidance_changes(root: Path, state: dict) -> list[dict]:
     block = (
         GUIDANCE_START + "## Concorde change worktree\n\n"
         "This agent session starts in a secondary worktree containing an unfinished candidate change.\n"
-        f"The host records its lifecycle in `{STATE_PATH}`. `concorde-main` receives this worktree's\n"
+        f"The primary coordinator records its lifecycle in `{STATUS_PATH}/{state['change_id']}.json`. `concorde-main` receives this worktree's\n"
         "identity, draft status and the primary worktree's live change inventory. Partial Spec and\n"
         "implementation edits are draft state; resume the recorded phase before claiming completion.\n\n"
         "You may invoke `concorde-deliver` from this source worktree or the destination worktree.\n"
@@ -419,8 +544,20 @@ def ensure_change(
     task: dict | None = None,
     change_id: str | None = None,
     allow_primary: bool = False,
+    mode: str = "operation",
 ) -> dict:
+    if mode not in {"operation", "maintenance", "direct"}:
+        raise SpecError("invalid task mode", "invalid_input")
     existing = read_change(root)
+    if (
+        change_id is not None
+        and existing is None
+        and read_status(root, change_id) is not None
+    ):
+        raise SpecError(
+            "stable change identity already belongs to another workspace",
+            "workspace_mismatch",
+        )
     if existing is not None:
         if change_id is not None and change_id != existing["change_id"]:
             raise SpecError(
@@ -468,6 +605,9 @@ def ensure_change(
         "change_id": change_id or "change." + str(uuid.uuid4()),
         "path": str(root.resolve()),
         "branch": current["branch"] if current else None,
+        "git_worktree_id": git_value(root, "rev-parse", "--absolute-git-dir")
+        if current
+        else None,
         "primary_worktree": primary["path"] if primary else None,
         "base_commit": current["head"] if current else None,
         "base_branch": primary["branch"] if primary else None,
@@ -484,6 +624,13 @@ def ensure_change(
         "guidance": {},
         "validated_tree": None,
         "validation": None,
+        "mode": mode,
+        "candidate_worktree": str(root.resolve()) if secondary else None,
+        "child": None,
+        "runs": [],
+        "manual_merge": None,
+        "delivery": None,
+        "cleanup": {"status": "pending" if secondary else "not_needed"},
     }
     identifier(state["change_id"])
     with repository_lock(root):
@@ -495,9 +642,18 @@ def ensure_change(
                 )
             return observed
         _exclude_control_files(root)
-        changes = _guidance_changes(root, state) if secondary else []
-        changes.append(file_change(root, STATE_PATH, canonical(state) + "\n"))
-        apply_files(root, changes, {item["path"] for item in changes})
+        changes = (
+            _guidance_changes(root, state) if secondary and mode == "operation" else []
+        )
+        if changes:
+            apply_files(
+                root,
+                changes,
+                {item["path"] for item in changes},
+                verify=lambda: write_status(root, state),
+            )
+        else:
+            write_status(root, state)
         _inventory(root, persist=True)
     return state
 

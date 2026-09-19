@@ -12,9 +12,7 @@ from ..spec.repository import SpecError, SpecRepository, identifier, read_file
 from ..spec.typed_data import artifact, checked_path, decode, typed
 from ..spec.validation import validate_repository
 from .change_worktree import (
-    DELIVERIES_PATH,
     _inventory,
-    _write_json,
     git,
     git_value,
     list_worktrees,
@@ -24,6 +22,37 @@ from .change_worktree import (
     snapshot_tree,
     workspace_identity,
 )
+
+from .status_store import read_status, status_path, write_status, run_path
+
+
+def _read_receipt(root: Path, relative: str) -> dict | None:
+    state = read_status(root, Path(relative).stem)
+    return state.get("delivery") if state else None
+
+
+def _write_json(root: Path, relative: str, receipt: dict) -> None:
+    state = read_status(root, receipt["change_id"])
+    if state is None:
+        raise SpecError("delivery requires durable task status", "unknown_change")
+    state["delivery"] = receipt
+    source = Path(receipt["source_worktree"])
+    source_present = source.exists() or any(
+        item["path"] == str(source) for item in list_worktrees(root)
+    )
+    state["cleanup"] = {
+        "status": "pending"
+        if receipt["status"] != "delivered"
+        else "retained"
+        if receipt.get("retained_worktree")
+        else "pending"
+        if source_present
+        else "removed",
+        "error": receipt.get("cleanup_error"),
+    }
+    if receipt["status"] in {"delivered", "cleanup_pending"}:
+        state.update(outcome="delivered", status="delivered", phase="complete")
+    write_status(root, state)
 
 
 def require_delivery_session(host, change_id: str) -> dict:
@@ -42,12 +71,12 @@ def require_delivery_session(host, change_id: str) -> dict:
         source = Path(selected[0]["path"])
     else:
         receipt_path = _receipt_path(change_id)
-        if selected or not checked_path(root, receipt_path).exists():
+        if selected or _read_receipt(root, receipt_path) is None:
             raise SpecError(
                 "delivery requires one registered change or delivery receipt",
                 "unknown_change",
             )
-        receipt = decode(read_file(root, receipt_path).decode())
+        receipt = _read_receipt(root, receipt_path)
         if receipt.get("schema_version") != 1 or receipt.get("change_id") != change_id:
             raise SpecError(
                 "delivery receipt has an invalid identity", "invalid_delivery"
@@ -94,7 +123,7 @@ def require_delivery_session(host, change_id: str) -> dict:
 
 def _receipt_path(change_id: str) -> str:
     identifier(change_id)
-    return f"{DELIVERIES_PATH}/{change_id}.json"
+    return status_path(change_id)
 
 
 def _is_ancestor(root: Path, before: str, after: str) -> bool:
@@ -144,16 +173,10 @@ def _verify_merged_tree(
             checks = []
             for target in repository.targets.values():
                 if target.checks:
-                    results = configured_checks(repository, target, host.invocation_id)
+                    results = configured_checks(
+                        repository, target, host.invocation_id + "/delivery/" + phase
+                    )
                     checks.extend(results)
-                    for result in results:
-                        relative = f".concorde/runs/{host.invocation_id}/{result['check_id']}.log"
-                        destination = checked_path(
-                            host.project_root,
-                            f"{DELIVERIES_PATH}/{change_id}/{phase}/{result['check_id']}.log",
-                        )
-                        destination.parent.mkdir(parents=True, exist_ok=True)
-                        destination.write_bytes(read_file(root, relative))
             if any(item["status"] != "passed" for item in checks):
                 raise SpecError(
                     "the merged candidate failed configured checks",
@@ -268,7 +291,7 @@ def _remember_failure(host, change_id: str, error: Exception) -> None:
         state = read_change(source, required=True)
         receipt_path = _receipt_path(change_id)
         receipt = (
-            decode(read_file(host.project_root, receipt_path).decode())
+            _read_receipt(host.project_root, receipt_path)
             if checked_path(host.project_root, receipt_path).exists()
             else None
         )
@@ -280,7 +303,7 @@ def _remember_failure(host, change_id: str, error: Exception) -> None:
         state.update(
             phase="cleanup" if merged else "deliver",
             status="cleanup_pending" if merged else "blocked",
-            outcome=getattr(error, "code", "failed"),
+            outcome="delivered" if merged else getattr(error, "code", "failed"),
         )
         save_change(source, state, locked=True)
         if merged:
@@ -297,8 +320,8 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
     relative = _receipt_path(change_id)
     root = host.project_root
     if host.mode == "describe-policy":
-        if checked_path(root, relative).exists():
-            state = decode(read_file(root, relative).decode())
+        if _read_receipt(root, relative) is not None:
+            state = _read_receipt(root, relative)
         else:
             inventory = _inventory(root, persist=False)
             selected = [
@@ -334,11 +357,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
         )
     with repository_lock(root):
         receipt_file = checked_path(root, relative)
-        receipt = (
-            decode(read_file(root, relative).decode())
-            if receipt_file.exists()
-            else None
-        )
+        receipt = _read_receipt(root, relative) if receipt_file.exists() else None
         if receipt is not None and (
             receipt.get("schema_version") != 1 or receipt.get("change_id") != change_id
         ):
@@ -660,7 +679,7 @@ def _response(root: Path, receipt: dict, complete: bool) -> dict:
             "focus_id": receipt["focus_id"],
             "change_id": receipt["change_id"],
             "context_id": None,
-            "outcome": "delivered" if complete else "failed",
+            "outcome": "delivered",
             "answer": answer,
             "blockers": [],
             "checks": promotion.get("checks", receipt["checks"]),

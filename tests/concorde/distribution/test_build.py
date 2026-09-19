@@ -15,9 +15,11 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution.build import (  # noqa: E402
-    INTEGRATION_ROOTS,
+    PRIVATE_INTEGRATION_ROOTS as INTEGRATION_ROOTS,
+    INTEGRATION_ROOTS as AMBIENT_ROOTS,
     MODEL_ROOTS,
-    PI_SESSION_SHIM,
+    PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
+    PI_SESSION_SHIM as INSTALLED_PI_SESSION_SHIM,
     PUBLISHED_SKILLS_ROOT,
     RETIRED_SKILL_NAMES,
     SKILL_INTEGRATIONS,
@@ -116,7 +118,9 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertFalse(
             any(output.path.startswith(SKILL_ROOTS) for output in installed)
         )
-        self.assertTrue(any(output.path == PI_SESSION_SHIM for output in installed))
+        self.assertTrue(
+            any(output.path == INSTALLED_PI_SESSION_SHIM for output in installed)
+        )
         published = {
             output.path: output for output in render_published_skills(REPOSITORY_ROOT)
         }
@@ -174,7 +178,9 @@ class BuildGoldenTests(unittest.TestCase):
         skill_outputs = [
             path
             for path in self.by_path
-            if path.startswith((".claude/skills/", ".agents/skills/"))
+            if path.startswith(
+                ("generated/session/claude/", "generated/session/codex/")
+            )
         ]
         agent_outputs = [
             path for path in self.by_path if path.startswith("generated/agents/")
@@ -414,7 +420,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
     def test_retired_skills_are_reported_then_removed_without_a_manifest_entry(self):
         write_build(self.root)
         retired = []
-        for prefix in SKILL_ROOTS:
+        for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
             for name in RETIRED_SKILL_NAMES:
                 directory = self.root / prefix / name
                 directory.mkdir(parents=True)
@@ -437,7 +443,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
             self.assertEqual((directory / "SKILL.md").read_bytes(), content)
         write_build(self.root)
         self.assertTrue(all(not directory.exists() for directory in retired))
-        for prefix in SKILL_ROOTS:
+        for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
             for name in ("example-third-party", "concorde-custom"):
                 self.assertEqual(
                     (self.root / prefix / name / "SKILL.md").read_text(),
@@ -454,27 +460,30 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw_destination:
             destination = Path(raw_destination)
             for base in (self.root, destination):
-                for prefix in SKILL_ROOTS:
+                for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
                     directory = base / prefix / RETIRED_SKILL_NAMES[0]
                     directory.mkdir(parents=True)
                     (directory / "SKILL.md").write_text("old projection\n")
-            write_build(self.root, "claude", integration_root=destination)
+            write_build(
+                self.root,
+                "claude",
+                integration_root=destination,
+                framework_prefix=".concorde/framework",
+            )
             self.assertFalse(
                 (
-                    destination / INTEGRATION_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
+                    destination / AMBIENT_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
                 ).exists()
             )
             self.assertTrue(
-                (
-                    destination / INTEGRATION_ROOTS["codex"] / RETIRED_SKILL_NAMES[0]
-                ).exists()
+                (destination / AMBIENT_ROOTS["codex"] / RETIRED_SKILL_NAMES[0]).exists()
             )
-            for prefix in SKILL_ROOTS:
+            for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
                 self.assertTrue((self.root / prefix / RETIRED_SKILL_NAMES[0]).exists())
 
     @verifies("scenario.distribution.build-retired-skills")
     def test_retirement_removes_an_empty_directory(self):
-        directory = self.root / INTEGRATION_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
+        directory = self.root / AMBIENT_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
         directory.mkdir(parents=True)
         write_build(self.root)
         self.assertFalse(directory.exists())
@@ -484,7 +493,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         write_build(self.root)
         manifest = (self.root / "generated/build-manifest.json").read_bytes()
         directories = []
-        for prefix in SKILL_ROOTS:
+        for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
             directory = self.root / prefix / RETIRED_SKILL_NAMES[0]
             directory.mkdir(parents=True)
             (directory / "SKILL.md").write_text("old projection\n")
@@ -508,7 +517,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw_outside:
             outside = Path(raw_outside)
             (outside / "SKILL.md").write_text("outside instructions\n")
-            directory = self.root / INTEGRATION_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
+            directory = self.root / AMBIENT_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
             directory.parent.mkdir(parents=True)
             for kind in (
                 "directory-link",

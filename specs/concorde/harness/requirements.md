@@ -176,7 +176,7 @@ agent-to-agent channel bypassing it.
 The host SHALL bind every invocation's project root to the working directory of its entry
 process, exactly as resolved and without searching parent directories.
 
-The registry, Spec collections, lifecycle state and listed implementation files an invocation
+The registry, Spec collections and listed implementation files an invocation
 reads are therefore those of the worktree at that directory. The worktree in which the
 developer's agent session started, the worktree whose rendered Skill supplied the instructions
 and every other linked worktree are not inputs; see
@@ -198,3 +198,11 @@ Agent invocations and explicitly represented transitions.
 
 A planner, task author or Spec-only reviewer SHALL NOT receive the contents of the selected Module's or
 any other Module's listed implementation files.
+
+### req.harness.primary-persistence — One durable coordinator authority
+
+The host SHALL persist task status and durable candidate run evidence only in the Git-identified primary worktree with serialized atomic writes and explicit legacy migration.
+
+### req.harness.task-delegation — One fresh task-child layer
+
+A task subagent SHALL remain in its assigned worktree without further task delegation and without widening the actual harness depth or permission limits for bounded Operation workers.

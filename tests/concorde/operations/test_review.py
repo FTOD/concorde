@@ -34,7 +34,9 @@ def raw_change(root):
     # Deliberately malformed fixture state must be inspected without the production admission gate.
     from concorde.spec.typed_data import decode
 
-    return decode((root / ".concorde/worktree.json").read_text())
+    from concorde.harness.status_store import all_status
+
+    return all_status(root)[0]
 
 
 def issue_observation(root, reference):

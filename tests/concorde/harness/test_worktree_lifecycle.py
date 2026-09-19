@@ -57,6 +57,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "task": "Implement the transfer contract",
         }
 
+    def state_file(self):
+        return next(
+            (self.primary / ".concorde/status").glob("change.*.json"),
+            self.primary / ".concorde/status/missing.json",
+        )
+
     def commit(self, root, message):
         git(root, "add", "-A")
         git(root, "commit", "-qm", message)
@@ -139,8 +145,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
             (False, "unmanaged", None),
             (other["managed"], other["status"], other["change_id"]),
         )
-        stored = json.loads((self.primary / REGISTRY_PATH).read_text())
-        self.assertEqual(workspace["active_worktrees"], stored["worktrees"])
+        self.assertFalse((self.primary / REGISTRY_PATH).exists())
+        self.assertEqual(
+            state["change_id"], read_change(self.change, required=True)["change_id"]
+        )
         self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
 
     @verifies("scenario.harness.invocation-worktree-binding")
@@ -242,25 +250,18 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     def test_guidance_and_initial_state_rollback_together(self):
         before = (self.change / "AGENTS.md").read_bytes()
-        apply = change_worktree.apply_files
-
-        def fail_state(root, changes, allowed, **kwargs):
-            if any(item["path"] == STATE_PATH for item in changes):
-
-                def reject():
-                    raise OSError("fixture state transaction failure")
-
-                return apply(root, changes, allowed, verify=reject)
-            return apply(root, changes, allowed, **kwargs)
-
-        with patch.object(change_worktree, "apply_files", side_effect=fail_state):
+        with patch.object(
+            change_worktree,
+            "write_status",
+            side_effect=OSError("fixture state transaction failure"),
+        ):
             result = self.call_operation(
                 self.change, "concorde-main", {"task": "Explain transfer"}
             )
         self.assertNotEqual("succeeded", result["status"], result)
         self.assertEqual(before, (self.change / "AGENTS.md").read_bytes())
         self.assertFalse((self.change / "CLAUDE.md").exists())
-        self.assertFalse((self.change / STATE_PATH).exists())
+        self.assertFalse(self.state_file().exists())
 
     def relay_in_process(self, callback=None):
         """A trusted relay running the candidate in this process with the same worker double."""
@@ -475,7 +476,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             ("focus_id", "scenario.transfer.reject"),
         ):
             with self.subTest(field=field):
-                before = (self.change / STATE_PATH).read_bytes()
+                before = self.state_file().read_bytes()
                 result = self.call_operation(
                     self.change, "concorde-dev-loop", {**resumed_task, field: value}
                 )
@@ -483,7 +484,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
                 self.assertEqual(field, result["errors"][0]["field"])
                 self.assertEqual([], self.last_double.calls)
-                self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
+                self.assertEqual(before, self.state_file().read_bytes())
 
     @verifies("scenario.dev-loop.resume-unbound", "scenario.harness.change-owner")
     def test_unbound_resume_retains_hints_and_refuses_changed_intent(self):
@@ -501,7 +502,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             ("focus_id", "scenario.transfer.reject"),
         ):
             with self.subTest(field=field):
-                before = (self.change / STATE_PATH).read_bytes()
+                before = self.state_file().read_bytes()
                 result = self.call_operation(
                     self.change,
                     "concorde-dev-loop",
@@ -511,7 +512,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     "incompatible_handoff", result["errors"][0]["code"], result
                 )
                 self.assertEqual([], self.last_double.calls)
-                self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
+                self.assertEqual(before, self.state_file().read_bytes())
         result = self.call_operation(
             self.change,
             "concorde-dev-loop",
@@ -543,12 +544,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
         }
         result = self.call_operation(self.change, "concorde-dev-loop", task)
         self.assertEqual("missing_change", result["errors"][0]["code"], result)
-        self.assertFalse((self.change / STATE_PATH).exists())
+        self.assertFalse(self.state_file().exists())
         state = change_worktree.ensure_change(self.change, task=self.task)
-        before = (self.change / STATE_PATH).read_bytes()
+        before = self.state_file().read_bytes()
         result = self.call_operation(self.change, "concorde-dev-loop", task)
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
-        self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
+        self.assertEqual(before, self.state_file().read_bytes())
         # From the primary worktree the recorded change is relayed into its candidate.
         result = self.call_operation(
             self.primary,
@@ -563,8 +564,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual("succeeded", result["status"], result)
         for field, value, code in (
-            ("path", str(self.primary), "invalid_worktree_state"),
-            ("branch", "wrong-branch", "workspace_mismatch"),
+            ("path", str(self.primary), "missing_change"),
             ("primary_worktree", str(self.change), "workspace_mismatch"),
             ("target_id", [], "invalid_worktree_state"),
             ("target_id", "module.absent", "invalid_worktree_state"),
@@ -575,8 +575,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         ):
             with self.subTest(field=field, value=value):
                 corrupted = {**state, field: value}
-                (self.change / STATE_PATH).write_text(json.dumps(corrupted))
-                damaged = (self.change / STATE_PATH).read_bytes()
+                self.state_file().write_text(json.dumps(corrupted))
+                damaged = self.state_file().read_bytes()
                 result = self.call_operation(
                     self.change,
                     "concorde-dev-loop",
@@ -584,12 +584,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 )
                 self.assertEqual(code, result["errors"][0]["code"], result)
                 self.assertEqual([], self.last_double.calls)
-                self.assertEqual(damaged, (self.change / STATE_PATH).read_bytes())
-        (self.change / STATE_PATH).write_bytes(before)
+                self.assertEqual(damaged, self.state_file().read_bytes())
+        self.state_file().write_bytes(before)
         for field in ("target_id", "task", "focus_id", "base_commit"):
             with self.subTest(missing=field):
                 corrupted = {key: value for key, value in state.items() if key != field}
-                (self.change / STATE_PATH).write_text(json.dumps(corrupted))
+                self.state_file().write_text(json.dumps(corrupted))
                 result = self.call_operation(
                     self.change,
                     "concorde-dev-loop",
@@ -918,8 +918,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertIn("app/rounding.py", answer)
         self.assertIn("checks/rounding_check.py", answer)
         receipt = json.loads(
-            (self.primary / f".concorde/deliveries/{change_id}.json").read_text()
-        )
+            (self.primary / f".concorde/status/{change_id}.json").read_text()
+        )["delivery"]
         self.assertEqual(
             [
                 {
@@ -1133,10 +1133,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual("succeeded", merged["status"], merged)
         path = self.primary / merged["output"]["data"]["artifacts"][0]["path"]
-        receipt = json.loads(path.read_text())
+        state = json.loads(path.read_text())
+        receipt = state["delivery"]
         receipt["target_branch"] = receipt.pop("primary_branch")
         receipt.pop("primary_merge")
-        path.write_text(json.dumps(receipt))
+        path.write_text(json.dumps(state))
         before = git_value(self.primary, "rev-parse", "HEAD")
         again = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
@@ -1277,14 +1278,15 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(merged, git_value(self.primary, "rev-parse", "HEAD"))
         receipt = json.loads(
             (self.primary / again["output"]["data"]["artifacts"][0]["path"]).read_text()
-        )
+        )["delivery"]
         self.assertEqual("merged", receipt["primary_merge"]["status"])
         self.assertTrue(
-            (self.primary / ".concorde/deliveries" / change_id / "staging").is_dir()
+            list((self.primary / ".concorde/runs").glob("*/delivery/staging"))
         )
         self.assertTrue(
-            (self.primary / ".concorde/deliveries" / change_id / "primary").is_dir()
+            list((self.primary / ".concorde/runs").glob("*/delivery/primary"))
         )
+        self.assertFalse((self.primary / ".concorde/deliveries").exists())
 
     @verifies("scenario.delivery.session-rejected")
     def test_third_worktree_redirected_runtime_and_nested_delivery_are_rejected(self):
@@ -1401,7 +1403,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertFalse((self.primary / "CLAUDE.md").exists())
         self.assertFalse((self.primary / STATE_PATH).exists())
         self.assertEqual(
-            [], json.loads((self.primary / REGISTRY_PATH).read_text())["worktrees"]
+            [],
+            change_worktree.refresh_registry(self.primary, persist=False)["worktrees"],
         )
         self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
         tracked = git_value(
@@ -1415,7 +1418,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             (
                 self.primary / result["output"]["data"]["artifacts"][0]["path"]
             ).read_text()
-        )
+        )["delivery"]
         self.assertEqual(delivered_branch, receipt["target_branch"])
         self.assertEqual("integration", receipt["primary_branch"])
         self.assertIsNone(receipt["primary_merge"])
@@ -1427,7 +1430,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         change_id = self.ready()
         primary_head = git_value(self.primary, "rev-parse", "HEAD")
         source_head = git_value(self.change, "rev-parse", "HEAD")
-        before = (self.change / STATE_PATH).read_bytes()
+        before = self.state_file().read_bytes()
         result = self.call_operation(
             self.primary,
             "concorde-deliver",
@@ -1437,7 +1440,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("described", result["status"], result)
         self.assertEqual(primary_head, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertEqual(source_head, git_value(self.change, "rev-parse", "HEAD"))
-        self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
+        self.assertEqual(before, self.state_file().read_bytes())
         self.assertEqual([], self.last_double.calls)
 
     @verifies(
@@ -1620,7 +1623,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "failed_merge_checks", read_change(self.change, required=True)["outcome"]
         )
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertTrue((self.change / STATE_PATH).exists())
+        self.assertTrue(self.state_file().exists())
 
     @verifies("scenario.delivery.branch")
     def test_cleanup_failure_resumes_without_a_second_merge_or_check_run(self):
@@ -1638,9 +1641,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
             result = self.call_operation(
                 self.primary, "concorde-deliver", {"change_id": change_id}
             )
-        self.assertEqual("failed", result["status"], result)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("delivered", result["output"]["data"]["outcome"])
         self.assertEqual(
-            "cleanup_pending", read_change(self.change, required=True)["status"]
+            "pending", read_change(self.change, required=True)["cleanup"]["status"]
         )
         merged = git_value(self.primary, "rev-parse", "HEAD")
         with patch.object(
@@ -1678,7 +1682,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
             result = self.call_operation(
                 self.primary, "concorde-deliver", {"change_id": change_id}
             )
-        self.assertEqual("failed", result["status"], result)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("delivered", result["output"]["data"]["outcome"])
         merged = git_value(self.primary, "rev-parse", "HEAD")
         result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}

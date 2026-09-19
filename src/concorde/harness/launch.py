@@ -100,7 +100,7 @@ def launch_worker(
         project = host.project_root if project_workspace else capsule
         if project_workspace:
             relative = (
-                f".concorde/runs/{host.invocation_id}/{uuid.uuid4()}/context.json"
+                f".concorde/work/{host.invocation_id}/{uuid.uuid4()}/context.json"
             )
             context_file = checked_path(project, relative)
         else:

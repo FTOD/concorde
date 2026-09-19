@@ -372,8 +372,10 @@ python3 scripts/concorde.py validate
 python3 scripts/development/run-tests.py
 ```
 
-Concorde is developed by direct maintenance in this checkout. Its own graphs run on this repository
-only when you explicitly ask for one, so the `concorde-*` Skills built here are user-invoked only.
+Concorde self-maintenance uses a fresh Skill-free writer in a candidate, followed by a fresh
+sibling tester explicitly supplied only candidate-built Skills. The main session coordinates
+from its initial worktree and integrates only with explicit authorization. Source builds keep
+Skills and the Pi shim private under `generated/session/`, never ambient discovery.
 Never edit build output (`generated/`, the Skill projections or the rendered `skills/`); change
 `prompts/`, `operations/` or `pi/extensions/` and rebuild. See the
 [source-checkout policy](AGENTS.md) and [development details](docs/workflow-guide.md#development).

@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from concorde.harness.status_store import all_status
 from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.context import (
@@ -86,7 +87,7 @@ class ScopedProtocolTests(unittest.TestCase):
         # The rule bundle is indexed by path and digest and granted as a file, never embedded.
         self.assertNotIn("content", context["protocol"][0])
         self.assertIn(
-            "### P10. Candidate worktrees, not session moves",
+            "### P10. Fresh task sessions, never session moves",
             repository.protocol_assets[context["protocol"][0]["path"]].decode(),
         )
         self.assertNotIn("UNTRUSTED_AMBIENT_GUIDANCE", json.dumps(context))
@@ -587,9 +588,7 @@ class ScopedProtocolTests(unittest.TestCase):
             "specs/transfer/promises.md", repository.select("module.ledger").documents
         )
 
-    @verifies(
-        "scenario.topology.accept", "scenario.topology.stale"
-    )
+    @verifies("scenario.topology.accept", "scenario.topology.stale")
     def test_topology_acceptance_stops_before_writes_on_gap_or_stale_design(self):
         def design_callback(stage, snapshot, data, cwd):
             if stage == "route" and snapshot["action"] == "design-topology":
@@ -1443,7 +1442,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"])
         self.assertEqual(["context-solve"], [call["stage"] for call in double.calls])
         self.assertFalse((self.root / ".concorde/attempts").exists())
-        state = json.loads((self.root / ".concorde/worktree.json").read_text())
+        state = all_status(self.root)[0]
         self.assertEqual("blocked", state["status"])
         self.assertEqual({}, state["targets"])
 
@@ -1461,7 +1460,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("ready", result["output"]["data"]["outcome"])
         self.assertEqual("passed", result["output"]["data"]["checks"][0]["status"])
         self.assertFalse((self.root / ".concorde/attempts").exists())
-        state = json.loads((self.root / ".concorde/worktree.json").read_text())
+        state = all_status(self.root)[0]
         self.assertEqual("ready", state["status"])
         self.assertEqual(
             [
@@ -1511,7 +1510,7 @@ class ScopedProtocolTests(unittest.TestCase):
         )
         self.assertEqual("failed", result["status"], result)
         self.assertEqual("failed", result["output"]["data"]["checks"][0]["status"])
-        state = json.loads((self.root / ".concorde/worktree.json").read_text())
+        state = all_status(self.root)[0]
         self.assertEqual("failed", state["status"])
 
     def test_wrong_context_result_rejected(self):

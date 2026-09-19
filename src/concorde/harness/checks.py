@@ -16,6 +16,7 @@ from ..spec.repository import (
 from ..spec.typed_data import TypedDataError, checked_path
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 from .revisions import implementation_digest
+from .status_store import run_path, write_run
 
 
 def check_service(repository: SpecRepository, target, invocation_id: str):
@@ -25,7 +26,7 @@ def check_service(repository: SpecRepository, target, invocation_id: str):
         current = SpecRepository(repository.root, repository.package_root)
         results = configured_checks(current, current.select(target.id), invocation_id)
         for item in results:
-            log = checked_path(
+            log = run_path(
                 current.root, f".concorde/runs/{invocation_id}/{item['check_id']}.log"
             )
             item["output_tail"] = (
@@ -96,9 +97,7 @@ def configured_checks(
             failure = error
         path = f".concorde/runs/{invocation_id}/{check_id}.log"
         # Logs are host/implementation evidence, absent from non-implementation context manifests.
-        destination = checked_path(repository.root, path)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(log)
+        write_run(repository.root, path, log)
         if failure is not None:
             raise SpecError(
                 f"configured check {check_id} requires an enforceable read-only sandbox; "

@@ -155,3 +155,13 @@ version, Pi worker lock digest and pi-subagents version, and verified Skill inve
 worker extensions are installed with `npm ci` from the package's own lock into `share/concorde/pi`
 inside the runtime, where a worker with children loads pi-subagents; a changed Pi lock plans a
 rebuild.
+
+## Private session selection
+
+`select_session(candidate: Path, *, mode: str, skill_paths: list[str], runtime: Path) -> dict`
+accepts modes `maintenance`, `test` and `task`. Test requires explicit absolute private Skill paths;
+maintenance requires an empty selection. Runtime must be an absolute recorded candidate source.
+The returned schema-1 record carries candidate, mode, fresh/non-forked/discovery-disabled intent,
+no task delegation, exact build/runtime digests, Skill paths/digests/bodies and null execution
+evidence. All admitted paths are readable, non-aliased and manifest-bound. Selection errors stop
+launch preparation; the caller must not fall back to another worktree or an ambient Skill name.

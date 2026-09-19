@@ -1,4 +1,5 @@
 """Consumer-root installation contracts without source-checkout AGENTS policy."""
+
 import json
 import tempfile
 import unittest
@@ -23,18 +24,34 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.root = Path(temporary.name)
         # Runtime provisioning has separate native integration coverage. Exercise the real
         # installer transaction/receipt here without downloading dependencies per case.
-        for name, value in (("plan_runtime", {"path": ".concorde/.venv", "role": "runtime",
-                                             "action": "unchanged", "sha256": "unused"}),
-                            ("provision_runtime", {"path": ".concorde/.venv"})):
+        for name, value in (
+            (
+                "plan_runtime",
+                {
+                    "path": ".concorde/.venv",
+                    "role": "runtime",
+                    "action": "unchanged",
+                    "sha256": "unused",
+                },
+            ),
+            ("provision_runtime", {"path": ".concorde/.venv"}),
+        ):
             mock = patch.object(installer, name, return_value=value)
             mock.start()
             self.addCleanup(mock.stop)
 
     def install(self, integration="codex", cleanup=False):
         actions, desired, _ = installer.installation_plan(
-            self.root, self.package, [integration], remove_protocol_guidance=cleanup)
-        return installer.apply_plan(self.root, self.package, [integration], actions, desired,
-                                    remove_protocol_guidance=cleanup)
+            self.root, self.package, [integration], remove_protocol_guidance=cleanup
+        )
+        return installer.apply_plan(
+            self.root,
+            self.package,
+            [integration],
+            actions,
+            desired,
+            remove_protocol_guidance=cleanup,
+        )
 
     @verifies("scenario.distribution.install-apply")
     def test_both_integrations_load_single_protocol_asset_without_checkout_policy(self):
@@ -49,8 +66,13 @@ class ProtocolGuidanceTests(unittest.TestCase):
                 else:
                     self.assertIn("Read and follow", root)
                 protocol = (self.root / guidance.PROTOCOL).read_bytes()
-                self.assertEqual(protocol, (REPOSITORY_ROOT / "generated/protocol/principles.md").read_bytes())
-                self.assertIn(b"### P10. Candidate worktrees, not session moves", protocol)
+                self.assertEqual(
+                    protocol,
+                    (REPOSITORY_ROOT / "generated/protocol/principles.md").read_bytes(),
+                )
+                self.assertIn(
+                    b"### P10. Fresh task sessions, never session moves", protocol
+                )
                 self.assertNotIn(b"### P10", (self.root / name).read_bytes())
                 for directory in (".agents/skills", ".claude/skills"):
                     for skill in (self.root / directory).glob("*/SKILL.md"):
@@ -62,7 +84,9 @@ class ProtocolGuidanceTests(unittest.TestCase):
         "scenario.distribution.install-multiple-clients",
         "scenario.distribution.install-remove-guidance",
     )
-    def test_user_bytes_modes_and_post_install_edits_survive_upgrade_switch_and_cleanup(self):
+    def test_user_bytes_modes_and_post_install_edits_survive_upgrade_switch_and_cleanup(
+        self,
+    ):
         original = b"# User rules\r\nKeep my text exactly.\r\nNo final newline"
         root = self.root / "AGENTS.md"
         root.write_bytes(original)
@@ -71,7 +95,9 @@ class ProtocolGuidanceTests(unittest.TestCase):
         root.write_bytes(root.read_bytes() + b"\nNew user instructions\n")
         preserved = original + b"\nNew user instructions\n"
         self.assertEqual("unchanged", self.install())
-        upgraded = guidance.entry("codex").replace(b"before Concorde", b"before any Concorde")
+        upgraded = guidance.entry("codex").replace(
+            b"before Concorde", b"before any Concorde"
+        )
         with patch.object(guidance, "entry", return_value=upgraded):
             self.install()
         self.assertEqual(preserved, b"".join(guidance.split(root.read_bytes())[::2]))
@@ -84,7 +110,9 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.assertEqual("unchanged", self.install("claude", cleanup=True))
         self.assertTrue((self.root / guidance.PROTOCOL).is_file())
         receipt = json.loads((self.root / installer.RECEIPT_PATH).read_text())
-        self.assertFalse(any(item["role"] == guidance.ROLE for item in receipt["outputs"]))
+        self.assertFalse(
+            any(item["role"] == guidance.ROLE for item in receipt["outputs"])
+        )
         self.install()
         self.assertEqual(preserved, b"".join(guidance.split(root.read_bytes())[::2]))
 
@@ -92,7 +120,9 @@ class ProtocolGuidanceTests(unittest.TestCase):
         "scenario.distribution.install-remove-guidance",
         "scenario.distribution.install-multiple-clients",
     )
-    def test_root_file_the_installer_created_goes_with_its_entry_but_a_user_file_stays(self):
+    def test_root_file_the_installer_created_goes_with_its_entry_but_a_user_file_stays(
+        self,
+    ):
         agents = self.root / "AGENTS.md"
         agents.write_bytes(b"")  # the developer's own file, empty
         self.install("claude")  # CLAUDE.md did not exist: the installer creates it
@@ -118,12 +148,20 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.assertEqual("installed", self.install("claude", cleanup=True))
         self.assertEqual(b"My own rules\n", claude.read_bytes())
 
-    @verifies("scenario.distribution.install-conflict-rejected", "scenario.concorde.adopt-conflict")
+    @verifies(
+        "scenario.distribution.install-conflict-rejected",
+        "scenario.concorde.adopt-conflict",
+    )
     def test_markers_symlinks_and_modified_owned_blocks_conflict_without_writes(self):
         name = self.root / "AGENTS.md"
-        cases = [guidance.entry("codex"), guidance.START, guidance.END,
-                 guidance.entry("codex") * 2, guidance.END + guidance.START,
-                 b"<!-- concorde-protocol:forged -->\n"]
+        cases = [
+            guidance.entry("codex"),
+            guidance.START,
+            guidance.END,
+            guidance.entry("codex") * 2,
+            guidance.END + guidance.START,
+            b"<!-- concorde-protocol:forged -->\n",
+        ]
         for body in cases:
             with self.subTest(body=body):
                 name.write_bytes(body)
@@ -143,14 +181,26 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.install()
         name.write_bytes(name.read_bytes().replace(b"Read and follow", b"Ignore"))
         before = name.read_bytes()
-        for integration, cleanup in (("codex", False), ("claude", False), ("codex", True)):
+        for integration, cleanup in (
+            ("codex", False),
+            ("claude", False),
+            ("codex", True),
+        ):
             with self.assertRaises(installer.InstallError):
                 self.install(integration, cleanup)
             self.assertEqual(before, name.read_bytes())
 
-    @verifies("scenario.distribution.install-apply", "scenario.distribution.install-remove-guidance")
+    @verifies(
+        "scenario.distribution.install-apply",
+        "scenario.distribution.install-remove-guidance",
+    )
     def test_entry_precedes_user_fences_and_survives_lifecycle_block_cleanup(self):
-        from concorde.harness.change_worktree import GUIDANCE_START, GUIDANCE_END, strip_guidance
+        from concorde.harness.change_worktree import (
+            GUIDANCE_START,
+            GUIDANCE_END,
+            strip_guidance,
+        )
+
         root = self.root / "CLAUDE.md"
         original = b"# User examples\n```text\nunclosed fence\n"
         root.write_bytes(original)
@@ -161,12 +211,19 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.assertEqual(installed, strip_guidance(injected))
         root.write_text(injected)
         self.install("claude", cleanup=True)
-        self.assertEqual(original.decode() + GUIDANCE_START + "Local candidate state\n" + GUIDANCE_END,
-                         root.read_text())
+        self.assertEqual(
+            original.decode()
+            + GUIDANCE_START
+            + "Local candidate state\n"
+            + GUIDANCE_END,
+            root.read_text(),
+        )
 
     @verifies("scenario.distribution.install-conflict-rejected")
     def test_stale_preview_rejects_new_user_edits_or_symlink_before_writing(self):
-        actions, desired, _ = installer.installation_plan(self.root, self.package, ["codex"])
+        actions, desired, _ = installer.installation_plan(
+            self.root, self.package, ["codex"]
+        )
         path = self.root / "AGENTS.md"
         path.write_text("new user edit")
         with self.assertRaisesRegex(installer.InstallError, "changed since preview"):
@@ -182,7 +239,9 @@ class ProtocolGuidanceTests(unittest.TestCase):
         path = self.root / "AGENTS.md"
         path.write_bytes(b"user instructions")
         path.chmod(0o600)
-        with patch.object(installer, "provision_runtime", side_effect=OSError("runtime failure")):
+        with patch.object(
+            installer, "provision_runtime", side_effect=OSError("runtime failure")
+        ):
             with self.assertRaisesRegex(OSError, "runtime failure"):
                 self.install()
         self.assertEqual(b"user instructions", path.read_bytes())
@@ -197,5 +256,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
         config.write_bytes(before)
         self.install()
         self.assertEqual(before, config.read_bytes())
-        self.assertIn(f'"version": "{PROTOCOL_VERSION}"',
-                      (self.root / ".concorde/framework/protocol/manifest.json").read_text())
+        self.assertIn(
+            f'"version": "{PROTOCOL_VERSION}"',
+            (self.root / ".concorde/framework/protocol/manifest.json").read_text(),
+        )

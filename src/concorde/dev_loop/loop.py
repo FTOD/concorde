@@ -34,7 +34,7 @@ def loop(run) -> dict:
     """The development Graph (G1-G4): a bounded ``review_code -> tasks`` repair edge is the
     only automatic revision; every other non-advancing outcome stops the Graph for a human,
     with the stopping status recorded on the change and the transition recorded under
-    ``graph`` in ``.concorde/worktree.json`` (development.md's "AI and human feedback").
+    ``graph`` in primary-owned ``.concorde/status/<change_id>.json`` (development.md's "AI and human feedback").
     """
     from .loop_graph import build_loop_graph
 

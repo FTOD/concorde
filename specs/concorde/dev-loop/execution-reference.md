@@ -126,7 +126,7 @@ the Graph stops and preserves that peer's result for separately routed work, bec
 contract is outside this owner's planning context. This repair is bounded by a declared
 `max_repair_iterations` policy, which `concorde-dev-loop` declares as two, recorded per target when
 the loop first runs for it under
-`change["graph"][target_id]["policy"]` in `.concorde/worktree.json`; the same record keeps the
+`change["graph"][target_id]["policy"]` in the primary-owned `.concorde/status/<change_id>.json`; the same record keeps the
 current `repair_iteration`, the last blocking-feedback fingerprint and an attributed history of
 selected transitions (development.md's "AI and human feedback", G4). Repeated unchanged blocking
 feedback is guarded by code: new records carry the formal `source` value `code-driven` or
@@ -202,7 +202,7 @@ wrapper. Node `in`/`out` below name Graph channels, not child-operation requests
 `none` means no Graph channel is read: these nodes obtain their inputs from the admitted `run`
 and Host-bound candidate records, not from the preceding node's `output`. Every guarded node also
 writes `result=None` on success or a failure envelope on error. The candidate record in
-`.concorde/worktree.json` carries the durable state every stage reads and advances: the bound
+the primary-owned `.concorde/status/<change_id>.json` carries the durable state every stage reads and advances: the bound
 owner and intent, the plan, the task list and history, the implementation digest, check evidence,
 review requirements and results, gap history and the
 per-target graph record with its repair iteration and last feedback fingerprint.

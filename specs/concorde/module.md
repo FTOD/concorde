@@ -23,7 +23,8 @@ Concorde helps developers agree on what software should do, execute changes with
 | State | The declared data channels an Operation accepts and updates when invoked as a graph node. State carries task information and results, never execution authority. |
 | Operation | Concorde's only executable entity: a complete callable with an input State, output State updates, effects, use conditions and execution policy. It can run as a LangGraph node using deterministic code, a model or a compiled graph. |
 | Skill | Instructions installed for a developer's agent client, Claude Code or Codex, to invoke a public Concorde operation. A Pi session reaches the same operations through the `concorde` tool its installed session extension registers. |
-| Worker | One fresh agent execution for a bounded job, such as writing a plan or reviewing code. |
+| Worker | One fresh bounded Operation execution, such as writing a plan or reviewing code; not a complete-task delegate. |
+| Task subagent | A fresh one-layer delegate of the user-facing main session, owning one complete task in one fixed worktree without further task delegation. |
 | Host | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results. |
 | Harness | The services that give a worker its inputs, tools, environment and limits, then check its result. |
 | Graph | LangGraph's declared nodes, edges and State channels for executing and composing Operations. A compiled graph can implement another Operation; a loop is a feedback path, not another executable kind. |
@@ -40,6 +41,13 @@ Module or can read another worker's context; the registry records those facts se
 the Module concerned explains them.
 
 ## Usage
+
+The user-facing main session understands needs and coordinates. It may delegate complete tasks
+to one layer of fresh task subagents; simple consumer work may be edited directly in primary.
+Task delegation is not Operation composition and never overrides actual harness limits.
+Concorde source maintenance uses a fresh Skill-free candidate writer followed by a separate
+fresh sibling tester with only explicit candidate-built Skills; ordinary Git integration needs
+explicit authorization and does not require Concorde delivery.
 
 Choose the Operation that matches your goal. After installation and project initialization,
 `concorde-main` answers a question or finds an owner. `concorde-specify-loop` prepares a contract;

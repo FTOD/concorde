@@ -58,7 +58,9 @@ class CreateWorktreeBuildsTests(unittest.TestCase):
             lambda: _git(self.root, "worktree", "remove", "--force", str(created))
         )
         self.assertTrue((created / "generated/build-manifest.json").is_file())
-        self.assertTrue((created / ".agents/skills/concorde-main/SKILL.md").is_file())
+        self.assertTrue(
+            (created / "generated/session/codex/concorde-main/SKILL.md").is_file()
+        )
         verify_fresh(created)  # must not raise
 
     def test_worktree_creation_for_an_unrelated_project_does_not_attempt_a_build(self):

@@ -76,16 +76,18 @@ def record_usage(host, **labels) -> dict[str, Any] | None:
     except Exception:
         return None
     try:
-        from ..spec.typed_data import checked_path
+        from .change_worktree import repository_lock
+        from .status_store import run_path
 
-        destination = checked_path(
-            host.project_root, usage_path(record["root_invocation_id"])
-        )
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        with destination.open("a", encoding="utf-8") as stream:
-            stream.write(
-                json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+        with repository_lock(host.project_root):
+            destination = run_path(
+                host.project_root, usage_path(record["root_invocation_id"])
             )
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with destination.open("a", encoding="utf-8") as stream:
+                stream.write(
+                    json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+                )
     # pi-lens-ignore: S110
     except Exception:
         pass
@@ -97,7 +99,9 @@ def read_usage(
     project_root: str | Path, root_invocation_id: str | None = None
 ) -> list[dict[str, Any]]:
     """Every recorded line, for one run or for all runs under the project."""
-    root = Path(project_root)
+    from .status_store import primary_root
+
+    root = primary_root(Path(project_root))
     files = (
         [root / usage_path(root_invocation_id)]
         if root_invocation_id

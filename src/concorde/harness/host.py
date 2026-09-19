@@ -44,6 +44,8 @@ class OperationHost:
     relay_target: dict | None = None
     configuration_snapshot: str = ""
     session_root: Path | None = None
+    archive_root: Path | None = None
+    session_provenance: dict | None = None
     coordinated: bool = False
     track_gaps: bool = False
     defer_ready: bool = False
@@ -155,9 +157,9 @@ def _record_worker_failure(host, invocation, error) -> str | None:
     if error.run is None:
         return None
     try:
-        from ..spec.typed_data import checked_path
+        from .status_store import primary_root, run_path
 
-        directory = checked_path(
+        directory = run_path(
             host.project_root,
             f".concorde/runs/{host.root_invocation_id or host.invocation_id}",
         )
@@ -184,7 +186,11 @@ def _record_worker_failure(host, invocation, error) -> str | None:
         ) as stream:
             json.dump(record, stream, sort_keys=True)
             stream.write("\n")
-            return Path(stream.name).relative_to(host.project_root).as_posix()
+            return (
+                Path(stream.name)
+                .relative_to(primary_root(host.project_root))
+                .as_posix()
+            )
     except (OSError, ValueError):
         return None
 

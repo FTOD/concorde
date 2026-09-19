@@ -29,8 +29,8 @@ records; the producer graph owns its ordering and progress policy. A candidate's
 are not visible in the primary worktree before delivery.
 
 Standard and fast loops end at ready. Request concorde-deliver with the selected change_id from
-either its source worktree or the primary worktree. A third-worktree or nested session cannot
-initiate delivery for that pair. The host verifies the exact candidate and its actual integration
+either its source worktree or the primary worktree. A third-worktree session or nested Operation call cannot initiate delivery for that pair; a
+one-layer task child in a participant may continue the change to delivery. The host verifies the exact candidate and its actual integration
 with the current primary commit, then creates `concorde/delivered/<change_id>` in the shared Git
 repository without checking it out. The branch is unique to this change; an existing unreceipted
 branch or a checked-out destination is rejected. Publication uses an atomic create-only ref update.
@@ -38,7 +38,7 @@ Default delivery leaves the primary branch, index and project files unchanged, e
 has local edits. It removes the source worktree and its local state after verification, including
 when the source owns the invoking session. Only explicit keep_worktree:true retains it. The source
 session ends after removal; further work requires a fresh session in an existing intended worktree.
-Local prompt injection and control files never enter the delivered tree.
+Local runtime status, runs and injected guidance never enter the delivered tree; tracked project configuration is separate.
 
 A separate request with merge_primary:true requires an already delivered receipt, explicit user
 authorization to merge into the primary branch, and the primary worktree's owning outer session.
@@ -55,7 +55,7 @@ delivered branch. Conflict repair after source deletion uses a new candidate wor
 branch need not be named main. Successful final merging retains the delivered branch and records its
 own commit, tree and checks separately from staging evidence.
 
-The primary delivery receipt distinguishes branch publication, cleanup and final primary merging.
+The delivery field of the primary task status, not a separate deliveries store, distinguishes branch publication, cleanup and final primary merging.
 Cleanup retries never republish a branch. Final merge retries never repeat an accepted merge; a
 receipt written before the update permits recovery after interruption. After source removal, retries
 use the primary session and recorded change_id. Explicit retention remains sticky on cleanup retry
@@ -95,3 +95,9 @@ implementation of its sequencing, artifact admission, recovery and completion po
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
 host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
 that reaches this provider.
+
+Maintenance integration may instead use explicitly authorized ordinary Git. Its observed commit
+and method are recorded as `manual_merge`, not as a Concorde delivery receipt. Cleanup remains
+`pending`, `retained` or `removed` independently; successful publication or merge with cleanup
+pending is not a failed integration. Status survives worktree removal and recovery verifies
+actual Git ancestry before recording an observed merge.

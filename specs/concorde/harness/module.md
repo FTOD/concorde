@@ -307,11 +307,10 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
   launcher runs with the invoking framework's Python interpreter and installed dependencies even
   when it runs the candidate's own Concorde code, so a candidate that changes the locked
   dependencies only sees them after that environment is rebuilt. A self-hosted candidate is
-  rebuilt from its own sources by the invoking checkout's build code, so a change to the build
-  renderer itself takes effect only after delivery. The candidate's worker events, usage records
-  and run directories stay in the candidate, under its own `.concorde/runs/`; the invoking session
-  receives only the result envelope and the forwarded stderr lines, and a Studio run of the
-  primary shows the relay as one node. A host interrupt gives the relayed launcher thirty seconds
+  verified against its own build, never rebuilt by another checkout's renderer. Durable worker
+  usage, results and logs live only in primary-owned `.concorde/runs/`, preserving candidate
+  source identity. The requesting session receives the result envelope and forwarded stderr;
+  a Studio run in primary shows the relay as one node. A host interrupt gives the relayed launcher thirty seconds
   to cancel its worker and print its result before the process is killed. A consumer project
   whose installed framework is not tracked always runs the invoking framework in its candidates.
 - Checks run by `run_checks` use the configured-check executor, but the worker receives only the tail

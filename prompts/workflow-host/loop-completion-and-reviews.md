@@ -3,7 +3,7 @@ audience: ambient
 ---
 
 This loop ends at a verified `ready` candidate in the current change worktree. It never
-invokes deliver. Partial progress and gaps remain in `.concorde/worktree.json` and resume under
+invokes deliver. Partial progress and gaps remain in the primary-owned `.concorde/status/<change_id>.json` and resume under
 the same worktree change. Delivery is a separate request from an agent whose initial working directory is either the
 source change worktree or the destination primary worktree; report the participating paths and
 change_id when the candidate is ready. Delivery creates an independent branch and removes the

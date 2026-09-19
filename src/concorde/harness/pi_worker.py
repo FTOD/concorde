@@ -97,6 +97,44 @@ SUBAGENT_CONFIG = {
     "artifactDir": "temp",
 }
 
+
+def bounded_subagent_config(environment: Mapping[str, str]) -> dict:
+    """Honor an outer runtime's explicit depth ceiling instead of resetting it.
+
+    In-process runtimes must pass their observed depth as CONCORDE_HARNESS_DEPTH;
+    the legacy PI_SUBAGENT_DEPTH spelling is accepted only as an explicit input.
+    No depth metadata is inferred from a task/worker label.
+    """
+    config = dict(SUBAGENT_CONFIG)
+    maxima = [
+        environment[key]
+        for key in ("CONCORDE_HARNESS_MAX_DEPTH", "PI_SUBAGENT_MAX_DEPTH")
+        if key in environment
+    ]
+    depths = [
+        environment[key]
+        for key in ("CONCORDE_HARNESS_DEPTH", "PI_SUBAGENT_DEPTH")
+        if key in environment
+    ]
+    if not maxima and not depths:
+        return config
+    if not maxima or not depths:
+        raise WorkerExecutionError(
+            "outer harness depth requires both current depth and maximum"
+        )
+    try:
+        values = [int(value) for value in (*maxima, *depths)]
+        current, limit = max(map(int, depths)), min(map(int, maxima))
+        if min(values) < 0 or current >= limit:
+            raise ValueError("no remaining launch depth")
+    except ValueError as error:
+        raise WorkerExecutionError(
+            "outer harness depth forbids this worker launch"
+        ) from error
+    config["maxSubagentDepth"] = min(1, limit - current - 1)
+    return config
+
+
 Outcome = Literal["failed", "cancelled", "limit_exhausted", "invalid_completion"]
 # Execution outcomes classify why a run produced no result; they are not error codes.
 FAILED: Outcome = "failed"
@@ -344,6 +382,7 @@ class PiWorkerRuntime:
             launch, has_checks=checks is not None, has_reporter=report_issue is not None
         )
         source = dict(os.environ if self.environment is None else self.environment)
+        subagent_config = bounded_subagent_config(source)
         executable = self.pi_executable or shutil.which("pi", path=source.get("PATH"))
         if not executable:
             raise WorkerExecutionError("the pi executable is not on PATH")
@@ -387,7 +426,7 @@ class PiWorkerRuntime:
                 json.dumps(PI_SETTINGS), encoding="utf-8"
             )
             (agent_dir / "extensions" / "subagent" / "config.json").write_text(
-                json.dumps(SUBAGENT_CONFIG), encoding="utf-8"
+                json.dumps(subagent_config), encoding="utf-8"
             )
             for child in launch.children:
                 (agent_dir / "agents" / f"{child.name}.md").write_text(

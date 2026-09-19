@@ -177,21 +177,20 @@ that need persistent source or dependency changes must prepare them in the imple
 
 ### scenario.distribution.build-checkout-skills-user-invoked — The source checkout's Skills wait for the developer's explicit request
 
-- GIVEN a build without a framework prefix, whose Skill launcher is the checkout's own `scripts/run-operation.py`
-- WHEN build renders the Claude Skill projections
-- THEN every rendered `SKILL.md` declares `user-invocable: true` and `disable-model-invocation: true`, so Claude Code offers the Skill to the developer's own `/concorde-<name>` invocation and never lists it for the model
-- AND a build with a framework prefix, an installed project's build, renders no Skill projection at all, because the published Skills reach an installed project through the Agent Skills CLI
-- BUT Codex projections carry no invocation fields
+- GIVEN a source-checkout build without a framework prefix
+- WHEN build renders client projections
+- THEN all source Skills and the Pi shim live under `generated/session/<client>/`, outside ambient discovery
+- AND byte-identical old manifest-owned ambient projections are retired only after complete preflight, while modified or unowned projections block retirement
+- AND installed consumers still receive published Skills through the Agent Skills CLI and the Pi shim under `.pi/extensions/`
 
-A build without a framework prefix projects the Skills into the Concorde source checkout itself.
-Developing that checkout is direct developer-authorized maintenance by default, and one of
-Concorde's own graphs runs there only when the developer explicitly asks for it, by its slash
-command or by naming it in prose; in the latter case the developer's session reads the rendered
-Skill file under `.claude/skills/<name>/` and submits the typed request it describes. Hiding the
-Skill from the model keeps that choice with the developer. An installed project receives the
-published Skills instead, which carry no such switch and stay model-invocable by each client's
-default, because there the Skills are the intended everyday entry points. Codex has no equivalent
-front-matter switch; the checkout's root instructions state the rule for that runtime.
+### scenario.distribution.private-selection — Private fresh session selection
+
+- GIVEN an assigned candidate with a fresh build and explicitly named absolute Skill/runtime paths
+- WHEN a fresh test child's inputs are selected
+- THEN selection returns only the exact candidate-built Skill bodies, build digest and runtime identity
+- AND missing, modified, aliased or out-of-candidate paths fail without ambient fallback
+- AND maintenance selection admits no Skills and every selection requests fresh non-forked context with inherited/discovered catalogs disabled
+- BUT returning selection metadata or bodies does not prove a model loaded or executed them
 
 ### scenario.distribution.skills-publish — The tracked published Skills are rendered by an explicit step
 
@@ -206,7 +205,7 @@ front-matter switch; the checkout's root instructions state the rule for that ru
 
 - GIVEN the current Skill sources, their includes and the exported request schemas
 - WHEN build renders the `pi` integration
-- THEN it renders exactly one projection, `.pi/extensions/concorde-session.ts`, which imports the tracked `pi/extensions/concorde-session.ts` and embeds the catalog: every public Operation's name, description, guidance and request schema with its version, the project-relative launcher and the interpreters to try
+- THEN it renders exactly one private source projection, `generated/session/pi/concorde-session.ts` (or `.pi/extensions/concorde-session.ts` for an installed consumer), which imports the tracked `pi/extensions/concorde-session.ts` and embeds the catalog: every public Operation's name, description, guidance and request schema with its version, the project-relative launcher and the interpreters to try
 - AND the guidance is the Skill text without the stdin envelope includes, which the tool supplies itself, and contains no unresolved package token
 - AND without a framework prefix the catalog marks explicit-request-only and names the checkout's own launcher and `.venv`; with a framework prefix it imports the extension below that prefix and names the managed runtime's interpreter
 - AND repeated renders are byte-identical and the shim is checked and rewritten like the Skill projections

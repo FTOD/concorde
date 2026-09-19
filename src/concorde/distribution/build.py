@@ -1,10 +1,10 @@
 """Deterministic rendering of model Operation instructions and public client projections.
 
 The build renders the WorkerProfile and client projections from ``operations/`` and ``prompts/``
-sources (the Skill sources are ``prompts/skills/<name>.md``) into ``generated/`` and, for the
-developer's clients, directly into the project: Skills at ``.claude/skills/<name>/SKILL.md`` and
-``.agents/skills/<name>/SKILL.md`` for Claude Code and Codex, and the Pi session extension shim at
-``.pi/extensions/concorde-session.ts``, which binds the tracked extension to this project and
+sources (the Skill sources are ``prompts/skills/<name>.md``) into ``generated/``. Source-checkout
+client projections stay private under ``generated/session/<client>/`` and are never registered
+in ambient discovery. Consumer installation still places published Skills through the Skills CLI
+and installs the Pi shim at ``.pi/extensions/concorde-session.ts``. That shim
 carries the same public Operations as one typed tool. After Stage B1 these rendered files are the
 only instruction source the host and the agent runtimes consume: ``run_operation`` and
 ``load_model_instructions`` verify build freshness before using them and fail closed with
@@ -101,6 +101,10 @@ INTEGRATION_ROOTS = {
 # the catalog of public Operations; the extension is framework code the shim imports.
 PI_SESSION_EXTENSION = "pi/extensions/concorde-session.ts"
 PI_SESSION_SHIM = f"{INTEGRATION_ROOTS['pi']}/concorde-session.ts"
+PRIVATE_INTEGRATION_ROOTS = {
+    client: f"generated/session/{client}" for client in INTEGRATIONS
+}
+PRIVATE_PI_SESSION_SHIM = f"{PRIVATE_INTEGRATION_ROOTS['pi']}/concorde-session.ts"
 # Skill includes that describe another client's invocation mechanics (the stdin envelope the
 # Skills send through the launcher); the Pi tool builds that envelope itself, so its guidance
 # leaves them out.
@@ -146,6 +150,7 @@ GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/agents",
     "generated/protocol",
     "generated/docs",
+    "generated/session",
 )
 GENERATED_OWNED_FILES: tuple[str, ...] = (
     "generated/build-manifest.json",
@@ -314,8 +319,8 @@ def render_skill(project_root: Path, name: str, integration: str) -> BuildOutput
     """Render one public Skill as the Concorde source checkout's own projection.
 
     The checkout's launcher is its own ``scripts/run-operation.py``. Developing that checkout is
-    direct maintenance by default and a Concorde graph runs there only on the developer's
-    explicit request, so the Claude projection is rendered user-invocable only: hidden from the
+    self-maintenance in a fresh Skill-free candidate by default and a Concorde graph runs only on an
+    explicit test request, so the private Claude projection is rendered user-invocable only: hidden from the
     model, reachable through the developer's own ``/name`` invocation. An installed project never
     receives these projections; it receives the published Skills (``render_published_skill``).
     """
@@ -329,7 +334,7 @@ def render_skill(project_root: Path, name: str, integration: str) -> BuildOutput
         model_invocable=False,
     )
     return BuildOutput(
-        path=f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md",
+        path=f"{PRIVATE_INTEGRATION_ROOTS[integration]}/{name}/SKILL.md",
         content=content,
         sources=sources,
     )
@@ -497,7 +502,8 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
         "operations": operations,
     }
     extension = f"{prefix}/{PI_SESSION_EXTENSION}" if prefix else PI_SESSION_EXTENSION
-    depth = PI_SESSION_SHIM.count("/")
+    shim_path = PI_SESSION_SHIM if prefix else PRIVATE_PI_SESSION_SHIM
+    depth = shim_path.count("/")
     import_path = "../" * depth + extension
     content = (
         "// Rendered by `python3 scripts/concorde.py build` from skills/, prompts/ and the\n"
@@ -514,9 +520,7 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
         "\tCATALOG,\n"
         ");\n"
     ).encode("utf-8")
-    return BuildOutput(
-        path=PI_SESSION_SHIM, content=content, sources=tuple(sorted(sources))
-    )
+    return BuildOutput(path=shim_path, content=content, sources=tuple(sorted(sources)))
 
 
 def render_langgraph(project_root: Path) -> BuildOutput:
@@ -674,13 +678,14 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     for output in outputs:
         all_sources.update(output.sources)
     # WorkerProfile declarations and operation wire metadata are authored build inputs too.
-    for directory in ("operations",):
+    for directory in ("operations", "src/concorde"):
         all_sources.update(
             path.relative_to(project_root).as_posix()
             for path in (project_root / directory).rglob("*.py")
             if path.is_file()
         )
     for relative in (
+        "scripts/run-operation.py",
         "src/concorde/spec/contracts.py",
         "src/concorde/spec/contract_shapes.py",
         "src/concorde/spec/wire_shapes.py",
@@ -802,6 +807,47 @@ def _preflight_retired_skills(directories: tuple[Path, ...]) -> None:
                 raise BuildError(f"unexpected retired skill content: {path}")
 
 
+def _retire_ambient_projections(root: Path) -> None:
+    """Retire only old manifest-owned, byte-identical ambient outputs.
+
+    Unknown or modified catalogs are never silently deleted. All paths are preflighted
+    before any removal; a failed retry therefore preserves every unverified file.
+    """
+    manifest = root / "generated/build-manifest.json"
+    recorded = (
+        json.loads(manifest.read_text()).get("outputs", {})
+        if manifest.is_file()
+        else {}
+    )
+    paths = [
+        f"{INTEGRATION_ROOTS[client]}/{name}/SKILL.md"
+        for client in SKILL_INTEGRATIONS
+        for name in SKILL_NAMES
+    ]
+    paths.append(PI_SESSION_SHIM)
+    owned = []
+    for relative in paths:
+        path = root / relative
+        if not path.exists() and not path.is_symlink():
+            continue
+        if any(
+            parent.is_symlink()
+            for parent in [path, *path.parents]
+            if parent != root.parent
+        ):
+            raise BuildError(f"unsafe ambient projection: {relative}")
+        expected = recorded.get(relative, {}).get("sha256")
+        if not path.is_file() or expected != _sha256_bytes(path.read_bytes()):
+            raise BuildError(
+                f"unowned or modified ambient projection; explicitly archive it: {relative}"
+            )
+        owned.append(path)
+    for path in owned:
+        path.unlink()
+        if not any(path.parent.iterdir()):
+            path.parent.rmdir()
+
+
 def write_build(
     project_root: str | Path,
     integration: str = "all",
@@ -821,8 +867,12 @@ def write_build(
     root = Path(project_root)
     destination = Path(integration_root) if integration_root is not None else root
     projected = tuple(f"{prefix}/" for prefix in INTEGRATION_ROOTS.values())
+    if not framework_prefix and destination.resolve() != root.resolve():
+        raise BuildError("source build cannot write into another workspace")
     result = build(root, integration, framework_prefix=framework_prefix)
     retired = _retired_skill_cleanup(destination, integration)
+    if not framework_prefix:
+        _retire_ambient_projections(root)
     expected = {output.path for output in result.outputs}
     # A Protocol revision may retire a kind or role. Only these declared build-owned
     # subtrees are reconciled; diagrams and other tools' generated assets are preserved.

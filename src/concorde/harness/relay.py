@@ -61,9 +61,9 @@ def relay_operation(
     if (candidate / "concorde.json").is_file() and (
         candidate / "src/concorde"
     ).is_dir():
-        from ..distribution.build import write_build
+        from ..distribution.build import verify_fresh
 
-        write_build(candidate)
+        verify_fresh(candidate)
     argv = [*relay_launcher(host, candidate), operation]
     environment = {
         key: value for key, value in os.environ.items() if key != "CONCORDE_STUDIO_URL"
@@ -158,6 +158,16 @@ def bind_worktree(
                 "primary_worktree",
             )
         }
+    if (
+        mutation
+        and in_primary
+        and host.package_root == host.project_root
+        and (host.project_root / "concorde.json").is_file()
+    ):
+        raise SpecError(
+            "source maintenance requires a fresh Skill-free child in an assigned candidate",
+            "fresh_session_required",
+        )
     if mutation and not host.allow_primary_worktree:
         if task.get("_issue_recovery"):
             raise SpecError(

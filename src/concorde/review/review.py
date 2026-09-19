@@ -244,9 +244,10 @@ def _persist(run, value, *, execution=None, failure=None) -> dict:
     """Host run records are separate from the reviewer's empty write grant."""
     mode = value["data"]["review_mode"]
     path = f".concorde/runs/{run.host.invocation_id}/review-{run.target.id}-{mode}-{uuid.uuid4()}.json"
-    destination = checked_path(run.repository.root, path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(canonical(value) + "\n")
+    from ..harness.status_store import run_path, write_run
+
+    destination = run_path(run.repository.root, path)
+    write_run(run.repository.root, path, (canonical(value) + "\n").encode())
     reference = artifact(run.repository.root, f"review.{run.target.id}.{mode}", path)
     if execution is not None or failure is not None:
         # The worker's reported usage and any execution failure stay host records beside the review.

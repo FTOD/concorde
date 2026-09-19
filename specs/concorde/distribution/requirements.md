@@ -43,12 +43,17 @@ Build SHALL NOT point one worktree's build at another worktree's outputs.
 
 ### req.distribution.checkout-skills-user-invoked — Source-checkout Skills wait for the developer
 
-Build SHALL render the source checkout's own Claude Skill projections as user-invocable only,
-hidden from model-initiated invocation.
+Build SHALL render source-checkout Skills and the Pi shim only under private `generated/session/` paths, never ambient client discovery directories.
 
-Developing the Concorde checkout is direct developer-authorized maintenance by default; a Concorde
-graph runs on the checkout only when the developer explicitly asks for it. The installed consumer
-projection is unaffected and stays model-invocable.
+Concorde self-maintenance uses a fresh Skill-free candidate writer and a separate fresh sibling
+tester with explicitly selected candidate-built Skills. Both disable inherited/discovered catalogs.
+Consumer installation remains model-invocable and keeps its normal client-specific installation.
+
+### req.distribution.private-selection — Exact private candidate provenance
+
+Private session selection SHALL reject missing, stale, unreadable or out-of-candidate Skill and runtime paths without any global or name-based fallback.
+
+A selection returns complete bytes and their provenance, not evidence of model loading or execution.
 
 ### req.distribution.pi-session-public-only — The Pi session tool exposes only public Operations
 

@@ -19,7 +19,7 @@ Send one concorde-operation-invocation@3 JSON object on stdin to `python3 .conco
 are type_id, schema_version:3, operation_id:"concorde-deliver", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1),
 and input (concorde-deliver-request@1). Supply the selected change_id from the primary worktree's
-`.concorde/worktrees.json` inventory or its saved delivery receipt. Optional target/task metadata
+`.concorde/status/` inventory or its saved delivery receipt. Optional target/task metadata
 cannot replace change ownership. No domain flags or positional arguments are accepted.
 
 Default delivery verifies the candidate and its integration with the current primary commit,

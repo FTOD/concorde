@@ -120,7 +120,15 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             p.parent.name for p in (self.clone / "skills").glob("concorde-*/SKILL.md")
         )
         self.assertTrue(expected_skills)
-        for integration_root in (".claude/skills", ".agents/skills"):
+        # The bootstrap fixture tests committed HEAD, which can precede the invoking
+        # maintenance change. New source builds are private; historical clones retain
+        # their own old projection layout until that change is committed.
+        roots = (
+            ("generated/session/claude", "generated/session/codex")
+            if (self.clone / "generated/session").is_dir()
+            else (".claude/skills", ".agents/skills")
+        )
+        for integration_root in roots:
             skills = sorted(
                 p.parent.name
                 for p in (self.clone / integration_root).glob("concorde-*/SKILL.md")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..distribution.build import load_model_instructions
 from ..harness.change_worktree import (
-    STATE_PATH,
+    save_change,
     progress,
     read_change,
     refresh_registry,
@@ -616,19 +616,15 @@ def topology_apply_nodes(application_ref, host):
             )
             change["validated_tree"] = None
             change["validation"] = None
-            transaction.append(
-                file_change(repository.root, STATE_PATH, canonical(change) + "\n")
-            )
-            allowed.add(STATE_PATH)
-        changed = [
-            path
-            for path in apply_files(
-                repository.root, transaction, allowed, verify=verify
-            )
-            if path != STATE_PATH
-        ]
-        if change is not None:
-            refresh_registry(repository.root)
+
+        def verify_and_record():
+            verify()
+            if change is not None:
+                save_change(repository.root, change)
+
+        changed = apply_files(
+            repository.root, transaction, allowed, verify=verify_and_record
+        )
         return {}
 
     def cleanup(state):

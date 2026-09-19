@@ -190,7 +190,9 @@ def list_issues(
 @contextmanager
 def _lock(root: Path):
     # Runs is already host-local ignored state. No mutable allocation index enters Git history.
-    lock = checked_path(root, ".concorde/runs/issues.lock")
+    from ..harness.status_store import run_path
+
+    lock = run_path(root, ".concorde/runs/issues.lock")
     lock.parent.mkdir(parents=True, exist_ok=True)
     with lock.open("a+b") as stream:
         fcntl.flock(stream.fileno(), fcntl.LOCK_EX)

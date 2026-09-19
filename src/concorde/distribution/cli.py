@@ -54,6 +54,34 @@ def create_parser() -> argparse.ArgumentParser:
     skills.add_argument("--check", action="store_true")
     skills.add_argument("--format", choices=["json"], default="json")
 
+    selection = subparsers.add_parser("select-session")
+    selection.add_argument(
+        "--mode", choices=["maintenance", "test", "task"], required=True
+    )
+    selection.add_argument("--skill", action="append", default=[])
+    selection.add_argument("--runtime", required=True)
+    selection.add_argument("--output", type=Path)
+
+    status = subparsers.add_parser("status")
+    status.add_argument("--register", type=Path)
+    status.add_argument("--task")
+    status.add_argument(
+        "--mode", choices=["operation", "maintenance", "direct"], default="maintenance"
+    )
+    status.add_argument("--change-id")
+    status.add_argument("--child")
+    status.add_argument(
+        "--phase", choices=["maintenance", "test", "task"], default="maintenance"
+    )
+    status.add_argument("--release", action="store_true")
+    status.add_argument("--manual-merge")
+    status.add_argument(
+        "--cleanup", choices=["pending", "retained", "removed"], default="pending"
+    )
+
+    migration = subparsers.add_parser("migrate-status")
+    migration.add_argument("--apply", action="store_true")
+
     usage = subparsers.add_parser("usage")
     usage.add_argument(
         "--run",
@@ -65,6 +93,96 @@ def create_parser() -> argparse.ArgumentParser:
 
 def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
+    if arguments.tool == "status":
+        from ..harness.change_worktree import ensure_change
+        from ..harness.status_store import (
+            all_status,
+            coordinate_child,
+            primary_root,
+            record_manual_merge,
+        )
+        from ..spec.repository import SpecError
+
+        if root.resolve() != primary_root(root) and any(
+            (arguments.register, arguments.child, arguments.manual_merge)
+        ):
+            raise SpecError(
+                "status coordination requires primary", "primary_session_required"
+            )
+        if arguments.register:
+            if primary_root(arguments.register) != root.resolve():
+                raise SpecError(
+                    "registered candidate belongs to another repository",
+                    "workspace_mismatch",
+                )
+            if not arguments.task:
+                raise SpecError("registration requires a task goal", "invalid_input")
+            result = ensure_change(
+                arguments.register.resolve(),
+                task={"task": arguments.task},
+                change_id=arguments.change_id,
+                allow_primary=True,
+                mode=arguments.mode,
+            )
+        elif arguments.child and arguments.change_id:
+            result = coordinate_child(
+                root,
+                arguments.change_id,
+                child_id=arguments.child,
+                phase=arguments.phase,
+                release=arguments.release,
+            )
+        elif arguments.manual_merge and arguments.change_id:
+            result = record_manual_merge(
+                root,
+                arguments.change_id,
+                commit=arguments.manual_merge,
+                cleanup=arguments.cleanup,
+            )
+        elif any((arguments.child, arguments.manual_merge, arguments.release)):
+            raise SpecError("status update requires a change ID", "invalid_input")
+        else:
+            result = {"tasks": all_status(root)}
+        return ToolResult("status", ".", "success", result=result)
+    if arguments.tool == "select-session":
+        from .session_selection import select_session
+
+        selected = select_session(
+            root,
+            mode=arguments.mode,
+            skill_paths=arguments.skill,
+            runtime=Path(arguments.runtime),
+        )
+        if arguments.output:
+            from ..harness.status_store import atomic_write
+            from .build import BuildError
+            import json
+
+            try:
+                relative = arguments.output.relative_to(root.resolve()).as_posix()
+            except ValueError as error:
+                raise BuildError(
+                    "selection output must remain in its candidate"
+                ) from error
+            if not relative.startswith(".concorde/work/"):
+                raise BuildError(
+                    "selection output belongs only in candidate .concorde/work scratch"
+                )
+            atomic_write(
+                root.resolve(),
+                relative,
+                (json.dumps(selected, sort_keys=True) + "\n").encode(),
+            )
+        return ToolResult("select-session", ".", "success", result=selected)
+    if arguments.tool == "migrate-status":
+        from ..harness.status_store import migrate_legacy
+
+        return ToolResult(
+            "migrate-status",
+            ".",
+            "success",
+            result=migrate_legacy(root, apply=arguments.apply),
+        )
     if arguments.tool == "usage":
         from ..harness.usage import read_usage, summarize_usage
 
@@ -376,6 +494,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "protocol-manifest",
                 "skills",
                 "usage",
+                "status",
+                "select-session",
+                "migrate-status",
             }
             else "validate",
             ".",

@@ -171,6 +171,10 @@ class DispositionRecoveryTests(unittest.TestCase):
                 check=True,
                 capture_output=True,
             )
+            if arguments[0] == "init":
+                # The fixture reported an Issue before initializing Git. Keep the
+                # existing local run lock/evidence out of its first project commit.
+                change_worktree._exclude_control_files(self.root)
         with self.fail_checkpoint("completed"):
             result = self.solve()
         self.assertEqual("failed", result["status"], result)

@@ -75,7 +75,7 @@ checks.
 <a id="entity.distribution.pi-session-extension"></a>
 
 The Pi session extension is the projection for a developer whose client is the Pi coding agent.
-Build renders a shim into the project's `.pi/extensions/` that imports the tracked extension and
+Source build renders a private shim under `generated/session/pi/`; consumer installation places it in `.pi/extensions/` that imports the tracked extension and
 carries the catalog of public Operations: each one's description, its Skill guidance without the
 stdin envelope mechanics, and its request schema. The extension registers one `concorde` tool.
 Its `describe` action returns that guidance and schema; its `run` action wraps the caller's input
@@ -120,8 +120,8 @@ which refuses a describe-policy preview with `use_proposal`.
 
 <a id="entity.distribution.developer-session"></a>
 
-The Developer agent session is the developer's own client session in the worktree whose build
-supplied its projections. It never needs to move: a mutation it requests from the primary worktree
+The Developer agent session coordinates from its initial worktree. Source maintenance and tests
+use separate fresh sibling children in the assigned candidate with inherited catalogs disabled. It never needs to move: a mutation it requests from the primary worktree
 runs in a candidate worktree the host creates, and the session receives that candidate's result.
 Builds use only their own worktree's source and outputs.
 

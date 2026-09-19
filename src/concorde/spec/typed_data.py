@@ -280,6 +280,10 @@ def validate_typed(value: Any, expected: str | None = None, field: str = "") -> 
 
 
 def artifact(project: Path, identifier: str, relative: str) -> dict:
+    if relative.startswith((".concorde/runs/", ".concorde/status/")):
+        from ..harness.status_store import primary_root
+
+        project = primary_root(project)
     path = checked_path(project, relative)
     if not path.is_file():
         raise TypedDataError(

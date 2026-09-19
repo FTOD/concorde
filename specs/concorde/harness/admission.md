@@ -74,8 +74,8 @@ permission, validation or delivery-evidence checks; see the canonical
 [build admission scenario](../distribution/scenarios.md#scenario.distribution.build-stale-blocks-execution).
 
 The invocation's project root is the working directory of that entry process, exactly as resolved
-and without searching parent directories. The registry, Spec collections, lifecycle state and listed
-implementation files it reads are those of the worktree at that directory; the stale-build check
+and without searching parent directories. The registry, Spec collections and listed
+implementation files it reads are those of the worktree at that directory; lifecycle evidence is primary-owned; the stale-build check
 inspects the framework checkout that contains the launched script. A working directory at a Git
 worktree root is admitted as a `primary` or `change` workspace and a directory outside any Git
 repository as `unversioned`; a directory inside a Git worktree that is not its root is refused with
@@ -88,8 +88,7 @@ rather than a wider one.
 A mutating request in the primary worktree creates a candidate worktree on an isolated branch
 from committed HEAD, records the change there and relays the same request to that candidate's own
 launcher (`relay_operation`): a candidate that carries its own Concorde, the source checkout or a
-consumer whose installed framework is tracked, runs that code after a rebuild from its own
-sources; any other candidate runs the invoking framework with the candidate as its project root.
+consumer whose installed framework is tracked, runs that code after verifying its own current build; any other candidate runs the invoking framework with the candidate as its project root.
 The relayed launcher's complete result envelope becomes this invocation's result, its stderr
 diagnostics are forwarded, and its workspace names the candidate; the originating session never
 moves. Uncommitted primary changes are not copied. A request that names a recorded change_id from
@@ -97,7 +96,7 @@ the primary worktree relays into that candidate, found through the worktree inve
 that returns no envelope fails with relay_failed. Host-created worktrees live in temporary storage.
 Host administrators may explicitly permit
 standalone development for controlled embedding. Delivery separately requires a session in its
-selected source or primary worktree; third-worktree and nested sessions are rejected. Default
+selected source or primary worktree; third-worktree sessions and nested Operation delivery calls are rejected; a one-layer task child in a participant may deliver. Default
 delivery publishes a per-change branch and removes the source worktree unless explicitly retained.
 Final primary merging is a separate merge_primary:true request requiring explicit user authorization
 and the primary owning session. Only one agent owns primary writes; the host serializes shared
@@ -257,6 +256,10 @@ context forms; package/schema alignment checks verify those identities.
 
 | Error code | Meaning |
 | --- | --- |
+| `migration_required` | Legacy local lifecycle data requires explicit migrate-status acceptance. |
+| `migration_conflict` | Legacy or interrupted migration collides with differing data; preserve both and resolve explicitly. |
+| `primary_unavailable` | Restore the authoritative primary worktree before retrying persistence. |
+| `fresh_session_required` | Source maintenance requires an assigned candidate and fresh Skill-free writer. |
 | `already_initialized` | The project is already configured; use `configure` to change settings instead of initializing again. |
 | `closed_issue` | Another observation requires reopening the closed Issue first. |
 | `invalid_issue` | An Issue report, record, receipt or disposition violates its closed shape or history invariants. |
@@ -302,7 +305,7 @@ context forms; package/schema alignment checks verify those identities.
 | `invalid_merge` | The verified merge of the candidate failed Spec validation. |
 | `invalid_proposal` | A topology design or proposal would change the project's own identity, or is otherwise not acceptable. |
 | `invalid_spec` | An authored document unit's metadata, ownership or reading structure is invalid. |
-| `invalid_worktree_state` | `.concorde/worktree.json` has an invalid identity or schema. |
+| `invalid_worktree_state` | the primary-owned `.concorde/status/<change_id>.json` has an invalid identity or schema. |
 | `legacy_attempt` | The worktree still carries an unsupported legacy `.concorde/attempts/` state that must be removed before it can be adopted. |
 | `limit_exhausted` | `OperationExecutionError.outcome` when a worker ran past its timeout; the host maps this to the `execution_limit` result error code. |
 | `merge_conflict` | Integration conflicts with the primary branch. Resolve and revalidate in the candidate worktree, or a new candidate if delivery already removed the source. |
@@ -342,20 +345,37 @@ context forms; package/schema alignment checks verify those identities.
 
 ## Worktree awareness
 
-One schema-2 `.concorde/worktree.json` owns a managed change, root intent, target records, phase/status,
-gaps and validation identity. Plans and auxiliary artifacts live under
-`.concorde/work/<target-id>/`; there is no `.concorde/attempts/<change-id>/` lifecycle.
-Components retain progress in the enclosing change. The selected graph determines transitions;
-the common host owns persistence and rejects stale or incompatible state before reuse.
-Schema-1 worktree state is refused with `unsupported_worktree_version`; archive it explicitly and
-start fresh evidence rather than rename completion fields in saved progress.
-The primary worktree maintains `.concorde/worktrees.json` from Git's live worktree inventory, including
-unmanaged worktrees, and from each linked worktree's own `.concorde/worktree.json`, the only file of
-another worktree the host reads. Each entry has its path, branch, head, managed/locked status and, when available,
-change_id, owning target, task summary, phase and status. A secondary worktree registers its own
-`.concorde/worktree.json` and receives managed AGENTS.md/CLAUDE.md instructions to treat partial work as
-a candidate and request delivery from either participating worktree. Host updates to these control files do not
-change Spec authority or grant agent writes outside the selected target.
+Each stable change/task ID has one schema-2 `.concorde/status/<change_id>.json` in the primary
+worktree only. The record keeps mode, task goal, candidate path/branch/base, child ownership,
+phase, blockers, target progress, run references, delivery or ordinary-Git merge outcome, and
+separate cleanup status. Candidates hold no duplicate authoritative record. Terminal records
+survive worktree deletion; direct primary tasks need no secondary worktree. Project configuration
+and registry semantics are unchanged and remain tracked; runtime status and runs are ignored.
+
+Git common-directory identity identifies the primary, including nonstandard primary paths.
+Unavailable primary identity blocks persistence with `primary_unavailable`; restore the primary
+and retry, never fabricate a new candidate-local authority. Cooperative repository locks serialize
+atomic coordinator writes without letting children edit primary source or index. Live unmanaged
+worktrees remain discoverable but are not silently converted into tasks. Branch/path are locators;
+change identity remains stable across a branch rename. Git worktree identity prevents a reused
+path from resurrecting a removed task; terminal primary tasks do not own subsequent direct work.
+
+Durable `.concorde/runs/<run_id>/` evidence is primary-only, including candidate runs. Each run
+records actual source root, branch, change/run IDs, input commit/tree, runtime and build identity,
+results and separate logs/artifacts. Accepted artifact bytes and build manifests are snapshotted
+in runs before scratch or candidate removal; a stale reference is marked unavailable rather than
+represented as a successful copy. Explicitly selected Skill bodies are retained as provenance,
+not proof of model execution. Unknown Skill provenance stays null rather than implying a
+Skill was loaded from catalog metadata. Candidate `.concorde/work/` may hold temporary context
+scratch and auxiliary work, not duplicate durable run archives.
+
+`migrate-status` previews legacy worktree state, inventory, receipts and candidate runs;
+`migrate-status --apply` explicitly imports them. Preflight refuses conflicting stable IDs, differing
+run bytes, unsafe paths and existing archive destinations without deleting data. A durable journal
+precedes writes; retries replay identical targets and finish unfinished archival/removal steps, while
+conflicting intervening bytes block. Original bytes are archived under primary `.concorde/runs/legacy-migration/` before
+removing exact unchanged legacy sources; candidate-local durable archives do not remain. Legacy readiness requires fresh validation. Delivery recovery remains in the
+status record; detailed historical delivery logs move into runs. No live-data migration is implicit.
 
 Every discovery and worker snapshot admits `workspace` lifecycle metadata. Main can answer a pure
 workspace-status question directly from this metadata; target-behavior answers still use a separate
@@ -478,3 +498,16 @@ Code writers may create or change the files their Module's own entries bind, inc
 below a listed directory, but cannot change entity identity, membership, the registry, or a Module
 Spec document. Non-code authors never read those files' contents, only the declared entries and
 bound names through the entity declarations they can already see.
+
+
+## Primary coordination commands
+
+`status` lists all task records, including terminal records. From primary, `status --register
+<candidate> --task <goal> --mode maintenance|operation|direct` registers an existing workspace in
+that repository with a stable optional `--change-id`; maintenance registration injects no Skills
+or candidate guidance. `--child <id> --phase maintenance|test|task --change-id <id>` claims one child
+owner; `--release` requires that same owner before a sibling takes over. These commands record
+coordination, never spawn sessions or prove fresh context was actually used. `--manual-merge
+<commit> --change-id <id> --cleanup pending|retained|removed` verifies observed Git ancestry and
+clean candidate inputs without performing or authorizing a merge. A removed cleanup outcome also
+requires the candidate path to be absent.

@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
+from concorde.harness.status_store import all_status
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.harness.invocation import Invocation
@@ -1608,9 +1609,7 @@ class ModuleImplementationTests(unittest.TestCase):
                     + ["service.transfer", "scope.bank"],
                     coding_targets,
                 )
-                state = json.loads((root / ".concorde/worktree.json").read_text())[
-                    "targets"
-                ]["scope.bank"]
+                state = all_status(root)[0]["targets"]["scope.bank"]
                 self.assertEqual(task, state["task"])
                 self.assertEqual(2, len(state["tasks"]))
                 self.assertNotIn("scope.bank", state["coordination"])

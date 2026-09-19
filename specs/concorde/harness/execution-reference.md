@@ -127,7 +127,11 @@ A model Operation MAY delegate inside its worker only to the helpers its profile
 with no model selection embedded in their definitions. They execute in foreground fresh sessions
 under the same grant and tool gate, cannot delegate again and cannot submit the worker's final
 result. Only the verified worker result leaves the process. Helper answers are evidence, not a
-second Framework node result. [Execution](execution-reference.md) defines the operation ceiling and gate.
+second Framework node result. Task children are a separate outer delegation layer, never an
+exemption from actual harness limits. A host with observed outer depth supplies both
+`CONCORDE_HARNESS_DEPTH` and `CONCORDE_HARNESS_MAX_DEPTH` (legacy explicit Pi depth inputs are
+accepted); missing halves or exhausted limits block launch, and remaining helper depth is narrowed
+rather than reset. [Execution](execution-reference.md) defines the operation ceiling and gate.
 
 #### Common worker rules and inventory {#agents-and-harnesses-common-worker-rules-and-inventory}
 
@@ -467,7 +471,7 @@ their kinds are listed in [Agents and Harnesses](execution-reference.md).
   candidate worktree, other worktrees and the developer's home directory are outside the grant.
   The discovery, Spec, assessment, planning and task workers use this kind.
 - A **project** workspace is the candidate worktree itself and the Pi process's working directory.
-  The snapshot is written below `.concorde/runs/<invocation>/<uuid>/context.json` inside that
+  The snapshot is written below `.concorde/work/<invocation>/<uuid>/context.json` inside that
   worktree; the grant covers it, the Spec documents and the installed Protocol copy under
   `.concorde/protocol/` it indexes, at their project paths, and the selected Module's
   implementation: its listed entries with write authority for the programmer, its enumerated files
@@ -579,7 +583,7 @@ records them as an `ExecutionUsage` record on the `WorkerOutcome`: the configure
 `cost_usd`, `turns`, host-measured `wall_seconds`, and the `prompt_bytes` and `context_bytes` the host
 handed the process. A figure Pi did not report is `None`, never zero.
 
-The host records one line per launch through `record_usage` in `.concorde/runs/<root invocation
+In the primary worktree only, the host records one line per launch through `record_usage` in `.concorde/runs/<root invocation
 id>/usage.jsonl`, with `schema_version: 2` and labelled with `operation`, `stage`, `target_id`, `agent`, `change_id`, the
 launching host's `invocation_id` and `depth`, the launch's own `launch_invocation_id`, `context_id`
 and `model`, and the usage record. The root invocation id is the top-level operation invocation's
@@ -724,7 +728,7 @@ bounds shell commands and everything else the process does.
 A worker with children loads pi-subagents, pinned in `pi/package.json`: a source checkout installs it
 with `npm ci --prefix pi`, and in an installed project the installer provisions the same lock into the
 managed runtime under `.concorde/.venv/share/concorde/pi`, where the runtime finds it beside the
-installed framework. Its configuration allows one level of delegation, runs children in the foreground in
+installed framework. Its configuration allows at most one level of helper delegation, runs children in the foreground in
 fresh contexts, and disables pi-subagents' background runs, missions, schedules and inter-session
 channels. On session start the Concorde extension registers two things with pi-subagents for the
 worker's session: a delegation ceiling naming exactly the declared children and the child tools,
@@ -1058,7 +1062,8 @@ propagates the provider's errors without fetching remote resources or widening f
 It rejects absolute paths, backslashes, colons, control characters, empty components, `.` and `..`
 with `TypedDataError/invalid_field`. `checked_path` joins that path beneath a caller-owned trusted
 project root and rejects symlinks in every relative path component; it need not already exist.
-`artifact` requires a regular file there and returns `{id, path, digest}`, where `digest` is
+`artifact` resolves `.concorde/runs/` and `.concorde/status/` through the Git-identified primary;
+other paths remain in the supplied project. It requires a regular file there and returns `{id, path, digest}`, where `digest` is
 `sha256:` followed by the 64 lowercase hexadecimal digits of the exact file bytes. A missing file
 raises `stale_reference`; filesystem I/O errors may propagate. It does not create the file.
 `verify_artifacts` recursively visits dictionaries and lists, recognizes references by the exact

@@ -101,6 +101,10 @@ def digest(value: bytes | Any) -> str:
 
 def read_file(root: Path, relative: str) -> bytes:
     """Read regular files only; reject path aliases and every symlink component."""
+    if relative.startswith((".concorde/runs/", ".concorde/status/")):
+        from ..harness.status_store import primary_root
+
+        root = primary_root(root)
     path = checked_path(root, relative)
     if not path.is_file():
         raise SpecError(

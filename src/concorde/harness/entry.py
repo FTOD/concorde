@@ -84,6 +84,13 @@ def json_main(package_root: Path, operation: str, runner) -> int:
         value = validate_invocation(
             decode(raw.decode() if isinstance(raw, bytes) else raw), operation
         )
+        if os.environ.get("CONCORDE_STUDIO_URL") and os.environ.get(
+            "CONCORDE_SESSION_SELECTION"
+        ):
+            raise SpecError(
+                "private candidate selection cannot fall back to a Studio runtime",
+                "workspace_mismatch",
+            )
         if os.environ.get("CONCORDE_STUDIO_URL"):
             from .studio_client import run_in_studio
 
@@ -94,7 +101,29 @@ def json_main(package_root: Path, operation: str, runner) -> int:
             if state.get("policies"):
                 print(canonical({"policies": state["policies"]}), file=sys.stderr)
         else:
-            host = OperationHost(Path.cwd(), package_root, mode=value["mode"])
+            selection = None
+            if os.environ.get("CONCORDE_SESSION_SELECTION"):
+                from ..distribution.session_selection import load_selection
+
+                if package_root.resolve() != Path.cwd().resolve():
+                    raise SpecError(
+                        "private selection runtime is outside the candidate",
+                        "workspace_mismatch",
+                    )
+                selection = load_selection(
+                    Path.cwd(), Path(os.environ["CONCORDE_SESSION_SELECTION"])
+                )
+                if selection["mode"] == "maintenance":
+                    raise SpecError(
+                        "maintenance authoring uses deterministic development commands, not public Operations",
+                        "fresh_session_required",
+                    )
+            host = OperationHost(
+                Path.cwd(),
+                package_root,
+                mode=value["mode"],
+                session_provenance=selection,
+            )
             result = run_host_node(
                 runner, host, value["configuration"], value["input"], operation
             )

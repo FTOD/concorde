@@ -180,7 +180,7 @@ component progress, and basic information about live linked worktrees. This cont
 implementation body or hidden Spec document. Paths and task summaries identify candidate work, not
 permission to read another worktree. A secondary context is explicitly a candidate revision.
 The record is computed from the invocation's own project root, the worktree at the entry process's
-working directory, and each linked worktree's summary comes from its `.concorde/worktree.json` alone.
+working directory, with each task summary read from the primary-owned status record.
 The host rechecks the current workspace identity and lifecycle after a stage; other worktrees' frozen
 summaries may advance independently. Topology proposals retain their originating workspace observation
 so the relayed run in a committed-base candidate can recheck the same admitted Spec and design inputs.

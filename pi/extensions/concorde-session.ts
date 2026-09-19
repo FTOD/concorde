@@ -69,9 +69,9 @@ export function sessionPrompt(catalog: SessionCatalog): string {
 		"",
 		"This project uses the Concorde Framework. Its public Operations run only through the " +
 			"`concorde` tool: never run the launcher script or an internal stage operation yourself, " +
-			"and never edit `.concorde/` control files. Call `concorde` with action \"describe\" " +
+			'task-authorized edits in your own workspace may include `.concorde` files; preserve scope, evidence and concurrency safety. Call `concorde` with action "describe" ' +
 			"before the first use of an Operation to read its guidance and request schema, then " +
-			"action \"run\" with the request data as `input`. Results are typed JSON envelopes whose " +
+			'action "run" with the request data as `input`. Results are typed JSON envelopes whose ' +
 			"`status` is succeeded, described, blocked or failed and whose `errors` explain a stop; " +
 			"report Spec gaps and blocked steps as returned instead of working around them.",
 	];
@@ -79,8 +79,8 @@ export function sessionPrompt(catalog: SessionCatalog): string {
 		lines.push(
 			"",
 			"This is Concorde's own source checkout: run an Operation only when the user explicitly " +
-				"asks for it by name. A task that merely looks like a development change is direct " +
-				"maintenance in this worktree.",
+				"asks for it by name. Source maintenance belongs to a fresh Skill-free candidate writer, " +
+				"followed by a fresh sibling tester using only candidate-built Skills; never rewrite governing Skills.",
 		);
 	}
 	lines.push("", "Operations:");
@@ -114,7 +114,8 @@ function usageLine(stderr: string): string | null {
 		if (!line.startsWith('{"usage":')) continue;
 		try {
 			const total = JSON.parse(line).usage?.total ?? {};
-			const figure = (key: string) => (typeof total[key] === "number" ? total[key] : "?");
+			const figure = (key: string) =>
+				typeof total[key] === "number" ? total[key] : "?";
 			return (
 				`usage: input ${figure("input_tokens")}, output ${figure("output_tokens")}, ` +
 				`cost ${figure("cost_usd")} USD, ${figure("wall_seconds")} s`
@@ -158,7 +159,8 @@ function runLauncher(
 			} catch {}
 			killer = setTimeout(() => {
 				try {
-					if (process.platform === "win32" || child.pid === undefined) child.kill("SIGKILL");
+					if (process.platform === "win32" || child.pid === undefined)
+						child.kill("SIGKILL");
 					else process.kill(-child.pid, "SIGKILL");
 				} catch {}
 			}, GRACE_MS);
@@ -207,21 +209,24 @@ function bounded(text: string, label: string): string {
 export function concordeSession(root: string, catalog: SessionCatalog) {
 	if (catalog.schema_version !== 1)
 		throw new Error("unsupported Concorde session catalog version");
-	const operations = new Map(catalog.operations.map((item) => [item.name, item]));
+	const operations = new Map(
+		catalog.operations.map((item) => [item.name, item]),
+	);
 	const names = catalog.operations.map((item) => item.name);
 	return function extension(pi: ExtensionAPI): void {
 		pi.on("before_agent_start", async (event) => ({
-			systemPrompt: event.systemPrompt.trimEnd() + "\n\n" + sessionPrompt(catalog),
+			systemPrompt:
+				event.systemPrompt.trimEnd() + "\n\n" + sessionPrompt(catalog),
 		}));
 
 		pi.registerTool({
 			name: "concorde",
 			label: "Concorde",
 			description:
-				"Run a public Concorde Operation or describe one. Action \"describe\" returns the " +
-				"Operation's guidance and the JSON Schema of its request. Action \"run\" sends `input`, " +
+				'Run a public Concorde Operation or describe one. Action "describe" returns the ' +
+				'Operation\'s guidance and the JSON Schema of its request. Action "run" sends `input`, ' +
 				"the request data, to the Operation and returns its typed result envelope; `mode` " +
-				"\"describe-policy\" previews the context and permissions an execute run would use " +
+				'"describe-policy" previews the context and permissions an execute run would use ' +
 				"without running an agent. A run may take a long time and blocks this turn; aborting " +
 				"it cancels the running worker. Results larger than 48 KiB are saved to a file.",
 			promptSnippet: "Run or describe a public Concorde Operation",
@@ -242,12 +247,12 @@ export function concordeSession(root: string, catalog: SessionCatalog) {
 						type: "object",
 						additionalProperties: true,
 						description:
-							"The Operation's request data for action \"run\"; describe shows its schema.",
+							'The Operation\'s request data for action "run"; describe shows its schema.',
 					},
 					mode: {
 						type: "string",
 						enum: ["execute", "describe-policy"],
-						description: "Run mode for action \"run\"; execute unless given.",
+						description: 'Run mode for action "run"; execute unless given.',
 					},
 				},
 				required: ["operation", "action"],
@@ -266,7 +271,12 @@ export function concordeSession(root: string, catalog: SessionCatalog) {
 					};
 				}
 				const input = params.input;
-				if (input === undefined || input === null || typeof input !== "object" || Array.isArray(input))
+				if (
+					input === undefined ||
+					input === null ||
+					typeof input !== "object" ||
+					Array.isArray(input)
+				)
 					throw new Error(
 						`action "run" needs \`input\`, the ${operation.name}-request data; call describe first`,
 					);
@@ -293,18 +303,31 @@ export function concordeSession(root: string, catalog: SessionCatalog) {
 				const body = run.stdout.trim() || run.stderr.trim();
 				if (run.aborted)
 					throw new Error(
-						`${operation.name} was cancelled` + (body ? `\n${bounded(body, operation.name)}` : ""),
+						`${operation.name} was cancelled` +
+							(body ? `\n${bounded(body, operation.name)}` : ""),
 					);
 				if (run.code !== 0)
 					throw new Error(
-						(body ? bounded(body, operation.name) : `${operation.name} exited with code ${run.code}`) +
+						(body
+							? bounded(body, operation.name)
+							: `${operation.name} exited with code ${run.code}`) +
 							(usage ? `\n${usage}` : ""),
 					);
 				return {
 					content: [
-						{ type: "text", text: bounded(run.stdout.trim(), operation.name) + (usage ? `\n${usage}` : "") },
+						{
+							type: "text",
+							text:
+								bounded(run.stdout.trim(), operation.name) +
+								(usage ? `\n${usage}` : ""),
+						},
 					],
-					details: { operation: operation.name, action: "run", mode, exit_code: run.code },
+					details: {
+						operation: operation.name,
+						action: "run",
+						mode,
+						exit_code: run.code,
+					},
 				};
 			},
 		});

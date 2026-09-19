@@ -371,11 +371,11 @@ See [project root is the entry process's working directory](requirements.md#req.
 
 ### scenario.harness.workspace-inventory — The primary inventory reads only linked worktrees' lifecycle state
 
-- GIVEN the primary worktree and one or more live linked worktrees, some managed by their own `.concorde/worktree.json` and some not
+- GIVEN the primary worktree and one or more live linked worktrees, some managed by the `.concorde/status/<change_id>.json` and some not
 - WHEN an operation invoked in the primary worktree resolves its `workspace` metadata
 - THEN `active_worktrees` lists every live linked worktree from Git's worktree inventory with its path, branch, head and lock status
-- AND a managed worktree contributes only the change_id, target, task summary, phase, status and outcome recorded in its own `.concorde/worktree.json`, and an unmanaged worktree is reported with status `unmanaged`
-- AND the same inventory is persisted to the primary's `.concorde/worktrees.json`
+- AND a managed worktree contributes only the change_id, target, task summary, phase, status and outcome recorded in the `.concorde/status/<change_id>.json`, and an unmanaged worktree is reported with status `unmanaged`
+- AND authoritative task records persist only in primary `.concorde/status/`, while unmanaged inventory is derived from Git
 - BUT no linked worktree's registry, Spec document or implementation file is read, so a candidate's draft Spec edits stay invisible to the primary until they are delivered
 - AND an operation invoked in a linked worktree instead sees kind `change` with its own candidate identity and status
 
@@ -440,3 +440,17 @@ See [project root is the entry process's working directory](requirements.md#req.
 - WHEN admission or execution returns a blocked or failed operation envelope
 - THEN the result channel preserves that envelope and its errors without inventing successful output
 - AND its external Skill adapter preserves the existing versioned wire contract
+
+### scenario.harness.primary-status — Stable primary coordination and run records
+
+- GIVEN a primary repository and an assigned candidate with a stable task identity
+- WHEN candidate work records progress and execution evidence
+- THEN only primary status and runs contain durable records, with candidate provenance
+- AND branch rename and candidate deletion do not erase task identity or terminal outcomes
+
+### scenario.harness.status-migration — Explicit safe migration and recovery
+
+- GIVEN legacy worktree, delivery or candidate-run data
+- WHEN explicit migration is previewed, accepted, interrupted or retried
+- THEN preview changes nothing, collisions preserve both inputs, retries finish identical writes and history remains archived
+- AND old readiness is not represented as fresh validation
