@@ -62,7 +62,8 @@ class ExternalReferenceTests(unittest.TestCase):
 
     @verifies("scenario.harness.external-references")
     def test_reading_modes_are_granted_the_declared_references_only(self):
-        from concorde.development.operation_host import OperationHost, run_operation
+        from concorde.harness.host import OperationHost
+        from concorde.harness.admission import run_operation
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble
 

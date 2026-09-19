@@ -12,11 +12,12 @@
       "kind": "shared program",
       "files": [
         "operations/dev_loop.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_specify_loop.py",
-        "tests/concorde/development/test_target_discovery.py",
+        "src/concorde/dev_loop/",
         "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_specify_loop.py",
+        "tests/concorde/operations/test_target_discovery.py"
       ],
       "meaning": "#entity.dev-loop.adapter"
     },

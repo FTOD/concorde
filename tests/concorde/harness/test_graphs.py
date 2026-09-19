@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 
-from concorde.development.operation_host import MainInvocation
+from concorde.query_routing.main import MainInvocation
 from concorde.harness.batch_graph import run_batch_graph
 from concorde.spec.verification import verifies
 from tests.concorde.harness import test_studio as studio_fixtures
@@ -28,7 +28,11 @@ class GraphTests(TestCase):
     @verifies("scenario.harness.graph-inspection")
     def test_inspection_never_resolves_a_context_or_runs_an_agent(self):
         fixture = self.fixture()
-        with patch("concorde.development.operation_host.SpecRepository") as repository:
+        with (
+            patch("concorde.harness.invocation.SpecRepository") as bound,
+            patch("concorde.query_routing.main.SpecRepository") as discovered,
+            patch("concorde.operations.dispatch.SpecRepository") as dispatched,
+        ):
             drawings = {}
             for operation in studio_fixtures.EXPECTED_PUBLIC:
                 with self.subTest(operation=operation):
@@ -43,7 +47,8 @@ class GraphTests(TestCase):
                         drawing.to_json(), independent.get_graph(xray=True).to_json()
                     )
                     drawings[operation] = drawing
-            repository.assert_not_called()
+            for repository in (bound, discovered, dispatched):
+                repository.assert_not_called()
         self.assertEqual([], fixture.double.calls)
         drawing = drawings["concorde-main"]
         self.assertTrue(
@@ -152,7 +157,8 @@ class GraphTests(TestCase):
 
     @verifies("scenario.development.graph-execution")
     def test_scheduler_failure_keeps_the_error_envelope_and_final_event(self):
-        from concorde.development.operation_host import OperationHost, run_operation
+        from concorde.harness.host import OperationHost
+        from concorde.harness.admission import run_operation
 
         fixture = self.fixture()
         events = []
@@ -162,9 +168,7 @@ class GraphTests(TestCase):
             observer=lambda event, **details: events.append(event),
         )
         value = invocation()
-        with patch(
-            "concorde.development.operation_graph.build_operation_graph"
-        ) as build:
+        with patch("concorde.harness.operation_graph.build_operation_graph") as build:
             build.return_value.invoke.side_effect = RuntimeError("scheduler failed")
             result = run_operation(
                 value["operation_id"], None, value["input"], host_context=host
@@ -177,8 +181,9 @@ class GraphTests(TestCase):
 
     @verifies("scenario.development.graph-execution")
     def test_extracted_review_graph_remains_part_of_review_identity(self):
-        from concorde.development import review
-        from concorde.development.operation_host import Invocation, OperationHost
+        from concorde.review import review
+        from concorde.harness.invocation import Invocation
+        from concorde.harness.host import OperationHost
 
         fixture = self.fixture()
         run = Invocation(

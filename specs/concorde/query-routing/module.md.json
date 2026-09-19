@@ -12,9 +12,10 @@
       "kind": "shared program",
       "files": [
         "operations/main.py",
-        "tests/concorde/development/test_graph_surfaces.py",
+        "src/concorde/query_routing/",
         "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_graph_surfaces.py"
       ],
       "meaning": "#entity.query-routing.adapter"
     },

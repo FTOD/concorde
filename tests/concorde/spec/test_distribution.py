@@ -65,7 +65,6 @@ class DistributionTests(unittest.TestCase):
             )
         self.assertEqual(
             {
-                "module.development",
                 "module.dev-loop",
                 "module.specify-loop",
                 "module.spec-authoring",
@@ -73,7 +72,7 @@ class DistributionTests(unittest.TestCase):
             {
                 t.id
                 for t in repo.affected_modules(
-                    ["tests/concorde/development/test_specify_loop.py"]
+                    ["tests/concorde/operations/test_specify_loop.py"]
                 )
             },
         )
@@ -176,8 +175,9 @@ spec=importlib.util.spec_from_file_location('model_process_fixture',sys.argv[1])
 helper.PACKAGE=framework
 from concorde.spec.typed_data import typed
 helper.project(root)
-from concorde.development.operation_service import OperationHost,run_operation
-import concorde.development.operation_host as actual_host
+from concorde.harness.admission import run_operation
+from concorde.harness.host import OperationHost
+import concorde.harness.admission as actual_host
 model=helper.ModelProcessDouble();host=OperationHost(root,framework,executor=model.executor,allow_primary_worktree=True)
 spec_result=run_operation('concorde-specify-loop',None,typed('concorde-specify-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
 spec_stages=[c['stage'] for c in model.calls]
@@ -218,7 +218,8 @@ print(json.dumps({'result':result,'spec_result':spec_result,'spec_stages':spec_s
                 self.assertEqual(["route", "route"], value["ask_stages"])
 
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
-        from concorde.development.operation_service import OperationHost, run_operation
+        from concorde.harness.admission import run_operation
+        from concorde.harness.host import OperationHost
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

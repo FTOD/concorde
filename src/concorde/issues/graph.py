@@ -266,12 +266,9 @@ def copy_selection(source: Path, destination: Path, task: dict) -> None:
 
 
 def issue_nodes(run):
-    from ..development.operation_host import (
-        _implementation_digest,
-        _target_revision,
-        invoke_operation,
-    )
+    from ..harness.admission import invoke_operation
     from ..harness.change_worktree import progress, read_change, save_change
+    from ..harness.revisions import implementation_digest, target_revision
     from .references import review_blockers
 
     root, task = run.repository.root, run.task
@@ -312,8 +309,8 @@ def issue_nodes(run):
         target = repository.select(run.target.id)
         return digest(
             {
-                "spec": _target_revision(repository, target),
-                "code": _implementation_digest(repository, target),
+                "spec": target_revision(repository, target),
+                "code": implementation_digest(repository, target),
             }
         )
 
@@ -636,7 +633,7 @@ def issue_nodes(run):
         nonlocal feedback, verification, child_output
         before = current_inputs()
         modes = ("spec", "code") if run.target.files else ("spec",)
-        from ..development.review import require_reviews
+        from ..review.review import require_reviews
 
         require_reviews(run, True, modes=modes)
         evidence = []

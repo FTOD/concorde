@@ -343,7 +343,7 @@ Graph Spec is the only place its nodes, state and routing are drawn: no separate
 view repeats them.
 
 The Graph Spec check (`scripts/development/check-graph-specs.py`, the configured
-`check.development.graph-specs`) compiles every catalog Graph with inert nodes and reports each
+`check.harness.graph-specs`) compiles every catalog Graph with inert nodes and reports each
 diagram whose nodes, edges, routing labels or state labels disagree with the compiled topology,
 and every compiled Graph without a diagram. For each bound diagram it also reports a section that
 is not in an implementation-role document, lacks or reorders its State, Nodes and Edges parts,

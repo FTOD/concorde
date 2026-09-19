@@ -12,9 +12,10 @@
       "kind": "shared program",
       "files": [
         "operations/specify_loop.py",
-        "tests/concorde/development/test_specify_loop.py",
+        "src/concorde/specify_loop/",
         "tests/concorde/harness/test_studio_server.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_specify_loop.py"
       ],
       "meaning": "#entity.specify-loop.adapter"
     },

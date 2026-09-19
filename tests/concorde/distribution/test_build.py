@@ -702,10 +702,8 @@ class WireHelperBuildTests(unittest.TestCase):
             def invoke_model_backed_operation():
                 # The fixture is this invocation's package root: a top-level model-backed
                 # operation verifies the fixture build before admitting anything else.
-                from concorde.development.operation_host import (
-                    OperationHost,
-                    run_operation,
-                )
+                from concorde.harness.host import OperationHost
+                from concorde.harness.admission import run_operation
                 from concorde.spec.typed_data import typed
 
                 def launched(launch):

@@ -6,8 +6,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.development.operation_host import OperationHost, _target_revision
-from concorde.development.operation_service import run_operation
+from concorde.harness.host import OperationHost
+from concorde.harness.revisions import target_revision
+from concorde.harness.admission import run_operation
 from concorde.harness.context import (
     recheck_context,
     recheck_discovery_context,
@@ -129,11 +130,11 @@ class ProtocolFiveTests(unittest.TestCase):
         discovery = resolve_discovery_context(
             old, ("scope.bank",), operation="concorde-main", phase="route", task="Read"
         )
-        revision = _target_revision(old, old.select("scope.bank"))
+        revision = target_revision(old, old.select("scope.bank"))
         self.reference("scope.bank", "document", "document.transfer.promises")
         new = self.repository()
         self.assertEqual(old.spec_files("scope.bank"), new.spec_files("scope.bank"))
-        self.assertNotEqual(revision, _target_revision(new, new.select("scope.bank")))
+        self.assertNotEqual(revision, target_revision(new, new.select("scope.bank")))
         for check in (
             lambda: recheck_context(new, snap),
             lambda: recheck_discovery_context(new, discovery),
@@ -263,8 +264,8 @@ class ProtocolFiveTests(unittest.TestCase):
     def test_referenced_bytes_invalidate_code_review_identity_without_expanding_code(
         self,
     ):
-        from concorde.development.operation_host import Invocation
-        from concorde.development.review import inputs
+        from concorde.harness.invocation import Invocation
+        from concorde.review.review import inputs
 
         self.reference("service.transfer", "module", "module.ledger")
         host = OperationHost(self.root, PACKAGE, allow_primary_worktree=True)
@@ -362,7 +363,7 @@ class ProtocolFiveTests(unittest.TestCase):
         result, _, before, _, path = self._author_referenced_document(True)
         self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"], result)
         self.assertEqual(before, path.read_bytes())
-        from tests.concorde.development.test_review import issue_observation
+        from tests.concorde.operations.test_review import issue_observation
 
         self.assertEqual(
             "module.ledger",
@@ -481,7 +482,7 @@ class ProtocolFiveTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         review = result["output"]["data"]["reviews"][0]["data"]
         self.assertEqual("service.transfer", review["target_id"])
-        from tests.concorde.development.test_review import issue_observation
+        from tests.concorde.operations.test_review import issue_observation
 
         self.assertEqual(
             "module.ledger",

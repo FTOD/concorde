@@ -12,13 +12,13 @@ from tests.concorde.support.paths import RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.development.configuration import (
+from concorde.harness.configuration import (
     apply_configuration,
     load_configuration,
     propose_configuration,
 )  # noqa: E402
-from concorde.development.operation_host import OperationHost  # noqa: E402
-from concorde.development.operation_service import run_operation  # noqa: E402
+from concorde.harness.host import OperationHost  # noqa: E402
+from concorde.harness.admission import run_operation  # noqa: E402
 from concorde.distribution.project_defaults import (
     PROTOCOL_MANIFEST_PATH,
     protocol_files,

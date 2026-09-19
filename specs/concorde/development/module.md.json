@@ -10,57 +10,24 @@
       "id": "entity.development.development-host",
       "title": "Development host",
       "kind": "program",
-      "files": [
-        "scripts/development/check-graph-specs.py",
-        "src/concorde/development/",
-        "tests/concorde/development/",
-        "tests/concorde/harness/test_graphs.py",
-        "tests/concorde/harness/test_studio.py",
-        "tests/concorde/harness/test_studio_server.py",
-        "tests/concorde/spec/test_operations_migration.py",
-        "tests/concorde/support/operation_json.py"
-      ],
       "meaning": "#entity.development.development-host"
     },
     {
       "id": "entity.development.development-operations",
       "title": "Development operations",
       "kind": "program",
-      "files": [
-        "operations/context_solve.py",
-        "operations/deliver.py",
-        "operations/dev_loop.py",
-        "operations/implement.py",
-        "operations/main.py",
-        "operations/plan.py",
-        "operations/review.py",
-        "operations/specify.py",
-        "operations/specify_loop.py",
-        "operations/tasks.py",
-        "operations/validate.py"
-      ],
       "meaning": "#entity.development.development-operations"
     },
     {
       "id": "entity.development.worktree-lifecycle",
       "title": "Worktree lifecycle",
       "kind": "shared program",
-      "files": [
-        "src/concorde/harness/change_worktree.py",
-        "src/concorde/harness/worktree.py",
-        "src/concorde/harness/worktree_delivery.py",
-        "tests/concorde/harness/test_change_worktree.py",
-        "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_boundary.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
-      ],
       "meaning": "#entity.development.worktree-lifecycle"
     },
     {
       "id": "entity.development.file-transactions",
       "title": "File transactions",
       "kind": "shared program",
-      "files": ["src/concorde/spec/changes.py"],
       "meaning": "#entity.development.file-transactions"
     },
     {

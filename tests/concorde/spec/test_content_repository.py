@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.development.review import _changes
+from concorde.review.review import _changes
 from concorde.harness.context import (
     _stale_on_resolution_error,
     context_documents,
@@ -558,7 +558,7 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         # the metadata member. Included provider ownership is retained, not reassigned to A.
         from types import SimpleNamespace
 
-        from concorde.development.review import _validate
+        from concorde.review.review import _validate
 
         snapshot = SimpleNamespace(id=digest("snapshot"))
         info = {"review_mode": "spec", "input_digest": digest("review")}

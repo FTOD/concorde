@@ -69,8 +69,8 @@ def run_model(profile, state: dict, runtime) -> dict:
 
 def run_host(name: str, state: dict, runtime) -> ResultState:
     """Adapt State to the existing public wire boundary without losing failure evidence."""
-    from ..development.operation_service import run_operation
     from ..spec.typed_data import typed
+    from .admission import run_operation
 
     context = runtime.context
     if not isinstance(context, OperationRuntimeContext) or context.host is None:

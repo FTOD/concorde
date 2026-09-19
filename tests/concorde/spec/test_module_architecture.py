@@ -6,7 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.development.operation_host import OperationHost, run_operation
+from concorde.harness.host import OperationHost
+from concorde.harness.admission import run_operation
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.spec.initialize import (
     apply_project_proposal,

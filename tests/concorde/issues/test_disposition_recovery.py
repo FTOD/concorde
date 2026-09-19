@@ -290,16 +290,17 @@ class DispositionRecoveryTests(unittest.TestCase):
 
     @verifies("scenario.issues.disposition-recovery-stale")
     def test_recovery_never_creates_a_new_candidate_to_escape_owning_authority(self):
-        from concorde.development import operation_host
+        from concorde.harness import admission, relay
+        from concorde.harness.host import OperationHost
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import CONFIGURATION, PACKAGE
 
         with self.fail_checkpoint("verifying-candidate"):
             self.solve()
         current = self.path.read_bytes()
-        host = operation_host.OperationHost(self.root, PACKAGE)
-        with patch.object(operation_host, "create_worktree") as create:
-            result = operation_host.run_operation(
+        host = OperationHost(self.root, PACKAGE)
+        with patch.object(relay, "create_worktree") as create:
+            result = admission.run_operation(
                 "concorde-issues",
                 CONFIGURATION,
                 typed(

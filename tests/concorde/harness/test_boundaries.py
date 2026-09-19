@@ -7,14 +7,16 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from concorde.development.operation_host import Invocation
-from concorde.development.operation_service import OperationHost, run_operation
+from concorde.harness.invocation import Invocation
+from concorde.harness.host import OperationHost
+from concorde.harness.admission import run_operation
 from concorde.harness.context import resolve_context
 from concorde.spec.changes import apply_files, file_change
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.schema import ContractError, admit
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.verification import verifies
+from concorde.validation.validate import verify_completion
 from tests.concorde.spec.support import (
     CONFIGURATION,
     PACKAGE,
@@ -71,9 +73,9 @@ class BoundaryTests(unittest.TestCase):
         return {**self.task, "change_id": result["output"]["data"]["change_id"]}
 
     def completion(self, task):
-        return Invocation(
-            "concorde-validate", CONFIGURATION, task, self.host
-        ).verify_completion()
+        return verify_completion(
+            Invocation("concorde-validate", CONFIGURATION, task, self.host)
+        )
 
     @verifies("scenario.harness.context-freeze")
     def test_shared_physical_markdown_is_one_hop_context_not_entity_expansion(self):

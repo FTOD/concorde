@@ -123,7 +123,7 @@ def _verify_merged_tree(
     host, commit: str, tree: str, change_id: str, *, phase: str = "staging"
 ) -> list[dict]:
     """Run deterministic checks against the actual integration result, without agents."""
-    from ..development.operation_host import _check
+    from .checks import configured_checks
 
     with tempfile.TemporaryDirectory(prefix="concorde-delivery-check-") as directory:
         root = Path(directory) / "project"
@@ -144,7 +144,7 @@ def _verify_merged_tree(
             checks = []
             for target in repository.targets.values():
                 if target.checks:
-                    results = _check(repository, target, host.invocation_id)
+                    results = configured_checks(repository, target, host.invocation_id)
                     checks.extend(results)
                     for result in results:
                         relative = f".concorde/runs/{host.invocation_id}/{result['check_id']}.log"
@@ -289,7 +289,8 @@ def _remember_failure(host, change_id: str, error: Exception) -> None:
 
 
 def _deliver(host, configuration: dict, task: dict) -> dict:
-    from ..development.operation_host import Invocation
+    from ..validation.validate import verify_completion
+    from .invocation import Invocation
 
     primary = require_delivery_session(host, task["change_id"])
     change_id = task["change_id"]
@@ -421,9 +422,9 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
             payload["focus_id"] = state["focus_id"]
         # Delivery reads evidence and runs deterministic checks without starting agents.
         candidate_host = replace(host, project_root=source, coordinated=True)
-        Invocation(
-            "concorde-validate", configuration, payload, candidate_host
-        ).verify_completion()
+        verify_completion(
+            Invocation("concorde-validate", configuration, payload, candidate_host)
+        )
         # A pending marker is the author's declaration that a listed file is still to be written.
         # Delivery is the deterministic moment that confirms the files that now exist and removes
         # only those markers; the confirmation becomes part of the delivered candidate itself.

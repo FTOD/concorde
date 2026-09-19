@@ -9,7 +9,8 @@ from unittest.mock import Mock, patch
 
 from langgraph.checkpoint.memory import InMemorySaver
 
-from concorde.development.operation_service import OperationHost, run_operation
+from concorde.harness.host import OperationHost
+from concorde.harness.admission import run_operation
 from concorde.harness.studio import build_studio_graph
 from concorde.spec.contracts import INTERNAL_OPERATIONS, SKILL_NAMES
 from concorde.spec.typed_data import typed

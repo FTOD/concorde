@@ -12,7 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.development.operation_service import OperationHost, run_operation
+from concorde.harness.host import OperationHost
+from concorde.harness.admission import run_operation
 from concorde.harness import change_worktree, worktree_delivery
 from concorde.harness.change_worktree import (
     GUIDANCE_START,

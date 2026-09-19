@@ -12,7 +12,7 @@ from tests.concorde.support.paths import RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.development.configuration import (
+from concorde.harness.configuration import (
     apply_configuration,
     load_configuration,
     propose_configuration,

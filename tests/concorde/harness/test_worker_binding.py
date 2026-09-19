@@ -13,9 +13,10 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.development import operation_host
-from concorde.development.operation_host import Invocation
-from concorde.development.operation_service import OperationHost, run_operation
+from concorde.harness import invocation
+from concorde.harness.invocation import Invocation
+from concorde.harness.host import OperationHost
+from concorde.harness.admission import run_operation
 from concorde.harness.change_worktree import read_change
 from concorde.harness.pi_worker import WorkerExecutionError
 from concorde.harness.worker_executor import OperationExecutionError
@@ -73,15 +74,13 @@ class AgentBindingTests(unittest.TestCase):
 
     @verifies("scenario.harness.permission-compile")
     def test_narrowed_implementation_worker_write_authority_is_never_widened(self):
-        real_load = operation_host.load_model_instructions
+        real_load = invocation.load_model_instructions
 
         def narrowed(package_root, name):
             prompt = real_load(package_root, name)
             return replace(prompt, effects=replace(prompt.effects, writes=()))
 
-        with patch.object(
-            operation_host, "load_model_instructions", side_effect=narrowed
-        ):
+        with patch.object(invocation, "load_model_instructions", side_effect=narrowed):
             result = self.call_operation("concorde-implement", mode="describe-policy")
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("permission_denied", result["errors"][0]["code"], result)

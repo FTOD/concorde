@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError, URLError
 from uuid import uuid4
 
-from concorde.development.operation_host import json_main
+from concorde.harness.entry import json_main
 from concorde.harness.studio_client import _NoRedirect, run_in_studio
 from concorde.spec.contracts import load_operation_inventory
 from concorde.spec.repository import SpecError, SpecRepository
@@ -88,7 +88,7 @@ class StudioClientTests(unittest.TestCase):
         stdout, stderr = io.StringIO(), io.StringIO()
         with (
             patch("concorde.harness.studio_client.build_opener", return_value=opener),
-            patch("concorde.development.operation_host.run_operation") as local,
+            patch("concorde.harness.admission.run_operation") as local,
             patch.dict(os.environ, {"CONCORDE_STUDIO_URL": "http://127.0.0.1:2024"}),
             patch("sys.stdin", io.StringIO(json.dumps(self.value))),
             patch("sys.argv", ["run-operation.py"]),
@@ -198,7 +198,7 @@ class StudioClientTests(unittest.TestCase):
     # Transport responses are doubles; the submitted request also enters the real Graph.
     @verifies("scenario.harness.graph-inspection")
     def test_documented_harness_target_is_admitted_and_forwarded_unchanged(self):
-        from concorde.development.operation_host import validate_invocation
+        from concorde.harness.entry import validate_invocation
 
         target = SpecRepository(PACKAGE, PACKAGE).select("module.harness")
         guide = (PACKAGE / "scripts/development/STUDIO.md").read_text()

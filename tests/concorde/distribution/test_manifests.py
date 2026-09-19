@@ -140,8 +140,7 @@ class ManifestContractTests(unittest.TestCase):
             self.assertTrue((target / ".concorde/framework/concorde.json").is_file())
             self.assertTrue(
                 (
-                    target
-                    / ".concorde/framework/src/concorde/development/operation_host.py"
+                    target / ".concorde/framework/src/concorde/harness/admission.py"
                 ).is_file()
             )
             self.assertTrue(

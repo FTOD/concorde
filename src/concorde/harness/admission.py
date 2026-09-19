@@ -1,0 +1,460 @@
+"""Admission of every operation invocation: the operation Graph's trusted node bindings.
+
+Every request is initialized, admitted against its registered contract, bound to its
+workspace and checked against the initialized configuration before the Operations dispatch
+Graph runs; every outcome, admitted or not, ends in one typed result envelope.
+"""
+
+from __future__ import annotations
+
+import copy
+import uuid
+from dataclasses import replace
+from pathlib import Path
+
+from ..distribution.build import BuildError, verify_fresh
+from ..operations.dispatch import dispatch_graph_nodes
+from ..spec.contracts import DETERMINISTIC_OPERATIONS, MAIN_OPERATION
+from ..spec.repository import SpecError
+from ..spec.typed_data import (
+    DATA_SCHEMAS,
+    OPERATION_CONTRACTS,
+    TypedDataError,
+    canonical,
+    validate_typed,
+)
+from .change_worktree import progress, read_change
+from .configuration import load_configuration
+from .host import OperationHost, resolve_child_operation
+from .relay import bind_worktree
+from .worker_executor import OperationExecutionError
+from .worker_profile import ContractError
+
+
+def invoke_operation(
+    parent_operation: str,
+    child_operation: str,
+    configuration: dict,
+    payload: dict,
+    host: OperationHost,
+) -> dict:
+    """Adapt existing host-wire composition to an Operation's State-based ``run``.
+
+    Development, Issue solving and recursive per-component review use this transport adapter.
+    Model nodes use their own admitted State via OperationNode; both paths check the same USES
+    relation. A wire adapter is not a second kind of executable identity.
+    """
+
+    child_module = resolve_child_operation(parent_operation, child_operation)
+    return run_host_node(
+        child_module.run, host, configuration, payload, child_operation
+    )
+
+
+def run_host_node(runner, host, configuration, payload, operation):
+    """The wire boundary adapts to State; trusted execution context never enters State."""
+    from langgraph.runtime import Runtime
+
+    from .operation_state import OperationRuntimeContext
+
+    validate_typed(payload, f"{operation}-request")
+    return runner(
+        payload["data"],
+        Runtime(
+            context=OperationRuntimeContext(host=host, configuration=configuration)
+        ),
+    )["result"]
+
+
+def run_operation(
+    operation: str,
+    configuration: dict | None,
+    runtime_input: dict,
+    *,
+    host_context: OperationHost,
+) -> dict:
+    from .operation_graph import OPERATION_RECURSION_LIMIT, build_operation_graph
+
+    nodes = operation_graph_nodes(
+        operation, configuration, runtime_input, host_context=host_context
+    )
+    try:
+        return build_operation_graph(nodes.__getitem__, name=operation).invoke(
+            {}, {"recursion_limit": OPERATION_RECURSION_LIMIT}
+        )["result"]
+    except KeyboardInterrupt:
+        # A host interrupt (Ctrl-C, or SIGTERM from the developer's client) that arrives outside
+        # a worker launch ends the Graph the way a cancelled worker does: the cancellation is
+        # recorded in the change's lifecycle evidence and reported through the result envelope.
+        cancelled = OperationExecutionError(
+            "operation cancelled by the host", outcome="cancelled"
+        )
+        return finish_failed_operation_graph(nodes, cancelled)["result"]
+    except Exception as error:
+        return finish_failed_operation_graph(nodes, error)["result"]
+
+
+def finish_failed_operation_graph(nodes, error):
+    """A scheduler failure still uses the host's error envelope and final lifecycle evidence."""
+    nodes["fail"]({"error": error})
+    return nodes["finalize"]({})
+
+
+def operation_graph_nodes(operation, configuration, runtime_input, *, host_context):
+    """Fresh trusted node bindings; neither host authority nor callbacks enter the public input."""
+    from langgraph.graph import END
+    from langgraph.types import Command
+
+    # A depth-1 (top-level) invocation never inherits a lifecycle status a prior invocation on
+    # this same host object left behind; nested calls still share the one dict by reference so a
+    # child's cancelled/limit_exhausted outcome keeps propagating to its enclosing loop.
+    lifecycle = {} if host_context.depth == 0 else host_context.lifecycle
+    invocation_id = str(uuid.uuid4())
+    host = replace(
+        host_context,
+        invocation_id=invocation_id,
+        evidence=[],
+        depth=host_context.depth + 1,
+        lifecycle=lifecycle,
+        root_invocation_id=host_context.root_invocation_id or invocation_id,
+    )
+    record_progress = False
+    task = None
+    mutation = False
+    host.observe(
+        "operation_started",
+        operation=operation,
+        invocation_id=host.invocation_id,
+        depth=host.depth,
+    )
+    result = {
+        "type_id": "concorde-operation-result",
+        "schema_version": 3,
+        "operation_id": operation if operation in OPERATION_CONTRACTS else None,
+        "invocation_id": host.invocation_id,
+        "mode": host.mode,
+        "status": "blocked",
+        "workspace": None,
+        "output": None,
+        "errors": [],
+    }
+
+    def admit_request():
+        nonlocal configuration, task, mutation
+        if operation not in OPERATION_CONTRACTS:
+            raise SpecError("unknown registered operation", "unknown_operation")
+        if host.mode not in {"execute", "describe-policy"}:
+            raise SpecError("unknown operation mode", "invalid_input")
+        if host.depth == 1 and operation not in DETERMINISTIC_OPERATIONS:
+            # The build is the only instruction source. Deterministic operations run no agent
+            # cognition and load no WorkerProfile, so they never consume generated/; every other
+            # top-level invocation is verified once here, and load_model_instructions verifies it
+            # again independently before trusting any generated/agents/*.md body.
+            verify_fresh(host.package_root)
+        configuration = validate_typed(
+            configuration
+            if configuration is not None
+            else load_configuration(host.project_root),
+            "concorde-operation-configuration",
+        )
+        task = validate_typed(runtime_input, OPERATION_CONTRACTS[operation][0])["data"]
+        task = copy.deepcopy(task)
+        if operation not in {"concorde-deliver", "concorde-issues"} and not (
+            operation == MAIN_OPERATION
+            and task.get("action") in {"accept-topology", "apply-topology"}
+        ):
+            task.setdefault("task", "Inspect the selected records")
+        mutation = operation not in {
+            "concorde-main",
+            "concorde-context-solve",
+            "concorde-review",
+        }
+        if operation == "concorde-init":
+            mutation = task["action"] == "apply"
+        if operation == MAIN_OPERATION:
+            mutation = task["action"] in {"accept-topology", "apply-topology"}
+        if operation == "concorde-issues":
+            from ..issues.graph import prepare_request
+
+            # Issue selection, attribution and current bytes are host-bound before workspace creation.
+            task = prepare_request(host.project_root, host.package_root, task)
+            mutation = task["action"] == "solve" and not task.get("_issue_closed")
+
+    def bind_workspace():
+        nonlocal host, record_progress
+        assert task is not None, "workspace binding requires an admitted task"
+        if operation == "concorde-deliver":
+            from .worktree_delivery import require_delivery_session
+
+            primary = require_delivery_session(host, task["change_id"])
+            workspace = {"path": primary["path"], "branch": primary["branch"]}
+        elif operation == "concorde-issues" and (
+            task["action"] != "solve" or task.get("_issue_closed")
+        ):
+            workspace = (
+                None  # bookkeeping operations do not create a development candidate
+            )
+        else:
+            host, workspace = bind_worktree(host, mutation, task)
+        result["workspace"] = workspace
+        if workspace and workspace.get("relay"):
+            candidate = Path(workspace["path"])
+            if operation == "concorde-issues":
+                from ..issues.graph import copy_selection
+
+                copy_selection(host.project_root, candidate, task)
+            # The candidate receives this exact request; a request type that records the
+            # change carries the candidate's change_id, the others adopt the candidate as is.
+            data = dict(runtime_input["data"])
+            request_type = OPERATION_CONTRACTS[operation][0]
+            if "change_id" in DATA_SCHEMAS[request_type].get("properties", {}):
+                data["change_id"] = workspace["change_id"]
+            invocation = {
+                "type_id": "concorde-operation-invocation",
+                "schema_version": 3,
+                "operation_id": operation,
+                "mode": host.mode,
+                "configuration": None,
+                "input": {**runtime_input, "data": data},
+            }
+            target = {key: value for key, value in workspace.items() if key != "relay"}
+            host = replace(host, relay_target={**target, "invocation": invocation})
+            # The candidate records its own progress; this invocation only relays.
+            record_progress = False
+            return
+        record_progress = (
+            mutation and operation != "concorde-deliver" and host.depth == 1
+        )
+        if mutation and operation != "concorde-deliver":
+            change = read_change(host.project_root)
+            if change and change["status"] in {"delivering", "cleanup_pending"}:
+                record_progress = False
+                raise SpecError(
+                    "this candidate is being delivered; resume delivery from either participating worktree",
+                    "delivery_in_progress",
+                )
+
+    def check_configuration():
+        nonlocal host
+        if operation != "concorde-init" and configuration != load_configuration(
+            host.project_root
+        ):
+            raise SpecError(
+                "invocation configuration differs from initialized project settings",
+                "configuration_mismatch",
+            )
+        if host.configuration_snapshot and host.configuration_snapshot != canonical(
+            configuration
+        ):
+            raise SpecError(
+                "child configuration differs from the host snapshot",
+                "configuration_mismatch",
+            )
+        host = replace(host, configuration_snapshot=canonical(configuration))
+
+    def accept_output(output):
+        outcome = output["data"].get("outcome", "completed")
+        result.update(
+            output=output,
+            status="described"
+            if host.mode == "describe-policy"
+            else "succeeded"
+            if outcome
+            in {
+                "completed",
+                "ready",
+                "delivered",
+                "topology_proposed",
+                "topology_prepared",
+                "topology_applied",
+            }
+            else "failed"
+            if outcome == "failed"
+            else "blocked",
+        )
+
+    dispatch_nodes = None
+
+    def dispatch(name, state):
+        nonlocal dispatch_nodes
+        if dispatch_nodes is None:
+            dispatch_nodes = dispatch_graph_nodes(operation, configuration, task, host)
+        updates = dispatch_nodes[name](state)
+        payload = (updates.update or {}) if isinstance(updates, Command) else updates
+        if isinstance(payload.get("relayed"), dict):
+            # The candidate's launcher produced the complete envelope; adopt it as this
+            # invocation's result rather than deriving a second status from its output.
+            relayed = payload["relayed"]
+            result.update(
+                status=relayed["status"],
+                output=relayed["output"],
+                errors=list(relayed["errors"]),
+                workspace=relayed["workspace"],
+            )
+        elif (
+            isinstance(payload.get("output"), dict)
+            and payload["output"].get("type_id") == OPERATION_CONTRACTS[operation][1]
+        ):
+            accept_output(payload["output"])
+        return updates
+
+    def guarded(operation, *, accepts_state=False):
+        def node(state):
+            updates = {}
+            try:
+                updates = (operation(state) if accepts_state else operation()) or {}
+            except OperationExecutionError as error:
+                lifecycle_status = (
+                    "cancelled"
+                    if error.outcome == "cancelled"
+                    else "limit_exhausted"
+                    if error.outcome == "limit_exhausted"
+                    else "failed"
+                )
+                code = (
+                    "execution_cancelled"
+                    if error.outcome == "cancelled"
+                    else "execution_limit"
+                    if error.outcome == "limit_exhausted"
+                    else "execution_failed"
+                )
+                host.lifecycle["status"] = lifecycle_status
+                result.update(
+                    status="failed",
+                    errors=[{"code": code, "field": "", "message": str(error)}],
+                )
+                if error.code:
+                    host.lifecycle["status"] = "blocked"
+                    result.update(
+                        status="blocked",
+                        errors=[
+                            {"code": error.code, "field": "", "message": str(error)}
+                        ],
+                    )
+            except (SpecError, TypedDataError, ContractError) as error:
+                result["errors"] = [
+                    {"code": error.code, "field": error.field, "message": str(error)}
+                ]
+            except BuildError as error:
+                result["errors"] = [
+                    {"code": error.code, "field": "", "message": str(error)}
+                ]
+            except Exception as error:
+                result.update(
+                    status="failed",
+                    errors=[
+                        {"code": "execution_failed", "field": "", "message": str(error)}
+                    ],
+                )
+            if isinstance(updates, Command):
+                # A node that selects its own transition keeps it unless the guard recorded an
+                # error, which ends the Graph with the typed failure envelope in state.
+                if result["errors"]:
+                    return Command(
+                        goto=END, update={**(updates.update or {}), "result": result}
+                    )
+                return Command(
+                    goto=updates.goto, update={**(updates.update or {}), "result": None}
+                )
+            return {
+                **updates,
+                "result": result if result["errors"] else None,
+                **({"route": "__end__"} if result["errors"] else {}),
+            }
+
+        return node
+
+    def initialize(state):
+        return {"result": None}
+
+    def fail(state):
+        def raise_failure():
+            result["output"] = None
+            raise state["error"]
+
+        return guarded(raise_failure)(state)
+
+    def finalize(state):
+        nonlocal record_progress
+        execution_error = host.lifecycle.get("execution_error")
+        if execution_error and not result["errors"]:
+            # Preserve the failed Review domain output and its incomplete report while
+            # reporting the executor interruption through the existing envelope field.
+            result["errors"] = [
+                {
+                    "code": execution_error,
+                    "field": "",
+                    "message": "Reviewer execution was interrupted.",
+                }
+            ]
+        persistence_error = host.lifecycle.get("persistence_error")
+        if persistence_error and not any(
+            error["code"] == "state_persistence_failed" for error in result["errors"]
+        ):
+            # A lost status write is reported beside the retained typed output, never instead of it.
+            result["errors"].append(
+                {
+                    "code": "state_persistence_failed",
+                    "field": "",
+                    "message": persistence_error,
+                }
+            )
+        if any(
+            error["code"]
+            in {"incompatible_handoff", "workspace_mismatch", "invalid_worktree_state"}
+            for error in result["errors"]
+        ):
+            record_progress = False
+        if (
+            record_progress
+            and host.mode == "execute"
+            and result["status"] not in {"succeeded", "described"}
+        ):
+            data = result["output"]["data"] if result["output"] else {}
+            try:
+                progress(
+                    host.project_root,
+                    status=host.lifecycle.get("status")
+                    or ("blocked" if result["status"] == "blocked" else "failed"),
+                    outcome=data.get("outcome")
+                    or (result["errors"][0]["code"] if result["errors"] else "failed"),
+                    blockers=data.get("blockers", []),
+                )
+            except (ValueError, OSError) as error:
+                result["errors"].append(
+                    {
+                        "code": "state_persistence_failed",
+                        "field": "",
+                        "message": str(error),
+                    }
+                )
+        host_context.evidence.extend(host.evidence)
+        host.observe(
+            "operation_finished",
+            operation=operation,
+            invocation_id=host.invocation_id,
+            depth=host.depth,
+            status=(
+                host.lifecycle["status"]
+                if host.lifecycle.get("status") in {"cancelled", "limit_exhausted"}
+                else result["status"]
+            ),
+        )
+        return {"result": result}
+
+    from ..operations.dispatch_graph import DISPATCH_NODES
+
+    return {
+        "initialize": initialize,
+        "admit_request": guarded(admit_request),
+        "bind_workspace": guarded(bind_workspace),
+        "check_configuration": guarded(check_configuration),
+        "finalize": finalize,
+        "fail": fail,
+        **{
+            "dispatch/" + name: guarded(
+                lambda state, name=name: dispatch(name, state), accepts_state=True
+            )
+            for name in DISPATCH_NODES
+        },
+    }

@@ -13,16 +13,12 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
 from typing_extensions import TypedDict
 
-from ..development.operation_host import (
-    OperationHost,
-    finish_failed_operation_graph,
-    invocation_failure,
-    operation_graph_nodes,
-    validate_invocation,
-)
 from ..spec.contracts import SKILL_NAMES
 from ..spec.repository import SpecError
 from ..spec.typed_data import decode
+from .admission import finish_failed_operation_graph, operation_graph_nodes
+from .entry import invocation_failure, validate_invocation
+from .host import OperationHost
 from .worker_executor import WorkerExecutor
 
 
@@ -176,7 +172,7 @@ def build_studio_graph(
 
         return call
 
-    from ..development.operation_graph import (
+    from .operation_graph import (
         OPERATION_RECURSION_LIMIT,
         build_operation_graph,
         expose_stateless_subgraph,

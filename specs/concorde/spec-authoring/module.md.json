@@ -12,9 +12,10 @@
       "kind": "shared program",
       "files": [
         "operations/specify.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_specify_loop.py",
+        "src/concorde/spec_authoring/",
         "tests/concorde/harness/test_boundaries.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/spec/test_content_repository.py",
         "tests/concorde/spec/test_protocol_v5.py"
       ],

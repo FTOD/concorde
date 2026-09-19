@@ -11,11 +11,9 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
-from concorde.development.operation_host import (
-    Invocation,
-    _implementation_digest,
-    _target_revision,
-)
+from concorde.harness.invocation import Invocation
+from concorde.harness.revisions import implementation_digest, target_revision
+from concorde.validation.validate import validate as validate_candidate
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.spec.changes import confirm_pending_files
@@ -561,7 +559,7 @@ class ModuleImplementationTests(unittest.TestCase):
 
     @verifies("scenario.spec.shared-file")
     def test_a_directory_and_an_exact_entry_share_one_file_across_modules(self):
-        from concorde.development.operation_host import _implementation_users
+        from concorde.harness.revisions import implementation_users
 
         self.write("source/nested/deep.py", "def deep():\n    return 1\n")
         self.relist(
@@ -597,7 +595,7 @@ class ModuleImplementationTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     ("module.a", "module.b"),
-                    tuple(t.id for t in _implementation_users(repository, selected)),
+                    tuple(t.id for t in implementation_users(repository, selected)),
                 )
 
     @verifies("scenario.spec.validate-pending-warning")
@@ -707,14 +705,14 @@ class ModuleImplementationTests(unittest.TestCase):
             1,
         )
         repository = self.repository()
-        before = _implementation_digest(repository, repository.select("module.a"))
+        before = implementation_digest(repository, repository.select("module.a"))
         self.write("source/added.py", "def added():\n    return 1\n")
         created = self.repository()
-        with_new_file = _implementation_digest(created, created.select("module.a"))
+        with_new_file = implementation_digest(created, created.select("module.a"))
         self.assertNotEqual(before, with_new_file)
         self.write("source/added.py", "def added():\n    return 2\n")
         changed = self.repository()
-        changed_digest = _implementation_digest(changed, changed.select("module.a"))
+        changed_digest = implementation_digest(changed, changed.select("module.a"))
         self.assertNotEqual(with_new_file, changed_digest)
         # The declared entries are part of the digest, not only the files they currently bind.
         self.relist(
@@ -728,11 +726,11 @@ class ModuleImplementationTests(unittest.TestCase):
         expanded = self.repository()
         self.assertNotEqual(
             changed_digest,
-            _implementation_digest(expanded, expanded.select("module.a")),
+            implementation_digest(expanded, expanded.select("module.a")),
         )
 
     def test_unconfirmed_entries_report_only_missing_declarations(self):
-        from concorde.development.operation_host import _unconfirmed_files
+        from concorde.harness.revisions import unconfirmed_files
 
         self.relist(
             "specs/a/module.md",
@@ -749,12 +747,12 @@ class ModuleImplementationTests(unittest.TestCase):
         # A pending entry is declared intent; only a missing entry that is not pending is unconfirmed.
         self.assertEqual(
             ["source/missing.py"],
-            _unconfirmed_files(repository, repository.select("module.a")),
+            unconfirmed_files(repository, repository.select("module.a")),
         )
         self.write("source/missing.py", "def missing():\n    return 1\n")
         (self.root / "source/generated").mkdir()
         current = self.repository()
-        self.assertEqual([], _unconfirmed_files(current, current.select("module.a")))
+        self.assertEqual([], unconfirmed_files(current, current.select("module.a")))
 
     @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_two_entities_of_one_module_cannot_list_the_same_file(self):
@@ -840,25 +838,25 @@ class ModuleImplementationTests(unittest.TestCase):
     def test_shared_change_invalidates_each_implementation_revision(self):
         before = self.repository()
         old = {
-            key: _implementation_digest(before, before.select(key))
+            key: implementation_digest(before, before.select(key))
             for key in ("module.a", "module.b")
         }
-        module_revision = _target_revision(before, before.select("module.a"))
+        module_revision = target_revision(before, before.select("module.a"))
         self.write("source/shared.py", "def value():\n    return 43\n")
         after = self.repository()
         for key in old:
             self.assertNotEqual(
-                old[key], _implementation_digest(after, after.select(key))
+                old[key], implementation_digest(after, after.select(key))
             )
         self.assertEqual(
-            module_revision, _target_revision(after, after.select("module.a"))
+            module_revision, target_revision(after, after.select("module.a"))
         )
 
     @verifies("scenario.spec.shared-file")
     def test_a_new_listing_module_joins_the_reverse_index_without_entering_the_context(
         self,
     ):
-        from concorde.development.operation_host import _implementation_users
+        from concorde.harness.revisions import implementation_users
 
         snapshot = resolve_context(
             self.repository(), "module.a", phase="implementation"
@@ -899,9 +897,7 @@ class ModuleImplementationTests(unittest.TestCase):
             ("module.root", "module.a", "module.b"),
             tuple(
                 t.id
-                for t in _implementation_users(
-                    repository, repository.select("module.a")
-                )
+                for t in implementation_users(repository, repository.select("module.a"))
             ),
         )
 
@@ -1021,7 +1017,7 @@ class ModuleImplementationTests(unittest.TestCase):
                     **kwargs,
                 },
             )
-            return Invocation.validate(cast(Invocation, run))
+            return validate_candidate(cast(Invocation, run))
 
         result = validate()
         self.assertEqual("completed", result["outcome"])
@@ -1071,7 +1067,7 @@ class ModuleImplementationTests(unittest.TestCase):
         )
         peer = self.root / "specs/b/module.md"
         original = peer.read_bytes()
-        result = Invocation.validate(cast(Invocation, run))
+        result = validate_candidate(cast(Invocation, run))
         self.assertEqual("failed", result["outcome"])
         self.assertEqual("failed", result["checks"][0]["status"])
         self.assertEqual(original, peer.read_bytes())
@@ -1094,17 +1090,17 @@ class ModuleImplementationTests(unittest.TestCase):
             return result
 
         with (
-            patch("concorde.development.operation_host.execute_check", external_change),
+            patch("concorde.harness.checks.execute_check", external_change),
             self.assertRaisesRegex(SpecError, "using Module"),
         ):
-            Invocation.validate(cast(Invocation, run))
+            validate_candidate(cast(Invocation, run))
 
     @verifies("scenario.spec.shared-file")
     def test_shared_code_review_preserves_separate_module_contexts_and_peer_findings(
         self,
     ):
-        from concorde.development.operation_host import OperationHost
-        from concorde.development.review import review_scope
+        from concorde.harness.host import OperationHost
+        from concorde.review.review import review_scope
         from tests.concorde.spec.support import ModelProcessDouble
 
         self.write("source/shared.py", "def value():\n    return 43\n")
@@ -1167,8 +1163,8 @@ class ModuleImplementationTests(unittest.TestCase):
     def test_code_review_peers_are_only_the_listing_modules_of_changed_files(self):
         import subprocess
 
-        from concorde.development.operation_host import OperationHost
-        from concorde.development.review import code_review_peers, review_scope
+        from concorde.harness.host import OperationHost
+        from concorde.review.review import code_review_peers, review_scope
         from concorde.harness.change_worktree import ensure_change
         from tests.concorde.spec.support import ModelProcessDouble
 
@@ -1326,7 +1322,8 @@ class ModuleImplementationTests(unittest.TestCase):
                     fixture.doCleanups()
 
     def test_code_writer_cannot_author_spec_documents(self):
-        from concorde.development.operation_host import OperationHost, run_operation
+        from concorde.harness.host import OperationHost
+        from concorde.harness.admission import run_operation
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble, project
 
@@ -1372,7 +1369,8 @@ class ModuleImplementationTests(unittest.TestCase):
 
     @verifies("scenario.spec.directory-entry")
     def test_a_code_writer_may_create_a_file_below_a_listed_directory(self):
-        from concorde.development.operation_host import OperationHost, run_operation
+        from concorde.harness.host import OperationHost
+        from concorde.harness.admission import run_operation
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble, project
 
@@ -1439,7 +1437,8 @@ class ModuleImplementationTests(unittest.TestCase):
             )
 
     def test_composite_keeps_its_plan_and_verifies_shared_code_after_all_writers(self):
-        from concorde.development.operation_host import OperationHost, run_operation
+        from concorde.harness.host import OperationHost
+        from concorde.harness.admission import run_operation
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble, project
 

@@ -16,7 +16,8 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.development import operation_graph, operation_host  # noqa: E402
+from concorde.harness import admission, operation_graph  # noqa: E402
+from concorde.harness.host import OperationHost  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 
 LAUNCHER = REPOSITORY_ROOT / "scripts/run-operation.py"
@@ -75,7 +76,7 @@ class LauncherTerminationTests(unittest.TestCase):
             def invoke(self, *_args, **_kwargs):
                 raise KeyboardInterrupt
 
-        host = operation_host.OperationHost(
+        host = OperationHost(
             REPOSITORY_ROOT, REPOSITORY_ROOT, mode="describe-policy"
         )
         runtime_input = {
@@ -86,7 +87,7 @@ class LauncherTerminationTests(unittest.TestCase):
         with mock.patch.object(
             operation_graph, "build_operation_graph", lambda *a, **k: Interrupted()
         ):
-            result = operation_host.run_operation(
+            result = admission.run_operation(
                 "concorde-validate", None, runtime_input, host_context=host
             )
         self.assertEqual("failed", result["status"], result)

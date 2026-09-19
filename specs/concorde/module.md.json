@@ -24,13 +24,13 @@
       "kind": "tests",
       "meaning": "#entity.concorde.acceptance-tests",
       "files": [
-        "tests/concorde/development/test_review.py",
         "tests/concorde/distribution/test_configure.py",
         "tests/concorde/distribution/test_consumer_install_end_to_end.py",
         "tests/concorde/distribution/test_protocol_guidance.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/issues/test_graph.py",
+        "tests/concorde/operations/test_review.py",
         "tests/concorde/spec/test_module_architecture.py"
       ]
     }

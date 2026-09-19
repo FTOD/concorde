@@ -53,6 +53,15 @@ these responsibilities to executable declarations. Shared admission lives in Dev
 execution in Harness. Neither service creates a competing executable category. This organization
 changes no provider's owned Spec identity, result meaning or authorization boundary.
 
+<a id="entity.operations.dispatch"></a>
+
+The Operation dispatch routes each admitted request to the entry of the provider that owns it.
+After Harness has admitted a request and bound its workspace, dispatch selects the operation's
+entry: delivery, project initialization and configuration, one action of the main entry, or target
+admission, which binds or discovers the owning Module before that provider's own leaf runs. The
+dispatch also keeps the catalog of every compiled Graph that inspection and the Graph Spec check
+read.
+
 Each Operation is explained only in the Specs of the Module that owns it: one of these children,
 or Spec, Distribution and Issues for initialization, configuration and Issue handling. When an
 Operation runs a Graph, that owner's Implementation Specs also hold the Graph Spec with its State,

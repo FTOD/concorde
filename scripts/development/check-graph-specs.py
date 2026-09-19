@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT))
 
 
 def main() -> int:
-    from concorde.development.graph_specs import graph_spec_findings
+    from concorde.harness.graph_specs import graph_spec_findings
     from concorde.spec.repository import SpecRepository
 
     findings = graph_spec_findings(SpecRepository(ROOT, ROOT))

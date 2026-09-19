@@ -11,6 +11,19 @@
       "title": "Operation providers",
       "kind": "concept",
       "meaning": "#entity.operations.providers"
+    },
+    {
+      "id": "entity.operations.dispatch",
+      "title": "Operation dispatch",
+      "kind": "program",
+      "meaning": "#entity.operations.dispatch",
+      "files": [
+        "src/concorde/operations/",
+        "tests/concorde/operations/__init__.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_run_operation.py",
+        "tests/concorde/operations/test_target_discovery.py"
+      ]
     }
   ],
   "dependencies": [],

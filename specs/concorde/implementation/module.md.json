@@ -12,8 +12,9 @@
       "kind": "shared program",
       "files": [
         "operations/implement.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/harness/test_worker_binding.py"
+        "src/concorde/implementation/",
+        "tests/concorde/harness/test_worker_binding.py",
+        "tests/concorde/operations/test_review.py"
       ],
       "meaning": "#entity.implementation.adapter"
     },

@@ -12,10 +12,12 @@
       "kind": "shared program",
       "files": [
         "operations/validate.py",
-        "tests/concorde/development/test_check_execution.py",
-        "tests/concorde/development/test_review.py",
+        "src/concorde/harness/checks.py",
+        "src/concorde/validation/",
         "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_check_execution.py",
+        "tests/concorde/operations/test_review.py"
       ],
       "meaning": "#entity.validation.adapter"
     },

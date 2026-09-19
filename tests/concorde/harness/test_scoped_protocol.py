@@ -4,7 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.development.operation_service import OperationHost, run_operation
+from concorde.harness.host import OperationHost
+from concorde.harness.admission import run_operation
 from concorde.harness.context import (
     recheck_context,
     recheck_discovery_context,
@@ -150,7 +151,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"])
         self.assertEqual([], [call["stage"] for call in double.calls])
-        from tests.concorde.development.test_review import issue_observation
+        from tests.concorde.operations.test_review import issue_observation
 
         observations = [
             issue_observation(self.root, ref)
@@ -969,7 +970,7 @@ class ScopedProtocolTests(unittest.TestCase):
         )
         self.assertEqual("blocked", blocked["status"])
         gap = blocked["output"]["data"]["blockers"][0]
-        from tests.concorde.development.test_review import issue_observation
+        from tests.concorde.operations.test_review import issue_observation
 
         observation = issue_observation(self.root, gap)
         self.assertEqual("scope.bank", observation["report"]["owner_target_id"])

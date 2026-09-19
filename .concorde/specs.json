@@ -1,8 +1,8 @@
 {
   "checks": [
     {
-      "id": "check.development.graph-specs",
-      "target_id": "module.development",
+      "id": "check.harness.graph-specs",
+      "target_id": "module.harness",
       "argv": [
         "{python}",
         "scripts/development/check-graph-specs.py"
@@ -24,21 +24,21 @@
         "--filter",
         "tests.concorde.harness.test_scoped_protocol",
         "--filter",
-        "tests.concorde.development.test_review",
+        "tests.concorde.operations.test_review",
         "--filter",
-        "tests.concorde.development.test_check_execution",
+        "tests.concorde.operations.test_check_execution",
         "--filter",
         "tests.concorde.harness.test_worktree_lifecycle"
       ],
-      "id": "check.development.runtime",
+      "id": "check.operations.runtime",
       "inputs": [
         "scripts/development/run-tests.py",
         "src",
         "protocol",
         "tests/concorde/harness",
-        "tests/concorde/development"
+        "tests/concorde/operations"
       ],
-      "target_id": "module.development",
+      "target_id": "module.operations",
       "timeout_seconds": 180
     },
     {
@@ -165,13 +165,13 @@
         "specs/concorde/ownership-migration.md"
       ],
       "files": [
-        "tests/concorde/development/test_review.py",
         "tests/concorde/distribution/test_configure.py",
         "tests/concorde/distribution/test_consumer_install_end_to_end.py",
         "tests/concorde/distribution/test_protocol_guidance.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/issues/test_graph.py",
+        "tests/concorde/operations/test_review.py",
         "tests/concorde/spec/test_module_architecture.py"
       ],
       "id": "module.concorde",
@@ -282,6 +282,7 @@
         "src/concorde/spec/wire_shapes.py",
         "tests/__init__.py",
         "tests/concorde/__init__.py",
+        "tests/concorde/operations/test_structured_results.py",
         "tests/concorde/spec/",
         "tests/concorde/spec/test_typed_data.py",
         "tests/concorde/support/__init__.py",
@@ -321,6 +322,7 @@
     },
     {
       "checks": [
+        "check.harness.graph-specs",
         "check.harness.reference-versions",
         "check.harness.runtime"
       ],
@@ -344,6 +346,7 @@
         "pi/",
         "prompts/workers/common.md",
         "scripts/development/STUDIO.md",
+        "scripts/development/check-graph-specs.py",
         "scripts/development/check-reference-versions.py",
         "scripts/development/studio.py",
         "src/concorde/harness/",
@@ -364,9 +367,6 @@
         "src/concorde/spec/schema.py",
         "src/concorde/spec/typed_data.py",
         "src/concorde/spec/wire_shapes.py",
-        "tests/concorde/development/test_graph_surfaces.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_target_discovery.py",
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/harness/",
         "tests/concorde/harness/test_boundaries.py",
@@ -381,10 +381,16 @@
         "tests/concorde/harness/test_worker_sandbox.py",
         "tests/concorde/harness/test_worktree_boundary.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_graph_surfaces.py",
+        "tests/concorde/operations/test_operation_modules.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_target_discovery.py",
+        "tests/concorde/operations/test_typed_graphs.py",
         "tests/concorde/spec/test_operations_migration.py",
         "tests/concorde/spec/test_typed_data.py",
         "tests/concorde/support/fake_openai_provider.py",
-        "tests/concorde/support/fake_pi_rpc.py"
+        "tests/concorde/support/fake_pi_rpc.py",
+        "tests/concorde/support/operation_json.py"
       ],
       "id": "module.harness",
       "kind": "module",
@@ -494,10 +500,7 @@
       ]
     },
     {
-      "checks": [
-        "check.development.graph-specs",
-        "check.development.runtime"
-      ],
+      "checks": [],
       "documents": [
         "specs/concorde/development/module.md",
         "specs/concorde/development/interfaces.md",
@@ -509,35 +512,7 @@
         "specs/concorde/development/execution-reference.md",
         "specs/concorde/development/collaborations.md"
       ],
-      "files": [
-        "operations/context_solve.py",
-        "operations/deliver.py",
-        "operations/dev_loop.py",
-        "operations/implement.py",
-        "operations/main.py",
-        "operations/plan.py",
-        "operations/review.py",
-        "operations/specify.py",
-        "operations/specify_loop.py",
-        "operations/tasks.py",
-        "operations/validate.py",
-        "scripts/development/check-graph-specs.py",
-        "src/concorde/development/",
-        "src/concorde/harness/change_worktree.py",
-        "src/concorde/harness/worktree.py",
-        "src/concorde/harness/worktree_delivery.py",
-        "src/concorde/spec/changes.py",
-        "tests/concorde/development/",
-        "tests/concorde/harness/test_change_worktree.py",
-        "tests/concorde/harness/test_graphs.py",
-        "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_studio.py",
-        "tests/concorde/harness/test_studio_server.py",
-        "tests/concorde/harness/test_worktree_boundary.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/spec/test_operations_migration.py",
-        "tests/concorde/support/operation_json.py"
-      ],
+      "files": [],
       "id": "module.development",
       "kind": "module",
       "parent": "module.concorde",
@@ -746,6 +721,8 @@
         "src/concorde/distribution/managed_runtime.py",
         "src/concorde/distribution/package_validation.py",
         "src/concorde/distribution/prompt_resolver.py",
+        "src/concorde/spec/project.py",
+        "src/concorde/spec/project_graph.py",
         "templates/",
         "tests/concorde/distribution/",
         "tests/concorde/distribution/test_build.py",
@@ -868,7 +845,8 @@
         "operations/context_solve.py",
         "operations/plan.py",
         "operations/tasks.py",
-        "tests/concorde/development/test_review.py"
+        "src/concorde/planning/",
+        "tests/concorde/operations/test_review.py"
       ],
       "id": "module.planning",
       "kind": "module",
@@ -964,8 +942,9 @@
       ],
       "files": [
         "operations/implement.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/harness/test_worker_binding.py"
+        "src/concorde/implementation/",
+        "tests/concorde/harness/test_worker_binding.py",
+        "tests/concorde/operations/test_review.py"
       ],
       "id": "module.implementation",
       "kind": "module",
@@ -1069,9 +1048,10 @@
       ],
       "files": [
         "operations/specify.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_specify_loop.py",
+        "src/concorde/spec_authoring/",
         "tests/concorde/harness/test_boundaries.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/spec/test_content_repository.py",
         "tests/concorde/spec/test_protocol_v5.py"
       ],
@@ -1174,10 +1154,11 @@
       ],
       "files": [
         "operations/review.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_run_operation.py",
-        "tests/concorde/development/test_standalone_review.py",
-        "tests/concorde/development/test_target_discovery.py"
+        "src/concorde/review/",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_run_operation.py",
+        "tests/concorde/operations/test_standalone_review.py",
+        "tests/concorde/operations/test_target_discovery.py"
       ],
       "id": "module.review",
       "kind": "module",
@@ -1274,10 +1255,12 @@
       ],
       "files": [
         "operations/validate.py",
-        "tests/concorde/development/test_check_execution.py",
-        "tests/concorde/development/test_review.py",
+        "src/concorde/harness/checks.py",
+        "src/concorde/validation/",
         "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_check_execution.py",
+        "tests/concorde/operations/test_review.py"
       ],
       "id": "module.validation",
       "kind": "module",
@@ -1373,6 +1356,7 @@
       ],
       "files": [
         "operations/deliver.py",
+        "src/concorde/harness/worktree_delivery.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "id": "module.delivery",
@@ -1470,9 +1454,10 @@
       ],
       "files": [
         "operations/main.py",
-        "tests/concorde/development/test_graph_surfaces.py",
+        "src/concorde/query_routing/",
         "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_graph_surfaces.py"
       ],
       "id": "module.query-routing",
       "kind": "module",
@@ -1572,6 +1557,7 @@
       ],
       "files": [
         "operations/main.py",
+        "src/concorde/topology/",
         "tests/concorde/harness/test_scoped_protocol.py"
       ],
       "id": "module.topology",
@@ -1677,11 +1663,12 @@
       ],
       "files": [
         "operations/dev_loop.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_specify_loop.py",
-        "tests/concorde/development/test_target_discovery.py",
+        "src/concorde/dev_loop/",
         "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_specify_loop.py",
+        "tests/concorde/operations/test_target_discovery.py"
       ],
       "id": "module.dev-loop",
       "kind": "module",
@@ -1803,9 +1790,10 @@
       ],
       "files": [
         "operations/specify_loop.py",
-        "tests/concorde/development/test_specify_loop.py",
+        "src/concorde/specify_loop/",
         "tests/concorde/harness/test_studio_server.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_specify_loop.py"
       ],
       "id": "module.specify-loop",
       "kind": "module",
@@ -1916,8 +1904,16 @@
         "specs/concorde/operations/module.md",
         "specs/concorde/operations/providers.md"
       ],
-      "files": [],
-      "checks": [],
+      "files": [
+        "src/concorde/operations/",
+        "tests/concorde/operations/__init__.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_run_operation.py",
+        "tests/concorde/operations/test_target_discovery.py"
+      ],
+      "checks": [
+        "check.operations.runtime"
+      ],
       "references": [
         {
           "kind": "module",

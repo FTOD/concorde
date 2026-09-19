@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.development.operation_host import validate_invocation
+from concorde.harness.entry import validate_invocation
 from concorde.harness.change_worktree import STATE_PATH, ensure_change, read_change
 from concorde.spec.content_model import reading_problems
 from concorde.spec.repository import SpecError

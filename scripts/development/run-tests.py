@@ -13,6 +13,7 @@ batch; modules listed in ``SERIAL`` run one at a time after the parallel batch.
 The serial discover command remains valid; this script only changes how the same modules are
 scheduled. It uses the standard library only.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,12 +40,14 @@ SERIAL: dict[str, str] = {}
 # independent. Each is fanned out one subprocess per test method; every part repeats the module
 # import and class fixtures, which costs far less than the module's total time. Skipped with
 # --sequential.
-FAN_OUT: frozenset[str] = frozenset({
-    "tests.concorde.development.test_review",
-    "tests.concorde.distribution.test_install_concorde",
-    "tests.concorde.harness.test_worktree_lifecycle",
-    "tests.concorde.spec.test_module_model",
-})
+FAN_OUT: frozenset[str] = frozenset(
+    {
+        "tests.concorde.operations.test_review",
+        "tests.concorde.distribution.test_install_concorde",
+        "tests.concorde.harness.test_worktree_lifecycle",
+        "tests.concorde.spec.test_module_model",
+    }
+)
 
 # Enumerates the test ids of one module inside the test interpreter, so fan-out uses the loader's
 # own view (inherited tests, skip decorators, load failures) instead of a source-level guess.
@@ -86,7 +89,7 @@ class Unit:
 
     @property
     def part(self) -> str:
-        return self.target[len(self.module) + 1:] if self.target != self.module else ""
+        return self.target[len(self.module) + 1 :] if self.target != self.module else ""
 
     @property
     def failed(self) -> bool:
@@ -140,19 +143,29 @@ def choose_interpreter(explicit: str | None) -> str:
 def list_tests(python: str, module: str) -> list[str] | None:
     """Return the module's test ids, or ``None`` when the loader cannot import it."""
 
-    completed = subprocess.run([python, "-c", LIST_TESTS, module], cwd=ROOT,
-                               capture_output=True, text=True)
+    completed = subprocess.run(
+        [python, "-c", LIST_TESTS, module], cwd=ROOT, capture_output=True, text=True
+    )
     ids = completed.stdout.split()
-    if completed.returncode or not ids or any(not test.startswith(module + ".") for test in ids):
+    if (
+        completed.returncode
+        or not ids
+        or any(not test.startswith(module + ".") for test in ids)
+    ):
         return None
     return ids
 
 
 def run_unit(python: str, unit: Unit) -> Unit:
     started = time.perf_counter()
-    completed = subprocess.run([python, "-m", "unittest", unit.target], cwd=ROOT,
-                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                               errors="replace")
+    completed = subprocess.run(
+        [python, "-m", "unittest", unit.target],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors="replace",
+    )
     unit.seconds = time.perf_counter() - started
     unit.returncode = completed.returncode
     unit.output = completed.stdout
@@ -166,7 +179,10 @@ def parse_summary(unit: Unit) -> None:
     if ran and result:
         unit.tests = int(ran[-1])
         verdict, details = result[-1]
-        counts = {key.strip(): int(value) for key, value in re.findall(r"([a-z ]+)=(\d+)", details)}
+        counts = {
+            key.strip(): int(value)
+            for key, value in re.findall(r"([a-z ]+)=(\d+)", details)
+        }
         unit.failures = counts.get("failures", 0)
         unit.errors = counts.get("errors", 0)
         unit.skipped = counts.get("skipped", 0)
@@ -199,8 +215,10 @@ def describe(unit: Unit) -> str:
 
 def print_completion(index: int, total: int, unit: Unit) -> None:
     label = unit.target if not unit.serial else unit.target + "  [serial]"
-    print(f"[{index:>{len(str(total))}}/{total}] {unit.status:<5} {unit.seconds:7.1f}s  {label}  ({describe(unit)})",
-          flush=True)
+    print(
+        f"[{index:>{len(str(total))}}/{total}] {unit.status:<5} {unit.seconds:7.1f}s  {label}  ({describe(unit)})",
+        flush=True,
+    )
     if unit.failed:
         rule = "-" * 20
         print(f"{rule} output of {unit.target} {rule}")
@@ -208,14 +226,22 @@ def print_completion(index: int, total: int, unit: Unit) -> None:
         print(f"{rule} end of {unit.target} {rule}", flush=True)
 
 
-def build_units(modules: list[str], python: str, fan_out: bool, jobs: int) -> list[Unit]:
+def build_units(
+    modules: list[str], python: str, fan_out: bool, jobs: int
+) -> list[Unit]:
     """Expand the selected modules into units, fanning out the listed modules per test method."""
 
-    fanned = [module for module in modules if fan_out and module in FAN_OUT and module not in SERIAL]
+    fanned = [
+        module
+        for module in modules
+        if fan_out and module in FAN_OUT and module not in SERIAL
+    ]
     listings: dict[str, list[str] | None] = {}
     if fanned:
         with ThreadPoolExecutor(max_workers=min(jobs, len(fanned))) as pool:
-            for module, ids in zip(fanned, pool.map(lambda name: list_tests(python, name), fanned)):
+            for module, ids in zip(
+                fanned, pool.map(lambda name: list_tests(python, name), fanned)
+            ):
                 listings[module] = ids
     units: list[Unit] = []
     for module in modules:
@@ -228,14 +254,23 @@ def build_units(modules: list[str], python: str, fan_out: bool, jobs: int) -> li
             units.append(Unit(module, module))
     if fan_out:
         # Start the presumably slowest work first: fanned-out parts, then larger modules.
-        units.sort(key=lambda unit: (unit.target == unit.module, -module_path(unit.module).stat().st_size,
-                                     unit.target))
+        units.sort(
+            key=lambda unit: (
+                unit.target == unit.module,
+                -module_path(unit.module).stat().st_size,
+                unit.target,
+            )
+        )
     return units
 
 
-def print_report(reports: list[ModuleReport], units: list[Unit], wall: float, jobs: int) -> dict:
+def print_report(
+    reports: list[ModuleReport], units: list[Unit], wall: float, jobs: int
+) -> dict:
     print()
-    print("Modules by wall-clock time (fanned-out modules show their longest part and the sum of parts):")
+    print(
+        "Modules by wall-clock time (fanned-out modules show their longest part and the sum of parts):"
+    )
     ordered = sorted(reports, key=lambda report: (-report.wall, report.module))
     for report in ordered:
         status = "FAIL" if report.failed else "ok"
@@ -245,7 +280,9 @@ def print_report(reports: list[ModuleReport], units: list[Unit], wall: float, jo
         elif report.units and report.units[0].serial:
             parts = "  [serial]"
         tests = sum(unit.tests for unit in report.units)
-        print(f"  {report.wall:7.1f}s  {status:<5} {report.module}  ({tests} tests){parts}")
+        print(
+            f"  {report.wall:7.1f}s  {status:<5} {report.module}  ({tests} tests){parts}"
+        )
     totals = {
         "tests": sum(unit.tests for unit in units),
         "failures": sum(unit.failures + unit.unexpected_successes for unit in units),
@@ -260,10 +297,12 @@ def print_report(reports: list[ModuleReport], units: list[Unit], wall: float, jo
         "subprocess_seconds": round(sum(unit.seconds for unit in units), 2),
     }
     print()
-    print(f"Ran {totals['tests']} tests in {totals['modules']} modules "
-          f"({totals['subprocesses']} subprocesses, {jobs} jobs): "
-          f"{totals['failures']} failures, {totals['errors']} errors, {totals['skipped']} skipped; "
-          f"wall {wall:.1f}s, subprocess time {totals['subprocess_seconds']:.1f}s")
+    print(
+        f"Ran {totals['tests']} tests in {totals['modules']} modules "
+        f"({totals['subprocesses']} subprocesses, {jobs} jobs): "
+        f"{totals['failures']} failures, {totals['errors']} errors, {totals['skipped']} skipped; "
+        f"wall {wall:.1f}s, subprocess time {totals['subprocess_seconds']:.1f}s"
+    )
     failed = [unit for unit in units if unit.failed]
     if failed:
         print("FAILED units:")
@@ -276,31 +315,62 @@ def print_report(reports: list[ModuleReport], units: list[Unit], wall: float, jo
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
-    parser.add_argument("-j", "--jobs", type=int, default=None,
-                        help="parallel subprocesses (default: min(cpu_count, number of units))")
-    parser.add_argument("--sequential", action="store_true",
-                        help="run one module at a time without fan-out, like the discover command")
-    parser.add_argument("--filter", action="append", default=[], metavar="SUBSTRING",
-                        help="only run modules whose dotted name or path contains SUBSTRING (repeatable)")
-    parser.add_argument("--json", type=Path, default=None, metavar="PATH",
-                        help="write a JSON summary of every unit to PATH")
-    parser.add_argument("--python", default=None, metavar="PATH",
-                        help="interpreter for the subprocesses (default: .venv, else this interpreter)")
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=None,
+        help="parallel subprocesses (default: min(cpu_count, number of units))",
+    )
+    parser.add_argument(
+        "--sequential",
+        action="store_true",
+        help="run one module at a time without fan-out, like the discover command",
+    )
+    parser.add_argument(
+        "--filter",
+        action="append",
+        default=[],
+        metavar="SUBSTRING",
+        help="only run modules whose dotted name or path contains SUBSTRING (repeatable)",
+    )
+    parser.add_argument(
+        "--json",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="write a JSON summary of every unit to PATH",
+    )
+    parser.add_argument(
+        "--python",
+        default=None,
+        metavar="PATH",
+        help="interpreter for the subprocesses (default: .venv, else this interpreter)",
+    )
     arguments = parser.parse_args(argv)
 
     python = choose_interpreter(arguments.python)
     modules = discover_modules()
     if arguments.filter:
-        modules = [module for module in modules
-                   if any(needle in module or needle in str(module_path(module).relative_to(ROOT))
-                          for needle in arguments.filter)]
+        modules = [
+            module
+            for module in modules
+            if any(
+                needle in module or needle in str(module_path(module).relative_to(ROOT))
+                for needle in arguments.filter
+            )
+        ]
     if not modules:
         print("no test modules matched", file=sys.stderr)
         return 2
     cpu_count = os.cpu_count() or 1
     started = time.perf_counter()
-    parallel = build_units(modules, python, fan_out=not arguments.sequential, jobs=cpu_count)
-    serial = [Unit(module, module, serial=True) for module in modules if module in SERIAL]
+    parallel = build_units(
+        modules, python, fan_out=not arguments.sequential, jobs=cpu_count
+    )
+    serial = [
+        Unit(module, module, serial=True) for module in modules if module in SERIAL
+    ]
     total = len(parallel) + len(serial)
     if arguments.sequential:
         jobs = 1
@@ -309,12 +379,16 @@ def main(argv: list[str] | None = None) -> int:
     else:
         jobs = max(1, arguments.jobs)
     fanned = sorted({unit.module for unit in parallel if unit.target != unit.module})
-    print(f"Running {len(modules)} modules as {total} subprocesses with {jobs} job{'s' if jobs != 1 else ''} "
-          f"using {python}")
+    print(
+        f"Running {len(modules)} modules as {total} subprocesses with {jobs} job{'s' if jobs != 1 else ''} "
+        f"using {python}"
+    )
     if fanned:
         print(f"  fanned out per test method: {', '.join(fanned)}")
     if serial:
-        print(f"  serial after the parallel batch: {', '.join(unit.module for unit in serial)}")
+        print(
+            f"  serial after the parallel batch: {', '.join(unit.module for unit in serial)}"
+        )
     print(flush=True)
 
     finished = 0
@@ -338,9 +412,13 @@ def main(argv: list[str] | None = None) -> int:
         summary = {
             "python": python,
             "totals": totals,
-            "serial": {module: SERIAL[module] for module in SERIAL if module in modules},
-            "units": [{key: value for key, value in asdict(unit).items() if key != "output"}
-                      for unit in sorted(units, key=lambda unit: -unit.seconds)],
+            "serial": {
+                module: SERIAL[module] for module in SERIAL if module in modules
+            },
+            "units": [
+                {key: value for key, value in asdict(unit).items() if key != "output"}
+                for unit in sorted(units, key=lambda unit: -unit.seconds)
+            ],
         }
         arguments.json.write_text(json.dumps(summary, indent=2) + "\n")
     return 1 if any(unit.failed for unit in units) else 0

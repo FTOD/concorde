@@ -12,10 +12,11 @@
       "kind": "shared program",
       "files": [
         "operations/review.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_run_operation.py",
-        "tests/concorde/development/test_standalone_review.py",
-        "tests/concorde/development/test_target_discovery.py"
+        "src/concorde/review/",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_run_operation.py",
+        "tests/concorde/operations/test_standalone_review.py",
+        "tests/concorde/operations/test_target_discovery.py"
       ],
       "meaning": "#entity.review.adapter"
     },

@@ -10,7 +10,8 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 
-from concorde.development.operation_service import OperationHost, run_operation
+from concorde.harness.host import OperationHost
+from concorde.harness.admission import run_operation
 from concorde.harness.pi_worker import Outcome, WorkerExecutionError
 from concorde.harness.worker_executor import (
     OperationExecutionError,

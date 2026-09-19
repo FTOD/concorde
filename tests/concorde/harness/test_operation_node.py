@@ -2,7 +2,7 @@
 
 import unittest
 
-from concorde.development.plan_graph import build_plan_graph
+from concorde.planning.plan_graph import build_plan_graph
 from concorde.harness.operation_node import OperationNode, state_schema, typed_state
 from concorde.harness.worker_profile import worker_profile
 from concorde.spec.typed_data import DATA_SCHEMAS, TypedDataError, typed

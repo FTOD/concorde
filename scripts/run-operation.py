@@ -4,7 +4,7 @@
 Only skills are directly invocable. This launcher accepts exactly one of the public skill names,
 maps it to its operation module through the `operation:` front-matter field of its Skill source
 `prompts/skills/<name>.md`, and runs the shared trusted stdin/envelope handling
-(`concorde.development.operation_host.json_main`) through that module's own `run`. Stage
+(`concorde.harness.entry.json_main`) through that module's own `run`. Stage
 operations have no launcher and no direct invocation. `<skill-name> --runtime-check` is a
 lightweight offline smoke check used by the managed runtime provisioner: it loads the operation
 module and confirms LangGraph is importable, without touching stdin or launching an agent.
@@ -175,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
     import importlib
     import importlib.util
 
-    from concorde.development.operation_host import invocation_failure, json_main
+    from concorde.harness.entry import invocation_failure, json_main
     from concorde.spec.contracts import load_operation_inventory
     from concorde.spec.typed_data import canonical
 

@@ -23,9 +23,13 @@
       "title": "Operation and Harness model",
       "kind": "program",
       "files": [
+        "scripts/development/check-graph-specs.py",
         "src/concorde/harness/",
         "tests/concorde/harness/",
-        "tests/concorde/spec/test_operations_migration.py"
+        "tests/concorde/operations/test_operation_modules.py",
+        "tests/concorde/operations/test_typed_graphs.py",
+        "tests/concorde/spec/test_operations_migration.py",
+        "tests/concorde/support/operation_json.py"
       ],
       "meaning": "#entity.harness.agent-model"
     },
@@ -56,8 +60,8 @@
       "kind": "program",
       "files": [
         "src/concorde/harness/worker_executor.py",
-        "tests/concorde/development/test_review.py",
-        "tests/concorde/harness/test_worker_executor.py"
+        "tests/concorde/harness/test_worker_executor.py",
+        "tests/concorde/operations/test_review.py"
       ],
       "meaning": "#entity.harness.agent-execution"
     },
@@ -85,11 +89,11 @@
         "scripts/development/studio.py",
         "src/concorde/harness/studio.py",
         "src/concorde/harness/studio_client.py",
-        "tests/concorde/development/test_graph_surfaces.py",
-        "tests/concorde/development/test_target_discovery.py",
         "tests/concorde/harness/test_studio.py",
         "tests/concorde/harness/test_studio_client.py",
-        "tests/concorde/harness/test_studio_server.py"
+        "tests/concorde/harness/test_studio_server.py",
+        "tests/concorde/operations/test_graph_surfaces.py",
+        "tests/concorde/operations/test_target_discovery.py"
       ],
       "meaning": "#entity.harness.studio"
     },

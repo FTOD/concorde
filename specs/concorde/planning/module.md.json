@@ -14,7 +14,8 @@
         "operations/context_solve.py",
         "operations/plan.py",
         "operations/tasks.py",
-        "tests/concorde/development/test_review.py"
+        "src/concorde/planning/",
+        "tests/concorde/operations/test_review.py"
       ],
       "meaning": "#entity.planning.adapter"
     },

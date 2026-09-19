@@ -44,6 +44,8 @@
         "scripts/requirements.lock",
         "scripts/run-operation.py",
         "src/concorde/distribution/",
+        "src/concorde/spec/project.py",
+        "src/concorde/spec/project_graph.py",
         "templates/",
         "tests/concorde/distribution/"
       ],
