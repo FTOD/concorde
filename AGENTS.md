@@ -122,3 +122,19 @@ automatically by default, without loading the affected Skill bodies. Use the man
 only when necessary. Skill discovery metadata alone is not a loaded Skill body. A maintenance agent
 that has not invoked a project-local Skill may update sources, run the build, run `build --check`,
 and test normally.
+
+## Developer-authorized direct maintenance exception
+
+For explicitly authorized maintenance of the Concorde source checkout,
+the agent may directly edit tracked project configuration and registry files,
+including `.concorde/config.json` and `.concorde/specs.json`.
+
+When the developer explicitly requests a manual merge into main, the agent
+may use ordinary Git integration after reviewing the complete change and
+running the required deterministic checks. Concorde Operations are not
+required for this direct-maintenance path.
+
+This exception takes precedence over the Host-only delivery rules for this
+path. It does not authorize fabricating readiness or review evidence,
+manually rewriting lifecycle records, discarding unrelated local changes,
+or concurrent writers in the same worktree.

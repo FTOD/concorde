@@ -126,7 +126,6 @@
         "concorde.json",
         "pyproject.toml",
         "README.md",
-        "skills-lock.json",
         ".concorde/config.json",
         ".concorde/specs.json",
         ".github/workflows/deploy-docsite.yml",
