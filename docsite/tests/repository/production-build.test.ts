@@ -210,8 +210,8 @@ it("publishes the independent standard with chapter navigation and no Spec wrapp
 // verifies: scenario.views.publish-homepage
 it("publishes the configured introduction at the root while preserving direct Spec navigation", async () => {
   const home = await readFile(resolve(output, "index.html"), "utf8");
-  expect(home).toContain("Specify responsibilities. Compose Operations.");
-  expect(home).toContain("Call complete Operations.");
+  expect(home).toContain("Specify the architecture. Guide your agents.");
+  expect(home).toContain("Enforce permissions outside the model.");
   expect(home).toContain('id="get-started"');
   expect(home).toContain('id="reference-title"');
   expect(home.indexOf('id="reference-title"')).toBeGreaterThan(
