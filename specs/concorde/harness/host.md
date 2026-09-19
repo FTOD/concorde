@@ -40,11 +40,15 @@ still be read for the operation's result: answered, ready, blocked or another de
 Admission, the provider's own domain outcome and an execution failure stay distinct, so a caller
 never mistakes a stopped task for a crashed one.
 
-Mutating work requested from the primary worktree runs in an isolated candidate the host creates
+In consumer projects, mutating work requested from primary runs in an isolated candidate the host creates
 from the committed base: admission relays the request to that candidate's own launcher and returns
 its result, while the requesting session stays where it is. Uncommitted primary edits are not
 silently carried into it. Resuming preserves the saved task and workspace identity; incompatible
-input is rejected rather than applied to another change.
+input is rejected rather than applied to another change. Lifecycle status and durable run evidence
+remain primary-owned and retain the candidate's provenance. A candidate carrying its own framework
+must already have a current build: relay verifies it rather than rebuilding. Source-primary mutation
+requests are refused, including requests naming a candidate; source maintenance uses a fresh
+Skill-free writer in an assigned candidate followed by a separate sibling tester.
 
 ## Preparing a worker
 

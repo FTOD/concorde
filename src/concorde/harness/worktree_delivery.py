@@ -574,6 +574,9 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
             if receipt is None or not _is_ancestor(
                 root, receipt["merged_commit"], target_ref
             ):
+                # Receipt persistence also advances the status revision. Read the
+                # current record under this transaction's lock before the failure update.
+                state = read_change(source, required=True)
                 state.update(phase="deliver", status="blocked", outcome="failed")
                 save_change(source, state, publish=False, locked=True)
                 _inventory(root, persist=True)

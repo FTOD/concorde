@@ -54,8 +54,8 @@ def relay_operation(
 ) -> tuple[dict, str]:
     """Run ``invocation`` with the candidate worktree's launcher; return its envelope and stderr.
 
-    A self-hosted candidate is rebuilt from its own sources first, because its generated
-    instructions are untracked and its sources may have changed since it was created. A host
+    A self-hosted candidate must already have a fresh build from its own sources;
+    relay verifies it without rebuilding or substituting another checkout's outputs. A host
     interrupt reaches the launcher as SIGTERM, which cancels its worker and prints its result;
     only a launcher that does not finish within the grace period is killed."""
     if (candidate / "concorde.json").is_file() and (

@@ -1,8 +1,8 @@
 """Host-owned change state and discovery metadata for Git worktrees.
 
-A linked worktree is one candidate change. Its local control state is never Spec
-authority and is never part of a delivered Git tree. The primary worktree keeps
-an inventory of every live linked worktree, including ones created outside Concorde.
+A linked worktree is one candidate change. Its primary-owned status is never Spec
+authority and is never part of a delivered Git tree. Live inventory joins Git
+worktree incarnations to primary status, including unmanaged worktrees.
 """
 
 from __future__ import annotations
@@ -103,6 +103,11 @@ def list_worktrees(root: Path) -> list[dict]:
 
 
 def workspace_identity(root: Path) -> tuple[dict | None, dict | None]:
+    if not root.is_dir():
+        raise SpecError(
+            "workspace is missing; use previously bound primary authority or restore it",
+            "primary_unavailable",
+        )
     records = list_worktrees(root)
     if not records:
         if (root / ".git").exists() or (root / ".git").is_symlink():
@@ -178,6 +183,34 @@ def repository_lock(root: Path):
                 fcntl.flock(stream, fcntl.LOCK_UN)
 
 
+def worktree_incarnation(root: Path, *, create: bool = False) -> str | None:
+    """A narrow identity token in Git admin storage, never candidate task state.
+
+    Git removes this token with the worktree admin directory. Recreating even the
+    same path, branch and commit therefore cannot inherit the old incarnation.
+    Creation is confined to locked registration or explicitly accepted migration.
+    """
+    directory = Path(git_value(root, "rev-parse", "--absolute-git-dir"))
+    path = checked_path(directory, "concorde-incarnation")
+    if not path.exists():
+        if not create:
+            return None
+        from .status_store import atomic_write
+
+        with repository_lock(root):
+            if not path.exists():
+                atomic_write(directory, path.name, str(uuid.uuid4()).encode())
+    token = path.read_text()
+    try:
+        if str(uuid.UUID(token)) != token:
+            raise ValueError("noncanonical token")
+    except ValueError as error:
+        raise SpecError(
+            "invalid worktree incarnation", "invalid_worktree_state"
+        ) from error
+    return "incarnation:" + token
+
+
 def _write_json(root: Path, relative: str, value: dict) -> None:
     apply_files(
         root, [file_change(root, relative, canonical(value) + "\n")], {relative}
@@ -245,12 +278,22 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             "candidate-local durable runs require explicit migration",
             "migration_required",
         )
-    git_id = git_value(root, "rev-parse", "--absolute-git-dir") if current else None
+    git_id = worktree_incarnation(root) if current else None
+    located = [
+        item for item in all_status(root) if item.get("path") == str(root.resolve())
+    ]
+    if current and any(
+        not str(item.get("git_worktree_id", "")).startswith("incarnation:")
+        for item in located
+    ):
+        raise SpecError(
+            "pathname-only task identity requires explicit archival and re-registration",
+            "migration_required",
+        )
     candidates = [
         item
-        for item in all_status(root)
-        if item.get("path") == str(root.resolve())
-        and item.get("git_worktree_id", git_id) == git_id
+        for item in located
+        if item.get("git_worktree_id") == git_id and (not current or git_id is not None)
     ]
     matches = [
         item for item in candidates if item.get("status") not in {"merged", "delivered"}
@@ -417,37 +460,15 @@ def _summary(item: dict, primary_path: str) -> dict:
 
 def _inventory(root: Path, *, persist: bool) -> dict:
     primary, current = workspace_identity(root)
-    records = all_status(root)
     live = {item["path"]: item for item in list_worktrees(root) if item["alive"]}
     return {
         "schema_version": 2,
         "primary_worktree": primary["path"] if primary else None,
         "primary_branch": primary["branch"] if primary else None,
         "worktrees": [
-            {
-                "path": state["path"],
-                "branch": live.get(state["path"], {}).get(
-                    "branch", state.get("branch")
-                ),
-                "head": live.get(state["path"], {}).get("head"),
-                "managed": True,
-                "locked": live.get(state["path"], {}).get("locked", False),
-                "change_id": state["change_id"],
-                "target_id": state.get("target_id"),
-                "task": state.get("task") or "",
-                "phase": state["phase"],
-                "status": state["status"],
-                "outcome": state.get("outcome"),
-            }
-            for state in records
-            if state["path"] in live
-            and (not primary or state["path"] != primary["path"])
-        ]
-        + [
             _summary(item, primary["path"] if primary else "")
             for item in live.values()
-            if item["path"] not in {state["path"] for state in records}
-            and (not primary or item["path"] != primary["path"])
+            if not primary or item["path"] != primary["path"]
         ],
     }
 
@@ -469,20 +490,12 @@ def save_change(
 
     def write():
         _exclude_control_files(root)
-        persisted = read_status(root, state["change_id"])
-        if persisted:
-            for field in (
-                "delivery",
-                "manual_merge",
-                "cleanup",
-                "runs",
-                "child",
-                "mode",
-            ):
-                if field in persisted:
-                    state[field] = persisted[field]
         _, current = workspace_identity(root)
         if current:
+            if state.get("git_worktree_id") != worktree_incarnation(root):
+                raise SpecError(
+                    "task belongs to another worktree incarnation", "workspace_mismatch"
+                )
             state["branch"] = current["branch"]
         write_status(root, state)
         if publish:
@@ -605,9 +618,7 @@ def ensure_change(
         "change_id": change_id or "change." + str(uuid.uuid4()),
         "path": str(root.resolve()),
         "branch": current["branch"] if current else None,
-        "git_worktree_id": git_value(root, "rev-parse", "--absolute-git-dir")
-        if current
-        else None,
+        "git_worktree_id": None,
         "primary_worktree": primary["path"] if primary else None,
         "base_commit": current["head"] if current else None,
         "base_branch": primary["branch"] if primary else None,
@@ -641,6 +652,14 @@ def ensure_change(
                     "another invocation adopted this worktree", "incompatible_handoff"
                 )
             return observed
+        if read_status(root, state["change_id"]) is not None:
+            raise SpecError(
+                "stable change identity already belongs to another workspace",
+                "workspace_mismatch",
+            )
+        state["git_worktree_id"] = (
+            worktree_incarnation(root, create=True) if current else None
+        )
         _exclude_control_files(root)
         changes = (
             _guidance_changes(root, state) if secondary and mode == "operation" else []
@@ -650,10 +669,10 @@ def ensure_change(
                 root,
                 changes,
                 {item["path"] for item in changes},
-                verify=lambda: write_status(root, state),
+                verify=lambda: write_status(root, state, create=True),
             )
         else:
-            write_status(root, state)
+            write_status(root, state, create=True)
         _inventory(root, persist=True)
     return state
 
@@ -823,10 +842,17 @@ def target_state(
 
 
 def save_target_state(root: Path, value: dict) -> None:
-    change = read_change(root, required=True)
-    identifier(value["target_id"])
-    change["targets"][value["target_id"]] = value
-    save_change(root, change)
+    with repository_lock(root):
+        change = read_change(root, required=True)
+        identifier(value["target_id"])
+        previous = change["targets"].get(value["target_id"], {})
+        if value.get("revision", 0) != previous.get("revision", 0):
+            raise SpecError(
+                "target progress changed; reread before updating", "stale_status"
+            )
+        change["targets"][value["target_id"]] = copy.deepcopy(value)
+        save_change(root, change)
+        value["revision"] = change["targets"][value["target_id"]]["revision"]
 
 
 def progress(

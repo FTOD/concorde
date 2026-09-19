@@ -8,6 +8,7 @@ never create a replacement archive in a candidate.
 from __future__ import annotations
 
 import os
+import copy
 import base64
 import hashlib
 import tempfile
@@ -106,17 +107,41 @@ def _local_storage(root: Path) -> Path:
     return primary
 
 
-def write_status(root: Path, value: dict) -> None:
+def write_status(root: Path, value: dict, *, create: bool = False) -> None:
+    """Create once or compare-and-swap a complete status under the shared lock.
+
+    Successful saves refresh the caller's revision; a stale snapshot is never
+    merged by a field allowlist or silently substituted for newer progress.
+    """
     from .change_worktree import _exclude_control_files, repository_lock
 
     with repository_lock(root):
         destination = _local_storage(root)
+        previous = read_status(destination, value["change_id"])
+        if create and previous is not None:
+            raise SpecError(
+                "stable change identity already exists", "workspace_mismatch"
+            )
+        if not create and (
+            previous is None or value.get("revision", 0) != previous.get("revision", 0)
+        ):
+            raise SpecError(
+                "task status changed; reread before updating", "stale_status"
+            )
+        if previous == value:
+            return  # A successful no-op preserves byte-bound lifecycle evidence.
+        updated = copy.deepcopy(value)
+        updated["revision"] = (previous or {}).get("revision", 0) + 1
+        for key, target in updated.get("targets", {}).items():
+            old = (previous or {}).get("targets", {}).get(key, {})
+            target["revision"] = old.get("revision", 0) + (target != old)
         _exclude_control_files(root)
         atomic_write(
             destination,
             status_path(value["change_id"]),
-            (canonical(value) + "\n").encode(),
+            (canonical(updated) + "\n").encode(),
         )
+        value.update(updated)
 
 
 def run_path(root: Path, relative: str) -> Path:
@@ -212,6 +237,48 @@ def record_manual_merge(
         return state
 
 
+def _import_receipt_lifecycle(primary: Path, state: dict, receipt: dict) -> None:
+    """A pre-publication receipt is intent, not proof of delivery or cleanup."""
+    from .change_worktree import git, list_worktrees
+
+    known = receipt.get("status") in {"merging", "cleanup_pending", "delivered"}
+    commit, branch = receipt.get("merged_commit"), receipt.get("target_branch")
+    published = bool(
+        known
+        and commit
+        and branch
+        and git(
+            primary,
+            "merge-base",
+            "--is-ancestor",
+            commit,
+            "refs/heads/" + branch,
+            check=False,
+        ).returncode
+        == 0
+    )
+    state.update(
+        phase="complete" if published else "migration",
+        status="delivered" if published else "blocked",
+        outcome="delivered" if published else None,
+        validated_tree=None,
+        validation=None,
+    )
+    source = Path(receipt["source_worktree"])
+    present = source.exists() or any(
+        item["path"] == str(source) for item in list_worktrees(primary)
+    )
+    state["cleanup"] = {
+        "status": "unknown"
+        if not known
+        else "removed"
+        if not present
+        else "retained"
+        if receipt.get("retained_worktree")
+        else "pending"
+    }
+
+
 def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
     """Explicit non-destructive, idempotent import with an interruption-safe journal.
 
@@ -220,7 +287,7 @@ def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
     copy retries identical targets; different bytes always require human resolution.
     Archived data is historical, never a second authoritative store or fresh readiness.
     """
-    from .change_worktree import list_worktrees, repository_lock
+    from .change_worktree import list_worktrees, repository_lock, worktree_incarnation
 
     with repository_lock(root):
         primary = primary_root(root)
@@ -237,9 +304,8 @@ def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
         records: dict[str, dict] = {}
         copies: dict[str, bytes] = {}
         archives: list[Path] = []
-        roots = [
-            Path(item["path"]) for item in list_worktrees(root) if item["alive"]
-        ] or [primary]
+        worktrees = list_worktrees(root)
+        roots = [Path(item["path"]) for item in worktrees if item["alive"]] or [primary]
         for source in roots:
             old = checked_path(source, ".concorde/worktree.json")
             if old.exists():
@@ -255,6 +321,8 @@ def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
                         "duplicate legacy change identity", "migration_conflict"
                     )
                 state.update(
+                    git_worktree_id=worktree_incarnation(source) if worktrees else None,
+                    revision=0,
                     mode="operation",
                     child=None,
                     runs=[],
@@ -295,20 +363,16 @@ def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
                         "schema_version": 2,
                         "change_id": key,
                         "path": receipt["source_worktree"],
-                        "phase": "complete",
-                        "status": "delivered",
-                        "outcome": "delivered",
+                        "phase": "migration",
+                        "status": "blocked",
+                        "outcome": None,
+                        "revision": 0,
+                        "migration": {"source": str(path), "requires_validation": True},
                         "mode": "operation",
                     },
                 )
                 state["delivery"] = receipt
-                state["cleanup"] = {
-                    "status": "pending"
-                    if receipt["status"] == "cleanup_pending"
-                    else "retained"
-                    if receipt.get("retained_worktree")
-                    else "removed"
-                }
+                _import_receipt_lifecycle(primary, state, receipt)
             # Preserve detailed legacy logs in a clearly historical run archive.
             for path in deliveries.rglob("*"):
                 if path.is_symlink():
@@ -362,6 +426,18 @@ def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
         if apply and archives:
             from .change_worktree import _exclude_control_files
 
+            # Identity creation is an apply effect, after all collision checks.
+            # Receipt-only history cannot establish ownership of a live source.
+            for key, state in records.items():
+                if worktrees and (
+                    state.get("migration", {})
+                    .get("source", "")
+                    .endswith("/worktree.json")
+                ):
+                    state["git_worktree_id"] = worktree_incarnation(
+                        Path(state["path"]), create=True
+                    )
+                    copies[status_path(key)] = (canonical(state) + "\n").encode()
             _exclude_control_files(root)
             plan["payloads"] = {
                 path: base64.b64encode(data).decode() for path, data in copies.items()

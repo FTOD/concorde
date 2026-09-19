@@ -143,11 +143,14 @@ def json_main(package_root: Path, operation: str, runner) -> int:
                         "maintenance authoring uses deterministic development commands, not public Operations",
                         "fresh_session_required",
                     )
+            from .status_store import primary_root
+
             host = OperationHost(
                 Path.cwd(),
                 package_root,
                 mode=value["mode"],
                 session_provenance=selection,
+                archive_root=primary_root(Path.cwd()),
             )
             result = run_host_node(
                 runner, host, value["configuration"], value["input"], operation
@@ -163,7 +166,9 @@ def json_main(package_root: Path, operation: str, runner) -> int:
     if host and host.descriptions:
         print(canonical({"policies": host.descriptions}), file=sys.stderr)
     if host is not None and result.get("invocation_id"):
-        records = read_usage(host.project_root, result["invocation_id"])
+        records = read_usage(
+            host.archive_root or host.project_root, result["invocation_id"]
+        )
         if records:
             summary = summarize_usage(records)
             print(

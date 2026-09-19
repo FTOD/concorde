@@ -81,12 +81,13 @@ worktree root is admitted as a `primary` or `change` workspace and a directory o
 repository as `unversioned`; a directory inside a Git worktree that is not its root is refused with
 `workspace_mismatch`. The Skill's entry command is project-relative, so a rendered Skill carries no
 worktree identity: the worktree in which the developer's agent session started, the worktree whose
-Skill projection supplied the instructions and every other linked worktree contribute no registry,
-document or file to the invocation, and changing the working directory selects a different project
-rather than a wider one.
+Skill projection supplied the instructions and every other linked worktree contribute no project
+registry, Spec document or implementation file to the invocation. Primary lifecycle records remain
+separate host metadata, and changing the working directory selects a different project rather than
+a wider one.
 
 In a consumer project, a mutating Operation request in primary creates a candidate worktree on an isolated branch
-from committed HEAD, records the change there and relays the same request to that candidate's own
+from committed HEAD, records the change in primary status and relays the same request to that candidate's own
 launcher (`relay_operation`): a candidate that carries its own Concorde, the source checkout or a
 consumer whose installed framework is tracked, runs that code after verifying its own current build; any other candidate runs the invoking framework with the candidate as its project root.
 The relayed launcher's complete result envelope becomes this invocation's result, its stderr
@@ -262,7 +263,8 @@ context forms; package/schema alignment checks verify those identities.
 | --- | --- |
 | `migration_required` | Legacy local lifecycle data requires explicit migrate-status acceptance. |
 | `migration_conflict` | Legacy or interrupted migration collides with differing data; preserve both and resolve explicitly. |
-| `primary_unavailable` | Restore the authoritative primary worktree before retrying persistence. |
+| `primary_unavailable` | Restore the authoritative primary or missing source worktree, or use previously bound primary authority, before retrying persistence. |
+| `stale_status` | A task or target snapshot lost its revision compare-and-swap; reread current status before applying the intended update. |
 | `fresh_session_required` | Source maintenance requires an assigned candidate and fresh Skill-free writer. |
 | `already_initialized` | The project is already configured; use `configure` to change settings instead of initializing again. |
 | `closed_issue` | Another observation requires reopening the closed Issue first. |
@@ -358,11 +360,27 @@ and registry semantics are unchanged and remain tracked; runtime status and runs
 
 Git common-directory identity identifies the primary, including nonstandard primary paths.
 Unavailable primary identity blocks persistence with `primary_unavailable`; restore the primary
-and retry, never fabricate a new candidate-local authority. Cooperative repository locks serialize
-atomic coordinator writes without letting children edit primary source or index. Live unmanaged
+and retry, never fabricate a new candidate-local authority. A missing source directory is never an
+unversioned project: late persistence uses a previously bound primary archive, when supplied, or
+fails safely without recreating the source. Existing unversioned project directories remain supported.
+Cooperative repository locks serialize atomic coordinator writes without letting children edit primary
+source or index. Explicit change-ID uniqueness and create-only registration share that lock boundary.
+Every complete status replacement compares its read revision under the same lock and advances the
+revision only on a successful change; an identical current save preserves bytes and revision, while
+stale replacements fail with `stale_status`. Target snapshots have separate
+revisions advanced by every status writer that changes them, so a stale target cannot be inserted
+into a freshly read status. Independent updates reread and apply their intent; no field allowlist
+silently merges a stale record over newer blockers, progress or validation. Live unmanaged
 worktrees remain discoverable but are not silently converted into tasks. Branch/path are locators;
-change identity remains stable across a branch rename. Git worktree identity prevents a reused
-path from resurrecting a removed task; terminal primary tasks do not own subsequent direct work.
+change identity remains stable across a branch rename. `git_worktree_id` is an `incarnation:`-prefixed
+UUID, not a Git administrative pathname. Locked registration creates its narrow `concorde-incarnation`
+token in that worktree's Git administrative directory; reads validate canonical UUID bytes and never
+create tokens. The token carries no task status and Git removes it with the administrative directory.
+A recreated path, even with the same branch and commit, therefore cannot match the old incarnation.
+Reads and live inventory require the token match. Terminal records remain visible through status
+history but terminal primary tasks do not own subsequent direct work. Missing/pathname-only legacy
+primary identities require explicit archival and re-registration rather than implicit adoption of a
+possibly reused path.
 
 Durable `.concorde/runs/<run_id>/` evidence is primary-only, including candidate runs. Each run
 records actual source root, branch, change/run IDs, input commit/tree, runtime and build identity,
@@ -379,7 +397,21 @@ run bytes, unsafe paths and existing archive destinations without deleting data.
 precedes writes; retries replay identical targets and finish unfinished archival/removal steps, while
 conflicting intervening bytes block. Original bytes are archived under primary `.concorde/runs/legacy-migration/` before
 removing exact unchanged legacy sources; candidate-local durable archives do not remain. Legacy readiness requires fresh validation. Delivery recovery remains in the
-status record; detailed historical delivery logs move into runs. No live-data migration is implicit.
+status record; detailed historical delivery logs move into runs. Explicit local schema-2 state migration
+binds a live worktree's incarnation token on apply, never during preview; the archived original remains
+unchanged. Receipt-only history does not silently acquire live workspace ownership and needs explicit
+identity repair before resuming work in a present source.
+
+For legacy receipt states `merging`, `cleanup_pending` and `delivered`, migration verifies that the
+recorded merged commit is an ancestor of the recorded target branch before recording delivered/complete.
+An absent, invalid or unpublished target keeps status blocked in migration with no delivered outcome,
+regardless of whether local schema-2 state accompanies the receipt. Unknown receipt states also stay
+blocked. Cleanup is independent: for known states a source still present or registered is retained only
+with explicit retention, otherwise pending; a source absent from both disk and Git is removed. Unknown
+receipt states keep cleanup unknown. Migration never publishes a branch or removes a candidate to make
+these observations true. Original receipts are archived byte-for-byte, and journal retries preserve
+these decisions rather than converting an interrupted copy into lifecycle success. No live-data
+migration is implicit.
 
 Every discovery and worker snapshot admits `workspace` lifecycle metadata. Main can answer a pure
 workspace-status question directly from this metadata; target-behavior answers still use a separate

@@ -148,7 +148,7 @@ See [the no-wider-retry bound](requirements.md#req.harness.permission-no-retry).
 
 ### scenario.harness.change-owner — Preserve and validate candidate ownership
 
-- GIVEN host-owned candidate state in the current worktree, possibly created before routing
+- GIVEN primary-owned candidate state bound to the current worktree, possibly created before routing
 - WHEN the host reads, restores or binds its owner
 - THEN an unbound owner remains distinct from an absent or malformed record, and persisted change, path, branch, owner and intent fields are validated before use
 - AND a requested existing change cannot silently create replacement state in another worktree
@@ -362,14 +362,14 @@ See [single boundary](requirements.md#req.harness.single-boundary) and [distinct
 - GIVEN a public Skill submits an invocation through the entry script from some working directory
 - WHEN the host admits the request
 - THEN it binds the project root to exactly that directory, without searching parent directories
-- AND it reads the registry, every Spec collection, the lifecycle state and the listed implementation files from that worktree alone
+- AND it reads the registry, every Spec collection and the listed implementation files from that worktree alone, while lifecycle status and durable run evidence come only from the Git-identified primary authority
 - AND a working directory at a Git worktree root yields workspace kind `primary` or `change`, and a directory outside any Git repository yields kind `unversioned`
 - AND a working directory inside a Git worktree that is not its root is refused with `workspace_mismatch` and no Agent is launched
-- BUT the worktree in which the developer's agent session started, the worktree whose rendered Skill supplied the instructions and every other linked worktree contribute no registry, document or file to the invocation
+- BUT the worktree in which the developer's agent session started, the worktree whose rendered Skill supplied the instructions and every other linked worktree contribute no project registry, Spec document or implementation file to the invocation; primary lifecycle records remain separate host metadata
 
 See [project root is the entry process's working directory](requirements.md#req.harness.project-root-is-working-directory).
 
-### scenario.harness.workspace-inventory — The primary inventory reads only linked worktrees' lifecycle state
+### scenario.harness.workspace-inventory — The inventory joins primary lifecycle state to live worktree identity
 
 - GIVEN the primary worktree and one or more live linked worktrees, some managed by the `.concorde/status/<change_id>.json` and some not
 - WHEN an operation invoked in the primary worktree resolves its `workspace` metadata
@@ -381,13 +381,14 @@ See [project root is the entry process's working directory](requirements.md#req.
 
 ### scenario.harness.worktree-relay — Mutating request in the primary worktree runs in a host-created candidate
 
-- GIVEN a mutating operation request is admitted while the current session's worktree is the primary worktree
+- GIVEN a mutating operation request in an ordinary consumer project is admitted while the current session's worktree is the primary worktree
 - WHEN the host would otherwise start development work there
-- THEN it creates a candidate worktree from the committed HEAD, records the change there and runs the same request through that candidate's own launcher, with the candidate's change_id when the request type records one
+- THEN it creates a candidate worktree from the committed HEAD, records its change in primary status and runs the same request through the selected candidate launcher, with the candidate's change_id when the request type records one
 - AND the invocation returns the candidate launcher's complete result envelope, whose workspace names the candidate, and forwards its policy and usage diagnostics
-- AND it does not copy uncommitted primary changes into the candidate, records no progress in the primary worktree and never moves the originating session
+- AND it does not copy uncommitted primary changes into the candidate, records all durable progress and run evidence only in primary without changing primary source or index, and never moves the originating session
 - AND a later request from the primary worktree that names the recorded change_id runs in that candidate again, while a change_id no live candidate records is refused with missing_change
-- AND a candidate that carries its own Concorde runs that code, rebuilt from its own sources before the launch, and any other candidate runs the invoking framework with the candidate as its project root
+- AND a candidate that carries its own Concorde runs that code only after verifying its pre-existing current build, without rebuilding during relay, and any other candidate runs the invoking framework with the candidate as its project root
+- BUT source-primary mutations are refused with fresh_session_required even when a change_id names a candidate; source maintenance instead needs an assigned candidate, a fresh Skill-free writer and a separate sibling tester
 
 ### scenario.harness.graph-specs — Every Graph Spec equals its compiled Graph
 
@@ -447,6 +448,10 @@ See [project root is the entry process's working directory](requirements.md#req.
 - WHEN candidate work records progress and execution evidence
 - THEN only primary status and runs contain durable records, with candidate provenance
 - AND branch rename and candidate deletion do not erase task identity or terminal outcomes
+- AND a missing source cannot be recreated as an unversioned persistence authority; a late report uses its previously bound primary archive or fails safely
+- AND simultaneous registrations of one explicit change_id in different candidates yield at most one success and never overwrite the winning record
+- AND removing and recreating the same path, branch and commit creates a different worktree incarnation, so neither reads nor live inventory inherit the old task
+- AND a stale status or target snapshot is rejected without erasing newer blockers, validation or independent progress; a caller rereads before updating
 
 ### scenario.harness.status-migration — Explicit safe migration and recovery
 
@@ -454,3 +459,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - WHEN explicit migration is previewed, accepted, interrupted or retried
 - THEN preview changes nothing, collisions preserve both inputs, retries finish identical writes and history remains archived
 - AND old readiness is not represented as fresh validation
+- AND a merging receipt without verified publication remains blocked with no delivered outcome, with or without local schema-2 state
+- AND accepted receipt states merging, cleanup_pending and delivered establish delivery only when Git verifies the recorded publication; unknown states remain blocked
+- AND cleanup records actual absence separately from publication, preserves explicit retention for present sources and otherwise stays pending, while an unknown receipt state keeps cleanup unknown
+- AND preview generates no incarnation token; accepted local-state migration binds the current worktree incarnation explicitly and preserves the original source bytes
