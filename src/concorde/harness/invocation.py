@@ -7,34 +7,21 @@ planning, authoring, implementation, validation and development compose these st
 
 from __future__ import annotations
 
-import tempfile
-import uuid
-from pathlib import Path
-
 from ..distribution.build import load_model_instructions
 from ..spec.contracts import MODEL_STAGES
-from ..spec.repository import SpecError, SpecRepository, digest, read_file
-from ..spec.typed_data import OPERATION_CONTRACTS, checked_path, typed
+from ..spec.repository import SpecError, SpecRepository, digest
+from ..spec.typed_data import OPERATION_CONTRACTS, typed
 from ..spec.validation import module_dependency_findings
 from .change_worktree import WORK_PATH, blocker_scope, read_change
-from .checks import check_service
-from .configuration import load_configuration
 from .context import (
     context_documents,
-    materialize_documents,
-    materialize_references,
     recheck_context,
-    reference_grants,
     resolve_context,
 )
 from .host import (
     OperationHost,
-    protocol_documents,
-    run_worker,
-    worker_description,
-    worker_invocation,
 )
-from .permissions import PermissionPolicyError, PolicyBinding, compile_policy
+from .launch import WorkerLaunch, launch_worker
 from .revisions import implementation_digest, target_revision
 from .worker_profile import worker_profile
 
@@ -343,128 +330,8 @@ class Invocation:
                     "plan": "",
                     "tasks": [],
                 }
-        before_registry = self.repository.registry_bytes
-        with tempfile.TemporaryDirectory(prefix="concorde-context-") as directory:
-            capsule = Path(directory)
-            # Spec-only tasks see a private capsule, not a repository or inherited conversation.
-            project_workspace = agent.workspace == "project"
-            project = self.host.project_root if project_workspace else capsule
-            if project_workspace:
-                relative = f".concorde/runs/{self.host.invocation_id}/{uuid.uuid4()}/context.json"
-                context_file = checked_path(project, relative)
-            else:
-                relative, context_file = "context.json", capsule / "context.json"
-            if self.host.mode != "describe-policy":
-                context_file.parent.mkdir(parents=True, exist_ok=True)
-                context_file.write_text(snapshot.serialized + "\n")
-            # Spec context is the index above plus the read-only grant of every document and Protocol
-            # file it lists: copied byte for byte into a capsule, granted in place in a workspace.
-            granted = context_documents(self.repository, snapshot.value)
-            if not project_workspace and self.host.mode != "describe-policy":
-                materialize_documents(capsule, granted)
-            roles: dict[str, tuple[str, ...]] = {
-                "spec-context": (relative, *sorted(granted))
-            }
-            if project_workspace:
-                roles["implementation"] = (
-                    self.repository.implementation_files(self.target)
-                    if readonly
-                    else self.repository.implementation_paths(self.target)
-                )
-            if "references" in prompt.effects.reads:
-                # Resource context: the Module's external references, read-only. A capsule
-                # receives byte-identical copies of their readable files at the same paths.
-                records = snapshot.value["external_references"]
-                if not project_workspace and self.host.mode != "describe-policy":
-                    materialize_references(self.repository, capsule, records)
-                roles["references"] = reference_grants(records)
-            write_roles = ("implementation",) if implementation and not readonly else ()
-            try:
-                policy = compile_policy(
-                    prompt.effects,
-                    PolicyBinding(
-                        operation, phase, 0, role, role, write_roles=write_roles
-                    ),
-                    roles,
-                )
-            except PermissionPolicyError as error:
-                raise SpecError(str(error), "permission_denied") from error
-            receipt = {
-                "schema_version": 16,
-                "target_id": self.target.id,
-                "phase": phase,
-                "context_id": snapshot.id,
-                "source_digest": snapshot.id,
-                "registry_digest": digest(before_registry),
-                "role_paths": {k: list(v) for k, v in roles.items()},
-            }
-            value = typed(
-                "concorde-agent-stage-context",
-                {
-                    "snapshot": typed("concorde-context-snapshot", snapshot.value),
-                    "change_id": self.change_id,
-                    "expected_artifacts": [],
-                },
-            )
-            invocation = worker_invocation(
-                self.configuration,
-                operation=operation,
-                stage=phase,
-                prompt=prompt,
-                workspace=project,
-                context_value=value,
-                receipt=receipt,
-                policy=policy,
-                protocol=protocol_documents(snapshot.value, granted),
-            )
-            self.host.descriptions.append(
-                worker_description(
-                    prompt,
-                    invocation,
-                    policy,
-                    operation=operation,
-                    phase=phase,
-                    context_id=snapshot.id,
-                    project_root=str(project),
-                )
-            )
-            if self.host.mode == "describe-policy":
-                return {
-                    "context_id": snapshot.id,
-                    "outcome": "completed",
-                    "answer": "",
-                    "blockers": [],
-                    "documents": [],
-                    "plan": "",
-                    "tasks": [],
-                }
-            from .operation_node import OperationNode
 
-            result = None
-            checks = (
-                check_service(self.repository, self.target, self.host.invocation_id)
-                if project_workspace
-                else None
-            )
-
-            def launch_agent(context):
-                # The OperationNode's typed state carries the admitted context in and the validated
-                # result out; the Pi worker launch and its admission checks stay host-private.
-                nonlocal result
-                result, data = run_worker(
-                    self.host,
-                    invocation,
-                    prompt,
-                    operation=operation,
-                    stage=phase,
-                    target_id=self.target.id,
-                    result_type="concorde-agent-stage-result",
-                    change_id=self.change_id,
-                    checks=checks,
-                )
-                return data
-
-            data = OperationNode(agent.name).invoke(value, launch_agent)
+        def validate(data: dict) -> None:
             if data["context_id"] != snapshot.id:
                 raise SpecError(
                     "agent returned a different context identity",
@@ -477,43 +344,79 @@ class Invocation:
                     "stage outcome does not match its task blockers",
                     "invalid_completion",
                 )
-            if (
-                read_file(self.repository.root, self.repository.registry_path)
-                != before_registry
-            ):
-                raise SpecError(
-                    "registry changed during agent execution", "stale_context"
-                )
-            recheck_context(
-                self.repository,
-                snapshot,
-                check_implementation=not implementation or readonly,
-            )
-            if load_configuration(self.repository.root) != self.configuration:
-                raise SpecError(
-                    "configuration changed during agent execution",
-                    "configuration_mismatch",
-                )
-            if context_file.read_text() != snapshot.serialized + "\n":
-                raise SpecError("frozen context capsule changed", "stale_context")
-            if phase != "specify" and data["documents"]:
-                # There is no Implementation Spec any more: only the Spec author writes Spec text.
-                raise SpecError(
-                    "this phase cannot author Spec documents", "permission_denied"
-                )
-            if implementation and not readonly:
-                current = SpecRepository(self.repository.root, self.host.package_root)
-                self.repository = current
-                self.target = current.select(self.target.id)
-            self.host.evidence.append(result)
-            self.completed.append(operation)
-            if (
-                data["blockers"]
-                or not defer_gap_resolution
-                and data["outcome"] in {"completed", "sufficient"}
-            ):
-                self.record_gaps(phase, data["blockers"])
+
+        project_workspace = agent.workspace == "project"
+        data = launch_worker(
+            self.host,
+            self.configuration,
+            self.repository,
+            prompt,
+            WorkerLaunch(
+                operation=operation,
+                stage=phase,
+                role=role,
+                snapshot=snapshot,
+                granted=context_documents(self.repository, snapshot.value),
+                value=typed(
+                    "concorde-agent-stage-context",
+                    {
+                        "snapshot": typed("concorde-context-snapshot", snapshot.value),
+                        "change_id": self.change_id,
+                        "expected_artifacts": [],
+                    },
+                ),
+                index=snapshot.serialized + "\n",
+                result_type="concorde-agent-stage-result",
+                receipt={"target_id": self.target.id},
+                described={
+                    "context_id": snapshot.id,
+                    "outcome": "completed",
+                    "answer": "",
+                    "blockers": [],
+                    "documents": [],
+                    "plan": "",
+                    "tasks": [],
+                },
+                validate=validate,
+                recheck=lambda: recheck_context(
+                    self.repository,
+                    snapshot,
+                    check_implementation=not implementation or readonly,
+                ),
+                target=self.target,
+                target_id=self.target.id,
+                change_id=self.change_id,
+                implementation=(
+                    (
+                        self.repository.implementation_files(self.target)
+                        if readonly
+                        else self.repository.implementation_paths(self.target)
+                    )
+                    if project_workspace
+                    else None
+                ),
+                writable=implementation and not readonly,
+            ),
+        )
+        if self.host.mode == "describe-policy":
             return data
+        if phase != "specify" and data["documents"]:
+            # There is no Implementation Spec any more: only the Spec author writes Spec text.
+            raise SpecError(
+                "this phase cannot author Spec documents", "permission_denied"
+            )
+        if implementation and not readonly:
+            current = SpecRepository(self.repository.root, self.host.package_root)
+            self.repository = current
+            self.target = current.select(self.target.id)
+        self.completed.append(operation)
+        if (
+            data["blockers"]
+            or not defer_gap_resolution
+            and data["outcome"] in {"completed", "sufficient"}
+        ):
+            self.record_gaps(phase, data["blockers"])
+        return data
 
     def check_state(self, state: dict, *, allow_stale_spec: bool = False) -> None:
         if not allow_stale_spec and state.get("spec_digest") != target_revision(

@@ -51,7 +51,9 @@ input is rejected rather than applied to another change.
 The host selects the worker for the requested stage, obtains current instructions, fixes the
 available Spec and task information, and narrows the allowed tools and files. It then selects runtime
 settings and starts the checked worker. The executor independently checks the preparation before
-launch and validates the returned result afterward.
+launch and validates the returned result afterward. Every provider that needs a worker goes
+through this one launch sequence; what a provider decides is which context to freeze, what the
+worker receives and how its result is judged, never whether a safety step runs.
 
 For example, the same review operation can run for two Modules, but each reviewer receives its own
 contract and code scope. The coordinator collects their results rather than merging their private

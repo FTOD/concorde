@@ -1555,7 +1555,7 @@ class ReviewTests(unittest.TestCase):
         refused = PermissionPolicyError(
             "simulated: the reviewer grant widens its declared effects"
         )
-        with patch("concorde.review.review.compile_policy", side_effect=refused):
+        with patch("concorde.harness.launch.compile_policy", side_effect=refused):
             for mode in ("spec", "code"):
                 result = self.review(mode, mode="describe-policy")
                 self.assertNotEqual("described", result["status"], result)

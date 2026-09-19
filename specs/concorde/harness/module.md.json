@@ -62,6 +62,7 @@
       "title": "Worker execution",
       "kind": "program",
       "files": [
+        "src/concorde/harness/launch.py",
         "src/concorde/harness/worker_executor.py",
         "tests/concorde/harness/test_worker_executor.py",
         "tests/concorde/operations/test_review.py"

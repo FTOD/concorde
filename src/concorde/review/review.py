@@ -10,10 +10,8 @@ import difflib
 import hashlib
 import json
 import subprocess
-import tempfile
 import uuid
 from dataclasses import asdict, replace
-from pathlib import Path
 
 from ..distribution.build import SkillPrompt, load_model_instructions
 from ..harness.change_worktree import (
@@ -24,24 +22,13 @@ from ..harness.change_worktree import (
     save_change,
     workspace_identity,
 )
-from ..harness.checks import check_service
-from ..harness.configuration import load_configuration
 from ..harness.context import (
     context_documents,
-    materialize_documents,
-    materialize_references,
     recheck_context,
-    reference_grants,
     resolve_context,
 )
-from ..harness.host import (
-    protocol_documents,
-    run_worker,
-    worker_description,
-    worker_invocation,
-)
 from ..harness.invocation import Invocation
-from ..harness.permissions import PermissionPolicyError, PolicyBinding, compile_policy
+from ..harness.launch import WorkerLaunch, launch_worker
 from ..harness.revisions import implementation_digest, target_revision
 from ..harness.worker_executor import OperationExecutionError, WorkerOutcome
 from ..harness.worker_profile import ContractError, worker_profile
@@ -379,171 +366,102 @@ def review(run, mode: str) -> dict:
             artifacts=[reference],
             reviews=[value],
         )
-    result = None
+    result: WorkerOutcome | None = None
+
+    def admitted(outcome: WorkerOutcome) -> None:
+        nonlocal result
+        result = outcome
+
+    def recheck() -> None:
+        recheck_context(run.repository, snapshot)
+        if inputs(run, mode)[0] != info:
+            raise SpecError(
+                "review inputs changed while the reviewer was running", "stale_context"
+            )
+
+    value = typed(
+        "concorde-review-stage-context",
+        {
+            "snapshot": typed("concorde-context-snapshot", snapshot.value),
+            "review": typed("concorde-review-input", info),
+        },
+    )
     try:
-        with tempfile.TemporaryDirectory(prefix="concorde-review-") as directory:
-            project_workspace = agent.workspace == "project"
-            project = run.repository.root if project_workspace else Path(directory)
-            relative = (
-                f".concorde/runs/{run.host.invocation_id}/{uuid.uuid4()}/context.json"
-                if project_workspace
-                else "context.json"
-            )
-            capsule = checked_path(project, relative)
-            value = typed(
-                "concorde-review-stage-context",
-                {
-                    "snapshot": typed("concorde-context-snapshot", snapshot.value),
-                    "review": typed("concorde-review-input", info),
-                },
-            )
-            serialized = canonical(value) + "\n"
-            if run.host.mode != "describe-policy":
-                capsule.parent.mkdir(parents=True, exist_ok=True)
-                capsule.write_text(serialized)
-            granted = context_documents(run.repository, snapshot.value)
-            if not project_workspace and run.host.mode != "describe-policy":
-                materialize_documents(project, granted)
-            roles: dict[str, tuple[str, ...]] = {
-                "spec-context": (relative, *sorted(granted))
-            }
-            if project_workspace:
-                roles["implementation"] = tuple(
-                    run.repository.implementation_files(run.target)
-                )
-            if "references" in prompt.effects.reads:
-                records = snapshot.value["external_references"]
-                if not project_workspace and run.host.mode != "describe-policy":
-                    materialize_references(run.repository, project, records)
-                roles["references"] = reference_grants(records)
-            binding = PolicyBinding(
-                "concorde-review", phase, 0, role, role, write_roles=()
-            )
-            try:
-                policy = compile_policy(prompt.effects, binding, roles)
-            except PermissionPolicyError as error:
-                raise SpecError(str(error), "permission_denied") from error
-            if policy.write_paths:
-                raise SpecError(
-                    "review role must have no write authority", "permission_denied"
-                )
-            receipt = {
-                "schema_version": 16,
-                "target_id": run.target.id,
-                "phase": phase,
-                "context_id": snapshot.id,
-                "source_digest": snapshot.id,
-                "input_digest": info["input_digest"],
-                "role_paths": {key: list(paths) for key, paths in roles.items()},
-            }
-            invocation = worker_invocation(
-                run.configuration,
+        data = launch_worker(
+            run.host,
+            run.configuration,
+            run.repository,
+            prompt,
+            WorkerLaunch(
                 operation="concorde-review",
                 stage=phase,
-                prompt=prompt,
-                workspace=project,
-                context_value=value,
-                receipt=receipt,
-                policy=policy,
-                protocol=protocol_documents(snapshot.value, granted),
-            )
-            run.host.descriptions.append(
-                worker_description(
-                    prompt,
-                    invocation,
-                    policy,
-                    operation="concorde-review",
-                    phase=phase,
-                    context_id=snapshot.id,
-                    input_digest=info["input_digest"],
-                    project_root=str(project),
-                )
-            )
-            if run.host.mode == "describe-policy":
-                return run.response(
+                role=role,
+                snapshot=snapshot,
+                granted=context_documents(run.repository, snapshot.value),
+                value=value,
+                index=canonical(value) + "\n",
+                result_type="concorde-review-stage-result",
+                receipt={
+                    "target_id": run.target.id,
+                    "input_digest": info["input_digest"],
+                },
+                described=run.response(
                     "described",
                     reviews=[
                         _empty(
                             run, info, "not_run", "Policy described; review not run."
                         )
                     ],
-                )
-            from ..harness.operation_node import OperationNode
+                ),
+                validate=lambda data: _validate(run, snapshot, info, data),
+                recheck=recheck,
+                target=run.target,
+                target_id=run.target.id,
+                implementation=(
+                    tuple(run.repository.implementation_files(run.target))
+                    if agent.workspace == "project"
+                    else None
+                ),
+                labels={"input_digest": info["input_digest"]},
+                admitted=admitted,
+                prefix="concorde-review-",
+            ),
+        )
+        if run.host.mode == "describe-policy":
+            return data
+        reviewed = typed(
+            "concorde-review-result",
+            {
+                **data,
+                "target_id": run.target.id,
+                "focus_id": run.task.get("focus_id"),
+                "revision": info["revision"],
+                "semantic_completeness": "not_proven",
+            },
+        )
+        reference = _persist(run, reviewed, execution=result.usage)
+        from ..issues.references import requires_contract_repair, review_blockers
 
-            checks = (
-                check_service(run.repository, run.target, run.host.invocation_id)
-                if project_workspace
-                else None
-            )
-
-            def launch_reviewer(context):
-                nonlocal result
-                result, data = run_worker(
-                    run.host,
-                    invocation,
-                    prompt,
-                    operation="concorde-review",
-                    stage=phase,
-                    target_id=run.target.id,
-                    result_type="concorde-review-stage-result",
-                    checks=checks,
-                )
-                return data
-
-            data = OperationNode(agent.name).invoke(value, launch_reviewer)
-            if result is None:
-                raise SpecError(
-                    "review returned without a worker execution result",
-                    "invalid_completion",
-                )
-            _validate(run, snapshot, info, data)
-            recheck_context(run.repository, snapshot)
-            if (
-                inputs(run, mode)[0] != info
-                or load_configuration(run.repository.root) != run.configuration
-            ):
-                raise SpecError(
-                    "review inputs changed while the reviewer was running",
-                    "stale_context",
-                )
-            if capsule.read_text() != serialized:
-                raise SpecError("review capsule changed", "stale_context")
-            reviewed = typed(
-                "concorde-review-result",
-                {
-                    **data,
-                    "target_id": run.target.id,
-                    "focus_id": run.task.get("focus_id"),
-                    "revision": info["revision"],
-                    "semantic_completeness": "not_proven",
-                },
-            )
-            reference = _persist(run, reviewed, execution=result.usage)
-            from ..issues.references import requires_contract_repair, review_blockers
-
-            blockers = review_blockers(data["issues"])
-            if data["status"] != "incomplete":
-                run.record_gaps(
-                    phase, blockers, review_input_digest=info["input_digest"]
-                )
-            run.host.evidence.append(result)
-            run.completed.append("concorde-review")
-            outcome = (
-                "failed"
-                if data["status"] == "incomplete"
-                else "spec_incomplete"
-                if requires_contract_repair(run.repository.root, blockers)
-                else "conflicting"
-                if blockers
-                else "completed"
-            )
-            return run.response(
-                outcome,
-                data["answer"],
-                blockers=blockers,
-                artifacts=[reference],
-                reviews=[reviewed],
-            )
+        blockers = review_blockers(data["issues"])
+        if data["status"] != "incomplete":
+            run.record_gaps(phase, blockers, review_input_digest=info["input_digest"])
+        run.completed.append("concorde-review")
+        outcome = (
+            "failed"
+            if data["status"] == "incomplete"
+            else "spec_incomplete"
+            if requires_contract_repair(run.repository.root, blockers)
+            else "conflicting"
+            if blockers
+            else "completed"
+        )
+        return run.response(
+            outcome,
+            data["answer"],
+            blockers=blockers,
+            artifacts=[reference],
+            reviews=[reviewed],
+        )
     except Exception as error:
         if run.host.mode != "execute":
             raise  # A preview has no persistence authority.

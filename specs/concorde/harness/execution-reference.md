@@ -771,6 +771,14 @@ starts. A worker in a project workspace also receives the host's check service, 
 selected Module's configured checks read-only and returns each check's status and the tail of its
 log.
 
+One Harness launch service realizes this sequence for every model-backed stage, whichever
+provider requests it: the Module-bound stage, the discovery stage of Query and Routing, the
+owner-local topology author and the reviewer all pass through the same index materialization,
+policy compilation, receipt, preview, single-result admission and rechecks of the registry,
+frozen context, configuration and index. A provider supplies only the context it froze, the
+value its worker receives, the judgement of the result and the preview answer; it cannot skip
+or reorder a step of the sequence.
+
 `describe-policy` mode previews the exact grant a stage would receive without launching anything or
 exposing context bodies: the worker, its binding, profile and instructions digests, its workspace
 kind, tools and children, the read and write paths and policy digest, and the resolved model,

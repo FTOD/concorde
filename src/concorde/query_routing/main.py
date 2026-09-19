@@ -2,29 +2,20 @@
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
-
 from ..distribution.build import load_model_instructions
-from ..harness.configuration import load_configuration
 from ..harness.context import (
     DiscoveryContext,
     context_documents,
-    materialize_documents,
     recheck_discovery_context,
     resolve_discovery_context,
 )
 from ..harness.host import (
     OperationHost,
-    protocol_documents,
-    run_worker,
-    worker_description,
-    worker_invocation,
 )
-from ..harness.permissions import PermissionPolicyError, PolicyBinding, compile_policy
+from ..harness.launch import WorkerLaunch, launch_worker
 from ..harness.worker_profile import worker_profile
 from ..spec.contracts import DISCOVERY_NODES, DISCOVERY_OPERATIONS, MAIN_OPERATION
-from ..spec.repository import SpecError, SpecRepository, digest, read_file
+from ..spec.repository import SpecError, SpecRepository
 from ..spec.typed_data import OPERATION_CONTRACTS, typed
 
 
@@ -140,114 +131,43 @@ class MainInvocation:
         )
         self.last_context = snapshot.id
         self.last_snapshot = snapshot
-        before_registry = self.repository.registry_bytes
-        with tempfile.TemporaryDirectory(prefix="concorde-discovery-") as directory:
-            capsule = Path(directory)
-            project_workspace = agent.workspace == "project"
-            project = self.host.project_root if project_workspace else capsule
-            context_file = capsule / "context.json"
-            # The index is written beside byte-identical copies of every document it lists; the
-            # worker opens them on demand instead of receiving their bodies in its input.
-            granted = context_documents(self.repository, snapshot.value)
-            if self.host.mode != "describe-policy":
-                context_file.write_text(snapshot.serialized + "\n")
-                if not project_workspace:
-                    materialize_documents(capsule, granted)
-            roles = {prompt.effects.reads[0]: ("context.json", *sorted(granted))}
-            try:
-                policy = compile_policy(
-                    prompt.effects,
-                    PolicyBinding(
-                        self.operation, phase, occurrence, role, role, write_roles=()
-                    ),
-                    roles,
-                )
-            except PermissionPolicyError as error:
-                raise SpecError(str(error), "permission_denied") from error
-            receipt = {
-                "schema_version": 16,
-                "entry_target": self.entry.id,
-                "phase": phase,
-                "context_id": snapshot.id,
-                "source_digest": snapshot.id,
-                "registry_digest": digest(before_registry),
-                "discovered_targets": list(self.discovered),
-                "role_paths": {key: list(value) for key, value in roles.items()},
-            }
-            value = typed(
-                "concorde-main-stage-context",
-                {
-                    "snapshot": typed("concorde-discovery-context", snapshot.value),
-                },
-            )
-            invocation = worker_invocation(
-                self.configuration,
+        return launch_worker(
+            self.host,
+            self.configuration,
+            self.repository,
+            prompt,
+            WorkerLaunch(
                 operation=self.operation,
                 stage=phase,
-                prompt=prompt,
-                workspace=project,
-                context_value=value,
-                receipt=receipt,
-                policy=policy,
-                protocol=protocol_documents(snapshot.value, granted),
-            )
-            self.host.descriptions.append(
-                worker_description(
-                    prompt,
-                    invocation,
-                    policy,
-                    operation=self.operation,
-                    phase=phase,
-                    context_id=snapshot.id,
-                    project_root=str(project),
-                    discovered_targets=list(self.discovered),
-                )
-            )
-            if self.host.mode == "describe-policy":
-                return {
+                role=role,
+                occurrence=occurrence,
+                snapshot=snapshot,
+                granted=context_documents(self.repository, snapshot.value),
+                value=typed(
+                    "concorde-main-stage-context",
+                    {"snapshot": typed("concorde-discovery-context", snapshot.value)},
+                ),
+                index=snapshot.serialized + "\n",
+                result_type="concorde-main-stage-result",
+                receipt={
+                    "entry_target": self.entry.id,
+                    "discovered_targets": list(self.discovered),
+                },
+                described={
                     "context_id": snapshot.id,
                     "outcome": "described",
                     "answer": "",
                     "expand_targets": [],
                     "routes": [],
                     "blockers": [],
-                }
-            from ..harness.operation_node import OperationNode
-
-            result = None
-
-            def launch_worker(context):
-                nonlocal result
-                result, data = run_worker(
-                    self.host,
-                    invocation,
-                    prompt,
-                    operation=self.operation,
-                    stage=phase,
-                    target_id=self.entry.id,
-                    result_type="concorde-main-stage-result",
-                )
-                return data
-
-            data = OperationNode(agent.name).invoke(value, launch_worker)
-            self._validate_result(snapshot, phase, data)
-            if (
-                read_file(self.repository.root, self.repository.registry_path)
-                != before_registry
-            ):
-                raise SpecError(
-                    "registry changed during main discovery", "stale_context"
-                )
-            recheck_discovery_context(self.repository, snapshot)
-            if load_configuration(self.repository.root) != self.configuration:
-                raise SpecError(
-                    "configuration changed during main discovery",
-                    "configuration_mismatch",
-                )
-            if context_file.read_text() != snapshot.serialized + "\n":
-                raise SpecError("frozen discovery capsule changed", "stale_context")
-            self.host.evidence.append(result)
-            return data
+                },
+                validate=lambda data: self._validate_result(snapshot, phase, data),
+                recheck=lambda: recheck_discovery_context(self.repository, snapshot),
+                target_id=self.entry.id,
+                labels={"discovered_targets": list(self.discovered)},
+                prefix="concorde-discovery-",
+            ),
+        )
 
     def _validate_result(
         self, snapshot: DiscoveryContext, phase: str, data: dict

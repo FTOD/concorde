@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
-
 from ..distribution.build import load_model_instructions
 from ..harness.change_worktree import (
     STATE_PATH,
@@ -12,22 +9,15 @@ from ..harness.change_worktree import (
     read_change,
     refresh_registry,
 )
-from ..harness.configuration import load_configuration
 from ..harness.context import (
     context_documents,
-    materialize_documents,
     recheck_topology_author_context,
     resolve_topology_author_context,
 )
 from ..harness.host import (
     OperationHost,
-    protocol_documents,
-    run_worker,
-    worker_description,
-    worker_invocation,
 )
-from ..harness.permissions import PermissionPolicyError, PolicyBinding, compile_policy
-from ..harness.worker_profile import worker_profile
+from ..harness.launch import WorkerLaunch, launch_worker
 from ..review.review import review_candidate_contexts
 from ..spec.changes import apply_files, file_change
 from ..spec.contracts import MAIN_OPERATION, TOPOLOGY_AUTHOR_NODE
@@ -61,7 +51,6 @@ def topology_author(
 ) -> dict:
     role = TOPOLOGY_AUTHOR_NODE
     prompt = load_model_instructions(host.package_root, role)
-    agent = worker_profile(prompt.binding.agent)
     snapshot = resolve_topology_author_context(
         repository,
         target,
@@ -70,95 +59,8 @@ def topology_author(
         candidate_document_references=candidate_document_references,
         candidate_repository=candidate_repository,
     )
-    before_registry = repository.registry_bytes
-    with tempfile.TemporaryDirectory(prefix="concorde-topology-author-") as directory:
-        capsule = Path(directory)
-        project_workspace = agent.workspace == "project"
-        project = host.project_root if project_workspace else capsule
-        context_file = capsule / "context.json"
-        granted = context_documents(
-            repository, snapshot.value, candidate_repository=candidate_repository
-        )
-        if host.mode != "describe-policy":
-            context_file.write_text(snapshot.serialized + "\n")
-            if not project_workspace:
-                materialize_documents(capsule, granted)
-        roles = {prompt.effects.reads[0]: ("context.json", *sorted(granted))}
-        try:
-            policy = compile_policy(
-                prompt.effects,
-                PolicyBinding(
-                    MAIN_OPERATION,
-                    "topology-author",
-                    occurrence,
-                    role,
-                    role,
-                    write_roles=(),
-                ),
-                roles,
-            )
-        except PermissionPolicyError as error:
-            raise SpecError(str(error), "permission_denied") from error
-        receipt = {
-            "schema_version": 16,
-            "target_id": target["id"],
-            "phase": "topology-author",
-            "context_id": snapshot.id,
-            "source_digest": snapshot.id,
-            "registry_digest": digest(before_registry),
-            "role_paths": {k: list(v) for k, v in roles.items()},
-        }
-        runtime = typed("concorde-topology-author-context", snapshot.value)
-        invocation = worker_invocation(
-            configuration,
-            operation=MAIN_OPERATION,
-            stage="topology-author",
-            prompt=prompt,
-            workspace=project,
-            context_value=runtime,
-            receipt=receipt,
-            policy=policy,
-            protocol=protocol_documents(snapshot.value, granted),
-        )
-        host.descriptions.append(
-            worker_description(
-                prompt,
-                invocation,
-                policy,
-                operation=MAIN_OPERATION,
-                phase="topology-author",
-                target_id=target["id"],
-                context_id=snapshot.id,
-                project_root=str(project),
-            )
-        )
-        if host.mode == "describe-policy":
-            return {
-                "context_id": snapshot.id,
-                "target_id": target["id"],
-                "outcome": "completed",
-                "answer": "",
-                "blockers": [],
-                "documents": [],
-            }
-        from ..harness.operation_node import OperationNode
 
-        result = None
-
-        def launch_author(context):
-            nonlocal result
-            result, data = run_worker(
-                host,
-                invocation,
-                prompt,
-                operation=MAIN_OPERATION,
-                stage="topology-author",
-                target_id=target["id"],
-                result_type="concorde-topology-author-result",
-            )
-            return data
-
-        data = OperationNode(agent.name).invoke(runtime, launch_author)
+    def validate(data: dict) -> None:
         if data["context_id"] != snapshot.id or data["target_id"] != target["id"]:
             raise SpecError(
                 "topology author returned a different target/context",
@@ -187,24 +89,42 @@ def topology_author(
                 "blocked topology author cannot return document replacements",
                 "invalid_completion",
             )
-        if read_file(repository.root, repository.registry_path) != before_registry:
-            raise SpecError(
-                "registry changed during topology authoring", "stale_context"
-            )
-        recheck_topology_author_context(
-            repository, snapshot, candidate_repository=candidate_repository
-        )
-        if load_configuration(repository.root) != configuration:
-            raise SpecError(
-                "configuration changed during topology authoring",
-                "configuration_mismatch",
-            )
-        if context_file.read_text() != snapshot.serialized + "\n":
-            raise SpecError(
-                "topology author changed its frozen context", "stale_context"
-            )
-        host.evidence.append(result)
-        return data
+
+    return launch_worker(
+        host,
+        configuration,
+        repository,
+        prompt,
+        WorkerLaunch(
+            operation=MAIN_OPERATION,
+            stage="topology-author",
+            role=role,
+            occurrence=occurrence,
+            snapshot=snapshot,
+            granted=context_documents(
+                repository, snapshot.value, candidate_repository=candidate_repository
+            ),
+            value=typed("concorde-topology-author-context", snapshot.value),
+            index=snapshot.serialized + "\n",
+            result_type="concorde-topology-author-result",
+            receipt={"target_id": target["id"]},
+            described={
+                "context_id": snapshot.id,
+                "target_id": target["id"],
+                "outcome": "completed",
+                "answer": "",
+                "blockers": [],
+                "documents": [],
+            },
+            validate=validate,
+            recheck=lambda: recheck_topology_author_context(
+                repository, snapshot, candidate_repository=candidate_repository
+            ),
+            target_id=target["id"],
+            labels={"target_id": target["id"]},
+            prefix="concorde-topology-author-",
+        ),
+    )
 
 
 def prepare_topology(configuration: dict, proposal: dict, host: OperationHost) -> dict:

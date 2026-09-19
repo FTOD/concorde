@@ -352,6 +352,7 @@
         "src/concorde/harness/configuration.py",
         "src/concorde/harness/context.py",
         "src/concorde/harness/entry.py",
+        "src/concorde/harness/launch.py",
         "src/concorde/harness/operation_graph.py",
         "src/concorde/harness/permissions.py",
         "src/concorde/harness/pi_rpc.py",

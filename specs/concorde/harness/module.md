@@ -187,8 +187,8 @@ Realized by `run_operation`, `operation_graph_nodes`, `bind_worktree` and `json_
 
 ### Worker execution
 
-Realized by `WorkerExecutor`, the Pi worker runtime and the operation host's worker launches; see
-[execution](execution.md) and [host](host.md).
+Realized by `launch_worker`, the one launch sequence every model-backed stage runs through,
+`WorkerExecutor` and the Pi worker runtime; see [execution](execution.md) and [host](host.md).
 
 The deterministic check executor's read-only filesystem, scratch, result, unavailable-backend and
 process-lifetime cases are defined in [Harness scenarios](scenarios.md#scenario.harness.check-read-only).
@@ -274,10 +274,6 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
 - The gate and the operation ceiling are verified for foreground single delegation. Whether every
   other pi-subagents execution path loads the required child extension is unverified, which is why
   the host disables background runs, missions, schedules and inter-session channels.
-- Operation admission and the Module-bound `Invocation.stage` launch are realized here, but three
-  providers still assemble their own worker launch from the Harness launch helpers: Query and
-  Routing's discovery stage, Topology's owner-local author and Review's reviewer. Moving those
-  sequences behind one Harness launch service is pending; it does not change their promises.
 - A mutation relayed into a host-created candidate has these known limits. The candidate's
   launcher runs with the invoking framework's Python interpreter and installed dependencies even
   when it runs the candidate's own Concorde code, so a candidate that changes the locked

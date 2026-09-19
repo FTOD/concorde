@@ -355,6 +355,11 @@ def validate_worker_output(agent: WorkerProfile, value: dict) -> None:
         raise ContractError("review result does not match the contract")
 
 
+def context_role(agent: WorkerProfile) -> str:
+    """The read role that carries a worker's frozen context index and granted documents."""
+    return "discovery-context" if agent.contract.action is not None else "spec-context"
+
+
 def validate_worker_policy(
     agent: WorkerProfile, value: dict, policy, receipt: dict
 ) -> None:
@@ -364,10 +369,7 @@ def validate_worker_policy(
 
     contract = agent.contract
     role_paths = {key: tuple(paths) for key, paths in receipt["role_paths"].items()}
-    context_role = (
-        "discovery-context" if contract.action is not None else "spec-context"
-    )
-    capsule_paths = role_paths.get(context_role, ())
+    capsule_paths = role_paths.get(context_role(agent), ())
     snapshot = value["data"].get("snapshot", {}).get("data", value["data"])
     indexes = [path for path in capsule_paths if Path(path).name == "context.json"]
     if len(indexes) != 1 or set(capsule_paths) - {indexes[0]} != set(
