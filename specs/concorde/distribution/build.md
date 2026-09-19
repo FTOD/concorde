@@ -124,3 +124,9 @@ selection is not permission to invoke public graphs while authoring their govern
 
 Private selection refuses a Studio redirect because it cannot attest that remote runtime as the
 selected candidate; it never falls back to the server's catalog or code.
+
+For Skill testing, the candidate launcher may operate on explicitly scoped disposable consumer
+repositories while the task session stays in its candidate. Selection pins the package/Skill
+root, not the disposable project's data root. Redirecting the same selection into another linked
+worktree of the source repository is refused. This permits real Skill tests without using the
+actual primary's lifecycle state.

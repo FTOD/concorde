@@ -105,13 +105,38 @@ def json_main(package_root: Path, operation: str, runner) -> int:
             if os.environ.get("CONCORDE_SESSION_SELECTION"):
                 from ..distribution.session_selection import load_selection
 
+                # Pin code/Skills to the candidate while allowing explicitly scoped
+                # disposable consumer projects as data. Never redirect into a sibling
+                # worktree of the source repository with those loaded instructions.
                 if package_root.resolve() != Path.cwd().resolve():
-                    raise SpecError(
-                        "private selection runtime is outside the candidate",
-                        "workspace_mismatch",
+                    from .change_worktree import git
+
+                    package_common = git(
+                        package_root,
+                        "rev-parse",
+                        "--path-format=absolute",
+                        "--git-common-dir",
+                        check=False,
                     )
+                    project_common = git(
+                        Path.cwd(),
+                        "rev-parse",
+                        "--path-format=absolute",
+                        "--git-common-dir",
+                        check=False,
+                    )
+                    if (
+                        package_common.returncode == 0
+                        and project_common.returncode == 0
+                        and package_common.stdout.strip()
+                        == project_common.stdout.strip()
+                    ):
+                        raise SpecError(
+                            "private selection cannot redirect into another source worktree",
+                            "workspace_mismatch",
+                        )
                 selection = load_selection(
-                    Path.cwd(), Path(os.environ["CONCORDE_SESSION_SELECTION"])
+                    package_root, Path(os.environ["CONCORDE_SESSION_SELECTION"])
                 )
                 if selection["mode"] == "maintenance":
                     raise SpecError(

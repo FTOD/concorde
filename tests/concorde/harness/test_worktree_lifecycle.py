@@ -1573,8 +1573,20 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
         fixture_report = validate_repository(self.primary, package_root=PACKAGE)
         self.assertEqual(fixture_report.status, "success")
-        for directory in ("prompts", "skills", "operations", "protocol"):
-            shutil.copytree(PACKAGE / directory, self.primary / directory)
+        for directory in (
+            "prompts",
+            "skills",
+            "operations",
+            "protocol",
+            "scripts",
+            "src",
+            "pi",
+        ):
+            shutil.copytree(
+                PACKAGE / directory,
+                self.primary / directory,
+                ignore=shutil.ignore_patterns("__pycache__", "node_modules"),
+            )
         (self.primary / "concorde.json").write_text("{}")
         (self.primary / "app/transfer.py").write_text(
             "def transfer(balance, amount):\n"
@@ -1594,8 +1606,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
             verified.append(root)
             return fixture_report
 
-        with patch.object(
-            worktree_delivery, "validate_repository", side_effect=inspect
+        with (
+            patch.object(worktree_delivery, "validate_repository", side_effect=inspect),
+            patch.object(
+                worktree_delivery.subprocess, "run", wraps=subprocess.run
+            ) as launched,
         ):
             checks = worktree_delivery._verify_merged_tree(
                 OperationHost(self.primary, PACKAGE),
@@ -1604,6 +1619,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 "change.integration-build",
             )
         self.assertEqual(len(verified), 1)
+        expected = [sys.executable, str(verified[0] / "scripts/concorde.py"), "build"]
+        self.assertTrue(
+            any(call.args[0] == expected for call in launched.call_args_list)
+        )
         self.assertFalse(verified[0].exists())
         self.assertTrue(checks)
         self.assertTrue(all(check["status"] == "passed" for check in checks))

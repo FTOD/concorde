@@ -155,6 +155,10 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
         )
         if arguments.output:
             from ..harness.status_store import atomic_write
+            from ..harness.change_worktree import (
+                _exclude_control_files,
+                repository_lock,
+            )
             from .build import BuildError
             import json
 
@@ -168,11 +172,13 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                 raise BuildError(
                     "selection output belongs only in candidate .concorde/work scratch"
                 )
-            atomic_write(
-                root.resolve(),
-                relative,
-                (json.dumps(selected, sort_keys=True) + "\n").encode(),
-            )
+            with repository_lock(root):
+                _exclude_control_files(root)
+                atomic_write(
+                    root.resolve(),
+                    relative,
+                    (json.dumps(selected, sort_keys=True) + "\n").encode(),
+                )
         return ToolResult("select-session", ".", "success", result=selected)
     if arguments.tool == "migrate-status":
         from ..harness.status_store import migrate_legacy

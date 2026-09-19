@@ -153,8 +153,9 @@ findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline. Th
 review entry is removed, not retained as an alias; callers must select one of these two Operations.
 
 No Skill returns a context manifest; `describe-policy` mode previews the exact stage
-grants any operation would receive without launching an agent or mutating project state. One change
-belongs to one linked worktree. the primary-owned `.concorde/status/<change_id>.json` records
+grants any operation would receive without launching an agent or mutating project state. A stable
+task ID names one workspace: a candidate, or primary for direct consumer work. The primary-owned
+`.concorde/status/<change_id>.json` records
 its task, phase/status, per-target plans and progress, gaps and verified revision. Auxiliary artifacts
 live under `.concorde/work/`; there is no separate attempt lifecycle.
 Context solving reports missing or inconsistent local dependency promises as structured Module Spec
@@ -165,10 +166,10 @@ facts through an explicit local Spec task, reconcile affected consumer/provider 
 new context. Completed component work can be resumed when its bound inputs remain current. Partial
 Spec changes stay in the explicitly marked candidate worktree; they do not change the accepted
 primary revision. Changed Spec/intent invalidates stale plan or check evidence.
-The primary worktree maintains `.concorde/status/` with every live linked worktree's basic
-metadata and change status. `concorde-main` receives this inventory and identifies whether its own
+The primary keeps stable task records, including terminal outcomes, under `.concorde/status/`;
+unmanaged live worktrees are discovered from Git without inventing task records. `concorde-main` receives this inventory and identifies whether its own
 session is in the primary or a candidate worktree. Secondary AGENTS.md/CLAUDE.md guidance also points
-to the local state and the primary worktree, without granting access to other worktrees' contents.
+to the primary-owned status and primary worktree, without granting access to other worktrees' contents.
 
 To deliver, request `concorde-deliver` from the selected source or primary worktree with its
 change_id. The host checks the candidate and current integration, creates the independent branch

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import copy
+import os
+import subprocess
+import sys
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -23,7 +26,7 @@ from .change_worktree import (
     workspace_identity,
 )
 
-from .status_store import read_status, status_path, write_status, run_path
+from .status_store import read_status, status_path, write_status, write_run
 
 
 def _read_receipt(root: Path, relative: str) -> dict | None:
@@ -158,18 +161,42 @@ def _verify_merged_tree(
         root = Path(directory) / "project"
         git(host.project_root, "worktree", "add", "--detach", str(root), commit)
         try:
+            package = host.package_root
             if (root / "concorde.json").is_file():
-                # The integration checkout has no untracked generated assets. Self-hosted
-                # package validation requires a fresh build of these exact merged sources.
-                from ..distribution.build import write_build
-
-                write_build(root)
-            report = validate_repository(root, package_root=host.package_root)
+                # This integration may change the renderer itself. Execute its own
+                # launcher, not an imported renderer from the invoking worktree.
+                launcher = checked_path(root, "scripts/concorde.py")
+                built = subprocess.run(
+                    [sys.executable, str(launcher), "build"],
+                    cwd=root,
+                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                prefix = f".concorde/runs/{host.invocation_id}/delivery/{phase}"
+                write_run(
+                    host.project_root,
+                    prefix + "/build.log",
+                    (built.stdout + built.stderr).encode(),
+                )
+                if built.returncode:
+                    raise SpecError(
+                        "the integration's own build failed; see its run log",
+                        "invalid_merge",
+                    )
+                write_run(
+                    host.project_root,
+                    prefix + "/build-manifest.json",
+                    read_file(root, "generated/build-manifest.json"),
+                )
+                package = root
+            report = validate_repository(root, package_root=package)
             if report.status != "success":
                 raise SpecError(
                     "the merged candidate failed Spec validation", "invalid_merge"
                 )
-            repository = SpecRepository(root, host.package_root)
+            repository = SpecRepository(root, package)
             checks = []
             for target in repository.targets.values():
                 if target.checks:

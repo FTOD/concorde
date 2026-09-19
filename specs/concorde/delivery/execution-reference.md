@@ -78,8 +78,9 @@ evidence collector binds complete resolutions and separately retained consumer r
 #### Integration verification {#delivery-integration-verification}
 
 Delivery validates its actual integration result in a temporary detached worktree. When that tree
-contains `concorde.json`, it is a Concorde package checkout: the host calls `write_build` on that
-checkout's own merged sources before Spec/package validation and configured checks. Untracked
+contains `concorde.json`, it is a Concorde package checkout: the host executes that
+checkout's own `scripts/concorde.py build` in a fresh process, retains its build log and manifest
+in the primary run, and uses that package binding for Spec/package validation and checks. Untracked
 build outputs do not alter the deliverable tree. Build or validation failure preserves both
 participants and prevents the primary update; no stale-output gate is disabled or bypassed.
 

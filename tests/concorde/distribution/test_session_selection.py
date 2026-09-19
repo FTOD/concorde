@@ -182,3 +182,53 @@ class SessionSelectionTests(unittest.TestCase):
             "workspace_mismatch", json.loads(output.getvalue())["errors"][0]["code"]
         )
         runner.assert_not_called()
+
+    @verifies("scenario.distribution.private-selection")
+    def test_private_runtime_can_target_disposable_project_data_without_moving_code(
+        self,
+    ):
+        import io
+        import json
+        from unittest.mock import patch
+        from concorde.harness.entry import json_main
+        from concorde.spec.typed_data import typed
+
+        selection = select_session(
+            self.root, mode="test", skill_paths=[str(self.skill)], runtime=self.runtime
+        )
+        path = self.root / "selection.json"
+        path.write_text(json.dumps(selection))
+        project = self.root / "disposable-project"
+        project.mkdir()
+        observed = {}
+
+        def runner(data, runtime):
+            observed["host"] = runtime.context.host
+            return {"result": {"status": "described", "invocation_id": "fixture"}}
+
+        request = {
+            "type_id": "concorde-operation-invocation",
+            "schema_version": 3,
+            "operation_id": "concorde-main",
+            "mode": "describe-policy",
+            "configuration": None,
+            "input": typed(
+                "concorde-main-request", {"task": "Inspect disposable project"}
+            ),
+        }
+        with (
+            patch.dict(
+                "os.environ",
+                {"CONCORDE_STUDIO_URL": "", "CONCORDE_SESSION_SELECTION": str(path)},
+            ),
+            patch("sys.argv", ["run-operation.py"]),
+            patch("sys.stdin", io.StringIO(json.dumps(request))),
+            patch("sys.stdout", io.StringIO()),
+            patch("pathlib.Path.cwd", return_value=project),
+        ):
+            self.assertEqual(0, json_main(self.root, "concorde-main", runner))
+        self.assertEqual(project, observed["host"].project_root)
+        self.assertEqual(self.root, observed["host"].package_root)
+        self.assertEqual(
+            str(self.root), observed["host"].session_provenance["candidate"]
+        )

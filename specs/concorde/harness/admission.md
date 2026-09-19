@@ -85,7 +85,7 @@ Skill projection supplied the instructions and every other linked worktree contr
 document or file to the invocation, and changing the working directory selects a different project
 rather than a wider one.
 
-A mutating request in the primary worktree creates a candidate worktree on an isolated branch
+In a consumer project, a mutating Operation request in primary creates a candidate worktree on an isolated branch
 from committed HEAD, records the change there and relays the same request to that candidate's own
 launcher (`relay_operation`): a candidate that carries its own Concorde, the source checkout or a
 consumer whose installed framework is tracked, runs that code after verifying its own current build; any other candidate runs the invoking framework with the candidate as its project root.
@@ -94,8 +94,12 @@ diagnostics are forwarded, and its workspace names the candidate; the originatin
 moves. Uncommitted primary changes are not copied. A request that names a recorded change_id from
 the primary worktree relays into that candidate, found through the worktree inventory; a launcher
 that returns no envelope fails with relay_failed. Host-created worktrees live in temporary storage.
-Host administrators may explicitly permit
-standalone development for controlled embedding. Delivery separately requires a session in its
+For source maintenance, the main instead assigns a fresh Skill-free writer to a candidate;
+source-primary mutations are refused even when a change ID already names a candidate. The source
+constructor injects no Operation guidance and never uses primary code to build candidate outputs:
+the fresh writer runs that candidate's own build before a separate sibling tests its private Skills.
+An Operation already in the assigned candidate reuses it instead of creating a nested candidate.
+Host administrators may explicitly permit standalone consumer development for controlled embedding. Delivery separately requires a session in its
 selected source or primary worktree; third-worktree sessions and nested Operation delivery calls are rejected; a one-layer task child in a participant may deliver. Default
 delivery publishes a per-change branch and removes the source worktree unless explicitly retained.
 Final primary merging is a separate merge_primary:true request requiring explicit user authorization

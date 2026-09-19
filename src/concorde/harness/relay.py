@@ -115,6 +115,17 @@ def bind_worktree(
         and primary is not None
         and current["path"] == primary["path"]
     )
+    if (
+        mutation
+        and host.mode == "execute"
+        and in_primary
+        and host.package_root == host.project_root
+        and (host.project_root / "concorde.json").is_file()
+    ):
+        raise SpecError(
+            "source maintenance requires a fresh Skill-free child in an assigned candidate",
+            "fresh_session_required",
+        )
     if task.get("change_id") is not None:
         state = read_change(host.project_root)
         if state is None and in_primary and host.mode == "execute":
@@ -158,16 +169,6 @@ def bind_worktree(
                 "primary_worktree",
             )
         }
-    if (
-        mutation
-        and in_primary
-        and host.package_root == host.project_root
-        and (host.project_root / "concorde.json").is_file()
-    ):
-        raise SpecError(
-            "source maintenance requires a fresh Skill-free child in an assigned candidate",
-            "fresh_session_required",
-        )
     if mutation and not host.allow_primary_worktree:
         if task.get("_issue_recovery"):
             raise SpecError(

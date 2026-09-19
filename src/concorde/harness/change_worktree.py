@@ -720,13 +720,15 @@ def create_worktree(
     directory = Path(tempfile.mkdtemp(prefix="concorde-worktree-")) / "project"
     git(root, "worktree", "add", "-b", branch, str(directory), current["head"])
     replicate_reference_checkouts(root, directory)
-    state = ensure_change(directory, task=task, change_id=change_id)
-    if package_root is not None and package_root.resolve() == root.resolve():
-        # Self-hosted Concorde: the new linked worktree is also its own package root, and
-        # generated/ is untracked, so the relayed run must not start on a build-less checkout.
-        from ..distribution.build import write_build
-
-        write_build(directory)
+    maintenance = package_root is not None and package_root.resolve() == root.resolve()
+    state = ensure_change(
+        directory,
+        task=task,
+        change_id=change_id,
+        mode="maintenance" if maintenance else "operation",
+    )
+    # A source candidate is built by its fresh Skill-free writer using its own
+    # launcher. Never render candidate outputs with the primary's Python module.
     return {
         "path": str(directory),
         "branch": branch,

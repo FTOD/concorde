@@ -21,7 +21,7 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 class CreateWorktreeBuildsTests(unittest.TestCase):
-    """A self-hosted candidate worktree must build itself so the relayed run starts on a fresh build."""
+    """A self-hosted candidate waits for its fresh writer to build with candidate-owned code."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -45,9 +45,8 @@ class CreateWorktreeBuildsTests(unittest.TestCase):
             "Fixture",
         )
 
-    def test_self_hosted_worktree_creation_builds_the_new_worktree(self):
-        from concorde.distribution.build import verify_fresh
-        from concorde.harness.change_worktree import create_worktree
+    def test_source_creation_leaves_the_build_to_the_fresh_candidate_writer(self):
+        from concorde.harness.change_worktree import create_worktree, read_change
 
         self.assertFalse((self.root / "generated").exists())
         state = create_worktree(
@@ -57,11 +56,10 @@ class CreateWorktreeBuildsTests(unittest.TestCase):
         self.addCleanup(
             lambda: _git(self.root, "worktree", "remove", "--force", str(created))
         )
-        self.assertTrue((created / "generated/build-manifest.json").is_file())
-        self.assertTrue(
-            (created / "generated/session/codex/concorde-main/SKILL.md").is_file()
-        )
-        verify_fresh(created)  # must not raise
+        self.assertFalse((created / "generated").exists())
+        self.assertFalse((created / ".agents/skills").exists())
+        self.assertEqual("maintenance", read_change(created, required=True)["mode"])
+        self.assertEqual({}, read_change(created, required=True)["guidance"])
 
     def test_worktree_creation_for_an_unrelated_project_does_not_attempt_a_build(self):
         # package_root differs from the project root being managed (the ordinary, non-self-hosted

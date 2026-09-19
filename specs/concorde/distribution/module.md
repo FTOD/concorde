@@ -121,9 +121,10 @@ which refuses a describe-policy preview with `use_proposal`.
 <a id="entity.distribution.developer-session"></a>
 
 The Developer agent session coordinates from its initial worktree. Source maintenance and tests
-use separate fresh sibling children in the assigned candidate with inherited catalogs disabled. It never needs to move: a mutation it requests from the primary worktree
-runs in a candidate worktree the host creates, and the session receives that candidate's result.
-Builds use only their own worktree's source and outputs.
+use separate fresh sibling children in the assigned candidate with inherited catalogs disabled.
+The source writer builds with that candidate's own code; primary never renders candidate outputs.
+For consumer Operations, host-created candidate relays keep the requesting session stationary;
+simple authorized consumer work may also stay directly in primary.
 
 ## Relationships
 

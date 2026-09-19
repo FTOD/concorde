@@ -337,3 +337,63 @@ class StatusStoreTests(unittest.TestCase):
             run_path(self.primary, record["artifacts"][0]["archive"]).read_bytes(),
         )
         self.assertFalse(self.candidate.exists())
+
+    @verifies("scenario.harness.primary-status")
+    def test_source_primary_cannot_relay_a_mutation_by_change_id(self):
+        from concorde.harness.host import OperationHost
+        from concorde.harness.relay import bind_worktree
+
+        state = ensure_change(
+            self.candidate, task={"task": "maintenance"}, mode="maintenance"
+        )
+        (self.primary / "concorde.json").write_text("{}")
+        with self.assertRaises(SpecError) as error:
+            bind_worktree(
+                OperationHost(self.primary, self.primary),
+                True,
+                {"change_id": state["change_id"]},
+            )
+        self.assertEqual("fresh_session_required", error.exception.code)
+        host, workspace = bind_worktree(
+            OperationHost(self.candidate, self.candidate),
+            True,
+            {"change_id": state["change_id"]},
+        )
+        self.assertEqual(str(self.candidate), workspace["path"])
+        self.assertNotIn("relay", workspace)
+
+    @verifies("scenario.harness.primary-status")
+    def test_private_skill_selection_cannot_redirect_to_source_primary(self):
+        import io
+        from concorde.harness.entry import json_main
+
+        request = {
+            "type_id": "concorde-operation-invocation",
+            "schema_version": 3,
+            "operation_id": "concorde-main",
+            "mode": "execute",
+            "configuration": None,
+            "input": {},
+        }
+        output = io.StringIO()
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "CONCORDE_STUDIO_URL": "",
+                    "CONCORDE_SESSION_SELECTION": str(
+                        self.candidate / "selection.json"
+                    ),
+                },
+            ),
+            patch("sys.argv", ["run-operation.py"]),
+            patch("sys.stdin", io.StringIO(json.dumps(request))),
+            patch("sys.stdout", output),
+            patch("pathlib.Path.cwd", return_value=self.primary),
+        ):
+            self.assertEqual(3, json_main(self.candidate, "concorde-main", None))
+        self.assertEqual(
+            "workspace_mismatch", json.loads(output.getvalue())["errors"][0]["code"]
+        )
+        self.assertFalse((self.primary / ".concorde/status").exists())
+        self.assertFalse((self.primary / ".concorde/runs").exists())
