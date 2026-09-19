@@ -218,6 +218,15 @@ it("publishes the independent standard with chapter navigation and no Spec wrapp
     expect(html).toContain("theme-doc-sidebar-container");
     expect(html).not.toContain("provenanceShell");
   }
+  const moduleChapter = await readFile(
+    resolve(output, "protocol/module.html"),
+    "utf8",
+  );
+  expect(moduleChapter).toContain("inventory.md#terminology");
+  expect(moduleChapter).not.toMatch(/href="[^"]*inventory[^"\s]*"/);
+  expect(moduleChapter).toMatch(
+    /<pre\b[\s\S]*?inventory\.md#terminology[\s\S]*?<\/pre>/,
+  );
 });
 // verifies: scenario.views.publish-homepage
 it("publishes the configured introduction at the root while preserving direct Spec navigation", async () => {

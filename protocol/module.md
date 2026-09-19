@@ -29,9 +29,11 @@ directly to that table and names the source. It may also repeat or faithfully re
 the reader can understand the page without jumping away. For example, if Inventory defines Reservation
 as "Stock held before checkout", a Checkout topic can use:
 
+```markdown
 | Term | Meaning / definition |
 | --- | --- |
 | [Reservation](inventory.md#terminology) | Stock held before checkout. Source: Inventory. |
+```
 
 This illustrative link stands for the project's actual defining document. The imported row is a
 reading aid, not a second authority: preserve the source's meaning and constraints, and check affected
