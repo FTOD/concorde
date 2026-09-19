@@ -318,24 +318,38 @@ downstream inputs.
 
 Every executable Graph is specified with LangGraph's own three concepts, and nothing else stands
 in for them: a **node** is one executing step, an **edge** is one routing decision, and **state**
-is what a node reads and writes. A Graph Spec is one section of the owning Module's documents and
-has three parts:
+is what a node reads and writes. A Graph Spec is one section of an implementation-role document of
+the Module that owns the Graph, headed by the Graph's title and compiled name. It states three
+parts in this order, each opening a paragraph with its bold label:
 
-1. **State**: the typed channels the Graph carries between nodes and the candidate or lifecycle
-   records its nodes read and write.
-2. **Nodes**: a table naming each node exactly as the compiled Graph names it, what it executes
-   (a deterministic, model-backed or composed Operation with its execution mode), and the state
-   it reads (`in`) and writes (`out`).
-3. **Edges**: a Mermaid flowchart bound to the compiled Graph by the comment `%% graph: <name>`,
-   where `<name>` is the Graph's compiled graph name in the Graph catalog. Its node identifiers are
-   the compiled node names, `__start__` and `__end__` included; every node label states the node
-   name, then `in:` and `out:`; every edge leaving a node with several successors is labeled with
-   the condition that selects it, and an edge leaving a node with one successor carries no label.
+1. **State.** The typed channels the Graph carries between nodes, with their reducers where
+   several writers merge, and the candidate or lifecycle records its nodes read and write.
+2. **Nodes.** A table with the columns `Node`, `Executes`, `in` and `out`: one row per compiled
+   node other than `__start__` and `__end__`, named exactly as the compiled Graph names it, what it
+   executes (a deterministic, model-backed or composed Operation with its execution mode), and the
+   state it reads (`in`) and writes (`out`) in the same words as its diagram label.
+3. **Edges.** How the next node is chosen: which nodes decide, whether a conditional edge reads a
+   State channel such as `route`, `result`, `output` or `stop` or the node returns a LangGraph
+   `Command` naming its successor, and where stops and errors lead. A Mermaid flowchart follows,
+   bound to the compiled Graph by the comment `%% graph: <name>`, where `<name>` is the Graph's
+   compiled graph name in the Graph catalog. Its node identifiers are the compiled node names,
+   `__start__` and `__end__` included; every node label states the node name, then `in:` and
+   `out:`; every edge leaving a node with several successors is labeled with the condition that
+   selects it, and an edge leaving a node with one successor carries no label.
+
+An Operation that runs a Graph is explained in the reading of the Module that owns the Operation,
+and the owning Module's module-role reading links to the Graph Spec's explicit heading anchor. The
+Graph Spec is the only place its nodes, state and routing are drawn: no separate page or generated
+view repeats them.
 
 The Graph Spec check (`scripts/development/check-graph-specs.py`, the configured
 `check.development.graph-specs`) compiles every catalog Graph with inert nodes and reports each
 diagram whose nodes, edges, routing labels or state labels disagree with the compiled topology,
-and every compiled Graph without a diagram. It also enforces the Graph API rule: a catalog Graph
+and every compiled Graph without a diagram. For each bound diagram it also reports a section that
+is not in an implementation-role document, lacks or reorders its State, Nodes and Edges parts,
+has a Nodes table that does not name exactly the compiled nodes with the `in` and `out` state of
+their diagram labels, or has a heading without an explicit anchor or without a link to it from a
+module-role document of the same owner. It also enforces the Graph API rule: a catalog Graph
 that is not a compiled `StateGraph`, and any Python file under `src/`, `scripts/` or `operations/` that imports
 `langgraph.func`, found by parsing the file rather than running it, are errors. A diagram that
 passes proves the Spec and the executed topology agree; it proves nothing about whether the
@@ -780,13 +794,18 @@ in trusted `Runtime.context`, not State. Host-backed adapters preserve their ful
 envelope in the `result` output channel. Model nodes return their task-result fields. The catalog
 compiles the planner as its representative; the node name is the Operation's identity.
 
-State: the contract's context fields in (for a stage context: `snapshot`, `change_id`,
+**State.** The contract's context fields in (for a stage context: `snapshot`, `change_id`,
 `expected_artifacts`) and the contract's result fields out (`context_id`, `outcome`, `answer`,
 `blockers`, `documents`, `plan`, `tasks`, `issue_decision`).
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `planner` | One Pi worker under the host launcher, which runs the worker executor and records usage outside the graph state. | admitted context | validated result data |
+
+**Edges.** None branch: the Graph runs its one node from `__start__` to `__end__`. What runs next is
+decided by the enclosing Graph that embeds the Operation as one of its nodes.
 
 ```mermaid
 flowchart TB
@@ -807,13 +826,19 @@ participant finalization) run one at a time through this Graph; the item node is
 (`review_module`, `author_module`, `develop_module`, `finalize_module`; the catalog compiles it as
 `execute_item`).
 
-State: `index` (the next item), `output` (the first non-None item result, which stops the Graph),
-`stop`.
+**State.** `index` (the next item), `output` (the first non-None item result, which stops the
+Graph), `stop`.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `select_item` | Deterministic: stops when no item remains. | index, items | stop |
 | `execute_item` | The item operation; a non-None result stops the Graph. | item | output, index, stop |
+
+**Edges.** Both nodes route on `stop` through conditional edges: `select_item` ends the Graph when no
+item remains and runs `execute_item` otherwise, and `execute_item` ends it when the item returned a
+result and returns to `select_item` when it returned None.
 
 ```mermaid
 flowchart TB

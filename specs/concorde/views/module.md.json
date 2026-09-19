@@ -75,23 +75,12 @@
       "title": "Published site",
       "kind": "concept",
       "meaning": "#entity.views.published-site"
-    },
-    {
-      "id": "entity.views.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.views.harness"
     }
   ],
   "dependencies": [
     {
       "target_id": "module.spec",
       "meaning": "#agreement.document.views.module.1"
-    },
-    {
-      "target_id": "module.harness",
-      "meaning": "#agreement.document.views.module.3"
     }
   ],
   "bindings": []

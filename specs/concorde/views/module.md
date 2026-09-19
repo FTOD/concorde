@@ -79,8 +79,8 @@ agreements still undergo validation; none creates a standalone docsite graph pro
 
 ### Publication and scaffolding
 
-This view covers reading publication and its creation-only scaffold. Concorde-only Graph inspection
-additionally uses [Harness Module](../harness/module.md) under the local agreement below.
+This view covers reading publication and its creation-only scaffold. Executable Graphs need no
+separate view: their Graph Specs are registered reading of the Modules that own them.
 
 ```mermaid
 flowchart TB
@@ -129,16 +129,6 @@ This collaboration applies when loading publication inputs or materializing page
 
 - [Derive pages and navigation from explicit unique ownership, references and entity listings](../spec/structure.md#registry-shape)
 - [Resolve inclusion provenance without recursive reads](../spec/contracts.md#registry-stable-id-spec-context-queries)
-
-### Harness
-
-<a id="entity.views.harness"></a><a id="agreement.document.views.module.3"></a>
-
-Supply inspectable executable Graphs without invoking nodes.
-
-This collaboration applies when compiling Agent execution views without running nodes.
-
-- [Harness contract](../harness/graphs-and-loops.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ## Unresolved information
 

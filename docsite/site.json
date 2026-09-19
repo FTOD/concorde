@@ -28,7 +28,7 @@
         },
         {
           "title": "Compose Operations as LangGraph graphs.",
-          "description": "An Operation is Concorde's one executable concept: declared input State, output updates, effects and execution policy, implemented by code, a model or a compiled graph. Every graph's Graph Spec is checked against the compiled topology, and the same graphs open in LangGraph Studio and on the Agent Graphs page."
+          "description": "An Operation is Concorde's one executable concept: declared input State, output updates, effects and execution policy, implemented by code, a model or a compiled graph. Every graph's Graph Spec is checked against the compiled topology, and each is read, with its Graph Spec, in the owning Module's Specs and opens in LangGraph Studio."
         },
         {
           "title": "Develop in candidate worktrees.",
@@ -120,7 +120,6 @@
     },
     "links": [
       { "label": "Spec Protocol", "to": "/protocol" },
-      { "label": "Agent Graphs", "to": "/agent-graphs" },
       { "label": "Workflow guide", "to": "https://github.com/FTOD/concorde/blob/main/docs/workflow-guide.md" }
     ]
   },

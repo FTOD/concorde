@@ -9,6 +9,9 @@ normal sequence and why repetition eventually stops.
 | Term | Meaning / definition |
 | --- | --- |
 | [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [State](../module.md#terminology) | Defined in Concorde Framework. |
+| Graph Spec | The section of a Module's Implementation Specs that specifies one executable Graph by its State, its Nodes and its Edges, with a flowchart the Graph Spec check keeps equal to the compiled Graph. |
 | [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Ready](../module.md#terminology) | Defined in Concorde Framework. |
 | [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
@@ -40,6 +43,27 @@ A matching diagram proves agreement with the compiled topology, not that every d
 A stopped graph retains its progress. Resuming checks that the task and inputs are still current
 before choosing a next step. Completing an inner worker or helper does not complete the enclosing
 change, and reaching ready does not authorize delivery.
+
+## Reading a Graph Spec
+
+Each Operation is explained where the Module that owns it is specified. When the Operation runs a
+Graph, that Module's Implementation Specs hold the Graph's **Graph Spec**, and no other page draws
+it again. A Graph Spec answers three questions in LangGraph's own terms:
+
+- **State**: what the Graph carries between steps. These are named channels, such as the last
+  stage's output or accumulated artifact references, plus the durable candidate records the steps
+  read and write.
+- **Nodes**: what runs at each step and what it reads and writes. A node is one Operation: a
+  deterministic step, one model-backed worker, or another Graph used as a single step.
+- **Edges**: what decides the next step. After a node finishes, either an edge function reads a
+  State channel the node wrote, or the node itself names its successor. The diagram labels every
+  branch with the condition that selects it.
+
+For example, in the development Graph the `review_code` node reads the Spec, the changed files and
+the tasks, and writes its review results. Its Edges say that it names its own successor: `ready`
+when no finding blocks, `tasks` for a bounded repair, or `summarize` to stop. A reader can follow
+one change through the Graph without reading the implementation, and the Graph Spec check keeps
+that picture equal to the Graph that actually runs.
 
 ## Precise specifications
 

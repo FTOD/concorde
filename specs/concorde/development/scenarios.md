@@ -95,6 +95,9 @@ See [project root is the entry process's working directory](requirements.md#req.
 - GIVEN the Graph catalog compiles every executable Graph with inert nodes
 - WHEN the Graph Spec check reads every Mermaid flowchart bound with `%% graph: <name>` in the registered Spec documents
 - THEN each bound diagram's node identifiers are exactly the compiled nodes including start and end, its edges are exactly the compiled edges, each edge leaving a node with several successors carries its routing condition and each edge leaving a node with one successor carries none, and every executing node's label states its in and out state
+- AND each bound diagram's section, in an implementation-role document, states its **State.**, **Nodes.** and **Edges.** parts once each and in that order before the diagram, where State and Edges are nonempty and a code fence's `#` lines do not end the section
+- AND its Nodes table between the Nodes and Edges parts lists exactly the compiled nodes other than start and end, each once and in backticks, with the same in and out state as the node's diagram label
+- AND the section's heading carries an explicit `{#anchor}` that a module-role document of the same owning Module links to, resolving relative link paths
 - AND every compiled Graph has exactly one bound diagram and every bound name is a compiled Graph
 - BUT a passing check proves only that the Spec and the executed topology agree, not that the routing is right
 

@@ -130,18 +130,28 @@ children. Validation compares it with code. There is no independent `concorde.ag
 
 #### Behavioral ownership and composition limits {#operations-behavioral-ownership-and-composition-limits}
 
-| Operation or action | Canonical behavioral owner |
-| --- | --- |
-| context-solve, plan, tasks | [Planning](../planning/module.md) |
-| implement | [Implementation](../implementation/module.md) |
-| specify | [Spec Authoring](../spec-authoring/module.md) |
-| review | [Review](../review/module.md) |
-| validate | [Validation](../validation/module.md) |
-| deliver | [Delivery](../delivery/module.md) |
-| main ask and routing | [Query and Routing](../query-routing/module.md) |
-| main topology actions | [Topology](../topology/module.md) |
-| dev-loop | [Development Graph](../dev-loop/module.md) |
-| specify-loop | [Specification Graph](../specify-loop/module.md) |
+Every Operation, including each model-backed worker, has exactly one canonical behavioral owner.
+The owner's Specs explain what the Operation is for, what it takes and returns and when it stops;
+this table only maps each Operation to that owner and to the Graph it runs. Every public entry first
+passes the [admission](#graphs-operation-admission-graph-operation-graph) and
+[dispatch](#graphs-operation-dispatch-graph-dispatch-graph) Graphs, and every model-backed worker
+runs as one [Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
+
+| Operation or action | Canonical behavioral owner | Runs as |
+| --- | --- | --- |
+| main ask and routing; answerer, router | [Query and Routing](../query-routing/module.md) | The [query Graph](../query-routing/execution-reference.md#query-and-routing-query-graph-query-graph) over the [discovery Graph](../query-routing/execution-reference.md#query-and-routing-discovery-graph-discovery-graph) |
+| main topology actions; topology-designer, topology-author | [Topology](../topology/module.md) | The query Graph for design, then the [topology preparation](../topology/execution-reference.md#topology-topology-preparation-graph-topology-graph) and [application](../topology/execution-reference.md#topology-topology-application-graph-topology-apply-graph) Graphs |
+| dev-loop | [Development Graph](../dev-loop/module.md) | [Target admission](#graphs-target-admission-graph-target-graph), then the [development Graph](../dev-loop/execution-reference.md#development-development-graph-development-graph) |
+| specify-loop | [Specification Graph](../specify-loop/module.md) | Target admission, then the [specification Graph](../specify-loop/execution-reference.md#specify-loop-specification-graph-specify-graph) |
+| specify; spec-author | [Spec Authoring](../spec-authoring/module.md) | One spec-author node, whose replacements pass affected-consumer reviews |
+| context-solve, plan, tasks; context-assessor, planner, task-author | [Planning](../planning/module.md) | The [planning Graph](../planning/execution-reference.md#plan-planning-graph-plan-graph) for plan; one worker node each for context-solve and tasks |
+| implement; programmer | [Implementation](../implementation/module.md) | One programmer node, or the [component coordination Graph](#graphs-component-coordination-graph-coordination-graph) for a composite |
+| review; spec-reviewer, code-reviewer | [Review](../review/module.md) | Target admission, then one reviewer node for the owner and each changed-file peer |
+| validate | [Validation](../validation/module.md) | One deterministic node |
+| deliver | [Delivery](../delivery/module.md) | One deterministic node |
+| issues; issue-solver | [Issues](../issues/module.md) | The [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph) and its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph) |
+| init | [Spec](../spec/initialize.md) | The [project Graph](#graphs-project-graph-project-graph) |
+| configure | [Distribution](../distribution/module.md) | The project Graph |
 
 Module ownership is distinct from node composition. `USES` is the executable composition relation;
 registry `uses` describes Module responsibility dependencies. Shared model execution support does
@@ -162,26 +172,32 @@ below are its own: admission, dispatch, target admission, project initialization
 configuration, component coordination and shared-candidate stabilization. The composed Graphs they
 dispatch to (discovery, query, topology, planning, specification, development and issues) are
 specified by their owning Modules. Each Graph Spec follows the
-[Graph Spec convention](../harness/execution-reference.md): nodes execute, edges route, and node
-labels state the state read and written. Every diagram is bound to its compiled Graph by
+[Graph Spec convention](../harness/execution-reference.md#graphs-and-loops-graph-specs): its
+State, Nodes and Edges are stated in turn. Every diagram is bound to its compiled Graph by
 `%% graph:` and kept equal to it by the configured Graph Spec check.
 
 #### Operation admission Graph (`operation_graph`) {#graphs-operation-admission-graph-operation-graph}
 
-State: `invocation` (the admitted `concorde-operation-invocation@3`), `result` (the
+**State.** `invocation` (the admitted `concorde-operation-invocation@3`), `result` (the
 `concorde-operation-result@3` envelope, filled by `finalize` or by a guard that caught an
 error), `policies` and `events` (the host's policy descriptions and observed events, Studio only),
-`expected_workspace`. Every node runs under a guard: an error records the typed failure envelope
-in `result` and routes to `finalize`.
+`expected_workspace`.
+
+**Nodes.** Every node runs under a guard: an error records the typed failure envelope in `result`.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `initialize` | Deterministic: fresh host identity, root invocation id and lifecycle record for this invocation. | invocation | result (cleared) |
+| `initialize` | Deterministic: fresh host identity, root invocation id and lifecycle record for this invocation. | invocation | cleared result |
 | `admit_request` | Deterministic: operation name, mode, configuration and request are validated against the registered contracts; a stale build is refused for model-backed operations. | invocation | admitted task, configuration |
 | `bind_workspace` | Deterministic: primary, change or unversioned workspace identity; a mutating primary request prepares a candidate worktree and marks the invocation for relay into it. | admitted task, worktree | workspace, relay target |
 | `check_configuration` | Deterministic: the invocation configuration equals the initialized project settings and the host snapshot. | configuration, project settings | configuration snapshot |
 | `execute` | The dispatch Graph (below) as a subgraph. | admitted task, workspace | output |
-| `finalize` | Deterministic: status from the output outcome or the recorded error, execution-error propagation, lifecycle progress. | output, result, lifecycle | result |
+| `finalize` | Deterministic: status from the output outcome or the recorded error, execution-error propagation, lifecycle progress. | output, result, lifecycle | result envelope |
+
+**Edges.** Each admission step is followed by a conditional edge that reads `result`: when the step
+or its guard recorded a failure envelope, the Graph goes straight to `finalize`; otherwise it
+continues to the next step. `execute` always hands its output to `finalize`, and `finalize` always
+ends the Graph, so every invocation, admitted or not, ends with one typed result envelope.
 
 ```mermaid
 flowchart TB
@@ -189,7 +205,7 @@ flowchart TB
     accTitle: Operation admission Graph
     accDescr: Every invocation is initialized, admitted, bound to a workspace and checked against the initialized configuration before the dispatch subgraph executes; any error routes to finalize, which always writes the typed result envelope.
     __start__["start"]
-    initialize["initialize<br/>in: invocation<br/>out: result cleared"]
+    initialize["initialize<br/>in: invocation<br/>out: cleared result"]
     admit_request["admit_request<br/>in: invocation<br/>out: admitted task, configuration"]
     bind_workspace["bind_workspace<br/>in: admitted task, worktree<br/>out: workspace, relay target"]
     check_configuration["check_configuration<br/>in: configuration, project settings<br/>out: configuration snapshot"]
@@ -211,9 +227,12 @@ flowchart TB
 
 #### Operation dispatch Graph (`dispatch_graph`) {#graphs-operation-dispatch-graph-dispatch-graph}
 
-State: `route` (the leaf or subgraph selected for the admitted operation), `output` (the
-operation's typed response), `result`. The Studio and CLI build one dispatch Graph per public
-operation; the diagram shows the complete dispatch topology every entry compiles from.
+**State.** `route` (the leaf or subgraph selected for the admitted operation), `output` (the
+operation's typed response), `relayed` (the complete result envelope a candidate worktree's
+launcher returned for a relayed mutation, which the admission Graph adopts as its own result),
+`result`.
+
+**Nodes.** Each leaf below is the entry of one Operation, or of one action of `concorde-main`.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
@@ -237,6 +256,14 @@ operation; the diagram shows the complete dispatch topology every entry compiles
 | `development_loop` | The development Graph. | bound target, change | ready candidate or stop |
 | `specify_loop` | The specification Graph. | bound target, change | Spec completion |
 | `context_solve` | One context-assessor invocation. | bound target, Spec context | sufficiency or gaps |
+
+**Edges.** `select_operation` writes `route`, and a conditional edge follows it to one entry leaf:
+the relay for a mutation admitted in the primary worktree, delivery, the project Graph, one of
+main's four actions, or target admission for every target-bound operation; an error ends the
+Graph. `prepare_target` writes `route` again once the owner is bound and selects that operation's
+leaf, or ends the Graph when binding is blocked. Every leaf ends the Graph with its typed output.
+The Studio and CLI compile one dispatch Graph per public operation containing only the leaves that
+operation can reach; the diagram shows the complete topology they are drawn from.
 
 ```mermaid
 flowchart TB
@@ -309,14 +336,22 @@ flowchart TB
 
 #### Target admission Graph (`target_graph`) {#graphs-target-admission-graph-target-graph}
 
-State: `route`, `occurrence`, `routes` and `decision` (the discovery subgraph's counters and
+**State.** `route`, `occurrence`, `routes` and `decision` (the discovery subgraph's counters and
 routed selection), `output`, `result`.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `initialize_target` | Deterministic: a recorded change restores its owner and intent; a trusted routed target is checked against the request; an unbound discovering operation enters discovery. | admitted task, change | route, restored task |
 | `discover` | The discovery Graph as a subgraph (the router). | task, entry Module context | routes, decision |
 | `bind_target` | Deterministic: the single route or restored owner binds the candidate, and the bound leaf is selected. | routes, task | bound invocation, route |
+
+**Edges.** `initialize_target` writes `route`: an owner that is already bound or recorded goes
+straight to `bind_target`, an unbound discovering request enters `discover`, and an error ends the
+Graph. After the discovery subgraph a conditional edge reads `result`: a gap, a missing route or an
+exhausted limit ends the Graph, and one selected route continues to `bind_target`, which always
+ends it. A target-bound operation that never discovers compiles this Graph without `discover`.
 
 ```mermaid
 flowchart TB
@@ -339,7 +374,12 @@ flowchart TB
 
 #### Project Graph (`project_graph`) {#graphs-project-graph-project-graph}
 
-State: `route`, `output`, `result`.
+`concorde-init` and `concorde-configure` run this Graph; their behavior is owned by the
+[Spec Module](../spec/initialize.md) and the [Distribution Module](../distribution/module.md).
+
+**State.** `route`, `output` (the typed response), `result`.
+
+**Nodes.** All three leaves are deterministic Operations; none calls a model.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
@@ -347,6 +387,10 @@ State: `route`, `output`, `result`.
 | `configure` | Deterministic: writes the typed operation configuration into the project settings. | configuration | applied configuration |
 | `propose` | Deterministic: the initialization proposal with its base digest and files. | name, configuration | proposal |
 | `apply` | Deterministic: applies an unchanged proposal atomically. | proposal | applied files |
+
+**Edges.** `select_action` writes `route` from the operation and its action, and a conditional
+edge follows it to `configure`, `propose` or `apply`; a refused describe-policy request or an error
+ends the Graph. Each leaf ends the Graph with its typed response.
 
 ```mermaid
 flowchart TB
@@ -371,10 +415,13 @@ flowchart TB
 
 #### Component coordination Graph (`coordination_graph`) {#graphs-component-coordination-graph-coordination-graph}
 
-State: `output` (a blocking result, or none while the Graph advances), `route`; the candidate's
+A composite Module's implementation runs this Graph when its tasks name submodules or used Modules.
+
+**State.** `output` (a blocking result, or none while the Graph advances), `route`; the candidate's
 target record carries the coordination table (per component: task, Spec and implementation
-status, digests, gaps) and the local task list. A composite Module's implementation runs this
-Graph when its tasks name submodules or used Modules.
+status, digests, gaps) and the local task list.
+
+**Nodes.** The work-item nodes run the [Sequential work items Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph).
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
@@ -384,6 +431,10 @@ Graph when its tasks name submodules or used Modules.
 | `implement_local` | One programmer `implementation` invocation for the composite's own tasks. | local tasks, local files | completed local tasks |
 | `finalize_components` | The stabilization Graph (below): every participant's final checks and reviews until the shared candidate is stable. | candidate | component revisions, evidence |
 | `record_completion` | Deterministic: tasks marked complete, component revisions and implementation digest recorded. | coordination table | completed target record |
+
+**Edges.** After every step a conditional edge reads `output`: a step that recorded a blocking
+result ends the Graph with it, and a step that left `output` empty advances to the next step, so
+the steps run strictly in the order of the table. `record_completion` always ends the Graph.
 
 ```mermaid
 flowchart TB
@@ -414,15 +465,23 @@ flowchart TB
 
 #### Shared candidate stabilization Graph (`stabilization_graph`) {#graphs-shared-candidate-stabilization-graph-stabilization-graph}
 
-State: `output`, `route`; the enclosing coordination holds the participant set and a bounded
-remaining-round counter, because a later participant's repair can stale an earlier participant's
-evidence.
+**State.** `output` (a failed participant's result), `route`; the enclosing coordination holds the
+participant set and a bounded remaining-round counter, because a later participant's repair can
+stale an earlier participant's evidence.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `snapshot` | Deterministic: digest of every participant's implementation before this round; an exhausted round budget fails. | participant implementations | round digest |
 | `verify_components` | Sequential work items: each participant's final development Graph (`specify=false`, `finalize_components`) runs its checks and required reviews. | participant records | evidence, review artifacts |
 | `check_stability` | Deterministic: the candidate digest after verification equals the round digest. | round digest, participant implementations | route |
+
+**Edges.** `snapshot` always continues to `verify_components`. After verification a conditional
+edge reads `output`: a failed participant ends the Graph, otherwise `check_stability` runs.
+`check_stability` writes `route`: when verification changed the candidate the round repeats from
+`snapshot`, and when it did not the Graph ends. The round budget checked in `snapshot` bounds the
+loop.
 
 ```mermaid
 flowchart TB

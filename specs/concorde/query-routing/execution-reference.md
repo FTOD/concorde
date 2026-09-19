@@ -20,7 +20,7 @@ and transitions are retained here as the single detailed contract.
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
-## Query and routing Agent Graph {#query-and-routing-query-and-routing-agent-graph}
+## Query and routing Graphs {#query-and-routing-query-and-routing-graphs}
 
 `concorde-main` accepts a question or task with optional routing hints. Main starts with the entry
 Module's complete collection, then explicitly expands other Module collections
@@ -59,16 +59,24 @@ context and starts fresh invocations under the Graph and Loop contract.
 
 #### Discovery Graph (`discovery_graph`) {#query-and-routing-discovery-graph-discovery-graph}
 
-State: `occurrence` (the bounded number of discovery decisions so far), `decision` (the
+**State.** `occurrence` (the bounded number of discovery decisions so far), `decision` (the
 discovery worker's last typed result), `routes` (the bound single-target routes), `route`, `result`.
 The admitted Module collection grows only through `expand_context`.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `decide` | One discovery-worker invocation (the router, answerer or topology-designer) over the admitted complete Module contexts; the decision limit is the number of Modules. | admitted Module contexts, task | decision |
 | `expand_context` | Deterministic: admits the requested Modules named in the admitted Specs and counts the occurrence. | decision, registry | admitted Module contexts, occurrence |
 | `bind_routes` | Deterministic: validates each route's target and focus and binds the original task and constraints to it. | decision, task | routes |
-| `finish` | Deterministic: records completion for an answer, gap, unsupported or conflicting outcome, or the policy preview. | decision | routes (empty) |
+| `finish` | Deterministic: records completion for an answer, gap, unsupported or conflicting outcome, or the policy preview. | decision | empty routes |
+
+**Edges.** `decide` writes `route` from the worker's decision, and a conditional edge follows it: a
+request for more Modules goes to `expand_context`, a routing decision to `bind_routes`, every other
+outcome to `finish`, and an exhausted decision limit or an error ends the Graph. `expand_context`
+returns to `decide` unless it recorded a failure in `result`, which ends the Graph. `bind_routes`
+and `finish` always end the Graph.
 
 ```mermaid
 flowchart TB
@@ -79,7 +87,7 @@ flowchart TB
     decide["decide<br/>in: admitted Module contexts, task<br/>out: decision"]
     expand_context["expand_context<br/>in: decision, registry<br/>out: admitted Module contexts, occurrence"]
     bind_routes["bind_routes<br/>in: decision, task<br/>out: routes"]
-    finish["finish<br/>in: decision<br/>out: routes empty"]
+    finish["finish<br/>in: decision<br/>out: empty routes"]
     __end__["end"]
     __start__ --> decide
     decide -->|expand: more Modules requested| expand_context
@@ -94,13 +102,20 @@ flowchart TB
 
 #### Query Graph (`query_graph`) {#query-and-routing-query-graph-query-graph}
 
-State: the discovery state above plus `output` (the main response). `concorde-main` runs this
-Graph for `ask` and `design-topology`.
+`concorde-main` runs this Graph for `ask` and `design-topology`.
+
+**State.** The discovery state above plus `output` (the main response).
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `discover` | The discovery Graph as a subgraph. | question or design task, entry Module context | decision |
 | `respond` | Deterministic: the answer, gap, unsupported or conflicting response, or the typed topology design, from the last decision. | decision | main response |
+
+**Edges.** When the discovery subgraph finishes, a conditional edge reads `result`: a recorded
+failure ends the Graph, otherwise `respond` turns the last decision into the main response and the
+Graph ends.
 
 ```mermaid
 flowchart TB

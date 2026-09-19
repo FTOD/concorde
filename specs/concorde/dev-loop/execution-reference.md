@@ -31,7 +31,7 @@ and transitions are retained here as the single detailed contract.
 | [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
-## Development Agent Graph and revision loops {#development-development-agent-graph-and-revision-loops}
+## Development Graph and revision loops {#development-development-graph-and-revision-loops}
 
 A developer supplies intended behavior and constraints for one top-level candidate change.
 `concorde-specify-loop` independently routes, authors or revises, and reviews the Spec. It ends
@@ -120,8 +120,12 @@ It stops on the first non-successful outcome and preserves the change worktree, 
 code-owning target's blocking code review first attempts a declared, bounded repair. The only
 automatic revision edge is `review_code -> tasks`: task authoring receives the current completed
 tasks and the blocking `concorde-review-result` as `stage_inputs`, and the resulting repair tasks
-and their implementation are checked and code-reviewed again like any other change. This repair is
-bounded by a declared `max_repair_iterations` policy recorded per target under
+and their implementation are checked and code-reviewed again like any other change. Only the
+owner's own blocking findings select this repair: when a changed-file peer's code review blocks,
+the Graph stops and preserves that peer's result for separately routed work, because the peer's
+contract is outside this owner's planning context. This repair is bounded by a declared
+`max_repair_iterations` policy, which `concorde-dev-loop` declares as two, recorded per target when
+the loop first runs for it under
 `change["graph"][target_id]["policy"]` in `.concorde/worktree.json`; the same record keeps the
 current `repair_iteration`, the last blocking-feedback fingerprint and an attributed history of
 selected transitions (development.md's "AI and human feedback", G4). Repeated unchanged blocking
@@ -182,21 +186,21 @@ During dev-loop, the initial Module Spec review is local. Component reviews occu
 #### Development Graph (`development_graph`) {#development-development-graph-development-graph}
 
 The development Graph is the LangGraph Graph `concorde-dev-loop` executes after target admission.
-It follows the [Graph Spec convention](../harness/execution-reference.md): nodes execute, edges
-route, node labels state the state read and written, and the diagram is kept equal to the
-compiled Graph by the configured Graph Spec check. Specified and SpecReviewed belong to the
-independently callable specification Graph, which the `specify_loop` node composes; delivery is a
-separately invoked operation after `ready`.
+It follows the [Graph Spec convention](../harness/execution-reference.md#graphs-and-loops-graph-specs):
+its State, Nodes and Edges are stated below, and the diagram is kept equal to the compiled Graph by
+the configured Graph Spec check. Spec authoring and Spec review belong to the independently
+callable [specification Graph](../specify-loop/execution-reference.md#specify-loop-specification-graph-specify-graph),
+which the `specify_loop` node composes; delivery is a separately invoked operation after `ready`.
 
-State: `output` (the last stage's typed response data, including its outcome), `artifacts`
-(review and stage artifact references accumulated across stages under a merge reducer), `result`
-(a terminal failure envelope when a guard caught an error), `route`. The candidate record in
-`.concorde/worktree.json` carries the durable state every stage reads and advances: the bound
-owner and intent, the plan, the task list and history, the implementation digest, check evidence,
-review requirements and results, gap history and the per-target graph record with its repair
-iteration and last feedback fingerprint. Each stage returns a `Command` naming the next node; a
-stop routes to `summarize`, and only `review_code` may select the automatic repair edge back to
-`tasks`, bounded by the declared `max_repair_iterations` and the unchanged-feedback rule.
+**State.** `output` (the last stage's typed response data, including its outcome), `artifacts`
+(review and stage artifact references accumulated across stages under a merge reducer that keeps
+the newest reference per artifact id), `result` (a terminal failure envelope when a guard caught an
+error), `route`. The candidate record in `.concorde/worktree.json` carries the durable state every
+stage reads and advances: the bound owner and intent, the plan, the task list and history, the
+implementation digest, check evidence, review requirements and results, gap history and the
+per-target graph record with its repair iteration and last feedback fingerprint.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
@@ -209,6 +213,16 @@ stop routes to `summarize`, and only `review_code` may select the automatic repa
 | `review_code` | Independent code review of the owner and every changed-file peer, each from its own contract, reusing current evidence. | Spec, changed files, tasks | code review results |
 | `ready` | Deterministic: verifies current evidence for every affected Module and marks the candidate ready. | evidence, reviews | ready candidate |
 | `summarize` | Deterministic: the operation response with review coverage and every artifact reference. | output, artifacts | response |
+
+**Edges.** Every node except `summarize` chooses its own successor: it returns a LangGraph
+`Command` naming the next node together with its State update, and its declared destinations bound
+that choice. `initialize` enters `specify_loop`. The outcome of `specify_loop` also selects where a
+resumed candidate re-enters: `plan`, or `tasks`, `implement` or `validate` when current evidence
+already covers the earlier stages. A successful stage hands over to the next one; `validate` skips
+`review_code` when the Module lists no code to review. Any stop routes to `summarize`, which writes
+the response, and a guard-caught error goes straight to `__end__`. Only `review_code` may route back
+to `tasks`: the automatic repair edge, bounded by the declared `max_repair_iterations` and the
+unchanged-feedback rule.
 
 ```mermaid
 flowchart TB

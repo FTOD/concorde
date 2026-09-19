@@ -47,6 +47,20 @@ then launches a fresh Spec or code reviewer under a read-only grant. Result admi
 identity, coverage, locations and gap/finding consistency before retaining a typed report. Peer
 reviews run separately and aggregate only results, not provider code or private conversation.
 
+The two reviewers are separate model-backed Operations: `spec-reviewer` for Spec mode and
+`code-reviewer` for code mode. Each runs as one
+[Operation node](../harness/execution-reference.md#host-operation-node-operation-node) with its own
+read-only grant. `concorde-review` has no Graph of its own. The common
+[target admission Graph](../development/execution-reference.md#graphs-target-admission-graph-target-graph)
+first binds the given owner or routes the task through the
+[discovery Graph](../query-routing/execution-reference.md#query-and-routing-discovery-graph-discovery-graph),
+and the router returns only the owner and focus, never a rewritten task. The
+[dispatch Graph](../development/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)'s
+`review` leaf then reviews the owner, followed by each affected Module one at a time through the
+[Sequential work items Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph);
+the first review that does not complete stops the rest. A code review skips an affected Module that
+lists no implementation files.
+
 A review of yesterday's code cannot establish today's changed revision. Binding results to current
 inputs supports exact-intent reuse by composing graphs and fresh standalone review. Each reviewer
 gets a fresh conversation so an author's assumptions cannot silently become review evidence. When a

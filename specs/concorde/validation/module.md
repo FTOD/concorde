@@ -56,6 +56,11 @@ reviews, without inventing a plan for a manual candidate. Unavailable isolation 
 This separation keeps a command's success from granting writes, proving semantics or bypassing a
 previously required review.
 
+`validate` runs as a single deterministic node that calls no model. Invoked directly, it is the
+`validate` leaf the [dispatch Graph](../development/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)
+selects once target admission has bound the candidate's owner; inside the development Graph it is
+the `validate` stage between implementation and code review.
+
 ## Relationships
 
 The diagram separates Validation evidence from the Readiness decision that consumes it. The [Spec Module](../spec/module.md)

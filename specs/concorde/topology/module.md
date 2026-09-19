@@ -71,6 +71,16 @@ Application then rechecks the accepted artifact, registry/Protocol identity and 
 before one transaction. [Topology Graphs](execution-reference.md#topology-design) expose those distinct
 boundaries and stop conditions.
 
+Each `concorde-main` topology action runs its own Graph. `design-topology` runs the
+[query Graph](../query-routing/execution-reference.md#query-and-routing-query-graph-query-graph),
+whose `decide` node is the topology-designer worker. `accept-topology` runs the
+[topology preparation Graph](execution-reference.md#topology-topology-preparation-graph-topology-graph),
+whose `author_module` node runs one topology-author worker per new or changed Module, each as an
+[Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
+`apply-topology` runs the
+[topology application Graph](execution-reference.md#topology-topology-application-graph-topology-apply-graph),
+whose nodes are all deterministic.
+
 Each candidate definition has one author/owner. Comparing old and candidate contexts captures
 consumers affected by reference or ownership changes even when the path set is unchanged. Keeping
 prepared bytes separate from accepted effects lets validation and review find conflicts without
@@ -146,5 +156,5 @@ This collaboration applies when design-topology selects or expands the complete 
 ## Precise specifications
 
 The Topology Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#topology-topology-evolution-agent-graph).
+[execution and record contracts](execution-reference.md#topology-topology-evolution-graphs).
 These companions are part of the same complete Module specification, not separate topic owners.

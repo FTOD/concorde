@@ -222,8 +222,8 @@ Optional project-owned `docsite/custom-docs/index.ts` exports an object with `pl
 Docusaurus rejects duplicate routes, including conflicts with registered pages. Extension authors
 keep their pages outside `/specs` and supply explicit tabs. Custom content stays outside the Spec
 registry; it is not an implicit source of Spec context. We recommend separate tabs for all custom
-docs rather than adding them to Module Specs. The scaffold excludes `custom-docs/`, the existing
-checkout-only `concorde-only/` assets, and project-owned site identity bytes.
+docs rather than adding them to Module Specs. The scaffold excludes `custom-docs/` and
+project-owned site identity bytes.
 
 `homepage.links` optionally supplies an array of `{label, to}` values: nonempty labels and either
 local absolute routes or HTTP(S) URLs. Local links honor the site's base URL. No Protocol or Graph
@@ -231,10 +231,10 @@ link is built into the homepage renderer.
 
 ### scenario.views.protocol-docs-tab — Concorde publishes its standard through custom docs
 
-- GIVEN Concorde's project-owned configuration selects `protocol/` as a custom docs collection and registers the Agent Graphs extension
+- GIVEN Concorde's project-owned configuration selects `protocol/` as a custom docs collection
 - WHEN the site builds
-- THEN Spec Protocol remains at `/protocol` with its chapter sidebar and search index and Agent Graphs remains at `/agent-graphs`
-- AND both retain independent tabs without Spec provenance wrappers or registry membership
+- THEN Spec Protocol remains at `/protocol` with its chapter sidebar and search index
+- AND it retains an independent tab without Spec provenance wrappers or registry membership
 - BUT ordinary consumer scaffolds copy neither this configuration nor the site's custom documentation and assets
 
 The removed `protocolDocs` field is rejected whenever present, including false, with a migration
@@ -256,27 +256,17 @@ snapshot.
 
 ## Publication pipeline
 
-### scenario.views.agent-graphs — Inspect actual Agent and LangGraph execution
+### scenario.views.operation-graphs-in-owner-specs — Operation Graphs are read in their owning Specs
 
-- GIVEN Concorde's source checkout with the development Python environment and its own docsite extension
-- WHEN the site is built and the reader opens the top-level Agent Graphs tab at `/agent-graphs`
-- THEN the page shows compiled Spec preparation, development, discovery/query, topology, planning, coordination, Issue solving and Agent invocation node Graphs plus expanded public Studio entries without executing Agents
-- AND specify-loop has a directly navigable section showing its actual authoring, review, resume and result transitions, linked from its dev-loop node
-- AND a searchable sidebar lists every Operation and shared Graph family, with a selected detail view and stable fragment links supporting direct access and browser navigation
-- AND the sidebar includes both dev-loop and the specify Operation, keeps the current selection visible, and can be opened or closed on small screens
-- AND the build invokes the same development topology factory as runtime, with new-change, skipped-authoring, resume and no-code variants
-- AND step responsibilities, Agent calls, key inputs and outputs, stop conditions and bounded code-review repair are explained with valid links to their Spec sections
-- AND execution diagrams come from the same LangGraph factories as runtime, with runtime-bound Graph instances distinguished from public entries
-- AND source byte digests identify the inspected implementation inputs
-- AND light/dark themes, keyboard-focusable scroll regions, node-detail links, width controls and a textual transition list support long graphs and small screens
-- AND graph export or broken internal links fail the production build before promotion
-- AND the packaged consumer template excludes `docsite/concorde-only/`, exposes no Agent Graphs tab or route, and requires no Python graph data
+- GIVEN Concorde's source checkout, where every executable Graph has one Graph Spec in the implementation-role documents of the Module that owns it
+- WHEN the site is built
+- THEN no navbar tab, homepage link or route publishes a separate Operation or execution-graph page, and no `agent-graphs` page is emitted
+- AND each Graph Spec appears once, on its owner's Implementation Specs page, with its State, Nodes and Edges parts before its Mermaid flowchart
+- AND the owner's module-role reading links directly to that Graph Spec
 
-This extension is private to the Concorde source checkout, not a Graph catalog protocol or a new
-Spec context input. `docsite/concorde-only/graphs.py` inspects compiled factories; the plugin stages
-the result through Docusaurus `createData` and registers its own route. Use the checkout's `.venv`
-or set `CONCORDE_PYTHON` to the development interpreter when building a source copy. The ordinary
-publication registry and consumer build contract remain independent of this extension.
+Publication renders a Graph Spec's Mermaid fence like any other inline diagram and derives nothing
+from the executable factories, so building the site needs no Python graph environment. That a Graph
+Spec equals its compiled Graph is proven by the configured Graph Spec check, not by publication.
 
 ### scenario.views.load-registry — Loading the registry validates identities and memberships
 

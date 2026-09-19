@@ -35,10 +35,16 @@ consumer's result, so readiness waits for a stable, consistently checked revisio
 
 ## Reading the diagrams
 
-The exact operation, dispatch, target, project, coordination and stabilization Graphs are maintained
-once in the Module's execution reference. They are checked against the compiled runtime and are the
-source for Studio inspection. This page explains their purpose; it does not define a second execution
-graph. Domain workflows still own their own sequencing and stopping policies.
+The exact Graph Specs are maintained once in the Module's execution reference, each with its State,
+Nodes and Edges: the [admission](execution-reference.md#graphs-operation-admission-graph-operation-graph),
+[dispatch](execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph),
+[target admission](execution-reference.md#graphs-target-admission-graph-target-graph),
+[project](execution-reference.md#graphs-project-graph-project-graph),
+[component coordination](execution-reference.md#graphs-component-coordination-graph-coordination-graph)
+and [stabilization](execution-reference.md#graphs-shared-candidate-stabilization-graph-stabilization-graph)
+Graphs. They are checked against the compiled runtime and are the source for Studio inspection. This
+page explains their purpose; it does not define a second execution graph. Domain workflows still own
+their own sequencing and stopping policies.
 
 ## Precise specifications
 

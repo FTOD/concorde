@@ -399,7 +399,7 @@ checks task intent, evidence currentness and permitted repair transitions before
 ### Required orchestration model
 
 The registered companion documents of the Harness Module define the Agent model (A1–A5) and the
-Agent Graph and Loop model (G1–G4) this host composes. The Harness resolves worker definitions, their
+Graph and Loop model (G1–G4) this host composes. The Harness resolves worker definitions, their
 `spec.md` sources, profiles and child definitions into a reproducible `AgentBinding` that every
 worker invocation carries, and its executor verifies that binding before any process starts. This
 Module MUST coordinate declared Graph transitions and bounded loops with attributed AI feedback and

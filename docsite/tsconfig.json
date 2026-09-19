@@ -16,8 +16,6 @@
     "scripts/**/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    "concorde-only/**/*.ts",
-    "concorde-only/**/*.tsx",
     "tests/**/*.ts",
     "vitest.config.ts",
     "custom-docs/**/*.ts",

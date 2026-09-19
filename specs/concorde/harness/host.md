@@ -31,7 +31,11 @@ conversations or giving either reviewer the other's permissions.
 The host controls ordering and admission; a worker reasons within one job. This prevents a useful
 answer from becoming an unchecked command to run another stage. Sequential batches stop when an item
 cannot proceed, so a later operation does not accidentally consume incomplete earlier work.
-The exact batch and operation-node Graphs are in the execution reference.
+Two Graph Specs in the execution reference define these shapes exactly. The
+[Operation node](execution-reference.md#host-operation-node-operation-node) runs one worker as a
+single step of any Graph, and the
+[Sequential work items Graph](execution-reference.md#host-sequential-work-items-graph-batch-graph)
+runs independently admitted items one at a time and stops at the first that returns a result.
 
 ## Observing a run
 

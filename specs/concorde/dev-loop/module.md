@@ -53,7 +53,22 @@ plan and task artifacts feed implementation, checks precede code review, and cur
 the single ready transition. Durable candidate state records intent, progress, repair policy and
 feedback identity so resume can choose the first stage whose inputs need renewal.
 
-Only blocking code review can select the automatic tasks/implementation repair edge. Component
+`concorde-dev-loop` runs as two Graphs in turn. First,
+[target admission](../development/execution-reference.md#graphs-target-admission-graph-target-graph)
+binds the recorded owner or routes a new change. The development Graph then runs its stages as
+nodes. `initialize`, `validate`, `ready` and `summarize` are deterministic host steps.
+`specify_loop` and `plan` are the specification and
+[planning](../planning/execution-reference.md#plan-planning-graph-plan-graph) Graphs used as single
+steps. `tasks` is one task-author worker and `implement` one programmer worker, each run as an
+[Operation node](../harness/execution-reference.md#host-operation-node-operation-node); a composite
+Module implements through the
+[component coordination Graph](../development/execution-reference.md#graphs-component-coordination-graph-coordination-graph)
+instead. `review_code` runs a code-reviewer for the owner and for each Module sharing a changed file.
+Each stage names its own successor, and a stop passes through `summarize`.
+
+Only the owner's own blocking code review can select the automatic tasks/implementation repair
+edge, and `concorde-dev-loop` allows at most two such repairs. A changed-file peer's blocking review
+stops the loop, because that peer's contract is not this owner's to plan against. Component
 writers retain separate contexts; finalization waits for all writers, then repeats current
 consumer checks while shared implementations change. Those internal scheduling rules fulfill the
 ready-only, bounded-repair and evidence-preservation promises without importing private transcripts.
@@ -195,5 +210,5 @@ This collaboration applies after implementation checks when code review is enabl
 ## Precise specifications
 
 The Development Graph Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#development-development-agent-graph-and-revision-loops).
+[execution and record contracts](execution-reference.md#development-development-graph-and-revision-loops).
 These companions are part of the same complete Module specification, not separate topic owners.

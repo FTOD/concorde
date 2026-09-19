@@ -84,22 +84,19 @@ The authored fence is the sole source; publication produces no external record d
 
 ### req.views.no-docsite-graph-view — No docsite graph view
 
-Publication SHALL NOT expose the former Module, Scenario or entity-relationship graph view.
+Publication SHALL NOT expose a graph view outside the registered Specs, such as the former Module, Scenario or entity-relationship graph view or a separate Operation or execution-graph page.
 
 This removes the docsite graph page and route, Graph navigation entry, graph-specific UI,
 architecture-graph projection and artifact, and resources or dependencies used exclusively for that
 feature. It also applies to the publishing template supplied to consumer projects. Dependencies
 and resources still needed for ordinary reading, navigation or inline Mermaid rendering remain.
 
-Concorde's own source-checkout site has an independent Agent Graphs page describing actual runtime
-execution. It is excluded from the consumer template and does not derive a graph from the Spec
-registry. See [Agent execution publication](scenarios.md#scenario.views.agent-graphs).
-
-### req.views.agent-graphs — Concorde-only execution diagrams
-
-Concorde's own docsite SHALL publish an Agent Graphs tab whose LangGraph nodes and edges come from
-the current executable factories and whose explanations distinguish execution, wrappers and
-unimplemented design.
+Each Operation is explained in the Specs of the Module that owns it, and an Operation that runs an
+executable Graph is shown by that Graph's Graph Spec in the owner's implementation-role documents.
+Publication renders both as ordinary registered reading, so every Graph Spec appears once, on its
+owner's Implementation Specs page. Concorde's own site therefore adds no custom page that explains
+Operations or draws their Graphs a second time, and building it needs no Python graph environment.
+See [Operation Graphs in their owning Specs](scenarios.md#scenario.views.operation-graphs-in-owner-specs).
 
 ### req.views.production-preview-isolation — Production builds preserve preview output
 

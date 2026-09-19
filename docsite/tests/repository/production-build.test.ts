@@ -1,5 +1,5 @@
 import { captureProcess } from "../capture-process";
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { access, mkdir, writeFile, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { beforeAll, it, expect } from "vitest";
 import { loadScopedRegistry } from "../../plugins/scoped-content/model";
@@ -53,7 +53,7 @@ it("publishes the current exact registry and verifies the promoted manifest", as
   expect(html).not.toContain(">Projections<");
   expect(navbar).toContain("Module Specs");
   expect(navbar).toContain("Implementation Specs");
-  expect(navbar).toContain("Agent Graphs");
+  expect(navbar).not.toContain("Agent Graphs");
   expect(navbar).not.toContain(">Graph<");
   expect(html).toContain('id="purpose"');
   expect(html).not.toContain('id="scenarios"');
@@ -163,23 +163,35 @@ it("publishes every Module as two reading paths and retains Views topics", async
   );
 });
 
-// verifies: scenario.views.agent-graphs
-it("publishes executable graphs with keyboard navigation and source fingerprints", async () => {
-  const html = await readFile(resolve(output, "agent-graphs.html"), "utf8");
-  expect(html).toContain("The development loop");
-  expect(html).toContain("Full Dev Loop invocation");
-  expect(html).toContain('aria-label="All graphs"');
-  expect(html).toContain('href="#specify"');
-  expect(html).toContain('href="#operation-concorde-review"');
-  expect(html).toContain('href="#graph-discovery"');
-  expect(html).not.toContain(
-    "Dedicated query and topology LangGraph factories are not implemented",
+// verifies: scenario.views.operation-graphs-in-owner-specs
+it("publishes each Operation Graph only inside its owning Module Specs", async () => {
+  await expect(access(resolve(output, "agent-graphs.html"))).rejects.toThrow();
+  const home = await readFile(resolve(output, "index.html"), "utf8");
+  expect(home).not.toContain("agent-graphs");
+  expect(home).not.toContain("Agent Graphs");
+  const entry = await readFile(
+    resolve(output, "specs/concorde/dev-loop/module.html"),
+    "utf8",
   );
-  expect(html).toContain("loop_graph.py");
-  expect(html).toContain("sha256:");
-  expect(html).toMatch(/role="region"[^>]*tabindex="0"/i);
-  expect(html).toContain('href="#stage-tasks"');
-  expect(html).toContain("All transitions");
+  expect(entry).toContain(
+    'href="/concorde/specs/concorde/dev-loop/execution-reference#development-development-graph-development-graph"',
+  );
+  const graphSpec = await readFile(
+    resolve(output, "specs/concorde/dev-loop/execution-reference.html"),
+    "utf8",
+  );
+  expect(graphSpec).toContain(
+    'id="development-development-graph-development-graph"',
+  );
+  const section = graphSpec.slice(
+    graphSpec.indexOf('id="development-development-graph-development-graph"'),
+  );
+  const parts = ["State.", "Nodes.", "Edges."].map((part) =>
+    section.indexOf(`<strong>${part}</strong>`),
+  );
+  expect(parts.every((index) => index > 0)).toBe(true);
+  expect(parts).toEqual([...parts].sort((a, b) => a - b));
+  expect(section).toContain("<code>review_code</code>");
 });
 // verifies: scenario.views.protocol-docs-tab
 it("publishes the independent standard with chapter navigation and no Spec wrapper", async () => {

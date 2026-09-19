@@ -59,6 +59,14 @@ from Spec authoring. Decisions bind the selected record revision and current inp
 
 <a id="entity.issues.langgraph"></a>
 
+`concorde-issues` runs after
+[target admission](../development/execution-reference.md#graphs-target-admission-graph-target-graph)
+has bound the owning Module, as the [Issue Graph](execution-reference.md#lifecycle-issue-graph-issue-graph).
+Listing, showing, reporting and reopening are single deterministic nodes. Solving is a bounded loop
+around the `decide` node, where one Issue solver worker chooses the next action: the ordinary
+development Graph, owner-only Spec authoring, or Issue-specific reviews, which run as the
+[Issue verification Graph](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
+Each of those returns to `decide` until a disposition closes the Issue or a stop ends the attempt.
 LangGraph compiles the declared `issue_graph` nodes and routes before execution. The host retains
 attempt counts before model calls, current intended behavior and evidence in candidate bookkeeping.
 No autonomous nested repair escapes the selected goal or the declared iteration limit.

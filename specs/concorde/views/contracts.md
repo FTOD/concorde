@@ -174,7 +174,7 @@ and successful site builds replace obsolete published output as specified below.
 The adapter inventory consists of regular files below the installed package's `docsite/` with
 suffix `.css`, `.json`, `.md`, `.svg`, `.ts`, `.tsx` or `.yml`, excluding any directory component
 named `node_modules`, `build`, `.generated`, `.docusaurus` or `coverage`, the root-relative
-`tests/repository/`, `concorde-only/` and `custom-docs/` subtrees, `scaffold/`, and the root `site.json`. Non-excluded symlinks are
+`tests/repository/` and `custom-docs/` subtrees, `scaffold/`, and the root `site.json`. Non-excluded symlinks are
 invalid. These template files contain no removed graph feature. Inventory discovery reads the
 installed template, never consumer Spec directories. `template_digest` hashes UTF-8 lines sorted
 by path, each `path`, a tab and the lowercase SHA-256 hex of its bytes, joined by newlines with a

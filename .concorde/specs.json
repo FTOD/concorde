@@ -832,66 +832,25 @@
           "kind": "module"
         },
         {
-          "id": "module.harness",
-          "kind": "module"
+          "kind": "document",
+          "id": "document.harness.context"
         },
         {
-          "id": "module.development",
-          "kind": "module"
+          "kind": "document",
+          "id": "document.harness.module"
         },
         {
-          "id": "module.planning",
-          "kind": "module"
-        },
-        {
-          "id": "module.implementation",
-          "kind": "module"
-        },
-        {
-          "id": "module.spec-authoring",
-          "kind": "module"
-        },
-        {
-          "id": "module.review",
-          "kind": "module"
-        },
-        {
-          "id": "module.validation",
-          "kind": "module"
-        },
-        {
-          "id": "module.delivery",
-          "kind": "module"
-        },
-        {
-          "id": "module.query-routing",
-          "kind": "module"
-        },
-        {
-          "id": "module.topology",
-          "kind": "module"
-        },
-        {
-          "id": "module.dev-loop",
-          "kind": "module"
-        },
-        {
-          "id": "module.specify-loop",
-          "kind": "module"
+          "kind": "document",
+          "id": "document.development.module"
         },
         {
           "kind": "document",
           "id": "document.concorde.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.lifecycle"
         }
       ],
       "title": "Views",
       "uses": [
-        "module.spec",
-        "module.harness"
+        "module.spec"
       ]
     },
     {

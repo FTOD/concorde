@@ -53,6 +53,13 @@ these responsibilities to executable declarations. Shared admission lives in Dev
 execution in Harness. Neither service creates a competing executable category. This organization
 changes no provider's owned Spec identity, result meaning or authorization boundary.
 
+Each Operation is explained only in the Specs of the Module that owns it: one of these children,
+or Spec, Distribution and Issues for initialization, configuration and Issue handling. When an
+Operation runs a Graph, that owner's Implementation Specs also hold the Graph Spec with its State,
+Nodes and Edges.
+The [ownership table](../development/execution-reference.md#operations-behavioral-ownership-and-composition-limits)
+maps every Operation, including each model-backed worker, to its owner and to the Graph it runs.
+
 ## Relationships
 
 This view answers which provider responsibilities Operations contains. Containment is Module

@@ -246,9 +246,10 @@ reinterprets old formats. The offline migration planner is not a second supporte
 The docsite publishes one canonical reading page per document unit, with parallel Module Specs and
 Implementation Specs tabs sharing the same Module-parent hierarchy,
 inline scoped diagrams and optional source-provenance disclosure. Reading and metadata both bind
-build identity, but machine inventories do not appear in the main reading graph. Spec Protocol is an
-independent custom-document tab, and Concorde's own site adds an Agent Graphs page. There is no docsite Graph page or
-unregistered Projections group. Source and link validation precede candidate promotion; human
+build identity, but machine inventories do not appear in the main reading graph. Spec Protocol uses
+an independent custom-document tab. There is no docsite Graph page, separate Operation-graph page or
+unregistered Projections group: each Operation, and the Graph Spec of an Operation that runs a Graph,
+is read in the owning Module's Specs. Source and link validation precede candidate promotion; human
 navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades

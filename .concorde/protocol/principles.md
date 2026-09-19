@@ -883,15 +883,24 @@ the registry listing remains their exact union. Project-owned metadata extension
 optional model execution profiles; its
 behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
 
-Every executable Graph has one Graph Spec in its owning Module's implementation-role documents,
-not its explanation-first topics. Module-role reading explains the conceptual sequence and its
-reasons, with clearly labeled conceptual diagrams when useful, and links to this exact Graph Spec.
-The Graph Spec is written with LangGraph's
-concepts: a State part, a Nodes table (node name, what executes, `in` and `out` state) and a
-Mermaid flowchart bound to the compiled Graph by `%% graph: <name>` whose node identifiers are the
-compiled node names including `__start__` and `__end__`, whose node labels state `in:` and
-`out:`, and whose edges carry their routing condition as a label exactly when the source node has
-several successors. The configured Graph Spec check keeps every diagram equal to its compiled Graph.
+Every Operation is explained in the Specs of the Module that owns its behavior: that Module's
+reading says what the Operation is for, when to use it, what it takes and returns and when it
+stops, and whether it runs as one node (deterministic code or one model-backed worker) or as a
+Graph. Every executable Graph has one Graph Spec in its owning Module's implementation-role
+documents, not its explanation-first topics. Module-role reading explains the conceptual sequence
+and its reasons, with clearly labeled conceptual diagrams when useful, and links to this exact
+Graph Spec. The Graph Spec is written with LangGraph's concepts as three parts in order, each
+opening a paragraph with its bold label: **State.** (the channels, their reducers and the records
+the nodes read and write), **Nodes.** (a table of node name, what executes, `in` and `out` state)
+and **Edges.** (how the next node is chosen, by a conditional edge reading a named State channel or
+by a `Command` the node returns, and where stops and errors lead). A Mermaid flowchart follows,
+bound to the compiled Graph by `%% graph: <name>`, whose node identifiers are the compiled node
+names including `__start__` and `__end__`, whose node labels state `in:` and `out:` as the Nodes
+table does, and whose edges carry their routing condition as a label exactly when the source node
+has several successors. The configured Graph Spec check keeps every Graph Spec's parts, Nodes table
+and diagram equal to its compiled Graph and requires its owner's module-role reading to link to its
+heading anchor. Publication shows Operations and Graph Specs only inside their owners' Specs; no
+separate Operation or Graph page repeats them.
 
 A Python test declares the scenarios it verifies with the `verifies` decorator from
 `concorde.spec.verification`, for example `@verifies("scenario.harness.context-freeze")` on the test

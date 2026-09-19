@@ -58,6 +58,14 @@ permission. Ordinary authoring preserves registered metadata; [Topology](../topo
 reconciles structural changes so registrations and references change together. Accepted-output reuse and
 independent review ordering belong to the consuming Graph.
 
+`specify` runs as a single node: one spec-author worker, run as an
+[Operation node](../harness/execution-reference.md#host-operation-node-operation-node), after
+which the owner's and each affected consumer's candidate compatibility reviews run one at a time
+before the host applies the replacements. Composing Graphs use that node as one step: the
+specification Graph's `specify` node, the Issue Graph's `repair_spec` node, and the
+[component coordination Graph](../development/execution-reference.md#graphs-component-coordination-graph-coordination-graph)'s
+`reconcile_specs` step, which runs it once per component.
+
 ## Relationships
 
 The diagram distinguishes proposing Owned replacements from applying them. [Spec Module](../spec/module.md) supplies document

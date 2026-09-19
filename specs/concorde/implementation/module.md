@@ -58,6 +58,15 @@ to the existing enclosing Graph. Final checks wait for every writer so partly ch
 do not produce misleading consumer evidence. This shared realization does not transfer those Graph
 completion conditions to the reusable local task contract.
 
+`implement` therefore runs in one of two shapes. For a Module whose tasks are all its own, it is a
+single node: one programmer worker run as an
+[Operation node](../harness/execution-reference.md#host-operation-node-operation-node). For a
+composite Module whose tasks name submodules or used Modules, it is the
+[component coordination Graph](../development/execution-reference.md#graphs-component-coordination-graph-coordination-graph),
+which reconciles and implements each component in its own context, runs the programmer for the
+composite's own tasks, and finishes with the
+[stabilization Graph](../development/execution-reference.md#graphs-shared-candidate-stabilization-graph-stabilization-graph).
+
 ## Relationships
 
 This view follows an admitted Implementation task to Task completion. [Spec Module](../spec/module.md) determines the selected

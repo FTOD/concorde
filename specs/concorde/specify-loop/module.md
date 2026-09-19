@@ -20,9 +20,9 @@ Specification Graph prepares or revises a Module’s specification and obtains i
 ## Usage
 
 Choose `concorde-specify-loop` when you want to prepare or review a Module contract without yet
-planning or implementing code. Supply a task, optional target/focus hints and constraints; the
-Graph selects one owner, authors its documents and independently reviews the resulting contract
-and affected consumers. A primary mutation runs in the common committed-base candidate worktree
+planning or implementing code. Supply a task, optional target/focus hints and constraints. The host
+first selects one owner; the specification Graph then authors its documents and independently
+reviews the resulting contract and affected consumers. A primary mutation runs in the common committed-base candidate worktree
 and returns its result here. Resume with the recorded change and compatible intent.
 
 `specify=false` reviews the existing contract. `run_reviews=false` records a Spec review skip only
@@ -44,6 +44,19 @@ The [specification Graph](execution-reference.md#specify-loop-specification-grap
 authoring can be reused, invokes [Spec Authoring](../spec-authoring/module.md) when needed, independently reviews missing/stale
 owner or consumer evidence, and summarizes typed artifacts. Accepted candidate compatibility
 reviews are rechecked against applied bytes rather than repeated blindly.
+
+`concorde-specify-loop` runs as two Graphs in turn. First,
+[target admission](../development/execution-reference.md#graphs-target-admission-graph-target-graph)
+binds a recorded owner or routes a new task through the
+[discovery Graph](../query-routing/execution-reference.md#query-and-routing-discovery-graph-discovery-graph).
+The specification Graph then runs four nodes. `initialize` and `summarize` are deterministic host
+steps. `specify` is one spec-author worker, run as an
+[Operation node](../harness/execution-reference.md#host-operation-node-operation-node), whose
+replacements the owner's and each affected consumer's candidate reviews admit before they are
+applied. `review_spec` runs a spec-reviewer for the owner and then for each consumer whose evidence
+is missing or stale. Every node names its own successor. A stop passes through `summarize`, so a
+stopped run still returns its artifacts and blockers; only a guard-caught error ends the Graph at
+once.
 
 The candidate records authoring intent separately from review requirements. This prevents a
 standalone review from substituting for authoring and makes prior required reviews sticky across

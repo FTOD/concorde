@@ -53,7 +53,7 @@ registered Spec reading, not custom docs. Optional
 and executable pages under the [custom docs agreement](scenarios.md#scenario.views.custom-docs).
 They remain outside registered-page identity, ownership and agent context. Collection paths cannot
 include registered Specs; duplicate published routes fail the build. Concorde configures its
-Protocol collection and Agent Graphs extension through these same entry points. The removed
+Protocol collection through these same entry points and registers no executable custom page. The removed
 `protocolDocs` option fails with migration guidance; unregistered instruction/wire projections
 are no longer read or published. Inline Mermaid remains supported in registered and custom docs.
 
@@ -71,18 +71,6 @@ changes the containing document digest and invalidates source-dependent build ev
 Markdown document still publishes once and retains its sole owner and all explicit inclusion reasons. Dependency links and
 diagram nodes do not add target contexts or undeclared registry relationships. Rendering support
 still requires ordinary site dependencies to be installed; initialization does not fetch them.
-
-#### Operation contract navigation {#pipeline-operation-contract-navigation}
-
-Execution explanations link to [Planning](../planning/execution-reference.md), [Tasks](../planning/execution-reference.md),
-[Implementation](../implementation/execution-reference.md), [Spec Authoring](../spec-authoring/execution-reference.md),
-[Review](../review/execution-reference.md), [Validation](../validation/execution-reference.md),
-[Delivery](../delivery/execution-reference.md), [Query and Routing](../query-routing/execution-reference.md),
-[Topology](../topology/execution-reference.md), [Development Graph](../dev-loop/execution-reference.md) and
-[Specification Graph](../specify-loop/execution-reference.md). These are Spec ownership boundaries;
-executable graphs still come only from the current factories under the
-[Harness inspection contract](../harness/scenarios.md#scenario.harness.graph-inspection).
-Moving a definition requires updating retained source links; it creates no invented executable graph.
 
 ### Design {#pipeline-design}
 

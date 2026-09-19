@@ -22,9 +22,9 @@ and transitions are retained here as the single detailed contract.
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
-## Topology evolution Agent Graph {#topology-topology-evolution-agent-graph}
+## Topology evolution Graphs {#topology-topology-evolution-graphs}
 
-Use this Graph when registered targets, document ownership and references, shared truth or routing structure
+Use these Graphs when registered targets, document ownership and references, shared truth or routing structure
 must change together. The developer supplies intended behavior and constraints. Main designs a
 candidate registry; fresh target-local authors supply the affected Specs after design acceptance.
 A second acceptance binds the exact prepared transaction before application.
@@ -32,14 +32,16 @@ A second acceptance binds the exact prepared transaction before application.
 Human acceptance is a Graph control input tied to the exact design or prepared application. A
 rejection may select another design or authoring loop, but cannot authorize the rejected effects.
 The loop waits for a required decision and re-admits revised intent and current source identity.
-Topology-designer and target-author are separate model Operations with independent State contracts and Harness bindings.
+Topology-designer and topology-author are separate model Operations with independent State contracts and Harness bindings.
 
 ### Design {#topology-design}
 
 #### Topology preparation Graph (`topology_graph`) {#topology-topology-preparation-graph-topology-graph}
 
-State: `occurrence` (the author being run), `route`, `output` (the main response), `result`.
+**State.** `occurrence` (the author being run), `route`, `output` (the main response), `result`.
 The accepted design supplies the candidate registry and one Spec task per new or changed Module.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
@@ -48,6 +50,12 @@ The accepted design supplies the candidate registry and one Spec task per new or
 | `validate_candidate` | Deterministic repository validation of the complete candidate overlay. | candidate registry, candidate documents | validated candidate |
 | `review_contexts` | Sequential work items: every affected old or candidate context receives an independent Spec compatibility review. | candidate, affected contexts | review evidence |
 | `persist_application` | Deterministic: the exact prepared application (registry and document bytes with before-digests) is written for the second acceptance. | validated candidate | prepared application |
+
+**Edges.** Every node except `persist_application` writes `route`, and a conditional edge follows
+it. `prepare_authors` and `author_module` route to `author_module` while authors remain, which
+makes authoring a loop of one author per pass, and to `validate_candidate` once every author has
+completed. `validate_candidate` and `review_contexts` advance only on success. Any gap, failure,
+invalid candidate or blocked review ends the Graph before an application is persisted.
 
 ```mermaid
 flowchart TB
@@ -77,7 +85,9 @@ flowchart TB
 
 #### Topology application Graph (`topology_apply_graph`) {#topology-topology-application-graph-topology-apply-graph}
 
-State: `route`, `output`, `result`.
+**State.** `route`, `output` (the main response), `result` (a failure recorded by a guarded step).
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
@@ -85,6 +95,11 @@ State: `route`, `output`, `result`.
 | `validate_application` | Deterministic validation of the application's complete overlay. | admitted application | validated application |
 | `apply_atomically` | Deterministic: one file transaction with before-digests and final repository validation, bound to this worktree's owning task. | validated application | applied files |
 | `cleanup` | Deterministic: removes the consumed proposal artifacts and records the applied topology. | applied files | main response |
+
+**Edges.** `admit_application` writes `route`: an admitted application continues, while a policy
+preview, a rejected or a stale application ends the Graph. After `validate_application` and after
+`apply_atomically`, a conditional edge reads `result`, so a validation failure or a failed
+transaction ends the Graph and success continues. `cleanup` always ends the Graph.
 
 ```mermaid
 flowchart TB

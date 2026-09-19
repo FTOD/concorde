@@ -47,7 +47,10 @@ The [discovery Graph](execution-reference.md#query-and-routing-discovery-graph-d
 discovery decision with deterministic admission of explicitly selected complete contexts. A router
 returns identities; the host binds the original task and constraints rather than trusting rewritten
 intent. An answerer can complete directly from the indexed/granted originals without reader-worker
-summaries or a synthesis stage.
+summaries or a synthesis stage. The Graph's `decide` node is one model-backed worker, run as an
+[Operation node](../harness/execution-reference.md#host-operation-node-operation-node): the
+`router` when an Operation needs its owner, the `answerer` for a `concorde-main` question and the
+`topology-designer` for a topology design. The other nodes are deterministic host steps.
 
 The [query Graph](execution-reference.md#query-and-routing-query-graph-query-graph) returns the last admitted decision.
 Expansion limits and stop edges bound missing-context reasoning. Provider references expand once;
@@ -109,5 +112,5 @@ This collaboration applies when selecting discovery inputs, validating target/fo
 ## Precise specifications
 
 The Query and Routing Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#query-and-routing-query-and-routing-agent-graph).
+[execution and record contracts](execution-reference.md#query-and-routing-query-and-routing-graphs).
 These companions are part of the same complete Module specification, not separate topic owners.

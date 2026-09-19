@@ -89,9 +89,10 @@ Concorde has one executable concept, the **Operation**: a LangGraph node with de
 output State updates, effects, use conditions and execution policy. An Operation runs deterministic
 code, calls a model, or runs a compiled graph of other Operations; `dev-loop` and `specify-loop` are
 composed Operations. Every graph is built with LangGraph's Graph API and documented by a Graph Spec
-whose diagram a deterministic check keeps equal to the compiled graph. The same graphs appear in
-LangGraph Studio and on the docsite's **Agent Graphs** page, and every worker launch records its
-tokens, cost and wall time for `python3 scripts/concorde.py usage`.
+whose diagram a deterministic check keeps equal to the compiled graph. Each Operation is explained,
+with its Graph Spec, in the Specs of the Module that owns it; the same graphs appear in LangGraph
+Studio, and every worker launch records its tokens, cost and wall time for
+`python3 scripts/concorde.py usage`.
 
 ### Changes run in candidate worktrees and are delivered on request
 
@@ -220,9 +221,8 @@ without starting a worker.
 
 The **[published docsite](https://ftod.github.io/concorde/)** renders Concorde's own Specs. Its tabs
 are **Module Specs** (the explanatory entries, navigated by Module parentage), **Implementation
-Specs** (requirements, scenarios and contracts of the same Modules), **Spec Protocol** and, for this
-repository only, **Agent Graphs**, which shows every executable graph with its steps, handoffs and
-links to their Specs. To preview it locally with Node.js 20+:
+Specs** (requirements, scenarios, contracts and Graph Specs of the same Modules) and **Spec
+Protocol**; there is no separate graph page. To preview it locally with Node.js 20+:
 
 ```bash
 python3 scripts/concorde.py build

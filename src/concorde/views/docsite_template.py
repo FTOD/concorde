@@ -20,7 +20,6 @@ EXCLUDED_DIRECTORIES = (
     ".docusaurus",
     "coverage",
     "tests/repository",
-    "concorde-only",
     "custom-docs",
 )
 EXCLUDED_FILES = ("site.json",)

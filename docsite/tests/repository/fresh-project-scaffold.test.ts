@@ -132,9 +132,6 @@ describe("a project holding only Profile 15 initialization outputs", () => {
     expect(files).not.toContain("docsite/src/pages/graph.tsx");
     expect(files).not.toContain("docsite/src/components/ScopedGraph.tsx");
     expect(
-      files.some((path) => path.startsWith("docsite/concorde-only/")),
-    ).toBe(false);
-    expect(
       files.some(
         (path) =>
           path.startsWith("docsite/tests/repository/") ||
@@ -291,7 +288,6 @@ describe("a project holding only Profile 15 initialization outputs", () => {
     expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain(
       "Spec Protocol",
     );
-    expect(mainPage).not.toContain("Agent Graphs");
     expect(mainPage).toContain("Implementation Specs");
     expect(mainPage).not.toContain("<iframe");
     expect(mainPage).toContain('id="purpose"');

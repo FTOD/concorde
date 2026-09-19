@@ -225,8 +225,11 @@ Candidate-local completion does not mean primary was changed; delivery remains s
 
 #### Issue Graph (`issue_graph`) {#lifecycle-issue-graph-issue-graph}
 
-State: `route`, `output` and the guarded failure `result`. Selected record bytes, decision count, intended behavior and current
-verification are bound by the host; durable attempt history belongs to the candidate.
+**State.** `route`, `output` and the guarded failure `result`. Selected record bytes, decision
+count, intended behavior and current verification are bound by the host; durable attempt history
+belongs to the candidate.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
@@ -242,6 +245,15 @@ verification are bound by the host; durable attempt history belongs to the candi
 | `close` | Deterministic write-ahead journaling and disposition with stale checks. | decision, evidence | disposition |
 | `ready` | Final validation including disposition bytes. | candidate | output |
 | `finish` | Deterministic stopped or already-completed response. | reason | output |
+
+**Edges.** `select_operation`, `prepare`, `decide`, `develop`, `repair_spec` and `verify` write
+`route`, and a conditional edge follows it. The requested action selects inspection, reporting,
+reopening or solving. While solving, the solver's decision in `decide` selects development, Spec
+repair, verification, a supported disposition in `close`, or `finish` for a needed human decision
+or an exhausted decision limit; `develop`, `repair_spec` and `verify` return to `decide` for the
+next bounded decision or stop at `finish`. After `close`, a conditional edge reads `result`: an
+accepted disposition proceeds to `ready`. An error in any routing node ends the Graph, and no edge
+delivers the candidate.
 
 ```mermaid
 flowchart TB
@@ -303,11 +315,17 @@ The distinction preserves both targeted verification and the ordinary source/con
 gates; a private targeted review cannot replace another task's required review. Each item is a
 separate [Review Module](../review/module.md) operation invocation, and a blocked or failed item prevents dependent items.
 
-State: `index`, `stop` and `output`. The host owns the finite list and its review input bindings.
+**State.** `index` (the next review), `stop` and `output` (the result that stopped the sequence).
+The host owns the finite list and its review input bindings.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `review_item` | One ordinary Review operation for the selected mode and intent. | index, review list | index, stop, output |
+
+**Edges.** After each review a conditional edge reads `stop`: while reviews remain and none has
+blocked or failed, `review_item` runs again on the next item; otherwise the Graph ends.
 
 ```mermaid
 flowchart TB

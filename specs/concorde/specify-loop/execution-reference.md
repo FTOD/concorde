@@ -61,10 +61,13 @@ ready. [Development Graph](../dev-loop/module.md) may consume that completed res
 
 #### Specification Graph (`specify_graph`) {#specify-loop-specification-graph-specify-graph}
 
-State: `output` (the last stage's typed response data), `artifacts` (every stage's artifact
-references under a merge reducer), `result`. The candidate record carries the accepted authoring
-(task, focus, constraints, Spec digest), the review requirements and intents, the owner's and
-each consumer's review evidence and the gap history.
+**State.** `output` (the last stage's typed response data), `artifacts` (every stage's artifact
+references under a merge reducer that keeps the newest reference per artifact id), `result` (a
+terminal failure envelope when a guard caught an error). The candidate record carries the accepted
+authoring (task, focus, constraints, Spec digest), the review requirements and intents, the owner's
+and each consumer's review evidence and the gap history.
+
+**Nodes.**
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
@@ -72,6 +75,13 @@ each consumer's review evidence and the gap history.
 | `specify` | Spec Authoring: one spec-author invocation; the owner's and every affected consumer's candidate reviews admit the replacements before they are applied and are recorded for reuse. | task, Spec context | replaced Spec documents, candidate review evidence |
 | `review_spec` | Independent Spec review of the owner and every consumer whose evidence is missing or stale; an explicit skip or fully current evidence is recorded instead. | task, Spec, review evidence | Spec review results |
 | `summarize` | Deterministic: the operation response with every artifact reference. | output, artifacts | response |
+
+**Edges.** Like the development Graph, every node except `summarize` returns a LangGraph `Command`
+naming its successor, within its declared destinations. `initialize` goes to `specify` when
+authoring is needed and straight to `review_spec` otherwise. Accepted replacements go on to
+`review_spec`; a gap, blocker or failure in `specify` stops at `summarize`. `review_spec` always
+hands its outcome, reviewed, retained, skipped or stopped, to `summarize`. A guard-caught error in
+any stage ends the Graph directly.
 
 ```mermaid
 flowchart TB

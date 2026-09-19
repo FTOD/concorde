@@ -1,9 +1,9 @@
 # Project Docsite
 
 `docsite/` is the packaged, project-neutral publishing template. Project-owned `site.json`,
-`custom-docs/`, Concorde's `concorde-only/` extension assets and `tests/repository/` are excluded
-from its packaged inventory. A scaffold copies the common adapter and creates a neutral identity;
-it does not copy Concorde's homepage, Protocol chapters, Agent Graphs or their resources.
+`custom-docs/` and `tests/repository/` are excluded from its packaged inventory. A scaffold copies
+the common adapter and creates a neutral identity; it does not copy Concorde's homepage, Protocol
+chapters or their resources.
 
 The adapter publishes the host project's explicitly registered Module Specs. Canonical content
 stays outside `docsite/`; `.concorde/specs.json` names the documents, Module relationships and each
@@ -211,8 +211,9 @@ render as text; destinations are local `/routes` or HTTP(S) URLs. Local links re
 This configures homepage links without adding project-specific logic to the shared renderer.
 
 Concorde's own `site.json` selects `../protocol` with a sidebar in `custom-docs/sidebars.protocol.ts`.
-Its `custom-docs/index.ts` enables the existing Agent Graphs plugin. These retain `/protocol` and
-`/agent-graphs` and are examples of project-owned extensions, not consumer defaults.
+This retains `/protocol` and is an example of a project-owned collection, not a consumer default.
+Concorde adds no executable custom page: each of its Operations, and the Graph Spec of every
+Operation that runs a Graph, is published with the Specs of the Module that owns it.
 
 ### Migration
 
@@ -286,8 +287,7 @@ tests are not part of the template: every other project that scaffolds the adapt
 
 ## Concorde repository deployment
 
-For this repository, `.github/workflows/deploy-docsite.yml` shares the scaffold workflow
-with additional dependency preparation for its own executable Graph documentation. It runs the
-verified build on `main` and deploys `build/` to
+For this repository, `.github/workflows/deploy-docsite.yml` is the scaffold workflow unchanged.
+It runs the verified build on `main` and deploys `build/` to
 `https://ftod.github.io/concorde/`. This package does not prescribe deployment for other Concorde
 projects; `--github-pages` at scaffold time is how another project opts in.

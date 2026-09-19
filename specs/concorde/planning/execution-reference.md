@@ -89,14 +89,21 @@ having to explain its purpose by reference to dev-loop.
 
 #### Planning Graph (`plan_graph`) {#plan-planning-graph-plan-graph}
 
-State: `route`, `output` (the planning response), `result`; the candidate record receives the
+**State.** `route`, `output` (the planning response), `result`; the candidate record receives the
 accepted plan, its Spec digest and intent.
+
+**Nodes.** Both model-backed nodes run their worker as an [Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `assess_context` | The deterministic dependency-declaration check, then one context-assessor invocation. | Spec context, task | sufficiency or gaps |
 | `author_plan` | One planner invocation with an optional prior plan artifact. | Spec context, task, prior plan | plan |
 | `persist_plan` | Deterministic: a nonempty plan replaces the target's plan and clears dependent tasks and coordination. | plan, candidate | plan artifact, target record |
+
+**Edges.** `assess_context` and `author_plan` each write `route`, and a conditional edge follows it.
+Only a sufficient assessment continues to `author_plan`, and only a returned plan continues to
+`persist_plan`; a gap, conflict, unsupported task, failure or policy preview ends the Graph with
+the response already written. `persist_plan` always ends the Graph.
 
 ```mermaid
 flowchart TB

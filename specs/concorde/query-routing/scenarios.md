@@ -39,4 +39,4 @@ See [routing hints only steer selection](requirements.md#req.development.routing
 - WHEN a discovery worker's bounded expansion-step limit is reached
 - THEN the host returns the `context_limit` outcome instead of expanding context further
 
-The detailed contract is [Complete-context question and route](execution-reference.md#query-and-routing-query-and-routing-agent-graph).
+The detailed contract is [Complete-context question and route](execution-reference.md#query-and-routing-query-and-routing-graphs).

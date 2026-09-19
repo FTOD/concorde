@@ -8,10 +8,14 @@ from unittest.mock import patch
 from concorde.development.graph_catalog import catalog, topology
 from concorde.development.graph_specs import (
     GraphSpec,
+    Reading,
+    bound_graph_specs,
     compare,
     functional_api_imports,
     graph_spec_findings,
     graph_specs,
+    link_problems,
+    part_problems,
 )
 from concorde.spec.repository import SpecRepository
 from concorde.spec.validation import flowchart_model
@@ -32,9 +36,36 @@ DIAGRAM = """flowchart TB
 """
 
 
+STATE = "**State.** `index` (the next item), `output`, `stop`.\n\n"
+CODE = "```python\n# a comment, not a heading\nitems = ()\n```\n\n"
+NODES = """**Nodes.**
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `select_item` | Deterministic: stops when no item remains. | index, items | stop |
+| `execute_item` | The item operation. | item | output, index, stop |
+
+"""
+EDGES = "**Edges.** Both nodes route on `stop` through conditional edges.\n\n"
+
+
 def spec(text: str) -> GraphSpec:
     nodes, edges = flowchart_model(text)
     return GraphSpec("specs/x.md", "batch_graph", nodes, tuple(edges))
+
+
+def section(*parts: str, role: str = "implementation") -> GraphSpec:
+    """The one bound Graph Spec of a document whose Graph section holds ``parts``."""
+    body = (
+        "## Earlier section\n\n**State.** Not this Graph's.\n\n"
+        "#### Sequential work items Graph (`batch_graph`)\n\n"
+        + "".join(parts)
+        + "```mermaid\n"
+        + DIAGRAM
+        + "```\n\n## Later section\n"
+    )
+    (found,) = bound_graph_specs("specs/x.md", body, role)
+    return found
 
 
 class GraphSpecTests(unittest.TestCase):
@@ -122,6 +153,132 @@ class GraphSpecTests(unittest.TestCase):
                 "must start with its identifier" in problem
                 for problem in compare(spec(misnamed), compiled)
             )
+        )
+
+    @verifies("scenario.development.graph-specs")
+    def test_parts_require_state_nodes_and_edges_in_order(self):
+        compiled = topology(catalog()["batch_graph"]())
+
+        def problems(*parts: str, role: str = "implementation") -> list[str]:
+            return part_problems(section(*parts, role=role), compiled)
+
+        # A '#' line inside fenced code neither ends the section nor hides its State part.
+        self.assertEqual([], problems(STATE, CODE, NODES, EDGES))
+        self.assertIn(
+            "has no **Edges.** part before its diagram", problems(STATE, NODES)
+        )
+        self.assertIn(
+            "has no **State.** part before its diagram", problems(NODES, EDGES)
+        )
+        self.assertIn(
+            "must state its State, Nodes and Edges parts in that order",
+            problems(NODES, STATE, EDGES),
+        )
+        self.assertIn(
+            "states its **Edges.** part more than once",
+            problems(STATE, NODES, EDGES, EDGES),
+        )
+        self.assertIn(
+            "**State.** part names no channel or record",
+            problems("**State.**\n\n", NODES, EDGES),
+        )
+        self.assertIn(
+            "**Edges.** part does not say how the next node is chosen",
+            problems(STATE, NODES, "**Edges.**\n\n"),
+        )
+        self.assertIn(
+            "is in a module document, not an implementation-role document",
+            problems(STATE, NODES, EDGES, role="module"),
+        )
+
+    @verifies("scenario.development.graph-specs")
+    def test_nodes_table_names_every_compiled_node_with_its_diagram_state(self):
+        compiled = topology(catalog()["batch_graph"]())
+
+        def problems(nodes: str) -> list[str]:
+            return part_problems(section(STATE, nodes, EDGES), compiled)
+
+        self.assertEqual([], problems(NODES))
+        missing = NODES.replace(
+            "| `execute_item` | The item operation. | item | output, index, stop |\n",
+            "",
+        )
+        self.assertTrue(
+            any(
+                "Nodes table differs" in problem and "execute_item" in problem
+                for problem in problems(missing)
+            ),
+            problems(missing),
+        )
+        extra = NODES.replace(
+            "| `select_item` |",
+            "| `phantom` | Nothing. | nothing | nothing |\n| `select_item` |",
+        )
+        self.assertTrue(
+            any("table-only ['phantom']" in problem for problem in problems(extra))
+        )
+        drifted = NODES.replace("| index, items | stop |", "| index | stop |")
+        self.assertTrue(
+            any(
+                problem.startswith("Nodes row select_item states in 'index'")
+                for problem in problems(drifted)
+            ),
+            problems(drifted),
+        )
+        unquoted = NODES.replace("| `select_item` |", "| select_item |")
+        self.assertIn(
+            "Nodes row 'select_item' must name its node in backticks",
+            problems(unquoted),
+        )
+        self.assertIn(
+            "needs a 'Node | Executes | in | out' table between its Nodes and Edges parts",
+            problems("**Nodes.** Two nodes.\n\n"),
+        )
+
+    @verifies("scenario.development.graph-specs")
+    def test_owner_reading_links_the_exact_graph_spec(self):
+        body = (
+            "#### Sequential work items Graph (`batch_graph`) {#host-batch}\n\n"
+            + STATE
+            + NODES
+            + EDGES
+            + "```mermaid\n"
+            + DIAGRAM
+            + "```\n"
+        )
+        (found,) = bound_graph_specs(
+            "specs/h/execution-reference.md", body, "implementation", "module.h"
+        )
+        linking = Reading(
+            "specs/h/host.md",
+            "module.h",
+            "See [it](execution-reference.md#host-batch).",
+        )
+        self.assertEqual([], link_problems(found, [linking]))
+        nested = Reading(
+            "specs/h/topics/guide.md",
+            "module.h",
+            "See [it](../execution-reference.md#host-batch).",
+        )
+        self.assertEqual([], link_problems(found, [nested]))
+        unlinked = [
+            "is not linked as #host-batch from any module-role document of module.h"
+        ]
+        foreign = Reading(
+            "specs/other/module.md",
+            "module.other",
+            "See [it](../h/execution-reference.md#host-batch).",
+        )
+        self.assertEqual(unlinked, link_problems(found, [foreign]))
+        section_only = Reading(
+            "specs/h/host.md", "module.h", "See [it](execution-reference.md#host)."
+        )
+        self.assertEqual(unlinked, link_problems(found, [section_only]))
+        self.assertEqual(
+            [
+                "heading needs an explicit {#anchor} that its owner's reading can link to"
+            ],
+            link_problems(section(STATE, NODES, EDGES), [linking]),
         )
 
     @verifies("scenario.development.graph-specs")
