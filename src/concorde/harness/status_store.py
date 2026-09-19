@@ -113,10 +113,16 @@ def write_status(root: Path, value: dict, *, create: bool = False) -> None:
     Successful saves refresh the caller's revision; a stale snapshot is never
     merged by a field allowlist or silently substituted for newer progress.
     """
-    from .change_worktree import _exclude_control_files, repository_lock
+    from .change_worktree import (
+        _exclude_control_files,
+        repository_lock,
+        verify_target_owner,
+    )
 
     with repository_lock(root):
         destination = _local_storage(root)
+        for target in value.get("targets", {}).values():
+            verify_target_owner(value, target)
         previous = read_status(destination, value["change_id"])
         if create and previous is not None:
             raise SpecError(
@@ -163,7 +169,14 @@ def record_manual_merge(
     root: Path, change_id: str, *, commit: str, cleanup: str
 ) -> dict:
     """Record observed ordinary-Git integration, never perform or authorize a merge."""
-    from .change_worktree import git, git_value, repository_lock
+    from .change_worktree import (
+        git,
+        git_value,
+        read_change,
+        repository_lock,
+        workspace_identity,
+        worktree_incarnation,
+    )
 
     with repository_lock(root):
         primary = primary_root(root)
@@ -180,6 +193,22 @@ def record_manual_merge(
         candidate = Path(state["path"])
         prior = state.get("manual_merge") or {}
         candidate_commit = prior.get("candidate_commit")
+        if candidate.exists():
+            source_primary, current = workspace_identity(candidate)
+            owner = read_change(candidate)
+            if (
+                current is None
+                or source_primary is None
+                or source_primary["path"] != str(primary)
+                or not state.get("git_worktree_id")
+                or state["git_worktree_id"] != worktree_incarnation(candidate)
+                or (owner is not None and owner["change_id"] != change_id)
+                or (owner is None and not candidate_commit)
+            ):
+                raise SpecError(
+                    "present source does not belong to the selected task incarnation",
+                    "workspace_mismatch",
+                )
         if not candidate.exists() and not candidate_commit:
             raise SpecError(
                 "record verified manual integration before removing its candidate",
@@ -279,6 +308,32 @@ def _import_receipt_lifecycle(primary: Path, state: dict, receipt: dict) -> None
     }
 
 
+def _verify_legacy_receipt_owner(state: dict, receipt: dict) -> None:
+    """Join legacy records only on compatible recorded ownership, before effects.
+
+    A live branch rename need not match either historical label. But legacy records
+    have no shared immutable incarnation proof for two *different* source labels;
+    that disagreement needs explicit repair, not inference from today's checkout.
+    Null local routing/intent may predate binding and contributes no contradiction.
+    """
+    pairs = (
+        ("path", "source_worktree"),
+        ("branch", "source_branch"),
+        ("task", "task"),
+        ("constraints", "constraints"),
+        ("target_id", "target_id"),
+        ("focus_id", "focus_id"),
+    )
+    for local, remote in pairs:
+        bound = state.get(local) is not None or (
+            local == "focus_id" and state.get("target_id") is not None
+        )
+        if bound and state.get(local) != receipt.get(remote):
+            raise SpecError(
+                f"legacy state and receipt disagree on {local}", "migration_conflict"
+            )
+
+
 def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
     """Explicit non-destructive, idempotent import with an interruption-safe journal.
 
@@ -314,6 +369,15 @@ def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
                     raise SpecError(
                         "legacy state needs explicit version/identity repair",
                         "migration_conflict",
+                    )
+                from .change_worktree import target_owner
+
+                if any(
+                    "owner" in target and target["owner"] != target_owner(state)
+                    for target in state.get("targets", {}).values()
+                ):
+                    raise SpecError(
+                        "legacy target ownership conflict", "migration_conflict"
                     )
                 key = state["change_id"]
                 if key in records and records[key] != state:
@@ -357,6 +421,8 @@ def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
             for path in deliveries.glob("*.json"):
                 receipt = decode(checked_path(deliveries, path.name).read_text())
                 key = receipt["change_id"]
+                if key in records:
+                    _verify_legacy_receipt_owner(records[key], receipt)
                 state = records.setdefault(
                     key,
                     {
@@ -437,6 +503,17 @@ def migrate_legacy(root: Path, *, apply: bool = False) -> dict:
                     state["git_worktree_id"] = worktree_incarnation(
                         Path(state["path"]), create=True
                     )
+                if (
+                    state.get("migration", {})
+                    .get("source", "")
+                    .endswith("/worktree.json")
+                ):
+                    from .change_worktree import target_owner
+
+                    # Explicit migration may bind historical, previously unbound targets.
+                    # Their original bytes remain archived and readiness stays invalidated.
+                    for target in state.get("targets", {}).values():
+                        target["owner"] = target_owner(state)
                     copies[status_path(key)] = (canonical(state) + "\n").encode()
             _exclude_control_files(root)
             plan["payloads"] = {

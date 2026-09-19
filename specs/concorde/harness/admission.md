@@ -367,10 +367,16 @@ Cooperative repository locks serialize atomic coordinator writes without letting
 source or index. Explicit change-ID uniqueness and create-only registration share that lock boundary.
 Every complete status replacement compares its read revision under the same lock and advances the
 revision only on a successful change; an identical current save preserves bytes and revision, while
-stale replacements fail with `stale_status`. Target snapshots have separate
-revisions advanced by every status writer that changes them, so a stale target cannot be inserted
-into a freshly read status. Independent updates reread and apply their intent; no field allowlist
-silently merges a stale record over newer blockers, progress or validation. Live unmanaged
+stale replacements fail with `stale_status`. Host-private target snapshots carry an `owner` object
+with their stable `change_id` and `git_worktree_id` (null only for an unversioned workspace), captured
+at construction, and separate revisions advanced by every status writer that changes them. Loads,
+whole-status writes and target saves require that binding to equal the containing change's owner;
+a missing or mismatched binding fails with `workspace_mismatch`, never filled from a fresh root read.
+Target saves compare ownership before revision, so equal counters in another task or recreated
+worktree cannot admit an old snapshot. New unsaved targets also retain their construction-time owner.
+Explicit legacy migration can bind historical targets, preserving original bytes, but ordinary reads
+and saves never adopt unbound targets. Thus a stale target cannot be inserted into a freshly read
+status. Independent updates reread and apply their intent; no field allowlist silently merges a stale record over newer blockers, progress or validation. Live unmanaged
 worktrees remain discoverable but are not silently converted into tasks. Branch/path are locators;
 change identity remains stable across a branch rename. `git_worktree_id` is an `incarnation:`-prefixed
 UUID, not a Git administrative pathname. Locked registration creates its narrow `concorde-incarnation`
@@ -393,7 +399,13 @@ scratch and auxiliary work, not duplicate durable run archives.
 
 `migrate-status` previews legacy worktree state, inventory, receipts and candidate runs;
 `migrate-status --apply` explicitly imports them. Preflight refuses conflicting stable IDs, differing
-run bytes, unsafe paths and existing archive destinations without deleting data. A durable journal
+run bytes, unsafe paths and existing archive destinations without deleting data. Before creating
+incarnation tokens, journals or import destinations, a same-ID local-state/receipt join compares source
+path and recorded branch, plus each locally bound task, constraints, target and focus. A contradiction
+fails with `migration_conflict` and leaves all inputs unchanged. Null local intent/routing may predate
+binding and is not a contradiction, except that a bound target's null focus explicitly means no focus.
+Matching historical branch labels need not equal today's live branch after a rename; disagreeing legacy source labels lack shared incarnation proof and require
+explicit repair, not inference from a replacement checkout. A durable journal
 precedes writes; retries replay identical targets and finish unfinished archival/removal steps, while
 conflicting intervening bytes block. Original bytes are archived under primary `.concorde/runs/legacy-migration/` before
 removing exact unchanged legacy sources; candidate-local durable archives do not remain. Legacy readiness requires fresh validation. Delivery recovery remains in the
@@ -545,5 +557,9 @@ or candidate guidance. `--child <id> --phase maintenance|test|task --change-id <
 owner; `--release` requires that same owner before a sibling takes over. These commands record
 coordination, never spawn sessions or prove fresh context was actually used. `--manual-merge
 <commit> --change-id <id> --cleanup pending|retained|removed` verifies observed Git ancestry and
-clean candidate inputs without performing or authorizing a merge. A removed cleanup outcome also
-requires the candidate path to be absent.
+clean candidate inputs without performing or authorizing a merge. Before using a present source's
+HEAD or clean tree, the host verifies its primary, saved worktree incarnation and selected task ownership;
+a replacement task or unmanaged replacement path cannot supply evidence, even when prior merge evidence
+exists. Branch rename within that incarnation remains supported. If the original source is absent,
+a retry may use its already recorded immutable candidate commit and reverify ancestry; it cannot invent
+that evidence after removal. A removed cleanup outcome also requires the candidate path to be absent.

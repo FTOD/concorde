@@ -276,6 +276,217 @@ class StatusStoreTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"])
         self.assertEqual([{"reason": "new blocker"}], result["blockers"])
 
+    @verifies("scenario.harness.primary-status")
+    def test_target_snapshot_rejects_recreated_incarnation_with_equal_revision(self):
+        from concorde.spec.contract_shapes import CHECK_RESULT
+        from concorde.spec.repository import digest
+        from concorde.spec.typed_data import check_schema
+
+        def target(task, status):
+            state = ensure_change(
+                self.candidate, task={"task": task}, mode="maintenance"
+            )
+            state["target_id"] = "module.example"
+            save_change(self.candidate, state)
+            value = target_state(self.candidate, "module.example", None, create=True)
+            # Schema-conforming disposable records, not claimed check execution.
+            check = {
+                "check_id": "check.fixture",
+                "target_id": "module.example",
+                "status": status,
+                "exit_code": 0 if status == "passed" else 1,
+                "source_digest": digest(b"fixture"),
+                "log_digest": digest(status.encode()),
+            }
+            check_schema(check, CHECK_RESULT)
+            value.update(task=task, plan=task, checks=[check])
+            save_target_state(self.candidate, value)
+            return state, value
+
+        old, stale = target("unfinished old task", "passed")
+        old_bytes = (self.primary / status_path(old["change_id"])).read_bytes()
+        head = git(self.candidate, "rev-parse", "HEAD").stdout
+        git(self.primary, "worktree", "remove", "--force", str(self.candidate))
+        git(self.primary, "worktree", "add", str(self.candidate), "task")
+        new, fresh = target("unrelated new task", "failed")
+        self.assertEqual(head, git(self.candidate, "rev-parse", "HEAD").stdout)
+        self.assertEqual(stale["revision"], fresh["revision"])
+        self.assertNotEqual(stale["owner"], fresh["owner"])
+        before = (self.primary / status_path(new["change_id"])).read_bytes()
+        stale["phase"] = "implementation"
+        with self.assertRaises(SpecError) as error:
+            save_target_state(self.candidate, stale)
+        self.assertEqual("workspace_mismatch", error.exception.code)
+        # Whole-status saves must not provide a second laundering entry point.
+        current = read_change(self.candidate, required=True)
+        current["targets"]["module.example"] = stale
+        for writer in (save_change, write_status):
+            with self.assertRaises(SpecError):
+                writer(self.candidate, current)
+        self.assertEqual(
+            before, (self.primary / status_path(new["change_id"])).read_bytes()
+        )
+        self.assertEqual(
+            old_bytes, (self.primary / status_path(old["change_id"])).read_bytes()
+        )
+
+    @verifies("scenario.harness.primary-status")
+    def test_target_ownership_is_required_and_not_just_incarnation(self):
+        first = ensure_change(
+            self.primary, task={"task": "first"}, allow_primary=True, mode="direct"
+        )
+        first["target_id"] = "module.example"
+        save_change(self.primary, first)
+        stale = target_state(self.primary, "module.example", None, create=True)
+        save_target_state(self.primary, stale)
+        record_manual_merge(
+            self.primary, first["change_id"], commit="HEAD", cleanup="retained"
+        )
+        second = ensure_change(
+            self.primary, task={"task": "second"}, allow_primary=True, mode="direct"
+        )
+        second["target_id"] = "module.example"
+        save_change(self.primary, second)
+        fresh = target_state(self.primary, "module.example", None, create=True)
+        save_target_state(self.primary, fresh)
+        self.assertEqual(stale["revision"], fresh["revision"])
+        self.assertEqual(
+            stale["owner"]["git_worktree_id"], fresh["owner"]["git_worktree_id"]
+        )
+        before = (self.primary / status_path(second["change_id"])).read_bytes()
+        for bad in (
+            stale,
+            {k: v for k, v in fresh.items() if k != "owner"},
+            {**fresh, "owner": {**fresh["owner"], "git_worktree_id": "stale"}},
+        ):
+            with self.assertRaises(SpecError):
+                save_target_state(self.primary, bad)
+        self.assertEqual(
+            before, (self.primary / status_path(second["change_id"])).read_bytes()
+        )
+        # Loading an unbound on-disk target refuses it, never adds current ownership.
+        saved = read_change(self.primary, required=True)
+        saved["targets"]["module.example"].pop("owner")
+        path = self.primary / status_path(second["change_id"])
+        path.write_text(json.dumps(saved))
+        unbound = path.read_bytes()
+        with self.assertRaises(SpecError):
+            target_state(self.primary, "module.example", None)
+        self.assertEqual(unbound, path.read_bytes())
+
+    @verifies("scenario.harness.primary-status")
+    def test_unsaved_target_cannot_be_adopted_by_another_task(self):
+        old = ensure_change(self.candidate, task={"task": "old"}, mode="maintenance")
+        old["target_id"] = "module.example"
+        save_change(self.candidate, old)
+        stale = target_state(self.candidate, "module.example", None, create=True)
+        git(self.primary, "worktree", "remove", "--force", str(self.candidate))
+        git(self.primary, "worktree", "add", str(self.candidate), "task")
+        new = ensure_change(self.candidate, task={"task": "new"}, mode="maintenance")
+        new["target_id"] = "module.example"
+        save_change(self.candidate, new)
+        before = (self.primary / status_path(new["change_id"])).read_bytes()
+        with self.assertRaises(SpecError):
+            save_target_state(self.candidate, stale)
+        self.assertEqual(
+            before, (self.primary / status_path(new["change_id"])).read_bytes()
+        )
+        self.assertEqual({}, read_change(self.candidate)["targets"])
+
+    @verifies("scenario.harness.primary-status")
+    def test_new_unsaved_target_keeps_binding_through_rename_and_noop(self):
+        state = ensure_change(self.candidate, task={"task": "work"}, mode="maintenance")
+        state["target_id"] = "module.example"
+        save_change(self.candidate, state)
+        value = target_state(self.candidate, "module.example", None, create=True)
+        owner = copy.deepcopy(value["owner"])
+        git(self.candidate, "branch", "-m", "renamed")
+        save_target_state(self.candidate, value)
+        before = (self.primary / status_path(state["change_id"])).read_bytes()
+        save_target_state(self.candidate, value)
+        self.assertEqual(
+            before, (self.primary / status_path(state["change_id"])).read_bytes()
+        )
+        self.assertEqual(owner, value["owner"])
+        self.assertEqual("renamed", read_change(self.candidate)["branch"])
+
+    @verifies("scenario.harness.primary-status")
+    def test_manual_merge_refuses_replacement_even_with_prior_evidence(self):
+        for recorded in (False, True):
+            with self.subTest(recorded=recorded):
+                old = ensure_change(
+                    self.candidate, task={"task": "old"}, mode="maintenance"
+                )
+                if recorded:
+                    record_manual_merge(
+                        self.primary,
+                        old["change_id"],
+                        commit="HEAD",
+                        cleanup="retained",
+                    )
+                else:
+                    (self.candidate / "file").write_text("unfinished old work")
+                old_bytes = (self.primary / status_path(old["change_id"])).read_bytes()
+                git(self.primary, "worktree", "remove", "--force", str(self.candidate))
+                git(self.primary, "worktree", "add", str(self.candidate), "task")
+                # Both unmanaged and newly registered replacement paths must refuse.
+                for registered in (False, True):
+                    if registered:
+                        new = ensure_change(
+                            self.candidate, task={"task": "new"}, mode="maintenance"
+                        )
+                    with self.assertRaises(SpecError):
+                        record_manual_merge(
+                            self.primary,
+                            old["change_id"],
+                            commit="HEAD",
+                            cleanup="retained",
+                        )
+                    self.assertEqual(
+                        old_bytes,
+                        (self.primary / status_path(old["change_id"])).read_bytes(),
+                    )
+                self.assertEqual(new, read_change(self.candidate))
+                git(self.primary, "worktree", "remove", "--force", str(self.candidate))
+                git(self.primary, "worktree", "add", str(self.candidate), "task")
+
+    @verifies("scenario.harness.primary-status")
+    def test_manual_merge_rename_and_absent_source_retry(self):
+        state = ensure_change(self.candidate, task={"task": "work"}, mode="maintenance")
+        git(self.candidate, "branch", "-m", "renamed")
+        recorded = record_manual_merge(
+            self.primary, state["change_id"], commit="HEAD", cleanup="retained"
+        )
+        git(self.primary, "worktree", "remove", "--force", str(self.candidate))
+        retried = record_manual_merge(
+            self.primary, state["change_id"], commit="HEAD", cleanup="removed"
+        )
+        self.assertEqual(recorded["manual_merge"], retried["manual_merge"])
+        self.assertEqual("removed", retried["cleanup"]["status"])
+        self.assertFalse(self.candidate.exists())
+
+    @verifies("scenario.harness.primary-status")
+    def test_manual_merge_refuses_other_task_in_same_primary_incarnation(self):
+        first = ensure_change(
+            self.primary, task={"task": "first"}, allow_primary=True, mode="direct"
+        )
+        record_manual_merge(
+            self.primary, first["change_id"], commit="HEAD", cleanup="retained"
+        )
+        second = ensure_change(
+            self.primary, task={"task": "second"}, allow_primary=True, mode="direct"
+        )
+        self.assertEqual(first["git_worktree_id"], second["git_worktree_id"])
+        before = (self.primary / status_path(first["change_id"])).read_bytes()
+        with self.assertRaises(SpecError):
+            record_manual_merge(
+                self.primary, first["change_id"], commit="HEAD", cleanup="retained"
+            )
+        self.assertEqual(
+            before, (self.primary / status_path(first["change_id"])).read_bytes()
+        )
+        self.assertEqual(second, read_change(self.primary))
+
     def legacy(self):
         state = ensure_change(self.candidate, task={"task": "work"})
         (self.primary / status_path(state["change_id"])).unlink()
@@ -315,6 +526,127 @@ class StatusStoreTests(unittest.TestCase):
             "cleanup_error": None,
             "retained_worktree": retained,
         }
+
+    @verifies("scenario.harness.status-migration")
+    def test_migration_preflights_receipt_ownership_before_any_effect(self):
+        state, old, run = self.legacy()
+        state.update(
+            task="fixture", target_id="module.example", focus_id="scenario.example"
+        )
+        old.write_text(json.dumps(state))
+        admin = Path(
+            git(self.candidate, "rev-parse", "--absolute-git-dir").stdout.strip()
+        )
+        (admin / "concorde-incarnation").unlink()
+        receipt = self.legacy_receipt(state["change_id"], "delivered", True)
+        receipt["focus_id"] = state["focus_id"]
+        git(
+            self.primary,
+            "update-ref",
+            "refs/heads/" + receipt["target_branch"],
+            receipt["merged_commit"],
+        )
+        path = self.primary / f".concorde/deliveries/{state['change_id']}.json"
+        path.parent.mkdir(parents=True)
+        original = old.read_bytes()
+        for field, value in (
+            ("source_worktree", str(self.candidate.with_name("other"))),
+            ("source_branch", "other"),
+            ("task", "unrelated work"),
+            ("constraints", ["different intent"]),
+            ("target_id", "module.other"),
+            ("focus_id", "scenario.other"),
+        ):
+            for apply in (False, True):
+                with self.subTest(field=field, apply=apply):
+                    path.write_text(json.dumps({**receipt, field: value}))
+                    receipt_bytes = path.read_bytes()
+                    with self.assertRaises(SpecError) as error:
+                        migrate_legacy(self.primary, apply=apply)
+                    self.assertEqual("migration_conflict", error.exception.code)
+                    self.assertEqual(original, old.read_bytes())
+                    self.assertEqual(receipt_bytes, path.read_bytes())
+                    self.assertEqual(b"legacy bytes", run.read_bytes())
+                    self.assertIsNone(worktree_incarnation(self.candidate))
+                    self.assertFalse(
+                        (self.primary / status_path(state["change_id"])).exists()
+                    )
+                    self.assertFalse(
+                        (self.primary / ".concorde/status/migration.json").exists()
+                    )
+                    self.assertFalse((self.primary / ".concorde/runs").exists())
+
+    @verifies("scenario.harness.status-migration")
+    def test_legacy_bound_null_focus_is_not_unknown_ownership(self):
+        state, old, run = self.legacy()
+        state.update(task="fixture", target_id="module.example", focus_id=None)
+        old.write_text(json.dumps(state))
+        receipt = self.legacy_receipt(state["change_id"], "delivered", True)
+        receipt["focus_id"] = "scenario.other"
+        path = self.primary / f".concorde/deliveries/{state['change_id']}.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(receipt))
+        before = {p: p.read_bytes() for p in (old, run, path)}
+        with self.assertRaises(SpecError) as error:
+            migrate_legacy(self.primary, apply=True)
+        self.assertEqual("migration_conflict", error.exception.code)
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+        self.assertFalse((self.primary / ".concorde/status/migration.json").exists())
+
+    @verifies("scenario.harness.status-migration")
+    def test_compatible_legacy_owners_survive_live_branch_rename_and_retry(self):
+        state, old, run = self.legacy()
+        state.update(task="fixture", target_id="module.example")
+        state["targets"] = {
+            "module.example": {
+                "target_id": "module.example",
+                "focus_id": None,
+                "plan": "legacy",
+            }
+        }
+        old.write_text(json.dumps(state))
+        original = old.read_bytes()
+        receipt = self.legacy_receipt(state["change_id"], "delivered", True)
+        path = self.primary / f".concorde/deliveries/{state['change_id']}.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(receipt))
+        receipt_bytes = path.read_bytes()
+        git(
+            self.primary,
+            "update-ref",
+            "refs/heads/" + receipt["target_branch"],
+            receipt["merged_commit"],
+        )
+        git(self.candidate, "branch", "-m", "renamed")
+        unlink = Path.unlink
+
+        def interrupted(source, *args, **kwargs):
+            if source == path:
+                raise OSError("interrupted receipt removal")
+            return unlink(source, *args, **kwargs)
+
+        with patch.object(Path, "unlink", interrupted), self.assertRaises(OSError):
+            migrate_legacy(self.primary, apply=True)
+        self.assertEqual(
+            "completed", migrate_legacy(self.primary, apply=True)["status"]
+        )
+        imported = read_change(self.candidate, required=True)
+        self.assertEqual("delivered", imported["status"])
+        value = target_state(self.candidate, "module.example", None)
+        self.assertEqual(
+            {
+                "change_id": state["change_id"],
+                "git_worktree_id": worktree_incarnation(self.candidate),
+            },
+            value["owner"],
+        )
+        archives = [
+            p.read_bytes()
+            for p in (self.primary / ".concorde/runs/legacy-migration").rglob("*.json")
+        ]
+        self.assertIn(original, archives)
+        self.assertIn(receipt_bytes, archives)
+        save_target_state(self.candidate, value)
 
     @verifies("scenario.harness.status-migration")
     def test_receipt_migration_matrix_checks_publication_and_cleanup_independently(

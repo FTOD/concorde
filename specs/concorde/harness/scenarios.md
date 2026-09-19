@@ -452,6 +452,8 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND simultaneous registrations of one explicit change_id in different candidates yield at most one success and never overwrite the winning record
 - AND removing and recreating the same path, branch and commit creates a different worktree incarnation, so neither reads nor live inventory inherit the old task
 - AND a stale status or target snapshot is rejected without erasing newer blockers, validation or independent progress; a caller rereads before updating
+- AND target snapshots, including unsaved new targets, keep their construction-time change and incarnation ownership; missing or mismatched ownership is refused even when target IDs and revisions coincide, while branch rename and current no-op saves remain valid
+- AND ordinary-Git merge recording refuses a present replacement source or a different task in the same incarnation before using its HEAD or cleanliness, but can retry from already recorded candidate-commit evidence when the original source is absent
 
 ### scenario.harness.status-migration — Explicit safe migration and recovery
 
@@ -463,3 +465,5 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND accepted receipt states merging, cleanup_pending and delivered establish delivery only when Git verifies the recorded publication; unknown states remain blocked
 - AND cleanup records actual absence separately from publication, preserves explicit retention for present sources and otherwise stays pending, while an unknown receipt state keeps cleanup unknown
 - AND preview generates no incarnation token; accepted local-state migration binds the current worktree incarnation explicitly and preserves the original source bytes
+- AND same-ID local state and receipt with contradictory source path, recorded branch or bound task intent fail with migration_conflict before any token, journal or import target creation or source removal
+- AND compatible historical source labels can survive a live branch rename and interrupted retry without losing original bytes; disagreeing legacy labels require explicit repair rather than identity inferred from the current checkout

@@ -424,6 +424,8 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             "worktree progress or guidance has an invalid shape",
             "invalid_worktree_state",
         )
+    for target in state["targets"].values():
+        verify_target_owner(state, target)
     if "graph" in state and not isinstance(state["graph"], dict):
         raise SpecError(
             "worktree graph state has an invalid shape", "invalid_worktree_state"
@@ -811,6 +813,23 @@ def bind_owner(root: Path, task: dict, *, coordinated: bool = False) -> dict:
     return state
 
 
+def target_owner(change: dict) -> dict:
+    """Non-reusable ownership, captured when a target is first constructed."""
+    return {
+        "change_id": change["change_id"],
+        "git_worktree_id": change.get("git_worktree_id"),
+    }
+
+
+def verify_target_owner(change: dict, target: dict) -> None:
+    # Never fill a missing binding from a fresh read: that would launder stale work.
+    if target.get("owner") != target_owner(change):
+        raise SpecError(
+            "target belongs to another task or worktree incarnation, or lacks ownership",
+            "workspace_mismatch",
+        )
+
+
 def target_state(
     root: Path, target_id: str, focus_id: str | None, *, create: bool = False
 ) -> dict:
@@ -830,6 +849,7 @@ def target_state(
         "schema_version": 2,
         "target_id": target_id,
         "focus_id": focus_id,
+        "owner": target_owner(change),
         "plan": "",
         "tasks": [],
         "checks": [],
@@ -845,6 +865,7 @@ def save_target_state(root: Path, value: dict) -> None:
     with repository_lock(root):
         change = read_change(root, required=True)
         identifier(value["target_id"])
+        verify_target_owner(change, value)
         previous = change["targets"].get(value["target_id"], {})
         if value.get("revision", 0) != previous.get("revision", 0):
             raise SpecError(
