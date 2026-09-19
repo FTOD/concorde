@@ -326,10 +326,19 @@ writes a summary). The plain serial command
 `python -m unittest discover -s tests/concorde -t . -p 'test_*.py'` remains valid. Run docsite
 checks with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`.
 
-`prompts/`, `skills/`, and the top-level `operations/` package produce this checkout's agent
-surfaces. Never edit `generated/`, `.agents/skills/concorde-*`, `.claude/skills/concorde-*`, or
-generated Issue-solving agents directly; they are untracked build output. After changing their
-sources, run the build and the deterministic checks in the same primary or linked worktree:
+Known intermittent failure: under the parallel runner,
+`tests.concorde.development.test_review.ReviewTests.test_changed_review_instructions_reassess_without_erasing_gaps_on_failure`
+has failed once with `review_required` ("required spec review is missing, incomplete, blocking, or
+stale") and passed on every isolated rerun. The cause is undiagnosed; treat a single failure of
+that test as suspect and rerun it alone before drawing conclusions. The worker runtime tests and
+the worker sandbox tests need Linux with a trusted system bubblewrap and a Pi installation on
+PATH; the sandbox tests fail rather than skip where the boundary cannot be enforced.
+
+`prompts/`, `skills/`, `pi/extensions/` and the top-level `operations/` package produce this
+checkout's agent surfaces. Never edit `generated/`, `.agents/skills/concorde-*`,
+`.claude/skills/concorde-*`, `.pi/extensions/concorde-session.ts` or generated Issue-solving
+agents directly; they are untracked build output. After changing their sources, run the build and
+the deterministic checks in the same primary or linked worktree:
 
 ```bash
 python3 scripts/concorde.py build

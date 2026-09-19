@@ -190,6 +190,16 @@ by code, and callers must not infer recovery from the absence of success metadat
 Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
 operation, not to this Module; installation never creates the registry or a Module stub itself.
 
+The Pi projection has three known limits. Pi reads a project's `.agents/skills` as well, so a
+project that also carries the Codex installation shows a Pi session both the `concorde` tool and
+the Codex Skills; only the tool's description asks the model to prefer the tool, and nothing hides
+the Skills from Pi. A `run` blocks the Pi turn for the whole Operation and shows no progress,
+because the launcher prints only its final envelope; streaming the host's stage events through the
+tool is pending, and aborting the turn is the only way to stop a run early. The tool runs the
+launcher with the checkout's `.venv` interpreter or, failing that, the `python3` on the session's
+PATH, and in a consumer project with the managed runtime's interpreter; a checkout whose
+environment lives elsewhere must expose LangGraph on that `python3`, as the Skills assume too.
+
 ## Ownership, context and implementation status
 
 Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 10/Profile 15. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.

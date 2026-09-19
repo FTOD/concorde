@@ -217,10 +217,25 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
   profile tools today: no worker admits an Operation or Tool reference beyond them, so those
   contracts are not yet snapshot fields. Materializing them in the snapshot record, with their
   identities in the context digest, is pending implementation work that must not widen any grant.
-- The worker sandbox shares the host network, because Pi must reach its model provider, and the
-  provider credentials the process needs are readable inside its run directory; a credential
-  broker that keeps them outside the sandbox is pending. Its secret masks are a fixed list of
-  home-directory locations, not a discovery of every credential a developer may keep.
+- The worker sandbox does not restrict the network, because Pi must reach its model provider.
+  Anything the process can read, including the workspace, can therefore leave the sandbox over the
+  network. Closing this needs a private network namespace in which only the credential proxy
+  below is reachable; that is pending.
+- The provider credentials the worker itself uses are readable inside the sandbox: the run
+  directory holds the copied `auth.json` and `models.json`, and the Pi process environment carries
+  the provider key variables, which the gate unsets only for each shell command. A shell command
+  can read that copy and, with the shared network, send it out. The pending credential broker
+  keeps the real credentials on the host: a loopback proxy that adds the authorization and
+  performs the OAuth refresh, with the run's `models.json` pointing Pi at the proxy under a
+  placeholder key, so no real credential enters the sandbox.
+- The sandbox's secret masks are the fixed list `MASKED_HOME_PATHS`, not a discovery of every
+  credential a developer keeps; a secret stored elsewhere under the home directory stays readable.
+  Toolchains under the home directory stay readable on purpose, so workers can run tests.
+- A pending write entry becomes an empty placeholder file or directory in the candidate before
+  the launch and is removed only if the worker left it empty; a placeholder is the price of an
+  exact write boundary for a path that does not exist yet.
+- The sandbox requires Linux with a trusted system bubblewrap and refuses every worker launch
+  elsewhere; there is no unconfined fallback and no backend for another platform yet.
 - The gate and the operation ceiling are verified for foreground single delegation. Whether every
   other pi-subagents execution path loads the required child extension is unverified, which is why
   the host disables background runs, missions, schedules and inter-session channels.
