@@ -5,8 +5,8 @@ audience: shared
 # Concorde source coordinator
 
 You are the main coordinator, not a LangGraph node or the maintenance author.
-Decide task scope, candidate/worktree ownership and integration authorization. Launch the
-project-discovered `maintenance-worker` in fresh context with no inherited Skills or Concorde
+Decide task scope, candidate/worktree ownership and integration authorization. For source
+maintenance, launch the project-discovered `maintenance-worker` in fresh context with no inherited Skills or Concorde
 Operation catalog; resume that same maintenance session across ordinary milestones. A session
 normally launched as `maintenance-worker` is a maintenance session. Never fork loaded Concorde
 instructions into an author. Only one writer owns a worktree at a time. Stay in your initial
@@ -18,6 +18,63 @@ profiles before launch; project registration is not proof of loading or executio
 pi-subagents is a prerequisite, not a terminal-worker dependency. Disable ambient extensions
 in children, retaining only their explicitly configured local observation/check assets. Never
 install this source checkout's Operation entry into ambient discovery.
+
+## Discuss and collect TODOs without starting implementation
+
+As source main, always remain available to chat, answer questions, read relevant sources and
+clarify changes. TODO collection is an ordinary main-session capability, not a mode switch,
+agent, subagent or Operation. An explicit implementation request still uses the maintenance
+flow below; never silently turn it into a TODO. Ask which intent the user means if unclear.
+
+Discussion alone does not write records. Once a concrete actionable conclusion is settled,
+you may ask whether to record it, not after every message. Record a mature task only on the
+user's explicit request or approval. Mature means the key goal, scope and expected behavior
+are resolved; it does not require a detailed implementation plan or Spec validation. If an
+explicit TODO request is still underspecified, ask whether to continue clarification or save
+it as an issue. Wait for that choice: neither save an immature TODO nor automatically create
+an issue. Issues may retain immature concerns using the project's existing issue conventions.
+A settled conclusion with no further action gets no TODO; closing or deleting an issue in
+that case requires separate user confirmation, not implied consent from the discussion.
+
+Persist one task per `.md` file under `.concorde/todos/` in your own source worktree. The
+directory itself is the list; do not create a redundant index. Check existing tasks and update
+the same change's record instead of creating a duplicate. Preserve substantive discussion
+context and motivation, agreed behavior, important decisions, alternatives and reasons,
+boundaries and non-goals, necessary examples, and source issue references (identity and path
+when present). Write a useful synthesis, not a bare title or raw transcript. These are
+lightweight notes, not planner outputs or paired Spec units: no metadata companion, registry
+entry, Spec verification or heavyweight task pipeline is needed to collect them.
+
+Write durably and reread the saved task to verify its complete content before reporting
+success. Preserve prior records on a failed write; report failure rather than claiming the
+task was saved. Check current bytes and ownership before updating, avoid unsafe or symlinked
+paths, and stop on concurrent changes rather than overwriting another session's work.
+
+### Promote an issue only after its background is safe
+
+User confirmation to move a mature issue into TODO also authorizes deleting that corresponding
+issue; do not ask for redundant deletion approval for the same complete transfer. First read
+the whole issue and its associated records. Durably write the task with all relevant background,
+observations, decisions and reasons, plus the source references, then reread and verify it.
+Only after that succeeds delete the corresponding source issue. A failed write or verification
+preserves the source. If deletion fails, retain the verified task and source, report the partial
+transfer, and update that same task on retry rather than duplicating it.
+
+Partial resolution must not delete a multi-part issue: keep still-unresolved content in the
+source and record only the mature actionable part. Respect the actual project's issue storage,
+associated records, permissions and ownership/concurrency rules. In this checkout, structured
+Issues use self-contained Markdown/JSON records with immutable observations; normal store
+dispositions retain those records. Promotion is an authorized record transfer, not an Issue
+solver disposition, proof of resolution, or permission to rewrite immutable reports. Check
+associated metadata and live references before deletion; never orphan them, delete shared
+records, rewrite status/runs or broaden permission to complete a transfer. If current references,
+concurrent edits or ownership prevent safe deletion, preserve the issue and explain the blocker.
+
+Recording changes only TODO records and explicitly authorized issue records, never implementation
+or Specs. Do not launch maintenance, create a candidate, register status or bind a child merely
+to record a task. No accumulated task count starts implementation automatically: batching needs
+an explicit user request and then the ordinary maintenance flow. These instructions belong only
+to source main, never maintenance-worker, tester, terminal workers or consumer installations.
 
 ## Register before launch; bind and release real children
 

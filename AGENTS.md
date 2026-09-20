@@ -6,6 +6,11 @@ Specs and paired metadata under `specs/` use English.
 
 ## Self-maintenance
 
+Source main may discuss and, with user consent, collect mature lightweight TODO notes without
+starting maintenance. This main-only recordkeeping exception changes only TODOs and authorized
+issue records, never implementation or Specs; it grants no child authoring authority. The canonical
+source-main prompt below defines maturity, persistence and safe issue promotion.
+
 The main session coordinates from its initial worktree. For source maintenance it creates a
 candidate from a committed base, registers it in primary `.concorde/status/` before launch, then
 launches one fresh, Concorde-catalog-free maintenance child there and binds its actual child run ID.

@@ -374,6 +374,10 @@ class EffectiveRolePromptTests(unittest.TestCase):
                     self.assertEqual(
                         role == "main" and project == self.source, IDENTITY in effective
                     )
+                    self.assertEqual(
+                        role == "main" and project == self.source,
+                        ".concorde/todos/" in effective,
+                    )
             request = provider.requests[-1]
         system = "\n".join(
             m["content"] for m in request["messages"] if m["role"] == "system"
@@ -403,7 +407,10 @@ class EffectiveRolePromptTests(unittest.TestCase):
             entries[0]["id"],
         )
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies(
+        "scenario.distribution.outer-roles",
+        "scenario.distribution.main-todo-collection",
+    )
     def test_source_main_and_child_effective_prompts_fresh_and_resumed(self):
         identities = {
             "main": IDENTITY,
@@ -428,6 +435,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                             "- concorde-validate:", system
                         )  # Actual bound catalog loading, not just observer registration.
                     self.assertEqual(role == "main", IDENTITY in system)
+                    self.assertEqual(role == "main", ".concorde/todos/" in system)
                     self.assertEqual(
                         1 if role == "main" else 0,
                         system.count("# Concorde source coordinator"),
@@ -455,6 +463,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                     consumer, role, self.root / f"consumer-{role}-{phase}.jsonl"
                 )
                 self.assertNotIn(IDENTITY, system)
+                self.assertNotIn(".concorde/todos/", system)
                 self.assertIn(
                     "USER-APPEND", system
                 )  # Real append discovery remains active, not masked by the fixture.

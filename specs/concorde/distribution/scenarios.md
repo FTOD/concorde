@@ -419,6 +419,40 @@ validation cannot certify its determinism.
 - AND run evidence, coordinator notes and mission records cannot replace canonical status; terminal history remains while integration and separately authorized cleanup stay distinct
 - BUT rebuilding source-main instructions does not retroactively update already-running peer sessions
 
+### scenario.distribution.main-todo-collection — Collect mature notes in source main only
+
+- GIVEN a source-main session discussing an actionable change whose key goal, scope and expected behavior are settled
+- WHEN build projects its canonical coordinator instructions
+- THEN those instructions permit recording only on explicit user request or approval, with discussion alone producing no record and an offer to record appropriate only after a concrete actionable conclusion rather than every message
+- AND they require one Markdown task per file under `.concorde/todos/`, the directory serving as the list without a redundant index, and updating an existing task for the same change instead of duplicating it
+- AND each note preserves substantive context, motivation, agreed behavior, important decisions, alternatives and reasons, boundaries, non-goals, necessary examples and source issue references rather than a bare title or transcript
+- AND recording requires durable writing and rereading to verify complete content before success, preserving prior records on failure and refusing unsafe paths or concurrent overwrites
+- AND notes are not planner outputs or paired Spec units and need no detailed implementation plan, Spec verification, metadata companion, registry entry or heavyweight collection pipeline
+- AND recording changes only TODOs and authorized issue records, with no implementation or Spec edits, candidate creation, maintenance launch, status registration or child binding
+- AND explicit implementation requests retain the maintenance flow, unclear intent is clarified, and batching never starts from task count without an explicit user request
+- AND the capability is always available without a new mode, tool, agent or Operation and appears only in source-main instructions, absent from maintenance-worker, tester, terminal workers and installed consumer assets
+
+This is an instruction and projection contract; deterministic text checks do not establish live
+model compliance with consent or maturity judgments.
+
+### scenario.distribution.main-todo-unsettled — Ask before retaining immature or non-actionable discussion
+
+- GIVEN an explicit TODO request with unsettled goal, scope or expected behavior, or a settled discussion with no remaining action
+- WHEN source-main instructions describe how to respond
+- THEN an underspecified request requires asking whether to continue clarification or save an issue and waiting for the user's choice, with neither an immature TODO nor an issue saved automatically
+- AND an issue may retain an immature concern under existing project conventions
+- AND a conclusion requiring no further action produces no TODO, with any issue closure or deletion requiring separate confirmation
+
+### scenario.distribution.main-todo-promotion — Preserve issue background before authorized transfer
+
+- GIVEN user confirmation to move a mature issue into TODO
+- WHEN source-main instructions describe promotion
+- THEN that confirmation also authorizes deletion of the corresponding issue without redundant approval, but only after reading the whole issue and associated records, durably writing all relevant background, observations, decisions and reasons with source references, and rereading to verify the task
+- AND failed task writing or verification preserves the source, while failed deletion retains both copies and reports a partial transfer whose retry updates the same task
+- AND partial resolution of a multi-part issue preserves still-unresolved source content and records only the mature actionable part
+- AND actual issue storage, associated metadata, live references, permissions and ownership/concurrency rules remain binding, with unsafe deletion preserving the source and reporting the blocker rather than orphaning records or widening authority
+- AND promotion is record transfer rather than a solver disposition or verified resolution, leaving immutable report semantics and ordinary retained disposition history unchanged
+
 ### scenario.distribution.test-timing — Test reasons and measured input identity
 
 - GIVEN legacy or explicitly scoped test-runner arguments and optional prior evidence

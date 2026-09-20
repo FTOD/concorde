@@ -118,6 +118,32 @@ catalog. Source-only prompts and the maintenance observer wrapper never ship to 
 installer-owned generic tester definitions use the installed local Framework/runtime instead.
 Outer pi-subagents is a host prerequisite, not a new worker dependency.
 
+### Source-main discussion and task collection
+
+Source main can answer questions, inspect relevant sources and clarify changes without starting
+maintenance. It can retain a sufficiently discussed actionable change as a lightweight TODO note
+when the user requests or approves recording. Maturity concerns the goal, scope and expected
+behavior, not a detailed plan or verified Spec. An underspecified TODO request leads to a choice
+between more clarification and saving an issue, not an automatic record. This keeps open questions
+out of the actionable list without losing the user's option to retain an immature concern.
+
+The notes preserve the discussion's rationale and decisions for later work rather than replacing
+planning or implementation artifacts. Main updates the same change instead of duplicating it.
+Promotion of a mature issue transfers its relevant background before removing its source, with
+consent, write verification and unresolved-content safeguards. Ordinary Issue dispositions still
+retain observations under the [Issues storage contract](../issues/execution-reference.md#issues-disposition-boundary);
+record transfer does not claim a verified resolution or change that runtime API. Unsafe deletion
+or associated-record ownership conflicts preserve the source instead of widening authority.
+
+Collection is always available, not another mode, Operation or delegated task. Recording alone
+creates no maintenance candidate or child ownership record and changes no implementation or Spec.
+Explicit implementation requests still use maintenance; an accumulated list never triggers work
+without a user request. The [collection scenarios](scenarios.md#scenario.distribution.main-todo-collection)
+define the source-main instruction contract, not a promise of deterministic model decisions.
+These instructions use the existing main-only projection boundary and never ship to consumers.
+
+### Coordination and validation
+
 Main owns scope, worktree assignment, continuation decisions, selected checks/independent testing
 and integration authorization. Source-main instructions make primary status registration a launch
 prerequisite: each candidate has a verified stable task identity before its maintenance child starts,

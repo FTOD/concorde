@@ -614,6 +614,14 @@
         {
           "kind": "document",
           "id": "document.operations.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.lifecycle"
         }
       ],
       "title": "Distribution",
