@@ -22,6 +22,8 @@ against its own typed contract.
 
 from __future__ import annotations
 
+from .timing import Span, timed
+
 import json
 import os
 import shutil
@@ -122,6 +124,7 @@ class WorkerResult:
     usage: dict[str, Any]
 
 
+@timed("pi.prepare_validate")
 def validate_launch(
     launch: WorkerLaunch, *, has_checks: bool, has_reporter: bool = False
 ) -> None:
@@ -166,7 +169,17 @@ class _HostToolServer(socketserver.ThreadingUnixStreamServer):
         checks: Callable[[], Any] | None,
         reporter: Callable[[dict], Any] | None,
     ):
-        self.checks, self.reporter = checks, reporter
+        from contextvars import copy_context
+
+        context = copy_context()
+        self.checks = (
+            (lambda: context.copy().run(checks)) if checks is not None else None
+        )
+        self.reporter = (
+            (lambda value: context.copy().run(reporter, value))
+            if reporter is not None
+            else None
+        )
         super().__init__(path, _HostToolHandler)
 
 
@@ -276,6 +289,7 @@ class PiWorkerRuntime:
     credentials_dir: Path | None = None
     popen: Callable[..., Any] = subprocess.Popen
 
+    @timed("pi.worker_total")
     def __call__(
         self,
         launch: WorkerLaunch,
@@ -283,6 +297,11 @@ class PiWorkerRuntime:
         checks: Callable[[], Any] | None = None,
         report_issue: Callable[[dict], Any] | None = None,
     ) -> WorkerResult:
+        preparation = Span(
+            "pi.prepare",
+            prompt_bytes=len(launch.system_prompt.encode()),
+            context_bytes=len(launch.message.encode()),
+        )
         validate_launch(
             launch, has_checks=checks is not None, has_reporter=report_issue is not None
         )
@@ -385,6 +404,7 @@ class PiWorkerRuntime:
                 argv += ["--model", launch.model]
             if launch.thinking:
                 argv += ["--thinking", launch.thinking]
+            preparation.finish()
             placeholders: tuple[str, ...] = ()
             try:
                 # The mount plan is the launch's grant: workspace read-only, write paths and

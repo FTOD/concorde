@@ -11,6 +11,8 @@ submitted result only when it validates against the contract's result type and p
 
 from __future__ import annotations
 
+from .timing import Span, timed
+
 import hashlib
 import json
 from collections.abc import Callable
@@ -255,6 +257,7 @@ class WorkerExecutor:
     package_root: Path = PACKAGE_ROOT
     runtime: Callable[..., Any] | None = None
 
+    @timed("worker.preflight")
     def preflight(
         self, invocation: WorkerInvocation
     ) -> tuple[worker_profile.WorkerProfile, worker_profile.WorkerBinding, dict]:
@@ -328,6 +331,7 @@ class WorkerExecutor:
             )
         return agent, binding, context
 
+    @timed("worker.execution")
     def __call__(
         self,
         invocation: WorkerInvocation,
@@ -389,8 +393,9 @@ class WorkerExecutor:
             context_bytes=len(invocation.context_json.encode("utf-8")),
         )
         try:
-            value = typed(agent.contract.result, result.value)
-            worker_profile.validate_worker_output(agent, value)
+            with Span("worker.result_validation"):
+                value = typed(agent.contract.result, result.value)
+                worker_profile.validate_worker_output(agent, value)
         except worker_profile.ContractError as error:
             raise OperationExecutionError(
                 f"invalid worker result: {error}",

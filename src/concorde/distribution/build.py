@@ -29,6 +29,7 @@ from ..harness.worker_profile import (
 )
 from ..spec.contracts import PUBLIC_OPERATIONS
 from ..spec.frontmatter import FrontMatterError, parse_document
+from . import outer_agents
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -443,6 +444,10 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         for path in (project_root / "pi").rglob("*")
         if not {"node_modules", "__pycache__"}.intersection(path.parts)
         and path.is_file()
+        and (
+            path.name != "concorde-maintenance.ts"
+            or any(o.path == ".pi/agents/maintenance-worker.md" for o in outputs)
+        )
     )
     for relative in (
         "concorde.json",
@@ -488,6 +493,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     for agent in sorted(MODEL_ROOTS):
         outputs.append(render_model_instructions(root, agent))
     outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
+    outputs.extend(outer_agents.render(root, framework_prefix))
     outputs.append(render_langgraph(root))
     outputs.append(render_protocol_principles(root))
     for kind in PROTOCOL_KINDS:
@@ -497,6 +503,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     roots = (
         list(MODEL_ROOTS.values())
         + [WORKER_RULES]
+        + list(outer_agents.prompt_roots(root))
         + list(OPERATION_GUIDANCE.values())
         + ["prompts/protocol/principles.md"]
         + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS]
@@ -623,6 +630,15 @@ def write_build(project_root: str | Path) -> BuildResult:
     targets = [
         (output, _checked_output(root, output.path)) for output in result.outputs
     ]
+    for output, target in targets:
+        if output.path.startswith(".pi/") and target.exists():
+            existing = target.read_bytes()
+            if existing != output.content and recorded.get(output.path, {}).get(
+                "sha256"
+            ) != _sha256_bytes(existing):
+                raise BuildError(
+                    f"unowned or modified project agent projection: {output.path}"
+                )
     for path in retired:
         path.unlink()
         # Prune only this now-empty output ancestry, never unknown neighboring content.
@@ -651,6 +667,11 @@ def check_build(project_root: str | Path) -> tuple[bool, tuple[str, ...]]:
     fresh["generated/build-manifest.json"] = result.manifest
     current = _owned_generated_tree(root)
     current.update(_legacy_outputs(root))
+    for relative in fresh:
+        if relative.startswith(".pi/"):
+            path = _checked_output(root, relative)
+            if path.exists():
+                current[relative] = path.read_bytes()
     diffs = [
         relative
         for relative in set(fresh) | set(current)

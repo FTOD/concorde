@@ -30,6 +30,7 @@ from .host import OperationHost, resolve_child_operation
 from .relay import bind_worktree, verify_local_execution
 from .worker_executor import OperationExecutionError
 from .worker_profile import ContractError
+from .timing import timed, traced_operation
 
 
 def invoke_operation(
@@ -67,6 +68,7 @@ def run_host_node(runner, host, configuration, payload, operation):
     )["result"]
 
 
+@traced_operation
 def run_operation(
     operation: str,
     configuration: dict | None,
@@ -141,6 +143,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         "errors": [],
     }
 
+    @timed("admission.request")
     def admit_request():
         nonlocal configuration, task, mutation
         if os.environ.get("CONCORDE_WORKER_POLICY"):
@@ -205,6 +208,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                         task = resume_owner(change, task)
             repository.select(task["target_id"], task.get("focus_id"))
 
+    @timed("admission.workspace")
     def bind_workspace():
         nonlocal host, record_progress
         assert task is not None, "workspace binding requires an admitted task"
@@ -266,6 +270,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                     "delivery_in_progress",
                 )
 
+    @timed("admission.configuration")
     def check_configuration():
         nonlocal host, run_started
         if operation != "concorde-init" and configuration != load_configuration(
@@ -409,6 +414,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
 
         return guarded(raise_failure)(state)
 
+    @timed("admission.finalize")
     def finalize(state):
         nonlocal record_progress
         execution_error = host.lifecycle.get("execution_error")

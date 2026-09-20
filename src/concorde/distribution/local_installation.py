@@ -15,6 +15,7 @@ from pathlib import Path
 
 from . import installation as installer
 from . import managed_runtime
+from ..harness.timing import Span, timed
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,7 @@ def _canonical(path: Path) -> Path:
     return path
 
 
+@timed("local_installation.admit")
 def admit_package(root: Path) -> PackageSource:
     """Admit the explicitly invoking package, binding its exact deployment, not just version."""
     root = _canonical(root)
@@ -86,7 +88,8 @@ def installation_lock(target: Path) -> Iterator[None]:
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             raise installer.InstallError("installation lock must be one regular file")
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with Span("lock.installation_acquire"):
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
             raise installer.InstallError(
                 "another installer owns this target; retry after it finishes"
@@ -96,6 +99,7 @@ def installation_lock(target: Path) -> Iterator[None]:
         os.close(fd)
 
 
+@timed("local_installation.verify")
 def verify_installation(
     target: Path, *, expected: PackageSource | None = None
 ) -> LocalInstallation:
@@ -149,6 +153,7 @@ def verify_installation(
     )
 
 
+@timed("local_installation.ensure")
 def ensure_installation(
     target: Path,
     source: PackageSource,

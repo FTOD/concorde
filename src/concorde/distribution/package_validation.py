@@ -61,9 +61,10 @@ def _finding(
     return Finding(rule, severity, source, message, remediation, subject_id=_SUBJECT)
 
 
-def _prompt_roots() -> tuple[str, ...]:
+def _prompt_roots(root: Path) -> tuple[str, ...]:
     return (
-        tuple(build.OPERATION_GUIDANCE.values())
+        build.outer_agents.prompt_roots(root)
+        + tuple(build.OPERATION_GUIDANCE.values())
         + tuple(build.MODEL_ROOTS.values())
         + (build.WORKER_RULES, "prompts/protocol/principles.md")
         + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS)
@@ -72,7 +73,7 @@ def _prompt_roots() -> tuple[str, ...]:
 
 def _validate_prompts(root: Path) -> list[Finding]:
     findings: list[Finding] = []
-    for relative in _prompt_roots():
+    for relative in _prompt_roots(root):
         try:
             if relative.startswith(GUIDANCE_ROOT):
                 resolve_operation_guidance(root, relative)
@@ -90,7 +91,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
                 )
             )
     try:
-        unreachable = find_unreachable_prompts(root, _prompt_roots())
+        unreachable = find_unreachable_prompts(root, _prompt_roots(root))
     except PromptResolverError:
         # Already reported above as a resolver error against the same broken root; reachability
         # over a root that cannot even resolve would only duplicate that finding.

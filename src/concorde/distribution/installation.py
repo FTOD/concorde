@@ -29,6 +29,8 @@ from concorde.views.docsite_template import (
     template_files,
 )
 
+from ..harness.timing import timed
+
 FRAMEWORK_ROOT = ".concorde/framework"
 PROTOCOL_ROOT = ".concorde/protocol"
 RECEIPT_PATH = ".concorde/install.json"
@@ -243,6 +245,11 @@ def _package_files(package: Package) -> dict[str, bytes]:
         for path in sorted(source_root.rglob("*")):
             relative = path.relative_to(package.root).as_posix()
             parts = PurePosixPath(relative).parts
+            if (
+                relative.startswith("prompts/outer/source/")
+                or relative == "pi/extensions/concorde-maintenance.ts"
+            ):
+                continue  # Source coordination/maintenance never ships to consumers.
             if directory == "pi" and "node_modules" in parts:
                 # A local install (`npm ci --prefix pi`) leaves node_modules below pi/. The managed
                 # runtime provisions it from its package.json and lock separately, so a local
@@ -292,7 +299,7 @@ def desired_outputs(package: Package) -> dict[str, tuple[bytes, str]]:
     except concorde_build.BuildError as error:
         raise InstallError(str(error)) from error
     for output in build_result.outputs:
-        if output.path.startswith(".pi/extensions/"):
+        if output.path.startswith((".pi/extensions/", ".pi/agents/")):
             outputs[output.path] = (output.content, "extension")
         else:
             outputs[f"{FRAMEWORK_ROOT}/{output.path}"] = (output.content, "framework")
@@ -374,6 +381,7 @@ def _file_digest(path: Path) -> str | None:
     return _sha256(path.read_bytes())
 
 
+@timed("installation.plan")
 def installation_plan(
     target: Path,
     package: Package,
@@ -744,6 +752,7 @@ def _receipt(
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
+@timed("installation.apply")
 def apply_plan(
     target: Path,
     package: Package,

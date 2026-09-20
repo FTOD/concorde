@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .timing import timed
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -220,6 +222,7 @@ def materialize_documents(destination: Path, documents: dict[str, bytes]) -> Non
         copy.write_bytes(raw)
 
 
+@timed("context.resolve")
 def resolve_context(
     repository: SpecRepository,
     target_id: str,
@@ -328,6 +331,7 @@ def _stale_on_resolution_error(check):
 
 
 @_stale_on_resolution_error
+@timed("context.recheck")
 def recheck_context(
     repository: SpecRepository,
     snapshot: ContextSnapshot,

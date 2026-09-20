@@ -207,6 +207,15 @@ this is byte provenance under trusted candidate code, not a sandbox against a ma
 The Python environment and Pi SDK remain host infrastructure; dependency locks are bound, but
 selection does not attest every installed third-party dependency byte or provider behavior.
 
+The native pi-subagents detached child may transport that same explicit saved selection via
+`extensionBindings: {"concorde/1":{"selection":"<absolute path>"}}`. Its package-owned runner
+supplies PI_SUBAGENT_EXTENSION_BINDINGS; Concorde reads only that closed namespace and never
+mutates process environment. Direct and bound paths must agree when both occur. The launcher
+subprocess receives the selected path through its own environment. This is an additional transport
+for the unchanged schema-2 provenance record, not a fallback or new authority. Native testing uses
+async true and fresh context; unsupported/missing binding delivery fails source entry loading.
+Role-owned observation/check extensions are separately explicit and bound by current build sources.
+
 The rendered shim supplies its exact entry filename as the third `concordeSession` argument.
 A private source entry refuses absent `CONCORDE_SESSION_SELECTION`; consumer installed catalogs
 remain independent of private selection. The extension verifies through the candidate CLI with a

@@ -287,6 +287,7 @@
         "pi/",
         "prompts/workers/common.md",
         "scripts/development/STUDIO.md",
+        "scripts/development/analyze-timing.py",
         "scripts/development/check-graph-specs.py",
         "scripts/development/check-reference-versions.py",
         "scripts/development/studio.py",
@@ -314,6 +315,7 @@
         "src/concorde/spec/schema.py",
         "src/concorde/spec/typed_data.py",
         "src/concorde/spec/wire_shapes.py",
+        "tests/concorde/distribution/test_outer_agents.py",
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/harness/",
         "tests/concorde/harness/test_boundaries.py",
@@ -342,7 +344,8 @@
         "tests/concorde/spec/test_typed_data.py",
         "tests/concorde/support/fake_openai_provider.py",
         "tests/concorde/support/fake_pi_rpc.py",
-        "tests/concorde/support/operation_json.py"
+        "tests/concorde/support/operation_json.py",
+        "tests/concorde/support/outer_observer_harness.mts"
       ],
       "id": "module.harness",
       "kind": "module",
@@ -544,6 +547,7 @@
         "operations/configure.py",
         "pi/extensions/concorde-session.ts",
         "prompts/operation-guidance/",
+        "prompts/outer/",
         "prompts/workflow-host/",
         "pyproject.toml",
         "scripts/concorde.ps1",
@@ -575,6 +579,8 @@
         "tests/concorde/support/build_fixture.py",
         "tests/concorde/support/fake_launcher.py",
         "tests/concorde/support/managed_runtime.py",
+        "tests/concorde/support/outer_agents_preflight.mjs",
+        "tests/concorde/support/outer_observer_harness.mts",
         "tests/concorde/support/pi_session_harness.mts",
         "uv.lock"
       ],

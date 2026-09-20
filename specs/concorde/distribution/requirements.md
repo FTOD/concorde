@@ -126,3 +126,20 @@ A source or installed provider supplies installation bytes, not a fallback runti
 adds no lifecycle authority: primary alone retains durable status and runs. A caller must complete
 installation verification and ordinary project/Protocol admission before any local Operation or
 worker launch; this service itself launches neither.
+
+### req.distribution.outer-roles — Real outer task registration
+
+Build and installation SHALL provide documented project-discovered outer role definitions with checked canonical prompt provenance, distributing tester but never source-only maintenance/coordinator instructions.
+
+Exact names are maintenance-worker and tester. Role definitions and passive telemetry are allowed
+project discovery assets, not public Operation entries. Source Operation shims remain private.
+Existing user agent-file collisions and modified receipt-owned definitions block replacement.
+
+### req.distribution.test-evidence — Input-bound test diagnostics
+
+The test runner SHALL record declared reason, scope, phase and whitelisted input/test/runtime/lock/environment fingerprints without converting diagnostic timing into workflow authority.
+
+Legacy CLI calls remain valid with manual reason and unspecified scope/phase. Discovery, queue,
+execution intervals and prior/attempt references are observable; fixture setup is unknown unless
+runtime spans measure it. Summed concurrent work is not elapsed wall time. Fingerprints do not
+claim coverage of unobserved environment values, and telemetry excludes secret values and outputs.

@@ -580,6 +580,39 @@ execution evidence. Unknown formats, including unversioned lines claiming the ne
 are excluded from totals and make the summary explicitly incomplete; they are not grouped under a
 silently invented null Operation. See [usage accounting](scenarios.md#scenario.harness.usage-accounting).
 
+#### Diagnostic timing {#execution-diagnostic-timing}
+
+A diagnostic span has schema_version 1, trace_id, span_id, nullable parent_id, layer A/B/C,
+name, process_id, nullable session_id/task_id, started_at (UTC wall timestamp), process-local
+monotonic start_ns, nullable duration_ns, status ok/error/cancelled/incomplete and bounded metadata.
+A trace is diagnostic identity, not an invocation grant. Host-issued root/invocation/launch and
+context identities correlate runtime work; standalone installation may use a diagnostic UUID.
+Unknown fields and absent measurements do not become zero. Clocks from different processes are
+not subtracted; analysis reports per-process interval unions and summed work separately.
+
+Runtime spans cover admission, relay/worktree creation, local package admission/verification,
+installation and managed-runtime acquisition, health and launcher probes, context/preflight,
+worker/Pi execution, sandbox preparation, RPC acceptance/round/tool intervals, configured checks,
+result validation and evidence/lock work. The host observer receives bounded timing at completion;
+trusted host persistence uses primary run paths, locks and mode-0600 diagnostics. Sink errors mark
+telemetry incomplete without changing the Operation result or retrying a mutation. A bounded
+in-memory trace retains at most 20,000 spans and counts omissions.
+
+Standalone deterministic fixtures can explicitly select an existing canonical external directory
+with CONCORDE_DIAGNOSTIC_TIMING_DIR. Unique private files there contain diagnostics only, not
+candidate status/runs. The test runner supplies temporary per-unit storage and embeds measured
+runtime spans into its report; it never guesses install time from a whole unittest duration.
+This optional diagnostic location is not primary execution authority or a worker grant.
+
+Outer observation uses existing Pi session/provider/turn/tool/compaction events and native custom
+entries, including direct non-Operation sessions. It observes current context estimates/capacity,
+reported input/output/cache counts and reserve when actually supplied by compaction preparation.
+Unknown reserve/compaction information stays null. Role/session and hashed native lineage are
+recorded separately from task authority. Main may annotate bounded handoff/test-trigger reasons
+through the process-local concorde:outer-fact:v1 event; hooks never infer exhaustion, compact,
+launch children or change provider/settings/tool/prompt state. Native pi-subagents events remain
+owned by that package; explicit child observation extensions do not load ambient catalogs.
+
 #### Outcomes {#execution-outcomes}
 
 A worker's deadline is its selected `timeout_seconds`, else its profile's timeout as bound in its

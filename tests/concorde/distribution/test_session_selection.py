@@ -33,8 +33,21 @@ class SessionSelectionTests(unittest.TestCase):
         "scenario.distribution.build-checkout-skills-user-invoked",
     )
     def test_source_build_has_no_ambient_registration_and_selection_is_exact(self):
-        for relative in (".agents", ".claude", ".pi"):
+        for relative in (".agents", ".claude", ".pi/extensions/concorde-session.ts"):
             self.assertFalse((self.root / relative).exists())
+        self.assertEqual(
+            {
+                p.relative_to(self.root / ".pi").as_posix()
+                for p in (self.root / ".pi").rglob("*")
+                if p.is_file()
+            },
+            {
+                "APPEND_SYSTEM.md",
+                "agents/maintenance-worker.md",
+                "agents/tester.md",
+                "extensions/concorde-observe.ts",
+            },
+        )
         selected = select_session(
             self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
         )
@@ -491,7 +504,8 @@ class SessionSelectionTests(unittest.TestCase):
         for relative in (
             ".agents",
             ".claude",
-            ".pi",
+            ".pi/extensions/concorde-session.ts",
+            ".pi/skills",
             ".concorde/status",
             ".concorde/runs",
         ):

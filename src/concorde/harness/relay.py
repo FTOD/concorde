@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .timing import timed
+
 import os
 import sys
 from pathlib import Path
@@ -41,6 +43,7 @@ def source_checkout(root: Path) -> bool:
     return (root / "concorde.json").is_file() and (root / "src/concorde").is_dir()
 
 
+@timed("relay.local_admission")
 def verify_local_execution(host: OperationHost) -> None:
     """Installed entry admission is local and read-only; source-private fixtures stay separate."""
     if (
@@ -109,6 +112,7 @@ def relay_launcher(
     return [str(local.python), str(local.launcher)]
 
 
+@timed("relay.process")
 def relay_operation(
     host: OperationHost, operation: str, invocation: dict, candidate: Path
 ) -> tuple[dict, str]:
@@ -190,6 +194,7 @@ def relay_operation(
     return envelope, stderr
 
 
+@timed("relay.bind_worktree")
 def bind_worktree(
     host: OperationHost, mutation: bool, task: dict
 ) -> tuple[OperationHost, dict | None]:

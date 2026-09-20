@@ -24,6 +24,8 @@ worker unconfined.
 
 from __future__ import annotations
 
+from .timing import timed
+
 import os
 import subprocess
 import sys
@@ -124,6 +126,7 @@ def _other_worktrees(workspace: Path) -> tuple[Path, ...]:
     return tuple(path for path in listed if path != workspace)
 
 
+@timed("pi.sandbox_plan")
 def plan_mounts(
     workspace: str | Path,
     write_paths: Sequence[str],
@@ -228,6 +231,7 @@ def plan_mounts(
     )
 
 
+@timed("pi.sandbox_prepare")
 def create_placeholders(plan: MountPlan) -> tuple[str, ...]:
     """Create the pending entries as empty placeholders so exactly those paths can be mounted.
 
@@ -269,6 +273,7 @@ def remove_untouched_placeholders(created: Sequence[str]) -> None:
             continue
 
 
+@timed("pi.sandbox_argv")
 def bubblewrap_argv(plan: MountPlan, command: Sequence[str]) -> list[str]:
     """The bubblewrap command that runs ``command`` inside ``plan``; every mount is explicit.
 

@@ -717,7 +717,12 @@ class PiOnlyBuildSafetyTests(unittest.TestCase):
         self.assertEqual((True, ()), check_build(self.root))
         self.assertFalse((self.root / "generated/session/codex").exists())
         self.assertFalse((self.root / "generated/session/claude").exists())
-        self.assertFalse((self.root / ".pi").exists())
+        self.assertFalse((self.root / INSTALLED_PI_SESSION_SHIM).exists())
+        self.assertEqual(
+            {p.name for p in (self.root / ".pi/agents").glob("*.md")},
+            {"maintenance-worker.md", "tester.md"},
+        )
+        self.assertTrue((self.root / ".pi/extensions/concorde-observe.ts").is_file())
 
     @verifies("scenario.distribution.build-retired-skills")
     def test_retirement_preflights_all_paths_and_preserves_unverified_bytes(self):

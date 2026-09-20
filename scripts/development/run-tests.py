@@ -17,6 +17,11 @@ scheduled. It uses the standard library only.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import platform
+import tempfile
+import uuid
+from datetime import datetime, timezone
 import json
 import os
 import re
@@ -86,6 +91,15 @@ class Unit:
     skipped: int = 0
     expected_failures: int = 0
     unexpected_successes: int = 0
+    queued_ns: int | None = None
+    started_ns: int | None = None
+    ended_ns: int | None = None
+    started_at: str | None = None
+    queue_seconds: float | None = None
+    setup_seconds: float | None = None
+    execution_seconds: float | None = None
+    runtime_spans: list[dict] = field(default_factory=list)
+    telemetry_complete: bool = True
 
     @property
     def part(self) -> str:
@@ -158,17 +172,35 @@ def list_tests(python: str, module: str) -> list[str] | None:
 
 def run_unit(python: str, unit: Unit) -> Unit:
     started = time.perf_counter()
-    completed = subprocess.run(
-        [python, "-m", "unittest", unit.target],
-        cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        errors="replace",
+    unit.started_ns = time.monotonic_ns()
+    unit.started_at = datetime.now(timezone.utc).isoformat()
+    unit.queue_seconds = (
+        (unit.started_ns - unit.queued_ns) / 1e9 if unit.queued_ns is not None else None
     )
+    with tempfile.TemporaryDirectory(prefix="concorde-test-timing-") as directory:
+        completed = subprocess.run(
+            [python, "-m", "unittest", unit.target],
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            errors="replace",
+            env={**os.environ, "CONCORDE_DIAGNOSTIC_TIMING_DIR": directory},
+        )
+        unit.ended_ns = time.monotonic_ns()
+        unit.execution_seconds = (unit.ended_ns - unit.started_ns) / 1e9
+        for path in sorted(Path(directory).glob("*.json")):
+            try:
+                trace = json.loads(path.read_text())
+                unit.runtime_spans.extend(trace["spans"])
+                unit.telemetry_complete &= trace["complete"]
+            except (OSError, ValueError, KeyError):
+                unit.telemetry_complete = False
     unit.seconds = time.perf_counter() - started
     unit.returncode = completed.returncode
     unit.output = completed.stdout
+    if "CONCORDE_TIMING_INCOMPLETE" in unit.output:
+        unit.telemetry_complete = False
     parse_summary(unit)
     return unit
 
@@ -313,6 +345,94 @@ def print_report(
     return totals
 
 
+def fingerprint(python: str, modules: list[str]) -> dict:
+    """Whitelisted input membership and nonsecret runtime facts, not ambient env serialization."""
+    complete = True
+    try:
+        listing = subprocess.run(
+            ["git", "ls-files", "-co", "--exclude-standard", "-z"],
+            cwd=ROOT,
+            capture_output=True,
+            timeout=10,
+        )
+        complete = listing.returncode == 0
+        files = listing.stdout.decode().split("\0") if complete else []
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        complete, files = False, []
+    prefixes = (
+        "src/",
+        "scripts/",
+        "tests/",
+        "operations/",
+        "prompts/",
+        "protocol/",
+        "specs/",
+        "pi/",
+        ".pi/agents/",
+        ".pi/extensions/",
+        ".concorde/protocol/",
+    )
+    exact = {
+        "AGENTS.md",
+        "concorde.json",
+        "pyproject.toml",
+        "uv.lock",
+        "package.json",
+        "package-lock.json",
+        ".concorde/config.json",
+        ".concorde/specs.json",
+        ".pi/APPEND_SYSTEM.md",
+    }
+    entries = {}
+    for name in sorted(set(files)):
+        if name in exact or name.startswith(prefixes):
+            path = ROOT / name
+            if path.is_file() and not path.is_symlink():
+                try:
+                    entries[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+                except OSError:
+                    complete = False
+    digest = lambda value: hashlib.sha256(
+        json.dumps(value, sort_keys=True).encode()
+    ).hexdigest()
+    probe = subprocess.run(
+        [
+            python,
+            "-I",
+            "-c",
+            "import sys,platform,importlib.metadata,json; print(json.dumps({'python':platform.python_version(),'implementation':platform.python_implementation(),'langgraph':importlib.metadata.version('langgraph')}))",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    runtime = json.loads(probe.stdout) if probe.returncode == 0 else None
+    environment = {
+        "platform": platform.system(),
+        "machine": platform.machine(),
+        "bytecode_disabled": os.environ.get("PYTHONDONTWRITEBYTECODE") == "1",
+        "studio_enabled": os.environ.get("CONCORDE_TEST_STUDIO") == "1",
+    }
+    parts = {
+        "input": digest(entries) if complete else None,
+        "tests": digest(modules),
+        "runtime": digest(runtime),
+        "lock": digest(
+            {k: v for k, v in entries.items() if k.endswith(("lock", "lock.json"))}
+        ),
+        "environment": digest(environment),
+    }
+    return {
+        "digest": digest(parts),
+        **parts,
+        "runtime_facts": runtime,
+        "environment_facts": environment,
+        "environment_complete": False,
+        "files": len(entries),
+        "input_complete": complete,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument(
@@ -347,7 +467,35 @@ def main(argv: list[str] | None = None) -> int:
         metavar="PATH",
         help="interpreter for the subprocesses (default: .venv, else this interpreter)",
     )
+    parser.add_argument(
+        "--reason",
+        choices=[
+            "manual",
+            "local-edit",
+            "coherent-change",
+            "stable-final",
+            "changed-input",
+            "failure",
+            "independent",
+            "bootstrap",
+        ],
+        default="manual",
+    )
+    parser.add_argument(
+        "--scope", choices=["unspecified", "targeted", "full"], default="unspecified"
+    )
+    parser.add_argument(
+        "--phase",
+        choices=["unspecified", "maintenance", "tester", "postcommit"],
+        default="unspecified",
+    )
+    parser.add_argument("--attempt", type=int, default=1)
+    parser.add_argument("--prior", type=Path)
     arguments = parser.parse_args(argv)
+    if arguments.attempt < 1:
+        parser.error("--attempt must be positive")
+    discovery_started = time.monotonic_ns()
+    run_started_at = datetime.now(timezone.utc).isoformat()
 
     python = choose_interpreter(arguments.python)
     modules = discover_modules()
@@ -363,6 +511,17 @@ def main(argv: list[str] | None = None) -> int:
     if not modules:
         print("no test modules matched", file=sys.stderr)
         return 2
+    inputs = fingerprint(python, modules)
+    prior = json.loads(arguments.prior.read_text()) if arguments.prior else None
+    same_input = (
+        prior.get("fingerprint", {}).get("digest") == inputs["digest"]
+        if prior and inputs["input_complete"] and inputs["runtime_facts"] is not None
+        else None
+    )
+    if same_input:
+        print(
+            f"Same declared inputs as prior run; rerun reason: {arguments.reason} (environment coverage is partial)"
+        )
     cpu_count = os.cpu_count() or 1
     started = time.perf_counter()
     parallel = build_units(
@@ -391,6 +550,9 @@ def main(argv: list[str] | None = None) -> int:
         )
     print(flush=True)
 
+    discovery_ended = time.monotonic_ns()
+    for unit in parallel + serial:
+        unit.queued_ns = discovery_ended
     finished = 0
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         futures = [pool.submit(run_unit, python, unit) for unit in parallel]
@@ -409,7 +571,57 @@ def main(argv: list[str] | None = None) -> int:
     totals = print_report(list(reports.values()), units, wall, jobs)
 
     if arguments.json:
+        sys.path.insert(0, str(ROOT / "src"))
+        from concorde.harness.timing import interval_record
+
+        run_id = str(uuid.uuid4())
+        total_span = interval_record(
+            name="test.total",
+            trace_id=run_id,
+            started_at=run_started_at,
+            start_ns=discovery_started,
+            end_ns=time.monotonic_ns(),
+            status="error" if any(unit.failed for unit in units) else "ok",
+        )
+        spans = [
+            total_span,
+            interval_record(
+                name="test.discovery",
+                trace_id=run_id,
+                parent_id=total_span["span_id"],
+                started_at=run_started_at,
+                start_ns=discovery_started,
+                end_ns=discovery_ended,
+            ),
+        ]
+        for unit in units:
+            spans.append(
+                interval_record(
+                    name="test.unit",
+                    trace_id=run_id,
+                    parent_id=total_span["span_id"],
+                    started_at=unit.started_at,
+                    start_ns=unit.started_ns,
+                    end_ns=unit.ended_ns,
+                    status="error" if unit.failed else "ok",
+                )
+            )
         summary = {
+            "schema_version": 2,
+            "run_id": run_id,
+            "spans": spans,
+            "reason": arguments.reason,
+            "scope": arguments.scope,
+            "phase": arguments.phase,
+            "attempt": arguments.attempt,
+            "prior_run_id": prior.get("run_id") if prior else None,
+            "same_declared_inputs": same_input,
+            "fingerprint": inputs,
+            "started_at": run_started_at,
+            "discovery_seconds": (discovery_ended - discovery_started) / 1e9,
+            "elapsed_seconds": (time.monotonic_ns() - discovery_started) / 1e9,
+            "critical_unit": max(units, key=lambda u: u.ended_ns or 0).target,
+            "timing_note": "Execution includes imports and fixtures; setup is unknown. Runtime fixture spans are nested, never additive wall time. Critical unit is last to finish, not a dependency-graph proof.",
             "python": python,
             "totals": totals,
             "serial": {

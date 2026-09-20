@@ -112,7 +112,10 @@ which refuses a describe-policy preview with `use_proposal`.
 <a id="entity.distribution.developer-session"></a>
 
 The Developer agent session coordinates from its initial worktree. Source maintenance and tests
-use separate fresh sibling children in the assigned candidate with inherited catalogs disabled.
+use sibling project-discovered maintenance-worker and tester roles in the assigned candidate with
+inherited catalogs disabled. The author continues across ordinary milestones; main selects none,
+targeted or full independent testing and a fresh tester when needed. Checked role projections and
+passive observation are separate from private Operation catalogs; see [outer roles](build.md#outer-task-roles-and-observation).
 The source writer builds with that candidate's own code; primary never renders candidate outputs.
 For consumer Operations, host-created candidate relays keep the requesting session stationary;
 simple authorized consumer work may also stay directly in primary.

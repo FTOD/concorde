@@ -7,6 +7,8 @@ never create a replacement archive in a candidate.
 
 from __future__ import annotations
 
+from .timing import timed
+
 import os
 import copy
 import base64
@@ -107,6 +109,7 @@ def _local_storage(root: Path) -> Path:
     return primary
 
 
+@timed("evidence.write_status")
 def write_status(root: Path, value: dict, *, create: bool = False) -> None:
     """Create once or compare-and-swap a complete status under the shared lock.
 
@@ -587,6 +590,7 @@ def _finish_migration(primary: Path, journal: str, plan: dict) -> None:
     atomic_write(primary, journal, (canonical(plan) + "\n").encode())
 
 
+@timed("evidence.record_run")
 def record_run(
     host, *, operation: str, result: dict | None = None, task: dict | None = None
 ) -> None:

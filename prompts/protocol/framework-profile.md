@@ -172,16 +172,30 @@ nor computes cross-runtime current/maximum agent depth for these leaves; absent 
 variables do not govern launch. Outer task-subagent limits and all worker file/tool grants remain intact. An Operation in an assigned candidate reuses it instead of creating a nested one.
 Ordinary consumer projects may use direct primary editing for simple authorized tasks.
 
-Concorde source maintenance defaults to a new candidate and a fresh Concorde-catalog-free maintenance child.
-The main stays in its initial worktree and does not use its own Concorde integration to govern that authoring.
-Disable inherited/discovered Concorde catalogs for both maintenance and test children; never fork
-old Concorde instructions. After the writer builds, checks and commits, it stops writing. The main starts a
-separate fresh sibling test child in that same candidate with only explicitly selected candidate
-Pi entry, embedded catalog, transitive implementation, build and runtime provenance. Missing, stale, unreadable or out-of-candidate selections
-fail closed without name-based fallback. Selection is not proof of extension loading, tool use or model execution. The tester cannot rewrite its governing Pi integration. Failed
-tests return to maintenance followed by another fresh tester. One writer owns a worktree at a time.
-Maintenance may end through ordinary Git; it is not required to use Concorde delivery. Integration
-requires explicit merge authorization and cleanup remains a separate action.
+Main decides task scope, worktree ownership, author continuation, checks, independent testing and
+integration authorization. One writer owns a worktree at a time and stops writing before testing.
+Ordinary milestones do not require a new author session. Main chooses none, targeted or full
+independent testing with an explicit scope and reason; an author's self-tests are not independent.
+When selected, the project-discovered `tester` is a fresh sibling task role, not a LangGraph node.
+It receives only explicitly selected local Pi integration/runtime provenance and its actual grant.
+Missing or stale assets block without a primary/global fallback. Selection metadata is not proof
+of extension loading, tool use or model execution. Tester keeps governing artifacts read-only,
+uses scoped external fixtures, returns failures rather than repairing, and cannot delegate tasks.
+Its command tool enforces the OS read-only check boundary rather than unrestricted shell access.
+Outer pi-subagents is a host prerequisite, never a terminal-worker dependency. Passive observation
+adds no tools, catalogs, authority or network telemetry. Main owns durable primary persistence.
+
+Changed relevant inputs/environment invalidate corresponding check evidence; stage reports and
+same-tree commits alone do not demand repeated full suites. State the reason for same-input reruns.
+Already fully read unchanged complete Specs in valid same-session context need no bundle reread;
+new ownership seams and fresh readers retain complete-context obligations. Resource handoffs state
+observed capacity, current input including cache, reserve and compaction status or an actual error.
+Unknown metrics stay unknown. Cumulative usage, document size and absence of a compact tool do not
+establish exhaustion. Main verifies the need after checkpoints/compaction; quality concerns are
+labelled separately. Integration requires explicit authorization; cleanup remains separate.
+
+Concorde's source repository adds its own source-only maintenance/coordinator prompts and validation
+policy. They are not installed as consumer testing instructions.
 
 ### Framework authoring and publication conventions
 

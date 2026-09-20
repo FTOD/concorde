@@ -7,6 +7,8 @@ worktree incarnations to primary status, including unmanaged worktrees.
 
 from __future__ import annotations
 
+from .timing import Span, timed
+
 import copy
 import os
 import re
@@ -159,7 +161,9 @@ def repository_lock(root: Path):
     )
     key = common.stdout.strip() if common.returncode == 0 else str(root.resolve())
     lock = _LOCKS.setdefault(key, threading.RLock())
+    waiting = Span("lock.thread_wait")
     with lock:
+        waiting.finish()
         depths = getattr(_LOCK_DEPTH, "values", {})
         _LOCK_DEPTH.values = depths
         if depths.get(key, 0):
@@ -178,7 +182,8 @@ def repository_lock(root: Path):
             yield
             return
         with location.open("a+b") as stream:
-            fcntl.flock(stream, fcntl.LOCK_EX)
+            with Span("lock.repository_wait"):
+                fcntl.flock(stream, fcntl.LOCK_EX)
             depths[key] = 1
             try:
                 yield
@@ -758,6 +763,7 @@ def replicate_reference_checkouts(source_root: Path, destination_root: Path) -> 
             copy.write_bytes((source_root / path).read_bytes())
 
 
+@timed("worktree.create")
 def create_worktree(
     root: Path, task: dict, *, package_root: Path | None = None
 ) -> dict:

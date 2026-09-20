@@ -23,8 +23,13 @@ import { spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+	AgentToolResult,
+	ExtensionAPI,
+} from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { toolSpan } from "./concorde-observe.ts";
+import { selectionPath as explicitSelectionPath } from "./concorde-selection.ts";
 
 export interface SessionOperation {
 	/** The public Operation's external name, for example `concorde-plan`. */
@@ -82,7 +87,8 @@ export function sessionPrompt(catalog: SessionCatalog): string {
 			"",
 			"This is Concorde's own source checkout: run an Operation only when the user explicitly " +
 				"asks for it by name. Source maintenance belongs to a fresh catalog-free candidate writer, " +
-				"followed by a fresh sibling tester using only the exact candidate Pi entry/catalog and runtime; never rewrite its governing integration.",
+				"and, when main selects independent testing, a fresh sibling tester using only the exact candidate Pi entry/catalog and runtime; never rewrite its governing integration. " +
+				"A tester may use isolated deterministic fixture drivers with that exact runtime against explicitly granted disposable data, never against governing source.",
 		);
 	}
 	lines.push("", "Operations:");
@@ -149,10 +155,14 @@ function runLauncher(
 	cwd: string,
 	envelope: unknown,
 	signal: AbortSignal | undefined,
+	selectionPath?: string,
 ): Promise<LauncherRun> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(argv[0], argv.slice(1), {
 			cwd,
+			env: selectionPath
+				? { ...process.env, CONCORDE_SESSION_SELECTION: selectionPath }
+				: process.env,
 			stdio: ["pipe", "pipe", "pipe"],
 			detached: process.platform !== "win32",
 		});
@@ -223,14 +233,12 @@ export function concordeSession(
 ) {
 	root = path.resolve(root);
 	if (process.env.CONCORDE_WORKER_POLICY)
-		throw new Error(
-			"terminal workers cannot load the Concorde session tool",
-		);
+		throw new Error("terminal workers cannot load the Concorde session tool");
 	if (catalog.schema_version !== 1)
 		throw new Error("unsupported Concorde session catalog version");
 	// Selection is launch provenance, not permission or proof that a model used this tool.
 	// Capture it once: replacing/rebuilding selection during this session requires a fresh tester.
-	const selectionPath = process.env.CONCORDE_SESSION_SELECTION;
+	const selectionPath = explicitSelectionPath();
 	if (entryPath && catalog.explicit_request_only && !selectionPath)
 		throw new Error(
 			"private Pi entry requires explicit candidate selection; no ambient fallback",
@@ -239,7 +247,7 @@ export function concordeSession(
 	const verifySelection = () => {
 		if (!selectionPath) return;
 		if (
-			process.env.CONCORDE_SESSION_SELECTION !== selectionPath ||
+			explicitSelectionPath() !== selectionPath ||
 			process.env.CONCORDE_STUDIO_URL
 		)
 			throw new Error(
@@ -282,9 +290,7 @@ export function concordeSession(
 			);
 		const identity = JSON.stringify(selected);
 		if (selectedIdentity !== undefined && selectedIdentity !== identity)
-			throw new Error(
-				"private Pi selection changed; start a fresh session",
-			);
+			throw new Error("private Pi selection changed; start a fresh session");
 		selectedIdentity = identity;
 	};
 	verifySelection();
@@ -320,8 +326,7 @@ export function concordeSession(
 					action: {
 						type: "string",
 						enum: ["run", "describe"],
-						description:
-							"describe the Operation, or run it with `input`.",
+						description: "describe the Operation, or run it with `input`.",
 					},
 					input: {
 						type: "object",
@@ -332,15 +337,25 @@ export function concordeSession(
 					mode: {
 						type: "string",
 						enum: ["execute", "describe-policy"],
-						description:
-							'Run mode for action "run"; execute unless given.',
+						description: 'Run mode for action "run"; execute unless given.',
 					},
 				},
 				required: ["operation", "action"],
 				additionalProperties: false,
 			}),
-			async execute(_toolCallId, params, signal) {
-				verifySelection();
+			async execute(
+				_toolCallId,
+				params,
+				signal,
+			): Promise<AgentToolResult<Record<string, unknown>>> {
+				const finishSelection = toolSpan(pi, "pi.tool_selection");
+				try {
+					verifySelection();
+					finishSelection("ok");
+				} catch (error) {
+					finishSelection("error");
+					throw error;
+				}
 				const operation = operations.get(params.operation);
 				if (operation === undefined)
 					throw new Error(
@@ -383,7 +398,22 @@ export function concordeSession(
 					path.resolve(root, catalog.launcher),
 					operation.name,
 				];
-				const run = await runLauncher(argv, root, envelope, signal);
+				const finishLauncher = toolSpan(pi, "pi.launcher");
+				let run: LauncherRun;
+				try {
+					run = await runLauncher(argv, root, envelope, signal, selectionPath);
+					let rootInvocation: string | null = null;
+					try {
+						rootInvocation = JSON.parse(run.stdout).invocation_id;
+					} catch {}
+					finishLauncher(
+						run.aborted ? "cancelled" : run.code === 0 ? "ok" : "error",
+						rootInvocation,
+					);
+				} catch (error) {
+					finishLauncher(signal?.aborted ? "cancelled" : "error");
+					throw error;
+				}
 				const usage = usageLine(run.stderr);
 				const body = run.stdout.trim() || run.stderr.trim();
 				if (run.aborted)

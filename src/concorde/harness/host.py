@@ -22,6 +22,7 @@ from ..spec.repository import SpecError
 from ..spec.typed_data import canonical, validate_typed
 from .model_selection import worker_selection
 from .usage import record_usage
+from .timing import Span
 from .worker_executor import WorkerOutcome, build_worker_invocation, worker_instructions
 from .worker_profile import binding_json, external_worker_name, worker_profile
 from .worker_sandbox import WORKER_SANDBOX_POLICY
@@ -208,7 +209,19 @@ def run_worker(
         host.project_root, invocation, target_id=target_id, change_id=change_id
     )
     try:
-        outcome = executor(invocation, checks=checks, report_issue=reporter)
+        with Span(
+            "worker.host",
+            operation=operation,
+            stage=stage,
+            target_id=target_id,
+            change_id=change_id,
+            invocation_id=host.invocation_id,
+            launch_invocation_id=invocation.invocation_id,
+            context_id=invocation.context_id,
+            prompt_bytes=len(invocation.instructions.encode()),
+            context_bytes=len(invocation.context_json.encode()),
+        ):
+            outcome = executor(invocation, checks=checks, report_issue=reporter)
     except OperationExecutionError as error:
         diagnostic = _record_worker_failure(host, invocation, error)
         if diagnostic is not None:

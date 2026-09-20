@@ -23,6 +23,7 @@
       "title": "Operation and Harness model",
       "kind": "program",
       "files": [
+        "scripts/development/analyze-timing.py",
         "scripts/development/check-graph-specs.py",
         "src/concorde/harness/",
         "tests/concorde/harness/",
@@ -128,7 +129,9 @@
         "tests/concorde/harness/test_pi_worker.py",
         "tests/concorde/harness/test_worker_sandbox.py",
         "tests/concorde/support/fake_openai_provider.py",
-        "tests/concorde/support/fake_pi_rpc.py"
+        "tests/concorde/support/fake_pi_rpc.py",
+        "tests/concorde/support/outer_observer_harness.mts",
+        "tests/concorde/distribution/test_outer_agents.py"
       ],
       "meaning": "#entity.harness.pi-worker-runtime"
     },

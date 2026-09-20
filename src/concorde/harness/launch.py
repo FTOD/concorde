@@ -12,6 +12,8 @@ froze, the value its worker receives, how the result is judged and what a previe
 
 from __future__ import annotations
 
+from .timing import timed
+
 import tempfile
 import uuid
 from collections.abc import Callable
@@ -76,6 +78,7 @@ class WorkerLaunch:
     prefix: str = "concorde-context-"
 
 
+@timed("worker.launch")
 def launch_worker(
     host: OperationHost,
     configuration: dict,

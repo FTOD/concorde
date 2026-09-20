@@ -486,3 +486,21 @@ See [project root is the entry process's working directory](requirements.md#req.
 - THEN it fails clearly before a worker without primary/global fallback or widened sandbox authority
 - AND a newly created candidate survives failed bootstrap with primary blocked installation status and its original owner/task intent
 - AND explicit supported installer recovery followed by retry reuses the same change, while conflicting owned bytes remain protected
+
+### scenario.harness.diagnostic-spans — Bounded timing does not change execution
+
+- GIVEN nested or concurrent runtime work, standalone installation diagnostics or a failing telemetry sink
+- WHEN common spans observe success, error, cancellation or incomplete work
+- THEN records retain monotonic duration, wall timestamp, span/parent/process identity and available host identities without raw prompts, source, tool output, environment values or arbitrary argv
+- AND missing counts remain unknown, bounded overflow is explicit and telemetry failure cannot change successful mutation or cause a retry
+- AND analysis uses per-process interval unions and distinguishes summed nested work from elapsed wall time
+- AND durable Operation traces use existing primary authority while standalone diagnostics create no execution authority
+
+### scenario.harness.outer-observation — Observe direct sessions without Operation authority
+
+- GIVEN a main, maintenance-worker or tester session with explicit passive observation and native Pi events
+- WHEN the session resumes, makes model requests, calls tools, waits for a supervisor or compacts
+- THEN native custom entries record measured intervals and observed capacity/current usage/cache/reserve/compaction with unknown fields preserved
+- AND no Operation, child, tool, prompt change, settings change or network telemetry is introduced by observation
+- AND native lineage and bounded main-supplied handoff/test reasons remain diagnostic facts rather than delegation or primary persistence grants
+- AND request roundtrip and outside-tools intervals are not claimed as server thinking time

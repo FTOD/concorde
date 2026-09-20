@@ -129,10 +129,17 @@ class GraphTests(TestCase):
 
         fixture = self.fixture()
         events = []
+        diagnostics = []
+
+        def observe(event, **details):
+            events.append(event)
+            if event == "timing":
+                diagnostics.append(details)
+
         host = OperationHost(
             fixture.root,
             studio_fixtures.PACKAGE,
-            observer=lambda event, **details: events.append(event),
+            observer=observe,
         )
         value = invocation()
         with patch("concorde.harness.operation_graph.build_operation_graph") as build:
@@ -143,7 +150,19 @@ class GraphTests(TestCase):
         self.assertEqual("failed", result["status"])
         self.assertEqual("execution_failed", result["errors"][0]["code"])
         self.assertIsNone(result["output"])
-        self.assertEqual(["operation_started", "operation_finished"], events)
+        self.assertEqual(["operation_started", "operation_finished", "timing"], events)
+        self.assertEqual(1, len(diagnostics))
+        self.assertEqual(result["invocation_id"], diagnostics[0]["trace_id"])
+        self.assertEqual("not-admitted", diagnostics[0]["persistence"])
+        self.assertEqual(
+            "error",
+            next(s for s in diagnostics[0]["spans"] if s["name"] == "operation.total")[
+                "status"
+            ],
+        )
+        self.assertFalse(
+            (fixture.root / ".concorde/runs" / result["invocation_id"]).exists()
+        )
         self.assertEqual([], fixture.double.calls)
 
     @verifies("scenario.harness.graph-execution")

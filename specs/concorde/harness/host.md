@@ -87,6 +87,15 @@ It is optional: normal CLI and Pi tool calls do not require the server. Policy p
 intended access without launching a worker. Replaying a run may execute effects again and does not
 waive current permission or lifecycle checks. Setup is described in the project Studio guide.
 
+Bounded [diagnostic spans](execution-reference.md#execution-diagnostic-timing) also explain elapsed
+work without making timing a workflow decision. Direct outer sessions use Pi's native event and
+session infrastructure, not an invented Operation wrapper. The maintenance analyzer
+`scripts/development/analyze-timing.py` reads native Pi or pi-subagents JSONL locally, preferring
+measured passive spans and labelling uninstrumented timestamp estimates and missing facts.
+It emits no transcript bodies. Runtime/fixture spans distinguish acquisition, verification,
+execution and persistence; test reports distinguish queue and unit time from total wall time.
+An interval outside tools or a request roundtrip never proves server thinking time.
+
 ## Precise specifications
 
 See the Module-owned [operation admission contracts](admission.md) and

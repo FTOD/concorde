@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from ..harness.timing import Span, timed
+
 MARKER_NAME = ".concorde-runtime.json"
 MARKER_SCHEMA = 4
 _LOCK_LINE = re.compile(r"^langgraph==([0-9]+(?:\.[0-9]+){2})$")
@@ -222,13 +224,28 @@ def _run(
     cwd: Path,
     environment: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        list(command),
-        cwd=cwd,
-        env=dict(environment) if environment is not None else None,
-        text=True,
-        capture_output=True,
+    # Closed classification only: never persist executable paths or arbitrary argv.
+    kind = (
+        "venv"
+        if "-m" in command and "venv" in command
+        else "dependency_acquisition"
+        if "-m" in command and "pip" in command
+        else "launcher_probe"
+        if "--runtime-check" in command
+        else "process"
     )
+    with Span("managed_runtime." + kind) as span:
+        result = subprocess.run(
+            list(command),
+            cwd=cwd,
+            env=dict(environment) if environment is not None else None,
+            text=True,
+            capture_output=True,
+        )
+        span.finish(
+            "ok" if result.returncode == 0 else "error", returncode=result.returncode
+        )
+        return result
 
 
 def _tool_version(
@@ -247,6 +264,7 @@ def _tool_version(
     return value, tuple(int(item) for item in match.groups())
 
 
+@timed("managed_runtime.pi_acquisition")
 def _install_pi(runtime: Path, framework: Path, cwd: Path) -> None:
     """Install the Pi worker extensions from the package's pinned lock into the managed runtime."""
     _tool_version("npm", cwd, "npm")
@@ -285,6 +303,7 @@ def _install_pi(runtime: Path, framework: Path, cwd: Path) -> None:
     _checked(result, "Pi worker extension installation")
 
 
+@timed("managed_runtime.pi_import_check")
 def _verify_pi(runtime: Path, spec: ManagedRuntimeSpec) -> None:
     package_root = (
         runtime.joinpath(*PurePosixPath(PI_INSTALL_RELATIVE).parts)
@@ -323,6 +342,7 @@ def _verify_pi(runtime: Path, spec: ManagedRuntimeSpec) -> None:
         raise ManagedRuntimeError(f"installed TypeBox entry point is missing: {entry}")
 
 
+@timed("managed_runtime.python_health")
 def _healthy(runtime: Path, spec: ManagedRuntimeSpec) -> bool:
     python = runtime_python(runtime)
     if not python.is_file():
@@ -410,6 +430,7 @@ def _checked(result: subprocess.CompletedProcess[str], label: str) -> str:
     raise ManagedRuntimeError(f"{label} failed with exit {result.returncode}: {detail}")
 
 
+@timed("managed_runtime.launcher_probes")
 def _verify_operations(
     target: Path,
     framework: Path,
@@ -427,12 +448,13 @@ def _verify_operations(
     observed_python: str | None = None
     verified: list[str] = []
     for operation in spec.operations:
-        result = _run(
-            [str(python), str(launcher), operation, "--runtime-check"],
-            cwd=target,
-            environment=environment,
-        )
-        output = _checked(result, f"operation runtime check for {operation}")
+        with Span("managed_runtime.probe", operation=operation):
+            result = _run(
+                [str(python), str(launcher), operation, "--runtime-check"],
+                cwd=target,
+                environment=environment,
+            )
+            output = _checked(result, f"operation runtime check for {operation}")
         try:
             payload = json.loads(output)
         except json.JSONDecodeError as error:
@@ -495,6 +517,7 @@ def _write_marker(
     marker.chmod(0o644)
 
 
+@timed("managed_runtime.python_version")
 def _python_version(python: Path, cwd: Path) -> str:
     result = _run(
         [
@@ -510,6 +533,7 @@ def _python_version(python: Path, cwd: Path) -> str:
     return _checked(result, "managed Python version check").strip()
 
 
+@timed("managed_runtime.provision")
 def provision_runtime(
     target: Path,
     framework: Path,
@@ -603,6 +627,7 @@ def _runtime_record(spec, python_version, verified):
     }
 
 
+@timed("managed_runtime.verify")
 def verify_runtime(
     target: Path,
     framework: Path,
@@ -640,14 +665,15 @@ def verify_runtime(
         "(p(s).resolve().is_relative_to(base) and 'site-packages' not in p(s).parts) "
         "for s in sys.path if s)"
     )
-    _checked(
-        _run(
-            [str(runtime_python(runtime)), "-I", "-B", "-c", code],
-            cwd=target,
-            environment=_offline_environment(),
-        ),
-        "local dependency isolation check",
-    )
+    with Span("managed_runtime.dependency_import_check"):
+        _checked(
+            _run(
+                [str(runtime_python(runtime)), "-I", "-B", "-c", code],
+                cwd=target,
+                environment=_offline_environment(),
+            ),
+            "local dependency isolation check",
+        )
     version = _python_version(runtime_python(runtime), target)
     verified = _verify_operations(target, framework, spec, runtime)
     result = _runtime_record(spec, version, verified)

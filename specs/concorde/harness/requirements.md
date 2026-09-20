@@ -208,3 +208,13 @@ Harness SHALL admit consumer execution only with a verified complete worktree-lo
 Creation has explicit host bootstrap authority; adoption/resume missing or stale installation stops
 for the supported installer. Source-private mode remains separate, without ambient installation.
 Installation does not widen worker grants, accept Protocol or duplicate primary status/runs.
+
+### req.harness.diagnostic-spans — Passive bounded timing
+
+Timing diagnostics SHALL preserve actual authority and successful mutation outcomes while recording bounded, redacted, monotonic spans and wall timestamps with explicit unknown or incomplete observations.
+
+The common record distinguishes outer sessions, runtime work and test execution; no span is a
+workflow grant. No network telemetry, credentials, environment values, raw prompts, source bodies,
+tool output or arbitrary command arguments are recorded. Concurrent/nested spans cannot be summed
+as elapsed wall time; outside-tools and roundtrip time are not server thinking time. Existing
+primary-only durable Operation persistence and private diagnostics remain unchanged.

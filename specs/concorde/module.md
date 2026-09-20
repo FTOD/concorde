@@ -46,9 +46,15 @@ the Module concerned explains them.
 The user-facing main session understands needs and coordinates. It may delegate complete tasks
 to one layer of fresh task subagents; simple consumer work may be edited directly in primary.
 Task delegation is not Operation composition and never overrides actual harness limits.
-Concorde source maintenance uses a fresh Concorde-catalog-free candidate writer followed by a separate
-fresh sibling tester with only explicit candidate-built Pi entry/catalog and runtime provenance; ordinary Git integration needs
-explicit authorization and does not require Concorde delivery.
+Concorde source maintenance starts a fresh Concorde-catalog-free candidate maintenance-worker and
+continues that same session across ordinary milestones. Main decides scope/ownership, continuation,
+check selection, none/targeted/full independent testing and integration authorization. When selected,
+a fresh sibling tester receives only explicit candidate-built Pi entry/catalog and runtime
+provenance plus its bounded observation/check assets. These are outer project-discovered task roles,
+not LangGraph node identities. Tester cannot repair its governing artifacts; self-tests are not
+independent. Source-only coordination/maintenance prompts are not consumer assets; the generic tester
+is distributed to every full local worktree. See [role distribution and validation policy](distribution/build.md#outer-task-roles-and-observation).
+Ordinary Git integration needs explicit authorization and does not require Concorde delivery.
 
 The calling agent reads and selects the relevant complete Specs directly, answers questions, and
 edits reading, paired metadata and registry within its task authority. It chooses retained public

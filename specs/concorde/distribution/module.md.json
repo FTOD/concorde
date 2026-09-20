@@ -56,7 +56,11 @@
       "id": "entity.distribution.skill-sources",
       "title": "Operation guidance sources",
       "kind": "authored instructions",
-      "files": ["prompts/operation-guidance/", "prompts/workflow-host/"],
+      "files": [
+        "prompts/operation-guidance/",
+        "prompts/workflow-host/",
+        "prompts/outer/"
+      ],
       "meaning": "#entity.distribution.skill-sources"
     },
     {
@@ -67,7 +71,9 @@
         "pi/extensions/concorde-session.ts",
         "tests/concorde/distribution/test_pi_session.py",
         "tests/concorde/support/fake_launcher.py",
-        "tests/concorde/support/pi_session_harness.mts"
+        "tests/concorde/support/pi_session_harness.mts",
+        "tests/concorde/support/outer_agents_preflight.mjs",
+        "tests/concorde/support/outer_observer_harness.mts"
       ],
       "meaning": "#entity.distribution.pi-session-extension"
     },

@@ -407,7 +407,7 @@ class RealPiSessionTests(unittest.TestCase):
         "scenario.distribution.pi-session-prompt",
         "scenario.distribution.pi-session-describe",
     )
-    def drive(self, turns, *, use_selection=True):
+    def drive(self, turns, *, use_selection=True, binding=False, conflict=False):
         pi = installed_pi()
         assert pi is not None
         with FakeOpenAIProvider(turns) as provider:
@@ -439,8 +439,16 @@ class RealPiSessionTests(unittest.TestCase):
                 "PI_TELEMETRY": "0",
                 "CONCORDE_SESSION_SELECTION": str(self.selection_path),
             }
-            if not use_selection:
+            if not use_selection or binding:
                 env.pop("CONCORDE_SESSION_SELECTION")
+            if binding:
+                env["PI_SUBAGENT_EXTENSION_BINDINGS"] = json.dumps(
+                    {"concorde/1": {"selection": str(self.selection_path)}}
+                )
+            if conflict:
+                env["CONCORDE_SESSION_SELECTION"] = str(
+                    self.root / "foreign-selection.json"
+                )
             argv = [
                 pi,
                 "--mode",
@@ -525,6 +533,29 @@ class RealPiSessionTests(unittest.TestCase):
         self.assertEqual(3, envelope["schema_version"])
         self.assertEqual("concorde-validate", envelope["operation_id"])
         self.assertEqual("invalid_field", envelope["errors"][0]["code"])
+
+    @verifies(
+        "scenario.distribution.private-selection", "scenario.distribution.outer-roles"
+    )
+    def test_native_child_binding_loads_exact_entry_without_global_env(self):
+        run, _ = self.drive(
+            [
+                {
+                    "tool": "concorde",
+                    "arguments": {
+                        "operation": "concorde-validate",
+                        "action": "describe",
+                    },
+                },
+                {"text": "done"},
+            ],
+            binding=True,
+        )
+        self.assertFalse(run.results_of("concorde")[0]["isError"])
+        with self.assertRaises(PiRpcError) as raised:
+            self.drive([{"text": "no operation"}], binding=True, conflict=True)
+        self.assertIn("Conflicting private selection", raised.exception.run.stderr)
+        self.assertEqual([], raised.exception.run.tool_results)
 
     @verifies("scenario.distribution.private-selection")
     def test_stale_selected_implementation_registers_no_tool(self):

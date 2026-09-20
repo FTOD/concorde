@@ -379,3 +379,23 @@ validation cannot certify its determinism.
 - AND failed creation rolls back owned files and receipt while preserving unrelated project bytes and permits a fresh-plan retry after the cause is corrected
 - AND source/target aliases and active source-checkout targets are refused, and a concurrent supported installer cannot mutate the same installation
 - AND every failed verification returns no successful local execution observation
+
+### scenario.distribution.outer-roles — Discoverable sibling roles with separate distribution
+
+- GIVEN a source build or a full local consumer installation and supported outer pi-subagents
+- WHEN main resolves project agents by the exact names maintenance-worker and tester
+- THEN source discovery supplies both canonical fresh-context roles while consumers receive only generic tester
+- AND source-only coordinator/maintenance prompts never enter the installed package
+- AND explicit child extensions disable ambient catalogs, delegation tools are absent and tester commands enforce read-only governing artifacts with external scratch
+- AND user-owned agent-file collisions and modified owned definitions block replacement, while unchanged owned updates retain receipt verification
+- AND main chooses check/test scope and continuation, maintenance performs self-checks without independent claims, and tester returns failures without self-repair
+
+### scenario.distribution.test-timing — Test reasons and measured input identity
+
+- GIVEN legacy or explicitly scoped test-runner arguments and optional prior evidence
+- WHEN the runner discovers and executes its selected units
+- THEN it records reason, scope, phase, attempt/prior identity and whitelisted input/test/runtime/lock/environment fingerprints
+- AND unchanged declared inputs are recognizable without treating a same-tree commit as invalidation
+- AND discovery, queue, execution and total elapsed durations remain separate, setup remains unknown unless observed, and expensive fixture runtime spans remain nested diagnostics
+- AND legacy callers use manual reason and unspecified scope/phase without new required flags
+- AND parallel unit sums are not reported as elapsed wall time or server thinking time

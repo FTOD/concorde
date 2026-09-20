@@ -93,9 +93,41 @@ These companions are part of the same complete Module specification, not separat
 
 Source maintenance starts a new Concorde-catalog-free writer in a candidate, never a fork carrying
 old instructions. The main remains outside that authoring context. After the writer checks,
-commits and stops, the main starts a separate fresh sibling tester in the same candidate. Both
+commits and stops, main chooses independent testing as none, targeted or full with scope and reason.
+When selected, main starts a separate fresh sibling tester in the same candidate. Both
 disable inherited/discovered Concorde catalogs; only the tester explicitly loads the candidate Pi
-entry. Failed tests return to maintenance followed by another fresh tester. Neither child delegates tasks.
+entry. Failed tests return to the same maintenance session, then another fresh tester when selected.
+Neither child delegates tasks. Ordinary milestones do not replace the maintenance session.
+
+## Outer task roles and observation
+
+`maintenance-worker` and `tester` are project-discovered pi-subagents task roles, not LangGraph
+workers. Canonical prompts under `prompts/outer/` render checked project definitions in
+`.pi/agents/`. Source build also projects the separate coordinator prompt to `.pi/APPEND_SYSTEM.md`
+and a passive native-event observer entry. These explicit assets are not an ambient Operation
+catalog. Source-only prompts and the maintenance observer wrapper never ship to consumers;
+installer-owned generic tester definitions use the installed local Framework/runtime instead.
+Outer pi-subagents is a host prerequisite, not a new worker dependency.
+
+Main owns scope, worktree assignment, continuation decisions, selected checks/independent testing
+and integration authorization. Maintenance directly edits and self-checks, never delegates or
+integrates. Tester starts fresh, keeps governing artifacts read-only and returns failures rather
+than repairing. Its command tool uses the existing OS read-only check executor with disposable
+external fixtures; unavailable isolation fails closed. Explicit extension lists disable ambient
+catalogs without granting additional tools. Effective discovery/preflight remains host-owned.
+
+Local edits need format/static/targeted checks, coherent changes affected integration, final
+stable input one full Python suite and applicable gates. Stage handoff alone adds no full suite;
+a same-tree commit only needs HEAD/bootstrap checks. Changed relevant input/environment invalidates
+corresponding evidence. Same-input reruns state their reason; self-tests never become independent.
+Same-session complete unchanged Specs need no repeated bundle read; new seams/readers do.
+Resource handoff requests distinguish observed capacity/current input/cache/reserve/compaction
+from cumulative usage, document size or missing tools. Unknown metrics remain unknown and main
+verifies handoff need; quality concerns are separately labelled.
+
+Passive timing reuses Pi lifecycle, provider, tool and compaction hooks and native session entries;
+it changes no prompts, tools, providers or settings. Main may analyze these local diagnostics and
+persist evidence under its existing primary authority; child hooks receive no primary write grant.
 
 `select-session --mode test --runtime <absolute-candidate-launcher> --pi-entry <absolute-private-entry.ts>`
 checks all current candidate source, manifest, entry and embedded catalog bytes. Maintenance mode
@@ -108,7 +140,10 @@ Save selection only to ignored candidate `.concorde/work/` scratch with `--outpu
 excludes or ambient installer settings are changed. `select-session --verify <absolute-selection>`
 reverifies without issuing replacement inputs. The fresh Pi host supplies that same path in
 `CONCORDE_SESSION_SELECTION`, a separate host-owned configuration directory and only the returned
-explicit entry with all returned discovery-disable flags. It must reject extension loading errors.
+Operation entry with all returned discovery-disable flags, plus the explicitly registered bounded
+observation/check assets. Native pi-subagents launches use fresh context, no skills, async true and
+the [per-launch selection binding](contracts.md#private-session-selection), not a global alias or
+settings/environment mutation. It must reject extension loading errors.
 The source extension requires explicit saved selection and the candidate Python environment (no ambient interpreter fallback),
 checks selection before registration and each tool call, and rejects changed session provenance.
 The launcher independently reverifies before execution. The host may retain selection in primary

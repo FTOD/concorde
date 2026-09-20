@@ -11,6 +11,8 @@ interprets the collected tool results.
 
 from __future__ import annotations
 
+from .timing import Span, timed, observe_pi_event
+
 import json
 import queue
 import subprocess
@@ -71,6 +73,7 @@ def _records(stream, sink: queue.Queue) -> None:
         sink.put(("eof", None))
 
 
+@timed("pi.rpc_total")
 def run_prompt(
     argv: Sequence[str],
     *,
@@ -83,15 +86,17 @@ def run_prompt(
     """Run one prompt to settlement and return everything the process reported."""
     started = monotonic()
     deadline = started + timeout
-    process = popen(
-        list(argv),
-        cwd=cwd,
-        env=dict(env),
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        bufsize=0,
-    )
+    with Span("pi.process_start"):
+        process = popen(
+            list(argv),
+            cwd=cwd,
+            env=dict(env),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=0,
+        )
+    intervals = {}
     records: queue.Queue = queue.Queue()
     stderr_tail = bytearray()
 
@@ -128,6 +133,9 @@ def run_prompt(
         run.stderr = bytes(stderr_tail).decode("utf-8", "replace")
         run.exit_code = process.returncode
         run.wall_seconds = monotonic() - started
+        for span in intervals.values():
+            span.finish("incomplete")
+        intervals.clear()
         return run
 
     def next_record() -> dict[str, Any]:
@@ -169,6 +177,7 @@ def run_prompt(
     def observe(record: dict[str, Any]) -> None:
         nonlocal settled
         kind = record.get("type")
+        observe_pi_event(record, intervals)
         if kind == "extension_ui_request" and record.get("method") in _DIALOG_METHODS:
             # A worker has no human at the other end: every dialog is answered as cancelled.
             send(
@@ -187,7 +196,8 @@ def run_prompt(
 
     try:
         send({"id": "prompt", "type": "prompt", "message": message})
-        await_response("prompt")
+        with Span("pi.rpc_accept", context_bytes=len(message.encode("utf-8"))):
+            await_response("prompt")
         while not settled:
             observe(next_record())
         send({"id": "stats", "type": "get_session_stats"})

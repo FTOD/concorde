@@ -101,6 +101,22 @@ class PreservedProjectTests(unittest.TestCase):
         self.assertEqual("unchanged", self.apply())
         self.assertEqual(b"only the project's own rules\n", agents.read_bytes())
 
+    @verifies("scenario.distribution.outer-roles")
+    def test_tester_owned_update_protects_edits(self):
+        self.apply()
+        tester = self.target / ".pi/agents/tester.md"
+        original = tester.read_bytes()
+        self.assertFalse((self.target / ".pi/agents/maintenance-worker.md").exists())
+        self.assertFalse(
+            (self.target / ".concorde/framework/prompts/outer/source").exists()
+        )
+        self.assertEqual("unchanged", self.apply())
+        self.assertEqual(original, tester.read_bytes())
+        tester.write_text("user edit")
+        with self.assertRaisesRegex(installer.InstallError, "ownership conflicts"):
+            self.apply()
+        self.assertEqual("user edit", tester.read_text())
+
     @verifies("scenario.distribution.install-preserve-project")
     def test_missing_project_assets_seed_owned_entries_and_repeat_retains_ownership(
         self,
@@ -426,6 +442,18 @@ class NativeLocalInstallationTests(unittest.TestCase):
                     source.identity, verify_installation(third).package.identity
                 )
                 for worktree in (target, third):
+                    tester = (worktree / ".pi/agents/tester.md").read_text()
+                    self.assertIn("name: tester", tester)
+                    self.assertIn(
+                        "../../.concorde/framework/pi/extensions/concorde-tester.ts",
+                        tester,
+                    )
+                    self.assertFalse(
+                        (worktree / ".pi/agents/maintenance-worker.md").exists()
+                    )
+                    self.assertFalse(
+                        (worktree / ".concorde/framework/prompts/outer/source").exists()
+                    )
                     for path, content in project_bytes.items():
                         self.assertEqual(content, (worktree / path).read_bytes())
                     validation = subprocess.run(
