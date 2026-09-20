@@ -113,10 +113,6 @@ def worker_invocation(
         binding_json=binding_json(prompt.binding),
         instructions=worker_instructions(prompt.body, protocol),
         selection=worker_selection(configuration, agent.name),
-        child_selections=tuple(
-            (child.name, worker_selection(configuration, agent.name, child.name))
-            for child in agent.children
-        ),
     )
 
 
@@ -137,7 +133,6 @@ def worker_description(prompt, invocation, policy, **labels) -> dict:
         "instructions_digest": prompt.binding.instructions_digest,
         "workspace": agent.workspace,
         "tools": list(agent.tools),
-        "children": [child.name for child in agent.children],
         "model": invocation.selection.model,
         "thinking": invocation.selection.thinking,
         "timeout_seconds": invocation.selection.timeout_seconds

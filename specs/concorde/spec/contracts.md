@@ -262,9 +262,9 @@ The public input is `concorde-init-request@2`, an ordinary
 `{type_id, schema_version: 2, data}` envelope. `data` is a closed object with required
 `action: "propose"|"apply"` and optional `name`, `target_id`, `configuration` and `proposal`.
 `name` and `target_id`, when supplied, are nonblank strings. `configuration` is
-`concorde-operation-configuration@1`, whose data is the Pi worker model selection: an optional
+`concorde-operation-configuration@2`, whose data is the Pi worker model selection: an optional
 default `model` (Pi's `provider/id`), `thinking` level and `timeout_seconds`, and optional `workers`
-overrides keyed by a worker or a worker child. A key naming no worker or child, a child timeout, a
+overrides keyed by a terminal worker. Any worker-child key, an unknown worker, a
 nonpositive timeout or a model that is not a Pi `provider/id` is rejected here instead of failing at
 the first worker launch.
 `proposal` is `concorde-project-proposal@1` with exactly `{action: "initialize", base_digest: sha256|null,
@@ -385,7 +385,7 @@ behavioral contract. Publication renders the same Mermaid source as part of the 
 
 `Profile 15` is the Framework's project-configuration compatibility version for the complete content model and its human-readable subset. It is distinct from Spec Protocol 10.0.0 and from registry schema 5, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
 
-The Framework reads `.concorde/config.json` with exactly `profile_version: 15`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `operation_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per worker or per worker child). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
+The Framework reads `.concorde/config.json` with exactly `profile_version: 15`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `operation_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per terminal worker). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
 
 Registry schema 5 stores exactly `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. `targets` holds Module descriptors; both Module Specs and Implementation Specs are owned units in the same documents collection, distinguished by the explicit schema-2 document.role. Implementation Specs are normative documents, not entity file bindings or implementation source. The separate check records configure executable verification; they are Framework execution metadata. Their serialized shape does not replace the Protocol's meaning of identity, membership, composition, dependency, entity or file binding.
 

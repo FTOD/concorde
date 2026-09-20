@@ -16,7 +16,12 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-issues",
-        "uses": ["issue_solver", "spec_review", "code_review", "validate"],
+        "uses": [
+          "issue_solver",
+          "spec_review",
+          "code_review",
+          "validate"
+        ],
         "state": {
           "input": "concorde-issues-request",
           "output": null
@@ -81,7 +86,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-spec-review",
-        "uses": ["spec_reviewer"],
+        "uses": [
+          "spec_reviewer"
+        ],
         "state": {
           "input": "concorde-spec-review-request",
           "output": null
@@ -94,7 +101,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-code-review",
-        "uses": ["code_reviewer"],
+        "uses": [
+          "code_reviewer"
+        ],
         "state": {
           "input": "concorde-code-review-request",
           "output": null
@@ -107,7 +116,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-context-solve",
-        "uses": ["context_assessor"],
+        "uses": [
+          "context_assessor"
+        ],
         "state": {
           "input": "concorde-context-solve-request",
           "output": null
@@ -120,7 +131,10 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-plan",
-        "uses": ["context_assessor", "planner"],
+        "uses": [
+          "context_assessor",
+          "planner"
+        ],
         "state": {
           "input": "concorde-plan-request",
           "output": null
@@ -133,7 +147,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-tasks",
-        "uses": ["task_author"],
+        "uses": [
+          "task_author"
+        ],
         "state": {
           "input": "concorde-tasks-request",
           "output": null
@@ -146,7 +162,9 @@
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-implement",
-        "uses": ["programmer"],
+        "uses": [
+          "programmer"
+        ],
         "state": {
           "input": "concorde-implement-request",
           "output": null
@@ -166,8 +184,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": ["consistency", "fact-check"]
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ]
         }
       },
       {
@@ -183,8 +205,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": []
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ]
         }
       },
       {
@@ -200,8 +226,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": ["scout"]
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ]
         }
       },
       {
@@ -217,8 +247,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": []
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ]
         }
       },
       {
@@ -243,8 +277,7 @@
             "read",
             "run_checks",
             "write"
-          ],
-          "children": ["planner", "scout", "verifier"]
+          ]
         }
       },
       {
@@ -260,8 +293,14 @@
         },
         "profile": {
           "workspace": "project",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": ["scout", "verifier"]
+          "tools": [
+            "bash",
+            "find",
+            "grep",
+            "ls",
+            "read",
+            "run_checks"
+          ]
         }
       },
       {
@@ -277,8 +316,12 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": ["find", "grep", "ls", "read"],
-          "children": []
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ]
         }
       }
     ]

@@ -41,7 +41,7 @@ node names, state channels, branching and limits are maintained once in Implemen
 A matching diagram proves agreement with the compiled topology, not that every decision is correct.
 
 A stopped graph retains its progress. Resuming checks that the task and inputs are still current
-before choosing a next step. Completing an inner worker or helper does not complete the enclosing
+before choosing a next step. Completing an inner worker does not complete the enclosing
 change, and reaching ready does not authorize delivery.
 
 ## Reading a Graph Spec

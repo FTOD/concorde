@@ -16,13 +16,13 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 MARKER_NAME = ".concorde-runtime.json"
-MARKER_SCHEMA = 2
+MARKER_SCHEMA = 3
 _LOCK_LINE = re.compile(r"^langgraph==([0-9]+(?:\.[0-9]+){2})$")
 _SEMVER = re.compile(r"^v?([0-9]+)\.([0-9]+)\.([0-9]+)(?:[-+].*)?$")
-# The Pi worker extensions a worker with children loads, installed from the package's pinned lock.
+# The terminal worker extension dependencies, installed from the package's pinned lock.
 PI_SOURCES = ("pi/package.json", "pi/package-lock.json", "pi/.npmrc")
 PI_INSTALL_RELATIVE = "share/concorde/pi"
-PI_SUBAGENTS = "pi-subagents"
+PI_TYPEBOX = "typebox"
 
 
 class ManagedRuntimeError(ValueError):
@@ -41,7 +41,7 @@ class ManagedRuntimeSpec:
     concorde_version: str
     skills: tuple[str, ...]
     pi_lock_sha256: str
-    pi_subagents_version: str
+    typebox_version: str
 
 
 def _sha256(data: bytes) -> str:
@@ -121,12 +121,10 @@ def load_runtime_spec(
             )
         pi_contents.append(source.read_bytes())
     pi_package, _ = _json_object(package_root / PI_SOURCES[0], "Pi worker package")
-    pi_subagents_version = (pi_package.get("dependencies") or {}).get(PI_SUBAGENTS)
-    if not isinstance(pi_subagents_version, str) or not _SEMVER.fullmatch(
-        pi_subagents_version
-    ):
+    typebox_version = (pi_package.get("dependencies") or {}).get(PI_TYPEBOX)
+    if not isinstance(typebox_version, str) or not _SEMVER.fullmatch(typebox_version):
         raise ManagedRuntimeError(
-            f"Pi worker package must pin {PI_SUBAGENTS} to one exact version"
+            f"Pi worker package must pin {PI_TYPEBOX} to one exact version"
         )
     pi_lock_sha256 = _sha256(b"\0".join(pi_contents))
     requirements_sha256 = _sha256(content)
@@ -144,7 +142,7 @@ def load_runtime_spec(
         concorde_version=version,
         skills=SKILL_NAMES,
         pi_lock_sha256=pi_lock_sha256,
-        pi_subagents_version=pi_subagents_version,
+        typebox_version=typebox_version,
     )
 
 
@@ -290,23 +288,19 @@ def _verify_pi(runtime: Path, spec: ManagedRuntimeSpec) -> None:
     package_root = (
         runtime.joinpath(*PurePosixPath(PI_INSTALL_RELATIVE).parts)
         / "node_modules"
-        / PI_SUBAGENTS
+        / PI_TYPEBOX
     )
     package, _ = _json_object(
-        package_root / "package.json", "installed pi-subagents package"
+        package_root / "package.json", "installed TypeBox package"
     )
     if (
-        package.get("name") != PI_SUBAGENTS
-        or package.get("version") != spec.pi_subagents_version
+        package.get("name") != PI_TYPEBOX
+        or package.get("version") != spec.typebox_version
     ):
-        raise ManagedRuntimeError(
-            "installed pi-subagents package identity is mismatched"
-        )
-    entry = package_root / "index.ts"
+        raise ManagedRuntimeError("installed TypeBox package identity is mismatched")
+    entry = package_root / "build/index.mjs"
     if entry.is_symlink() or not entry.is_file():
-        raise ManagedRuntimeError(
-            f"installed pi-subagents entry point is missing: {entry}"
-        )
+        raise ManagedRuntimeError(f"installed TypeBox entry point is missing: {entry}")
 
 
 def _healthy(runtime: Path, spec: ManagedRuntimeSpec) -> bool:
@@ -459,7 +453,7 @@ def _write_marker(
         "runtime_sha256": spec.runtime_sha256,
         "python_version": python_version,
         "pi_lock_sha256": spec.pi_lock_sha256,
-        "pi_subagents_version": spec.pi_subagents_version,
+        "typebox_version": spec.typebox_version,
         "verified_skills": list(spec.skills),
     }
     content = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
@@ -566,6 +560,6 @@ def provision_runtime(
         "pi": {
             "install_relative": PI_INSTALL_RELATIVE,
             "lock_sha256": spec.pi_lock_sha256,
-            "pi_subagents": spec.pi_subagents_version,
+            "typebox": spec.typebox_version,
         },
     }

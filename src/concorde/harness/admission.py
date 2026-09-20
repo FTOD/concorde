@@ -8,6 +8,7 @@ Graph runs; every outcome, admitted or not, ends in one typed result envelope.
 from __future__ import annotations
 
 import copy
+import os
 import uuid
 from dataclasses import replace
 from pathlib import Path
@@ -142,6 +143,10 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
 
     def admit_request():
         nonlocal configuration, task, mutation
+        if os.environ.get("CONCORDE_WORKER_POLICY"):
+            raise SpecError(
+                "terminal workers cannot invoke Operations", "permission_denied"
+            )
         if operation not in OPERATION_CONTRACTS:
             raise SpecError("unknown registered operation", "unknown_operation")
         if host.mode not in {"execute", "describe-policy"}:

@@ -13,9 +13,9 @@ A declaration naming a scenario outside the admitted context belongs to that sce
 Module and is judged by its own review; it is neither a defect nor a gap here. The snapshot's
 `external_references` are the admitted source for judging third-party API use.
 
-Never modify Specs, source, tests or control files. Your `scout` child locates the admitted code a
-contract concerns, and your `verifier` child runs checks, including the host's configured checks,
-and reports their exact outcome. Use them for focused evidence and verify what they report.
+Never modify Specs, source, tests or control files. Locate the admitted code each contract
+concerns and run granted checks directly, including the host configured checks through
+`run_checks`. Record their exact outcomes; never infer a pass from unavailable evidence.
 
 @include prompts/workflow-host/review-scope-and-result.md
 

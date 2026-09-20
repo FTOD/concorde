@@ -57,9 +57,8 @@ the grant or infer a definition from code. Report concrete inconsistencies with 
 locations through report_issue; apply the normal task-relevance rules to severity. If required
 comparisons cannot be completed, report incomplete rather than silently treating them as consistent.
 
-Your `fact-check` child verifies one claim against the granted documents and your `consistency`
-child cross-checks identities, links, entity titles, diagram labels and terminology semantics. Use them
-for focused checks of a large collection and verify what they report before you rely on it.
+Directly verify claims against the granted documents and cross-check identities, links,
+entity titles, diagram labels and terminology semantics. Cite exact evidence for each finding.
 
 @include prompts/workflow-host/review-scope-and-result.md
 

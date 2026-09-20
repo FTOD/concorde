@@ -22,7 +22,7 @@ from . import worker_profile
 from .model_selection import WorkerSelection
 from .permissions import NormalizedPolicy
 from .pi_rpc import PiRun
-from .pi_worker import ChildAgent, PiWorkerRuntime, WorkerExecutionError, WorkerLaunch
+from .pi_worker import PiWorkerRuntime, WorkerExecutionError, WorkerLaunch
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 
@@ -84,7 +84,6 @@ class WorkerInvocation:
     binding_json: str
     instructions: str
     selection: WorkerSelection
-    child_selections: tuple[tuple[str, WorkerSelection], ...]
     digest: str
 
     @property
@@ -187,7 +186,6 @@ def build_worker_invocation(
     binding_json: str,
     instructions: str,
     selection: WorkerSelection,
-    child_selections: tuple[tuple[str, WorkerSelection], ...] = (),
 ) -> WorkerInvocation:
     """Bind one invocation's identities, refusing an inconsistent or non-canonical combination."""
     from ..spec.typed_data import canonical, decode, validate_typed
@@ -233,9 +231,6 @@ def build_worker_invocation(
         "binding": decode(binding_json),
         "instructions_digest": _digest(instructions),
         "selection": selection.wire(),
-        "child_selections": [
-            [child, value.wire()] for child, value in child_selections
-        ],
     }
     return WorkerInvocation(
         operation=operation,
@@ -249,26 +244,7 @@ def build_worker_invocation(
         binding_json=binding_json,
         instructions=instructions,
         selection=selection,
-        child_selections=tuple(child_selections),
         digest=_digest(payload),
-    )
-
-
-def _child_text(
-    definition: worker_profile.ChildDefinition, selection: WorkerSelection | None
-) -> str:
-    extra = "".join(
-        f"{key}: {value}\n"
-        for key, value in (
-            ("model", selection and selection.model),
-            ("thinking", selection and selection.thinking),
-        )
-        if value
-    )
-    return (
-        definition.text.replace("---\n", "---\n" + extra, 1)
-        if extra
-        else definition.text
     )
 
 
@@ -362,20 +338,10 @@ class WorkerExecutor:
         from ..spec.typed_data import TypedDataError, typed
 
         agent, binding, _ = self.preflight(invocation)
-        definitions = worker_profile.child_definitions(self.package_root, agent)
-        selections = dict(invocation.child_selections)
-        children = tuple(
-            ChildAgent(item.name, _child_text(item, selections.get(item.name)))
-            for item in definitions
-        )
-        child_tools = tuple(
-            sorted({tool for item in definitions for tool in item.tools})
-        )
         tools = (
             *agent.tools,
             "submit_result",
             *(("report_issue",) if report_issue is not None else ()),
-            *(("subagent",) if agent.children else ()),
         )
         read_paths = invocation.policy.read_paths + (
             (".",) if agent.workspace == "capsule" else ()
@@ -389,8 +355,6 @@ class WorkerExecutor:
             tools=tools,
             read_paths=read_paths,
             write_paths=invocation.policy.write_paths,
-            children=children,
-            child_tools=child_tools,
             model=invocation.selection.model,
             thinking=invocation.selection.thinking,
             timeout_seconds=invocation.selection.timeout_seconds
@@ -398,8 +362,8 @@ class WorkerExecutor:
             report_schema=report_issue.schema if report_issue is not None else None,
         )
         runtime = self.runtime or PiWorkerRuntime(Path(self.package_root))
-        # The host check service is served only to a worker or child granted run_checks.
-        if "run_checks" not in (*launch.tools, *launch.child_tools):
+        # The host check service is served only to a worker granted run_checks.
+        if "run_checks" not in launch.tools:
             checks = None
         try:
             services = (

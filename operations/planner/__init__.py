@@ -2,7 +2,7 @@
 
 from concorde.harness.effects import EffectDeclaration
 from concorde.harness.operation_state import StateContract, run_model
-from concorde.harness.worker_profile import Child, Contract, WorkerProfile
+from concorde.harness.worker_profile import Contract, WorkerProfile
 
 from .. import external_name
 
@@ -19,7 +19,6 @@ PROFILE = WorkerProfile(
         output_fields=("plan",),
     ),
     tools=("read", "grep", "find", "ls"),
-    children=(Child("scout", "operations/planner/children/scout.md"),),
     timeout_seconds=1800,
 )
 

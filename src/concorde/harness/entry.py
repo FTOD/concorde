@@ -17,6 +17,10 @@ from .usage import read_usage, summarize_usage
 
 def validate_invocation(value: Any, operation: str | None = None) -> dict:
     """Validate the shared CLI/Studio envelope before selecting a trusted host."""
+    if os.environ.get("CONCORDE_WORKER_POLICY"):
+        raise SpecError(
+            "terminal workers cannot invoke Operations", "permission_denied"
+        )
     if not isinstance(value, dict) or set(value) != {
         "type_id",
         "schema_version",

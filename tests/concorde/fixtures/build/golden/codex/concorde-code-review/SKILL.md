@@ -17,7 +17,7 @@ input; do not perform it directly in this ambient conversation or inspect additi
 
 Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-code-review`. Its exact fields
 are type_id, schema_version:3, operation_id:"concorde-code-review", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (the independently versioned concorde-code-review-request; use the exact schema below).
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@2), and input (the independently versioned concorde-code-review-request; use the exact schema below).
 
 The request requires target_id and task. The calling agent selects the Module explicitly;
 optional focus_id must name its scenario. Constraints and a current-worktree change_id may be

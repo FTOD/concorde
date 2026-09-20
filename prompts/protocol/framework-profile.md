@@ -166,8 +166,10 @@ old readiness never becomes fresh validation implicitly.
 The user-facing main session understands needs and coordinates. It may delegate complete tasks
 to at most one layer of fresh task subagents; a task child may run a series of public Operations
 and continue one change to delivery, but never delegates tasks or moves worktrees. Bounded
-Operation workers are distinct from task children, not a way to evade actual harness depth or
-permissions. An Operation in an assigned candidate reuses it instead of creating a nested one.
+Operation workers are terminal Pi agents scheduled by the LangGraph host, not task subagents.
+They cannot delegate, create subagents or recursively call Operations. Concorde neither inspects
+nor computes cross-runtime current/maximum agent depth for these leaves; absent or legacy depth
+variables do not govern launch. Outer task-subagent limits and all worker file/tool grants remain intact. An Operation in an assigned candidate reuses it instead of creating a nested one.
 Ordinary consumer projects may use direct primary editing for simple authorized tasks.
 
 Concorde source maintenance defaults to a new candidate and a fresh Skill-free maintenance child.

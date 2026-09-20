@@ -5,7 +5,7 @@ audience: ambient
 The user-facing session coordinates needs and may delegate a complete task to one fresh task
 child, or handle a simple consumer-project task directly. Task children never delegate tasks or
 move worktrees. They may run several public Operations on the same change through delivery;
-bounded Operation workers still obey the actual harness's depth and permission limits.
+Operation workers are terminal nodes scheduled by the Graph/host and retain their file/tool grants.
 
 A mutating Operation requested from a consumer primary normally runs in a host-created candidate;
 an Operation already in an assigned candidate reuses it. The requesting session stays where it

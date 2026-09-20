@@ -54,3 +54,6 @@ Thumbs.db
 .concorde/runs/
 
 node_modules
+
+# Retired vendored delegation dependency; local checkout may be retained.
+/reference/pi-subagents/

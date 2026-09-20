@@ -33,15 +33,15 @@ Model choice and reasoning time affect how a job is performed. They do not decid
 may read or change. The host checks both the declared maximum permissions and this particular job's
 allowed scope before launch, then rejects a result that does not match the job.
 
-Some workers have named helpers for a limited subtask. Helpers use fresh conversations and the
-parent's bounded access, cannot delegate again, and report back to the parent. The parent remains
-responsible for its submitted result. This is different from a Graph selecting another operation.
+Workers are terminal nodes: they do their own admitted work, never delegate or recursively call
+Operations. LangGraph and the host own scheduling. Outer task-session delegation limits do not
+become cross-runtime depth requirements for these leaves.
 
 ## Read next
 
 [Execution](execution.md) explains the worker lifecycle and its actual security limits.
 [Permissions](permissions.md) explains how access is narrowed. Exact profiles, task-result types
-and helper rules are in the Module's execution reference, not prerequisites for this introduction.
+and terminal-worker rules are in the Module's execution reference, not prerequisites for this introduction.
 
 ## Precise specifications
 

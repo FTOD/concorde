@@ -2,7 +2,7 @@
 
 from concorde.harness.effects import EffectDeclaration
 from concorde.harness.operation_state import StateContract, run_model
-from concorde.harness.worker_profile import Child, Contract, WorkerProfile
+from concorde.harness.worker_profile import Contract, WorkerProfile
 
 from .. import external_name
 
@@ -18,11 +18,7 @@ PROFILE = WorkerProfile(
             ("spec-context", "implementation", "references"), (), False, "none"
         ),
     ),
-    tools=("read", "grep", "find", "ls"),
-    children=(
-        Child("scout", "operations/code_reviewer/children/scout.md"),
-        Child("verifier", "operations/code_reviewer/children/verifier.md"),
-    ),
+    tools=("read", "grep", "find", "ls", "bash", "run_checks"),
     timeout_seconds=3600,
 )
 

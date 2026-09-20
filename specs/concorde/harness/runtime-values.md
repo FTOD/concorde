@@ -70,9 +70,8 @@ implementation files for reading, with an empty write-role tuple.
 Contract(phase: str, context: str, result: str, effects: EffectDeclaration,
          stage_inputs: tuple[str, ...] = (), required_inputs: tuple[str, ...] = (),
          output_fields: tuple[str, ...] = (), outcomes: tuple[str, ...] = ())
-Child(name: str, definition: str)
 WorkerProfile(name: str, spec: str, workspace: Literal["capsule", "project"], contract: Contract,
-      tools: tuple[str, ...], children: tuple[Child, ...] = (), timeout_seconds: int = 1800)
+      tools: tuple[str, ...], timeout_seconds: int = 1800)
 WorkerBinding(agent: str, spec_path: str, spec_digest: str, instructions_path: str,
              instructions_digest: str, profile_digest: str, build_manifest_digest: str,
              timeout_seconds: int, digest: str)
@@ -83,20 +82,14 @@ All are frozen records. `name` is the catalog key (for example `code_reviewer`);
 a context type paired with its result type, required inputs among admitted inputs, known result
 fields, writes that are also reads, no network or credential effects, implementation reads only in a
 project workspace, distinct known tools
-including `read`, `edit` or `write` only with a write effect, uniquely named children at
-`operations/<name>/children/<child>.md` and a positive integer timeout; it raises
-`BuildError/invalid_agent_binding`. `child_definitions(package_root, agent)` parses each child's
-frontmatter and returns `ChildDefinition(name, description, tools, text)` records, rejecting a
-missing file, a wrong name, missing description or prompt, tools outside `read`, `grep`, `find`,
-`ls`, `bash` and `run_checks`, `run_checks` for a worker without a project workspace, other prompt
-settings than replace with no inherited project context, global context or skills, and any `model`
-or `thinking` key.
+including `read`, `edit` or `write` only with a write effect and a positive integer timeout;
+it raises `BuildError/invalid_agent_binding`. Child catalogs and delegation tools are retired.
 
 `worker_profile(name)` accepts the bare, hyphenated or external name and raises
 `BuildError/unknown_agent`. `resolve_worker(package_root, name)` verifies build freshness, validates
-the profile and its children, requires the Spec and every child definition to be recorded in the
+the profile, requires the Spec to be recorded in the
 build manifest, reads the rendered instructions and returns the binding. `profile_digest` covers the
-complete profile and each child definition's bytes. `canonical_binding`/`binding_digest` hash every
+complete terminal profile. `canonical_binding`/`binding_digest` hash every
 field except `digest`; `binding_json` is the wire form including it, and `binding_from_json` is its
 inverse.
 
@@ -122,11 +115,10 @@ other violations `invalid_completion`.
 
 ```python
 WorkerSelection(model: str | None = None, thinking: str | None = None, timeout_seconds: int | None = None)
-worker_selection(configuration: dict, agent: str, child: str | None = None) -> WorkerSelection
+worker_selection(configuration: dict, agent: str) -> WorkerSelection
 build_worker_invocation(*, operation: str, stage: str, agent: str, invocation_id: str, workspace: str,
     context_json: str, receipt_json: str, policy: NormalizedPolicy, binding_json: str,
-    instructions: str, selection: WorkerSelection,
-    child_selections: tuple[tuple[str, WorkerSelection], ...] = ()) -> WorkerInvocation
+    instructions: str, selection: WorkerSelection) -> WorkerInvocation
 worker_instructions(rendered: str, protocol: list[tuple[str, bytes]]) -> str
 WorkerExecutor(package_root: Path = <package root>, runtime=None)
 WorkerExecutor.__call__(invocation: WorkerInvocation, *, checks=None, report_issue=None) -> WorkerOutcome
@@ -151,9 +143,9 @@ equals the current build's resolution, each listed Protocol file in the workspac
 digest, the instructions equal that composition, the context's own instructions equal the rendered
 file, and the contract input and policy checks pass; network and credential grants are always
 refused. It then launches the worker through the Pi worker runtime with the profile's tools plus
-`submit_result` (and `subagent` with children), plus `report_issue` when its trusted reporting
+`submit_result`, plus `report_issue` when its trusted reporting
 callback is supplied, the policy's grants (plus the workspace root for a
-capsule), the child definitions with their selected models, the resolved selection and a timeout of
+capsule), the resolved selection and a timeout of
 the selection's value or the binding's, and the profile-narrowed submission schema defined in
 [Input and result](execution-reference.md#execution-input-and-result) as the result parameters.
 The submitted value is still wrapped as the unchanged shared result type and independently checked

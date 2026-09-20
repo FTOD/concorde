@@ -11,7 +11,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
@@ -77,7 +76,7 @@ def external_name(name):
     return "concorde-" + name.replace("_", "-")
 """
 
-VALID_AGENT_ALPHA_MODULE = """from concorde.harness.worker_profile import WorkerProfile, Child, Contract
+VALID_AGENT_ALPHA_MODULE = """from concorde.harness.worker_profile import WorkerProfile, Contract
 from concorde.harness.effects import EffectDeclaration
 
 PROFILE = WorkerProfile(
@@ -92,26 +91,7 @@ PROFILE = WorkerProfile(
         output_fields=("plan",),
     ),
     tools=("read", "grep", "find", "ls"),
-    children=(),
 )
-"""
-
-VALID_AGENT_ALPHA_MODULE_WITH_CHILD = VALID_AGENT_ALPHA_MODULE.replace(
-    "children=(),",
-    'children=(Child("scout", "operations/alpha/children/scout.md"),),',
-)
-
-VALID_CHILD_SCOUT = """---
-name: scout
-description: Searches the granted read-only files for one focused question.
-tools: read, grep
-systemPromptMode: replace
-inheritProjectContext: false
-inheritGlobalContext: false
-inheritSkills: false
----
-
-You are the scout child of a fixture worker. Search only the granted files.
 """
 
 VALID_AGENT_ALPHA_SPEC = """# concorde-alpha
@@ -662,8 +642,8 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_non_positive_timeout_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            "children=(),",
-            "children=(),\n    timeout_seconds=0,",
+            'tools=("read", "grep", "find", "ls"),',
+            'tools=("read", "grep", "find", "ls"),\n    timeout_seconds=0,',
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -671,42 +651,13 @@ class AgentRuleTests(unittest.TestCase):
             any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings
         )
 
-    def test_declared_child_without_a_file_is_reported(self) -> None:
-        _agents_package(self.root, module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD)
-        findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings
-        )
-
     def test_undeclared_child_file_is_reported(self) -> None:
-        _agents_package(self.root, children={"scout": VALID_CHILD_SCOUT})
-        findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings
-        )
-
-    def test_matching_child_has_no_findings(self) -> None:
         _agents_package(
-            self.root,
-            module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD,
-            children={"scout": VALID_CHILD_SCOUT},
-        )
-        findings = package_validation._validate_worker_profiles(self.root)
-        self.assertEqual([], findings)
-
-    def test_invalid_child_definition_is_reported(self) -> None:
-        broken_child = VALID_CHILD_SCOUT.replace(
-            "description: Searches the granted read-only files for one focused question.\n",
-            "",
-        )
-        _agents_package(
-            self.root,
-            module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD,
-            children={"scout": broken_child},
+            self.root, children={"scout": "Retired child catalog must fail."}
         )
         findings = package_validation._validate_worker_profiles(self.root)
         self.assertTrue(
-            any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings
+            any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings
         )
 
 

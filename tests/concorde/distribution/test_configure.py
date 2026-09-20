@@ -43,7 +43,7 @@ from tests.concorde.support.operation_json import CONFIGURATION  # noqa: E402
 def configuration(**data) -> dict:
     return {
         "type_id": "concorde-operation-configuration",
-        "schema_version": 1,
+        "schema_version": 2,
         "data": data,
     }
 
@@ -79,7 +79,7 @@ class ConfigureTests(unittest.TestCase):
             model="anthropic/claude-sonnet-5",
             thinking="high",
             timeout_seconds=2400,
-            workers={"programmer/verifier": {"thinking": "low"}},
+            workers={"programmer": {"thinking": "low"}},
         )
         proposed = propose_configuration(self.root, selection)
         self.assertEqual("proposal", proposed.status)

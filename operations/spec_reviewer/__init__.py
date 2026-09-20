@@ -2,7 +2,7 @@
 
 from concorde.harness.effects import EffectDeclaration
 from concorde.harness.operation_state import StateContract, run_model
-from concorde.harness.worker_profile import Child, Contract, WorkerProfile
+from concorde.harness.worker_profile import Contract, WorkerProfile
 
 from .. import external_name
 
@@ -17,10 +17,6 @@ PROFILE = WorkerProfile(
         effects=EffectDeclaration(("spec-context",), (), False, "none"),
     ),
     tools=("read", "grep", "find", "ls"),
-    children=(
-        Child("fact-check", "operations/spec_reviewer/children/fact-check.md"),
-        Child("consistency", "operations/spec_reviewer/children/consistency.md"),
-    ),
     timeout_seconds=1800,
 )
 

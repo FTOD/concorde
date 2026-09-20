@@ -106,7 +106,7 @@ project, removed after its process tree has terminated.
 
 ### req.harness.worker-gate — Every tool call is gated by the compiled grant
 
-Every tool call of a worker and of its children SHALL be checked against the invocation's compiled
+Every tool call of a terminal worker SHALL be checked against the invocation's compiled
 grant before it executes.
 
 The gate is a policy boundary inside the Pi process over the model's tool calls; the process itself
@@ -125,8 +125,7 @@ process private temporary storage and namespaces; see
 
 ### req.harness.worker-selection — Each worker runs on its own configured selection
 
-Every worker launch SHALL use the model, thinking level and timeout resolved for that worker, and for
-each of its children, from the project operation configuration.
+Every worker launch SHALL use the model, thinking level and timeout resolved for that worker from the project operation configuration.
 
 ### req.harness.capsule-closed — A capsule grants only its own snapshot
 
@@ -146,9 +145,9 @@ No execution failure SHALL trigger an automatic retry with the same or wider per
 
 A worker that settles without exactly one valid submitted result SHALL NOT be treated as completed.
 
-### req.harness.delegation-one-level — Delegation stops at declared children
+### req.harness.delegation-one-level — Workers are terminal graph nodes
 
-A worker SHALL delegate only to the children its own profile declares, never beyond one level.
+A worker SHALL NOT delegate tasks, create subagents or recursively invoke Operations.
 
 ### req.harness.worker-single-result — Only the submitted result leaves the worker
 
@@ -200,4 +199,4 @@ The host SHALL persist task status and durable candidate run evidence only in th
 
 ### req.harness.task-delegation — One fresh task-child layer
 
-A task subagent SHALL remain in its assigned worktree without further task delegation and without widening the actual harness depth or permission limits for bounded Operation workers.
+A task subagent SHALL remain in its assigned worktree without further task delegation under the outer task-host delegation limits; terminal Operation workers retain their separate file/tool grants.

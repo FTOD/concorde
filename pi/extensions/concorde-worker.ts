@@ -1,8 +1,7 @@
 /**
  * Concorde worker extension.
  *
- * Every Concorde Pi worker loads this extension with `-e`, and pi-subagents loads it again into
- * every child session through its required-child-extension registry. The host writes one policy
+ * Every terminal Concorde Pi worker loads only this extension with `-e`. The host writes one policy
  * file per launch and names it in CONCORDE_WORKER_POLICY. The extension:
  *
  * - replaces the worker's system prompt with the host-rendered common rules and role prompt;
@@ -10,9 +9,7 @@
  *   the run, `run_checks`, which asks the host to run the configured checks, and the optional
  *   nonterminating `report_issue`, which persists an observation through a scoped host service;
  * - gates every tool call against the policy: only granted tools, reads under the read grant,
- *   edits and writes under the write grant, and no delegation from a child session;
- * - bounds delegation to one level by registering a pi-subagents capability ceiling (only the
- *   declared children, only their tools) and this extension as a required child extension.
+ *   edits and writes under the write grant. Workers cannot delegate or call Operations.
  *
  * This is an in-process policy gate over the model's tool calls. The process itself runs inside
  * the host's worker sandbox (`worker_sandbox.py`), which bounds shell commands too.
@@ -24,26 +21,21 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
 interface WorkerPolicy {
-	schema_version: 1;
+	schema_version: 2;
 	worker: string;
 	workspace: string;
 	read_paths: string[];
 	write_paths: string[];
 	tools: string[];
-	child_tools: string[];
-	children: string[];
 	system_prompt_path: string;
 	result_schema: Record<string, unknown>;
 	report_schema: Record<string, unknown> | null;
 	host_socket: string | null;
-	extension_path: string;
 	scrub_environment: string[];
 }
 
 const READ_TOOLS = new Set(["read", "grep", "find", "ls"]);
 const WRITE_TOOLS = new Set(["edit", "write"]);
-const DELEGATION_FIELDS = new Set(["agent", "task", "async", "context"]);
-const PARENT_SESSION = Symbol.for("concorde.worker.parent-session");
 
 function loadPolicy(): WorkerPolicy {
 	const location = process.env.CONCORDE_WORKER_POLICY;
@@ -52,9 +44,47 @@ function loadPolicy(): WorkerPolicy {
 			"CONCORDE_WORKER_POLICY is not set; this extension runs only inside a Concorde worker",
 		);
 	try {
-		const policy = JSON.parse(fs.readFileSync(location, "utf8")) as WorkerPolicy;
-		if (policy.schema_version !== 1)
+		const policy = JSON.parse(
+			fs.readFileSync(location, "utf8"),
+		) as WorkerPolicy;
+		if (policy.schema_version !== 2)
 			throw new Error("unsupported Concorde worker policy version");
+		const known = new Set([
+			"read",
+			"grep",
+			"find",
+			"ls",
+			"edit",
+			"write",
+			"bash",
+			"submit_result",
+			"run_checks",
+			"report_issue",
+		]);
+		const keys = [
+			"schema_version",
+			"worker",
+			"workspace",
+			"read_paths",
+			"write_paths",
+			"tools",
+			"system_prompt_path",
+			"result_schema",
+			"report_schema",
+			"host_socket",
+			"scrub_environment",
+		];
+		if (
+			Object.keys(policy).length !== keys.length ||
+			keys.some((key) => !(key in policy)) ||
+			!Array.isArray(policy.tools) ||
+			policy.tools.some((tool) => !known.has(tool)) ||
+			new Set(policy.tools).size !== policy.tools.length ||
+			!policy.tools.includes("submit_result")
+		)
+			throw new Error(
+				"worker policy must contain only terminal tools and no child definitions",
+			);
 		return policy;
 	} catch (error) {
 		throw new Error("Cannot load the host-issued Concorde worker policy", {
@@ -115,55 +145,30 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 	const writeRoots = policy.write_paths.map((entry) =>
 		canonical(policy.workspace, entry),
 	);
-	const store = globalThis as typeof globalThis & { [PARENT_SESSION]?: string };
-	const isChild = (sessionId: string) =>
-		store[PARENT_SESSION] !== undefined && store[PARENT_SESSION] !== sessionId;
 	let submitted = false;
-
-	pi.on("session_start", async (_event, ctx) => {
-		const sessionId = ctx.sessionManager.getSessionId();
-		store[PARENT_SESSION] ??= sessionId;
-		if (isChild(sessionId) || policy.children.length === 0) return;
-		const { registerSubagentCapabilityCeiling } = await import(
-			"pi-subagents/capability-ceiling"
-		);
-		const { registerRequiredChildExtensions } = await import(
-			"pi-subagents/required-child-extensions"
-		);
-		registerSubagentCapabilityCeiling({
-			sessionId,
-			source: "concorde-worker",
-			ceiling: {
-				allowedAgents: policy.children,
-				allowedTools: policy.child_tools,
-			},
-		});
-		registerRequiredChildExtensions({
-			sessionId,
-			extensions: [{ id: "concorde-worker", path: policy.extension_path }],
-		});
+	pi.on("session_start", () => {
+		pi.setActiveTools(policy.tools);
 	});
-
-	pi.on("before_agent_start", async (_event, ctx) => {
-		if (isChild(ctx.sessionManager.getSessionId())) return undefined;
+	pi.on("before_agent_start", async () => {
 		return { systemPrompt: fs.readFileSync(policy.system_prompt_path, "utf8") };
 	});
 
-	pi.on("tool_call", async (event, ctx) => {
-		const child = isChild(ctx.sessionManager.getSessionId());
+	pi.on("tool_call", async (event) => {
 		const deny = (reason: string) => ({
 			block: true,
 			reason: `Concorde worker policy: ${reason}`,
 		});
 		const name = event.toolName;
-		if (!(child ? policy.child_tools : policy.tools).includes(name))
+		if (!policy.tools.includes(name))
 			return deny(`the ${name} tool is not granted`);
 		const input = event.input as Record<string, unknown>;
 		if (READ_TOOLS.has(name)) {
 			const target =
 				typeof input.path === "string" && input.path ? input.path : ".";
 			const resolved = canonical(policy.workspace, target);
-			if (![...readRoots, ...writeRoots].some((root) => within(resolved, root))) {
+			if (
+				![...readRoots, ...writeRoots].some((root) => within(resolved, root))
+			) {
 				return deny(`${target} is outside the read grant`);
 			}
 		} else if (WRITE_TOOLS.has(name)) {
@@ -181,29 +186,6 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 			policy.scrub_environment.length > 0
 		) {
 			input.command = `unset ${policy.scrub_environment.join(" ")}\n${input.command}`;
-		} else if (name === "subagent") {
-			if (child) return deny("a child session cannot delegate");
-			if (
-				Object.keys(input).some((key) => !DELEGATION_FIELDS.has(key)) ||
-				typeof input.agent !== "string" ||
-				!policy.children.includes(input.agent) ||
-				typeof input.task !== "string" ||
-				!input.task.trim() ||
-				(input.async !== undefined && input.async !== false) ||
-				(input.context !== undefined && input.context !== "fresh")
-			) {
-				return deny(
-					"only direct foreground delegation to a declared child is granted; " +
-						'use {agent, task, async: false, context: "fresh"}. ' +
-						"Workflows, management actions and runtime overrides are not granted.",
-				);
-			}
-			// Defaults are not a ceiling: workflows and explicit flags can otherwise
-			// start detached work that outlives this one-prompt RPC invocation.
-			input.async = false;
-			input.context = "fresh";
-		} else if (name === "submit_result" && child) {
-			return deny("only the worker itself submits its result");
 		}
 		return undefined;
 	});
@@ -227,7 +209,7 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 		},
 	});
 
-	if (policy.report_schema) {
+	if (policy.tools.includes("report_issue") && policy.report_schema) {
 		pi.registerTool({
 			name: "report_issue",
 			label: "Report issue",
@@ -235,11 +217,9 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 				"Persist a classified bug, gap or limitation through the host and return its immutable receipt. " +
 				"Use one stable report_key for each observation; retry identical input after an uncertain reply. " +
 				"Reporting neither ends this run nor approves a repair. Use admitted evidence only; do not copy raw logs or secrets. " +
-				"A report is limited to 64 KiB. Only the parent worker reports issues, not its helper children.",
+				"A report is limited to 64 KiB.",
 			parameters: Type.Unsafe<Record<string, unknown>>(policy.report_schema),
-			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-				if (isChild(ctx.sessionManager.getSessionId()))
-					throw new Error("only the worker reports verified observations");
+			async execute(_toolCallId, params) {
 				if (!policy.host_socket)
 					throw new Error("this worker has no host reporting service");
 				const reply = await hostRequest(policy.host_socket, {
@@ -256,22 +236,25 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 		});
 	}
 
-	pi.registerTool({
-		name: "run_checks",
-		label: "Run checks",
-		description:
-			"Run the selected Module's configured deterministic checks on the host, read-only, and return each check's status and bounded output.",
-		parameters: Type.Object({}),
-		async execute() {
-			if (!policy.host_socket)
-				throw new Error("this worker has no host check service");
-			const reply = await hostRequest(policy.host_socket, { tool: "run_checks" });
-			if (reply && typeof reply === "object" && "error" in reply)
-				throw new Error(String(reply.error));
-			return {
-				content: [{ type: "text", text: JSON.stringify(reply, null, 2) }],
-				details: reply,
-			};
-		},
-	});
+	if (policy.tools.includes("run_checks"))
+		pi.registerTool({
+			name: "run_checks",
+			label: "Run checks",
+			description:
+				"Run the selected Module's configured deterministic checks on the host, read-only, and return each check's status and bounded output.",
+			parameters: Type.Object({}),
+			async execute() {
+				if (!policy.host_socket)
+					throw new Error("this worker has no host check service");
+				const reply = await hostRequest(policy.host_socket, {
+					tool: "run_checks",
+				});
+				if (reply && typeof reply === "object" && "error" in reply)
+					throw new Error(String(reply.error));
+				return {
+					content: [{ type: "text", text: JSON.stringify(reply, null, 2) }],
+					details: reply,
+				};
+			},
+		});
 }

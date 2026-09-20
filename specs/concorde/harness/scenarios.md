@@ -99,11 +99,11 @@ See [the changed-input recheck bound](requirements.md#req.harness.context-rechec
 - AND planning stops only for the dependent step while independent reasoning continues
 - BUT no relationship inventory is injected into the worker snapshot when this comparison stops planning
 
-### scenario.harness.agent-bind — Bind a named worker's Spec, profile and children
+### scenario.harness.agent-bind — Bind a named worker's Spec and terminal profile
 
 - GIVEN a named worker registered in the Operation inventory and a current, fresh build
 - WHEN resolve_worker is called for that name
-- THEN the host returns a reproducible WorkerBinding covering spec_digest, instructions_digest, profile_digest, build_manifest_digest and timeout_seconds, where the profile digest covers every child definition's bytes
+- THEN the host returns a reproducible WorkerBinding covering spec_digest, instructions_digest, profile_digest, build_manifest_digest and timeout_seconds
 - AND worker_profile resolves that same name, its hyphenated spelling or its concorde- external name to the Operation's model execution profile
 - AND resolve_worker verifies the binding against the current build before returning it
 
@@ -111,7 +111,7 @@ See [the profile-within-contract bound](requirements.md#req.harness.profile-with
 
 ### scenario.harness.agent-bind-reject — Reject an unknown worker or a stale or inconsistent build
 
-- GIVEN an unregistered worker name, a stale package build, a profile inconsistent with its contract or workspace, or a child definition that is missing, malformed, names a model or thinking level or lists a tool outside the child tool set
+- GIVEN an unregistered worker name, a stale package build, a profile inconsistent with its contract or workspace, or a profile requesting a retired delegation tool or child catalog
 - WHEN worker_profile or resolve_worker is called
 - THEN the call raises BuildError with code unknown_agent, stale_build or invalid_agent_binding
 - AND no invocation starts from an unverified binding
@@ -163,7 +163,7 @@ See [the no-wider-retry bound](requirements.md#req.harness.permission-no-retry).
 - GIVEN a host-built WorkerInvocation carrying a verified WorkerBinding, frozen context, compiled policy and model selection
 - WHEN WorkerExecutor is called with it
 - THEN its preflight reverifies the binding against the current build, the instructions against the rendered worker and its indexed Protocol files, and the context and policy against the worker contract before starting any process
-- AND it launches one Pi worker with the profile's tools, the policy's grants, the children with their selected models and the contract's result schema narrowed to the profile's authored-field permissions as submit_result's parameters
+- AND it launches one Pi worker with the profile's tools, the policy's grants and the contract's result schema narrowed to the profile's authored-field permissions as submit_result's parameters
 - AND it returns a WorkerOutcome bound to the invocation and binding digests only for a single submitted result that satisfies the result type and the contract
 
 See [the no-automatic-retry bound](requirements.md#req.harness.execute-no-retry) and [the
@@ -199,21 +199,20 @@ settling-is-not-completion bound](requirements.md#req.harness.execute-exit-insuf
 - AND unsupported record formats are excluded from totals and reported in an explicitly incomplete schema-2 summary
 - BUT a figure Pi did not report is recorded as unknown rather than zero, and a persistence failure never fails the launch
 
-### scenario.harness.worker-selection — Launch each worker and child on its configured model
+### scenario.harness.worker-selection — Launch each terminal worker on its configured model
 
-- GIVEN `.concorde/config.json` operation configuration naming a default `model`, `thinking` and `timeout_seconds` and, under `workers`, entries keyed by a worker such as `programmer` or by a worker child such as `programmer/scout`
-- WHEN the host binds any worker invocation
-- THEN the worker's model and thinking level come from its worker entry, else the default, and each child's from its child entry, else its worker's entry, else the default
-- AND the worker's timeout comes from its worker entry, else the default, else its profile
-- AND Pi receives the worker's model as `--model` and its thinking level as `--thinking`, and each child definition receives its own as frontmatter
-- AND the selection is part of the invocation digest, and a describe-policy run reports it for every worker it describes
-- BUT an absent model or thinking level keeps Pi's own default
+- GIVEN operation configuration with default model, thinking and timeout and per-worker overrides
+- WHEN the host binds a worker invocation
+- THEN each value comes from the worker entry, else the default, with absent timeout falling back to its profile
+- AND Pi receives model and thinking flags and the selected deadline
+- AND selection is part of invocation identity and policy preview
+- BUT no child selection is supported and absent model/thinking retain Pi defaults
 
-See [each worker runs on its own configured selection](requirements.md#req.harness.worker-selection).
+See [worker selection](requirements.md#req.harness.worker-selection).
 
 ### scenario.harness.worker-selection-reject — Reject a selection no worker can run
 
-- GIVEN an operation configuration whose `workers` map has a key naming no worker or worker child, a child entry with a timeout, a nonpositive timeout, a model that is not a Pi `provider/id` or an unknown thinking level
+- GIVEN an operation configuration whose `workers` map names an unknown worker or any worker-child key, a nonpositive timeout, a model that is not a Pi `provider/id` or an unknown thinking level
 - WHEN the configuration is proposed, applied or loaded
 - THEN it is rejected with a typed field error naming the offending entry
 - AND a rejected proposal or application leaves the stored configuration unchanged
@@ -314,14 +313,14 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 - THEN the runtime refuses it as `worker sandbox unavailable` before any Pi process starts
 - AND no worker ever runs unconfined
 
-### scenario.harness.pi-worker-delegation — Delegate one level to declared children under the same gate
+### scenario.harness.pi-worker-delegation — Terminal workers reject delegation
 
-- GIVEN a Pi worker that declares a child agent and child tools
-- WHEN its model delegates a task to that child
-- THEN pi-subagents runs the child as a foreground session that loads the Concorde worker extension and has exactly the child tools
-- AND the gate refuses the child's calls outside the worker's grants, and the child cannot delegate or submit a result
-- AND delegation to an agent the worker did not declare is refused
-- BUT only the worker's own submitted result leaves the process
+- GIVEN a terminal worker with its bounded file/tool grants
+- WHEN launched without depth variables or with incomplete, malformed or exhausted legacy depth values
+- THEN launch proceeds without consuming or changing outer task-host grants
+- AND the Pi catalog contains only the declared non-delegating tools and no ambient Skills, instructions, extensions or child catalogs
+- AND requests for subagent tools, recursive Operation tools, child definitions and child selections fail rather than launching another worker
+- AND result submission and correction, cancellation, timeouts, file scopes and runtime freshness retain their existing behavior
 
 ## Operation admission and Graph execution
 

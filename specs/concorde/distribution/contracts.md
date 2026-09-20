@@ -96,7 +96,7 @@ the host must narrow for a concrete invocation, not automatically effective perm
 `WorkerBinding` has string fields `agent`, `spec_path`, `spec_digest`, `instructions_path`,
 `instructions_digest`, `profile_digest`, `build_manifest_digest` and `digest`, plus
 `timeout_seconds: int`. The profile digest covers the worker's task contract, workspace kind,
-tools, timeout and each declared child definition's bytes. Digest values identify exact admitted
+tools and timeout. Digest values identify exact admitted
 bytes/configuration, using `sha256:` and 64 lowercase hex digits. The binding digest covers the
 complete binding except its own digest field. Source locators remain provenance; they do not give
 a caller permission to load additional project context.
@@ -131,7 +131,7 @@ provision_runtime(target: Path, framework: Path, spec: ManagedRuntimeSpec, actio
 `python`, `requirements_sha256`, `runtime_sha256`, `langgraph_version` and `concorde_version`, a
 `skills: tuple[str, ...]` inventory, and the string fields `pi_lock_sha256`
 (the digest of `pi/package.json`, `pi/package-lock.json` and `pi/.npmrc`) and
-`pi_subagents_version` (the exact pi-subagents version `pi/package.json` pins). Paths are explicit relative
+`typebox_version` (the exact TypeBox version `pi/package.json` pins). Paths are explicit relative
 locations; requirements identify the locked input and runtime digests identify the accepted
 combination of the Python lock and the Pi worker lock. The current accepted Python requirement is
 >=3.11, and installing the Pi worker extensions requires `npm` on the host.
@@ -148,13 +148,13 @@ creates the environment; omission uses the current interpreter. Skill verificati
 each public Skill's `--runtime-check` runs with the managed runtime's own interpreter and must
 report that runtime as its prefix. Success returns `path`, `python`, `python_version`,
 `requirements`, `requirements_sha256`, `runtime_sha256`, `launcher`, `verified_skills` and a `pi`
-object (`install_relative` = `share/concorde/pi`, `lock_sha256`, `pi_subagents`).
-The result records what was verified, not just requested. Accepted state has a schema-2,
+object (`install_relative` = `share/concorde/pi`, `lock_sha256`, `typebox`).
+The result records what was verified, not just requested. Accepted state has a schema-3,
 owner-concorde marker binding its path, Concorde version, lock/runtime digests, observed Python
-version, Pi worker lock digest and pi-subagents version, and verified Skill inventory. The Pi
+version, Pi worker lock digest and TypeBox version, and verified Skill inventory. The Pi
 worker extensions are installed with `npm ci` from the package's own lock into `share/concorde/pi`
-inside the runtime, where a worker with children loads pi-subagents; a changed Pi lock plans a
-rebuild.
+inside the runtime, where every terminal worker loads TypeBox; a changed Pi lock plans a
+rebuild. Older runtime markers require a verified rebuild, not silent reinterpretation.
 
 ## Private session selection
 

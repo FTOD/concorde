@@ -1,6 +1,6 @@
 """Optional model execution configuration on an Operation, with no separate Agent registry.
 
-A WorkerProfile binds instructions, task/effect constraints, workspace, tools, internal helpers
+A WorkerProfile binds instructions, task/effect constraints, workspace, tools
 and timeout for one model-backed entry in operations.OPERATIONS. resolve_worker produces a
 byte-bound WorkerBinding; persisted agent fields and error codes retain their wire spellings.
 Build imports remain lazy because Distribution derives model projections from this same inventory.
@@ -18,13 +18,10 @@ from typing import Literal
 from .effects import EffectDeclaration
 
 WORKSPACES = ("capsule", "project")
-# The Pi tools a worker profile may grant. submit_result is granted to every worker and subagent to
-# every worker with children; the host adds both, so a profile never lists them.
+# Only non-delegating tools can be granted; the host adds submit_result.
 WORKER_TOOLS = frozenset(
     {"read", "grep", "find", "ls", "edit", "write", "bash", "run_checks"}
 )
-# Children are read, search and check helpers: they never edit or write.
-CHILD_TOOLS = frozenset({"read", "grep", "find", "ls", "bash", "run_checks"})
 CONTEXT_RESULT_PAIRS = {
     f"concorde-{kind}-context": f"concorde-{kind}-result"
     for kind in ("agent-stage", "review-stage")
@@ -35,12 +32,6 @@ RESULT_FIELDS = (
     "tasks",
     "issue_decision",
 )
-_CHILD_SETTINGS = {
-    "systemPromptMode": "replace",
-    "inheritProjectContext": False,
-    "inheritGlobalContext": False,
-    "inheritSkills": False,
-}
 
 
 class ContractError(ValueError):
@@ -67,32 +58,15 @@ class Contract:
 
 
 @dataclass(frozen=True)
-class Child:
-    """One lightweight child agent the worker may delegate to, defined by a Markdown file."""
-
-    name: str
-    definition: str
-
-
-@dataclass(frozen=True)
 class WorkerProfile:
-    """One worker profile: role Spec, task contract, workspace, tools, children and timeout."""
+    """One worker profile: role Spec, task contract, workspace, tools and timeout."""
 
     name: str
     spec: str
     workspace: Literal["capsule", "project"]
     contract: Contract
     tools: tuple[str, ...]
-    children: tuple[Child, ...] = ()
     timeout_seconds: int = 1800
-
-
-@dataclass(frozen=True)
-class ChildDefinition:
-    name: str
-    description: str
-    tools: tuple[str, ...]
-    text: str
 
 
 @dataclass(frozen=True)
@@ -138,7 +112,7 @@ def external_worker_name(name: str) -> str:
 
 
 def validate_worker_profile(agent: WorkerProfile) -> None:
-    """Reject a profile whose contract, workspace, tools or children are inconsistent."""
+    """Reject a profile whose contract, workspace or tools are inconsistent."""
     contract = agent.contract
     if agent.spec != f"operations/{agent.name}/spec.md":
         raise _invalid(
@@ -176,69 +150,8 @@ def validate_worker_profile(agent: WorkerProfile) -> None:
         )
     if not {"read"} <= tools:
         raise _invalid(f"agent {agent.name!r} must be able to read its context")
-    names = [child.name for child in agent.children]
-    if len(names) != len(set(names)):
-        raise _invalid(f"agent {agent.name!r} declares a child twice")
-    for child in agent.children:
-        if child.definition != f"operations/{agent.name}/children/{child.name}.md":
-            raise _invalid(
-                f"child {child.name!r} of {agent.name!r} must be defined at "
-                f"operations/{agent.name}/children/{child.name}.md"
-            )
     if type(agent.timeout_seconds) is not int or agent.timeout_seconds <= 0:
         raise _invalid(f"agent {agent.name!r} needs a positive integer timeout")
-
-
-def child_definition(
-    package_root: str | Path, agent: WorkerProfile, child: Child
-) -> ChildDefinition:
-    """Parse and check one child's pi-subagents Markdown definition."""
-    from ..spec.frontmatter import FrontMatterError, parse_document
-
-    path = Path(package_root) / child.definition
-    if path.is_symlink() or not path.is_file():
-        raise _invalid(f"child definition is missing: {child.definition}")
-    text = path.read_text(encoding="utf-8")
-    try:
-        metadata, body = parse_document(text, child.definition)
-    except FrontMatterError as error:
-        raise _invalid(str(error)) from error
-    tools = tuple(
-        item.strip()
-        for item in str(metadata.get("tools") or "").split(",")
-        if item.strip()
-    )
-    if (
-        metadata.get("name") != child.name
-        or not str(metadata.get("description") or "").strip()
-        or not body.strip()
-    ):
-        raise _invalid(
-            f"{child.definition} must declare name {child.name!r}, a description and a prompt"
-        )
-    if not tools or len(set(tools)) != len(tools) or set(tools) - CHILD_TOOLS:
-        raise _invalid(
-            f"{child.definition} must list distinct tools from {sorted(CHILD_TOOLS)}"
-        )
-    if "run_checks" in tools and agent.workspace != "project":
-        raise _invalid(
-            f"{child.definition} runs checks for a worker without a project workspace"
-        )
-    if any(metadata.get(key) != value for key, value in _CHILD_SETTINGS.items()):
-        raise _invalid(f"{child.definition} must set {_CHILD_SETTINGS}")
-    if "model" in metadata or "thinking" in metadata:
-        raise _invalid(
-            f"{child.definition} leaves model and thinking to project configuration"
-        )
-    return ChildDefinition(child.name, str(metadata["description"]), tools, text)
-
-
-def child_definitions(
-    package_root: str | Path, agent: WorkerProfile
-) -> tuple[ChildDefinition, ...]:
-    return tuple(
-        child_definition(package_root, agent, child) for child in agent.children
-    )
 
 
 def load_worker_profiles() -> dict[str, WorkerProfile]:
@@ -409,18 +322,8 @@ def validate_worker_policy(
 
 
 def profile_digest(package_root: str | Path, agent: WorkerProfile) -> str:
-    """Identity of the complete worker profile, including each child definition's bytes."""
-    return _sha256_json(
-        {
-            "agent": dataclasses.asdict(agent),
-            "children": {
-                child.name: _sha256_bytes(
-                    (Path(package_root) / child.definition).read_bytes()
-                )
-                for child in agent.children
-            },
-        }
-    )
+    """Identity of the terminal worker profile."""
+    return _sha256_json({"agent": dataclasses.asdict(agent)})
 
 
 def canonical_binding(binding: WorkerBinding) -> str:
@@ -453,7 +356,7 @@ def resolve_worker(package_root: str | Path, name: str) -> WorkerBinding:
 
     ``stale_build`` when sources drifted since the last build or the rendered instructions are
     missing, ``unknown_agent`` for an unrecognized name, ``invalid_agent_binding`` for an
-    inconsistent profile or child definition.
+    inconsistent profile.
     """
     from ..distribution.build import BuildError, verify_fresh
 
@@ -461,7 +364,6 @@ def resolve_worker(package_root: str | Path, name: str) -> WorkerBinding:
     verify_fresh(root)
     agent = worker_profile(name)
     validate_worker_profile(agent)
-    child_definitions(root, agent)
     spec_path = root / agent.spec
     if spec_path.is_symlink() or not spec_path.is_file():
         raise _invalid(f"agent {agent.name!r} spec is missing: {agent.spec}")
@@ -475,13 +377,6 @@ def resolve_worker(package_root: str | Path, name: str) -> WorkerBinding:
         raise _invalid(
             f"agent {agent.name!r} spec is not recorded in the build manifest: {agent.spec}"
         )
-    for child in agent.children:
-        if sources.get(child.definition) != _sha256_bytes(
-            (root / child.definition).read_bytes()
-        ):
-            raise BuildError(
-                f"child definition is stale: {child.definition}", "stale_build"
-            )
     instructions_path = f"generated/agents/{agent.name.replace('_', '-')}.md"
     rendered = root / instructions_path
     if rendered.is_symlink() or not rendered.is_file():

@@ -1,4 +1,4 @@
-"""Per-worker and per-child selection of Pi model, thinking level and timeout, and its admission."""
+"""Per-worker selection of Pi model, thinking level and timeout, and its admission."""
 
 from __future__ import annotations
 
@@ -32,17 +32,13 @@ def configuration(**data) -> dict:
 
 class ResolutionTests(unittest.TestCase):
     @verifies("scenario.harness.worker-selection")
-    def test_child_entry_wins_over_worker_entry_over_project_default(self):
+    def test_worker_entry_wins_over_project_default(self):
         value = configuration(
             model="openai-codex/gpt-6-astra",
             thinking="medium",
             timeout_seconds=1200,
             workers={
                 "programmer": {"thinking": "high", "timeout_seconds": 5400},
-                "programmer/scout": {
-                    "model": "openai-codex/gpt-5.6-sol",
-                    "thinking": "low",
-                },
             },
         )
         self.assertEqual(
@@ -52,14 +48,6 @@ class ResolutionTests(unittest.TestCase):
         self.assertEqual(
             WorkerSelection("openai-codex/gpt-6-astra", "high", 5400),
             worker_selection(value, "programmer"),
-        )
-        self.assertEqual(
-            WorkerSelection("openai-codex/gpt-6-astra", "high", 5400),
-            worker_selection(value, "programmer", "verifier"),
-        )
-        self.assertEqual(
-            WorkerSelection("openai-codex/gpt-5.6-sol", "low", 5400),
-            worker_selection(value, "programmer", "scout"),
         )
         # Hyphenated and external worker names resolve to the same entries.
         self.assertEqual(
@@ -76,9 +64,8 @@ class ResolutionTests(unittest.TestCase):
         self.assertEqual(
             WorkerSelection(thinking="xhigh"),
             worker_selection(
-                configuration(workers={"planner/scout": {"thinking": "xhigh"}}),
+                configuration(workers={"planner": {"thinking": "xhigh"}}),
                 "planner",
-                "scout",
             ),
         )
 
@@ -119,7 +106,7 @@ class AdmissionTests(unittest.TestCase):
                 "/workers/answerer~1scout",
             ),
             "child timeout": (
-                configuration(workers={"programmer/scout": {"timeout_seconds": 60}}),
+                configuration(workers={"programmer/scout": {"thinking": "low"}}),
                 "/workers/programmer~1scout",
             ),
             "nonpositive worker timeout": (
@@ -157,7 +144,7 @@ class AdmissionTests(unittest.TestCase):
     @verifies("scenario.harness.worker-selection-reject")
     def test_forged_application_and_stored_invalid_selection_are_rejected(self):
         valid = configuration(
-            workers={"programmer/verifier": {"model": "anthropic/claude-sonnet-5"}}
+            workers={"programmer": {"model": "anthropic/claude-sonnet-5"}}
         )
         proposed = propose_configuration(self.root, valid)
         self.assertEqual("proposal", proposed.status)

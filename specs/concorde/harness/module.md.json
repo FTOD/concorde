@@ -138,12 +138,6 @@
       "meaning": "#entity.harness.pi"
     },
     {
-      "id": "entity.harness.pi-subagents",
-      "title": "pi-subagents",
-      "kind": "external library",
-      "meaning": "#entity.harness.pi-subagents"
-    },
-    {
       "id": "entity.harness.spec",
       "title": "Spec",
       "kind": "used module",

@@ -1,20 +1,18 @@
 """Launch one Concorde worker as a Pi process in RPC mode and admit its structured result.
 
 A worker launch names everything the process may use: its workspace, the files it may read and
-write, its tool allowlist, the lightweight child agents it may delegate to, its model and thinking
+write, its non-delegating tool allowlist, its model and thinking
 level, its system prompt, its input message and the JSON schema of its result. The runtime turns
 that into one private run directory:
 
 - ``agent/``: the Pi configuration directory (``PI_CODING_AGENT_DIR``) with Concorde's settings,
-  the developer's Pi credentials (``auth.json`` and custom ``models.json``) copied in, the child
-  agent definitions and the pi-subagents configuration that bounds delegation to one level;
+  the developer's Pi credentials (``auth.json`` and custom ``models.json``) copied in;
 - ``policy.json`` and ``system-prompt.md``: what the Concorde worker extension enforces and injects;
 - ``tmp/``: the process's temporary directory, so no worker state lands in the shared one;
 - ``host.sock``: the host's check/report service, present for ``run_checks`` or ``report_issue``.
 
 The process starts with Pi's ambient discovery disabled (no sessions, context files, skills,
-prompt templates, themes or discovered extensions) and loads only the Concorde worker extension and,
-for a worker with children, pi-subagents. It runs inside the worker sandbox (``worker_sandbox``):
+prompt templates, themes or discovered extensions) and loads only the Concorde worker extension. It runs inside the worker sandbox (``worker_sandbox``):
 the host filesystem read-only with the developer's secrets, agent-client state and other
 worktrees masked, only the launch's write paths and the run directory writable, a private
 temporary directory and PID namespace; an unavailable sandbox refuses the launch. The result is
@@ -48,7 +46,6 @@ from .worker_sandbox import (
 
 BUILTIN_TOOLS = frozenset({"read", "grep", "find", "ls", "edit", "write", "bash"})
 CONCORDE_TOOLS = frozenset({"submit_result", "run_checks", "report_issue"})
-DELEGATION_TOOL = "subagent"
 THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 
 # Provider credentials Pi reads from the environment (Pi's providers documentation). They reach the
@@ -82,59 +79,7 @@ PI_SETTINGS = {
     "defaultProjectTrust": "never",
     "quietStartup": True,
     "enableInstallTelemetry": False,
-    "subagents": {"disableBuiltins": True},
 }
-# One level of delegation, in the foreground, into fresh contexts, with every background, mission,
-# schedule and inter-session channel feature of pi-subagents switched off.
-SUBAGENT_CONFIG = {
-    "maxSubagentDepth": 1,
-    "asyncByDefault": False,
-    "forceTopLevelAsync": False,
-    "defaultSubagentContext": "fresh",
-    "missions": {"enabled": False},
-    "scheduledRuns": {"enabled": False},
-    "intercomBridge": {"mode": "off"},
-    "artifactDir": "temp",
-}
-
-
-def bounded_subagent_config(environment: Mapping[str, str]) -> dict:
-    """Honor an outer runtime's explicit depth ceiling instead of resetting it.
-
-    In-process runtimes must pass their observed depth as CONCORDE_HARNESS_DEPTH;
-    the legacy PI_SUBAGENT_DEPTH spelling is accepted only as an explicit input.
-    No depth metadata is inferred from a task/worker label.
-    """
-    config = dict(SUBAGENT_CONFIG)
-    maxima = [
-        environment[key]
-        for key in ("CONCORDE_HARNESS_MAX_DEPTH", "PI_SUBAGENT_MAX_DEPTH")
-        if key in environment
-    ]
-    depths = [
-        environment[key]
-        for key in ("CONCORDE_HARNESS_DEPTH", "PI_SUBAGENT_DEPTH")
-        if key in environment
-    ]
-    if not maxima and not depths:
-        return config
-    if not maxima or not depths:
-        raise WorkerExecutionError(
-            "outer harness depth requires both current depth and maximum"
-        )
-    try:
-        values = [int(value) for value in (*maxima, *depths)]
-        current, limit = max(map(int, depths)), min(map(int, maxima))
-        if min(values) < 0 or current >= limit:
-            raise ValueError("no remaining launch depth")
-    except ValueError as error:
-        raise WorkerExecutionError(
-            "outer harness depth forbids this worker launch"
-        ) from error
-    config["maxSubagentDepth"] = min(1, limit - current - 1)
-    return config
-
-
 Outcome = Literal["failed", "cancelled", "limit_exhausted", "invalid_completion"]
 # Execution outcomes classify why a run produced no result; they are not error codes.
 FAILED: Outcome = "failed"
@@ -155,14 +100,6 @@ class WorkerExecutionError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class ChildAgent:
-    """One lightweight child: a complete pi-subagents Markdown agent definition."""
-
-    name: str
-    definition: str
-
-
-@dataclass(frozen=True)
 class WorkerLaunch:
     worker: str
     workspace: str
@@ -172,8 +109,6 @@ class WorkerLaunch:
     tools: tuple[str, ...]
     read_paths: tuple[str, ...] = ()
     write_paths: tuple[str, ...] = ()
-    children: tuple[ChildAgent, ...] = ()
-    child_tools: tuple[str, ...] = ()
     model: str | None = None
     thinking: str | None = None
     timeout_seconds: float = 1800
@@ -190,25 +125,17 @@ class WorkerResult:
 def validate_launch(
     launch: WorkerLaunch, *, has_checks: bool, has_reporter: bool = False
 ) -> None:
-    known = BUILTIN_TOOLS | CONCORDE_TOOLS | {DELEGATION_TOOL}
-    tools, child_tools = set(launch.tools), set(launch.child_tools)
-    if len(tools) != len(launch.tools) or len(child_tools) != len(launch.child_tools):
+    tools = set(launch.tools)
+    if len(tools) != len(launch.tools):
         raise WorkerExecutionError("worker tool lists contain duplicates")
-    if tools - known or child_tools - (BUILTIN_TOOLS | {"run_checks"}):
+    unknown = tools - BUILTIN_TOOLS - CONCORDE_TOOLS
+    if unknown:
         raise WorkerExecutionError(
-            f"unknown worker tools: {sorted((tools - known) | (child_tools - BUILTIN_TOOLS - {'run_checks'}))}"
+            f"unknown or non-terminal worker tools: {sorted(unknown)}"
         )
     if "submit_result" not in tools:
         raise WorkerExecutionError("every worker must be granted submit_result")
-    if (DELEGATION_TOOL in tools) != bool(launch.children):
-        raise WorkerExecutionError(
-            "a worker is granted subagent exactly when it declares children"
-        )
-    if bool(child_tools) != bool(launch.children):
-        raise WorkerExecutionError(
-            "child tools are declared exactly when the worker declares children"
-        )
-    if "run_checks" in tools | child_tools and not has_checks:
+    if "run_checks" in tools and not has_checks:
         raise WorkerExecutionError("run_checks requires a host check service")
     if ("report_issue" in tools) != (has_reporter and launch.report_schema is not None):
         raise WorkerExecutionError(
@@ -220,15 +147,6 @@ def validate_launch(
         )
     if {"edit", "write"} & tools and not launch.write_paths:
         raise WorkerExecutionError("edit and write require a write grant")
-    names = [child.name for child in launch.children]
-    if len(names) != len(set(names)) or any(
-        not child.definition.startswith("---\n")
-        or f"\nname: {child.name}\n" not in child.definition
-        for child in launch.children
-    ):
-        raise WorkerExecutionError(
-            "each child needs a unique name and a definition that declares it"
-        )
     if launch.thinking is not None and launch.thinking not in THINKING_LEVELS:
         raise WorkerExecutionError(f"unsupported thinking level: {launch.thinking}")
     if not Path(launch.workspace).is_absolute() or not Path(launch.workspace).is_dir():
@@ -318,19 +236,6 @@ def _usage(launch: WorkerLaunch, run: PiRun) -> dict[str, Any]:
     }
 
 
-def subagents_entry(package_root: Path) -> Path:
-    """The pi-subagents entry point: a source checkout's ``npm ci --prefix pi`` install, else the one
-    the installer provisioned in the project's managed runtime beside ``.concorde/framework``."""
-    local = package_root / "pi/node_modules/pi-subagents/index.ts"
-    managed = (
-        package_root.parent
-        / ".venv/share/concorde/pi/node_modules/pi-subagents/index.ts"
-    )
-    # Keep aliases visible to the mount-plan admission check rather than resolving
-    # away a symlink that could escape the installed runtime subtree.
-    return (local if local.is_file() or not managed.is_file() else managed).absolute()
-
-
 def _read_bytes(path: Path) -> bytes | None:
     return path.read_bytes() if path.is_file() and not path.is_symlink() else None
 
@@ -382,21 +287,15 @@ class PiWorkerRuntime:
             launch, has_checks=checks is not None, has_reporter=report_issue is not None
         )
         source = dict(os.environ if self.environment is None else self.environment)
-        subagent_config = bounded_subagent_config(source)
         executable = self.pi_executable or shutil.which("pi", path=source.get("PATH"))
         if not executable:
             raise WorkerExecutionError("the pi executable is not on PATH")
         extension = (
             Path(self.package_root) / "pi/extensions/concorde-worker.ts"
         ).absolute()
-        subagents = subagents_entry(Path(self.package_root))
         if not extension.is_file():
             raise WorkerExecutionError(
                 f"the Concorde worker extension is missing: {extension}"
-            )
-        if launch.children and not subagents.is_file():
-            raise WorkerExecutionError(
-                "pi-subagents is not installed; run `npm ci --prefix pi` in the Concorde package"
             )
         unavailable = unavailable_reason()
         if unavailable:
@@ -413,8 +312,7 @@ class PiWorkerRuntime:
                 run_dir / "tmp",
                 run_dir / "home",
             )
-            (agent_dir / "agents").mkdir(parents=True)
-            (agent_dir / "extensions" / "subagent").mkdir(parents=True)
+            agent_dir.mkdir()
             temporary.mkdir()
             home.mkdir()
             for name in ("auth.json", "models.json"):
@@ -425,13 +323,6 @@ class PiWorkerRuntime:
             (agent_dir / "settings.json").write_text(
                 json.dumps(PI_SETTINGS), encoding="utf-8"
             )
-            (agent_dir / "extensions" / "subagent" / "config.json").write_text(
-                json.dumps(subagent_config), encoding="utf-8"
-            )
-            for child in launch.children:
-                (agent_dir / "agents" / f"{child.name}.md").write_text(
-                    child.definition, encoding="utf-8"
-                )
             (run_dir / "system-prompt.md").write_text(
                 launch.system_prompt, encoding="utf-8"
             )
@@ -441,21 +332,18 @@ class PiWorkerRuntime:
                 else None
             )
             policy = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "worker": launch.worker,
                 "workspace": launch.workspace,
                 "read_paths": list(launch.read_paths),
                 "write_paths": list(launch.write_paths),
                 "tools": list(launch.tools),
-                "child_tools": list(launch.child_tools),
-                "children": [child.name for child in launch.children],
                 "system_prompt_path": str(run_dir / "system-prompt.md"),
                 "result_schema": dict(launch.result_schema),
                 "report_schema": dict(launch.report_schema)
                 if launch.report_schema is not None
                 else None,
                 "host_socket": str(socket_path) if socket_path else None,
-                "extension_path": str(extension),
                 "scrub_environment": list(PROVIDER_CREDENTIALS),
             }
             (run_dir / "policy.json").write_text(json.dumps(policy), encoding="utf-8")
@@ -490,8 +378,6 @@ class PiWorkerRuntime:
                 "-e",
                 str(extension),
             ]
-            if launch.children:
-                argv += ["-e", str(subagents)]
             argv += ["--no-approve", "--offline", "--tools", ",".join(launch.tools)]
             if launch.model:
                 argv += ["--model", launch.model]
@@ -502,12 +388,14 @@ class PiWorkerRuntime:
                 # The mount plan is the launch's grant: workspace read-only, write paths and
                 # pending placeholders writable, run directory writable, secrets and other
                 # worktrees masked. The Pi process runs inside it.
-                dependency_root = subagents.parent.parent
-                # A leaf worker loads only TypeBox; declared delegation needs the pinned
-                # pi-subagents dependency tree too. Neither is task/Spec visibility.
-                dependencies = (
-                    dependency_root if launch.children else dependency_root / "typebox"
+                local = Path(self.package_root) / "pi/node_modules/typebox"
+                managed = (
+                    Path(self.package_root).parent
+                    / ".venv/share/concorde/pi/node_modules/typebox"
                 )
+                dependencies = (
+                    local if local.is_dir() or not managed.is_dir() else managed
+                ).absolute()
                 plan = plan_mounts(
                     launch.workspace,
                     launch.write_paths,

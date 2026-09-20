@@ -207,6 +207,8 @@ function bounded(text: string, label: string): string {
  * `catalog` the operations the build rendered for it.
  */
 export function concordeSession(root: string, catalog: SessionCatalog) {
+	if (process.env.CONCORDE_WORKER_POLICY)
+		throw new Error("terminal workers cannot load the Concorde session tool");
 	if (catalog.schema_version !== 1)
 		throw new Error("unsupported Concorde session catalog version");
 	const operations = new Map(

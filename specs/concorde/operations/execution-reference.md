@@ -42,7 +42,7 @@ a compiled Graph can itself be used as an Operation node.
 
 **Operation** is the canonical executable identity. The parallel **Agent** executable registry is retired. A worker is a runtime process executing a
 model-backed Operation, not another definition of what the Operation does. A model execution
-profile records instructions, tools, context/effect limits, children and timeout on that Operation.
+profile records instructions, tools, context/effect limits and timeout on that Operation.
 Lowercase _operation_ still describes an ordinary action such as a filesystem or Git operation.
 A helper function need not be registered merely because Python permits calling it from a node.
 
@@ -121,8 +121,7 @@ loops and reducers live in LangGraph, not a duplicate metadata graph. Undeclared
 with `undeclared_operation`; host composition never grants a worker another callable tool.
 
 The single `concorde.operations` metadata inventory records exposure, context selection,
-determinism, Skill mapping, direct uses, State type identities and optional profile workspace/tools/
-children. Validation compares it with code. There is no independent `concorde.agents` inventory.
+determinism, Skill mapping, direct uses, State type identities and optional profile workspace/tools. Validation compares it with code. There is no independent `concorde.agents` inventory.
 
 ### Design {#operations-design}
 

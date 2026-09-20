@@ -1,13 +1,4 @@
-"""Per-worker Pi model selection: the model, thinking level and timeout of every worker and child.
-
-The project operation configuration names a default Pi ``model`` (``provider/id``), ``thinking``
-level and ``timeout_seconds`` and, under ``workers``, overrides keyed either by a worker
-(``programmer``) or by one of its children (``programmer/scout``). A worker resolves the default,
-then its own entry; a child resolves its worker's selection, then its own entry, each value
-independently, so the most specific entry wins. A child's timeout is its worker's, so a child entry
-names no timeout. An absent model or thinking level keeps Pi's own default, and an absent timeout
-keeps the worker profile's.
-"""
+"""Resolve defaults and per-terminal-worker model, thinking and timeout overrides."""
 
 from __future__ import annotations
 
@@ -36,10 +27,8 @@ def _narrow(selection: WorkerSelection, entry: dict) -> WorkerSelection:
     )
 
 
-def worker_selection(
-    configuration: dict, agent: str, child: str | None = None
-) -> WorkerSelection:
-    """Resolve one worker's or one child's selection; ``agent`` may be bare, hyphenated or external."""
+def worker_selection(configuration: dict, agent: str) -> WorkerSelection:
+    """Resolve one worker's selection; ``agent`` may be bare, hyphenated or external."""
     from .worker_profile import worker_key
 
     data = configuration["data"]
@@ -48,9 +37,8 @@ def worker_selection(
     )
     workers = data.get("workers", {})
     name = worker_key(agent)
-    for key in (name, f"{name}/{child}" if child is not None else None):
-        if key in workers:
-            selection = _narrow(selection, workers[key])
+    if name in workers:
+        selection = _narrow(selection, workers[name])
     return selection
 
 
@@ -61,30 +49,18 @@ def _pointer(field: str, key: str) -> str:
 def validate_worker_selections(
     configuration: dict, field: str = "/configuration"
 ) -> None:
-    """Reject keys naming no worker or child, child timeouts, bad timeouts and non-Pi model names."""
+    """Reject keys naming no worker, bad timeouts and non-Pi model names."""
     from .worker_profile import load_worker_profiles
 
     agents = load_worker_profiles()
-    children = {
-        f"{name}/{child.name}"
-        for name, agent in agents.items()
-        for child in agent.children
-    }
     data = configuration["data"]
     workers = data.get("workers", {})
     for key, entry in workers.items():
-        if key not in agents and key not in children:
+        if key not in agents:
             raise TypedDataError(
                 "invalid_field",
                 _pointer(field, key),
-                "names no worker or worker child; use a worker such as programmer or a "
-                "child such as programmer/scout",
-            )
-        if key in children and "timeout_seconds" in entry:
-            raise TypedDataError(
-                "invalid_field",
-                _pointer(field, key),
-                "a child runs within its worker's timeout",
+                "names no terminal worker; worker-child overrides are retired",
             )
     for location, entry in (
         (f"{field}/data", data),

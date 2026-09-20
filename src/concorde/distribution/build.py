@@ -220,18 +220,17 @@ def _skill_metadata(project_root: Path, name: str) -> dict[str, object]:
 def render_model_instructions(project_root: Path, agent: str) -> BuildOutput:
     """One worker's instructions: the common worker rules, then its own role Spec.
 
-    Its child definitions are sources too, so a changed child makes the build stale."""
+    Only authored terminal worker instructions are projected."""
     try:
         rules = resolve_role_prompt(project_root, WORKER_RULES)
         role = resolve_model_instructions(project_root, MODEL_ROOTS[agent])
     except PromptResolverError as error:
         raise BuildError(f"agent {agent}: {error.rule_id}: {error}") from error
-    children = tuple(child.definition for child in worker_profile(agent).children)
     content = (rules.body.rstrip("\n") + "\n\n" + role.body).encode("utf-8")
     return BuildOutput(
         path=f"generated/agents/{agent}.md",
         content=content,
-        sources=tuple(sorted({*rules.sources, *role.sources, *children})),
+        sources=tuple(sorted({*rules.sources, *role.sources})),
     )
 
 

@@ -500,7 +500,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         for call in model.calls:
             with self.subTest(stage=call["stage"]):
-                if call["stage"] == "implementation":
+                if call["stage"] in {"implementation", "code-review"}:
                     self.assertIn("run_checks", call["launch"].tools)
                     report = call["checks"]()
                     self.assertEqual(
@@ -508,9 +508,6 @@ class ReviewTests(unittest.TestCase):
                         [item["check_id"] for item in report["checks"]],
                     )
                     self.assertIn("output_tail", report["checks"][0])
-                elif call["stage"] == "code-review":
-                    self.assertNotIn("run_checks", call["launch"].tools)
-                    self.assertIsNotNone(call["checks"])
                 else:
                     self.assertIsNone(call["checks"])
                     self.assertNotIn("run_checks", call["launch"].tools)
@@ -532,7 +529,6 @@ class ReviewTests(unittest.TestCase):
                         "model": "openai-codex/gpt-5.6-sol",
                         "timeout_seconds": 5400,
                     },
-                    "programmer/verifier": {"thinking": "xhigh"},
                 },
             },
         )
@@ -561,14 +557,6 @@ class ReviewTests(unittest.TestCase):
             if call["stage"] == "implementation"
         )
         self.assertEqual(5400, programmer.timeout_seconds)
-        verifier = next(
-            child for child in programmer.children if child.name == "verifier"
-        )
-        self.assertTrue(
-            verifier.definition.startswith(
-                "---\nmodel: openai-codex/gpt-5.6-sol\nthinking: xhigh\n"
-            )
-        )
         described = {
             item["phase"]: (item["model"], item["thinking"])
             for item in self.host.descriptions
@@ -1164,12 +1152,9 @@ class ReviewTests(unittest.TestCase):
             "report incomplete rather than silently treating them as consistent",
         ):
             self.assertIn(obligation, body)
-        child = (
-            PACKAGE / "operations/spec_reviewer/children/consistency.md"
-        ).read_text()
-        self.assertIn("Different wording is allowed", child)
-        self.assertIn("local and canonical", child)
-        self.assertIn("unresolved comparisons", child)
+        self.assertIn("Allow different wording", body)
+        self.assertIn("both source and local", body)
+        self.assertIn("unresolved comparisons", body)
 
         def incomplete(stage, snapshot, data, cwd):
             if stage == "spec-review":
@@ -1512,11 +1497,11 @@ class ReviewTests(unittest.TestCase):
             set(wire["issues"]["items"]["required"]),
         )
         self.assertEqual(
-            {"read", "grep", "find", "ls", "submit_result", "report_issue", "subagent"},
+            {"read", "grep", "find", "ls", "submit_result", "report_issue"},
             set(launch.tools),
         )
         self.assertIsNotNone(launch.report_schema)
-        self.assertNotIn("report_issue", launch.child_tools)
+        self.assertFalse(hasattr(launch, "child_tools"))
 
     def test_unrelated_review_query_cannot_replace_required_lifecycle_evidence(self):
         self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])

@@ -26,7 +26,6 @@ from concorde.harness.worker_executor import (
 from concorde.harness.worker_profile import (
     binding_from_json,
     binding_json,
-    child_definitions,
     worker_profile,
 )
 from concorde.spec.typed_data import typed
@@ -101,13 +100,8 @@ class WorkerExecutorTests(unittest.TestCase):
             (outcome.invocation_digest, outcome.binding_digest),
         )
         self.assertEqual("concorde-agent-stage-result", outcome.value["type_id"])
-        # The profile's tools, the completion tool and delegation to its declared children.
-        self.assertEqual((*planner.tools, "submit_result", "subagent"), launch.tools)
-        self.assertEqual(["scout"], [child.name for child in launch.children])
-        self.assertIn(
-            "model: openai-codex/gpt-6-astra\nthinking: medium\n",
-            launch.children[0].definition,
-        )
+        self.assertEqual((*planner.tools, "submit_result"), launch.tools)
+        self.assertFalse(hasattr(launch, "children"))
         self.assertEqual(
             ("openai-codex/gpt-6-astra", "medium", planner.timeout_seconds),
             (launch.model, launch.thinking, launch.timeout_seconds),
@@ -370,13 +364,6 @@ class WorkerExecutorTests(unittest.TestCase):
             "# concorde-planner\n\nRole.\n\n# Concorde Spec Protocol and Framework profile (a.md)\n\nA"
             "\n\n# Concorde Spec Protocol and Framework profile (b.md)\n\nB\n",
             text,
-        )
-        self.assertEqual(
-            ["scout"],
-            [
-                item.name
-                for item in child_definitions(PACKAGE, worker_profile("planner"))
-            ],
         )
 
 

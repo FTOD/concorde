@@ -226,7 +226,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertTrue(
                 (
                     target
-                    / ".concorde/.venv/share/concorde/pi/node_modules/pi-subagents/index.ts"
+                    / ".concorde/.venv/share/concorde/pi/node_modules/typebox/build/index.mjs"
                 ).is_file()
             )
             self.assertNotIn("viewer", receipt["runtime"])
@@ -268,12 +268,12 @@ class NativeInstallerTests(unittest.TestCase):
             ):
                 (root / "scripts" / name).write_text("# script\n")
             (root / "pi/package.json").write_text("{}\n")
-            entry = root / "pi/node_modules/pi-subagents/index.ts"
+            entry = root / "pi/node_modules/typebox/build/index.mjs"
             entry.parent.mkdir(parents=True)
-            entry.write_text("// pi-subagents\n")
+            entry.write_text("// typebox\n")
             (root / "pi/node_modules/.bin").mkdir()
-            (root / "pi/node_modules/.bin/pi-subagents").symlink_to(
-                "../pi-subagents/index.ts"
+            (root / "pi/node_modules/.bin/typebox").symlink_to(
+                "../typebox/build/index.mjs"
             )
             package = installer.Package(root, self.package.manifest)
             with mock.patch.object(installer, "template_files", return_value={}):

@@ -109,9 +109,7 @@ class AgentBindingTests(unittest.TestCase):
             agent = worker_profile(policy["agent"])
             self.assertEqual(agent.workspace, policy["workspace"])
             self.assertEqual(list(agent.tools), policy["tools"])
-            self.assertEqual(
-                [child.name for child in agent.children], policy["children"]
-            )
+            self.assertNotIn("children", policy)
             self.assertRegex(policy["agent_binding_digest"], r"^sha256:[0-9a-f]{64}$")
             self.assertRegex(policy["profile_digest"], r"^sha256:[0-9a-f]{64}$")
             self.assertRegex(policy["instructions_digest"], r"^sha256:[0-9a-f]{64}$")
@@ -148,7 +146,7 @@ class AgentBindingTests(unittest.TestCase):
         )
 
     @verifies("scenario.harness.worker-selection")
-    def test_each_worker_and_child_launches_on_its_own_configured_selection(self):
+    def test_each_terminal_worker_launches_on_its_own_configured_selection(self):
         selection = typed(
             "concorde-operation-configuration",
             {
@@ -160,10 +158,6 @@ class AgentBindingTests(unittest.TestCase):
                         "timeout_seconds": 600,
                     },
                     "planner": {"thinking": "high"},
-                    "planner/scout": {
-                        "model": "openai-codex/gpt-5.6-sol",
-                        "thinking": "low",
-                    },
                 },
             },
         )
@@ -186,12 +180,6 @@ class AgentBindingTests(unittest.TestCase):
                 worker_profile("planner").timeout_seconds,
             ),
             (planner.model, planner.thinking, planner.timeout_seconds),
-        )
-        scout = next(child for child in planner.children if child.name == "scout")
-        self.assertTrue(
-            scout.definition.startswith(
-                "---\nmodel: openai-codex/gpt-5.6-sol\nthinking: low\n"
-            )
         )
 
     def _fail_implementation(self, double, outcome, message):

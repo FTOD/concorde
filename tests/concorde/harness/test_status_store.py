@@ -1017,26 +1017,6 @@ class StatusStoreTests(unittest.TestCase):
         self.assertTrue(old.exists())
 
     @verifies("scenario.harness.primary-status")
-    def test_actual_harness_depth_is_not_reset_by_worker_terminology(self):
-        from concorde.harness.pi_worker import (
-            bounded_subagent_config,
-            WorkerExecutionError,
-        )
-
-        self.assertEqual(
-            0,
-            bounded_subagent_config(
-                {"CONCORDE_HARNESS_DEPTH": "1", "CONCORDE_HARNESS_MAX_DEPTH": "2"}
-            )["maxSubagentDepth"],
-        )
-        with self.assertRaises(WorkerExecutionError):
-            bounded_subagent_config(
-                {"CONCORDE_HARNESS_DEPTH": "1", "CONCORDE_HARNESS_MAX_DEPTH": "1"}
-            )
-        with self.assertRaises(WorkerExecutionError):
-            bounded_subagent_config({"PI_SUBAGENT_MAX_DEPTH": "2"})
-
-    @verifies("scenario.harness.primary-status")
     def test_manual_merge_cannot_be_invented_after_unrecorded_cleanup(self):
         state = ensure_change(
             self.candidate, task={"task": "maintenance"}, mode="maintenance"

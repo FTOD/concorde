@@ -2119,7 +2119,7 @@
                 "$ref": "#/$defs/concorde-operation-configuration"
               },
               "schema_version": {
-                "const": 1,
+                "const": 2,
                 "type": "integer"
               },
               "type_id": {
@@ -2227,7 +2227,7 @@
                 "$ref": "#/$defs/concorde-operation-configuration"
               },
               "schema_version": {
-                "const": 1,
+                "const": 2,
                 "type": "integer"
               },
               "type_id": {
@@ -4546,7 +4546,7 @@
                 "$ref": "#/$defs/concorde-operation-configuration"
               },
               "schema_version": {
-                "const": 1,
+                "const": 2,
                 "type": "integer"
               },
               "type_id": {

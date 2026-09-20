@@ -44,10 +44,8 @@ independent code reviewer about the current implementation: fulfil the supplied 
 identified findings no longer apply. Findings are not permission to change Module Specs, entity
 declarations, tests outside the supplied tasks' acceptance, or unrelated files.
 
-Your `scout` child finds the admitted paths and symbols one question concerns, your `planner` child
-sketches the order of a larger change across admitted files, and your `verifier` child runs checks
-and reports their exact outcome. Use them to keep your own context focused, and verify what they
-report before relying on it.
+Find the admitted paths and symbols, order the change across admitted files, and run the
+checks directly. Record exact outcomes and missing inputs.
 
 ## Goals
 

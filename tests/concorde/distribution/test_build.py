@@ -671,10 +671,10 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertEqual(failure.exception.code, "stale_build")
 
     @verifies("scenario.distribution.build-stale-blocks-execution")
-    def test_child_definition_and_python_contract_edits_both_invalidate_build(self):
+    def test_role_and_python_contract_edits_both_invalidate_build(self):
         write_build(self.root, "all")
         for relative in (
-            "operations/programmer/children/scout.md",
+            "operations/programmer/spec.md",
             "operations/programmer/__init__.py",
         ):
             path = self.root / relative

@@ -3,14 +3,14 @@
   "registry": ".concorde/specs.json",
   "protocol": {
     "version": "10.0.0",
-    "digest": "sha256:837f2f798370898db945d463a2a097cc38b87857c5ffb99981a20c190ea12d9c"
+    "digest": "sha256:198e06495b2cb41b342b34247021938c0f155b83d613df79a7463c6fcbe011e4"
   },
   "operation_configuration": {
     "data": {
       "model": "openai-codex/gpt-6-astra",
       "thinking": "medium"
     },
-    "schema_version": 1,
+    "schema_version": 2,
     "type_id": "concorde-operation-configuration"
   }
 }

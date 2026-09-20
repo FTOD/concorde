@@ -15,8 +15,7 @@ worktrees, and stops writing before testing. Only one writer owns a worktree at 
 The main session then launches a separate fresh sibling test child in that candidate, explicitly
 supplied only exact candidate-built private Skills and candidate runtime provenance. A test child
 never rewrites the Skills governing it. Failures return to maintenance, then another fresh tester.
-Neither child creates grandchildren; bounded Operation workers still obey actual harness depth
-and permission limits. Skill metadata is not evidence of loading or executing a Skill.
+Neither child creates grandchildren; Operation workers are terminal nodes scheduled by the Graph/host, with their own file/tool grants. Skill metadata is not evidence of loading or executing a Skill.
 
 Build does not install this checkout's Skills in ambient `.agents`, `.claude` or `.pi` discovery.
 Private artifacts live in `generated/session/`. Use `select-session` with absolute Skill and

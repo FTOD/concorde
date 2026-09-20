@@ -18,7 +18,7 @@ This is a deterministic lifecycle operation: it runs no agent cognition and sele
 
 Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-validate`. Its exact fields
 are type_id, schema_version:3, operation_id:"concorde-validate", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (the independently versioned concorde-validate-request; use the exact schema below).
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@2), and input (the independently versioned concorde-validate-request; use the exact schema below).
 Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
 change_id.
 Initialization uses its typed propose/apply request; use the published request schema.
@@ -29,7 +29,7 @@ searching other Specs.
 The user-facing session coordinates needs and may delegate a complete task to one fresh task
 child, or handle a simple consumer-project task directly. Task children never delegate tasks or
 move worktrees. They may run several public Operations on the same change through delivery;
-bounded Operation workers still obey the actual harness's depth and permission limits.
+Operation workers are terminal nodes scheduled by the Graph/host and retain their file/tool grants.
 
 A mutating Operation requested from a consumer primary normally runs in a host-created candidate;
 an Operation already in an assigned candidate reuses it. The requesting session stays where it

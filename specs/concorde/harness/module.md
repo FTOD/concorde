@@ -60,7 +60,7 @@ isolation. Policy preview shows access without running an agent.
 <a id="entity.harness.agent-model"></a><a id="entity.harness.agent-definitions"></a><a id="entity.harness.typed-values"></a>
 
 The Operation and Harness model defines a worker's task contract, effects, workspace, tools and
-children. The Model execution profiles service combines the authored role and Python profile into a reproducible
+timeout. The Model execution profiles service combines the authored role and Python profile into a reproducible
 WorkerBinding, using fresh instructions supplied by [Distribution Module](../distribution/module.md). The Typed values layer validates the
 contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
 instruction identity separate from the project knowledge a worker may read.
@@ -73,11 +73,11 @@ in identity. The Permissions compiler intersects declared effects with host auth
 never becomes writable merely because a programmer can change the implementation it names.
 A changed binding, source member or reference selection requires a fresh context.
 
-<a id="entity.harness.agent-execution"></a><a id="entity.harness.pi-worker-runtime"></a><a id="entity.harness.pi"></a><a id="entity.harness.pi-subagents"></a>
+<a id="entity.harness.agent-execution"></a><a id="entity.harness.pi-worker-runtime"></a><a id="entity.harness.pi"></a>
 
 Worker execution independently rechecks the binding and grant before asking the Pi worker runtime
-to start a fresh Pi RPC process. Its extension gates worker and child tool calls; pi-subagents
-allows only one level of declared child delegation under the same grant. One matching submitted
+to start a fresh Pi RPC process. Its extension gates terminal worker tool calls. Workers do their admitted node work directly;
+only the LangGraph/host schedules other work. One matching submitted
 result is required, not merely a successful exit. Cancellation, time limits and invalid completion
 remain distinct. The Pi process runs inside the worker sandbox derived from the same grant, so the
 tool gate bounds what the model may ask and the sandbox bounds what the process can reach;
@@ -137,20 +137,19 @@ reach the planner, task author, programmer and code reviewer read-only; its task
 task, constraints, stage artifacts and lifecycle metadata. The frozen closure is never empty and its
 identity covers every admitted byte.
 
-A worker definition binds its role Spec, one task contract, a workspace kind, tools and children.
+A worker definition binds its role Spec, one task contract, a workspace kind, tools and timeout.
 Resolution yields an `WorkerBinding` that every invocation carries and the executor reverifies.
 Permissions are compiled purely from the contract's effects and host authority, guarded by the
 isolated-worktree check before any unsafe mutation, and handed to the Pi worker runtime, whose
-extension gates every tool call of the worker and its children and whose sandbox confines the
+extension gates every tool call of the terminal worker and whose sandbox confines the
 process to that same grant. Every control flow is a LangGraph
-Graph whose nodes are deterministic steps or worker invocations; delegation below a worker is one
-level of its declared children inside its own process. Failures never retry with broader
+Graph whose nodes are deterministic steps or terminal worker invocations. Failures never retry with broader
 permissions, and a settled process alone never establishes completion.
 
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: The Operation and Harness model defines the worker profile and contract records that Model execution profiles bind and that Worker execution runs. Model execution profiles resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same operation host as Worker execution. Operation admission binds candidate workspaces through Worktree lifecycle, validates envelopes and requests through Typed values and hands admitted requests to the Operations dispatch. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi and bounds its delegation to one level with pi-subagents.
+    accDescr: The Operation and Harness model defines the worker profile and contract records that Model execution profiles bind and that Worker execution runs. Model execution profiles resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same operation host as Worker execution. Operation admission binds candidate workspaces through Worktree lifecycle, validates envelopes and requests through Typed values and hands admitted requests to the Operations dispatch. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi without worker delegation.
     agentModel["Operation and Harness model"]
     agentDefs["Model execution profiles"]
     permissions["Permissions"]
@@ -166,7 +165,6 @@ flowchart TB
     langgraph["LangGraph"]
     piRuntime["Pi worker runtime"]
     pi["Pi"]
-    piSubagents["pi-subagents"]
     agentModel -->|defines worker profile and contract records for| agentDefs
     agentModel -->|supplies profile, contract, WorkerBinding and selection records to| execution
     agentModel -->|declares maximum effects for| permissions
@@ -188,7 +186,6 @@ flowchart TB
     admission -->|hands admitted requests to the dispatch of| operations
     admission -->|validates envelopes and requests through| typedValues
     piRuntime -->|runs each worker in RPC mode on| pi
-    piRuntime -->|bounds delegation to one level with| piSubagents
 ```
 
 ## Reading by responsibility
@@ -223,11 +220,10 @@ Realized by `launch_worker`, the one launch sequence every model-backed stage ru
 
 The deterministic check executor's read-only filesystem, scratch, result, unavailable-backend and
 process-lifetime cases are defined in [Harness scenarios](scenarios.md#scenario.harness.check-read-only).
-The Pi RPC client, worker launch, tool gate and one-level delegation scenarios are defined in
+The Pi RPC client, worker launch, tool gate and terminal worker scenarios are defined in
 [Harness scenarios](scenarios.md#scenario.harness.pi-worker-launch). See [every tool call is
 gated](requirements.md#req.harness.worker-gate), [a capsule grants only its own snapshot](requirements.md#req.harness.capsule-closed),
-[closed process inputs](requirements.md#req.harness.process-inputs-closed), [delegation stops at declared
-children](requirements.md#req.harness.delegation-one-level) and [only the submitted result leaves the
+[closed process inputs](requirements.md#req.harness.process-inputs-closed), [workers cannot delegate](requirements.md#req.harness.delegation-one-level) and [only the submitted result leaves the
 worker](requirements.md#req.harness.worker-single-result).
 
 ### Typed value validation
@@ -302,9 +298,6 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
   exact write boundary for a path that does not exist yet.
 - The sandbox requires Linux with a trusted system bubblewrap and refuses every worker launch
   elsewhere; there is no unconfined fallback and no backend for another platform yet.
-- The gate and the operation ceiling are verified for foreground single delegation. Whether every
-  other pi-subagents execution path loads the required child extension is unverified, which is why
-  the host disables background runs, missions, schedules and inter-session channels.
 - A mutation relayed into a host-created candidate has these known limits. The candidate's
   launcher runs with the invoking framework's Python interpreter and installed dependencies even
   when it runs the candidate's own Concorde code, so a candidate that changes the locked

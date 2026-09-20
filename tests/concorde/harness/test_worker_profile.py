@@ -1,4 +1,4 @@
-"""Worker definitions: profile validation, child definitions and reproducible build-bound bindings."""
+"""Worker definitions: terminal profile validation and reproducible build-bound bindings."""
 
 from __future__ import annotations
 
@@ -23,11 +23,9 @@ from concorde.distribution.build import (  # noqa: E402
 )
 from concorde.harness import worker_profile as profiles  # noqa: E402
 from concorde.harness.worker_profile import (  # noqa: E402
-    Child,
     binding_digest,
     binding_from_json,
     binding_json,
-    child_definitions,
     profile_digest,
     resolve_worker,
     validate_worker_profile,
@@ -78,8 +76,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
                 self.assertEqual(
                     binding.spec_digest, manifest["sources"][binding.spec_path]
                 )
-                for child in agent.children:
-                    self.assertIn(child.definition, manifest["sources"])
+                self.assertNotIn("children", dataclasses.asdict(agent))
                 hyphenated = name.replace("_", "-")
                 rendered = self.root / f"generated/agents/{hyphenated}.md"
                 self.assertEqual(
@@ -117,20 +114,17 @@ class ResolveAgentBuildTests(unittest.TestCase):
         self.assertTrue(prompt.body.strip())
 
     @verifies("scenario.harness.agent-bind")
-    def test_a_changed_child_definition_changes_the_profile_and_stales_the_build(self):
+    def test_changed_role_instructions_stale_the_build(self):
         before = resolve_worker(self.root, "programmer")
-        scout = self.root / "operations/programmer/children/scout.md"
-        scout.write_text(
-            scout.read_text(encoding="utf-8") + "\nPrefer exact file names.\n",
-            encoding="utf-8",
-        )
+        role = self.root / "operations/programmer/spec.md"
+        role.write_text(role.read_text() + "\nUse precise evidence.\n")
         with self.assertRaises(BuildError) as failure:
             resolve_worker(self.root, "programmer")
         self.assertEqual("stale_build", failure.exception.code)
         write_build(self.root, "all")
-        after = resolve_worker(self.root, "programmer")
-        self.assertNotEqual(before.profile_digest, after.profile_digest)
-        self.assertNotEqual(before.digest, after.digest)
+        self.assertNotEqual(
+            before.digest, resolve_worker(self.root, "programmer").digest
+        )
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_unknown_worker_name_fails_closed(self):
@@ -148,7 +142,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
 
 
 class ProfileValidationTests(unittest.TestCase):
-    """Profiles and child definitions fail closed with ``invalid_agent_binding``."""
+    """Profiles fail closed with ``invalid_agent_binding``."""
 
     def assertInvalid(self, agent) -> None:
         with self.assertRaises(BuildError) as failure:
@@ -202,12 +196,6 @@ class ProfileValidationTests(unittest.TestCase):
             "wrong spec path": dataclasses.replace(
                 planner, spec="operations/other/spec.md"
             ),
-            "child outside its directory": dataclasses.replace(
-                planner, children=(Child("scout", "operations/scout.md"),)
-            ),
-            "child declared twice": dataclasses.replace(
-                programmer, children=(*programmer.children, programmer.children[0])
-            ),
             "zero timeout": dataclasses.replace(planner, timeout_seconds=0),
             "unknown workspace": dataclasses.replace(planner, workspace="container"),
         }.items():
@@ -216,56 +204,17 @@ class ProfileValidationTests(unittest.TestCase):
         for name in profiles.load_worker_profiles():
             validate_worker_profile(worker_profile(name))
 
-    @verifies("scenario.harness.agent-bind-reject")
-    def test_child_definitions_are_checked_and_leave_model_selection_to_configuration(
-        self,
-    ):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
-            programmer = worker_profile("programmer")
-            self.assertEqual(
-                {"scout", "planner", "verifier"},
-                {item.name for item in child_definitions(root, programmer)},
+    @verifies(
+        "scenario.harness.agent-bind-reject", "scenario.harness.pi-worker-delegation"
+    )
+    def test_terminal_profile_rejects_child_definitions_and_delegation_tools(self):
+        planner = worker_profile("planner")
+        with self.assertRaises(TypeError):
+            dataclasses.replace(planner, children=())
+        for tool in ("subagent", "concorde", "run_operation"):
+            self.assertInvalid(
+                dataclasses.replace(planner, tools=(*planner.tools, tool))
             )
-            verifier = root / "operations/programmer/children/verifier.md"
-            original = verifier.read_text(encoding="utf-8")
-            forged = {
-                "a model": original.replace(
-                    "---\n", "---\nmodel: openai-codex/gpt-6-astra\n", 1
-                ),
-                "a thinking level": original.replace(
-                    "---\n", "---\nthinking: high\n", 1
-                ),
-                "a tool outside the child set": original.replace(
-                    "run_checks", "run_checks, edit", 1
-                ),
-                "inherited project context": original.replace(
-                    "inheritProjectContext: false", "inheritProjectContext: true"
-                ),
-                "another name": original.replace("name: verifier", "name: tester"),
-                "no prompt": original[: original.index("---", 3) + 4],
-            }
-            for label, text in forged.items():
-                with self.subTest(label):
-                    self.assertNotEqual(original, text)
-                    verifier.write_text(text, encoding="utf-8")
-                    with self.assertRaises(BuildError) as failure:
-                        child_definitions(root, programmer)
-                    self.assertEqual("invalid_agent_binding", failure.exception.code)
-            verifier.unlink()
-            with self.assertRaises(BuildError):
-                child_definitions(root, programmer)
-            # A capsule worker's children cannot run host checks.
-            scout = root / "operations/planner/children/scout.md"
-            scout.write_text(
-                scout.read_text(encoding="utf-8").replace(
-                    "tools: read", "tools: run_checks, read", 1
-                ),
-                encoding="utf-8",
-            )
-            with self.assertRaises(BuildError):
-                child_definitions(root, worker_profile("planner"))
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_resolve_agent_rejects_an_inconsistent_inventory_profile(self):

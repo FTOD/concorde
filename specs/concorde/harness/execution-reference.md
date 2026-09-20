@@ -48,9 +48,8 @@ document identity and requirement/scenario anchors remain stable for existing li
 | ----------------------- | ------------------------------------------------------------------------------------------------- |
 | Operation               | The one executable identity, usable as a LangGraph node or composed subgraph                      |
 | State contract          | Declared input channels and output updates; wire shapes are checked at runtime                    |
-| Model execution profile | Instructions, task/effect contract, workspace, tools, children and timeout on an Operation        |
+| Model execution profile | Instructions, task/effect contract, workspace, tools and timeout on an Operation        |
 | Worker                  | One fresh Pi RPC process executing a model-backed Operation invocation                            |
-| Child helper            | A bounded pi-subagents session internal to a worker; not an independently callable Framework node |
 | Harness                 | Context resolution, worker runtime, model selection, permissions and environment                  |
 | Skill                   | Instructions for an external developer runtime to invoke one public Operation                     |
 | Tool                    | An interface admitted by the worker's actual tool grant, not by graph composition alone           |
@@ -70,8 +69,8 @@ information, failure or required human decisions. These remain six sections afte
 in the actual system prompt. Instructions are not project Spec context or permission grants.
 
 `PROFILE` MUST have the same identity as its Operation and bind its task contract, workspace,
-tools, children and timeout. There is no independent Agent inventory or `AGENTS` call relation.
-A `WorkerBinding` records exact instruction, profile, child-definition and build digests for one
+tools and timeout. There is no independent Agent inventory or `AGENTS` call relation.
+A `WorkerBinding` records exact instruction, profile and build digests for one
 model Operation. Stale or inconsistent bindings MUST prevent execution. The serialized `agent`
 field, `concorde-agent-stage-*` types and `generated/agents/` paths are retained compatibility
 spellings, not a second executable model.
@@ -79,12 +78,11 @@ spellings, not a second executable model.
 #### A2. Profile and Harness {#agents-and-harnesses-a2-profile-and-harness}
 
 A model profile selects a `capsule` workspace for Spec-only work or a `project` workspace for
-implementation access. It declares Pi tools and maximum effects. The host adds `submit_result`,
-and adds `subagent` only when the profile declares helpers. `edit` and `write` require a write
+implementation access. It declares Pi tools and maximum effects. The host adds `submit_result`. `edit` and `write` require a write
 effect; implementation reads require the project workspace. The host compiles each concrete grant
 as a subset of both those effects and its invocation authority.
 
-Project configuration selects model, thinking and timeout, with per-worker/helper overrides.
+Project configuration selects model, thinking and timeout, with per-worker overrides.
 These settings are not authority. Pi starts with ambient sessions, context files, Skills, prompt
 templates, themes and discovered extensions disabled. Only the host-issued configuration and
 explicitly admitted tools are loaded. The shared [execution runtime](execution-reference.md) independently
@@ -120,27 +118,27 @@ cancellation, execution failure and exhausted limits. Failures MUST NOT retry wi
 permissions. A changed goal, context or authority requires new host admission. LangGraph State
 schemas do not replace any of these checks.
 
-#### A5. One-level helper delegation {#agents-and-harnesses-a5-one-level-helper-delegation}
+#### A5. Terminal workers {#agents-and-harnesses-a5-one-level-helper-delegation}
 
-A model Operation MAY delegate inside its worker only to the helpers its profile declares under
-`operations/<name>/children/`. They use replaced, context-free prompts and read/check tools,
-with no model selection embedded in their definitions. They execute in foreground fresh sessions
-under the same grant and tool gate, cannot delegate again and cannot submit the worker's final
-result. Only the verified worker result leaves the process. Helper answers are evidence, not a
-second Framework node result. Task children are a separate outer delegation layer, never an
-exemption from actual harness limits. A host with observed outer depth supplies both
-`CONCORDE_HARNESS_DEPTH` and `CONCORDE_HARNESS_MAX_DEPTH` (legacy explicit Pi depth inputs are
-accepted); missing halves or exhausted limits block launch, and remaining helper depth is narrowed
-rather than reset. [Execution](execution-reference.md) defines the operation ceiling and gate.
+Model-backed nodes run terminal Pi workers. Workers MUST NOT delegate tasks, create subagents or
+recursively invoke Operations, including via shell commands. LangGraph/host owns all scheduling.
+There is no child definition, child selection, delegation tool or extension. Retired child fields
+and tools are rejected, not ignored or translated into new launches. Workers perform their own
+admitted node work directly; the code reviewer receives read/check tools formerly used by its verifier.
+
+Outer Pi/task-subagent delegation limits belong to the outer host. Concorde does not read, infer or
+calculate cross-runtime current/maximum agent depth for terminal workers. Missing, incomplete,
+malformed or exhausted legacy depth variables do not block a leaf launch and are not forwarded.
+OperationHost.depth remains internal graph invocation nesting and evidence, not agent depth.
+File/tool grants, independent result admission, cancellation and deadlines remain enforced.
 
 #### Common worker rules and inventory {#agents-and-harnesses-common-worker-rules-and-inventory}
 
-The build combines `prompts/workers/common.md` with the Operation's own instructions and binds
-its child definitions as sources. [Distribution Module](../distribution/module.md) still publishes `generated/agents/<name>.md` to
+The build combines `prompts/workers/common.md` with the Operation's own instructions. [Distribution Module](../distribution/module.md) still publishes `generated/agents/<name>.md` to
 preserve the installed instruction layout. The host appends the granted Protocol rule bundle.
 
 The single inventory is defined by the [Operation registry](../operations/execution-reference.md#operations-operation-registry).
-Its metadata includes each model Operation's optional workspace, tools and children alongside
+Its metadata includes each model Operation's optional workspace and tools alongside
 its State and USES declarations. There is no separate `concorde.agents` metadata collection.
 
 #### Task contracts {#agents-and-harnesses-task-contracts}
@@ -235,8 +233,8 @@ do not promise internal checkpoint resume; replay re-enters admission through th
 
 **Code-driven** dispatch uses explicit code rules to choose the next action, target Agent and
 continue/stop condition. **Model-driven** dispatch uses a model's task and feedback assessment to
-choose the next action or delegation. These name the source of a decision. They may alternate
-within one Agent loop and nest in either direction across child invocations. Human decisions remain
+recommend the next action in its result. These name the source of a decision; only the Graph/host
+schedules another invocation. Human decisions remain
 separate, explicit inputs. Code-driven control does not guarantee reproducible overall output:
 models, tools and external state may still vary. Determinism is a property to document where it
 applies, not the primary classification of Agents or dispatch.
@@ -266,8 +264,7 @@ budgets or an explicit bounded host policy; an unbounded retry is not an implici
 A model Operation's Harness supplies its local tool loop. A composed Graph may additionally
 coordinate loops across several Operations, such as an Issue solver deciding whether current verification is sufficient. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
 conditions. Orchestration between workers is always a Graph transition: one worker never starts
-another. Inside one worker, delegation is limited to one level of its own declared children, as
-defined in A5; a child's work is evidence for its worker, not a Graph step.
+another. Each worker does its own admitted work directly, as defined in A5.
 
 A retry or revision MUST identify what changed or what recovery condition permits another attempt.
 Unchanged blocking feedback MUST not cause endless retries. Stale task, context, policy or result
@@ -513,10 +510,8 @@ orchestration around it. `PiWorkerRuntime` launches one `WorkerLaunch` and retur
 WorkerLaunch(worker: str, workspace: str, system_prompt: str, message: str,
              result_schema: Mapping[str, Any], tools: tuple[str, ...],
              read_paths: tuple[str, ...] = (), write_paths: tuple[str, ...] = (),
-             children: tuple[ChildAgent, ...] = (), child_tools: tuple[str, ...] = (),
              model: str | None = None, thinking: str | None = None, timeout_seconds: float = 1800,
              report_schema: Mapping[str, Any] | None = None)
-ChildAgent(name: str, definition: str)
 PiWorkerRuntime(package_root: Path, pi_executable: str | None = None,
                 environment: Mapping[str, str] | None = None, credentials_dir: Path | None = None,
                 popen=subprocess.Popen)
@@ -532,9 +527,8 @@ Paths in a launch are relative to its absolute workspace, which is the process's
 directory. `model` is Pi's `provider/id` and `thinking` one of Pi's levels (`off` through `max`).
 The tools are Pi's built-ins (`read`, `grep`, `find`, `ls`, `edit`, `write`, `bash`) and the
 Concorde tools: `submit_result`, which every worker has; `run_checks`, which requires the host
-check service; `report_issue`, which requires both its host callback and report schema; and
-`subagent`, which a worker has exactly when it declares children. Edit and write require a write
-grant, and child tools are built-ins or `run_checks`, never `report_issue`. An inconsistent launch
+check service; and `report_issue`, which requires both its host callback and report schema.
+Edit and write require a write grant. No delegation or recursive Operation tools are admitted. An inconsistent launch
 is refused before any process starts. The executor accepts an optional host reporter with a
 `schema` property and callable report handler, forwards it only to the admitted runtime, and does
 not convert reporting authority into any file write grant. The invocation host supplies
@@ -659,7 +653,7 @@ initial command runs, and a background process holding them open cannot prevent 
 - **Binding equality.** Preflight rejects an invocation whose binding, instructions, Protocol files,
   context or policy differ from what the current build and the worker's contract admit.
 - **Tool gate.** The Concorde worker extension refuses every tool call outside the compiled grant in
-  the worker and in each child ([tool gate](#execution-tool-gate)).
+  the terminal worker ([tool gate](#execution-tool-gate)).
 - **Worker sandbox.** The Pi process runs inside the mount plan derived from its grant
   ([worker sandbox](#execution-worker-sandbox)); an unavailable boundary refuses the launch.
 - **Result admission.** Only one submitted result that satisfies the result type and the contract
@@ -669,10 +663,9 @@ initial command runs, and a background process holding them open cannot prevent 
 
 Each launch gets a private run directory that is removed afterwards. Its `agent/` directory is
 Pi's configuration directory for the process (`PI_CODING_AGENT_DIR`): Concorde's own settings
-(project trust never, install telemetry off, pi-subagents builtin agents disabled), the developer's
+(project trust never, install telemetry off), the developer's
 Pi credentials (`auth.json` and custom-provider `models.json`, copied from the developer's Pi
-directory), the declared child definitions under `operations/` and the pi-subagents configuration
-under `extensions/subagent/config.json`. Beside it lie `policy.json`, which the Concorde worker
+directory). No child catalog or delegation configuration is written. Beside it lie `policy.json`, which the Concorde worker
 extension enforces, `system-prompt.md`, which it installs as the worker's complete system prompt,
 `tmp/`, the process's temporary directory, and, for a worker with `run_checks` or `report_issue`,
 the host tool service's socket. The developer's own Pi settings, sessions, agents, extensions and skills are
@@ -681,9 +674,8 @@ never read. When Pi refreshes an OAuth credential during the run, the host write
 run was issued, so a concurrent refresh is never overwritten.
 
 The process runs `pi --mode rpc --no-session --no-context-files --no-skills --no-prompt-templates
---no-themes --no-extensions -e pi/extensions/concorde-worker.ts [-e pi-subagents] --no-approve
---offline --tools <tools> [--model <model>] [--thinking <level>]`, with pi-subagents loaded only
-for a worker with children. Its environment is the host allowlist, the provider credential
+--no-themes --no-extensions -e pi/extensions/concorde-worker.ts --no-approve
+--offline --tools <tools> [--model <model>] [--thinking <level>]`. Its environment is the host allowlist, the provider credential
 variables Pi documents, `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK`, `PI_TELEMETRY=0`, the run
 directory's `TMPDIR`, a `HOME` inside the run directory and the policy location. The command runs
 inside the [worker sandbox](#execution-worker-sandbox). The host sends one `prompt` command carrying the
@@ -709,20 +701,22 @@ policy, and the model continues. The gate runs inside the Pi process, so it is a
 over the model's tool calls; the [worker sandbox](#execution-worker-sandbox) around the process
 bounds shell commands and everything else the process does.
 
-##### One-level delegation {#execution-one-level-delegation}
+##### Terminal policy compatibility {#execution-one-level-delegation}
 
-A worker with children loads pi-subagents, pinned in `pi/package.json`: a source checkout installs it
-with `npm ci --prefix pi`, and in an installed project the installer provisions the same lock into the
-managed runtime under `.concorde/.venv/share/concorde/pi`, where the runtime finds it beside the
-installed framework. Its configuration allows at most one level of helper delegation, runs children in the foreground in
-fresh contexts, and disables pi-subagents' background runs, missions, schedules and inter-session
-channels. On session start the Concorde extension registers two things with pi-subagents for the
-worker's session: a delegation ceiling naming exactly the declared children and the child tools,
-and itself as a required child extension, so every child session loads the same gate. In a child
-session the gate uses the child tool list, refuses `subagent` and `submit_result`, and does not
-replace the child's system prompt. A child is a lightweight pi-subagents Markdown definition: what
-it does inside the worker is not a Concorde contract, and only the worker's submitted result
-leaves the process.
+The private worker policy uses schema 2 and rejects schema 1 and retired `children`, `child_tools`
+and `extension_path` fields. The profile, launch and invocation Python constructors no longer
+accept child definitions/selections. No compatibility alias recreates delegation. The extension
+registers only granted service tools and activates exactly the host tool list; all other tools,
+including `subagent` and the outer `concorde` tool, are refused.
+
+Operation entry rejects the worker environment marker `CONCORDE_WORKER_POLICY`; the outer Pi
+session extension also refuses loading there. This is a cooperative runtime guard, not a claim
+that arbitrary shell programs cannot clear environment variables or execute other agents. The
+existing mount sandbox, shared network and credential limitations are unchanged. Worker
+instructions prohibit those workarounds; this change does not redesign process isolation.
+
+The only installed worker JavaScript dependency is pinned TypeBox, installed by `npm ci --prefix pi`
+in a source checkout or under `.concorde/.venv/share/concorde/pi` in a consumer runtime.
 
 ##### Host check service {#execution-host-check-service}
 
@@ -741,8 +735,7 @@ below the developer's home directory are masked, a directory by an empty tmpfs a
 empty file from the run directory, and so is every other worktree of the workspace's repository,
 whose shared Git directory is re-bound read-only so Git keeps working in a candidate. The workspace
 is then bound read-only. Separately from the task's read/write grants, the trusted Pi runtime names
-its exact worker extension file and installed dependency subtree: TypeBox for a leaf worker, or
-the pinned Pi dependency tree when the launch declares children. The mount plan validates their
+its exact worker extension file and installed dependency subtree: TypeBox for every terminal worker. The mount plan validates their
 absolute canonical paths, existence and file/directory kinds, rejects escaped dependency symlinks
 and overlap with masked paths, other worktrees, writable entries or the run directory, and rejects
 an asset that contains the workspace. These runtime assets are re-bound read-only after the private
@@ -796,7 +789,7 @@ The host obtains an invocation's inputs in a fixed order: select the worker whos
 stage; load its rendered instructions and resolve its `WorkerBinding` against the build (see
 [Agents and Harnesses](execution-reference.md)); freeze its context (see [context](context.md)) with
 those instructions; compile the exact role and path policy with `compile_policy`; resolve the
-worker's and each child's model selection from project configuration; bind all of it with
+worker's model selection from project configuration; bind all of it with
 `build_worker_invocation`; then call the worker executor (see [execution](execution-reference.md)). The
 executor independently reverifies the binding, instructions, context and policy before any process
 starts. A worker in a project workspace also receives the host's check service, which runs the
@@ -812,7 +805,7 @@ or reorder a step of the sequence.
 
 `describe-policy` mode previews the exact grant a stage would receive without launching anything or
 exposing context bodies: the worker, its binding, profile and instructions digests, its workspace
-kind, tools and children, the read and write paths and policy digest, and the resolved model,
+kind and tools, the read and write paths and policy digest, and the resolved model,
 thinking level and timeout.
 
 #### Control-graph substrate {#host-control-graph-substrate}
@@ -923,10 +916,10 @@ without a write effect, or that grants network or credential effects to any work
 #### Enforcement {#permissions-enforcement}
 
 The compiled policy becomes the Concorde worker extension's policy for the invocation. The extension
-gates every tool call inside the worker's Pi process and inside every child session: a tool outside
+gates every tool call inside the terminal worker's Pi process: a tool outside
 the granted list is refused; `read`, `grep`, `find` and `ls` must target a canonical path, symlinks
-resolved, under a read or write grant; `edit` and `write` must target a path under a write grant; a
-child cannot delegate or submit a result. A capsule worker's workspace contains only its granted
+resolved, under a read or write grant; `edit` and `write` must target a path under a write grant; no
+worker can delegate or call another Operation. A capsule worker's workspace contains only its granted
 copies, so its read grant also covers the workspace root.
 
 The gate is a policy boundary inside the Pi process over the model's tool calls. The process itself
@@ -1003,28 +996,8 @@ are the supported machine-readable discovery interface, not a grant to inspect i
 return Agent delegation edges, select context or grant invocation authority. Retained legacy
 low-level data types cannot reactivate retired public workflows.
 
-The recursive Agent adapter adds these version-1 payload contracts. All listed fields are required,
-unknown properties are rejected, `S` means a nonblank string and `N` means `S | null`:
-
-| Type ID                       | Payload                                                                                                                                                     |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----- |
-| `concorde-agent-task`         | `task: S`, `target_id: S`                                                                                                                                   |
-| `concorde-agent-answer`       | `answer: S`                                                                                                                                                 |
-| `concorde-agent-interruption` | `gaps: Gap[]`, `decision: N`                                                                                                                                |
-| `concorde-agent-loop-context` | `invocation_id: S`, `parent_id: N`, `agent_id: S`, `input_json: S`, `context_json: S`, `feedback: Feedback[]`, `children: Child[]`, `result_schema_json: S` |
-| `concorde-agent-loop-step`    | `source: "code-driven"                                                                                                                                      | "model-driven"`,`action: "delegate" | "complete"`,`agent_id: N`,`value_json: N`,`outcome: Outcome`,`details: TypedValue<concorde-agent-interruption> | null` |
-
-`Gap` has `question`, `blocked_step`, `needed_contract`, `target_id` and `context_id`, all `S`;
-`context_id` additionally must be `sha256:` followed by exactly 64 lowercase hexadecimal digits.
-`Feedback` has `invocation_id: S`, `parent_id: N`, `agent_id: S`, `outcome: Outcome`,
-`value_json: N`, `error: N` and nullable typed interruption `details`. `Child` has `agent_id`,
-`input_type`, `result_type`, `input_schema_json` and `result_schema_json`, all `S`. These nested
-records also reject unknown properties. `Outcome` is `completed`, `spec_incomplete`, `waiting`,
-`cancelled`, `failed`, `limit_exhausted` or `rejected`. Arrays may be empty unless the runtime's
-outcome rules require otherwise. The `_json` fields are serialized transport values; this Module
-checks their string shape. The execution host separately parses them, validates them against the
-admitted type/schema, checks grant and invocation bindings, and enforces the relationships between
-action, outcome, result and interruption. Structural acceptance alone does not authorize a child.
+Retired recursive Agent adapter types (`concorde-agent-loop-context` and
+`concorde-agent-loop-step`) are not admitted runtime schemas and convey no launch authority.
 
 `obj` makes a closed object schema whose declared properties are required except those named in
 `optional`; `array` supplies an item schema and optional uniqueness assertion. `typed_schema`

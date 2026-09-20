@@ -183,12 +183,11 @@ print(json.dumps(results))
         )
 
     @verifies("scenario.harness.pi-worker-launch")
-    def test_declared_children_admit_only_the_pinned_runtime_dependency_tree(self):
+    def test_terminal_worker_admits_only_typebox_dependency(self):
         from unittest.mock import patch
 
         from concorde.harness.pi_rpc import PiRpcError
         from concorde.harness.pi_worker import (
-            ChildAgent,
             PiWorkerRuntime,
             WorkerExecutionError,
             WorkerLaunch,
@@ -200,9 +199,7 @@ print(json.dumps(results))
             system_prompt="test",
             message="test",
             result_schema={"type": "object"},
-            tools=("submit_result", "subagent"),
-            child_tools=("read",),
-            children=(ChildAgent("scout", "---\nname: scout\n---\nRead the grant."),),
+            tools=("submit_result",),
         )
         with (
             patch("concorde.harness.pi_worker.unavailable_reason", return_value=None),
@@ -220,7 +217,7 @@ print(json.dumps(results))
                 credentials_dir=self.root / "absent",
             )(launch)
         self.assertEqual(
-            (REPOSITORY_ROOT / "pi/node_modules",),
+            (REPOSITORY_ROOT / "pi/node_modules/typebox",),
             mounts.call_args.kwargs["runtime_directories"],
         )
 

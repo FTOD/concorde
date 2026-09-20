@@ -45,6 +45,7 @@ def type_version(type_id: str) -> int:
         "concorde-spec-review-request",
         "concorde-code-review-request",
         "concorde-tasks-request",
+        "concorde-operation-configuration",
     }:
         return 2
     # Issue decisions no longer include the automatic-authoring `specify` selector.

@@ -16,7 +16,6 @@ from types import ModuleType
 from ..harness.operation_state import StateContract
 from ..harness.worker_profile import (
     WorkerProfile,
-    child_definitions,
     validate_worker_profile,
 )
 from ..spec.contracts import MODEL_OPERATIONS, OPERATION_NAMES, exported_types, schemas
@@ -505,8 +504,7 @@ _AGENT_SPEC_HEADINGS: tuple[str, ...] = (
 def _validate_agent_profile(
     root: Path, agent: WorkerProfile, source: str
 ) -> list[Finding]:
-    """Rules CONCORDE-AGENT-PROFILE-001 and CONCORDE-AGENT-CHILD-001: a consistent worker profile
-    whose contract types are exported and whose declared children are exactly its child files."""
+    """Validate terminal profiles, exported contracts and absence of retired child catalogs."""
 
     findings: list[Finding] = []
     try:
@@ -517,7 +515,7 @@ def _validate_agent_profile(
                 "CONCORDE-AGENT-PROFILE-001",
                 source,
                 str(error),
-                "Declare a consistent worker profile: contract, workspace, tools, children and timeout.",
+                "Declare a consistent worker profile: contract, workspace, tools and timeout.",
             )
         )
     exported = frozenset(exported_types())
@@ -531,32 +529,14 @@ def _validate_agent_profile(
                 "Reference only types in contracts.exported_types().",
             )
         )
-    declared = {child.definition for child in agent.children}
-    directory = root / "operations" / agent.name / "children"
-    actual = (
-        {path.relative_to(root).as_posix() for path in directory.glob("*.md")}
-        if directory.is_dir()
-        else set()
-    )
-    if declared != actual:
+
+    if (root / "operations" / agent.name / "children").exists():
         findings.append(
             _finding(
-                "CONCORDE-AGENT-CHILD-001",
+                "CONCORDE-AGENT-PROFILE-001",
                 source,
-                f"agent {agent.name!r} declares children {sorted(declared)} but has child files {sorted(actual)}.",
-                "Declare exactly the operations/<name>/children/<child>.md definitions as Child entries.",
-            )
-        )
-    try:
-        child_definitions(root, agent)
-    except ValueError as error:
-        findings.append(
-            _finding(
-                "CONCORDE-AGENT-CHILD-001",
-                source,
-                str(error),
-                "Author each child as a pi-subagents definition with its name, description, read or check tools "
-                "and replaced, context-free prompt settings.",
+                "worker child definitions are retired",
+                "Remove the child catalog; the terminal worker does its own admitted work.",
             )
         )
     return findings
@@ -740,7 +720,7 @@ _CODE_SHAPE = re.compile(r"^[a-z][a-z0-9_]*$")
 # describe; their versions are not derivable from schemas() the way every other type's is.
 _ENVELOPE_VERSIONS = {
     "concorde-operation-invocation": 3,
-    "concorde-operation-configuration": 1,
+    "concorde-operation-configuration": 2,
     "concorde-operation-result": 3,
 }
 
@@ -843,7 +823,6 @@ def _operation_code_inventory(root: Path) -> dict | None:
             "profile": {
                 "workspace": profile.workspace,
                 "tools": sorted(profile.tools),
-                "children": sorted(child.name for child in profile.children),
             }
             if profile
             else None,

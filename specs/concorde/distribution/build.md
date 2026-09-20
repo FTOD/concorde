@@ -88,12 +88,12 @@ updates preserve the existing binding until explicitly accepted.
 Agent builds publish seven independent worker projections and no separate common one. Each
 rendered `generated/agents/<name>.md` concatenates the shared common worker rules
 (`prompts/workers/common.md`) and that worker's own role Spec source; the manifest records both
-sources, together with the bytes of each of that worker's declared child definitions. Package
+sources. Package
 validation compares the unified `concorde.operations` metadata with every executable declaration:
-exposure, context selection, determinism, USES, State and optional workspace/tools/children.
+exposure, context selection, determinism, USES, State and optional workspace/tools.
 
 Agent instruction file membership must equal the declared worker inventory. Agent Python bindings,
-role Spec bodies, child definitions and available operation/wire sources are recorded build
+role Spec bodies and available operation/wire sources are recorded build
 inputs; changing them makes verify_fresh reject the old build even when the shared common
 instruction body is unchanged.
 

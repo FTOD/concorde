@@ -68,7 +68,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.configuration = {
             "type_id": "concorde-operation-configuration",
-            "schema_version": 1,
+            "schema_version": 2,
             "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
         }
         self.write(

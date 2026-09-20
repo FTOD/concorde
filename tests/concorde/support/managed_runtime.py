@@ -101,11 +101,12 @@ def _create_npm_tools(root: Path) -> Path:
         "    print('unsupported fake npm prefix', file=sys.stderr)\n"
         "    raise SystemExit(2)\n"
         "lock = json.loads((root / 'package.json').read_text(encoding='utf-8'))\n"
-        "subagents = root / 'node_modules/pi-subagents'\n"
-        "subagents.mkdir(parents=True, exist_ok=True)\n"
-        "(subagents / 'index.ts').write_text('// fixture pi-subagents\\n', encoding='utf-8')\n"
-        "(subagents / 'package.json').write_text(json.dumps({'name': 'pi-subagents',\n"
-        "    'version': lock['dependencies']['pi-subagents']}), encoding='utf-8')\n",
+        "typebox = root / 'node_modules/typebox'\n"
+        "typebox.mkdir(parents=True, exist_ok=True)\n"
+        "(typebox / 'build').mkdir()\n"
+        "(typebox / 'build/index.mjs').write_text('// fixture typebox\\n', encoding='utf-8')\n"
+        "(typebox / 'package.json').write_text(json.dumps({'name': 'typebox',\n"
+        "    'version': lock['dependencies']['typebox']}), encoding='utf-8')\n",
         encoding="utf-8",
     )
     npm_script.chmod(0o755)

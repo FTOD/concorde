@@ -376,10 +376,6 @@
           "path": "reference/pi/"
         },
         {
-          "kind": "external",
-          "path": "reference/pi-subagents/"
-        },
-        {
           "kind": "document",
           "id": "document.issues.scenarios"
         },

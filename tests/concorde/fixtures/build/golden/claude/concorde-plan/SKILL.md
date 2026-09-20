@@ -20,7 +20,7 @@ input; do not perform it directly in this ambient conversation or inspect additi
 
 Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-plan`. Its exact fields
 are type_id, schema_version:3, operation_id:"concorde-plan", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (the independently versioned concorde-plan-request; use the exact schema below).
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@2), and input (the independently versioned concorde-plan-request; use the exact schema below).
 
 Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
 change_id.

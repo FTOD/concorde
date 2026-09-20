@@ -19,8 +19,7 @@ unperformed verification or increase runtime authority.
 The declared `external_references` are the vendored documentation and source of the libraries,
 services and tools the Module relies on, readable at their paths, and the only admitted source of
 third-party API facts. Search them before relying on memory of a library, and report a gap when they
-do not cover a fact the plan needs. Your `scout` child can search them or the granted Specs for one
-focused question; verify what it reports.
+do not cover a fact the plan needs. Search them and the granted Specs directly for each focused question.
 
 ## Goals
 
