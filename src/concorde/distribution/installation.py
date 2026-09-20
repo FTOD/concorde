@@ -46,7 +46,6 @@ PACKAGE_ROOTS = [
     "protocol",
     "scripts",
     "src",
-    "templates",
 ]
 
 RUNTIME = {
@@ -119,7 +118,6 @@ def load_package(root: Path) -> Package:
         "architecture_profile",
         "workspace_protocol",
         "runtime",
-        "templates",
         "client",
         "install",
     }
@@ -127,9 +125,9 @@ def load_package(root: Path) -> Package:
         raise InstallError(
             f"Concorde manifest is missing fields: {sorted(required - set(manifest))}"
         )
-    if manifest.get("schema_version") != 4 or manifest.get("name") != "concorde":
+    if manifest.get("schema_version") != 5 or manifest.get("name") != "concorde":
         raise InstallError(
-            "Concorde manifest must declare schema_version 4 and name 'concorde'"
+            "Concorde manifest must declare schema_version 5 and name 'concorde'"
         )
     if (
         manifest.get("architecture_profile") != 15
@@ -142,6 +140,8 @@ def load_package(root: Path) -> Package:
         raise InstallError("Concorde package must declare Delivery Proposal 10")
     if "skill_namespace" in manifest or "integrations" in manifest:
         raise InstallError("retired multi-client package fields are not supported")
+    if "templates" in manifest:
+        raise InstallError("retired top-level template inventory is not supported")
     install = manifest.get("install")
     if (
         not isinstance(install, dict)
@@ -170,18 +170,6 @@ def load_package(root: Path) -> Package:
         path = root / relative
         if path.is_symlink() or not path.is_file():
             raise InstallError(f"Concorde runtime {field} is missing: {relative}")
-    templates = manifest.get("templates")
-    if not isinstance(templates, list) or any(
-        not isinstance(item, str) for item in templates
-    ):
-        raise InstallError("Concorde manifest templates must be a string list")
-    if len(templates) != len(set(templates)):
-        raise InstallError("Concorde manifest template inventory contains duplicates")
-    observed_templates = sorted(path.name for path in (root / "templates").glob("*.md"))
-    if observed_templates != sorted(templates):
-        raise InstallError(
-            "Concorde manifest template inventory differs from root templates/"
-        )
     for required_root in PACKAGE_ROOTS:
         path = root / required_root
         if path.is_symlink() or not path.is_dir():
@@ -239,7 +227,6 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "prompts",
         "protocol",
         "src",
-        "templates",
     ):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):

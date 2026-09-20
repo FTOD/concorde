@@ -30,7 +30,6 @@ PACKAGE_ROOTS = [
     "scripts",
     "skills",
     "src",
-    "templates",
 ]
 
 

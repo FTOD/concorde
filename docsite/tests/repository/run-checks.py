@@ -28,7 +28,6 @@ DIRECTORIES = (
     "tests",
     "docsite",
     "reference",
-    "templates",
 )
 FILES = (
     "concorde.json",

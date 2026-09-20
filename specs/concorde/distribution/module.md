@@ -58,6 +58,10 @@ The external Developer runtime loads the explicitly selected Pi entry; descripti
 schemas remain useful through its `concorde` tool, not as standalone Skills. The catalog is not
 worker context or an execution grant. [Build realization](build.md#design) explains source
 accounting and freshness checks. Installation owns consumer deployment separately.
+Templates travel with their owners: the Protocol holds the canonical Module and Scenario starters,
+while the planner and task-author Operation packages hold their plan and task starters. There is
+no separate root template product or forwarding copy; this layout changes no worker context or
+runtime injection. See the [template ownership scenario](scenarios.md#scenario.distribution.template-ownership).
 
 <a id="entity.distribution.pi-session-extension"></a>
 

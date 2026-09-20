@@ -49,6 +49,7 @@ class NativeInstallerTests(unittest.TestCase):
     def test_old_or_multi_client_package_contract_is_rejected(self):
         for changes in (
             {"schema_version": 3},
+            {"schema_version": 4},
             {"client": "codex"},
             {"integrations": ["pi"]},
         ):
@@ -63,6 +64,22 @@ class NativeInstallerTests(unittest.TestCase):
                 with self.assertRaises(installer.InstallError):
                     installer.load_package(root)
 
+    @verifies("scenario.distribution.template-ownership")
+    def test_retired_template_inventory_is_rejected_even_when_empty(self):
+        for inventory in ([], ["plan-template.md"]):
+            with (
+                self.subTest(inventory=inventory),
+                tempfile.TemporaryDirectory() as raw,
+            ):
+                root = Path(raw)
+                (root / "concorde.json").write_text(
+                    json.dumps({**self.package.manifest, "templates": inventory})
+                )
+                with self.assertRaisesRegex(
+                    installer.InstallError, "retired top-level template"
+                ):
+                    installer.load_package(root)
+
     def test_retired_client_flag_rejects_before_creating_target(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / "absent"
@@ -74,7 +91,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(self.package.version, "8.0.0")
         self.assertEqual(self.package.manifest["architecture_profile"], 15)
         self.assertEqual(self.package.manifest["workspace_protocol"], 16)
-        self.assertEqual(len(self.package.manifest["templates"]), 4)
+        self.assertNotIn("templates", self.package.manifest)
         self.assertEqual(
             self.package.manifest["runtime"]["venv"],
             ".concorde/.venv",
@@ -146,6 +163,7 @@ class NativeInstallerTests(unittest.TestCase):
         "scenario.distribution.install-apply",
         "scenario.distribution.runtime-plan",
         "scenario.distribution.runtime-provision",
+        "scenario.distribution.template-ownership",
     )
     def test_empty_target_preview_apply_and_repeat_are_idempotent(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -159,6 +177,18 @@ class NativeInstallerTests(unittest.TestCase):
                 installer.apply_plan(target, self.package, actions, desired),
                 "installed",
             )
+            framework = target / installer.FRAMEWORK_ROOT
+            self.assertFalse((framework / "templates").exists())
+            for relative in (
+                "protocol/templates/module.md",
+                "protocol/templates/scenario.md",
+                "operations/planner/plan-template.md",
+                "operations/task_author/tasks-template.md",
+            ):
+                self.assertEqual(
+                    (framework / relative).read_bytes(),
+                    (REPOSITORY_ROOT / relative).read_bytes(),
+                )
             second, desired_again, _ = installer.installation_plan(target, self.package)
             self.assertEqual(
                 {item["action"] for item in second},
@@ -213,7 +243,6 @@ class NativeInstallerTests(unittest.TestCase):
                 "prompts",
                 "protocol",
                 "src",
-                "templates",
                 "pi",
                 "scripts",
             ):

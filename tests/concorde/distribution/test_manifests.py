@@ -23,7 +23,7 @@ class ManifestContractTests(unittest.TestCase):
 
     def test_one_manifest_declares_native_identity_profile_and_install_layout(self):
         manifest = self.manifest
-        self.assertEqual(manifest["schema_version"], 4)
+        self.assertEqual(manifest["schema_version"], 5)
         self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "8.0.0"))
         self.assertEqual(
             (manifest["architecture_profile"], manifest["workspace_protocol"]), (15, 16)
@@ -50,6 +50,25 @@ class ManifestContractTests(unittest.TestCase):
         )
         self.assertNotIn("viewer", manifest)
 
+    @verifies("scenario.distribution.template-ownership")
+    def test_templates_live_only_in_their_owning_packages(self):
+        self.assertNotIn("templates", self.manifest)
+        self.assertNotIn("templates", self.manifest["package_roots"])
+        self.assertFalse((REPOSITORY_ROOT / "templates").exists())
+        for relative in (
+            "protocol/templates/module.md",
+            "protocol/templates/scenario.md",
+            "operations/planner/plan-template.md",
+            "operations/task_author/tasks-template.md",
+        ):
+            self.assertTrue((REPOSITORY_ROOT / relative).is_file(), relative)
+        for owner, template in (
+            ("planner", "plan-template.md"),
+            ("task_author", "tasks-template.md"),
+        ):
+            readme = (REPOSITORY_ROOT / "operations" / owner / "README.md").read_text()
+            self.assertIn(f"]({template})", readme)
+
     def test_runtime_reads_version_from_the_single_manifest(self):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
         try:
@@ -59,7 +78,7 @@ class ManifestContractTests(unittest.TestCase):
         finally:
             sys.path.pop(0)
 
-    def test_manifest_inventory_equals_root_operations_and_templates(self):
+    def test_manifest_inventory_equals_root_operations(self):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
         sys.path.insert(0, str(REPOSITORY_ROOT))
         try:
@@ -81,18 +100,13 @@ class ManifestContractTests(unittest.TestCase):
             )
         )
         self.assertEqual(set(PUBLIC_OPERATIONS), set(launcher_operations))
-        templates = sorted(
-            path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md")
-        )
-        self.assertEqual(sorted(self.manifest["templates"]), templates)
         self.assertEqual(
             (
                 len(load_worker_profiles()),
                 len(operations.OPERATIONS),
                 len(PUBLIC_OPERATIONS),
-                len(templates),
             ),
-            (7, 18, 11, 4),
+            (7, 18, 11),
         )
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),
