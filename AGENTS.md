@@ -7,7 +7,12 @@ Specs and paired metadata under `specs/` use English.
 ## Self-maintenance
 
 The main session coordinates from its initial worktree. For source maintenance it creates a
-candidate from a committed base and launches one fresh, Concorde-catalog-free maintenance child there.
+candidate from a committed base, registers it in primary `.concorde/status/` before launch, then
+launches one fresh, Concorde-catalog-free maintenance child there and binds its actual child run ID.
+Main verifies the child stopped before releasing its exact ownership and handing off to a tester
+or resuming the same author. Primary runs evidence and pi-subagents mission records are not status
+registration; children never maintain a replacement ledger. See the canonical source-main prompt
+under `prompts/outer/source/main.md` for the supported host CLI lifecycle.
 Disable inherited and discovered Concorde catalogs; never fork previously loaded Concorde instructions.
 The child owns all authoring and deterministic checks, never delegates tasks, never moves
 worktrees, and stops writing before testing. Only one writer owns a worktree at a time.

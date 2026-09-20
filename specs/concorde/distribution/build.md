@@ -118,7 +118,16 @@ installer-owned generic tester definitions use the installed local Framework/run
 Outer pi-subagents is a host prerequisite, not a new worker dependency.
 
 Main owns scope, worktree assignment, continuation decisions, selected checks/independent testing
-and integration authorization. Maintenance directly edits and self-checks, never delegates or
+and integration authorization. Source-main instructions make primary status registration a launch
+prerequisite: each candidate has a verified stable task identity before its maintenance child starts,
+then main binds the actual launched child rather than a workflow container. Before transferring
+ownership to a tester or resumed author, main verifies the previous child stopped, releases that
+exact owner and verifies the new binding. Failed registration or handoff stops dependent work;
+run evidence and mission notes cannot replace status. Terminal records remain available, and
+integration and separately authorized cleanup stay distinct. These are host-coordination duties,
+not a new runtime or child grant; the [outer-role scenario](scenarios.md#scenario.distribution.outer-roles)
+defines the instruction obligation. Already-running sessions retain their loaded instructions.
+Maintenance directly edits and self-checks, never delegates or
 integrates. Tester starts fresh, keeps governing artifacts read-only and returns failures rather
 than repairing. Its command tool uses the existing OS read-only check executor with disposable
 external fixtures and the trusted tester-only scratch-backed private `/tmp` profile; unavailable
