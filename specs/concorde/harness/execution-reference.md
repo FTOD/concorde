@@ -429,12 +429,45 @@ thirty-two-Host-command bound; there is no per-child Host command requirement.
 These are acceptance primitives, not a claim that current public business entries have already
 migrated to native workflows. Their integration must also bind provisional within-workflow
 handoffs explicitly and recheck admission before every dependent model launch; staged values
-cannot masquerade as ordinary accepted plans, tasks or readiness evidence. Production integration
-remains blocked pending a real publication-adapter fixture, a checked retention/cap inventory,
-race-safe native run/session binding and explicit artifact-version admission. In particular,
-inspected pi-subagents 0.69.0 workflow status and per-child debug metadata omit a version field;
-the adapter must not infer lifecycle artifact version 3 from that absence. Synthetic child
-callbacks establish script order only, not production disk publication or live native execution.
+cannot masquerade as ordinary accepted plans, tasks or readiness evidence.
+
+The artifact adapter admits `pi-subagents-0.69.0-versionless-workflow-v1` only through a trusted
+`NativeRuntimeBinding`. `admit_native_runtime` checks the explicit package root, package identity
+and the reviewed serialization/control-source digests in `pi/native-runtime-contract.json`.
+Missing or changed sources, other package revisions and unsupported adapter contracts fail without
+fallback. This is compatibility provenance for the named sources, not a signature or attestation
+of every third-party byte. The admitted workflow status and child debug metadata have **no artifact
+version field**; that absence is retained as null, never called lifecycle schema 3. A newly present
+version field requires an explicit compatible adapter. Actual detached single-run lifecycle status
+has its separate upstream version and is not substituted for the versionless workflow record.
+
+The native extension binds a ticket to the actual async launch response's run ID and async directory,
+with the originating tool-call/session identity. Resource registration uses the SDK session ID;
+artifact ownership instead uses `getSessionFile() ?? getSessionId()`, retaining the exact path or ID
+rather than guessing equivalence. An initial finite Host step may start before the launch response
+is delivered: it waits for that exact binding under a deadline, launches no model while unbound,
+and fails on missing or mismatched data. Returned native metadata paths are carried through authored
+workflow emissions and checked against the independently published child status; an emitted success
+boolean has no authority.
+
+Awaiting `runs.run` must produce one terminal result with successful native execution and validated
+staging output, no detached/interrupted/stopped/partial outcome and no metadata/output publication
+error. Explicit child `async: true` can return an initial launch receipt instead; its `ok` alone is
+not completion. For detached children needing `extensionBindings`, the Agent's native async default
+is selected and the workflow omits the child async override so native awaiting remains active.
+Foreground launches do not supply the same per-child process-environment binding transport.
+
+The inspected native artifact writers retain complete workflow steps, traces and emissions, and
+serialize complete per-child metadata without an observer child-count cap. The fifty-entry retained
+foreground-run history limit does not remove those files; it is not the review inventory. Native
+fanout budgets remain real host grants (default sixty-four logical children, explicitly configurable),
+not authority for Concorde to add a thirty-two-review limit. Native output previews and typed gate
+stdout are separately bounded; complete acceptance records, not preview text, supply evidence.
+Startup/session-start artifact housekeeping can remove old files under its configured age policy;
+normal per-child completion does not age-scan them. Missing retained evidence still blocks, and
+Concorde must archive required evidence through its existing primary authority rather than promise
+indefinite native retention. Fresh-script/native publication dependency probes are deterministic
+checks with model execution replaced; they prove neither actual model judgment nor file confinement.
 
 This service supplies result admission only. It neither proves that a child stayed within its
 selected read scope nor prevents arbitrary filesystem writes. Native Agent file restrictions are

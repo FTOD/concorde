@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from concorde.harness.native_evidence import NativeChildEvidence, verify_native_children
+from concorde.harness.native_runtime import FORMAT, NativeRuntimeBinding
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
 
@@ -17,7 +18,8 @@ class NativeEvidenceTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.children = []
         self.status = {
-            "id": "workflow-id",
+            "runId": "workflow-id",
+            "mode": "workflow",
             "sessionId": "session-id",
             "state": "running",
             "steps": [],
@@ -91,6 +93,9 @@ class NativeEvidenceTests(unittest.TestCase):
             session_id="session-id",
             ticket="issued-ticket",
             children=tuple(self.children),
+            runtime=NativeRuntimeBinding(
+                FORMAT, "/fixture/package", "sha256:" + "0" * 64
+            ),
         )
 
     @verifies("scenario.harness.native-terminal-evidence")
@@ -134,7 +139,7 @@ class NativeEvidenceTests(unittest.TestCase):
 
     @verifies("scenario.harness.native-terminal-evidence")
     def test_foreign_workflow_identity(self):
-        self.status["id"] = "foreign"
+        self.status["runId"] = "foreign"
         with self.assertRaises(SpecError):
             self.verify()
 
@@ -175,6 +180,9 @@ class NativeEvidenceTests(unittest.TestCase):
                 session_id="session-id",
                 ticket="issued-ticket",
                 children=tuple(self.children),
+                runtime=NativeRuntimeBinding(
+                    FORMAT, "/fixture/package", "sha256:" + "0" * 64
+                ),
             )
 
     @verifies("scenario.harness.native-terminal-evidence")
@@ -182,3 +190,25 @@ class NativeEvidenceTests(unittest.TestCase):
         self.status["steps"].append(dict(self.status["steps"][0]))
         with self.assertRaises(SpecError):
             self.verify()
+
+    @verifies("scenario.harness.native-terminal-evidence")
+    def test_nonterminal_or_skipped_children_never_supply_coverage(self):
+        for state in ("pending", "running", "paused", "skipped", "failed", "stopped"):
+            with self.subTest(state=state):
+                self.status["steps"][0]["status"] = state
+                with self.assertRaises(SpecError):
+                    self.verify()
+
+    @verifies("scenario.harness.native-terminal-evidence")
+    def test_new_artifact_version_needs_an_explicit_adapter(self):
+        self.status["lifecycleArtifactVersion"] = 3
+        with self.assertRaises(SpecError):
+            self.verify()
+
+    @verifies("scenario.harness.native-terminal-evidence")
+    def test_malformed_native_fields_fail_closed(self):
+        for value in (None, [], "verified", False):
+            with self.subTest(value=value):
+                self.metadata[0]["acceptance"] = value
+                with self.assertRaises(SpecError):
+                    self.verify()

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "package": "pi-subagents",
+  "package_version": "0.69.0",
+  "format": "pi-subagents-0.69.0-versionless-workflow-v1",
+  "artifact_version": null,
+  "sources": {
+    "package.json": "sha256:8c900f9f7b690814c8caaad2f98a1194144a23cb0c2bff9b8f3229d94f5e9210",
+    "src/runs/background/async-execution.ts": "sha256:b3870b8728828840345008704f9ddcaf1dfab1461e397f28924f75affb168587",
+    "src/runs/background/subagent-runner.ts": "sha256:71c441e27c0eb865d4213926d1e47e09a5b48764b3b0ad173d215c6aac68937a",
+    "src/runs/foreground/execution.ts": "sha256:dee6928518370d7a3bbce3cdfa5a72ae0d45100f26fa3fdadc9b0ca6a151daa5",
+    "src/runs/foreground/foreground-history.ts": "sha256:b56576eabc6edc49c06f7a1ccc20834c7fdafe0e12fcd820021faecb5bb1f6db",
+    "src/runs/foreground/subagent-executor.ts": "sha256:5d7b06e43abada8a51dcddb6d80e83a15392c82ba7a680a5094993a8bc70045b",
+    "src/runs/shared/acceptance.ts": "sha256:1380822c2c1dba2ab7ec9d1602120c2074809161107f9551f1e7eb58530572f5",
+    "src/shared/artifacts.ts": "sha256:ccca09e94181458bb53c2431dc6b96ec434544187d64cc411c46f1e7f4c22003",
+    "src/shared/atomic-json.ts": "sha256:ddcfeb46f88eb2fac5ff6decf4f03b881978abaf1b496be02112318702af9198",
+    "src/shared/capacity-resilient-json.ts": "sha256:a4798e256114606d18a504527e35f487904b05099c151ccb51f0e7dbedd404de",
+    "src/shared/file-system-retry.ts": "sha256:85101173fc14c0b74698496d8c2034ad6a664d58f765b82dd1a2787015be4acb",
+    "src/shared/session-identity.ts": "sha256:856d15b4e1afba45e35d9c2fcd82c44403027535d38905629548e22a27803872",
+    "src/shared/types.ts": "sha256:6dbc55c3674053839311bf725f72d5ae2ed54ca77b9c3071beec6e992a08ade2",
+    "src/workflows/host-command.ts": "sha256:74aa9dcc29ec66f92cb9b419bb8c57d154cffa2b0bdd5aef6489baae72c56c6e",
+    "src/workflows/scripted-workflow.ts": "sha256:2e8556d0b5c1e5b3ed62cf72235b778194a584e0d12c750fc31979f549c545b9",
+    "src/workflows/workflow-child-summary.ts": "sha256:134a7630fdc44a47c101240dab4f4a3f8616a9cc5379916a4fea4ee95c232351"
+  }
+}

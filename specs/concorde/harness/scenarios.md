@@ -265,7 +265,11 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 - THEN it requires exact nonempty child coverage, matching workflow/run/Agent/proposal identities, completed child status, successful native exit and the matching verified staging gate
 - AND failed native execution cannot be overridden by a passing gate or an emitted success boolean
 - AND incomplete, missing, foreign, duplicated, cancelled or stale evidence blocks acceptance without inventing coverage
-- AND a scope of forty children needs no per-child Host command or artificial thirty-two-review limit
+- AND actual native publication retains sixty foreground children beyond the fifty-entry resume history and forty detached children without per-child Host commands or an artificial thirty-two-review limit
+- AND package/source compatibility explicitly admits the known versionless workflow/metadata format while preserving its absent version, rejecting other producers or newly versioned layouts without silent reinterpretation
+- AND an initial Host step waits for the actual async launch binding before any child model execution, accepts the exact session-file or session-ID ownership form, and stops on missing binding
+- AND a failed native child with a passing gate, interrupted execution, failed metadata/status publication or malformed metadata cannot advance accepted completion
+- AND stopping finalization before commit leaves no committed domain receipt, while stopping after its durable commit preserves that receipt separately from the cancelled native workflow
 - AND these files establish cooperative runtime provenance, not protection against an arbitrary same-user process tampering with native artifacts
 
 ## Agent execution
