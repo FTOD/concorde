@@ -61,7 +61,7 @@ Pi entry. `build` is pure and optionally renders an installed layout through `fr
 extension. There are no integration selectors, cross-root output arguments, Skill renderers or
 publishing commands. Removed call shapes fail explicitly, without aliases or fallback.
 The resolver (`resolve_model_instructions`, `resolve_role_prompt`, `resolve_operation_guidance`,
-`find_unreachable_prompts`, `check_reachability`) expands `@include` directives, enforces
+`find_unreachable_prompts`, `check_reachability`) expands whole-line `@path.md` references, enforces
 audience/layering rules, and detects unreachable or diamond-included sources; `resolve_model_instructions`
 additionally rejects an Agent Spec that carries front matter. `package_validation` attributes its
 findings to `module.distribution` and requires exactly one registered `concorde-operations` block
@@ -75,6 +75,51 @@ Failures return structured findings or the declared exception; callers must stop
 transition. Repeating an unchanged read is side-effect free. Mutations require current
 preconditions and explicit caller-owned paths. Local contract facts above remain authoritative
 without reading the parent or collaborating Specs.
+
+### Prompt reference grammar {#prompt-reference-grammar}
+
+A reference occupies one complete line beginning in column one: `@` immediately followed by
+an unquoted project-root-relative Markdown path, optionally followed by space/tab-separated
+`key=value` bindings. For example:
+
+```text
+@prompts/workflow-host/gap-reporting.md
+@prompts/workflow-host/invoke-operation-opener.md ACTION=validate
+@prompts/workflow-host/invoke-operation-opener.md ACTION="review the selected Spec"
+```
+
+The spelling resembles Claude imports, not a claim of Claude semantic compatibility. There is
+no inline import, home/absolute path expansion, implicit context expansion or search path.
+Targets resolve from the supplied project root, never from the including file's directory.
+
+Recognition is deliberately lexical: after column-one `@`, the first token has no whitespace,
+`@`, backtick, quote, parenthesis or angle bracket, and either ends in `.md` or contains `/` or
+backslash. A path-shaped token with a non-`.md` suffix is an invalid target, not literal output.
+Targets must use canonical relative POSIX paths: no empty, dot or traversal components, home
+prefix, colon, backslash, control characters or symlink components. Missing/non-file targets and
+invalid paths fail with `CONCORDE-PROMPT-MISSING-001`. A bare `@`, mentions, email addresses,
+decorators, inline references and indented lines remain literal Markdown. Backticks or indentation
+can therefore present a literal example. As before, a column-one directive inside a code fence
+is still processed; resolution is line-based, not a Markdown parser.
+
+Bindings retain POSIX shell-style tokenization without comments; single/double quoted values may
+contain spaces. Keys match `[A-Za-z_][A-Za-z0-9_]*` and cannot repeat. Malformed quoting, a token
+without `=`, invalid/duplicate keys or an unbound variable fail with
+`CONCORDE-PROMPT-UNRESOLVED-001`. Per-inclusion substitution precedes recursive resolution;
+`OPERATION`, `SCRIPT` and `FRAMEWORK` remain reserved for the build's later substitution.
+
+The retired column-one `@include` followed by whitespace or end of line fails explicitly with
+`CONCORDE-PROMPT-UNRESOLVED-001`, including in nested sources; it is never an alias or silently
+rendered instruction text. Inline/indented mentions of that spelling remain ordinary text.
+
+Recursion preserves exact source provenance and the existing audience/layer boundaries: workers
+cannot include ambient text or vice versa, shared text is allowed to either, Operation guidance
+and project Specs cannot be included, and worker instruction Specs include only `prompts/` files.
+Protocol adapters/chapters stay isolated from other prompts. Cycles fail with
+`CONCORDE-PROMPT-CYCLE-001`; reaching the same file twice within one root fails with
+`CONCORDE-PROMPT-DIAMOND-001`, including with different bindings. Audience, scope and Protocol
+violations retain their existing rule IDs. No failing resolution returns a partial successful body.
+Changing directive spelling changes source digests, not the intended expanded instruction bytes.
 
 ### Returned records and compatibility {#build-returned-records-and-compatibility}
 

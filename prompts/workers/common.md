@@ -57,7 +57,7 @@ identities exactly as they appear in your input. The run ends when `submit_resul
 you write after it is read. A valid bounded result includes an honest gap or an incomplete review:
 report what you could not do in the result rather than stopping without submitting.
 
-@include prompts/workflow-host/gap-reporting.md
+@prompts/workflow-host/gap-reporting.md
 
 ## Terminal execution
 

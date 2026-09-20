@@ -6,9 +6,9 @@ operation: context_solve
 
 # concorde-context-solve
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="assess whether the selected Module Spec supports the task"
+@prompts/workflow-host/invoke-operation-opener.md ACTION="assess whether the selected Module Spec supports the task"
 
-@include prompts/workflow-host/task-request-fields.md
+@prompts/workflow-host/task-request-fields.md
 
 Returns sufficiency or attributed gaps without authoring Specs, planning or implementation.
 

@@ -60,7 +60,7 @@ comparisons cannot be completed, report incomplete rather than silently treating
 Directly verify claims against the granted documents and cross-check identities, links,
 entity titles, diagram labels and terminology semantics. Cite exact evidence for each finding.
 
-@include prompts/workflow-host/review-scope-and-result.md
+@prompts/workflow-host/review-scope-and-result.md
 
 ## Goals
 

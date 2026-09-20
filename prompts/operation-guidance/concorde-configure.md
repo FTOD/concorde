@@ -6,11 +6,11 @@ operation: configure
 
 # concorde-configure
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION=configure
-@include prompts/workflow-host/lifecycle-no-cognition.md
+@prompts/workflow-host/invoke-operation-opener.md ACTION=configure
+@prompts/workflow-host/lifecycle-no-cognition.md
 
-@include prompts/workflow-host/task-request-fields.md
-@include prompts/workflow-host/init-request-and-no-flags.md
+@prompts/workflow-host/task-request-fields.md
+@prompts/workflow-host/init-request-and-no-flags.md
 
-@include prompts/workflow-host/target-identity-opener.md
-@include prompts/workflow-host/candidate-worktree.md
+@prompts/workflow-host/target-identity-opener.md
+@prompts/workflow-host/candidate-worktree.md
