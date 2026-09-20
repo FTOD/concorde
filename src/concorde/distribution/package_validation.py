@@ -87,7 +87,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
                     error.rule_id,
                     relative,
                     str(error),
-                    "Repair the prompt source or its @include directives.",
+                    "Repair the prompt source or its @path.md references.",
                 )
             )
     try:
@@ -613,7 +613,7 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
                             error.rule_id,
                             spec_source,
                             str(error),
-                            "Repair the WorkerProfile Spec source or its @include directives.",
+                            "Repair the WorkerProfile Spec source or its @path.md references.",
                         )
                     )
                 else:

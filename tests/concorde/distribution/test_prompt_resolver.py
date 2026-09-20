@@ -13,8 +13,9 @@ from concorde.distribution.prompt_resolver import (  # noqa: E402
     PromptResolverError,
     check_reachability,
     find_unreachable_prompts,
-    resolve_role_prompt,
+    resolve_model_instructions,
     resolve_operation_guidance,
+    resolve_role_prompt,
 )
 
 
@@ -28,11 +29,186 @@ def _prompt(audience: str, body: str) -> str:
     return f"---\naudience: {audience}\n---\n\n{body}"
 
 
+from concorde.spec.verification import verifies  # noqa: E402
+
+
 class PromptResolverRuleTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+
+    @verifies("scenario.distribution.prompt-references")
+    def test_nested_references_bind_quoted_values_and_track_sources(self):
+        _write(
+            self.root, "prompts/leaf.md", _prompt("shared", "Hello {NAME}: {ACTION}.\n")
+        )
+        _write(
+            self.root,
+            "prompts/middle.md",
+            _prompt(
+                "worker", "@prompts/leaf.md NAME=\"{NAME}\" ACTION='check carefully'\n"
+            ),
+        )
+        _write(
+            self.root,
+            "operations/example/spec.md",
+            '# Example\n@prompts/middle.md NAME="Ada Lovelace"\nDone.\n',
+        )
+        result = resolve_model_instructions(self.root, "operations/example/spec.md")
+        self.assertEqual(
+            "# Example\nHello Ada Lovelace: check carefully.\nDone.\n", result.body
+        )
+        self.assertEqual(
+            ("operations/example/spec.md", "prompts/leaf.md", "prompts/middle.md"),
+            result.sources,
+        )
+
+    @verifies("scenario.distribution.prompt-references")
+    def test_literal_markdown_is_not_a_reference(self):
+        body = (
+            "Contact person@example.md or @person.\n"
+            "@person\n@person@example.md\n@decorator(value)\n@functools.cache\n"
+            "@\n@ path.md\nInline @prompts/missing.md\n"
+            " @prompts/missing.md\n\t@prompts/missing.md\n"
+            "`@prompts/missing.md`\n@include-example\n"
+            "Use `@include path.md` as a historical example.\n"
+            " @include path.md\n"
+        )
+        _write(self.root, "prompts/root.md", _prompt("worker", body))
+        self.assertEqual(body, resolve_role_prompt(self.root, "prompts/root.md").body)
+
+    @verifies("scenario.distribution.prompt-references")
+    def test_retired_syntax_is_rejected_for_all_roots_and_nested_sources(self):
+        for directive in (
+            "@include",
+            "@include prompts/leaf.md",
+            "@include\tprompts/leaf.md",
+        ):
+            for nested in (False, True):
+                with self.subTest(directive=directive, nested=nested):
+                    _write(
+                        self.root,
+                        "prompts/leaf.md",
+                        _prompt("shared", directive + "\n"),
+                    )
+                    body = "@prompts/leaf.md\n" if nested else directive + "\n"
+                    _write(self.root, "prompts/root.md", _prompt("worker", body))
+                    _write(self.root, "operations/example/spec.md", body)
+                    _write(
+                        self.root,
+                        "prompts/operation-guidance/example.md",
+                        '---\nname: example\ndescription: "Example"\noperation: example\n---\n'
+                        + body,
+                    )
+                    for resolver, path in (
+                        (resolve_role_prompt, "prompts/root.md"),
+                        (resolve_model_instructions, "operations/example/spec.md"),
+                        (
+                            resolve_operation_guidance,
+                            "prompts/operation-guidance/example.md",
+                        ),
+                    ):
+                        with self.assertRaisesRegex(
+                            PromptResolverError, "retired @include"
+                        ):
+                            resolver(self.root, path)
+
+    @verifies("scenario.distribution.prompt-references")
+    def test_invalid_targets_fail_without_expansion(self):
+        for target in (
+            "../outside.md",
+            "/absolute.md",
+            "~/home.md",
+            "prompts/../leaf.md",
+            "prompts//leaf.md",
+            "./prompts/leaf.md",
+            "prompts/leaf.txt",
+            "C:/absolute.md",
+            "prompts\\leaf.md",
+            "prompts/missing.md",
+        ):
+            with self.subTest(target=target):
+                _write(
+                    self.root, "prompts/root.md", _prompt("worker", "@" + target + "\n")
+                )
+                with self.assertRaises(PromptResolverError) as failure:
+                    resolve_role_prompt(self.root, "prompts/root.md")
+                self.assertEqual(
+                    "CONCORDE-PROMPT-MISSING-001", failure.exception.rule_id
+                )
+
+    @verifies("scenario.distribution.prompt-references")
+    def test_symlink_file_and_directory_are_rejected(self):
+        _write(self.root, "actual/leaf.md", _prompt("worker", "Leaf\n"))
+        (self.root / "prompts").mkdir()
+        (self.root / "prompts/link.md").symlink_to(self.root / "actual/leaf.md")
+        (self.root / "prompts/alias").symlink_to(
+            self.root / "actual", target_is_directory=True
+        )
+        for target in ("prompts/link.md", "prompts/alias/leaf.md"):
+            with self.subTest(target=target):
+                _write(
+                    self.root, "prompts/root.md", _prompt("worker", "@" + target + "\n")
+                )
+                with self.assertRaises(PromptResolverError) as failure:
+                    resolve_role_prompt(self.root, "prompts/root.md")
+                self.assertEqual(
+                    "CONCORDE-PROMPT-MISSING-001", failure.exception.rule_id
+                )
+
+    @verifies("scenario.distribution.prompt-references")
+    def test_malformed_bindings_fail(self):
+        _write(self.root, "prompts/leaf.md", _prompt("worker", "Leaf\n"))
+        for arguments in ('NAME="unfinished', "bare", "NAME=a NAME=b", "9NAME=a"):
+            with self.subTest(arguments=arguments):
+                _write(
+                    self.root,
+                    "prompts/root.md",
+                    _prompt("worker", "@prompts/leaf.md " + arguments + "\n"),
+                )
+                with self.assertRaises(PromptResolverError) as failure:
+                    resolve_role_prompt(self.root, "prompts/root.md")
+                self.assertEqual(
+                    "CONCORDE-PROMPT-UNRESOLVED-001", failure.exception.rule_id
+                )
+
+    @verifies("scenario.distribution.prompt-references")
+    def test_worker_spec_cannot_include_outside_prompts(self):
+        _write(self.root, "operations/example/spec.md", "@other/leaf.md\n")
+        with self.assertRaises(PromptResolverError) as failure:
+            resolve_model_instructions(self.root, "operations/example/spec.md")
+        self.assertEqual("CONCORDE-PROMPT-SCOPE-001", failure.exception.rule_id)
+
+    @verifies("scenario.distribution.prompt-references")
+    def test_retired_syntax_blocks_build_and_package_validation(self):
+        from concorde.distribution.build import BuildError, build, write_build
+        from concorde.distribution.package_validation import _validate_prompts
+        from tests.concorde.support.build_fixture import build_package_copy
+
+        build_package_copy(self.root)
+        path = self.root / "prompts/operation-guidance/concorde-plan.md"
+        path.write_text(path.read_text().replace("@prompts/", "@include prompts/"))
+        before = (self.root / "generated/build-manifest.json").read_bytes()
+        for render in (build, write_build):
+            with (
+                self.subTest(render=render.__name__),
+                self.assertRaisesRegex(BuildError, "retired @include"),
+            ):
+                render(self.root)
+        self.assertEqual(
+            before, (self.root / "generated/build-manifest.json").read_bytes()
+        )
+        findings = _validate_prompts(self.root)
+        self.assertTrue(
+            any(
+                f.rule_id == "CONCORDE-PROMPT-UNRESOLVED-001"
+                and "retired @include" in f.message
+                and "@path.md" in f.remediation
+                for f in findings
+            ),
+            findings,
+        )
 
     # --- 1. cycle -----------------------------------------------------
 
@@ -40,12 +216,12 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "A body\n\n@include prompts/workflow-host/b.md\n"),
+            _prompt("worker", "A body\n\n@prompts/workflow-host/b.md\n"),
         )
         _write(
             self.root,
             "prompts/workflow-host/b.md",
-            _prompt("worker", "B body\n\n@include prompts/workflow-host/a.md\n"),
+            _prompt("worker", "B body\n\n@prompts/workflow-host/a.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -55,7 +231,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include prompts/workflow-host/a.md\n"),
+            _prompt("worker", "@prompts/workflow-host/a.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -69,18 +245,18 @@ class PromptResolverRuleTests(unittest.TestCase):
             "prompts/workflow-host/root.md",
             _prompt(
                 "worker",
-                "Root\n\n@include prompts/workflow-host/left.md\n\n@include prompts/workflow-host/right.md\n",
+                "Root\n\n@prompts/workflow-host/left.md\n\n@prompts/workflow-host/right.md\n",
             ),
         )
         _write(
             self.root,
             "prompts/workflow-host/left.md",
-            _prompt("worker", "Left\n\n@include prompts/workflow-host/shared.md\n"),
+            _prompt("worker", "Left\n\n@prompts/workflow-host/shared.md\n"),
         )
         _write(
             self.root,
             "prompts/workflow-host/right.md",
-            _prompt("worker", "Right\n\n@include prompts/workflow-host/shared.md\n"),
+            _prompt("worker", "Right\n\n@prompts/workflow-host/shared.md\n"),
         )
         _write(
             self.root,
@@ -101,12 +277,12 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/one.md",
-            _prompt("worker", "One\n\n@include prompts/workflow-host/shared.md\n"),
+            _prompt("worker", "One\n\n@prompts/workflow-host/shared.md\n"),
         )
         _write(
             self.root,
             "prompts/workflow-host/two.md",
-            _prompt("worker", "Two\n\n@include prompts/workflow-host/shared.md\n"),
+            _prompt("worker", "Two\n\n@prompts/workflow-host/shared.md\n"),
         )
         one = resolve_role_prompt(self.root, "prompts/workflow-host/one.md")
         two = resolve_role_prompt(self.root, "prompts/workflow-host/two.md")
@@ -119,7 +295,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include prompts/workflow-host/missing.md\n"),
+            _prompt("worker", "@prompts/workflow-host/missing.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -129,7 +305,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include ../outside.md\n"),
+            _prompt("worker", "@../outside.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -146,7 +322,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include prompts/workflow-host/leaf.md\n"),
+            _prompt("worker", "@prompts/workflow-host/leaf.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -163,9 +339,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt(
-                "worker", "@include prompts/workflow-host/leaf.md not-a-key-value\n"
-            ),
+            _prompt("worker", "@prompts/workflow-host/leaf.md not-a-key-value\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -180,7 +354,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/operation-guidance/concorde-x.md",
-            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@include prompts/workflow-host/leaf.md\n',
+            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@prompts/workflow-host/leaf.md\n',
         )
         result = resolve_operation_guidance(
             self.root, "prompts/operation-guidance/concorde-x.md"
@@ -206,7 +380,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include prompts/workflow-host/leaf.md\n"),
+            _prompt("worker", "@prompts/workflow-host/leaf.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -221,7 +395,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/operation-guidance/concorde-x.md",
-            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@include prompts/workflow-host/leaf.md\n',
+            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@prompts/workflow-host/leaf.md\n',
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_operation_guidance(
@@ -238,12 +412,12 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include prompts/workflow-host/leaf.md\n"),
+            _prompt("worker", "@prompts/workflow-host/leaf.md\n"),
         )
         _write(
             self.root,
             "prompts/operation-guidance/concorde-x.md",
-            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@include prompts/workflow-host/leaf.md\n',
+            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@prompts/workflow-host/leaf.md\n',
         )
         role_result = resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         skill_result = resolve_operation_guidance(
@@ -263,7 +437,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include prompts/operation-guidance/concorde-x.md\n"),
+            _prompt("worker", "@prompts/operation-guidance/concorde-x.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -274,7 +448,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include specs/example/system.md\n"),
+            _prompt("worker", "@specs/example/system.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -286,7 +460,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/protocol/principles.md",
-            _prompt("shared", "@include prompts/workflow-host/leaf.md\n"),
+            _prompt("shared", "@prompts/workflow-host/leaf.md\n"),
         )
         _write(self.root, "prompts/workflow-host/leaf.md", _prompt("shared", "Leaf\n"))
         with self.assertRaises(PromptResolverError) as context:
@@ -302,7 +476,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include prompts/protocol/principles.md\n"),
+            _prompt("worker", "@prompts/protocol/principles.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -312,7 +486,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/protocol/principles.md",
-            _prompt("shared", "@include prompts/protocol/kinds.md\n"),
+            _prompt("shared", "@prompts/protocol/kinds.md\n"),
         )
         _write(self.root, "prompts/protocol/kinds.md", _prompt("shared", "Kinds\n"))
         result = resolve_role_prompt(self.root, "prompts/protocol/principles.md")
@@ -324,7 +498,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/protocol/principles.md",
-            _prompt("shared", "@include protocol/principles.md\n"),
+            _prompt("shared", "@protocol/principles.md\n"),
         )
         _write(
             self.root,
@@ -344,7 +518,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/a.md",
-            _prompt("worker", "@include protocol/principles.md\n"),
+            _prompt("worker", "@protocol/principles.md\n"),
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
@@ -371,7 +545,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/workflow-host/root.md",
-            _prompt("worker", "@include prompts/workflow-host/leaf.md\n"),
+            _prompt("worker", "@prompts/workflow-host/leaf.md\n"),
         )
         _write(self.root, "prompts/workflow-host/leaf.md", _prompt("worker", "Leaf\n"))
         unreachable = find_unreachable_prompts(

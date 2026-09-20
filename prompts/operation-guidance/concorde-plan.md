@@ -6,9 +6,9 @@ operation: plan
 
 # concorde-plan
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="plan work for the explicitly selected Module"
+@prompts/workflow-host/invoke-operation-opener.md ACTION="plan work for the explicitly selected Module"
 
-@include prompts/workflow-host/task-request-fields.md
+@prompts/workflow-host/task-request-fields.md
 
 Assesses the complete Spec before accepting a nonempty revision-bound plan. Does not read implementation contents. Missing contracts return to the calling agent for direct Spec and paired metadata edits.
 

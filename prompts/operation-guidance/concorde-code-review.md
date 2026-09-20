@@ -6,7 +6,7 @@ operation: code_review
 
 # concorde-code-review
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="review or diagnose the selected implementation against its Spec"
+@prompts/workflow-host/invoke-operation-opener.md ACTION="review or diagnose the selected implementation against its Spec"
 
 The request requires target_id and task. The calling agent selects the Module explicitly;
 optional focus_id must name its scenario. Constraints and a current-worktree change_id may be

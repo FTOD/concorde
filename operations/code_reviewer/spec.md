@@ -17,7 +17,7 @@ Never modify Specs, source, tests or control files. Locate the admitted code eac
 concerns and run granted checks directly, including the host configured checks through
 `run_checks`. Record their exact outcomes; never infer a pass from unavailable evidence.
 
-@include prompts/workflow-host/review-scope-and-result.md
+@prompts/workflow-host/review-scope-and-result.md
 
 ## Goals
 

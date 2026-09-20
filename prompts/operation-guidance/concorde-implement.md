@@ -6,9 +6,9 @@ operation: implement
 
 # concorde-implement
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="implement current accepted tasks inside the selected Module grant"
+@prompts/workflow-host/invoke-operation-opener.md ACTION="implement current accepted tasks inside the selected Module grant"
 
-@include prompts/workflow-host/task-request-fields.md
+@prompts/workflow-host/task-request-fields.md
 
 Requires a current accepted plan and tasks. The programmer may change only registered implementation files, never Specs, metadata or registry. Component work and necessary contract changes return to the calling agent for separate selection; no child workflow or Spec authoring runs automatically. Completion is not review, validation, readiness or delivery.
 

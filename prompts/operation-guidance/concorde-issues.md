@@ -6,7 +6,7 @@ operation: issues
 
 # concorde-issues
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="manage or solve explicitly selected Issues"
+@prompts/workflow-host/invoke-operation-opener.md ACTION="manage or solve explicitly selected Issues"
 
 Choose action list, show, report, reopen or solve. Show, reopen and solve require one issue_id;
 expected_revision optionally rejects a changed selection. Report requires target_id and a classified

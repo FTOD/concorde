@@ -6,9 +6,9 @@ operation: tasks
 
 # concorde-tasks
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="derive implementation acceptance tasks from the current accepted plan"
+@prompts/workflow-host/invoke-operation-opener.md ACTION="derive implementation acceptance tasks from the current accepted plan"
 
-@include prompts/workflow-host/task-request-fields.md
+@prompts/workflow-host/task-request-fields.md
 
 Requires the managed change and current accepted plan for the same intent. Returns new incomplete tasks, preserving prior task identities in history. Optional repair_task_scope binds the exact incomplete task-list digest; optional repair_review names a current blocking code-review ArtifactRef for this same intent. Neither field bypasses currentness or review gates.
 

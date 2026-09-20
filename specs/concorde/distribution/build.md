@@ -31,11 +31,12 @@ runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.
 ## Rendering and freshness
 
 Distribution owns each public Operation's authored description and guidance. Build resolves its
-includes and embeds those bytes with the exact versioned request schema in one Pi catalog. The
+whole-line `@path.md` references and embeds those bytes with the exact versioned request schema in one Pi catalog. The
 extension's `concorde` tool describes or runs the selected Operation through the shared launcher;
 Pi supplies the invocation envelope, so guidance contains no standalone stdin mechanics. Building
 or installing the catalog does not execute an Operation or grant worker authority. Operation
-behavior stays with its providing Module.
+behavior stays with its providing Module. The [reference grammar](contracts.md#prompt-reference-grammar)
+defines parameters and rejection rules; the old `@include path.md` spelling is retired.
 
 The checkout's own entry is `generated/session/pi/concorde-session.ts`, outside ambient discovery.
 It imports the checkout's extension and requests explicit developer authorization to run an

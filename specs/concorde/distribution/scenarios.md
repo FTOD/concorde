@@ -160,6 +160,15 @@ that need persistent source or dependency changes must prepare them in the imple
 
 ## Build
 
+### scenario.distribution.prompt-references — Resolve only explicit whole-line path references
+
+- GIVEN prompt sources with column-one `@path.md` references and optional quoted key=value bindings
+- WHEN the resolver renders a worker, Protocol adapter or Operation guidance root
+- THEN nested references preserve binding behavior and source provenance without changing intended rendered instruction bytes
+- AND invalid or missing targets, unsafe paths, malformed parameters, audience/layer violations, cycles and diamonds fail without a partial successful result
+- AND retired column-one `@include path.md` directives fail explicitly, including in nested sources
+- BUT ordinary literal Markdown mentions, emails, decorators, inline references and indented lines remain unchanged
+
 ### scenario.distribution.build-render — Build renders deterministic Pi projections from authored sources
 
 - GIVEN current Operation guidance, worker instruction, operation and Protocol sources

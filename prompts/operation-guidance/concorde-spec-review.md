@@ -6,7 +6,7 @@ operation: spec_review
 
 # concorde-spec-review
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="review the selected Spec, including terminology semantic consistency"
+@prompts/workflow-host/invoke-operation-opener.md ACTION="review the selected Spec, including terminology semantic consistency"
 
 The request requires target_id and task. The calling agent selects the Module explicitly;
 optional focus_id must name its scenario. Constraints and a current-worktree change_id may be

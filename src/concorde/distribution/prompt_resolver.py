@@ -1,14 +1,14 @@
 """Deterministic resolution of Concorde prompt sources (proposal section 4).
 
 A prompt is a Markdown file with YAML front matter declaring ``audience: worker | ambient |
-shared``. A prompt body may reference other prompts through one explicit ``@include`` directive
+shared``. A prompt body may reference other prompts through an explicit ``@path.md`` reference
 that occupies a whole line starting at column one:
 
-    @include prompts/workflow-host/candidate-worktree.md
-    @include prompts/workflow-host/invoke.md operation=concorde-plan request=concorde-plan-request
+    @prompts/workflow-host/gap-reporting.md
+    @prompts/workflow-host/invoke-operation-opener.md ACTION=validate
 
 Resolution is a pure function of the source tree: given a root (a role root prompt or an operation guidance
-source), it walks ``@include`` directives, binds per-inclusion ``{KEY}`` variables, and returns the
+source), it walks references, binds per-inclusion ``{KEY}`` variables, and returns the
 fully substituted text. It performs no network or process I/O beyond reading files under
 ``project_root``.
 
@@ -40,7 +40,9 @@ GUIDANCE_ROOT = "prompts/operation-guidance/"
 SPECS_ROOT = "specs/"
 OPERATIONS_ROOT = "operations/"
 
-_DIRECTIVE_LINE = re.compile(r"^@include(?:[ \t]+(?P<rest>\S.*))?[ \t]*$")
+# Path-shaped tokens only: ordinary mentions, emails and decorators stay literal.
+_DIRECTIVE_LINE = re.compile(r"^@(?P<target>[^\s@`\"'()<>]+)(?:[ \t]+.*)?$")
+_RETIRED_DIRECTIVE = re.compile(r"^@include(?:[ \t]|$)")
 _VARIABLE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -63,7 +65,15 @@ class ResolvedPrompt:
 
 def _safe_relative(value: str) -> str:
     candidate = PurePosixPath(value)
-    if not value or candidate.is_absolute() or ".." in candidate.parts or "\\" in value:
+    if (
+        not value
+        or candidate.is_absolute()
+        or value.startswith("~")
+        or any(part in {"", ".", ".."} for part in value.split("/"))
+        or "\\" in value
+        or ":" in value
+        or any(ord(char) < 32 for char in value)
+    ):
         raise PromptResolverError(
             "CONCORDE-PROMPT-MISSING-001",
             f"include target must be a safe repository-relative path: {value!r}",
@@ -73,7 +83,13 @@ def _safe_relative(value: str) -> str:
 
 def _read(project_root: Path, relative: str) -> str:
     path = project_root / relative
-    if path.is_symlink() or not path.is_file():
+    if (
+        any(
+            (project_root / Path(*Path(relative).parts[:i])).is_symlink()
+            for i in range(1, len(Path(relative).parts) + 1)
+        )
+        or not path.is_file()
+    ):
         raise PromptResolverError(
             "CONCORDE-PROMPT-MISSING-001",
             f"include target is missing or unsafe: {relative}",
@@ -122,37 +138,44 @@ def _parse_prompt_file(project_root: Path, relative: str) -> tuple[str, str]:
 def _parse_directive(rest: str | None, relative: str) -> tuple[str, dict[str, str]]:
     if not rest:
         raise PromptResolverError(
-            "CONCORDE-PROMPT-UNRESOLVED-001", f"{relative}: @include has no target path"
+            "CONCORDE-PROMPT-UNRESOLVED-001",
+            f"{relative}: reference has no target path",
         )
     try:
         tokens = shlex.split(rest, comments=False, posix=True)
     except ValueError as error:
         raise PromptResolverError(
             "CONCORDE-PROMPT-UNRESOLVED-001",
-            f"{relative}: malformed @include arguments: {error}",
+            f"{relative}: malformed reference arguments: {error}",
         ) from error
     if not tokens:
         raise PromptResolverError(
-            "CONCORDE-PROMPT-UNRESOLVED-001", f"{relative}: @include has no target path"
+            "CONCORDE-PROMPT-UNRESOLVED-001",
+            f"{relative}: reference has no target path",
         )
     target = _safe_relative(tokens[0])
+    if not target.endswith(".md"):
+        raise PromptResolverError(
+            "CONCORDE-PROMPT-MISSING-001",
+            f"{relative}: reference target must be Markdown (.md): {target}",
+        )
     bindings: dict[str, str] = {}
     for token in tokens[1:]:
         if "=" not in token:
             raise PromptResolverError(
                 "CONCORDE-PROMPT-UNRESOLVED-001",
-                f"{relative}: @include parameter must be key=value, found {token!r}",
+                f"{relative}: reference parameter must be key=value, found {token!r}",
             )
         key, _, value = token.partition("=")
         if not _KEY.fullmatch(key):
             raise PromptResolverError(
                 "CONCORDE-PROMPT-UNRESOLVED-001",
-                f"{relative}: invalid @include parameter name {key!r}",
+                f"{relative}: invalid reference parameter name {key!r}",
             )
         if key in bindings:
             raise PromptResolverError(
                 "CONCORDE-PROMPT-UNRESOLVED-001",
-                f"{relative}: duplicate @include parameter {key!r}",
+                f"{relative}: duplicate reference parameter {key!r}",
             )
         bindings[key] = value
     return target, bindings
@@ -206,7 +229,7 @@ def _substitute(body: str, bindings: dict[str, str], relative: str) -> str:
         if name not in bindings:
             raise PromptResolverError(
                 "CONCORDE-PROMPT-UNRESOLVED-001",
-                f"{relative}: variable {{{name}}} has no @include binding",
+                f"{relative}: variable {{{name}}} has no reference binding",
             )
         return bindings[name]
 
@@ -227,13 +250,23 @@ def _resolve_body(
     rendered: list[str] = []
     last_index = len(lines) - 1
     for index, line in enumerate(lines):
-        match = _DIRECTIVE_LINE.match(line)
-        if match is None:
+        if _RETIRED_DIRECTIVE.match(line):
+            raise PromptResolverError(
+                "CONCORDE-PROMPT-UNRESOLVED-001",
+                f"{relative}: retired @include directive; use @path.md instead",
+            )
+        match = _DIRECTIVE_LINE.fullmatch(line)
+        if match is None or not (
+            match.group("target").endswith(".md")
+            or "/" in match.group("target")
+            or "\\" in match.group("target")
+        ):
             rendered.append(line)
             if index != last_index:
                 rendered.append("\n")
             continue
-        target, bindings = _parse_directive(match.group("rest"), relative)
+        _safe_relative(match.group("target"))
+        target, bindings = _parse_directive(line[1:], relative)
         _check_scope(target, relative)
         if target in chain:
             cycle = chain[chain.index(target) :] + (target,)
@@ -273,10 +306,10 @@ def _finalize(body: str, relative: str) -> str:
                 "CONCORDE-PROMPT-UNRESOLVED-001",
                 f"{relative}: unresolved variable {{{match.group(1)}}} in output",
             )
-    if re.search(r"(?m)^@include\b", body):
+    if any(_RETIRED_DIRECTIVE.match(line) for line in body.split("\n")):
         raise PromptResolverError(
             "CONCORDE-PROMPT-UNRESOLVED-001",
-            f"{relative}: unresolved @include directive in output",
+            f"{relative}: retired @include directive in output; use @path.md instead",
         )
     return body
 

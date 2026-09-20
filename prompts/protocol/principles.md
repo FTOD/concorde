@@ -2,12 +2,12 @@
 audience: shared
 ---
 
-@include protocol/principles.md
+@protocol/principles.md
 
-@include protocol/spec-management.md
+@protocol/spec-management.md
 
-@include protocol/spec-management/spec-and-context.md
+@protocol/spec-management/spec-and-context.md
 
-@include protocol/format.md
+@protocol/format.md
 
-@include prompts/protocol/framework-profile.md
+@prompts/protocol/framework-profile.md
