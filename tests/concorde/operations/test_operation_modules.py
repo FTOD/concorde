@@ -20,7 +20,6 @@ from concorde.spec.contracts import (
     INTERNAL_OPERATIONS,
     OPERATION_NAMES,
     PUBLIC_OPERATIONS,
-    SKILL_NAMES,
     contracts,
     dependencies,
     load_operation_inventory,
@@ -89,9 +88,10 @@ class OperationModuleContractTests(unittest.TestCase):
                 self.assertNotIn(name, contracts())
                 self.assertIsNotNone(module.PROFILE)
         self.assertEqual(11, len(contracts()))
-        self.assertEqual(11, len(SKILL_NAMES))
+        self.assertEqual(11, len(PUBLIC_OPERATIONS))
         self.assertEqual(
-            set(SKILL_NAMES), {m.EXTERNAL_NAME for m in _modules().values() if m.PUBLIC}
+            set(PUBLIC_OPERATIONS),
+            {m.EXTERNAL_NAME for m in _modules().values() if m.PUBLIC},
         )
         self.assertTrue(
             {

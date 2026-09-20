@@ -1,21 +1,19 @@
 # Build
 
-`build(project_root, integration="all", *, framework_prefix="")` renders Agent instructions,
-this checkout's integration-specific Skill projections under private `generated/session/codex` and `generated/session/claude`, `generated/langgraph.json`, the rule assets (`generated/protocol/principles.md`,
-its kind definition, and `generated/protocol/schemas.json`) deterministically from
-`operations/`, `protocol/`, `prompts/` (the Skill sources are `prompts/skills/<name>.md`) and the
-operation contracts. The tracked published Skills under `skills/` come from the same sources
-through the separate `skills --write` step, explained below. The principles asset
-bundles the Protocol principles, Spec management (including Spec and Context) and Required format
-chapters with the separate Framework execution profile. The kind asset contains the Module chapter
-and its canonical templates. Framework configuration, phase authority and Mermaid authoring
-conventions belong to the execution profile, not the independent standard.
+Build renders terminal worker instructions, a private Pi session entry with the public Operation
+catalog, Studio graph configuration, runtime schemas and Protocol assets. It reads authored
+Operation guidance under `prompts/operation-guidance/`, worker instructions and Protocol adapters;
+there is no independent Skill product, publishing command or client selector. Consumer installation
+uses the same pure renderer with its explicit framework prefix and owns deployment separately.
+
+The principles asset bundles the independent standard with the separate Framework execution profile.
+Configuration, phase authority and authoring conventions belong to that profile, not the standard.
 
 ## Terminology
 
 | Term                                                      | Meaning / definition                |
 | --------------------------------------------------------- | ----------------------------------- |
-| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.      |
+| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.      |
 | [Worker](../module.md#terminology)                        | Defined in Concorde Framework.      |
 | [Operation](../module.md#terminology)                     | Defined in Concorde Framework.      |
 | [Public operation](../operations/module.md#terminology)   | Defined in Operations.              |
@@ -32,44 +30,25 @@ runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.
 
 ## Rendering and freshness
 
-Distribution owns a Skill's authored source under `prompts/skills/`, shared invocation
-instructions under `prompts/workflow-host/`, the published Skills under `skills/` and this
-checkout's rendered integration-specific projections. Each public Skill maps to one public
-Operation; non-public operations have no Skill. The external runtime reads the Skill and submits
-the declared typed request through `scripts/run-operation.py`; the
-[Harness admission](../harness/admission.md) admits and executes that request. That entry path
-is project-relative, so a rendered Skill carries no worktree identity: it binds to the worktree in
-which the developer's runtime executes it, and Harness admission derives the project root from that
-working directory. Building or installing a Skill does not execute its Operation or add it to a
-Concorde Agent's Harness. Operation behavior remains with its providing Module.
+Distribution owns each public Operation's authored description and guidance. Build resolves its
+includes and embeds those bytes with the exact versioned request schema in one Pi catalog. The
+extension's `concorde` tool describes or runs the selected Operation through the shared launcher;
+Pi supplies the invocation envelope, so guidance contains no standalone stdin mechanics. Building
+or installing the catalog does not execute an Operation or grant worker authority. Operation
+behavior stays with its providing Module.
 
-The checkout's own projections are untracked private build output under `generated/session/`,
-never registered in ambient discovery. The published Skills are different: they are
-what the Agent Skills CLI (`npx skills add`) installs, from this repository or from the framework
-copy an installer deployed, and that CLI copies a repository's `skills/` verbatim. So `skills/`
-holds one client-neutral rendering per public Operation, bound to an installed framework's launcher
-`.concorde/framework/scripts/run-operation.py` and carrying only the standard front matter, and it
-is tracked. Like the tracked Protocol copy, it changes only through an explicit step,
-`python3 scripts/concorde.py skills --write`, committed together with the source it renders;
-`skills --check`, `build --check` and package validation report a stale, missing or retired
-published Skill, and `build` itself never writes there. A build with a framework prefix, the build
-an installer runs for a project, renders no Skill projection at all for the same reason. See the
-[publish contract](scenarios.md#scenario.distribution.skills-publish).
+The checkout's own entry is `generated/session/pi/concorde-session.ts`, outside ambient discovery.
+It imports the checkout's extension and requests explicit developer authorization to run an
+Operation. Installation instead places its receipt-owned shim under `.pi/extensions/`, importing
+the deployed Framework and selecting the managed runtime. Both catalogs contain exactly eleven
+public Operations; internal Operations have no catalog entry. Seven worker projections remain
+independent internal instructions, not Skills.
 
-For the Pi coding agent the build renders no Skills but one private shim, `generated/session/pi/concorde-session.ts`,
-from the same Skill sources: it imports the tracked Pi session extension and embeds every public
-Operation's description, guidance and request schema. The guidance leaves out the two includes
-that describe the stdin envelope, because the extension's `concorde` tool builds that envelope and
-runs the same launcher itself. The shim is rendered, checked and rewritten like a Skill projection
-and is bound to no worktree either: it locates the project through its own path.
-
-Retiring a public Skill also retires its generated entry, so a developer's runtime does not keep
-advertising a removed operation. The build remembers explicitly retired names even after they
-leave the current manifest; freshness checking reports their remaining directories and rebuilding
-removes their projections. Unknown Skills are preserved, including ones with a Concorde-like name.
-Cleanup stops before writing if a retired directory contains extra files or unsafe links, rather
-than guessing whether those files belong to the developer. See the
-[retirement contract](scenarios.md#scenario.distribution.build-retired-skills).
+Rebuilding may retire obsolete output only after complete safety preflight. An old manifest's
+exact digest proves ownership of a retired file; a familiar Operation name alone does not. Modified
+retired output, extra retired directory content, unknown generated files and symlinks stop writing
+rather than authorizing deletion. External CLI-owned Skills and their lock are untouched; remove
+only your own retired entries manually. See the [retirement contract](scenarios.md#scenario.distribution.build-retired-skills).
 
 ### Protocol and runtime support are separate
 
@@ -101,9 +80,9 @@ instruction body is unchanged.
 
 The explicit fixture command `PYTHONPATH=src .venv/bin/python -m tests.concorde.support.build_fixture`
 refreshes the tracked projection goldens from this checkout's pure build renderer. It records exactly
-seven worker bodies, two client projections of eleven public Skills, and one Pi shim. It does not
-copy installed/global Skills or build another worktree, and it removes retired fixture members.
-Golden comparisons remain exact (apart from the documented Skill source-line normalization).
+seven worker bodies and one Pi shim embedding eleven public Operations. It does not copy ambient
+client assets or build another worktree. It retires only exact historical fixture members after
+rejecting symlinks and unknown content. Golden comparisons remain byte-exact.
 
 ## Precise specifications
 
@@ -112,29 +91,30 @@ These companions are part of the same complete Module specification, not separat
 
 ## Fresh source-maintenance selection
 
-Source maintenance starts a new Skill-free writer in a candidate, never a fork carrying old Skill
-bodies. The main session remains outside that authoring context. After the writer checks, commits
-and stops, the main starts a separate fresh sibling tester in the same candidate. Both disable
-inherited/discovered Concorde catalogs; the tester receives only explicit private candidate paths.
-Failed tests return to maintenance followed by another fresh tester. Neither child delegates tasks.
+Source maintenance starts a new Concorde-catalog-free writer in a candidate, never a fork carrying
+old instructions. The main remains outside that authoring context. After the writer checks,
+commits and stops, the main starts a separate fresh sibling tester in the same candidate. Both
+disable inherited/discovered Concorde catalogs; only the tester explicitly loads the candidate Pi
+entry. Failed tests return to maintenance followed by another fresh tester. Neither child delegates tasks.
 
-`select-session --mode test --runtime <absolute-candidate-launcher> --skill <absolute-private-SKILL.md>`
-checks candidate sources, manifest and exact selected output bytes. Maintenance mode accepts no
-Skills. Missing, unreadable, symlinked, stale or outside paths block selection without fallback.
-The returned bodies and provenance are launch inputs, not execution receipts. The external harness
-must enforce fresh context, discovery disablement and its actual depth/permission ceiling.
+`select-session --mode test --runtime <absolute-candidate-launcher> --pi-entry <absolute-private-entry.ts>`
+checks all current candidate source, manifest, entry and embedded catalog bytes. Maintenance mode
+accepts no Pi entry or catalog. Removed `--skill` and schema-1 selections fail explicitly. Missing,
+unreadable, symlinked, stale or outside paths block without fallback. These are launch inputs,
+not receipts for loading an extension, using a tool or executing a model. The external host enforces
+fresh non-forked context, discovery disablement and the actual task/file/tool ceiling.
 
-Selection may be saved with `--output <absolute-candidate/.concorde/work/selection.json>`.
-The explicitly configured `CONCORDE_SESSION_SELECTION` names that file at launcher entry; the
-launcher re-verifies the selected paths, bodies and provenance before executing and records the
-selection in primary run evidence without claiming the external model loaded it. Maintenance
-selection is not permission to invoke public graphs while authoring their governing Skills.
+Save selection only to ignored candidate `.concorde/work/` scratch with `--output`; no shared Git
+excludes or ambient installer settings are changed. `select-session --verify <absolute-selection>`
+reverifies without issuing replacement inputs. The fresh Pi host supplies that same path in
+`CONCORDE_SESSION_SELECTION`, a separate host-owned configuration directory and only the returned
+explicit entry with all returned discovery-disable flags. It must reject extension loading errors.
+The source extension requires explicit saved selection and the candidate Python environment (no ambient interpreter fallback),
+checks selection before registration and each tool call, and rejects changed session provenance.
+The launcher independently reverifies before execution. The host may retain selection in primary
+run evidence without claiming the model loaded it. Maintenance authoring uses deterministic
+commands, never public Operations governing their own implementation.
 
-Private selection refuses a Studio redirect because it cannot attest that remote runtime as the
-selected candidate; it never falls back to the server's catalog or code.
-
-For Skill testing, the candidate launcher may operate on explicitly scoped disposable consumer
-repositories while the task session stays in its candidate. Selection pins the package/Skill
-root, not the disposable project's data root. Redirecting the same selection into another linked
-worktree of the source repository is refused. This permits real Skill tests without using the
-actual primary's lifecycle state.
+Private selection refuses Studio runtime redirects. Candidate code may operate on explicitly
+scoped disposable consumer project data; it cannot redirect into another linked worktree of the
+source repository. The test session remains in its candidate. Consumer installation is separate.

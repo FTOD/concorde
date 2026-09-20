@@ -224,10 +224,9 @@ class BoundaryTests(unittest.TestCase):
 
         package = self.root / "package"
         shutil.copytree(PACKAGE / "prompts", package / "prompts")
-        shutil.copytree(PACKAGE / "skills", package / "skills")
         shutil.copytree(PACKAGE / "operations", package / "operations")
         shutil.copytree(PACKAGE / "protocol", package / "protocol")
-        write_build(package, "all")
+        write_build(package)
         SpecRepository(self.root, package)
         # The project's accepted copy is what is admitted and granted; tampering with it is a mismatch.
         (self.root / ".concorde/protocol/kinds/module.md").write_text("changed")

@@ -1,7 +1,7 @@
 """LangGraph dev entry points bound to this source checkout.
 
-Graphs are derived from the Skill sources under ``prompts/skills/`` (one graph per skill, named
-by the skill), not from the operation registry: the build's ``generated/langgraph.json`` names
+Graphs are derived from the Operation guidance under ``prompts/operation-guidance/`` (one graph per public Operation, named
+by the Operation), not from the operation registry: the build's ``generated/langgraph.json`` names
 these same functions.
 """
 
@@ -13,11 +13,13 @@ sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
 from concorde.harness.studio import build_studio_graph
 
-SKILL_NAMES = tuple(
-    sorted(path.stem for path in (PACKAGE_ROOT / "prompts/skills").glob("*.md"))
+PUBLIC_OPERATIONS = tuple(
+    sorted(
+        path.stem for path in (PACKAGE_ROOT / "prompts/operation-guidance").glob("*.md")
+    )
 )
 
-for _skill_name in SKILL_NAMES:
-    globals()[_skill_name.replace("-", "_")] = build_studio_graph(
-        _skill_name, PACKAGE_ROOT, PACKAGE_ROOT
+for _operation_name in PUBLIC_OPERATIONS:
+    globals()[_operation_name.replace("-", "_")] = build_studio_graph(
+        _operation_name, PACKAGE_ROOT, PACKAGE_ROOT
     )

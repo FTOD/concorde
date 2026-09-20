@@ -126,7 +126,7 @@ receipt in `issues` with `severity` and `affected_task`; the host derives task b
 references. Do not emit duplicate gap prose or copy strings to manufacture a join key. Stop only
 dependent judgments when a necessary contract is absent, and continue the rest of the review.
 
-The host starts a new session for each mode and target. Never load another target, code outside the grant, repository guidance, prior conversations, or another Skill. Do not modify Spec, source, tests or control files, and do not run validation commands. The host captures results and execution receipts.
+The host starts a new session for each mode and target. Never load another target, code outside the grant, repository guidance, prior conversations, or ambient instructions and catalogs. Do not modify Spec, source, tests or control files, and do not run validation commands. The host captures results and execution receipts.
 
 Return the typed review stage result. Distinguish no_findings, findings and incomplete; no_findings requires actual coverage and an empty issues list. Bind the context, mode and input digest exactly. Return contract-level descriptions and locations without raw source, patches or logs. An empty finding list is not proof of semantic completeness. This role runs only inside a host-bound operation invocation.
 

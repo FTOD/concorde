@@ -6,24 +6,23 @@ and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module Specs](../module.md#terminology) | Defined in Concorde Framework. |
-| [Implementation Specs](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
-| [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Requirement](../module.md#terminology) | Defined in Concorde Framework. |
-| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
+| Term                                                      | Meaning / definition                                  |
+| --------------------------------------------------------- | ----------------------------------------------------- |
+| [Module Specs](../module.md#terminology)                  | Defined in Concorde Framework.                        |
+| [Implementation Specs](../module.md#terminology)          | Defined in Concorde Framework.                        |
+| [Registry](../module.md#terminology)                      | Defined in Concorde Framework.                        |
+| [Document role](../spec/values.md#terminology)            | Defined in Identities and versions.                   |
+| [Document unit](../spec/values.md#terminology)            | Defined in Identities and versions.                   |
+| [Publication candidate](pipeline.md#terminology)          | Defined in From source documents to a published site. |
+| [Promotion](pipeline.md#terminology)                      | Defined in From source documents to a published site. |
+| [Spec context](../harness/context.md#terminology)         | Defined in What information a worker receives.        |
+| [Reference](../spec/registry.md#terminology)              | Defined in Registry.                                  |
+| [Entity](../module.md#terminology)                        | Defined in Concorde Framework.                        |
+| [Requirement](../module.md#terminology)                   | Defined in Concorde Framework.                        |
+| [Scenario](../module.md#terminology)                      | Defined in Concorde Framework.                        |
+| [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                        |
+| [Operation](../module.md#terminology)                     | Defined in Concorde Framework.                        |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you.      |
 
 ## Publication pipeline {#pipeline-publication-pipeline}
 

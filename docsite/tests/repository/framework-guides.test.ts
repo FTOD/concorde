@@ -1,8 +1,65 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import { loadScopedRegistry } from "../../plugins/scoped-content/model";
 const root = resolve(__dirname, "../../..");
 describe("Explicit Concorde self specification", () => {
+  // verifies: scenario.views.publish-homepage
+  it("documents Pi-only adoption and terminal workers in the project homepage", () => {
+    const { homepage } = JSON.parse(
+      readFileSync(resolve(root, "docsite/site.json"), "utf8"),
+    );
+    expect(homepage.quickstart.description).toContain(
+      "Pi is the only supported client",
+    );
+    expect(homepage.quickstart.code).toContain("scripts/concorde.py build");
+    expect(homepage.quickstart.code).toContain("scripts/install-concorde.py");
+    expect(homepage.quickstart.code).toContain(
+      "--target /absolute/path/to/project --preview",
+    );
+    expect(homepage.quickstart.code).not.toContain("--integration");
+    expect(homepage.quickstart.code).not.toMatch(/npx\s+skills/);
+    const tables = homepage.reference.tables as Array<{
+      title: string;
+      description: string;
+      rows: string[][];
+    }>;
+    const workers = tables.find(
+      (table) => table.title === "Model-backed Operations",
+    )!;
+    expect(workers.description).toContain("Workers are terminal nodes");
+    expect(workers.description).toContain(
+      "cannot delegate or recursively call Operations",
+    );
+    const services = tables.find(
+      (table) => table.title === "Shared execution services",
+    )!;
+    const distribution = services.rows.find(
+      ([name]) => name === "Distribution",
+    )![1];
+    expect(distribution).toContain("private Pi catalog");
+    expect(distribution).toContain(
+      "No standalone Skills are published or installed",
+    );
+    const launchers = tables.find(
+      (table) => table.title === "Launchers and supporting tools",
+    )!;
+    const cli = launchers.rows.find(
+      ([name]) => name === "python3 scripts/concorde.py <command>",
+    )![1];
+    expect(cli).toContain("select-session");
+    expect(cli).not.toContain("skills,");
+    for (const workflow of [
+      ".github/workflows/deploy-docsite.yml",
+      "docsite/scaffold/deploy-docsite.yml",
+    ]) {
+      const source = readFileSync(resolve(root, workflow), "utf8");
+      expect(source).toContain(
+        "Build Concorde (Pi catalog, worker instructions, Protocol assets)",
+      );
+      expect(source).toContain("run: python3 scripts/concorde.py build");
+    }
+  });
   it("publishes every registered document exactly once and no ambient control/README source", () => {
     const r = loadScopedRegistry(root);
     expect(r.pages.map((p) => p.sourcePath)).toEqual([
@@ -45,7 +102,7 @@ describe("Explicit Concorde self specification", () => {
     expect(entry.content).toContain("execution authority");
     expect(relationships).not.toContain("runs admitted work through");
   });
-  it("contains independently complete public Skill and business scope descriptions", () => {
+  it("contains independently complete public Operation and business scope descriptions", () => {
     const r = loadScopedRegistry(root);
     const host = r.pages
       .filter((p) => p.owner === "module.harness")

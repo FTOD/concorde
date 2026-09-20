@@ -1,4 +1,4 @@
-"""Installed source closure and both native completion adapters, with explicit process doubles."""
+"""Installed source closure and the Pi completion adapter, with explicit process doubles."""
 
 import importlib.util
 import json
@@ -83,7 +83,7 @@ class DistributionTests(unittest.TestCase):
         for op in contracts():
             self.assertIn(op + "-request", text)
 
-    def test_launcher_refuses_a_nonpublic_operation_name_and_accepts_a_public_skill(
+    def test_launcher_refuses_a_nonpublic_operation_name_and_accepts_a_public_operation(
         self,
     ):
         with tempfile.TemporaryDirectory() as directory:
@@ -144,7 +144,7 @@ class DistributionTests(unittest.TestCase):
             self.assertEqual(3, result.returncode)
             self.assertEqual("blocked", json.loads(result.stdout)["status"])
 
-    def test_installed_framework_runs_complete_real_graph_and_checks_for_both_integrations(
+    def test_installed_framework_runs_complete_real_graph_and_checks_for_pi(
         self,
     ):
         spec = importlib.util.spec_from_file_location(
@@ -155,15 +155,13 @@ class DistributionTests(unittest.TestCase):
         sys.modules[spec.name] = module
         spec.loader.exec_module(module)
         package = module.load_package(PACKAGE)
-        for integration in ("claude", "codex"):
+        for integration in ("pi",):
             with (
                 self.subTest(integration=integration),
                 tempfile.TemporaryDirectory() as directory,
             ):
                 root = Path(directory)
-                for path, (content, _role) in module.desired_outputs(
-                    package, [integration]
-                ).items():
+                for path, (content, _role) in module.desired_outputs(package).items():
                     p = root / path
                     p.parent.mkdir(parents=True, exist_ok=True)
                     p.write_bytes(content)

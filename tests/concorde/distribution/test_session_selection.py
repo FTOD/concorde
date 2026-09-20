@@ -7,7 +7,6 @@ from concorde.distribution.build import (
     BuildError,
     build,
     write_build,
-    write_published_skills,
 )
 from concorde.distribution.session_selection import select_session
 from concorde.spec.verification import verifies
@@ -25,11 +24,8 @@ class SessionSelectionTests(unittest.TestCase):
                 self.root / directory,
                 ignore=shutil.ignore_patterns("node_modules", "__pycache__"),
             )
-        write_published_skills(self.root)
         write_build(self.root)
-        self.skill = (
-            self.root / "generated/session/claude/concorde-context-solve/SKILL.md"
-        )
+        self.pi_entry = self.root / "generated/session/pi/concorde-session.ts"
         self.runtime = self.root / "scripts/run-operation.py"
 
     @verifies(
@@ -40,13 +36,13 @@ class SessionSelectionTests(unittest.TestCase):
         for relative in (".agents", ".claude", ".pi"):
             self.assertFalse((self.root / relative).exists())
         selected = select_session(
-            self.root, mode="test", skill_paths=[str(self.skill)], runtime=self.runtime
+            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
         )
-        self.assertEqual(self.skill.read_text(), selected["skills"][0]["body"])
+        self.assertEqual(self.pi_entry.read_text(), selected["pi_entry"]["content"])
         self.assertTrue(selected["fresh_context"])
         self.assertFalse(selected["fork_context"])
-        self.assertFalse(selected["inherit_skills"])
-        self.assertFalse(selected["discover_skills"])
+        self.assertFalse(selected["inherit_catalogs"])
+        self.assertFalse(selected["discover_catalogs"])
         self.assertFalse(selected["task_delegation"])
         self.assertIsNone(selected["execution_evidence"])
         self.assertTrue(selected["build_digest"].startswith("sha256:"))
@@ -64,21 +60,21 @@ class SessionSelectionTests(unittest.TestCase):
         ):
             with self.subTest(path=path), self.assertRaises(BuildError):
                 select_session(
-                    self.root, mode="test", skill_paths=[path], runtime=self.runtime
+                    self.root, mode="test", pi_entry=Path(path), runtime=self.runtime
                 )
         with self.assertRaises(BuildError):
             select_session(
                 self.root,
                 mode="maintenance",
-                skill_paths=[str(self.skill)],
+                pi_entry=self.pi_entry,
                 runtime=self.runtime,
             )
-        self.skill.write_text("modified")
+        self.pi_entry.write_text("modified")
         with self.assertRaises(BuildError):
             select_session(
                 self.root,
                 mode="test",
-                skill_paths=[str(self.skill)],
+                pi_entry=self.pi_entry,
                 runtime=self.runtime,
             )
         write_build(self.root)
@@ -87,32 +83,32 @@ class SessionSelectionTests(unittest.TestCase):
             select_session(
                 self.root,
                 mode="test",
-                skill_paths=[str(self.skill)],
+                pi_entry=self.pi_entry,
                 runtime=self.runtime,
             )
 
     @verifies("scenario.distribution.private-selection")
-    def test_aliased_skill_and_empty_tester_selection_are_rejected(self):
+    def test_aliased_entry_and_empty_tester_selection_are_rejected(self):
         with self.assertRaises(BuildError):
-            select_session(self.root, mode="test", skill_paths=[], runtime=self.runtime)
-        content = self.skill.read_bytes()
-        self.skill.unlink()
+            select_session(self.root, mode="test", pi_entry=None, runtime=self.runtime)
+        content = self.pi_entry.read_bytes()
+        self.pi_entry.unlink()
         other = self.root / "other.md"
         other.write_bytes(content)
-        self.skill.symlink_to(other)
+        self.pi_entry.symlink_to(other)
         with self.assertRaises(BuildError):
             select_session(
                 self.root,
                 mode="test",
-                skill_paths=[str(self.skill)],
+                pi_entry=self.pi_entry,
                 runtime=self.runtime,
             )
-        self.skill.unlink()
+        self.pi_entry.unlink()
         write_build(self.root)
         selected = select_session(
-            self.root, mode="maintenance", skill_paths=[], runtime=self.runtime
+            self.root, mode="maintenance", pi_entry=None, runtime=self.runtime
         )
-        self.assertEqual([], selected["skills"])
+        self.assertIsNone(selected["pi_entry"])
 
     @verifies("scenario.distribution.private-selection")
     def test_saved_selection_is_reverified_before_runtime_use(self):
@@ -120,9 +116,10 @@ class SessionSelectionTests(unittest.TestCase):
         from concorde.distribution.session_selection import load_selection
 
         selected = select_session(
-            self.root, mode="test", skill_paths=[str(self.skill)], runtime=self.runtime
+            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
         )
-        path = self.root / "selection.json"
+        path = self.root / ".concorde/work/selection.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(selected))
         self.assertEqual(selected, load_selection(self.root, path))
         selected["fork_context"] = True
@@ -151,7 +148,7 @@ class SessionSelectionTests(unittest.TestCase):
                     "test",
                     "--runtime",
                     str(self.runtime),
-                    "--skill",
+                    "--pi-entry",
                     "missing",
                 ]
             )
@@ -196,9 +193,10 @@ class SessionSelectionTests(unittest.TestCase):
         from concorde.spec.typed_data import typed
 
         selection = select_session(
-            self.root, mode="test", skill_paths=[str(self.skill)], runtime=self.runtime
+            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
         )
-        path = self.root / "selection.json"
+        path = self.root / ".concorde/work/selection.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(selection))
         project = self.root / "disposable-project"
         project.mkdir()
@@ -235,3 +233,266 @@ class SessionSelectionTests(unittest.TestCase):
         self.assertEqual(
             str(self.root), observed["host"].session_provenance["candidate"]
         )
+
+    @verifies("scenario.distribution.private-selection")
+    def test_transitive_runtime_sources_and_entire_catalog_are_bound(self):
+        import json
+        from concorde.distribution.session_selection import (
+            load_selection,
+            save_selection,
+        )
+
+        selected = select_session(
+            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+        )
+        path = self.root / ".concorde/work/selection.json"
+        save_selection(self.root, path, selected)
+        for relative in (
+            "pi/extensions/concorde-session.ts",
+            "pi/extensions/concorde-worker.ts",
+            "pi/package-lock.json",
+            "scripts/requirements.lock",
+            "src/concorde/harness/entry.py",
+            "prompts/operation-guidance/concorde-plan.md",
+            "generated/agents/planner.md",
+            "generated/session/pi/concorde-session.ts",
+        ):
+            source = self.root / relative
+            before = source.read_bytes()
+            try:
+                source.write_bytes(before + b"\n")
+                with self.subTest(relative=relative), self.assertRaises(BuildError):
+                    load_selection(self.root, path)
+            finally:
+                source.write_bytes(before)
+        value = json.loads(path.read_text())
+        for key in ("content", "digest"):
+            changed = json.loads(json.dumps(value))
+            changed["pi_entry"]["catalog"][key] += "changed"
+            path.write_text(json.dumps(changed))
+            with self.subTest(key=key), self.assertRaises(BuildError):
+                load_selection(self.root, path)
+        path.write_text(json.dumps(value))
+        # A legitimate rebuild also invalidates an already-issued selection.
+        source = self.root / "pi/extensions/concorde-session.ts"
+        source.write_text(source.read_text() + "\n// changed\n")
+        write_build(self.root)
+        with self.assertRaises(BuildError):
+            load_selection(self.root, path)
+
+    @verifies("scenario.distribution.private-selection")
+    def test_scratch_only_legacy_and_unknown_selection_fields_fail_closed(self):
+        import json
+        from concorde.distribution.cli import create_parser
+        from concorde.distribution.session_selection import (
+            load_selection,
+            save_selection,
+        )
+
+        selected = select_session(
+            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+        )
+        for relative in (
+            "selection.json",
+            "generated/session/selection.json",
+            ".concorde/runs/selection.json",
+            "src/selection.json",
+        ):
+            with self.subTest(relative=relative), self.assertRaises(BuildError):
+                save_selection(self.root, self.root / relative, selected)
+        path = self.root / ".concorde/work/selection.json"
+        save_selection(self.root, path, selected)
+        for value in (
+            {**selected, "schema_version": 1},
+            {**selected, "skills": []},
+            {**selected, "fork_context": True},
+            {**selected, "fork_context": 0},
+        ):
+            path.write_text(json.dumps(value))
+            with self.assertRaises(BuildError):
+                load_selection(self.root, path)
+        path.write_text('{"schema_version":2,"schema_version":2}')
+        with self.assertRaises(BuildError):
+            load_selection(self.root, path)
+        with self.assertRaises(SystemExit):
+            create_parser().parse_args(
+                [
+                    "select-session",
+                    "--mode",
+                    "test",
+                    "--runtime",
+                    str(self.runtime),
+                    "--skill",
+                    str(self.pi_entry),
+                ]
+            )
+        with self.assertRaises(TypeError):
+            select_session(self.root, mode="test", skill_paths=[], runtime=self.runtime)
+        path.unlink()
+        path.symlink_to(self.pi_entry)
+        with self.assertRaises(BuildError):
+            save_selection(self.root, path, selected)
+
+    @verifies("scenario.distribution.private-selection")
+    def test_source_symlink_ancestors_and_foreign_runtime_are_refused(self):
+        with self.assertRaises(BuildError):
+            select_session(
+                self.root,
+                mode="test",
+                pi_entry=self.pi_entry,
+                runtime=REPOSITORY_ROOT / "scripts/run-operation.py",
+            )
+        source = self.root / "pi/extensions"
+        moved = self.root / "moved-extensions"
+        source.rename(moved)
+        source.symlink_to(moved, target_is_directory=True)
+        with self.assertRaises(BuildError):
+            select_session(
+                self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+            )
+
+    @verifies("scenario.distribution.private-selection")
+    def test_linked_source_redirect_is_refused_before_runner(self):
+        import io
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        from concorde.harness.entry import json_main
+
+        request = {
+            "type_id": "concorde-operation-invocation",
+            "schema_version": 3,
+            "operation_id": "concorde-plan",
+            "mode": "execute",
+            "configuration": None,
+            "input": {},
+        }
+        runner = Mock()
+        output = io.StringIO()
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "CONCORDE_SESSION_SELECTION": str(
+                        self.root / ".concorde/work/selection.json"
+                    ),
+                    "CONCORDE_STUDIO_URL": "",
+                },
+            ),
+            patch(
+                "concorde.harness.change_worktree.git",
+                return_value=SimpleNamespace(returncode=0, stdout="/same/git\n"),
+            ),
+            patch("pathlib.Path.cwd", return_value=self.root.parent),
+            patch("sys.argv", ["run-operation.py"]),
+            patch("sys.stdin", io.StringIO(json.dumps(request))),
+            patch("sys.stdout", output),
+        ):
+            self.assertEqual(3, json_main(self.root, "concorde-plan", runner))
+        self.assertEqual(
+            "workspace_mismatch", json.loads(output.getvalue())["errors"][0]["code"]
+        )
+        runner.assert_not_called()
+
+    @verifies("scenario.distribution.private-selection")
+    def test_run_archive_keeps_pi_bytes_without_loading_claim(self):
+        import json
+        from concorde.harness.host import OperationHost
+        from concorde.harness.status_store import record_run
+
+        selection = select_session(
+            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+        )
+        host = OperationHost(self.root, self.root, session_provenance=selection)
+        record_run(host, operation="concorde-plan")
+        directory = self.root / ".concorde/runs" / host.invocation_id
+        record = json.loads((directory / "run.json").read_text())
+        self.assertEqual(2, record["schema_version"])
+        self.assertNotIn("skill_provenance", record)
+        self.assertIsNone(record["pi_provenance"]["execution_evidence"])
+        self.assertEqual(
+            selection["pi_entry"]["digest"],
+            record["pi_provenance"]["pi_entry"]["digest"],
+        )
+        self.assertEqual(
+            [self.pi_entry.read_bytes()],
+            [p.read_bytes() for p in (directory / "pi").glob("*.ts")],
+        )
+
+    @verifies("scenario.distribution.private-selection")
+    def test_cli_saves_and_reverifies_without_primary_or_discovery_mutation(self):
+        import io
+        import json
+        from unittest.mock import patch
+        from concorde.distribution.cli import main
+
+        path = self.root / ".concorde/work/pi-selection.json"
+        with (
+            patch(
+                "concorde.harness.change_worktree._exclude_control_files"
+            ) as excludes,
+            patch("sys.stdout", io.StringIO()) as output,
+        ):
+            self.assertEqual(
+                0,
+                main(
+                    [
+                        "--project-root",
+                        str(self.root),
+                        "select-session",
+                        "--mode",
+                        "test",
+                        "--pi-entry",
+                        str(self.pi_entry),
+                        "--runtime",
+                        str(self.runtime),
+                        "--output",
+                        str(path),
+                    ]
+                ),
+            )
+        selected = json.loads(output.getvalue())["result"]
+        self.assertEqual(2, selected["schema_version"])
+        self.assertEqual(["-e", str(self.pi_entry)], selected["launch"]["pi_args"][-2:])
+        self.assertEqual(
+            str(self.root / "pi/extensions/concorde-session.ts"),
+            selected["implementation"]["path"],
+        )
+        excludes.assert_not_called()
+        with patch("sys.stdout", io.StringIO()) as output:
+            self.assertEqual(
+                0,
+                main(
+                    [
+                        "--project-root",
+                        str(self.root),
+                        "select-session",
+                        "--verify",
+                        str(path),
+                    ]
+                ),
+            )
+        self.assertEqual(selected, json.loads(output.getvalue())["result"])
+        with patch("sys.stdout", io.StringIO()):
+            self.assertNotEqual(
+                0,
+                main(
+                    [
+                        "--project-root",
+                        str(self.root),
+                        "select-session",
+                        "--verify",
+                        str(path),
+                        "--runtime",
+                        str(self.runtime),
+                    ]
+                ),
+            )
+        for relative in (
+            ".agents",
+            ".claude",
+            ".pi",
+            ".concorde/status",
+            ".concorde/runs",
+        ):
+            self.assertFalse((self.root / relative).exists(), relative)

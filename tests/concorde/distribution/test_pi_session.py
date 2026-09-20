@@ -17,14 +17,14 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution.build import (  # noqa: E402
-    PI_OMITTED_INCLUDES,
     PI_SESSION_EXTENSION,
     PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
     PI_SESSION_SHIM as INSTALLED_PI_SESSION_SHIM,
     build,
+    write_build,
 )
-from concorde.harness.pi_rpc import run_prompt  # noqa: E402
-from concorde.spec.contracts import SKILL_NAMES  # noqa: E402
+from concorde.harness.pi_rpc import PiRpcError, run_prompt  # noqa: E402
+from concorde.spec.contracts import PUBLIC_OPERATIONS  # noqa: E402
 from concorde.spec.typed_data import json_schema  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 from tests.concorde.harness.test_pi_worker import installed_pi  # noqa: E402
@@ -67,11 +67,11 @@ def node_version() -> tuple[int, ...]:
 class ShimRenderingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.checkout = {o.path: o for o in build(REPOSITORY_ROOT, "pi").outputs}
+        cls.checkout = {o.path: o for o in build(REPOSITORY_ROOT).outputs}
         cls.installed = {
             o.path: o
             for o in build(
-                REPOSITORY_ROOT, "pi", framework_prefix=".concorde/framework"
+                REPOSITORY_ROOT, framework_prefix=".concorde/framework"
             ).outputs
         }
 
@@ -97,7 +97,9 @@ class ShimRenderingTests(unittest.TestCase):
         self.assertEqual(
             [".venv/bin/python", ".venv/Scripts/python.exe"], catalog["interpreters"]
         )
-        self.assertEqual(list(SKILL_NAMES), [o["name"] for o in catalog["operations"]])
+        self.assertEqual(
+            list(PUBLIC_OPERATIONS), [o["name"] for o in catalog["operations"]]
+        )
         for operation in catalog["operations"]:
             with self.subTest(operation=operation["name"]):
                 schema = json_schema(f"{operation['name']}-request")
@@ -136,16 +138,25 @@ class ShimRenderingTests(unittest.TestCase):
         self.assertEqual(GOLDEN.read_bytes(), self.checkout[PI_SESSION_SHIM].content)
 
     @verifies("scenario.distribution.build-pi-session")
-    def test_omitted_includes_are_the_stdin_envelope_mechanics(self):
-        for relative in PI_OMITTED_INCLUDES:
-            self.assertIn("stdin-invocation", relative)
-            self.assertTrue((REPOSITORY_ROOT / relative).is_file(), relative)
-        self.assertFalse(
-            set(PI_OMITTED_INCLUDES) & set(self.checkout[PI_SESSION_SHIM].sources)
+    def test_guidance_sources_have_no_standalone_invocation_mechanics(self):
+        sources = self.checkout[PI_SESSION_SHIM].sources
+        self.assertEqual(
+            11, sum(s.startswith("prompts/operation-guidance/") for s in sources)
         )
-        skill = build(REPOSITORY_ROOT, "codex").outputs
-        codex_sources = {source for output in skill for source in output.sources}
-        self.assertTrue(set(PI_OMITTED_INCLUDES) <= codex_sources)
+        self.assertFalse(
+            any("stdin-invocation" in s or "prompts/skills/" in s for s in sources)
+        )
+        catalog = shim_catalog(self.checkout[PI_SESSION_SHIM].content)
+        issues = next(
+            o for o in catalog["operations"] if o["name"] == "concorde-issues"
+        )
+        self.assertIn(
+            "Solve returns needed implementation or Spec repair to the calling agent",
+            issues["guidance"],
+        )
+        self.assertIn(
+            "A return-to-caller result preserves the open Issue", issues["guidance"]
+        )
 
 
 @unittest.skipUnless(
@@ -178,7 +189,7 @@ class SessionToolTests(unittest.TestCase):
                     "request_schema": {"type": "object"},
                 },
                 {
-                    "name": "concorde-main",
+                    "name": "concorde-plan",
                     "description": "Ask.",
                     "guidance": "# concorde-main\n",
                     "request_version": 1,
@@ -223,12 +234,12 @@ class SessionToolTests(unittest.TestCase):
         outcome = self.drive([])
         self.assertTrue(outcome["prompt"].startswith("BASE PROMPT\n\n## Concorde\n"))
         self.assertIn("- concorde-validate: Run checks.", outcome["prompt"])
-        self.assertIn("- concorde-main: Ask.", outcome["prompt"])
+        self.assertIn("- concorde-plan: Ask.", outcome["prompt"])
         self.assertIn("only when the user explicitly asks", outcome["prompt"])
         self.assertEqual("concorde", outcome["tool"]["name"])
         parameters = outcome["tool"]["parameters"]
         self.assertEqual(
-            ["concorde-validate", "concorde-main"],
+            ["concorde-validate", "concorde-plan"],
             parameters["properties"]["operation"]["enum"],
         )
         self.assertEqual(
@@ -293,11 +304,11 @@ class SessionToolTests(unittest.TestCase):
                 {
                     "params": {
                         **RUN,
-                        "operation": "concorde-main",
+                        "operation": "concorde-plan",
                         "mode": "describe-policy",
                     }
                 },
-                {"params": {"operation": "concorde-main", "action": "run"}},
+                {"params": {"operation": "concorde-plan", "action": "run"}},
                 {"params": {"operation": "concorde-other", "action": "describe"}},
             ]
         )["results"]
@@ -358,18 +369,28 @@ class RealPiSessionTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
         self.project = self.root / "project"
-        (self.project / PI_SESSION_EXTENSION).parent.mkdir(parents=True)
-        shutil.copyfile(EXTENSION, self.project / PI_SESSION_EXTENSION)
-        node_modules = REPOSITORY_ROOT / "pi/node_modules"
-        if node_modules.is_dir():
-            (self.project / "pi/node_modules").symlink_to(
-                node_modules, target_is_directory=True
+        for directory in ("prompts", "protocol", "operations", "src", "pi", "scripts"):
+            shutil.copytree(
+                REPOSITORY_ROOT / directory,
+                self.project / directory,
+                ignore=shutil.ignore_patterns("node_modules", "__pycache__"),
             )
-        shim = next(
-            o for o in build(REPOSITORY_ROOT, "pi").outputs if o.path == PI_SESSION_SHIM
+        write_build(self.project)
+        # Host infrastructure is explicit and local to this disposable fixture, not installed globally.
+        (self.project / ".venv").symlink_to(Path(sys.prefix), target_is_directory=True)
+        from concorde.distribution.session_selection import (
+            select_session,
+            save_selection,
         )
-        (self.project / PI_SESSION_SHIM).parent.mkdir(parents=True)
-        (self.project / PI_SESSION_SHIM).write_bytes(shim.content)
+
+        self.selection_path = self.project / ".concorde/work/pi-selection.json"
+        self.selection = select_session(
+            self.project,
+            mode="test",
+            pi_entry=self.project / PI_SESSION_SHIM,
+            runtime=self.project / "scripts/run-operation.py",
+        )
+        save_selection(self.project, self.selection_path, self.selection)
         self.agent = self.root / "agent"
         self.agent.mkdir()
         (self.agent / "settings.json").write_text(
@@ -386,16 +407,9 @@ class RealPiSessionTests(unittest.TestCase):
         "scenario.distribution.pi-session-prompt",
         "scenario.distribution.pi-session-describe",
     )
-    def test_pi_advertises_the_tool_and_answers_describe_from_the_catalog(self):
+    def drive(self, turns, *, use_selection=True):
         pi = installed_pi()
         assert pi is not None
-        turns = [
-            {
-                "tool": "concorde",
-                "arguments": {"operation": "concorde-validate", "action": "describe"},
-            },
-            {"text": "done"},
-        ]
         with FakeOpenAIProvider(turns) as provider:
             (self.agent / "models.json").write_text(
                 json.dumps(
@@ -423,7 +437,10 @@ class RealPiSessionTests(unittest.TestCase):
                 "PI_OFFLINE": "1",
                 "PI_SKIP_VERSION_CHECK": "1",
                 "PI_TELEMETRY": "0",
+                "CONCORDE_SESSION_SELECTION": str(self.selection_path),
             }
+            if not use_selection:
+                env.pop("CONCORDE_SESSION_SELECTION")
             argv = [
                 pi,
                 "--mode",
@@ -450,18 +467,85 @@ class RealPiSessionTests(unittest.TestCase):
                 message="Describe validate.",
                 timeout=90,
             )
+        return run, provider.requests
+
+    @verifies(
+        "scenario.distribution.private-selection",
+        "scenario.distribution.pi-session-describe",
+    )
+    def test_pi_advertises_the_exact_candidate_tool_and_answers_describe(self):
+        run, requests = self.drive(
+            [
+                {
+                    "tool": "concorde",
+                    "arguments": {
+                        "operation": "concorde-validate",
+                        "action": "describe",
+                    },
+                },
+                {"text": "done"},
+            ]
+        )
         results = run.results_of("concorde")
         self.assertEqual(1, len(results), run.stderr)
         self.assertFalse(results[0]["isError"], results[0])
         text = results[0]["result"]["content"][0]["text"]
         self.assertIn("# concorde-validate", text)
         self.assertIn("concorde-validate-request", text)
-        first = provider.requests[0]
+        first = requests[0]
         system = first["messages"][0]["content"]
         self.assertIn("## Concorde", system)
         self.assertIn("- concorde-validate:", system)
         self.assertIn("only when the user explicitly asks", system)
         self.assertIn("concorde", [tool["function"]["name"] for tool in first["tools"]])
+
+    @verifies(
+        "scenario.distribution.private-selection",
+        "scenario.distribution.pi-session-run",
+    )
+    def test_pi_calls_selected_candidate_runtime_and_preserves_rejection_envelope(self):
+        run, _ = self.drive(
+            [
+                {
+                    "tool": "concorde",
+                    "arguments": {
+                        "operation": "concorde-validate",
+                        "action": "run",
+                        "input": {},
+                    },
+                },
+                {"text": "done"},
+            ]
+        )
+        [result] = run.results_of("concorde")
+        self.assertTrue(result["isError"], result)
+        text = result["result"]["content"][0]["text"]
+        envelope = json.loads(text)
+        self.assertEqual("concorde-operation-result", envelope["type_id"])
+        self.assertEqual(3, envelope["schema_version"])
+        self.assertEqual("concorde-validate", envelope["operation_id"])
+        self.assertEqual("invalid_field", envelope["errors"][0]["code"])
+
+    @verifies("scenario.distribution.private-selection")
+    def test_stale_selected_implementation_registers_no_tool(self):
+        implementation = self.project / PI_SESSION_EXTENSION
+        implementation.write_text(implementation.read_text() + "\n// stale\n")
+        with self.assertRaises(PiRpcError) as raised:
+            self.drive([{"text": "no operation"}])
+        self.assertIsNotNone(raised.exception.run)
+        self.assertIn(
+            "private Pi selection verification failed", raised.exception.run.stderr
+        )
+        self.assertEqual([], raised.exception.run.tool_results)
+
+    @verifies("scenario.distribution.private-selection")
+    def test_missing_selection_cannot_load_private_entry(self):
+        with self.assertRaises(PiRpcError) as raised:
+            self.drive([{"text": "no operation"}], use_selection=False)
+        self.assertIn(
+            "requires explicit candidate selection", raised.exception.run.stderr
+        )
+        self.assertEqual([], raised.exception.run.tool_results)
 
 
 if __name__ == "__main__":

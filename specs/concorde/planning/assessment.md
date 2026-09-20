@@ -14,7 +14,7 @@ question.
 | [Host](../module.md#terminology)                          | Defined in Concorde Framework.                                                                                  |
 | [Blocker](../module.md#terminology)                       | Defined in Concorde Framework.                                                                                  |
 | [Internal operation](../operations/module.md#terminology) | Defined in Operations.                                                                                          |
-| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                                                                                  |
+| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.                                                                                  |
 
 ## Before planning
 
@@ -39,7 +39,8 @@ its original revision is unknown or its execution failed; it never claims the ol
 Its observation and Issue remain in history,
 and required independent review still needs fresh evidence; assessment never stands in for review.
 
-Assessment is available as the explicit-target `concorde-context-solve` Skill.
+Assessment is available as the explicit-target `concorde-context-solve` Operation through
+the Pi `concorde` tool.
 The result and admission details are in Implementation Specs.
 
 ## Precise specifications

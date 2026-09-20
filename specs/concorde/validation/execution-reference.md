@@ -19,7 +19,6 @@ and transitions are retained here as the single detailed contract.
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Delivery](../module.md#terminology)                      | Defined in Concorde Framework.                   |
 | [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                   |
-| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                   |
 
 ## Validation operation {#validation-validation-operation}
 

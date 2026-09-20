@@ -37,7 +37,7 @@ jobs:
 
       # Build source-checkout runtime assets before publication.
       # Scaffolded consumers have no Framework build command at their root.
-      - name: Build Concorde (Skills, roles, Protocol assets)
+      - name: Build Concorde (Pi catalog, worker instructions, Protocol assets)
         if: hashFiles('scripts/concorde.py') != ''
         run: python3 scripts/concorde.py build
 

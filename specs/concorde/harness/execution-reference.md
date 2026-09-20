@@ -14,7 +14,7 @@ and transitions are retained here as the single detailed contract.
 | [Harness](../module.md#terminology)                       | Defined in Concorde Framework.                   |
 | [Host](../module.md#terminology)                          | Defined in Concorde Framework.                   |
 | [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                   |
-| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                   |
+| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.                   |
 | [Context](../module.md#terminology)                       | Defined in Concorde Framework.                   |
 | [Grant](../module.md#terminology)                         | Defined in Concorde Framework.                   |
 | [Snapshot](../module.md#terminology)                      | Defined in Concorde Framework.                   |
@@ -44,15 +44,15 @@ document identity and requirement/scenario anchors remain stable for existing li
 **Operation = input State + output State updates + execution implementation and constraints.**
 **Invocation = Operation + Module/version + admitted artifacts + actual grant + runtime settings.**
 
-| Term                    | Meaning                                                                                           |
-| ----------------------- | ------------------------------------------------------------------------------------------------- |
-| Operation               | The one executable identity, usable as a LangGraph node or composed subgraph                      |
-| State contract          | Declared input channels and output updates; wire shapes are checked at runtime                    |
+| Term                    | Meaning                                                                                 |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| Operation               | The one executable identity, usable as a LangGraph node or composed subgraph            |
+| State contract          | Declared input channels and output updates; wire shapes are checked at runtime          |
 | Model execution profile | Instructions, task/effect contract, workspace, tools and timeout on an Operation        |
-| Worker                  | One fresh Pi RPC process executing a model-backed Operation invocation                            |
-| Harness                 | Context resolution, worker runtime, model selection, permissions and environment                  |
-| Skill                   | Instructions for an external developer runtime to invoke one public Operation                     |
-| Tool                    | An interface admitted by the worker's actual tool grant, not by graph composition alone           |
+| Worker                  | One fresh Pi RPC process executing a model-backed Operation invocation                  |
+| Harness                 | Context resolution, worker runtime, model selection, permissions and environment        |
+| Pi integration          | The candidate or installed Pi entry/catalog and its Framework runtime                   |
+| Tool                    | An interface admitted by the worker's actual tool grant, not by graph composition alone |
 
 A deterministic Operation makes no model call on any supported path, including its transitive
 composition. It may still read Git, files or subprocess results; determinism here does not mean
@@ -764,8 +764,8 @@ every control flow uses, and the optional Studio view. Value records are defined
 
 #### Studio execution view {#host-studio-execution-view}
 
-The Studio adapter starts or observes the same OperationHost used by CLI and Skill invocations, with
-the same worker executor. Its generated LangGraph configuration exposes one Graph per Skill. Studio
+The Studio adapter starts or observes the same OperationHost used by CLI and Pi tool invocations, with
+the same worker executor. Its generated LangGraph configuration exposes one Graph per public Operation. Studio
 expands the same admission, dispatch and composed Graph instances used by local calls, including
 explicit target admission, planning, review and Issue-solving branches. Non-public Operations
 remain callable through declared composition. Batch Graphs are also inspectable from
@@ -777,7 +777,7 @@ workspace.
 The final state exposes the unchanged operation result envelope, admitted policy descriptions and
 stage and worker events (`agent_started`, `agent_finished`, `agent_failed` naming the operation,
 stage, worker and invocation). Pausing or replaying a run does not waive permissions, checks or the
-worktree lifecycle, and replay may execute effects again. Ordinary local CLI and Skill calls do not
+worktree lifecycle, and replay may execute effects again. Ordinary local CLI and Pi tool calls do not
 require a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
 This execution view participates in Developer view and feedback through the same admission.
 

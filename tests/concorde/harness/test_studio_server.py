@@ -54,7 +54,7 @@ class StudioServerTests(unittest.TestCase):
         source.write_text(
             "from pathlib import Path\n"
             "import json\n"
-            "from concorde.spec.contracts import SKILL_NAMES\n"
+            "from concorde.spec.contracts import PUBLIC_OPERATIONS\n"
             "from concorde.harness.studio import build_studio_graph\n"
             "from tests.concorde.spec.support import ModelProcessDouble\n"
             f"review_mode = Path({str(cls.review_mode)!r})\n"
@@ -79,7 +79,7 @@ class StudioServerTests(unittest.TestCase):
             "    if snapshot.get('task') == 'Trigger executor failure':\n"
             "        raise RuntimeError('fixture executor failure')\n"
             "    return double.executor(launch, checks=checks, report_issue=report_issue)\n"
-            "for op in SKILL_NAMES:\n"
+            "for op in PUBLIC_OPERATIONS:\n"
             f"    roots = {{**dict.fromkeys(('concorde-plan', 'concorde-tasks', 'concorde-implement', 'concorde-validate'), {str(cls.change_fixture.change)!r}), 'concorde-spec-review': {str(cls.spec_fixture.change)!r}}}\n"
             f"    root = Path(roots.get(op, {str(cls.root)!r}))\n"
             "    globals()[op.replace('-', '_')] = build_studio_graph(op, root, "

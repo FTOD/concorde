@@ -7,7 +7,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term                                                      | Meaning / definition                         |
 | --------------------------------------------------------- | -------------------------------------------- |
-| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.               |
+| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.               |
 | [Worker](../module.md#terminology)                        | Defined in Concorde Framework.               |
 | [Worker profile](../harness/module.md#terminology)        | Defined in Harness.                          |
 | [Operation](../module.md#terminology)                     | Defined in Concorde Framework.               |
@@ -27,49 +27,29 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ### scenario.distribution.install-preview — Preview reports current owned output integrity without writing
 
-- GIVEN one or more supported integrations and a target directory
+- GIVEN a Pi installation target directory
 - WHEN the installer runs without `--apply`
-- THEN it returns a read-only preview of owned Framework and root-guidance changes and names the Skill placement it will delegate to the Agent Skills CLI
+- THEN it returns a read-only preview of owned Framework, Pi extension and root-guidance changes, with a notice explaining manual retirement of external CLI-owned Skills
 - AND repeating the preview reports current owned output integrity without writing anything
 
 ### scenario.distribution.install-apply — Applying an accepted current proposal installs owned outputs
 
 - GIVEN a reviewed installation or update proposal that is still current
 - WHEN the installer runs with `--apply`
-- THEN it writes the accepted receipt-owned Framework and root-guidance changes and then has the pinned Agent Skills CLI place the published Skills for the selected Skill clients
+- THEN it writes the accepted receipt-owned Framework, Pi extension and root-guidance changes without invoking a Skills CLI
 - AND it deploys the Protocol bundle under `.concorde/protocol/` as receipt-owned output, refreshed on every install and update, without touching the project's Protocol binding
 - AND it preserves project Specs, configuration, reflection history and unrelated user files
 - AND a `node_modules` directory below the package's `pi/` directory is neither deployed nor inspected
 
-Framework code, role instructions, rule assets, templates, the published Skills and supporting
-tools are deployed under `.concorde/framework/`; the managed runtime is provisioned separately.
-The installer copies no Skill into `.agents/skills/` or `.claude/skills/` itself: after the owned
-outputs are in place it runs the Agent Skills CLI pinned by the package manifest against the
-deployed framework copy, as [install-skills-cli](#scenario.distribution.install-skills-cli)
-specifies. The Protocol bundle the project binds and grants to agents, the tracked manifest and
-its rendered assets, is deployed at `.concorde/protocol/`, a stable project path independent of
-the Framework layout. A `node_modules` directory below the package's `pi/` directory, left by
-a local install in a source checkout, is neither deployed nor inspected, because the managed runtime
-provisions the Pi worker extensions from their own `package.json` and lock; every other
-entry below `pi/` is deployed like the rest of the package. It also installs each selected client's
-root rule entry: `AGENTS.md` explicitly directs Codex and Pi to read
-`.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of the
-same file. It seeds the Concorde-owned defaults a project starts from,
-`.concorde/issues/.gitignore`, only when absent;
-these defaults are excluded from the installation receipt and never overwritten on update.
-Everything that exists only because Concorde is installed is the installer's output or its
-delegation to the Skills CLI; initialization creates only what the user's project generates
-through Concorde, its configuration, registry and Module stub.
-
-### scenario.distribution.install-skills-cli — The Agent Skills CLI places the published Skills
-
-- GIVEN a selection that includes a Skill client, Claude Code or Codex, and an applied plan whose framework copy is in place
-- WHEN the installer places the Skills
-- THEN it runs the Agent Skills CLI version pinned in the package manifest (`install.skills_cli`) with the deployed framework copy `./.concorde/framework` as the source and the selected clients as agents, so the CLI installs the framework's published `skills/` into `.agents/skills/` or `.claude/skills/` in its own layout and records the in-project source in its `skills-lock.json`
-- AND the receipt records the delegation, the pinned CLI, the source and the agents, but owns none of the placed Skill files or the CLI's lock file
-- AND a Skill file an earlier installer still owns is removed first, together with the directories it leaves empty, so the CLI finds no foreign directory in its way
-- AND a CLI failure fails the installation and rolls back the owned outputs like any other failure; the Skills the CLI may have placed are not receipt state
-- BUT a selection of only Pi delegates nothing, because Pi receives the session extension shim
+Framework code, internal worker instructions, rule assets, templates and supporting tools are
+deployed under `.concorde/framework/`; the managed runtime is provisioned separately. No public
+Skill product is deployed. The installer copies no Skill into `.agents/skills/` or `.claude/skills/`
+and never invokes `npx skills`. The Protocol bundle is deployed at `.concorde/protocol/`, independent
+of the Framework layout, without accepting its binding for the project. `pi/node_modules` is
+neither inspected nor copied; the managed runtime provisions TypeBox from its own lock with npm.
+The Pi shim imports the deployed extension, and `AGENTS.md` directs the reader to the Protocol.
+Concorde-owned defaults such as `.concorde/issues/.gitignore` are seeded only when absent,
+excluded from the receipt, and never overwritten. Initialization remains separate.
 
 ### scenario.distribution.install-conflict-rejected — Conflicting or stale ownership blocks acceptance
 
@@ -84,7 +64,7 @@ Root rule ownership and installation's failure rollback are Module-wide requirem
 
 Root entries are shared files with block ownership, not whole-file ownership. New entries precede
 user text; upgrades retain an existing block's position. Bytes outside the block and existing modes
-survive reinstall, update and integration changes. Root symlinks (including dangling ones),
+survive reinstall, update and retirement of legacy client entries. Root symlinks (including dangling ones),
 directories, malformed/duplicate/misordered markers, unowned blocks and modified owned blocks are
 conflicts. The one whole-file act the installer performs is removing a root file it created itself
 when its entry's removal leaves that file empty; the receipt records that creation, and a file the
@@ -100,25 +80,32 @@ developer created is never removed.
 - AND repeating the cleanup leaves the result unchanged
 
 This is the root-entry cleanup step for uninstall, not a full-package removal command. The same
-entry removal happens when a later selection leaves a client out
-([install-multiple-clients](#scenario.distribution.install-multiple-clients)), with the same rule
+entry removal happens when upgrading a legacy Claude installation to Pi, with the same rule
 for the file the entry leaves behind.
 
-### scenario.distribution.install-multiple-clients — One project may carry several clients
+### scenario.distribution.install-retired-clients — Pi-only upgrade preserves legacy ownership
 
-- GIVEN an existing installation for one or more clients
-- WHEN installation is applied with a selection of clients, repeating `--integration` for several
-- THEN every selected client's root entry is installed and the receipt records exactly that selection
-- AND the root entry of a client selected earlier but left out now is removed under the same ownership checks, while the Skills the Agent Skills CLI placed for it stay until the developer removes them with that CLI, because the installer owns no placed Skill
-- AND old receipts without root entries can upgrade by adding them without adopting arbitrary preexisting marked content
+- GIVEN a legacy schema-1 multi-client installation receipt
+- WHEN the Pi-only installer applies an upgrade
+- THEN it installs the Pi shim and AGENTS.md entry and removes only unchanged receipt-owned retired files and the exact owned CLAUDE.md block
+- AND edited owned content, unsafe links or changed preview inputs block before writing
+- AND surrounding text, modes, unrelated files, external CLI-owned Skills and skills-lock.json are preserved
+- AND a failure restores retired owned bytes, modes and the previous receipt, permitting a fresh-plan retry
+- AND old receipts without root entries can add Pi guidance without adopting arbitrary preexisting marked content
 
-### scenario.distribution.install-pi-session — Installing for Pi places the session extension shim instead of Skills
+Both text and JSON installer results report that external CLI-owned Skills require explicit manual
+removal of the developer's own retired Concorde entries, never wholesale directory or lock deletion.
+The installer performs no CLI delegation, including during migration. Empty retired directories
+may remain; ownership of a file does not grant ownership of neighboring directory contents.
 
-- GIVEN the `pi` integration is selected
-- WHEN installation is applied
-- THEN it installs `.pi/extensions/concorde-session.ts` as a receipt-owned output that imports the extension deployed below `.concorde/framework/pi/extensions/` and names the framework launcher and the managed runtime's interpreter
-- AND it delegates no Skill placement for Pi, and installs the `AGENTS.md` root entry that Pi reads as a context file
-- AND selecting Pi beside a Skill client adds the shim without touching that client's Skills
+### scenario.distribution.install-pi-session — Installing places the Pi session extension only
+
+- GIVEN a target project
+- WHEN installation is applied without client-selection flags
+- THEN it installs `.pi/extensions/concorde-session.ts` as a receipt-owned output importing the deployed framework extension and naming its launcher and managed runtime interpreter
+- AND it installs the AGENTS.md Protocol entry that Pi reads as a context file
+- AND no standalone Skills, Skills CLI locks, Codex projections or Claude projections are installed
+- BUT the retired `--integration` flag is rejected for every value, including pi, before target mutation
 
 ### scenario.distribution.configure-apply — Configuration changes an initialized project's Pi worker selection atomically
 
@@ -140,13 +127,18 @@ verification must finish before installation is accepted; failure restores repla
 receipts. The locked managed Python runtime runs actual operations. Check verifies receipt hashes
 and required runtime identity without changing project behavior.
 
-The distributable manifest is `concorde.json` schema_version 3, Concorde 8.0.0, Architecture
-Profile 15, Workspace Protocol 16 and Delivery Proposal 10. The single inventory has 18
-Operations: 11 public Skill entries and seven private model-backed nodes with
-Pi worker profiles. It declares package roots including `prompts`/`operations`/`protocol`, with
-no separate `agents` authoring root, and 4 templates. Codex `.agents/skills` and Claude
-`.claude/skills` expose the same 11 Skills; non-public Operations remain private. Every Skill sends a typed `concorde-operation-invocation@3` to
-`scripts/run-operation.py` and does not inspect project context.
+The distributable manifest is `concorde.json` schema_version 4, Concorde 8.0.0, Architecture
+Profile 15, Workspace Protocol 16 and Delivery Proposal 10. Schema 4 replaces the multi-client
+`integrations` and `skill_namespace` fields with exactly `client: "pi"`, removes the Skills CLI
+pin from `install` and excludes `skills` from package roots. Schema 3 packages are rejected by
+this installer rather than reinterpreted. Runtime/wire and project Protocol versions are unchanged.
+
+Installation receipt schema 2 records `client: "pi"`, not client selections or Skills CLI delegation.
+Schema 1 receipts are explicitly accepted for migration because their exact output-digest and
+bounded root-block records retain identical meanings; only their obsolete client/delegation
+metadata is discarded on successful upgrade. Unsupported receipt versions fail closed. Cleanup
+of root guidance alone preserves the rest of the existing receipt. Eleven public Operations and
+seven terminal worker roles remain; removing a client does not remove a model provider.
 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
 operation owned by the [Spec Module](../spec/module.md), not by this Module.
@@ -168,79 +160,76 @@ that need persistent source or dependency changes must prepare them in the imple
 
 ## Build
 
-### scenario.distribution.build-render — Build renders deterministic projections from authored sources
+### scenario.distribution.build-render — Build renders deterministic Pi projections from authored sources
 
-- GIVEN the current `prompts/` (including the Skill sources `prompts/skills/`), `operations/` and Protocol chapter sources
-- WHEN build runs for a selected integration
-- THEN it renders Agent instructions, the checkout's Skill projections, the Studio graph configuration, Protocol assets and runtime schemas deterministically
-- AND repeated renders of unchanged inputs are byte-identical and perform no network or process I/O
+- GIVEN current Operation guidance, worker instruction, operation and Protocol sources
+- WHEN build runs without a client selector
+- THEN it renders seven terminal worker bodies, one Pi catalog containing exactly eleven public descriptions, guidance and versioned schemas, Studio configuration, Protocol assets and runtime schemas
+- AND repeated renders are byte-identical and perform no network or process I/O
+- BUT retired integration arguments and Skill publishing commands are rejected, not reinterpreted
 
-### scenario.distribution.build-checkout-skills-user-invoked — The source checkout's Skills wait for the developer's explicit request
+### scenario.distribution.build-checkout-skills-user-invoked — The source Pi entry stays private and waits for explicit requests
 
 - GIVEN a source-checkout build without a framework prefix
-- WHEN build renders client projections
-- THEN all source Skills and the Pi shim live under `generated/session/<client>/`, outside ambient discovery
-- AND byte-identical old manifest-owned ambient projections are retired only after complete preflight, while modified or unowned projections block retirement
-- AND installed consumers still receive published Skills through the Agent Skills CLI and the Pi shim under `.pi/extensions/`
+- WHEN build renders the Pi entry
+- THEN its only client projection is `generated/session/pi/concorde-session.ts`, outside ambient discovery
+- AND its catalog requires an explicit developer request before an Operation runs
+- AND consumer installation separately renders the same catalog under `.pi/extensions/` with the installed framework and runtime paths
 
 ### scenario.distribution.private-selection — Private fresh session selection
 
-- GIVEN an assigned candidate with a fresh build and explicitly named absolute Skill/runtime paths
+- GIVEN an assigned candidate with a fresh build and explicitly named absolute Pi entry/runtime paths
 - WHEN a fresh test child's inputs are selected
-- THEN selection returns only the exact candidate-built Skill bodies, build digest and runtime identity
+- THEN selection returns only the exact candidate-built Pi entry and embedded catalog bytes, transitive source/build digest and runtime identity
 - AND missing, modified, aliased or out-of-candidate paths fail without ambient fallback
-- AND maintenance selection admits no Skills and every selection requests fresh non-forked context with inherited/discovered catalogs disabled
-- BUT returning selection metadata or bodies does not prove a model loaded or executed them
+- AND maintenance selection admits no Concorde entry/catalog and every selection requests fresh non-forked context with inherited/discovered catalogs disabled
+- AND saved selections are admitted only in ignored candidate scratch and reverified before Pi registration, tool calls and runtime use
+- AND legacy API/schema, unknown fields, changed catalog or implementation, source links and foreign runtime paths fail closed
+- AND a Studio redirect or a redirect into another linked source worktree is refused, while explicitly scoped external disposable consumer data is allowed
+- BUT returning selection metadata or bytes does not prove extension loading, tool use or model execution
 
-### scenario.distribution.skills-publish — The tracked published Skills are rendered by an explicit step
+### scenario.distribution.build-pi-session — Build embeds ordinary Operation guidance in the Pi shim
 
-- GIVEN the Skill sources `prompts/skills/<name>.md` of the public Operations and the exported request schemas
-- WHEN `skills --write` runs
-- THEN it renders into the tracked `skills/<name>/SKILL.md` one client-neutral Skill per public Operation: the standard front matter (`name`, `description`, `compatibility`, `metadata` naming the source, the operation and the installed framework's launcher `.concorde/framework/scripts/run-operation.py`) and no client-specific invocation field, the resolved guidance with `{OPERATION}` bound to that launcher, and the request schema
-- AND `skills --check`, `build --check` and package validation report every published Skill that is missing or differs from a fresh render, and every `skills/<dir>/SKILL.md` no public Operation publishes any more, without writing
-- AND explicitly retired published Skill directories are removed only after preflighting all retired and destination paths, preserving unknown directories and rejecting symlinks or extra retired content before any output write
-- AND `build` never writes under `skills/`: the published Skills are tracked content the Agent Skills CLI installs from this repository or from a deployed framework copy, so they change only through this explicit step and are committed with their sources
-
-### scenario.distribution.build-pi-session — Build renders the Pi session extension shim from the Skill sources
-
-- GIVEN the current Skill sources, their includes and the exported request schemas
-- WHEN build renders the `pi` integration
-- THEN it renders exactly one private source projection, `generated/session/pi/concorde-session.ts` (or `.pi/extensions/concorde-session.ts` for an installed consumer), which imports the tracked `pi/extensions/concorde-session.ts` and embeds the catalog: every public Operation's name, description, guidance and request schema with its version, the project-relative launcher and the interpreters to try
-- AND the guidance is the Skill text without the stdin envelope includes, which the tool supplies itself, and contains no unresolved package token
-- AND without a framework prefix the catalog marks explicit-request-only and names the checkout's own launcher and `.venv`; with a framework prefix it imports the extension below that prefix and names the managed runtime's interpreter
-- AND repeated renders are byte-identical and the shim is checked and rewritten like the Skill projections
+- GIVEN `prompts/operation-guidance/<name>.md`, their shared includes and exported request schemas
+- WHEN build renders the Pi shim
+- THEN it imports the tracked session extension and embeds every public Operation's exact name, description, resolved guidance and request schema with its version
+- AND guidance contains no unresolved package token or standalone stdin envelope mechanics
+- AND the source catalog names its own launcher and `.venv` and marks explicit-request-only, while an installed catalog names the prefixed extension/launcher and managed runtime interpreter
+- AND build checking, package validation and byte-exact goldens detect catalog or source drift without independent Skill assets
 
 ### scenario.distribution.build-write — write_build records source and output digests in the manifest
 
 - GIVEN a completed render
 - WHEN write_build runs
 - THEN it writes the rendered outputs plus `generated/build-manifest.json` recording every recorded source path's sha256
-- AND it removes retired outputs within its declared owned subtrees (`generated/agents`, `generated/protocol` and `generated/docs`) and explicitly retired Skill projections under the retirement contract below, preserving other generators' assets
+- AND it removes retired outputs within its declared owned subtrees (`generated/agents`, `generated/protocol` and `generated/docs`) and manifest-owned retired private or ambient projections under the retirement contract below, preserving other generators' assets
 
 ### scenario.distribution.build-check — check_build reports staleness without writing
 
 - GIVEN the currently committed generated outputs
 - WHEN check_build runs
-- THEN it renders into a temporary directory and reports every stale or drifted output
+- THEN it compares a pure in-memory render and reports every stale or drifted output
 - AND it writes nothing to the worktree
 
-### scenario.distribution.build-retired-skills — Retired Skill projections do not survive rebuilding
+### scenario.distribution.build-retired-skills — Retired output requires exact ownership before removal
 
-- GIVEN an explicitly retired Skill directory remains after its name leaves the current Skill inventory or build manifest
-- WHEN check_build or write_build runs for the selected integration
-- THEN check_build reports the retired directory without modifying it
-- AND write_build removes only its regular `SKILL.md` and empty directory at the selected Skill destination
-- AND unknown Skill directories, including names beginning with `concorde-`, and unselected integrations remain untouched
-- BUT a retired path that is not a directory, a symlink in its integration ancestors or contents, or any extra directory content causes write_build to fail before deleting or writing outputs
+- GIVEN old private Codex/Claude projections or ambient projections remain from a previous source build
+- WHEN check_build or write_build runs
+- THEN checking reports their presence without writing and rebuilding retires only exact-byte old manifest-owned regular outputs after whole-plan preflight
+- AND unowned or modified retired files, symlinked files or ancestors, extra retired directory content and unknown files in owned generated subtrees block before any output write or deletion
+- AND neighboring external CLI-owned Skills, unknown ambient names and skills-lock.json remain untouched
+- AND retired golden fixtures are removed only from the explicit historical fixture inventory, with extra files and symlinks rejected
 
-The explicit retirement inventory currently contains `concorde-reflections-triage`, `concorde-review`, `concorde-main`,
-`concorde-dev-loop` and `concorde-specify-loop`; new retirements
-extend that inventory rather than authorizing deletion by prefix. An already empty retired directory
-is removed too. When `integration_root` is supplied, retirement uses that destination, not the
-source package's Skill directories. All retirement candidates are preflighted before any output
-mutation. A symlinked integration ancestor is also refused by check_build without traversing it.
-Repeated rebuilding is idempotent. Build fixture membership equals the current worker and Skill
-projection inventory; obsolete fixture files are not an alternative supported inventory.
+The historical projection roots are `generated/session/codex`, `generated/session/claude`,
+`.agents/skills` and `.claude/skills`; only the eleven public names and the explicitly retired
+`concorde-reflections-triage`, `concorde-review`, `concorde-main`, `concorde-dev-loop` and
+`concorde-specify-loop` are inspected there. The old ambient Pi shim is also an exact retirement
+candidate. Name membership is not proof of file ownership: every removed file needs its old
+manifest digest. Unknown contents are never erased by prefix or recursive cleanup. Empty output
+ancestors can be pruned after their last verified file is removed. Repeated builds are idempotent.
+`write_build` has no alternate destination or installed-layout option; the installer consumes the
+pure renderer and performs its own receipt-owned writes. The tracked `skills/` product is removed
+in source maintenance, not a directory a normal build or installer may adopt wholesale.
 
 ### scenario.distribution.build-stale-blocks-execution — A stale build fails closed
 
@@ -257,8 +246,10 @@ independently. This exception does not waive Protocol, input, permission or evid
 
 - GIVEN a named Agent and a fresh build
 - WHEN load_model_instructions is called
-- THEN it verifies freshness first and returns the Agent's rendered body, effect declaration and complete `WorkerBinding`
+- THEN it verifies freshness first and returns a frozen `ModelInstructions` with the worker's name, description, source path, rendered body, non-null effect declaration and complete `WorkerBinding`
+- AND its record has no Skill discriminator or optional unbound-instruction form, while the binding retains every source, instruction, profile, manifest, timeout and digest field
 - AND an unknown Agent or an invalid binding fails closed with a typed BuildError (`stale_build`, `unknown_agent`, or `invalid_agent_binding`)
+- BUT a public Operation catalog name alone is not a worker identity and cannot load worker instructions
 
 `validate_package(root)` runs the complete prompt, operation-module, Agent, contract,
 Spec-alignment and build-output checks behind `python -m concorde validate` and `build --check`.
@@ -280,7 +271,7 @@ prefixes themselves.
 - THEN each module must declare a boolean `DETERMINISTIC`, rejecting missing values, strings and integers
 - AND the flag must be true exactly when neither its model profile nor any transitive USES operation can call a model
 - AND an operation declaring no Agent context selection must have no model-call path
-- AND the single registered `concorde-operations` block must contain the same boolean `deterministic` for every operation alongside its `id`, `public`, `context_selection` and `skill`
+- AND the single registered `concorde-operations` block must contain the same boolean `deterministic` for every operation alongside its `id`, `public`, `context_selection` and `public_name`
 - BUT a path that skips model execution does not make a model-backed operation deterministic
 
 Validation checks declared model-call paths, not arbitrary Python or subprocess behavior. It
@@ -341,7 +332,7 @@ validation cannot certify its determinism.
 - GIVEN a current reviewed plan_runtime action that is not conflict
 - WHEN provision_runtime runs
 - THEN it stages the locked Python interpreter and the pinned Pi worker extensions, verifies their identity, and records the resulting receipt
-- AND it runs every public Skill's launcher runtime check with the managed runtime's own interpreter and rejects a check that reports another environment as its prefix, so the verified inventory describes the runtime rather than the installer's interpreter
+- AND it runs every public Operation's launcher runtime check with the managed runtime's own interpreter and rejects a check that reports another environment as its prefix, so the verified inventory describes the runtime rather than the installer's interpreter
 - AND an unchanged verified runtime may be reused, though even `unchanged` rechecks health and may refresh the marker
 
 ### scenario.distribution.runtime-provision-failure — Failed acquisition or verification does not replace a valid runtime
@@ -355,7 +346,7 @@ validation cannot certify its determinism.
 ### scenario.distribution.launcher-managed-runtime — The installed launcher re-executes itself inside the managed runtime
 
 - GIVEN an installed project whose framework lives at `.concorde/framework` and whose verified managed runtime, with the installer's owner marker, lives at `.concorde/.venv`
-- WHEN `.concorde/framework/scripts/run-operation.py` is started with any other interpreter, such as the `python3` a Skill names, even one that cannot import LangGraph
+- WHEN `.concorde/framework/scripts/run-operation.py` is started with any other interpreter, including an ambient `python3`, even one that cannot import LangGraph
 - THEN it re-executes itself with the managed runtime's interpreter before reading its invocation, so the Operation runs with the locked dependencies and the runtime check reports that runtime as its prefix
 - AND a launcher already running inside that runtime, such as the one the Pi session tool starts, is not re-executed
 - AND the source checkout, which matches neither layout, keeps the interpreter that started it

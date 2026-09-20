@@ -15,13 +15,8 @@
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-issues",
-        "uses": [
-          "issue_solver",
-          "spec_review",
-          "code_review",
-          "validate"
-        ],
+        "public_name": "concorde-issues",
+        "uses": ["issue_solver", "spec_review", "code_review", "validate"],
         "state": {
           "input": "concorde-issues-request",
           "output": null
@@ -33,7 +28,7 @@
         "public": true,
         "context_selection": "none",
         "deterministic": true,
-        "skill": "concorde-init",
+        "public_name": "concorde-init",
         "uses": [],
         "state": {
           "input": "concorde-init-request",
@@ -46,7 +41,7 @@
         "public": true,
         "context_selection": "none",
         "deterministic": true,
-        "skill": "concorde-configure",
+        "public_name": "concorde-configure",
         "uses": [],
         "state": {
           "input": "concorde-configure-request",
@@ -59,7 +54,7 @@
         "public": true,
         "context_selection": "none",
         "deterministic": true,
-        "skill": "concorde-validate",
+        "public_name": "concorde-validate",
         "uses": [],
         "state": {
           "input": "concorde-validate-request",
@@ -72,7 +67,7 @@
         "public": true,
         "context_selection": "none",
         "deterministic": true,
-        "skill": "concorde-deliver",
+        "public_name": "concorde-deliver",
         "uses": [],
         "state": {
           "input": "concorde-deliver-request",
@@ -85,10 +80,8 @@
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-spec-review",
-        "uses": [
-          "spec_reviewer"
-        ],
+        "public_name": "concorde-spec-review",
+        "uses": ["spec_reviewer"],
         "state": {
           "input": "concorde-spec-review-request",
           "output": null
@@ -100,10 +93,8 @@
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-code-review",
-        "uses": [
-          "code_reviewer"
-        ],
+        "public_name": "concorde-code-review",
+        "uses": ["code_reviewer"],
         "state": {
           "input": "concorde-code-review-request",
           "output": null
@@ -115,10 +106,8 @@
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-context-solve",
-        "uses": [
-          "context_assessor"
-        ],
+        "public_name": "concorde-context-solve",
+        "uses": ["context_assessor"],
         "state": {
           "input": "concorde-context-solve-request",
           "output": null
@@ -130,11 +119,8 @@
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-plan",
-        "uses": [
-          "context_assessor",
-          "planner"
-        ],
+        "public_name": "concorde-plan",
+        "uses": ["context_assessor", "planner"],
         "state": {
           "input": "concorde-plan-request",
           "output": null
@@ -146,10 +132,8 @@
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-tasks",
-        "uses": [
-          "task_author"
-        ],
+        "public_name": "concorde-tasks",
+        "uses": ["task_author"],
         "state": {
           "input": "concorde-tasks-request",
           "output": null
@@ -161,10 +145,8 @@
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-implement",
-        "uses": [
-          "programmer"
-        ],
+        "public_name": "concorde-implement",
+        "uses": ["programmer"],
         "state": {
           "input": "concorde-implement-request",
           "output": null
@@ -176,7 +158,7 @@
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
+        "public_name": null,
         "uses": [],
         "state": {
           "input": "concorde-review-stage-context",
@@ -184,12 +166,7 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
+          "tools": ["find", "grep", "ls", "read"]
         }
       },
       {
@@ -197,7 +174,7 @@
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
+        "public_name": null,
         "uses": [],
         "state": {
           "input": "concorde-agent-stage-context",
@@ -205,12 +182,7 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
+          "tools": ["find", "grep", "ls", "read"]
         }
       },
       {
@@ -218,7 +190,7 @@
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
+        "public_name": null,
         "uses": [],
         "state": {
           "input": "concorde-agent-stage-context",
@@ -226,12 +198,7 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
+          "tools": ["find", "grep", "ls", "read"]
         }
       },
       {
@@ -239,7 +206,7 @@
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
+        "public_name": null,
         "uses": [],
         "state": {
           "input": "concorde-agent-stage-context",
@@ -247,12 +214,7 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
+          "tools": ["find", "grep", "ls", "read"]
         }
       },
       {
@@ -260,7 +222,7 @@
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
+        "public_name": null,
         "uses": [],
         "state": {
           "input": "concorde-agent-stage-context",
@@ -285,7 +247,7 @@
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
+        "public_name": null,
         "uses": [],
         "state": {
           "input": "concorde-review-stage-context",
@@ -293,14 +255,7 @@
         },
         "profile": {
           "workspace": "project",
-          "tools": [
-            "bash",
-            "find",
-            "grep",
-            "ls",
-            "read",
-            "run_checks"
-          ]
+          "tools": ["bash", "find", "grep", "ls", "read", "run_checks"]
         }
       },
       {
@@ -308,7 +263,7 @@
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
+        "public_name": null,
         "uses": [],
         "state": {
           "input": "concorde-agent-stage-context",
@@ -316,12 +271,7 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
+          "tools": ["find", "grep", "ls", "read"]
         }
       }
     ]

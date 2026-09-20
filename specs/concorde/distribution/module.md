@@ -2,23 +2,23 @@
 
 ## Purpose
 
-Distribution prepares the Framework assets that developers install and run: instructions, Skills and managed runtime dependencies. It builds from authored sources and installs only the outputs it owns. It does not decide or silently rewrite a consumer project’s business specification.
+Distribution prepares the Framework assets that developers install and run: worker instructions, Pi Operation guidance and managed runtime dependencies. It builds from authored sources and installs only the outputs it owns. It does not decide or silently rewrite a consumer project’s business specification.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| Term                                                | Meaning / definition                         |
+| --------------------------------------------------- | -------------------------------------------- |
+| [Pi integration](../module.md#terminology)          | Defined in Concorde Framework.               |
+| [Worker](../module.md#terminology)                  | Defined in Concorde Framework.               |
+| [Operation](../module.md#terminology)               | Defined in Concorde Framework.               |
+| [Worktree](../module.md#terminology)                | Defined in Concorde Framework.               |
+| [Installation](installation.md#terminology)         | Defined in Installing and updating Concorde. |
+| [Update](installation.md#terminology)               | Defined in Installing and updating Concorde. |
 | [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization.           |
+| [Protocol binding](../spec/values.md#terminology)   | Defined in Identities and versions.          |
+| [Registry](../module.md#terminology)                | Defined in Concorde Framework.               |
+| [Spec](../module.md#terminology)                    | Defined in Concorde Framework.               |
 
 ## Usage
 
@@ -26,23 +26,18 @@ Use Distribution to build this checkout, install or update Concorde in a consume
 an initialized project's worker configuration, or provision the pinned runtime. Run
 `python3 scripts/concorde.py build` after authored instruction or contract changes; use
 `build --check` to check freshness without writing. Builds stay with their source worktree. A
-Skill is authored as a prompt, `prompts/skills/<name>.md`; after changing one, also run
-`python3 scripts/concorde.py skills --write` and commit the tracked `skills/` it renders, the
-published Skills the Agent Skills CLI installs. `skills --check` and `build --check` report a
-stale copy. Installation previews owned changes by default and applies them only with explicit
+public Operation's guidance is authored under `prompts/operation-guidance/` and embedded in the
+Pi shim. No standalone Skill publishing command or client selector is supported.
+Installation previews owned changes by default and applies them only with explicit
 acceptance; local modifications to receipt-owned output conflict rather than being silently
-adopted. A project may select several clients (`--integration` repeats).
+adopted. Pi is the only supported installation client; retired `--integration` flags are rejected.
 
-The build renders one projection per developer client. Claude Code and Codex read Skills, which
-the installer has the Agent Skills CLI (`npx skills`) place from the published `skills/`. The Pi
-coding agent instead loads a session extension whose single `concorde` tool describes or runs the
-same public Operations, so a Pi session needs no Skills; the tool builds the invocation envelope
-itself and runs the same launcher the Skills name. Aborting a Pi turn cancels the running
-Operation, because the launcher treats termination like Ctrl-C. Both paths reach the same
-launcher, and in an installed project that launcher runs itself inside the managed runtime
-`.concorde/.venv` the installer verified: a Skill's `python3` only has to start it and needs no
-Concorde dependencies of its own. A project whose runtime is missing gets a `missing_runtime`
-result rather than an import failure; re-run the installer to provision it.
+The Pi coding agent loads a session extension whose single `concorde` tool describes or runs the
+public Operations. Its invocation envelope reaches the shared internal launcher, not an alternate
+client product. Aborting a turn cancels the running Operation. In an installed project the launcher
+uses `.concorde/.venv`, the managed runtime verified by the installer. Missing runtime dependencies
+produce a `missing_runtime` result; rerun installation to provision them. The installer distributes
+no standalone Skills and does not invoke a Skills CLI.
 
 Installation deploys Framework assets and the Protocol copy, not project business Specs or a
 registry. Initialize those separately. An update does not accept a new Protocol binding for you:
@@ -54,39 +49,30 @@ means a failed rebuild must not be assumed to have recovered the prior environme
 
 ## Design
 
-<a id="entity.distribution.build"></a><a id="entity.distribution.build-command"></a><a id="entity.distribution.authored-sources"></a><a id="entity.distribution.skill-sources"></a><a id="entity.distribution.build-manifest"></a><a id="entity.distribution.package-inventory"></a><a id="entity.distribution.installed-skills"></a><a id="entity.distribution.published-skills"></a><a id="entity.distribution.skills-cli"></a><a id="entity.distribution.developer-runtime"></a>
+<a id="entity.distribution.build"></a><a id="entity.distribution.build-command"></a><a id="entity.distribution.authored-sources"></a><a id="entity.distribution.skill-sources"></a><a id="entity.distribution.build-manifest"></a><a id="entity.distribution.package-inventory"></a><a id="entity.distribution.developer-runtime"></a>
 
-The Build command resolves Authored sources, including the Skill sources under `prompts/skills/`,
-into deterministic worker instructions, this checkout's own Installed Skills projections and
-runtime schemas. From the same Skill sources the explicit `skills --write` step renders the
-Published Skills: one client-neutral Skill per public Operation, bound to an installed framework's
-launcher and tracked under `skills/`, because the Agent Skills CLI installs a repository's
-`skills/` verbatim and must find the installable Skill there, not an authoring source. `build`
-never writes that folder; every freshness check reports a stale copy, so a Skill change lands as
-one commit of source and rendering. Build manifest binds the untracked outputs' exact inputs and
-outputs, while Package inventory determines which assets can be distributed. In an installed
-project the Installed Skills are what the Agent Skills CLI, the standard `npx skills` tool pinned
-by the package manifest, places for Claude Code and Codex from the deployed Published Skills, in
-its own layout with its own lock file. The external Developer runtime reads an installed Skill to
-submit a typed operation request; Skills are not injected as worker context or an independent
-execution grant. [Build realization](build.md#design) explains source accounting and freshness
-checks.
+The Build command resolves Authored sources, including Operation guidance sources, into
+terminal worker instructions, a private Pi catalog, runtime schemas and Protocol assets. Build
+manifest binds exact inputs and outputs, while Package inventory determines distributable assets.
+The external Developer runtime loads the explicitly selected Pi entry; descriptions, guidance and
+schemas remain useful through its `concorde` tool, not as standalone Skills. The catalog is not
+worker context or an execution grant. [Build realization](build.md#design) explains source
+accounting and freshness checks. Installation owns consumer deployment separately.
 
 <a id="entity.distribution.pi-session-extension"></a>
 
 The Pi session extension is the projection for a developer whose client is the Pi coding agent.
 Source build renders a private shim under `generated/session/pi/`; consumer installation places it in `.pi/extensions/` that imports the tracked extension and
-carries the catalog of public Operations: each one's description, its Skill guidance without the
-stdin envelope mechanics, and its request schema. The extension registers one `concorde` tool.
+carries the catalog of public Operations: each one's description, ordinary guidance and exact request schema. The extension registers one `concorde` tool.
 Its `describe` action returns that guidance and schema; its `run` action wraps the caller's input
-in the invocation envelope, runs the same launcher the Skills name in the project root and returns
+in the invocation envelope, runs the shared launcher in the project root and returns
 the launcher's typed result, saving a result above 48 KiB to a file. Aborting the turn sends the
 launcher SIGTERM, which it treats like Ctrl-C, and kills the launcher's process group after a
 grace period. A short section appended to the system prompt names the tool and the Operations, so
-Pi needs no Skills. Like a Skill, the tool grants nothing: the launcher performs every check, and
+Pi needs no standalone Skills. The tool grants nothing: the launcher performs every check, and
 the source checkout's shim tells the model to run an Operation only on the developer's explicit
-request. Pi still lists any `.agents/skills` a Codex installation left in the same project; the
-tool's description asks the model to prefer the tool.
+request. Existing external CLI-owned Skills require explicit manual retirement; the installer
+never erases those unowned assets.
 
 <a id="entity.distribution.installation"></a><a id="entity.distribution.install-script"></a><a id="entity.distribution.installation-proposal"></a><a id="entity.distribution.ownership-receipt"></a><a id="entity.distribution.target-project"></a>
 
@@ -94,12 +80,12 @@ Install script exposes Installation's preview/apply boundary. An Installation pr
 exact owned changes in the Target project; an Ownership receipt records those installed bytes and
 their before-state for later updates. A fresh build is not installation acceptance, and a receipt
 is not permission to overwrite unrelated user content. Failure restores owned installation state.
-Project Specs and their accepted Protocol binding remain separately controlled. Skill placement is
-not an owned change: once the framework copy is in place, Installation runs the Agent Skills CLI
-against it for the selected Skill clients, records that delegation in the receipt and owns none
-of the placed files. A project may carry several clients, each with its own root entry; a later
-selection that leaves a client out removes its root entry, while the Skills the CLI placed for it
-stay until the developer removes them with that CLI.
+Project Specs and their accepted Protocol binding remain separately controlled. Upgrades retire
+legacy receipt-owned files and root blocks only when their current bytes match recorded ownership.
+External CLI-placed Skills and lock files were never owned by the installer and remain untouched;
+the preview and result describe explicit manual retirement. A root file created only for an owned
+entry can disappear when its removal leaves it empty; developer-owned files and surrounding text
+are preserved. See [installation](installation.md) for the Pi-only upgrade route.
 
 <a id="entity.distribution.managed-runtime"></a><a id="entity.distribution.runtime-provisioning"></a><a id="entity.distribution.verified-runtime"></a><a id="entity.distribution.integration-configuration"></a>
 
@@ -137,20 +123,16 @@ neither substitutes for the other. The developer agent session is the same actor
 checkout and in an installed consumer project: it works in the worktree whose build supplied its
 projections and lets the host run candidate work elsewhere.
 
-Skill sources are authored and owned here. Build renders this checkout's own Skill projections
-from them, and the explicit publish step renders the tracked Published Skills. Installation
-deploys the Published Skills below the framework root and has the Agent Skills CLI place them as
-the target's Installed Skills; the external Developer runtime consumes those instructions and
-calls the declared operation boundary. For a Pi client, Build renders the shim of the Pi session
-extension from the same Skill sources and Installation places it under `.pi/extensions/`; the
-Developer runtime then calls the extension's `concorde` tool, which runs the same launcher. This
-distribution path creates no worker Harness input and does not transfer ownership of executable
-operation behavior to Distribution.
+Operation guidance sources are authored and owned here. Build embeds their descriptions and
+resolved text with versioned request schemas in the Pi session extension's shim. Installation
+places that receipt-owned shim in the target. The Developer runtime calls its `concorde` tool,
+which uses the shared launcher. This creates no worker grant and transfers no executable
+Operation behavior to Distribution.
 
 ```mermaid
 flowchart TB
     accTitle: Distribution entities and relationships
-    accDescr: Build renders Authored sources and Skill sources, records freshness in the Build manifest and validates the Package inventory; the publish step renders the tracked Published Skills. Installation deploys the Published Skills and has the Agent Skills CLI place the Installed Skills, or installs the shim of the Pi session extension, for the external Developer runtime, applies receipt-owned proposals to the Target project and reads configuration through Spec. Managed runtime provisions the Verified managed runtime. The Developer agent session loads the projections its own worktree's build rendered.
+    accDescr: Build renders authored worker instructions and Operation guidance into runtime assets and a private Pi catalog. Installation deploys the receipt-owned Pi entry and provisions a verified managed runtime without installing standalone Skills.
     authored["Authored sources"]
     build["Build"]
     buildCmd["Build command"]
@@ -167,22 +149,12 @@ flowchart TB
     verifiedRuntime["Verified managed runtime"]
     session["Developer agent session"]
     spec["Spec"]
-    skillSources["Skill sources"]
-    installedSkills["Installed Skills"]
-    publishedSkills["Published Skills"]
-    skillsCli["Agent Skills CLI"]
+    guidanceSources["Operation guidance sources"]
     piSession["Pi session extension"]
     developerRuntime["Developer runtime"]
-    skillSources -->|are rendered by| build
-    build -->|renders the checkout projections of| installedSkills
-    build -->|renders, through the explicit publish step, the tracked| publishedSkills
+    guidanceSources -->|are rendered by| build
     build -->|renders the project shim of| piSession
-    installation -->|deploys below the framework root| publishedSkills
-    installation -->|delegates Skill placement to| skillsCli
-    skillsCli -->|reads the deployed| publishedSkills
-    skillsCli -->|places| installedSkills
     installation -->|installs the shim of| piSession
-    developerRuntime -->|reads| installedSkills
     developerRuntime -->|calls the concorde tool of| piSession
     authored -->|are rendered by| build
     build -->|is exposed through| buildCmd
@@ -230,16 +202,15 @@ by code, and callers must not infer recovery from the absence of success metadat
 Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
 operation, not to this Module; installation never creates the registry or a Module stub itself.
 
-The Pi projection has three known limits. Pi reads a project's `.agents/skills` as well, so a
-project that also selected Codex, or a source checkout, shows a Pi session both the `concorde`
-tool and the Codex Skills; only the tool's description asks the model to prefer the tool, and
-nothing hides the Skills from Pi. A `run` blocks the Pi turn for the whole Operation and shows no progress,
+The Pi projection has known limits. A `run` blocks the Pi turn for the whole Operation and shows no progress,
 because the launcher prints only its final envelope; streaming the host's stage events through the
-tool is pending, and aborting the turn is the only way to stop a run early. The tool runs the
-launcher with the checkout's `.venv` interpreter or, failing that, the `python3` on the session's
-PATH, and in a consumer project with the managed runtime's interpreter. Only an installed
-project's launcher switches to a managed runtime by itself; a checkout whose environment lives
-elsewhere must expose LangGraph on that `python3`, as the checkout's Skills assume too.
+tool is pending, and aborting the turn is the only way to stop a run early. The private source entry requires the candidate's `.venv` interpreter to verify selection before
+registration and each tool call; a missing environment blocks without an ambient interpreter
+fallback. A consumer entry selects the installed managed runtime interpreter. If it is missing,
+the consumer launcher may be started with ambient Python, but that does not provision or attest
+a runtime: missing dependencies still produce `missing_runtime`. Only an installed project's
+launcher switches to its adjacent managed runtime by itself. These are separate source-private
+and consumer paths, not permission to replace a selected candidate runtime with a global one.
 
 ## Ownership, context and implementation status
 

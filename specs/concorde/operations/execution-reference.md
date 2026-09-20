@@ -17,7 +17,7 @@ detailed contract.
 | [Graph](../module.md#terminology)                  | Defined in Concorde Framework.                 |
 | [Worker](../module.md#terminology)                 | Defined in Concorde Framework.                 |
 | [Worker profile](../harness/module.md#terminology) | Defined in Harness.                            |
-| [Skill](../module.md#terminology)                  | Defined in Concorde Framework.                 |
+| [Pi integration](../module.md#terminology)         | Defined in Concorde Framework.                 |
 | [Context](../module.md#terminology)                | Defined in Concorde Framework.                 |
 | [Grant](../module.md#terminology)                  | Defined in Concorde Framework.                 |
 | [Snapshot](../module.md#terminology)               | Defined in Concorde Framework.                 |
@@ -73,11 +73,12 @@ spellings. They identify the executing model Operation and do not recreate an Ag
 
 #### Current host adapter {#operations-current-host-adapter}
 
-Each public Operation has exactly one Skill invoking `scripts/run-operation.py <skill>`.
-Non-public Operations have no Skill or direct launcher entry. [Distribution Module](../distribution/module.md) owns the Skill
-sources and projection; [Harness](../harness/admission.md) owns shared admission and this Module owns
-dispatch. A Skill is an instruction
-artifact for the developer's external runtime, not the worker's task context or a node kind.
+Each public Operation has exactly one public name in the Pi catalog and launcher entry
+`scripts/run-operation.py <public-name>`. Non-public Operations have neither a catalog entry nor
+a direct launcher entry. [Distribution Module](../distribution/module.md) owns the ordinary
+Operation guidance sources and Pi projection; [Harness](../harness/admission.md) owns shared
+admission and this Module owns dispatch. Guidance describes use of the Operation, not the
+worker's task context or another executable kind.
 
 | Operation                | Public | Context selection | Deterministic | Uses                                             | Behavior                                                             |
 | ------------------------ | ------ | ----------------- | ------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
@@ -102,7 +103,7 @@ Modules. Target selection belongs to the outer caller, not a model router.
 
 Every Operation declares:
 
-- **PUBLIC**: a boolean; true requires exactly one public Skill and launcher entry.
+- **PUBLIC**: a boolean; true requires exactly one Pi catalog name and launcher entry.
 - **CONTEXT_SELECTION**: `bound` or `none`. Bound consumes a caller-selected context frozen by the host;
   none performs host work without model context.
 - **DETERMINISTIC**: a boolean; true means no supported path calls a model, including transitive
@@ -121,7 +122,11 @@ loops and reducers live in LangGraph, not a duplicate metadata graph. Undeclared
 with `undeclared_operation`; host composition never grants a worker another callable tool.
 
 The single `concorde.operations` metadata inventory records exposure, context selection,
-determinism, Skill mapping, direct uses, State type identities and optional profile workspace/tools. Validation compares it with code. There is no independent `concorde.agents` inventory.
+determinism, `public_name`, direct uses, State type identities and optional profile workspace/tools.
+`public_name` equals the public Operation's `EXTERNAL_NAME`, and is null for private Operations.
+Validation compares it with code and independently checks exact guidance membership. The retired
+`skill` key is rejected, not accepted as an alias. This is an explicit project metadata migration;
+metadata schema 2 and runtime wire versions retain their existing meanings. There is no independent `concorde.agents` inventory.
 
 ### Design {#operations-design}
 

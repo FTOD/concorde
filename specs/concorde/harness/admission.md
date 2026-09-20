@@ -15,7 +15,7 @@ catalog of Operations and the dispatch this admission hands each request to.
 | [Internal operation](../operations/module.md#terminology) | Defined in Operations.                         |
 | [Host](../module.md#terminology)                          | Defined in Concorde Framework.                 |
 | [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                 |
-| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                 |
+| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.                 |
 | [Worker](../module.md#terminology)                        | Defined in Concorde Framework.                 |
 | [Worker profile](module.md#terminology)                   | Defined in Harness.                            |
 | [Grant](../module.md#terminology)                         | Defined in Concorde Framework.                 |
@@ -39,18 +39,18 @@ An Operation is a State-based LangGraph node under the Operation and Harness con
 the [Harness Module](module.md). Each
 registered entry declares its State, USES and optional model execution profile. Existing host
 adapters additionally retain versioned request/response transport contracts; model-only nodes do
-not acquire new wire envelopes. Rendered public Skills expose exactly one public Operation.
-Non-public Operations have no Skill or direct launcher entry. Every external request passes
+not acquire new wire envelopes. The Pi catalog exposes exactly the eleven public Operations.
+Non-public Operations have no Pi catalog or direct launcher entry. Every external request passes
 through this admission boundary. The [operation catalog](../operations/execution-reference.md#operations-operation-registry)
 names every Operation; exact wire schemas are code, exported by the build for runtime/API use,
 and this document states their promises.
 
-Executable entry: `python3 scripts/run-operation.py <skill-name>`, no task command-line arguments.
+Executable entry: `python3 scripts/run-operation.py <operation-name>`, no task command-line arguments.
 In an installed project the launcher first re-executes itself inside the managed runtime, as the
 [Distribution Module](../distribution/scenarios.md#scenario.distribution.launcher-managed-runtime)
 specifies; an interpreter without LangGraph and without that runtime is refused with `missing_runtime`.
-A name that is not a Skill is refused with `unknown_operation`. stdin is exactly one JSON object
-`concorde-operation-invocation@3` with fields type_id, schema_version=3, operation_id (the Skill's
+A name that is not a public Operation is refused with `unknown_operation`. stdin is exactly one JSON object
+`concorde-operation-invocation@3` with fields type_id, schema_version=3, operation_id (the public Operation's
 name), mode=execute|describe-policy, configuration and input. Maximum input is 1 MiB. Schema 2
 invocations are rejected with `unsupported_version`. configuration is a
 `concorde-operation-configuration@2` TypedValue or null for the initialized host settings; input is
@@ -79,9 +79,9 @@ implementation files it reads are those of the worktree at that directory; lifec
 inspects the framework checkout that contains the launched script. A working directory at a Git
 worktree root is admitted as a `primary` or `change` workspace and a directory outside any Git
 repository as `unversioned`; a directory inside a Git worktree that is not its root is refused with
-`workspace_mismatch`. The Skill's entry command is project-relative, so a rendered Skill carries no
-worktree identity: the worktree in which the developer's agent session started, the worktree whose
-Skill projection supplied the instructions and every other linked worktree contribute no project
+`workspace_mismatch`. The Pi tool binds its launcher to its package root. Invocation data belongs to the launcher's
+working directory: the worktree in which the developer's agent session started, the worktree whose
+Pi entry supplied the catalog and every other linked worktree contribute no project
 registry, Spec document or implementation file to the invocation. Primary lifecycle records remain
 separate host metadata, and changing the working directory selects a different project rather than
 a wider one.
@@ -95,10 +95,10 @@ diagnostics are forwarded, and its workspace names the candidate; the originatin
 moves. Uncommitted primary changes are not copied. A request that names a recorded change_id from
 the primary worktree relays into that candidate, found through the worktree inventory; a launcher
 that returns no envelope fails with relay_failed. Host-created worktrees live in temporary storage.
-For source maintenance, the main instead assigns a fresh Skill-free writer to a candidate;
+For source maintenance, the main instead assigns a fresh Concorde-catalog-free writer to a candidate;
 source-primary mutations are refused even when a change ID already names a candidate. The source
 constructor injects no Operation guidance and never uses primary code to build candidate outputs:
-the fresh writer runs that candidate's own build before a separate sibling tests its private Skills.
+the fresh writer runs that candidate's own build before a separate sibling tests its exact private Pi entry/catalog and runtime.
 An Operation already in the assigned candidate reuses it instead of creating a nested candidate.
 Host administrators may explicitly permit standalone consumer development for controlled embedding. Delivery separately requires a session in its
 selected source or primary worktree; third-worktree sessions and nested Operation delivery calls are rejected; a one-layer task child in a participant may deliver. Default
@@ -115,14 +115,14 @@ worker is a fresh Pi process whose tool calls are gated to its grant; no worker 
 credential effects, and writes are restricted by phase. Executor outcomes must match invocation,
 binding and context identities. No ambient conversation or predecessor transcript is admitted.
 
-No Skill returns context manifests; context resolution is host-internal and
+No public Operation returns context manifests; context resolution is host-internal and
 `describe-policy` mode already previews the exact grants an operation would receive without
 launching a worker or mutating project state. Each previewed stage's description also names the
 bound worker (`agent`, `agent_binding_digest`, `profile_digest`, `instructions_digest`, `workspace`,
 `tools`) and its resolved `model`, `thinking` and `timeout_seconds`, so a caller can
 audit which worker definition and model a launch would use without reading its rendered
 instructions. Complete cognitive snapshots never cross
-the Skill result boundary.
+the Pi tool result boundary.
 
 Provider contracts are [Planning](../planning/plan.md), [Tasks](../planning/tasks.md),
 [Implementation](../implementation/module.md#usage), [Review](../review/module.md#usage),
@@ -145,10 +145,10 @@ proposal and the stage-input artifacts that pass between stages inside one opera
 
 ### Invocation envelope
 
-| Type                                 | Carried by                                                                               | Promise                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------ | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `concorde-operation-invocation@3`    | Every request, on stdin                                                                  | `{type_id, schema_version: 3, operation_id, mode: execute\|describe-policy, configuration, input}`. `operation_id` must name a Skill; a non-public or unknown name is refused with `unknown_operation`. `configuration` is a `concorde-operation-configuration@2` TypedValue or null (falls back to the initialized project settings); `input` is the named operation's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `concorde-operation-result@3`        | Every response, on stdout                                                                | `{type_id, schema_version: 3, operation_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named operation's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Type                                 | Carried by                                                                               | Promise                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `concorde-operation-invocation@3`    | Every request, on stdin                                                                  | `{type_id, schema_version: 3, operation_id, mode: execute\|describe-policy, configuration, input}`. `operation_id` must name a public Operation; a non-public or unknown name is refused with `unknown_operation`. `configuration` is a `concorde-operation-configuration@2` TypedValue or null (falls back to the initialized project settings); `input` is the named operation's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`.                                                                                                                                                                                                                                                                                                                                         |
+| `concorde-operation-result@3`        | Every response, on stdout                                                                | `{type_id, schema_version: 3, operation_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named operation's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `concorde-operation-configuration@2` | The invocation's `configuration` field, and `concorde-configure-request@2`/`-response@2` | `{model?, thinking?: off\|minimal\|low\|medium\|high\|xhigh\|max, timeout_seconds?, workers?: {<worker>: {model?, thinking?, timeout_seconds?}}}`; `model` is Pi's `provider/id`. The top-level values are the project default; a worker entry overrides them for one worker (see [the worker selection scenario](scenarios.md#scenario.harness.worker-selection)). An absent model or thinking level keeps Pi's default and an absent timeout the worker profile's. A key naming no terminal worker, any retired worker-child key, a nonpositive timeout or a model without a provider is rejected. Stored at initialization under `.concorde/config.json`'s `operation_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
 
 ### Operation requests and responses
@@ -241,7 +241,7 @@ context forms; package/schema alignment checks verify those identities.
 | `migration_conflict`           | Legacy or interrupted migration collides with differing data; preserve both and resolve explicitly.                                                                                                                                                   |
 | `primary_unavailable`          | Restore the authoritative primary or missing source worktree, or use previously bound primary authority, before retrying persistence.                                                                                                                 |
 | `stale_status`                 | A task or target snapshot lost its revision compare-and-swap; reread current status before applying the intended update.                                                                                                                              |
-| `fresh_session_required`       | Source maintenance requires an assigned candidate and fresh Skill-free writer.                                                                                                                                                                        |
+| `fresh_session_required`       | Source maintenance requires an assigned candidate and fresh Concorde-catalog-free writer.                                                                                                                                                             |
 | `already_initialized`          | The project is already configured; use `configure` to change settings instead of initializing again.                                                                                                                                                  |
 | `closed_issue`                 | Another observation requires reopening the closed Issue first.                                                                                                                                                                                        |
 | `invalid_issue`                | An Issue report, record, receipt or disposition violates its closed shape or history invariants.                                                                                                                                                      |
@@ -271,7 +271,7 @@ context forms; package/schema alignment checks verify those identities.
 | `incompatible_handoff`         | A returned identity (context, target, gap, or configuration) does not match what the host issued or expects.                                                                                                                                          |
 | `incomplete_change`            | Delivery was requested before every authored task for the change was complete.                                                                                                                                                                        |
 | `incomplete_tasks`             | Implementation did not report every exact task as complete.                                                                                                                                                                                           |
-| `invalid_agent_binding`        | A named worker's profile or contract are inconsistent with each other or with the current build manifest.                                                                                                                          |
+| `invalid_agent_binding`        | A named worker's profile or contract are inconsistent with each other or with the current build manifest.                                                                                                                                             |
 | `invalid_completion`           | A worker returned no single valid result, or its result is internally inconsistent with its own declared context or outcome.                                                                                                                          |
 | `invalid_delivery`             | A delivery receipt has an invalid or mismatched identity.                                                                                                                                                                                             |
 | `invalid_entry_target`         | The registry's `entry_target` is not a Module, so it cannot serve as the project reading entry.                                                                                                                                                       |
@@ -337,6 +337,16 @@ separate cleanup status. Candidates hold no duplicate authoritative record. Term
 survive worktree deletion; direct primary tasks need no secondary worktree. Project configuration
 and registry semantics are unchanged and remain tracked; runtime status and runs are ignored.
 
+New consumer Operation-worktree guidance is appended only to `AGENTS.md`, never to a new or
+existing `CLAUDE.md`. Maintenance and direct registration inject no guidance. Existing schema-2
+status may still name historically owned `AGENTS.md` and `CLAUDE.md` blocks; admission retains
+that map and its `created` flags without rewriting identity or treating historical client support
+as a current creation policy. The deliverable snapshot strips only blocks named in that map,
+rejects modified or ambiguous markers, and omits a host-created file only when stripping leaves
+it empty. Unrecorded files and unrelated text remain user-owned. Guidance append, rollback and
+snapshot preserve original UTF-8 bytes (including line endings) and existing file modes; snapshot
+cleanup changes neither the working files nor the caller's index or status record.
+
 Git common-directory identity identifies the primary, including nonstandard primary paths.
 Unavailable primary identity blocks persistence with `primary_unavailable`; restore the primary
 and retry, never fabricate a new candidate-local authority. A missing source directory is never an
@@ -371,9 +381,10 @@ Durable `.concorde/runs/<run_id>/` evidence is primary-only, including candidate
 records actual source root, branch, change/run IDs, input commit/tree, runtime and build identity,
 results and separate logs/artifacts. Accepted artifact bytes and build manifests are snapshotted
 in runs before scratch or candidate removal; a stale reference is marked unavailable rather than
-represented as a successful copy. Explicitly selected Skill bodies are retained as provenance,
-not proof of model execution. Unknown Skill provenance stays null rather than implying a
-Skill was loaded from catalog metadata. Candidate `.concorde/work/` may hold temporary context
+represented as a successful copy. Explicitly selected Pi entry/catalog bytes are retained as provenance,
+not proof of extension loading, tool use or model execution. Unknown Pi provenance stays null.
+New run records use schema 2 and `pi_provenance`; historical schema-1 `skill_provenance`
+records remain untouched history, never an admitted current selection. Candidate `.concorde/work/` may hold temporary context
 scratch and auxiliary work, not duplicate durable run archives.
 
 `migrate-status` previews legacy worktree state, inventory, receipts and candidate runs;
@@ -530,7 +541,7 @@ bound names through the entity declarations they can already see.
 
 `status` lists all task records, including terminal records. From primary, `status --register
 <candidate> --task <goal> --mode maintenance|operation|direct` registers an existing workspace in
-that repository with a stable optional `--change-id`; maintenance registration injects no Skills
+that repository with a stable optional `--change-id`; maintenance registration injects no Concorde catalogs
 or candidate guidance. `--child <id> --phase maintenance|test|task --change-id <id>` claims one child
 owner; `--release` requires that same owner before a sibling takes over. These commands record
 coordination, never spawn sessions or prove fresh context was actually used. `--manual-merge

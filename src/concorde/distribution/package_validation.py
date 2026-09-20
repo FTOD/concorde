@@ -1,6 +1,6 @@
 """One package validator over prompts, operation modules, contracts, build outputs and Spec alignment.
 
-Validates the single ``operations/`` inventory, its model profiles, public Skills and their
+Validates the single ``operations/`` inventory, its model profiles, public Operation guidance and their
 registered Spec declarations. Every finding carries a stable ``CONCORDE-…`` rule id.
 """
 
@@ -23,13 +23,13 @@ from ..spec.frontmatter import FrontMatterError, parse_document
 from ..spec.model import Finding
 from . import build
 from .build import BuildError, check_build, verify_fresh
-from .prompt_resolver import SKILLS_ROOT
+from .prompt_resolver import GUIDANCE_ROOT
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
     resolve_model_instructions,
     resolve_role_prompt,
-    resolve_skill_source,
+    resolve_operation_guidance,
 )
 
 _SUBJECT = "module.distribution"
@@ -37,7 +37,7 @@ _SUBJECT = "module.distribution"
 _NAME_TOKEN = re.compile(r"concorde-[a-z][a-z0-9-]*")
 
 # Wire/Protocol vocabulary that legitimately appears as inline `concorde-…` prose terms but is not
-# a skill name, an operation external name, or a member of contracts.schemas(): the two
+# an operation external name, or a member of contracts.schemas(): the two
 # envelope type_ids validated ad hoc (never through DATA_SCHEMAS/schemas()), and two Protocol
 # structural terms (a document ID prefix, a machine-readable participant block name) defined only
 # in protocol/principles.md prose, not in any Python registry.
@@ -63,7 +63,7 @@ def _finding(
 
 def _prompt_roots() -> tuple[str, ...]:
     return (
-        tuple(build.SKILL_SOURCES.values())
+        tuple(build.OPERATION_GUIDANCE.values())
         + tuple(build.MODEL_ROOTS.values())
         + (build.WORKER_RULES, "prompts/protocol/principles.md")
         + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS)
@@ -74,8 +74,8 @@ def _validate_prompts(root: Path) -> list[Finding]:
     findings: list[Finding] = []
     for relative in _prompt_roots():
         try:
-            if relative.startswith(SKILLS_ROOT):
-                resolve_skill_source(root, relative)
+            if relative.startswith(GUIDANCE_ROOT):
+                resolve_operation_guidance(root, relative)
             elif relative.startswith("operations/"):
                 resolve_model_instructions(root, relative)
             else:
@@ -100,13 +100,13 @@ def _validate_prompts(root: Path) -> list[Finding]:
             _finding(
                 "CONCORDE-PROMPT-UNREACHABLE-001",
                 relative,
-                "No skill source, WorkerProfile Spec, or role root reaches this prompt file.",
+                "No operation guidance source, WorkerProfile Spec, or role root reaches this prompt file.",
                 "Include it from a root, or delete the dead prompt text.",
             )
         )
 
     known = (
-        frozenset(build.SKILL_NAMES)
+        frozenset(build.PUBLIC_OPERATIONS)
         | frozenset(OPERATION_NAMES)
         | frozenset(MODEL_OPERATIONS)
         | frozenset(schemas())
@@ -144,7 +144,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
                     _finding(
                         "CONCORDE-PROMPT-NAME-001",
                         relative,
-                        f"'{token}' names no skill, operation, WorkerProfile, or exported type.",
+                        f"'{token}' names no operation, WorkerProfile, or exported type.",
                         "Correct the identifier, or export/declare it if it is genuinely new.",
                     )
                 )
@@ -196,19 +196,19 @@ def _operation_modules(
     return inventory, modules
 
 
-def _skill_operations(root: Path) -> dict[str, list[str]]:
-    """Return {operation_module_name: [skill_name, ...]} from every prompts/skills/*.md source.
+def _guidance_operations(root: Path) -> dict[str, list[str]]:
+    """Return {operation_module_name: [operation_name, ...]} from every prompts/operation-guidance/*.md source.
 
-    Discovers whatever Skill sources actually exist at ``root`` rather than assuming the real
-    package's fixed public names, so a temporary fixture package with its own skill set is
+    Discovers whatever Operation guidance sources actually exist at ``root`` rather than assuming the real
+    package's fixed public names, so a temporary fixture package with its own guidance set is
     validated on its own terms.
     """
 
     result: dict[str, list[str]] = {}
-    skills_root = root / SKILLS_ROOT
-    if skills_root.is_symlink() or not skills_root.is_dir():
+    guidance_root = root / GUIDANCE_ROOT
+    if guidance_root.is_symlink() or not guidance_root.is_dir():
         return result
-    for path in sorted(skills_root.glob("*.md")):
+    for path in sorted(guidance_root.glob("*.md")):
         if path.is_symlink() or not path.is_file():
             continue
         relative = path.relative_to(root).as_posix()
@@ -263,7 +263,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
             )
         )
 
-    skill_operations = _skill_operations(root)
+    guidance_operations = _guidance_operations(root)
     valid_modules: dict[str, ModuleType] = {}
     for name in sorted(declared):
         module = modules.get(name)
@@ -415,26 +415,26 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                     "EXTERNAL_NAME is always 'concorde-' plus the module name with underscores hyphenated.",
                 )
             )
-        skills = skill_operations.get(name, [])
-        should_have_skill = module.PUBLIC
-        if should_have_skill and len(skills) != 1:
+        guidance = guidance_operations.get(name, [])
+        should_have_guidance = module.PUBLIC
+        if should_have_guidance and guidance != [module.EXTERNAL_NAME]:
             findings.append(
                 _finding(
-                    "CONCORDE-OPERATION-SKILL-001",
+                    "CONCORDE-OPERATION-GUIDANCE-001",
                     source,
-                    f"public operation {name!r} must have exactly one skill naming it; found {skills}.",
-                    "Add or deduplicate the prompts/skills/<name>.md source declaring operation: "
+                    f"public operation {name!r} must have exactly one guidance source matching its external name; found {guidance}.",
+                    "Add or deduplicate the prompts/operation-guidance/<name>.md source declaring operation: "
                     + name
                     + ".",
                 )
             )
-        if not should_have_skill and skills:
+        if not should_have_guidance and guidance:
             findings.append(
                 _finding(
-                    "CONCORDE-OPERATION-SKILL-001",
+                    "CONCORDE-OPERATION-GUIDANCE-001",
                     source,
-                    f"non-public operation {name!r} must have no skill; found {skills}.",
-                    "Only PUBLIC=True operations are projected as Skills; remove the skill source.",
+                    f"non-public operation {name!r} must have no public guidance; found {guidance}.",
+                    "Only PUBLIC=True operations appear in the Pi catalog; remove the guidance source.",
                 )
             )
 
@@ -804,7 +804,6 @@ def _operation_code_inventory(root: Path) -> dict | None:
     inventory, modules = _operation_modules(root)
     if inventory is None:
         return None
-    skills = _skill_operations(root)
     result = {}
     for name, module in modules.items():
         if module is None or not hasattr(module, "PUBLIC"):
@@ -815,7 +814,9 @@ def _operation_code_inventory(root: Path) -> dict | None:
             "public": module.PUBLIC,
             "context_selection": getattr(module, "CONTEXT_SELECTION", None),
             "deterministic": getattr(module, "DETERMINISTIC", None),
-            "skill": skills.get(name, [None])[0],
+            "public_name": getattr(module, "EXTERNAL_NAME", None)
+            if module.PUBLIC
+            else None,
             "uses": list(getattr(module, "USES", ())),
             "state": {"input": state.input_type, "output": state.output_type}
             if state
@@ -856,7 +857,7 @@ def _validate_spec_operations_block(
         "public",
         "context_selection",
         "deterministic",
-        "skill",
+        "public_name",
         "uses",
         "state",
         "profile",
@@ -879,7 +880,7 @@ def _validate_spec_operations_block(
                 rule,
                 path,
                 "Malformed Operation State/profile inventory.",
-                "Declare id/public/context_selection/deterministic/skill/uses/state/profile.",
+                "Declare id/public/context_selection/deterministic/public_name/uses/state/profile.",
             )
         ]
     declared = {
@@ -1121,7 +1122,7 @@ def _validate_build_outputs(root: Path) -> list[Finding]:
         )
         return findings
     try:
-        current, differences = check_build(root, "all")
+        current, differences = check_build(root)
     except BuildError as error:
         findings.append(
             _finding(
@@ -1137,9 +1138,8 @@ def _validate_build_outputs(root: Path) -> list[Finding]:
             _finding(
                 "CONCORDE-BUILD-DRIFT-001",
                 "generated/",
-                f"rebuilding into a temporary directory differs from recorded outputs: {list(differences)}.",
-                "Run `python -m concorde build` for generated/ and the client projections, and "
-                "`python -m concorde skills --write` for the tracked published Skills.",
+                f"a pure rebuild differs from recorded outputs: {list(differences)}.",
+                "Run `python -m concorde build` for the private Pi catalog and runtime projections.",
             )
         )
     return findings

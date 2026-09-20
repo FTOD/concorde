@@ -12,7 +12,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from concorde.harness.admission import run_operation
 from concorde.harness.host import OperationHost
 from concorde.harness.studio import build_studio_graph
-from concorde.spec.contracts import INTERNAL_OPERATIONS, SKILL_NAMES
+from concorde.spec.contracts import INTERNAL_OPERATIONS, PUBLIC_OPERATIONS
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
 from concorde.spec.wire_shapes import type_version
@@ -109,7 +109,7 @@ class StudioTests(unittest.TestCase):
         self,
     ):
         manifest = json.loads((PACKAGE / "generated/langgraph.json").read_text())
-        assert_public_inventory(self, SKILL_NAMES)
+        assert_public_inventory(self, PUBLIC_OPERATIONS)
         assert_public_inventory(self, manifest["graphs"])
         for operation in EXPECTED_PUBLIC:
             with self.subTest(operation=operation):

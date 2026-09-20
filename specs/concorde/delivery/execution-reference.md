@@ -19,7 +19,6 @@ and transitions are retained here as the single detailed contract.
 | [Reference](../spec/registry.md#terminology) | Defined in Registry.           |
 | [Grant](../module.md#terminology)            | Defined in Concorde Framework. |
 | [Graph](../module.md#terminology)            | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology)            | Defined in Concorde Framework. |
 
 ## Delivery operation {#delivery-delivery-operation}
 

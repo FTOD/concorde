@@ -1,16 +1,19 @@
 # LangGraph Studio for Concorde
 
-Studio can start every Concorde Skill and inspect operations submitted by the existing
-CLI or Skill launcher. Both paths execute the same `OperationHost`, typed request validation,
-configuration binding, native agent permission checks and worktree lifecycle as local CLI runs.
-Studio is an optional development interface; ordinary CLI and Skill calls need no Agent Server.
+Studio can start every public Concorde Operation and inspect operations submitted by the
+CLI or installed Pi `concorde` tool. Both paths execute the same `OperationHost`, typed request
+validation, configuration binding, worker permission checks and worktree lifecycle as local calls.
+Studio is optional; ordinary CLI and Pi tool calls need no Agent Server. Private source-maintenance
+Pi selections cannot redirect execution to Studio.
 
 ## Start a server in this source worktree
 
 Use Python 3.11 or newer and run these commands from the intended Concorde checkout. When working
 through an agent, follow `AGENTS.md`: the main session coordinates from its initial worktree;
 a task child stays in its assigned candidate and never delegates tasks or creates/moves worktrees.
-Source maintenance and independent Skill testing use separate fresh sibling sessions.
+Source maintenance uses a fresh Concorde-catalog-free writer and a separate fresh sibling tester
+with only the exact candidate-built Pi entry, embedded catalog and runtime. Studio is not an
+alternative maintenance authority, fresh tester or source-primary mutation exception.
 
 ```bash
 uv sync --locked --group studio
@@ -42,7 +45,7 @@ independently of request input. Start a separate server on a different port for 
 Starting this config from another directory does not retarget it. This source-checkout launcher is
 not installed into consumer projects; see the consumer setup below.
 
-## Start and debug a operation in Studio
+## Start and debug an Operation in Studio
 
 Select `concorde-context-solve`, create a new thread, and enter this complete input in Graph mode:
 
@@ -94,14 +97,15 @@ uv run --locked --group studio --with debugpy langgraph dev --config generated/l
 ```
 
 Attach your Python debugger to localhost:5678. See the official
-[CLI reference](https://docs.langchain.com/langsmith/cli) for debug and server options. Replaying a
-operation checkpoint executes the operation again: filesystem writes, external checks and agent
+[CLI reference](https://docs.langchain.com/langsmith/cli) for debug and server options. Replaying an
+operation checkpoint executes the operation again: filesystem writes, external checks and worker
 processes are not rolled back by LangGraph. Inspect the existing worktree state before replaying a
 mutation. A paused/interrupted Agent Server run is not an authorization to bypass Concorde checks.
 
-## Monitor CLI and Skill calls
+## Monitor CLI and installed Pi tool calls
 
-Start the server above. In the shell or agent environment that launches operations, set:
+For ordinary CLI or installed consumer Pi calls, start the server for that exact project/package.
+In the shell or agent environment that launches operations, set:
 
 ```bash
 export CONCORDE_STUDIO_URL=http://127.0.0.1:2024
@@ -115,10 +119,15 @@ python3 scripts/run-operation.py concorde-context-solve <<'JSON'
 JSON
 ```
 
-Skills already use this same launcher, so no Skill prompt or request-format change is needed. Set
-the variable in the environment inherited by the Skill's command runner (or on that command) before invoking it.
-This monitors newly submitted calls by forwarding execution to the server. It does not attach to
-already-running processes or import historical runs.
+The installed Pi `concorde` tool uses this same launcher. Call `action: "describe"` with the selected
+`operation` first to obtain its guidance and exact request schema, then `action: "run"` with request
+data in `input`; Pi supplies the versioned invocation envelope. For example, a policy preview uses
+`operation: "concorde-context-solve"`, `action: "run"`, `mode: "describe-policy"` and
+`input: {"target_id": "service.transfer", "task": "Explain transfer"}` in a consumer that
+registers `service.transfer`; choose that consumer's actual registered target. There is no standalone Skill to install or load.
+Set the variable in the installed Pi process's environment before launch. This forwards newly
+submitted execution to the server; it neither attaches to already-running processes nor imports history.
+Do not set this variable for a private candidate selection: both Pi and launcher refuse that redirect.
 
 Each call creates a Studio thread and prints its thread ID, server URL and run ID to **stderr**.
 Open that thread in Studio while the command waits. Policy descriptions remain on stderr. **stdout
@@ -165,10 +174,39 @@ requested. End the source session after removal. Only an explicitly user-authori
 `merge_primary:true` request from the sole primary writer updates the primary branch, under the
 repository lock and with current integration checks. The Studio client still checks
 its caller against the server's bound workspace; third-worktree forwarding cannot impersonate a
-participating session. A primary-worktree mutation prepares a candidate worktree and relays the
+participating session. A consumer primary-worktree mutation prepares a candidate worktree and relays the
 request to that candidate's own launcher in a subprocess; the server run returns the candidate's
 result, and the candidate's own worker events are not part of this server's run. Run each server
 with its own checkout's authority.
+
+## Private candidate Pi testing is separate
+
+After the catalog-free writer has built, verified, committed and stopped writing, the coordinator
+selects the exact candidate artifacts for a separate fresh sibling tester:
+
+```bash
+.venv/bin/python scripts/concorde.py select-session --mode test \
+  --pi-entry "$PWD/generated/session/pi/concorde-session.ts" \
+  --runtime "$PWD/scripts/run-operation.py" \
+  --output "$PWD/.concorde/work/pi-selection.json"
+.venv/bin/python scripts/concorde.py select-session \
+  --verify "$PWD/.concorde/work/pi-selection.json"
+```
+
+Run those commands from the assigned candidate. The host supplies the saved absolute path as
+`CONCORDE_SESSION_SELECTION`, a separate host-owned `PI_CODING_AGENT_DIR`, and only the returned
+exact `-e` entry with the returned `--no-session --no-context-files --no-skills
+--no-prompt-templates --no-themes --no-extensions` flags. It starts a new, non-forked session in
+that candidate, retaining the actual task/file/tool grant. Do not copy ambient client settings or
+install this entry in discovery paths. The catalog is embedded in the entry, not a separate Skill
+file. The candidate `.venv` is required; missing, stale or out-of-candidate provenance blocks
+without primary/global fallback. Rebuilds require new selection and a new tester, never reload of
+the tester's governing integration. Leave `CONCORDE_STUDIO_URL` unset.
+
+Selection attests bytes, not extension loading, tool use or model execution; the host must reject
+extension-load errors and record actual execution separately. Source Operations still require an
+explicit user request by name, and neither Studio nor Pi grants workers Spec-writing or recursive
+delegation authority. Consumer installation remains independent of this private selection.
 
 ## Consumer project setup
 
@@ -184,10 +222,10 @@ import sys
 PROJECT = Path(__file__).resolve().parent
 PACKAGE = PROJECT / ".concorde/framework"
 sys.path.insert(0, str(PACKAGE / "src"))
-from concorde.spec.contracts import SKILL_NAMES
+from concorde.spec.contracts import PUBLIC_OPERATIONS
 from concorde.harness.studio import build_studio_graph
 
-for operation in SKILL_NAMES:
+for operation in PUBLIC_OPERATIONS:
     globals()[operation.replace("-", "_")] = build_studio_graph(operation, PROJECT, PACKAGE)
 ```
 
@@ -209,7 +247,7 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p '
 ```
 
 The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-eleven assistants, operation admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
+eleven assistants, operation admission, direct execution, SSE events, common-launcher forwarding, JSON/exit compatibility
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.

@@ -1,12 +1,14 @@
 """Receipt-owned root entry blocks; Protocol prose stays in the packaged asset."""
+
 from __future__ import annotations
 
 import hashlib
 from pathlib import Path
 
 ROLE = "protocol-guidance"
-# Pi reads AGENTS.md as a context file, so it shares Codex's root entry.
-FILES = {"codex": "AGENTS.md", "claude": "CLAUDE.md", "pi": "AGENTS.md"}
+FILE = "AGENTS.md"
+# Historical receipts may own a bounded CLAUDE.md block, never its surrounding text.
+RECEIPT_FILES = {FILE, "CLAUDE.md"}
 TOKEN = b"<!-- concorde-protocol:"
 START = b"\n<!-- concorde-protocol:start -->\n"
 END = b"<!-- concorde-protocol:end -->\n"
@@ -21,17 +23,24 @@ def digest(content: bytes) -> str:
     return "sha256:" + hashlib.sha256(content).hexdigest()
 
 
-def entry(integration: str) -> bytes:
-    reference = (f"@{PROTOCOL}\n" if integration == "claude"
-                 else f"Read and follow `{PROTOCOL}` before Concorde workflow actions.\n")
-    return START + ("## Concorde Spec Protocol and Framework rules\n\n" + reference).encode() + END
+def entry() -> bytes:
+    reference = f"Read and follow `{PROTOCOL}` before Concorde workflow actions.\n"
+    return (
+        START
+        + ("## Concorde Spec Protocol and Framework rules\n\n" + reference).encode()
+        + END
+    )
 
 
 def split(content: bytes) -> tuple[bytes, bytes, bytes]:
     """Reject ambiguous/forged delimiters instead of consuming arbitrary user text."""
     if TOKEN not in content:
         return content, b"", b""
-    if content.count(TOKEN) != 2 or content.count(START) != 1 or content.count(END) != 1:
+    if (
+        content.count(TOKEN) != 2
+        or content.count(START) != 1
+        or content.count(END) != 1
+    ):
         raise GuidanceError("malformed or duplicate Concorde Spec Protocol markers")
     if content.index(END) < content.index(START):
         raise GuidanceError("misordered Concorde Spec Protocol markers")
@@ -42,13 +51,20 @@ def split(content: bytes) -> tuple[bytes, bytes, bytes]:
     return before, START + middle + END, after
 
 
-def plan(target: Path, relative: str, wanted: bytes | None, prior_digest: str | None,
-         prior_created: bool = False):
+def plan(
+    target: Path,
+    relative: str,
+    wanted: bytes | None,
+    prior_digest: str | None,
+    prior_created: bool = False,
+):
     """Plan one root entry. ``prior_created`` says the receipt records that the installer itself
     created this file for its entry, which is the only case in which removing the entry may
     remove the file: a developer's own file stays, even when the removal leaves it empty."""
-    if relative not in FILES.values():
-        raise GuidanceError("Protocol guidance receipt path must be AGENTS.md or CLAUDE.md")
+    if relative not in RECEIPT_FILES:
+        raise GuidanceError(
+            "Protocol guidance receipt path must be AGENTS.md or CLAUDE.md"
+        )
     path = target / relative
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise GuidanceError(f"Protocol guidance must be a regular file: {relative}")
@@ -57,11 +73,16 @@ def plan(target: Path, relative: str, wanted: bytes | None, prior_digest: str | 
     content.decode("utf-8")
     before, block, after = split(content)
     if block and (prior_digest is None or digest(block) != prior_digest):
-        raise GuidanceError("Protocol block is unowned or modified; preserve it for manual reconciliation")
+        raise GuidanceError(
+            "Protocol block is unowned or modified; preserve it for manual reconciliation"
+        )
     # Prepend a new entry so user Markdown fences and the local instruction size limit
     # do not hide it. Existing owned blocks stay at their original position.
-    merged = (wanted + content if wanted is not None and not block
-              else before + (wanted or b"") + after)
+    merged = (
+        wanted + content
+        if wanted is not None and not block
+        else before + (wanted or b"") + after
+    )
     if merged == content:
         action = "unchanged"
     elif not path.exists():
@@ -70,8 +91,15 @@ def plan(target: Path, relative: str, wanted: bytes | None, prior_digest: str | 
         action = "remove"
     else:
         action = "update"
-    return ({"path": relative, "action": action,
-             "role": ROLE if wanted is not None else "protocol-guidance-cleanup",
-             "sha256": digest(wanted or b""), "before_sha256": digest(content),
-             "before_exists": "yes" if path.exists() else "no",
-             "created": "yes" if action == "create" or prior_created else "no"}, merged)
+    return (
+        {
+            "path": relative,
+            "action": action,
+            "role": ROLE if wanted is not None else "protocol-guidance-cleanup",
+            "sha256": digest(wanted or b""),
+            "before_sha256": digest(content),
+            "before_exists": "yes" if path.exists() else "no",
+            "created": "yes" if action == "create" or prior_created else "no",
+        },
+        merged,
+    )

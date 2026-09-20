@@ -17,7 +17,7 @@ and transitions are retained here as the single detailed contract.
 | [Grant](../module.md#terminology)                         | Defined in Concorde Framework.                            |
 | [Spec context](../harness/context.md#terminology)         | Defined in What information a worker receives.            |
 | [Internal operation](../operations/module.md#terminology) | Defined in Operations.                                    |
-| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                            |
+| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.                            |
 | [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                            |
 | [Task sufficiency](assessment.md#terminology)             | Defined in Is the specification sufficient for this task? |
 | [Acceptance task](tasks.md#terminology)                   | Defined in Making work verifiable.                        |
@@ -32,7 +32,9 @@ and transitions are retained here as the single detailed contract.
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-The calling agent invokes it through its Skill, Pi projection or common launcher.
+The calling agent selects this Operation through the Pi `concorde` tool; its `run` action
+submits the typed request through the common launcher. The tool's `describe` action returns
+the Operation guidance and request schema without executing it.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
@@ -75,7 +77,9 @@ The [common invocation envelope](../harness/admission.md#operation-execution-bou
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-The calling agent invokes it through its Skill, Pi projection or common launcher.
+The calling agent selects this Operation through the Pi `concorde` tool; its `run` action
+submits the typed request through the common launcher. The tool's `describe` action returns
+the Operation guidance and request schema without executing it.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
@@ -154,7 +158,9 @@ The [common invocation envelope](../harness/admission.md#operation-execution-bou
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-The calling agent invokes it through its Skill, Pi projection or common launcher.
+The calling agent selects this Operation through the Pi `concorde` tool; its `run` action
+submits the typed request through the common launcher. The tool's `describe` action returns
+the Operation guidance and request schema without executing it.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.

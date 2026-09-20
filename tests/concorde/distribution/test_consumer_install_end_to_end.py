@@ -16,7 +16,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.spec.contracts import SKILL_NAMES
 from concorde.spec.verification import verifies
 from tests.concorde.support.managed_runtime import (
     create_langgraph_index,
@@ -44,8 +43,6 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
                 str(REPOSITORY_ROOT / "scripts/install-concorde.py"),
                 "--target",
                 str(cls.target),
-                "--integration",
-                "claude",
                 "--apply",
                 "--format",
                 "json",
@@ -88,26 +85,24 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             ).is_file()
         )
 
-    @verifies(
-        "scenario.distribution.install-apply",
-        "scenario.distribution.install-skills-cli",
-    )
-    def test_public_skills_are_placed_by_the_skills_cli_not_owned_by_the_receipt(self):
-        skill_paths = {f".claude/skills/{name}/SKILL.md" for name in SKILL_NAMES}
-        self.assertEqual(11, len(skill_paths))
-        for relative in skill_paths:
-            self.assertTrue((self.target / relative).is_file(), relative)
-        self.assertTrue((self.target / "skills-lock.json").is_file())
-        receipt = json.loads(
-            (self.target / ".concorde/install.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(
-            set(),
-            {item["path"] for item in receipt["outputs"] if item["role"] == "skill"},
-        )
-        self.assertEqual(["claude"], receipt["integrations"])
-        self.assertEqual(["claude-code"], receipt["skills"]["agents"])
-        self.assertEqual("./.concorde/framework", receipt["skills"]["source"])
+    @verifies("scenario.distribution.install-pi-session")
+    def test_pi_entry_is_owned_and_no_skills_cli_outputs_exist(self):
+        entry = ".pi/extensions/concorde-session.ts"
+        self.assertTrue((self.target / entry).is_file())
+        for relative in (
+            ".claude",
+            ".agents",
+            "skills-lock.json",
+            ".concorde/framework/skills",
+        ):
+            self.assertFalse((self.target / relative).exists(), relative)
+        receipt = json.loads((self.target / ".concorde/install.json").read_text())
+        self.assertEqual("pi", receipt["client"])
+        self.assertEqual(2, receipt["schema_version"])
+        self.assertNotIn("skills", receipt)
+        self.assertNotIn("integrations", receipt)
+        self.assertIn(entry, {item["path"] for item in receipt["outputs"]})
+        self.assertTrue(self.install_payload["migration_notes"])
 
     @verifies("scenario.distribution.install-apply")
     def test_no_legacy_operation_tier_roots_are_installed(self):
@@ -118,12 +113,12 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             self.assertFalse((framework / legacy).exists(), legacy)
 
     @verifies("scenario.distribution.install-apply")
-    def test_consumer_claude_md_protocol_block_references_the_installed_protocol_copy(
+    def test_consumer_agents_md_protocol_block_references_the_installed_protocol_copy(
         self,
     ):
-        claude_md = (self.target / "CLAUDE.md").read_text(encoding="utf-8")
-        self.assertIn("concorde-protocol:start", claude_md)
-        self.assertIn("@.concorde/protocol/principles.md", claude_md)
+        agents_md = (self.target / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("concorde-protocol:start", agents_md)
+        self.assertIn("Read and follow `.concorde/protocol/principles.md`", agents_md)
         self.assertTrue((self.target / ".concorde/protocol/principles.md").is_file())
         self.assertTrue((self.target / ".concorde/protocol/manifest.json").is_file())
 

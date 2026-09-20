@@ -20,7 +20,7 @@ meaning and links to the included providers.
 | [Registry](module.md#terminology)                        | Defined in Concorde Framework.                 |
 | [Spec context](harness/context.md#terminology)           | Defined in What information a worker receives. |
 | [Implementation context](harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Skill](module.md#terminology)                           | Defined in Concorde Framework.                 |
+| [Pi integration](module.md#terminology)                  | Defined in Concorde Framework.                 |
 | [Issue](module.md#terminology)                           | Defined in Concorde Framework.                 |
 | [Blocker](module.md#terminology)                         | Defined in Concorde Framework.                 |
 | [Disposition](issues/lifecycle.md#terminology)           | Defined in Solving a recorded problem.         |
@@ -72,7 +72,7 @@ This collaboration applies when a developer works with recorded feedback.
 
 <a id="entity.concorde.distribution"></a><a id="agreement.document.concorde.module.5"></a>
 
-The [Distribution Module](distribution/module.md) owns Skill sources and shared invocation instructions, builds authored projections, installs and configures owned integrations, provisions the managed runtime and keeps a source checkout's own projections bound to the worktree that built them.
+The [Distribution Module](distribution/module.md) owns Operation guidance and Pi integration sources, builds authored projections, installs and configures owned integrations, provisions the managed runtime and keeps a source checkout's own projections bound to the worktree that built them.
 
 This collaboration applies when a project adopts, updates or configures the Framework, or when built assets must be current.
 

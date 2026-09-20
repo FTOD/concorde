@@ -30,7 +30,11 @@ class CreateWorktreeBuildsTests(unittest.TestCase):
         self.root.mkdir()
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
-        shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
+        shutil.copytree(
+            REPOSITORY_ROOT / "pi",
+            self.root / "pi",
+            ignore=shutil.ignore_patterns("node_modules", "__pycache__"),
+        )
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
         _git(self.root, "init", "-q", "-b", "main")
         _git(self.root, "add", "-A")
@@ -58,12 +62,15 @@ class CreateWorktreeBuildsTests(unittest.TestCase):
         )
         self.assertFalse((created / "generated").exists())
         self.assertFalse((created / ".agents/skills").exists())
+        self.assertFalse((created / ".claude/skills").exists())
+        self.assertFalse((created / ".pi/extensions/concorde-session.ts").exists())
+        self.assertFalse((created / "CLAUDE.md").exists())
         self.assertEqual("maintenance", read_change(created, required=True)["mode"])
         self.assertEqual({}, read_change(created, required=True)["guidance"])
 
     def test_worktree_creation_for_an_unrelated_project_does_not_attempt_a_build(self):
         # package_root differs from the project root being managed (the ordinary, non-self-hosted
-        # case): the created worktree is a "project" checkout with no prompts/skills of its own,
+        # case): the created worktree is a "project" checkout without a Framework build of its own,
         # and create_worktree must not try (and fail) to build it.
         from concorde.harness.change_worktree import create_worktree
 

@@ -122,11 +122,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("integration", observed["primary_branch"])
         self.assertIsNotNone(observed["change_id"])
         state = read_change(self.change, required=True)
-        for name in ("AGENTS.md", "CLAUDE.md"):
-            text = (self.change / name).read_text()
-            self.assertIn("initial working directory", text)
-            self.assertIn(str(self.primary), text)
-            self.assertEqual(1, text.count(GUIDANCE_START))
+        text = (self.change / "AGENTS.md").read_text()
+        self.assertIn("initial working directory", text)
+        self.assertIn(str(self.primary), text)
+        self.assertEqual(1, text.count(GUIDANCE_START))
+        self.assertEqual({"AGENTS.md": {"created": False}}, state["guidance"])
+        self.assertFalse((self.change / "CLAUDE.md").exists())
         unmanaged = self.directory / "unmanaged"
         git(self.primary, "worktree", "add", "-b", "another-change", str(unmanaged))
         result = self.call_operation(
@@ -254,8 +255,126 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before["blockers"], after["blockers"])
         self.assertTrue(after["blockers"])
 
+    @verifies("scenario.harness.worktree-guidance")
+    def test_new_guidance_preserves_existing_client_content_bytes_and_modes(self):
+        agents = self.change / "AGENTS.md"
+        agents.write_bytes(b"# User policy\r\nKeep these bytes.\r\n")
+        agents.chmod(0o751)
+        claude = self.change / "CLAUDE.md"
+        # Even a historical-looking block outside the saved ownership map is user content.
+        original = (
+            b"# User-owned legacy client file\r\n"
+            + (
+                GUIDANCE_START + "Historical text\n" + change_worktree.GUIDANCE_END
+            ).encode()
+        )
+        claude.write_bytes(original)
+        claude.chmod(0o740)
+        before = agents.read_bytes()
+        state = change_worktree.ensure_change(self.change, task=self.task)
+        self.assertEqual({"AGENTS.md": {"created": False}}, state["guidance"])
+        self.assertEqual(
+            before,
+            change_worktree.strip_guidance(agents.read_bytes().decode()).encode(),
+        )
+        self.assertEqual(0o751, agents.stat().st_mode & 0o777)
+        self.assertEqual(original, claude.read_bytes())
+        self.assertEqual(0o740, claude.stat().st_mode & 0o777)
+        tree = change_worktree.snapshot_tree(self.change)
+        self.assertEqual(original, self.tree_bytes(tree, "CLAUDE.md"))
+        self.assertEqual(before, self.tree_bytes(tree, "AGENTS.md"))
+        self.assertTrue(
+            git_value(self.change, "ls-tree", tree, "AGENTS.md").startswith("100755 ")
+        )
+
+    def tree_bytes(self, tree, path):
+        return subprocess.run(
+            ["git", "-C", str(self.change), "show", f"{tree}:{path}"],
+            capture_output=True,
+            check=True,
+        ).stdout
+
+    @verifies("scenario.harness.worktree-guidance")
+    def test_new_guidance_creates_only_agents_and_excludes_its_empty_shell(self):
+        (self.change / "AGENTS.md").unlink()
+        state = change_worktree.ensure_change(self.change, task=self.task)
+        self.assertEqual({"AGENTS.md": {"created": True}}, state["guidance"])
+        self.assertTrue((self.change / "AGENTS.md").exists())
+        self.assertFalse((self.change / "CLAUDE.md").exists())
+        tree = change_worktree.snapshot_tree(self.change)
+        self.assertEqual(
+            "", git_value(self.change, "ls-tree", tree, "AGENTS.md", "CLAUDE.md")
+        )
+
+    @verifies("scenario.harness.worktree-guidance")
+    def test_historical_guidance_admission_and_snapshot_preserve_ownership_and_bytes(
+        self,
+    ):
+        state = change_worktree.ensure_change(self.change, task=self.task)
+        claude = self.change / "CLAUDE.md"
+        prefix, suffix = b"# Original policy\r\n", b"\r\nUnrelated user text.\r\n"
+        block = (
+            GUIDANCE_START + "Old owned guidance\n" + change_worktree.GUIDANCE_END
+        ).encode()
+        for created, before, after in (
+            (False, prefix, suffix),
+            (True, b"", suffix),
+            (True, b"", b""),
+            (False, b"", b""),
+        ):
+            with self.subTest(created=created, before=before, after=after):
+                claude.write_bytes(before + block + after)
+                claude.chmod(0o751)
+                state["guidance"]["CLAUDE.md"] = {"created": created}
+                change_worktree.save_change(self.change, state)
+                saved = self.state_file().read_bytes()
+                index = git_value(self.change, "write-tree")
+                admitted = read_change(self.change, required=True)
+                self.assertEqual(state, admitted)
+                self.assertEqual(
+                    state, change_worktree.ensure_change(self.change, task=self.task)
+                )
+                tree = change_worktree.snapshot_tree(self.change)
+                if created and not before + after:
+                    self.assertEqual(
+                        "", git_value(self.change, "ls-tree", tree, "CLAUDE.md")
+                    )
+                else:
+                    self.assertEqual(before + after, self.tree_bytes(tree, "CLAUDE.md"))
+                    self.assertTrue(
+                        git_value(self.change, "ls-tree", tree, "CLAUDE.md").startswith(
+                            "100755 "
+                        )
+                    )
+                self.assertEqual(before + block + after, claude.read_bytes())
+                self.assertEqual(0o751, claude.stat().st_mode & 0o777)
+                self.assertEqual(saved, self.state_file().read_bytes())
+                self.assertEqual(index, git_value(self.change, "write-tree"))
+
+    @verifies("scenario.harness.worktree-guidance")
+    def test_ambiguous_historical_guidance_blocks_snapshot_without_mutation(self):
+        state = change_worktree.ensure_change(self.change, task=self.task)
+        claude = self.change / "CLAUDE.md"
+        block = (
+            GUIDANCE_START + "Old owned guidance\n" + change_worktree.GUIDANCE_END
+        ).encode()
+        claude.write_bytes(block + block)
+        state["guidance"]["CLAUDE.md"] = {"created": True}
+        change_worktree.save_change(self.change, state)
+        saved = self.state_file().read_bytes()
+        index = git_value(self.change, "write-tree")
+        with self.assertRaisesRegex(ValueError, "ambiguous"):
+            change_worktree.snapshot_tree(self.change)
+        self.assertEqual(block + block, claude.read_bytes())
+        self.assertEqual(saved, self.state_file().read_bytes())
+        self.assertEqual(index, git_value(self.change, "write-tree"))
+
+    @verifies("scenario.harness.worktree-guidance")
     def test_guidance_and_initial_state_rollback_together(self):
-        before = (self.change / "AGENTS.md").read_bytes()
+        agents = self.change / "AGENTS.md"
+        agents.write_bytes(b"# Existing policy\r\nKeep original newlines.\r\n")
+        agents.chmod(0o751)
+        before = agents.read_bytes()
         with patch.object(
             change_worktree,
             "write_status",
@@ -267,7 +386,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 {"target_id": "scope.bank", "task": "Explain transfer"},
             )
         self.assertNotEqual("succeeded", result["status"], result)
-        self.assertEqual(before, (self.change / "AGENTS.md").read_bytes())
+        self.assertEqual(before, agents.read_bytes())
+        self.assertEqual(0o751, agents.stat().st_mode & 0o777)
         self.assertFalse((self.change / "CLAUDE.md").exists())
         self.assertFalse(self.state_file().exists())
 
@@ -1399,7 +1519,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(fixture_report.status, "success")
         for directory in (
             "prompts",
-            "skills",
             "operations",
             "protocol",
             "scripts",
@@ -1427,6 +1546,20 @@ class WorktreeLifecycleTests(unittest.TestCase):
             self.assertNotEqual(root, self.primary)
             self.assertEqual(git_value(root, "rev-parse", "HEAD^{tree}"), tree)
             verify_fresh(root)
+            self.assertTrue(
+                (root / "generated/session/pi/concorde-session.ts").is_file()
+            )
+            for retired in (
+                "skills",
+                ".agents/skills",
+                ".claude/skills",
+                ".pi/extensions/concorde-session.ts",
+            ):
+                self.assertFalse((root / retired).exists(), retired)
+            self.assertEqual(
+                (PACKAGE / "prompts/operation-guidance/concorde-plan.md").read_bytes(),
+                (root / "prompts/operation-guidance/concorde-plan.md").read_bytes(),
+            )
             verified.append(root)
             return fixture_report
 

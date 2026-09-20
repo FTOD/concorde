@@ -22,7 +22,8 @@ Concorde helps developers agree on what software should do, execute changes with
 | Evidence             | A recorded check or review result tied to the inputs it examined, not a permanent guarantee about future revisions.                                                                                                                   |
 | State                | The declared data channels an Operation accepts and updates when invoked as a graph node. State carries task information and results, never execution authority.                                                                      |
 | Operation            | Concorde's only executable entity: a complete callable with an input State, output State updates, effects, use conditions and execution policy. It can run as a LangGraph node using deterministic code, a model or a compiled graph. |
-| Skill                | Instructions installed for a developer's agent client, Claude Code or Codex, to invoke a public Concorde operation. A Pi session reaches the same operations through the `concorde` tool its installed session extension registers.   |
+| Skill                | Retired standalone client instructions, retained here only as migration terminology; no Concorde Skill product or client projection is supported.                                                                                     |
+| Pi integration       | The exact Pi extension entry and embedded public Operation catalog, bound to the Framework implementation and launcher that supplied them.                                                                                            |
 | Worker               | One fresh bounded Operation execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                        |
 | Task subagent        | A fresh one-layer delegate of the user-facing main session, owning one complete task in one fixed worktree without further task delegation.                                                                                           |
 | Host                 | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results.                                                                                                                          |
@@ -45,8 +46,8 @@ the Module concerned explains them.
 The user-facing main session understands needs and coordinates. It may delegate complete tasks
 to one layer of fresh task subagents; simple consumer work may be edited directly in primary.
 Task delegation is not Operation composition and never overrides actual harness limits.
-Concorde source maintenance uses a fresh Skill-free candidate writer followed by a separate
-fresh sibling tester with only explicit candidate-built Skills; ordinary Git integration needs
+Concorde source maintenance uses a fresh Concorde-catalog-free candidate writer followed by a separate
+fresh sibling tester with only explicit candidate-built Pi entry/catalog and runtime provenance; ordinary Git integration needs
 explicit authorization and does not require Concorde delivery.
 
 The calling agent reads and selects the relevant complete Specs directly, answers questions, and
@@ -98,7 +99,7 @@ authority. Public/internal exposure changes entry availability, not this complet
 
 <a id="entity.concorde.developer"></a><a id="entity.concorde.protocol"></a>
 
-The Developer supplies intent and constraints through installed Skills or the Pi session tool. The independent Spec
+The Developer supplies intent and constraints through the Pi session tool. The independent Spec
 Protocol defines Module ownership, complete context and readable contracts: a Module's Spec pairs
 explanation-first Module Specs with precise Implementation Specs, which define its requirements and
 scenarios. A **Module owns a responsibility and its Spec**; it is not a synonym for an Operation.

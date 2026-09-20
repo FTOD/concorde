@@ -13,7 +13,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
 from typing_extensions import TypedDict
 
-from ..spec.contracts import SKILL_NAMES
+from ..spec.contracts import PUBLIC_OPERATIONS
 from ..spec.repository import SpecError
 from ..spec.typed_data import decode
 from .admission import finish_failed_operation_graph, operation_graph_nodes
@@ -52,7 +52,7 @@ def build_studio_graph(
     Hosts and event lists are fresh per invocation; only JSON enters checkpoints.
     The optional executor is a trusted, in-process test seam, never graph input.
     """
-    if operation not in SKILL_NAMES:
+    if operation not in PUBLIC_OPERATIONS:
         raise ValueError(f"Studio entry must be a public operation: {operation}")
     # Preserve the host's symlink-root rejection before normalizing identities.
     bound = OperationHost(project_root, package_root)

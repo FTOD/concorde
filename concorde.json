@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "name": "concorde",
   "version": "8.0.0",
   "description": "Concorde Framework: architecture-aware Specs, project understanding, agent observability with LangGraph Studio, explicit context and permissions, built-in agents, and branch-local Issues with bounded autonomous resolution",
@@ -9,8 +9,7 @@
   "architecture_profile": 15,
   "workspace_protocol": 16,
   "delivery_proposal": 10,
-  "skill_namespace": "concorde",
-  "format_lineage": "Skill and Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
+  "format_lineage": "Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
   "runtime": {
     "launcher": "scripts/run-operation.py",
     "python": ">=3.11",
@@ -30,18 +29,12 @@
     "prompts",
     "protocol",
     "scripts",
-    "skills",
     "src",
     "templates"
   ],
-  "integrations": [
-    "claude",
-    "codex",
-    "pi"
-  ],
   "install": {
     "framework_root": ".concorde/framework",
-    "receipt": ".concorde/install.json",
-    "skills_cli": "skills@1.7.0"
-  }
+    "receipt": ".concorde/install.json"
+  },
+  "client": "pi"
 }

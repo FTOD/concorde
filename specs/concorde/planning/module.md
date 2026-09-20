@@ -13,7 +13,7 @@ Planning checks whether a task is sufficiently specified, produces a plan and tu
 | [Candidate](../module.md#terminology)             | Defined in Concorde Framework.                            |
 | [Ready](../module.md#terminology)                 | Defined in Concorde Framework.                            |
 | [Host](../module.md#terminology)                  | Defined in Concorde Framework.                            |
-| [Skill](../module.md#terminology)                 | Defined in Concorde Framework.                            |
+| [Pi integration](../module.md#terminology)        | Defined in Concorde Framework.                            |
 | [Graph](../module.md#terminology)                 | Defined in Concorde Framework.                            |
 | [Task sufficiency](assessment.md#terminology)     | Defined in Is the specification sufficient for this task? |
 | [Acceptance task](tasks.md#terminology)           | Defined in Making work verifiable.                        |

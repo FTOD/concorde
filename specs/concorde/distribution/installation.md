@@ -6,29 +6,26 @@ step after installation.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| Installation | Placing and verifying the Framework-owned tools, instructions and runtime assets in a target project. |
-| Update | Refreshing the outputs recorded as owned by the installer, while preserving project-owned content. |
-| Installation receipt | A record of exactly which outputs the installer owns and which bytes it last installed. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                | Meaning / definition                                                                                  |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Installation                                        | Placing and verifying the Framework-owned tools, instructions and runtime assets in a target project. |
+| Update                                              | Refreshing the outputs recorded as owned by the installer, while preserving project-owned content.    |
+| Installation receipt                                | A record of exactly which outputs the installer owns and which bytes it last installed.               |
+| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization.                                                                    |
+| [Protocol binding](../spec/values.md#terminology)   | Defined in Identities and versions.                                                                   |
+| [Spec](../module.md#terminology)                    | Defined in Concorde Framework.                                                                        |
+| [Registry](../module.md#terminology)                | Defined in Concorde Framework.                                                                        |
 
 ## A normal installation
 
 Start by previewing the proposed installation into the intended project. Inspect the target and
 owned changes before applying. The installer deploys Framework tools and the Protocol copy,
-prepares the required runtime, and installs each chosen client's projection: for the Pi coding
-agent the session extension shim, for Claude Code and Codex the Skills, which it does not copy
-itself but has the Agent Skills CLI (`npx skills`, pinned by the package) place from the deployed
-framework copy, in that tool's own layout with its own `skills-lock.json`. Several clients may be
-chosen at once, and each gets its root instruction entry. The installer preserves project Specs,
-configuration and unrelated files. The Skills name the launcher with the ambient `python3`; once
-installed, the launcher runs itself inside the managed runtime, so that interpreter needs no
-Concorde dependencies. Then initialize the project's own registry and first Spec, and
+prepares the required runtime, and installs the Pi session extension shim and its `AGENTS.md`
+Protocol entry. Pi is the only supported client; the installer has no client-selection flag and
+rejects the retired `--integration` option. It neither installs public Skills nor invokes the
+Agent Skills CLI. The installer preserves project Specs, configuration and unrelated files.
+The internal launcher runs inside the verified managed runtime, so the bootstrap interpreter
+needs no Concorde dependencies. Then initialize the project's own registry and first Spec, and
 supply the business intent that the initial draft deliberately leaves unknown.
 
 For example, installing Concorde into a service does not mean Concorde knows that service's retry or
@@ -40,12 +37,17 @@ Spec authoring establishes the actual promises.
 An update compares the receipt with current bytes. A local change to an installer-owned output is a
 conflict, not permission to discard it. Project-owned content remains outside that replacement scope.
 A failed installation transaction attempts to recover its owned changes rather than present partial
-state as a completed installation. The Skills the Agent Skills CLI placed are not owned outputs:
-an update runs the CLI again so it refreshes them from the updated framework copy. Each run names
-the complete client selection; a client left out loses its root entry, while the Skills the CLI
-placed for it stay until you remove them with `npx skills remove`. A root file the installer
-created only to hold its entry disappears with that entry; a file you created keeps your text, or
-stays empty, and is never removed.
+state as a completed installation. Upgrading a legacy multi-client receipt removes only
+unchanged receipt-owned retired files and exact owned root blocks. Modified files or blocks,
+symlinks and stale previews conflict before writing. A root file the installer created solely
+for its entry disappears only when removing the entry leaves it empty; a user-created file stays.
+Unrelated files and all text outside the owned block remain unchanged.
+
+Skills previously placed by the external `npx skills` CLI, and its `skills-lock.json`, were never
+receipt-owned. The installer leaves them untouched and reports a manual migration notice in both
+text and JSON output. Inspect `.agents/skills` and `.claude/skills` and manually remove only retired
+Concorde entries you own. Do not delete those directories or the CLI lock wholesale, and do not run
+the retired CLI merely to install or upgrade Concorde. Empty legacy directories may remain.
 
 An installed Protocol update does not silently accept new rules for the project. Review any required
 Spec migration, then explicitly accept the new binding. This separates receiving software from agreeing

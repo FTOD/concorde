@@ -8,25 +8,25 @@ behavior.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition           |
+| --------------------------------------------------------- | ------------------------------ |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology)                     | Defined in Concorde Framework. |
+| [Public operation](../operations/module.md#terminology)   | Defined in Operations.         |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations.         |
+| [Worker](../module.md#terminology)                        | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology)                         | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology)                         | Defined in Concorde Framework. |
+| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework. |
+| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology)                      | Defined in Concorde Framework. |
 
 ## From request to result
 
 <a id="entity.harness.admission"></a>
 
-A developer invokes a public operation through its Skill, the Pi session tool or the common
+A developer invokes a public operation through the Pi session tool or the common
 launcher. Operation admission is the one boundary every such request crosses. It checks the
 operation, the request and the configuration, binds the invocation to the worktree it was started
 in, and only then hands the admitted request to the
@@ -48,7 +48,7 @@ input is rejected rather than applied to another change. Lifecycle status and du
 remain primary-owned and retain the candidate's provenance. A candidate carrying its own framework
 must already have a current build: relay verifies it rather than rebuilding. Source-primary mutation
 requests are refused, including requests naming a candidate; source maintenance uses a fresh
-Skill-free writer in an assigned candidate followed by a separate sibling tester.
+catalog-free writer in an assigned candidate followed by a separate sibling tester.
 
 ## Preparing a worker
 
@@ -79,7 +79,7 @@ runs independently admitted items one at a time and stops at the first that retu
 ## Observing a run
 
 Studio shows the same executable Graphs used by local invocations, along with stage and worker events.
-It is optional: normal CLI and Skill calls do not require the server. Policy preview shows the
+It is optional: normal CLI and Pi tool calls do not require the server. Policy preview shows the
 intended access without launching a worker. Replaying a run may execute effects again and does not
 waive current permission or lifecycle checks. Setup is described in the project Studio guide.
 

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
-import re
 import shutil
 import sys
 import tempfile
 import unittest
+from dataclasses import FrozenInstanceError, asdict
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,70 +15,32 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.distribution.build import (  # noqa: E402
-    PRIVATE_INTEGRATION_ROOTS as INTEGRATION_ROOTS,
-    INTEGRATION_ROOTS as AMBIENT_ROOTS,
+from concorde.distribution.build import (
     MODEL_ROOTS,
+    PUBLIC_OPERATIONS,
+    OPERATION_GUIDANCE,
     PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
     PI_SESSION_SHIM as INSTALLED_PI_SESSION_SHIM,
-    PUBLISHED_SKILLS_ROOT,
-    RETIRED_SKILL_NAMES,
-    SKILL_INTEGRATIONS,
-    SKILL_NAMES,
+    LEGACY_OPERATION_NAMES,
+    LEGACY_PROJECTION_ROOTS,
     BuildError,
+    ModelInstructions,
     build,
     check_build,
-    check_published_skills,
     load_model_instructions,
-    render_published_skills,
     verify_fresh,
     write_build,
-    write_published_skills,
 )
 from concorde.spec.verification import verifies  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
-# Retirement concerns Skill projections; the Pi shim is one file with no retired names.
-SKILL_ROOTS = tuple(INTEGRATION_ROOTS[name] for name in SKILL_INTEGRATIONS)
-_SOURCE_LINE = re.compile(r"(?m)^(\s*source:\s*).*$")
-
-
-def _normalize_source_line(text: str) -> str:
-    return _SOURCE_LINE.sub(lambda match: match.group(1) + '"NORMALIZED"', text)
 
 
 class BuildGoldenTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.result = build(REPOSITORY_ROOT, "all")
+        cls.result = build(REPOSITORY_ROOT)
         cls.by_path = {output.path: output for output in cls.result.outputs}
-
-    @verifies(
-        "scenario.distribution.build-render", "scenario.distribution.skills-publish"
-    )
-    def test_issue_guidance_returns_repairs_to_the_caller_without_a_removed_workflow(
-        self,
-    ):
-        for integration in SKILL_INTEGRATIONS:
-            body = self.by_path[
-                f"{INTEGRATION_ROOTS[integration]}/concorde-issues/SKILL.md"
-            ].content.decode()
-            self.assertIn(
-                "Solve returns needed implementation or Spec repair to the calling agent",
-                body,
-            )
-            self.assertIn("A return-to-caller result preserves the open Issue", body)
-            self.assertNotIn("Only solve starts development", body)
-            self.assertNotIn("Solve may use ordinary development", body)
-        published = next(
-            output
-            for output in render_published_skills(REPOSITORY_ROOT)
-            if output.path.endswith("concorde-issues/SKILL.md")
-        )
-        self.assertIn(
-            "Solve returns needed implementation or Spec repair to the calling agent",
-            published.content.decode(),
-        )
 
     @verifies("scenario.distribution.build-render")
     def test_golden_inventory_matches_current_projections(self):
@@ -86,19 +49,13 @@ class BuildGoldenTests(unittest.TestCase):
             for path in self.by_path
             if path.startswith("generated/agents/")
         }
-        for integration, prefix in INTEGRATION_ROOTS.items():
-            expected.update(
-                f"{integration}/{path.removeprefix(prefix + '/')}"
-                for path in self.by_path
-                if path.startswith(prefix + "/")
-            )
+        expected.add("pi/concorde-session.ts")
         actual = {
             path.relative_to(GOLDEN).as_posix()
             for path in GOLDEN.rglob("*")
             if path.is_file()
         }
         self.assertEqual(actual, expected)
-        self.assertFalse(set(RETIRED_SKILL_NAMES) & set(SKILL_NAMES))
 
     @verifies("scenario.distribution.build-render")
     def test_agent_bodies_match_golden_bytes_exactly(self):
@@ -109,110 +66,14 @@ class BuildGoldenTests(unittest.TestCase):
                     self.assertEqual(output.content, golden)
 
     @verifies("scenario.distribution.build-render")
-    def test_skill_projections_match_golden_modulo_source_line(self):
-        for integration, directory in (("claude", "claude"), ("codex", "codex")):
-            for name in SKILL_NAMES:
-                with self.subTest(integration=integration, skill=name):
-                    golden = (GOLDEN / directory / name / "SKILL.md").read_text(
-                        encoding="utf-8"
-                    )
-                    mine = self.by_path[
-                        f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md"
-                    ].content.decode("utf-8")
-                    self.assertEqual(
-                        _normalize_source_line(mine), _normalize_source_line(golden)
-                    )
-
-    def test_skill_source_line_names_the_skill_source(self):
-        for integration in ("claude", "codex"):
-            mine = self.by_path[
-                f"{INTEGRATION_ROOTS[integration]}/concorde-context-solve/SKILL.md"
-            ].content.decode("utf-8")
-            self.assertIn('source: "prompts/skills/concorde-context-solve.md"', mine)
-
-    @verifies(
-        "scenario.distribution.build-checkout-skills-user-invoked",
-        "scenario.distribution.skills-publish",
-    )
-    def test_checkout_claude_skills_are_user_invoked_while_published_ones_stay_neutral(
-        self,
-    ):
-        installed = build(
-            REPOSITORY_ROOT, "all", framework_prefix=".concorde/framework"
-        ).outputs
-        # An installed project gets no Skill projection from the build; the Agent Skills CLI
-        # installs the published Skills instead.
-        self.assertFalse(
-            any(output.path.startswith(SKILL_ROOTS) for output in installed)
-        )
-        self.assertTrue(
-            any(output.path == INSTALLED_PI_SESSION_SHIM for output in installed)
-        )
-        published = {
-            output.path: output for output in render_published_skills(REPOSITORY_ROOT)
-        }
-        self.assertEqual(
-            set(published),
-            {f"{PUBLISHED_SKILLS_ROOT}/{name}/SKILL.md" for name in SKILL_NAMES},
-        )
-        for name in SKILL_NAMES:
-            claude_path = f"{INTEGRATION_ROOTS['claude']}/{name}/SKILL.md"
-            codex_path = f"{INTEGRATION_ROOTS['codex']}/{name}/SKILL.md"
-            with self.subTest(skill=name):
-                checkout_claude = self.by_path[claude_path].content.decode("utf-8")
-                checkout_front, _, _ = checkout_claude.removeprefix("---\n").partition(
-                    "\n---\n"
-                )
-                self.assertIn("\nuser-invocable: true\n", "\n" + checkout_front + "\n")
-                self.assertIn(
-                    "\ndisable-model-invocation: true\n", "\n" + checkout_front + "\n"
-                )
-                self.assertIn(
-                    f"python3 scripts/run-operation.py {name}", checkout_claude
-                )
-                published_skill = published[
-                    f"{PUBLISHED_SKILLS_ROOT}/{name}/SKILL.md"
-                ].content.decode("utf-8")
-                published_front, _, _ = published_skill.removeprefix("---\n").partition(
-                    "\n---\n"
-                )
-                # One client-neutral rendering for every client the CLI installs it for: no
-                # client-specific invocation fields, the installed framework's launcher.
-                for field in (
-                    "user-invocable",
-                    "disable-model-invocation",
-                    "argument-hint",
-                ):
-                    self.assertNotIn(field, published_front)
-                self.assertIn(f"\nname: {name}\n", "\n" + published_front)
-                self.assertIn(f'source: "prompts/skills/{name}.md"', published_front)
-                self.assertIn(
-                    f"python3 .concorde/framework/scripts/run-operation.py {name}",
-                    published_skill,
-                )
-                self.assertIn("## Input TypedValue schema", published_skill)
-                codex_front, _, _ = (
-                    self.by_path[codex_path]
-                    .content.decode("utf-8")
-                    .removeprefix("---\n")
-                    .partition("\n---\n")
-                )
-                self.assertNotIn("user-invocable", codex_front)
-                self.assertNotIn("disable-model-invocation", codex_front)
-
-    @verifies("scenario.distribution.build-render")
-    def test_twenty_two_skills_seven_workers_and_one_langgraph_config(self):
-        skill_outputs = [
-            path
-            for path in self.by_path
-            if path.startswith(
-                ("generated/session/claude/", "generated/session/codex/")
-            )
+    def test_one_pi_catalog_seven_workers_and_one_langgraph_config(self):
+        session_outputs = [
+            p for p in self.by_path if p.startswith("generated/session/")
         ]
         agent_outputs = [
             path for path in self.by_path if path.startswith("generated/agents/")
         ]
-        self.assertEqual(len(skill_outputs), 22)
+        self.assertEqual(session_outputs, [PI_SESSION_SHIM])
         self.assertEqual(len(agent_outputs), 7)
         self.assertIn(PI_SESSION_SHIM, self.by_path)
         # One flat rendered file per worker, never a mode subdirectory.
@@ -224,11 +85,11 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertIn("generated/langgraph.json", self.by_path)
 
     @verifies("scenario.distribution.build-render")
-    def test_langgraph_config_names_one_graph_per_skill(self):
+    def test_langgraph_config_names_one_graph_per_operation(self):
 
         payload = json.loads(self.by_path["generated/langgraph.json"].content)
-        self.assertEqual(set(payload["graphs"]), set(SKILL_NAMES))
-        for name in SKILL_NAMES:
+        self.assertEqual(set(payload["graphs"]), set(PUBLIC_OPERATIONS))
+        for name in PUBLIC_OPERATIONS:
             self.assertEqual(
                 payload["graphs"][name],
                 f"./scripts/development/studio.py:{name.replace('-', '_')}",
@@ -262,27 +123,12 @@ class BuildGoldenTests(unittest.TestCase):
 class BuildDeterminismTests(unittest.TestCase):
     @verifies("scenario.distribution.build-render")
     def test_building_twice_yields_identical_bytes(self):
-        first = build(REPOSITORY_ROOT, "all")
-        second = build(REPOSITORY_ROOT, "all")
+        first = build(REPOSITORY_ROOT)
+        second = build(REPOSITORY_ROOT)
         self.assertEqual(first.manifest, second.manifest)
         first_by_path = {o.path: o.content for o in first.outputs}
         second_by_path = {o.path: o.content for o in second.outputs}
         self.assertEqual(first_by_path, second_by_path)
-
-    @verifies("scenario.distribution.build-render")
-    def test_integration_all_equals_the_union_of_every_integration(self):
-        all_result = build(REPOSITORY_ROOT, "all")
-        all_paths = {o.path: o.content for o in all_result.outputs}
-        projected = tuple(f"{prefix}/" for prefix in INTEGRATION_ROOTS.values())
-        seen = set()
-        for integration in INTEGRATION_ROOTS:
-            for output in build(REPOSITORY_ROOT, integration).outputs:
-                if output.path.startswith(projected):
-                    self.assertEqual(all_paths[output.path], output.content)
-                    seen.add(output.path)
-        self.assertEqual(
-            seen, {path for path in all_paths if path.startswith(projected)}
-        )
 
 
 class BuildCheckLifecycleTests(unittest.TestCase):
@@ -294,7 +140,6 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
-        shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
         shutil.copytree(
             REPOSITORY_ROOT / "src/concorde/spec",
@@ -304,19 +149,19 @@ class BuildCheckLifecycleTests(unittest.TestCase):
 
     @verifies("scenario.distribution.build-check", "scenario.distribution.build-write")
     def test_check_fails_before_build_and_passes_after(self):
-        current, differences = check_build(self.root, "all")
+        current, differences = check_build(self.root)
         self.assertFalse(current)
         self.assertIn("generated/build-manifest.json", differences)
 
-        write_build(self.root, "all")
-        current, differences = check_build(self.root, "all")
+        write_build(self.root)
+        current, differences = check_build(self.root)
         self.assertTrue(current)
         self.assertEqual(differences, ())
 
     @verifies("scenario.distribution.build-check")
     def test_check_fails_again_after_editing_a_prompt(self):
-        write_build(self.root, "all")
-        current, _ = check_build(self.root, "all")
+        write_build(self.root)
+        current, _ = check_build(self.root)
         self.assertTrue(current)
 
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
@@ -325,7 +170,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        current, differences = check_build(self.root, "all")
+        current, differences = check_build(self.root)
         self.assertFalse(current)
         self.assertTrue(differences)
 
@@ -334,302 +179,71 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         "scenario.distribution.build-stale-blocks-execution",
     )
     def test_independent_protocol_edit_invalidates_runtime_rule_projection(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         chapter = self.root / "protocol/principles.md"
         chapter.write_text(chapter.read_text() + "\nA changed standard.\n")
         with self.assertRaises(BuildError) as context:
             verify_fresh(self.root)
         self.assertEqual(context.exception.code, "stale_build")
-        current, differences = check_build(self.root, "all")
+        current, differences = check_build(self.root)
         self.assertFalse(current)
         self.assertIn("generated/protocol/principles.md", differences)
-
-    @verifies(
-        "scenario.distribution.skills-publish", "scenario.distribution.build-check"
-    )
-    def test_published_skills_are_checked_by_build_check_and_written_only_explicitly(
-        self,
-    ):
-        write_build(self.root, "all")
-        current, differences = check_published_skills(self.root)
-        self.assertTrue(current, differences)
-
-        # Every Skill source includes the invocation opener, so editing it changes all of them.
-        edited = self.root / "prompts/workflow-host/stdin-invocation-open.md"
-        edited.write_text(
-            edited.read_text(encoding="utf-8") + "One more sentence.\n",
-            encoding="utf-8",
-        )
-        before = {
-            path: path.read_bytes()
-            for path in (self.root / PUBLISHED_SKILLS_ROOT).rglob("SKILL.md")
-        }
-        write_build(self.root, "all")
-        # `build` refreshed generated/ and the client projections but left the tracked
-        # skills/ alone; check_build still reports them, naming the published paths.
-        self.assertEqual(
-            before,
-            {
-                path: path.read_bytes()
-                for path in (self.root / PUBLISHED_SKILLS_ROOT).rglob("SKILL.md")
-            },
-        )
-        current, differences = check_build(self.root, "all")
-        self.assertFalse(current)
-        self.assertTrue(
-            any(item.startswith(f"{PUBLISHED_SKILLS_ROOT}/") for item in differences),
-            differences,
-        )
-        outputs = write_published_skills(self.root)
-        self.assertEqual(len(outputs), len(SKILL_NAMES))
-        current, differences = check_build(self.root, "all")
-        self.assertTrue(current, differences)
-
-        retired = self.root / PUBLISHED_SKILLS_ROOT / "concorde-retired" / "SKILL.md"
-        retired.parent.mkdir()
-        retired.write_text("---\nname: concorde-retired\n---\n", encoding="utf-8")
-        current, differences = check_published_skills(self.root)
-        self.assertEqual(
-            (current, differences),
-            (False, (f"{PUBLISHED_SKILLS_ROOT}/concorde-retired/SKILL.md",)),
-        )
-
-    @verifies("scenario.distribution.skills-publish")
-    def test_publish_retires_review_only_after_safe_preflight(self):
-        retired = self.root / PUBLISHED_SKILLS_ROOT / "concorde-review"
-        retired.mkdir()
-        (retired / "SKILL.md").write_text("Old combined review\n")
-        extra = retired / "notes.md"
-        extra.write_text("Preserve user content\n")
-        live = self.root / PUBLISHED_SKILLS_ROOT / "concorde-spec-review" / "SKILL.md"
-        live.write_text("Not yet refreshed\n")
-        with self.assertRaisesRegex(BuildError, "unexpected retired skill content"):
-            write_published_skills(self.root)
-        self.assertEqual("Not yet refreshed\n", live.read_text())
-        self.assertTrue(extra.exists())
-        extra.unlink()
-        unknown = self.root / PUBLISHED_SKILLS_ROOT / "concorde-unrelated"
-        unknown.mkdir()
-        (unknown / "SKILL.md").write_text("Unrelated Skill\n")
-        write_published_skills(self.root)
-        self.assertFalse(retired.exists())
-        self.assertEqual("Unrelated Skill\n", (unknown / "SKILL.md").read_text())
-        self.assertIn("concorde-spec-review", live.read_text())
-        write_published_skills(self.root)
-        self.assertFalse(retired.exists())
 
     @verifies("scenario.distribution.build-check")
     def test_check_never_writes_under_generated_or_the_skill_roots(self):
         self.assertFalse((self.root / "generated").exists())
         self.assertFalse((self.root / ".claude").exists())
         self.assertFalse((self.root / ".agents").exists())
-        check_build(self.root, "all")
+        check_build(self.root)
         self.assertFalse((self.root / "generated").exists())
         self.assertFalse((self.root / ".claude").exists())
         self.assertFalse((self.root / ".agents").exists())
 
     @verifies("scenario.distribution.build-check")
     def test_check_ignores_a_third_party_skill_directory(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         other = self.root / ".claude/skills/example-third-party"
         other.mkdir(parents=True)
         (other / "SKILL.md").write_text(
             "unrelated third-party skill\n", encoding="utf-8"
         )
-        current, differences = check_build(self.root, "all")
+        current, differences = check_build(self.root)
         self.assertTrue(current)
         self.assertEqual(differences, ())
-
-    @verifies(
-        "scenario.distribution.build-retired-skills",
-        "scenario.distribution.build-check",
-    )
-    def test_retired_skills_are_reported_then_removed_without_a_manifest_entry(self):
-        write_build(self.root)
-        retired = []
-        for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
-            for name in RETIRED_SKILL_NAMES:
-                directory = self.root / prefix / name
-                directory.mkdir(parents=True)
-                (directory / "SKILL.md").write_text("old generated projection\n")
-                retired.append(directory)
-            for name in ("example-third-party", "concorde-custom"):
-                directory = self.root / prefix / name
-                directory.mkdir()
-                (directory / "SKILL.md").write_text("unowned skill\n")
-        before = {
-            directory: (directory / "SKILL.md").read_bytes() for directory in retired
-        }
-        current, differences = check_build(self.root)
-        self.assertFalse(current)
-        self.assertEqual(
-            set(differences),
-            {directory.relative_to(self.root).as_posix() for directory in retired},
-        )
-        for directory, content in before.items():
-            self.assertEqual((directory / "SKILL.md").read_bytes(), content)
-        write_build(self.root)
-        self.assertTrue(all(not directory.exists() for directory in retired))
-        for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
-            for name in ("example-third-party", "concorde-custom"):
-                self.assertEqual(
-                    (self.root / prefix / name / "SKILL.md").read_text(),
-                    "unowned skill\n",
-                )
-        self.assertEqual(check_build(self.root), (True, ()))
-        # A second build is a no-op, including retired directories.
-        first = write_build(self.root)
-        second = write_build(self.root)
-        self.assertEqual(first.manifest, second.manifest)
-
-    @verifies("scenario.distribution.build-retired-skills")
-    def test_retirement_uses_selected_integration_and_separate_destination(self):
-        with tempfile.TemporaryDirectory() as raw_destination:
-            destination = Path(raw_destination)
-            for base in (self.root, destination):
-                for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
-                    directory = base / prefix / RETIRED_SKILL_NAMES[0]
-                    directory.mkdir(parents=True)
-                    (directory / "SKILL.md").write_text("old projection\n")
-            write_build(
-                self.root,
-                "claude",
-                integration_root=destination,
-                framework_prefix=".concorde/framework",
-            )
-            self.assertFalse(
-                (
-                    destination / AMBIENT_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
-                ).exists()
-            )
-            self.assertTrue(
-                (destination / AMBIENT_ROOTS["codex"] / RETIRED_SKILL_NAMES[0]).exists()
-            )
-            for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
-                self.assertTrue((self.root / prefix / RETIRED_SKILL_NAMES[0]).exists())
-
-    @verifies("scenario.distribution.build-retired-skills")
-    def test_retirement_removes_an_empty_directory(self):
-        directory = self.root / AMBIENT_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
-        directory.mkdir(parents=True)
-        write_build(self.root)
-        self.assertFalse(directory.exists())
-
-    @verifies("scenario.distribution.build-retired-skills")
-    def test_retirement_preflights_all_directories_before_deleting_or_writing(self):
-        write_build(self.root)
-        manifest = (self.root / "generated/build-manifest.json").read_bytes()
-        directories = []
-        for prefix in (AMBIENT_ROOTS[client] for client in SKILL_INTEGRATIONS):
-            directory = self.root / prefix / RETIRED_SKILL_NAMES[0]
-            directory.mkdir(parents=True)
-            (directory / "SKILL.md").write_text("old projection\n")
-            directories.append(directory)
-        unexpected = directories[-1] / "user-notes.txt"
-        unexpected.write_text("preserve me\n")
-        # Make the next render different to detect an early manifest/output write.
-        source = self.root / "prompts/workflow-host/gap-reporting.md"
-        source.write_text(source.read_text() + "\nChanged instructions.\n")
-        with self.assertRaisesRegex(BuildError, "unexpected retired skill content"):
-            write_build(self.root)
-        self.assertEqual(unexpected.read_text(), "preserve me\n")
-        for directory in directories:
-            self.assertEqual((directory / "SKILL.md").read_text(), "old projection\n")
-        self.assertEqual(
-            (self.root / "generated/build-manifest.json").read_bytes(), manifest
-        )
-
-    @verifies("scenario.distribution.build-retired-skills")
-    def test_retirement_refuses_symlinks_and_non_directories(self):
-        with tempfile.TemporaryDirectory() as raw_outside:
-            outside = Path(raw_outside)
-            (outside / "SKILL.md").write_text("outside instructions\n")
-            directory = self.root / AMBIENT_ROOTS["claude"] / RETIRED_SKILL_NAMES[0]
-            directory.parent.mkdir(parents=True)
-            for kind in (
-                "directory-link",
-                "file-link",
-                "dangling-link",
-                "regular-file",
-            ):
-                with self.subTest(kind=kind):
-                    if kind == "directory-link":
-                        directory.symlink_to(outside, target_is_directory=True)
-                    elif kind == "regular-file":
-                        directory.write_text("not a directory\n")
-                    else:
-                        directory.mkdir()
-                        target = outside / (
-                            "SKILL.md" if kind == "file-link" else "missing"
-                        )
-                        (directory / "SKILL.md").symlink_to(target)
-                    current, differences = check_build(self.root)
-                    self.assertFalse(current)
-                    self.assertIn(
-                        directory.relative_to(self.root).as_posix(), differences
-                    )
-                    with self.assertRaises(BuildError):
-                        write_build(self.root)
-                    self.assertFalse((self.root / "generated").exists())
-                    self.assertEqual(
-                        (outside / "SKILL.md").read_text(), "outside instructions\n"
-                    )
-                    if directory.is_symlink() or directory.is_file():
-                        directory.unlink()
-                    else:
-                        (directory / "SKILL.md").unlink()
-                        directory.rmdir()
-
-    @verifies("scenario.distribution.build-retired-skills")
-    def test_retirement_refuses_symlinked_integration_ancestors(self):
-        with tempfile.TemporaryDirectory() as raw_outside:
-            outside = Path(raw_outside)
-            for relative in (".claude", ".claude/skills"):
-                with self.subTest(relative=relative):
-                    link = self.root / relative
-                    link.parent.mkdir(parents=True, exist_ok=True)
-                    link.symlink_to(outside, target_is_directory=True)
-                    with self.assertRaisesRegex(
-                        BuildError, "skill output directory is a symlink"
-                    ):
-                        write_build(self.root)
-                    self.assertEqual(list(outside.iterdir()), [])
-                    self.assertFalse((self.root / "generated").exists())
-                    link.unlink()
 
     @verifies("scenario.distribution.build-check")
     def test_check_ignores_an_unrelated_file_under_generated(self):
         """`generated/` is a shared, ignored root; a file another tool writes there (for example
         the legacy initializer's diagram renders under `generated/architecture/`) is not a
         build-owned location and must never be reported as drift."""
-        write_build(self.root, "all")
+        write_build(self.root)
         other = self.root / "generated/architecture"
         other.mkdir(parents=True)
         (other / "example.html").write_text(
             "unrelated diagram render\n", encoding="utf-8"
         )
-        current, differences = check_build(self.root, "all")
+        current, differences = check_build(self.root)
         self.assertTrue(current)
         self.assertEqual(differences, ())
 
     @verifies("scenario.distribution.build-check")
     def test_check_reports_an_unexpected_file_in_an_owned_directory(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         (self.root / "generated/agents/extra.md").write_text(
             "not a build output\n", encoding="utf-8"
         )
-        current, differences = check_build(self.root, "all")
+        current, differences = check_build(self.root)
         self.assertFalse(current)
         self.assertIn("generated/agents/extra.md", differences)
 
     @verifies("scenario.distribution.build-check")
     def test_check_reports_a_modified_owned_file(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         target = self.root / "generated/agents/planner.md"
         target.write_text(
             target.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8"
         )
-        current, differences = check_build(self.root, "all")
+        current, differences = check_build(self.root)
         self.assertFalse(current)
         self.assertIn("generated/agents/planner.md", differences)
 
@@ -641,7 +255,6 @@ class BuildFreshnessTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
-        shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
         shutil.copytree(
             REPOSITORY_ROOT / "src/concorde/spec",
@@ -656,12 +269,12 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertEqual(failure.exception.code, "stale_build")
 
     def test_verify_fresh_passes_immediately_after_build(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         verify_fresh(self.root)  # must not raise
 
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_after_editing_a_recorded_source(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "Changed.\n", encoding="utf-8"
@@ -672,7 +285,7 @@ class BuildFreshnessTests(unittest.TestCase):
 
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_role_and_python_contract_edits_both_invalidate_build(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         for relative in (
             "operations/programmer/spec.md",
             "operations/programmer/__init__.py",
@@ -688,7 +301,7 @@ class BuildFreshnessTests(unittest.TestCase):
 
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_when_a_recorded_source_is_gone(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         (self.root / "prompts/workflow-host/gap-reporting.md").unlink()
         with self.assertRaises(BuildError) as failure:
             verify_fresh(self.root)
@@ -696,10 +309,10 @@ class BuildFreshnessTests(unittest.TestCase):
 
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         prompt = load_model_instructions(self.root, "concorde-planner")
         self.assertEqual(prompt.name, "concorde-planner")
-        self.assertEqual(prompt.kind, "skill")
+        self.assertIs(type(prompt), ModelInstructions)
         self.assertIsNotNone(prompt.effects)
         self.assertTrue(prompt.body.strip())
         self.assertIsNotNone(prompt.binding)
@@ -715,8 +328,108 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertEqual(failure.exception.code, "stale_build")
 
     @verifies("scenario.distribution.load-agent")
+    def test_worker_instruction_records_retain_every_field_and_binding_digest(self):
+        from concorde.harness.worker_profile import (
+            binding_digest,
+            binding_from_json,
+            binding_json,
+            profile_digest,
+            worker_profile,
+        )
+
+        def digest(content):
+            return "sha256:" + hashlib.sha256(content).hexdigest()
+
+        write_build(self.root)
+        for name in MODEL_ROOTS:
+            with self.subTest(worker=name):
+                prompt = load_model_instructions(self.root, name)
+                profile = worker_profile(name)
+                binding = prompt.binding
+                self.assertIs(type(prompt), ModelInstructions)
+                self.assertEqual(
+                    {
+                        "name",
+                        "description",
+                        "source_path",
+                        "body",
+                        "effects",
+                        "binding",
+                    },
+                    set(asdict(prompt)),
+                )
+                self.assertEqual("concorde-" + name, prompt.name)
+                self.assertEqual(f"Concorde {name} agent.", prompt.description)
+                self.assertEqual(profile.spec, prompt.source_path)
+                self.assertEqual(profile.contract.effects, prompt.effects)
+                self.assertEqual(profile.name, binding.agent)
+                self.assertEqual(profile.spec, binding.spec_path)
+                self.assertEqual(
+                    f"generated/agents/{name}.md", binding.instructions_path
+                )
+                self.assertEqual(
+                    (self.root / binding.instructions_path).read_text(), prompt.body
+                )
+                self.assertEqual(
+                    digest((self.root / profile.spec).read_bytes()), binding.spec_digest
+                )
+                self.assertEqual(
+                    digest(prompt.body.encode()), binding.instructions_digest
+                )
+                self.assertEqual(
+                    profile_digest(self.root, profile), binding.profile_digest
+                )
+                self.assertEqual(
+                    digest((self.root / "generated/build-manifest.json").read_bytes()),
+                    binding.build_manifest_digest,
+                )
+                self.assertEqual(profile.timeout_seconds, binding.timeout_seconds)
+                self.assertEqual(binding_digest(binding), binding.digest)
+                self.assertEqual(binding, binding_from_json(binding_json(binding)))
+                self.assertEqual(
+                    {
+                        "agent",
+                        "spec_path",
+                        "spec_digest",
+                        "instructions_path",
+                        "instructions_digest",
+                        "profile_digest",
+                        "build_manifest_digest",
+                        "timeout_seconds",
+                        "digest",
+                    },
+                    set(asdict(binding)),
+                )
+                with self.assertRaises(FrozenInstanceError):
+                    prompt.body = "replacement"
+
+    @verifies("scenario.distribution.load-agent")
+    def test_retired_instruction_wrapper_is_not_a_constructor_alias(self):
+        from concorde.distribution import build as build_module
+
+        write_build(self.root)
+        prompt = load_model_instructions(self.root, "planner")
+        self.assertFalse(hasattr(build_module, "SkillPrompt"))
+        self.assertFalse(hasattr(prompt, "kind"))
+        fields = {key: getattr(prompt, key) for key in asdict(prompt)}
+        self.assertEqual(prompt, ModelInstructions(**fields))
+        with self.assertRaises(TypeError):
+            ModelInstructions(**fields, kind="skill")
+        for required in ("effects", "binding"):
+            with self.subTest(required=required), self.assertRaises(TypeError):
+                ModelInstructions(**{k: v for k, v in fields.items() if k != required})
+
+    @verifies("scenario.distribution.load-agent")
+    def test_public_catalog_entries_do_not_imply_worker_instructions(self):
+        write_build(self.root)
+        for name in PUBLIC_OPERATIONS:
+            with self.subTest(operation=name), self.assertRaises(BuildError) as failure:
+                load_model_instructions(self.root, name)
+            self.assertEqual("unknown_agent", failure.exception.code)
+
+    @verifies("scenario.distribution.load-agent")
     def test_load_agent_accepts_underscore_and_hyphenated_names(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         by_external = load_model_instructions(self.root, "concorde-planner")
         by_underscore = load_model_instructions(self.root, "planner")
         self.assertEqual(by_external.body, by_underscore.body)
@@ -724,7 +437,7 @@ class BuildFreshnessTests(unittest.TestCase):
 
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_accepts_a_hyphenated_multiword_agent_name(self):
-        write_build(self.root, "all")
+        write_build(self.root)
         by_external = load_model_instructions(self.root, "concorde-code-reviewer")
         by_underscore = load_model_instructions(self.root, "code_reviewer")
         self.assertEqual(by_external.body, by_underscore.body)
@@ -742,7 +455,7 @@ class WireHelperBuildTests(unittest.TestCase):
     def test_wire_helper_change_invalidates_and_rebuilds_actual_schema_outputs(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
-            for directory in ("prompts", "protocol", "skills", "operations"):
+            for directory in ("prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(
                 REPOSITORY_ROOT / "src/concorde/spec",
@@ -846,44 +559,29 @@ class WireHelperBuildTests(unittest.TestCase):
                 self.assertNotEqual(before[schema_path], schema)
                 self.assertIn("Fixture helper schema change", schema.decode())
                 verify_fresh(root)
-                # The published Skills embed the request schemas too; the tracked copy is
-                # refreshed by the explicit publish step, never by `build`.
-                current, differences = check_build(root)
-                self.assertFalse(current)
-                self.assertTrue(
-                    all(
-                        item.startswith(f"{PUBLISHED_SKILLS_ROOT}/")
-                        for item in differences
-                    ),
-                    differences,
-                )
-                write_published_skills(root)
                 self.assertEqual((True, ()), check_build(root))
                 self.assertEqual(rebuilt, build(root))
 
 
 class BuildErrorTests(unittest.TestCase):
-    def test_unbound_variable_in_a_skill_source_fails_the_build(self):
+    def test_unbound_variable_in_operation_guidance_fails_the_build(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts")
             shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol")
-            shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
-            main = root / "prompts/skills/concorde-context-solve.md"
+            main = root / "prompts/operation-guidance/concorde-context-solve.md"
             main.write_text(
                 main.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n",
                 encoding="utf-8",
             )
             with self.assertRaises(BuildError):
-                build(root, "all")
-            with self.assertRaises(BuildError):
-                render_published_skills(root)
+                build(root)
 
     def test_broken_schema_helper_fails_the_build_with_build_error(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "operations"):
+            for directory in ("prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(
                 REPOSITORY_ROOT / "src/concorde/spec",
@@ -910,7 +608,7 @@ class BuildErrorTests(unittest.TestCase):
     ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "operations"):
+            for directory in ("prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(
                 REPOSITORY_ROOT / "src/concorde/spec",
@@ -940,12 +638,12 @@ class BuildErrorTests(unittest.TestCase):
                 )
             )
 
-    def test_root_inventory_missing_a_skill_request_schema_fails_the_build_with_build_error(
+    def test_root_inventory_missing_an_operation_request_schema_fails_the_build_with_build_error(
         self,
     ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "operations"):
+            for directory in ("prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(
                 REPOSITORY_ROOT / "src/concorde/spec",
@@ -972,6 +670,131 @@ class BuildErrorTests(unittest.TestCase):
                 self.assertEqual("invalid_build", failure.exception.code)
                 self.assertIn("concorde-context-solve-request", str(failure.exception))
             self.assertFalse((root / "generated").exists())
+
+
+class PiOnlyBuildSafetyTests(unittest.TestCase):
+    """Pi inventory and explicit legacy ownership are independent of client selectors."""
+
+    setUp = BuildCheckLifecycleTests.setUp
+
+    def legacy(self, relative, content=b"old generated bytes\n"):
+        import hashlib
+
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        manifest_path = self.root / "generated/build-manifest.json"
+        manifest = json.loads(manifest_path.read_bytes())
+        manifest["outputs"][relative] = {
+            "sha256": "sha256:" + hashlib.sha256(content).hexdigest(),
+            "sources": [],
+        }
+        manifest_path.write_text(json.dumps(manifest))
+        return path
+
+    @verifies(
+        "scenario.distribution.build-checkout-skills-user-invoked",
+        "scenario.distribution.build-retired-skills",
+    )
+    def test_known_legacy_outputs_retire_by_digest_and_preserve_external_content(self):
+        write_build(self.root)
+        retired = [
+            self.legacy(f"{prefix}/{name}/SKILL.md")
+            for prefix in LEGACY_PROJECTION_ROOTS
+            for name in LEGACY_OPERATION_NAMES
+        ]
+        retired.append(self.legacy(INSTALLED_PI_SESSION_SHIM))
+        neighbor = self.root / ".agents/skills/concorde-custom/SKILL.md"
+        neighbor.parent.mkdir(parents=True)
+        neighbor.write_text("external CLI-owned bytes\n")
+        lock = self.root / "skills-lock.json"
+        lock.write_text("external lock\n")
+        self.assertFalse(check_build(self.root)[0])
+        write_build(self.root)
+        self.assertTrue(all(not p.exists() for p in retired))
+        self.assertEqual("external CLI-owned bytes\n", neighbor.read_text())
+        self.assertEqual("external lock\n", lock.read_text())
+        self.assertEqual((True, ()), check_build(self.root))
+        self.assertFalse((self.root / "generated/session/codex").exists())
+        self.assertFalse((self.root / "generated/session/claude").exists())
+        self.assertFalse((self.root / ".pi").exists())
+
+    @verifies("scenario.distribution.build-retired-skills")
+    def test_retirement_preflights_all_paths_and_preserves_unverified_bytes(self):
+        for defect in (
+            "modified",
+            "extra",
+            "link",
+            "unknown",
+            "ancestor",
+            "destination-link",
+        ):
+            with self.subTest(defect=defect), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                from tests.concorde.support.build_fixture import build_package_copy
+
+                build_package_copy(root)
+                old_root = self.root
+                self.root = root
+                try:
+                    old = self.legacy("generated/session/codex/concorde-plan/SKILL.md")
+                    other = self.legacy(
+                        "generated/session/claude/concorde-plan/SKILL.md"
+                    )
+                    if defect == "modified":
+                        other.write_text("user edit")
+                    elif defect == "extra":
+                        (other.parent / "notes").write_text("user data")
+                    elif defect == "link":
+                        other.unlink()
+                        other.symlink_to(old)
+                    elif defect == "unknown":
+                        (root / "generated/agents/unknown.md").write_text("user data")
+                    elif defect == "ancestor":
+                        other.unlink()
+                        other.parent.rmdir()
+                        other.parent.symlink_to(old.parent, target_is_directory=True)
+                    else:
+                        dest = root / PI_SESSION_SHIM
+                        dest.unlink()
+                        dest.symlink_to(old)
+                    manifest = (root / "generated/build-manifest.json").read_bytes()
+                    with self.assertRaises(BuildError):
+                        write_build(root)
+                    self.assertEqual(b"old generated bytes\n", old.read_bytes())
+                    self.assertEqual(
+                        manifest, (root / "generated/build-manifest.json").read_bytes()
+                    )
+                finally:
+                    self.root = old_root
+
+    @verifies("scenario.distribution.build-retired-skills")
+    def test_known_ambient_name_without_manifest_ownership_is_never_adopted(self):
+        write_build(self.root)
+        path = self.root / ".agents/skills/concorde-plan/SKILL.md"
+        path.parent.mkdir(parents=True)
+        path.write_text("external CLI owns this")
+        with self.assertRaisesRegex(BuildError, "unowned or modified"):
+            write_build(self.root)
+        self.assertEqual("external CLI owns this", path.read_text())
+
+    @verifies("scenario.distribution.build-render")
+    def test_retired_cli_and_python_selectors_are_rejected(self):
+        from concorde.distribution.cli import create_parser
+
+        for args in (
+            ["skills", "--write"],
+            ["skills", "--check"],
+            ["build", "--integration", "pi"],
+            ["build", "--integration", "all"],
+        ):
+            with self.subTest(args=args), self.assertRaises(SystemExit):
+                create_parser().parse_args(args)
+        for function in (build, check_build, write_build):
+            with self.assertRaises(TypeError):
+                function(self.root, "pi")
+        self.assertEqual(11, len(OPERATION_GUIDANCE))
+        self.assertEqual(set(PUBLIC_OPERATIONS), set(OPERATION_GUIDANCE))
 
 
 if __name__ == "__main__":

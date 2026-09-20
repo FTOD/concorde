@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import os
 import re
+import stat
 import subprocess
 import tempfile
 import threading
@@ -46,7 +47,9 @@ LOCAL_PATHS = (
 )
 GUIDANCE_START = "\n<!-- concorde-change-worktree:start -->\n"
 GUIDANCE_END = "<!-- concorde-change-worktree:end -->\n"
-GUIDANCE_FILES = ("AGENTS.md", "CLAUDE.md")
+GUIDANCE_FILES = ("AGENTS.md",)
+# Historical status retains its original ownership map; this is admission, not creation.
+HISTORICAL_GUIDANCE_FILES = ("AGENTS.md", "CLAUDE.md")
 
 
 def git(
@@ -427,7 +430,7 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             "worktree state belongs to a different branch or primary worktree",
             "workspace_mismatch",
         )
-    if set(state["guidance"]) - set(GUIDANCE_FILES):
+    if set(state["guidance"]) - set(HISTORICAL_GUIDANCE_FILES):
         raise SpecError(
             "worktree guidance names an unsupported file", "invalid_worktree_state"
         )
@@ -558,7 +561,7 @@ def _guidance_changes(root: Path, state: dict) -> list[dict]:
     changes = []
     for relative in GUIDANCE_FILES:
         path = checked_path(root, relative)
-        before = path.read_text() if path.exists() else ""
+        before = path.read_bytes().decode("utf-8") if path.exists() else ""
         state["guidance"][relative] = {"created": not path.exists()}
         changes.append(file_change(root, relative, strip_guidance(before) + block))
     return changes
@@ -678,12 +681,34 @@ def ensure_change(
             _guidance_changes(root, state) if secondary and mode == "operation" else []
         )
         if changes:
-            apply_files(
-                root,
-                changes,
-                {item["path"] for item in changes},
-                verify=lambda: write_status(root, state, create=True),
-            )
+            # The generic text transaction replaces files using private temporary modes.
+            # Guidance is appended to user-owned files: retain their modes on success and
+            # after rollback, just as the transaction retains their original bytes.
+            modes = {
+                item["path"]: stat.S_IMODE(
+                    checked_path(root, item["path"]).stat().st_mode
+                )
+                for item in changes
+                if item["before_digest"] is not None
+            }
+
+            def restore_modes():
+                for relative, mode in modes.items():
+                    checked_path(root, relative).chmod(mode)
+
+            def register():
+                restore_modes()
+                write_status(root, state, create=True)
+
+            try:
+                apply_files(
+                    root,
+                    changes,
+                    {item["path"] for item in changes},
+                    verify=register,
+                )
+            finally:
+                restore_modes()
         else:
             write_status(root, state, create=True)
         _inventory(root, persist=True)
@@ -759,7 +784,7 @@ def create_worktree(
         change_id=change_id,
         mode="maintenance" if maintenance else "operation",
     )
-    # A source candidate is built by its fresh Skill-free writer using its own
+    # A source candidate is built by its fresh Concorde-catalog-free writer using its own
     # launcher. Never render candidate outputs with the primary's Python module.
     return {
         "path": str(directory),
@@ -1215,7 +1240,7 @@ def snapshot_tree(root: Path, state: dict | None = None) -> str | None:
             path = checked_path(root, relative)
             if not path.exists():
                 continue
-            before = path.read_text()
+            before = path.read_bytes().decode("utf-8")
             clean = strip_guidance(before)
             if metadata["created"] and not clean:
                 git(root, "update-index", "--force-remove", "--", relative, env=env)

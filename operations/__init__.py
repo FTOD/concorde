@@ -4,7 +4,7 @@ Every entry declares PUBLIC, CONTEXT_SELECTION, DETERMINISTIC, USES, STATE and
 run(state, runtime). PROFILE is optional model execution configuration, not a second identity.
 An Operation may implement a deterministic node, a model node or a composed graph. All
 composition names entries in this inventory; no separate AGENTS registry or call relation exists.
-Public Skill/wire adapters are separate from the State interface and preserve existing envelopes.
+Public Pi tool/wire adapters are separate from the State interface and preserve existing envelopes.
 """
 
 from __future__ import annotations

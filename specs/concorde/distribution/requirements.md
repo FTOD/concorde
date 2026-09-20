@@ -5,14 +5,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| Term                                                | Meaning / definition                         |
+| --------------------------------------------------- | -------------------------------------------- |
+| [Pi integration](../module.md#terminology)          | Defined in Concorde Framework.               |
+| [Installation](installation.md#terminology)         | Defined in Installing and updating Concorde. |
+| [Update](installation.md#terminology)               | Defined in Installing and updating Concorde. |
 | [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| [Protocol binding](../spec/values.md#terminology)   | Defined in Identities and versions.          |
+| [Worktree](../module.md#terminology)                | Defined in Concorde Framework.               |
 
 ## Distribution
 
@@ -41,17 +41,17 @@ Every build invocation SHALL operate only on the worktree containing its named s
 
 Build SHALL NOT point one worktree's build at another worktree's outputs.
 
-### req.distribution.checkout-skills-user-invoked — Source-checkout Skills wait for the developer
+### req.distribution.checkout-skills-user-invoked — Source-checkout Pi entry waits for the developer
 
-Build SHALL render source-checkout Skills and the Pi shim only under private `generated/session/` paths, never ambient client discovery directories.
+Build SHALL render the source-checkout Pi entry only under private `generated/session/pi/`, never ambient client discovery directories or standalone Skill products.
 
-Concorde self-maintenance uses a fresh Skill-free candidate writer and a separate fresh sibling
-tester with explicitly selected candidate-built Skills. Both disable inherited/discovered catalogs.
-Consumer installation remains model-invocable and keeps its normal client-specific installation.
+There is no independent publishing step or supported Codex/Claude client renderer. Consumer
+installation remains a separate Pi-only receipt-owned deployment. Fresh source-maintenance
+isolation and private selection obligations remain independent of output generation.
 
 ### req.distribution.private-selection — Exact private candidate provenance
 
-Private session selection SHALL reject missing, stale, unreadable or out-of-candidate Skill and runtime paths without any global or name-based fallback.
+Private session selection SHALL reject missing, stale, unreadable or out-of-candidate Pi entry, embedded catalog, implementation and runtime paths without any global or name-based fallback.
 
 A selection returns complete bytes and their provenance, not evidence of model loading or execution.
 
@@ -60,9 +60,8 @@ A selection returns complete bytes and their provenance, not evidence of model l
 The Pi session extension SHALL offer exactly the public Operations as the operations of its
 `concorde` tool.
 
-Internal stage Operations have no Skill and no tool entry; the source checkout's shim additionally
-tells the model to run an Operation only on the developer's explicit request, as the Claude Skill
-projection is hidden from model invocation there.
+Internal stage Operations have no tool entry; the source checkout's shim additionally tells the
+model to run an Operation only on the developer's explicit request.
 
 ### req.distribution.launcher-sigterm-cancels — SIGTERM cancels the launcher like Ctrl-C
 
@@ -78,32 +77,33 @@ record behind.
 In an installed project the launcher SHALL execute under the managed runtime's interpreter,
 whatever interpreter started it.
 
-A Skill names the launcher with the ambient `python3`, which need not carry LangGraph, and the
+The launcher may be started with ambient `python3`, which need not carry LangGraph, and the
 managed runtime `.concorde/.venv` is the only environment the installer verified for the installed
 framework. The launcher therefore re-executes itself with that runtime's interpreter when the
 installer's verified runtime is present beside the framework, and the provisioner verifies each
-Skill with that same interpreter. When no verified runtime exists and the starting interpreter
+public Operation with that same interpreter. When no verified runtime exists and the starting interpreter
 cannot import LangGraph, the launcher reports `missing_runtime` instead of a bare import failure.
 
-### req.distribution.published-skills-tracked — Published Skills are tracked renderings of their sources
+### req.distribution.operation-guidance-fresh — Pi catalogs are complete fresh projections
 
-The repository SHALL carry under `skills/` one published, client-neutral rendering of every public
-Operation's Skill, generated from its `prompts/skills/` source by the explicit `skills --write`
-step and kept current by the freshness checks.
+Build and package validation SHALL check the complete Pi catalog's descriptions, guidance, request schemas and output/source identities against the authored public Operation inventory.
 
-The Agent Skills CLI copies a repository's `skills/` verbatim, so what it finds there must be the
-installable Skill, not an authoring source with unresolved includes. Unlike `generated/`, the
-folder is tracked because it is published content; the explicit step keeps a tracked change an
-explicit, committed change rather than a side effect of `build`.
+Eleven public Operations and seven terminal worker renderings remain. Internal instructions are
+not Skills. Missing or drifted output fails checking; `build` regenerates from authored inputs.
 
-### req.distribution.skills-cli-places-skills — The Agent Skills CLI places the Skills
+### req.distribution.pi-only-install — Installation supports only Pi
 
-Installation SHALL place the published Skills for Claude Code and Codex only through the Agent
-Skills CLI pinned by the package manifest, reading the deployed framework copy.
+Installation SHALL install only the Pi client extension and its Protocol guidance, without invoking a Skills CLI or distributing standalone Skills.
 
-The installer copies no Skill file into a project itself. The CLI's own layout, symlinks and lock
-file are the standard every Skill client understands, and a source inside the project keeps a
-later `npx skills update` on the installed version.
+The manifest explicitly declares `client: "pi"`. Retired client flags are rejected, not silently
+mapped to Pi. npm remains required for actual Pi runtime dependencies.
+
+### req.distribution.retired-installation-ownership — Legacy retirement preserves ownership
+
+Installation SHALL remove retired outputs only under the existing receipt/digest and bounded root-block ownership rules.
+
+External CLI-owned Skills and locks are not installer ownership and remain untouched, with an
+explicit manual migration notice. Edited owned output conflicts rather than being discarded.
 
 ### req.distribution.root-block-ownership — Root rule ownership is block-scoped
 

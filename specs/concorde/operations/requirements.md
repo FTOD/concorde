@@ -5,19 +5,19 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](module.md#terminology) | Defined in Operations. |
-| [Internal operation](module.md#terminology) | Defined in Operations. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Context](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                        | Meaning / definition           |
+| ------------------------------------------- | ------------------------------ |
+| [Operation](../module.md#terminology)       | Defined in Concorde Framework. |
+| [Public operation](module.md#terminology)   | Defined in Operations.         |
+| [Internal operation](module.md#terminology) | Defined in Operations.         |
+| [Pi integration](../module.md#terminology)  | Defined in Concorde Framework. |
+| [Context](../module.md#terminology)         | Defined in Concorde Framework. |
 
 ## Operation catalog
 
-### req.operations.stage-no-skill — Non-public operations have no installed Skill
+### req.operations.stage-no-skill — Non-public operations have no public entry
 
-A non-public Operation SHALL have no installed Skill.
+A non-public Operation SHALL have no public Pi catalog or direct launcher entry.
 
 ### req.operations.stage-in-process-only — Non-public operations require declared composition
 

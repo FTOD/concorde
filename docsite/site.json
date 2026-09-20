@@ -32,7 +32,7 @@
         },
         {
           "title": "Develop in candidate worktrees.",
-          "description": "A change requested from the primary worktree runs in a candidate the host creates from the committed base; your session stays where it is and receives the result. Evidence binds to the exact inputs checked. A ready candidate is not a merge: delivery and a primary merge are separate requests."
+          "description": "In consumer projects, a mutating Operation requested from primary runs in a host-created candidate from the committed base; your session stays in place. Source maintenance instead uses a fresh catalog-free writer and a separate fresh sibling tester with exact candidate Pi entry, embedded catalog and runtime provenance. Evidence binds current inputs; delivery and primary merging remain separate requests."
         },
         {
           "title": "Track problems as Issues.",
@@ -64,8 +64,8 @@
     },
     "quickstart": {
       "title": "Start with an explicit project contract.",
-      "description": "Clone and build Concorde, then preview the installation into your Git project. You need Linux with bubblewrap, Python 3.11+, Node.js 18+ with npm and the Pi coding agent logged in, because every worker runs as a sandboxed Pi process. Choose Claude Code, Codex or Pi as your client, then run concorde-init in your project.",
-      "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\n\n# Replace the path with your Git project; repeat\n# --integration to add codex or pi.\npython3 scripts/install-concorde.py \\\n  --target /absolute/path/to/project \\\n  --integration claude --preview\n\n# Review the preview, then rerun with --apply."
+      "description": "Clone and build Concorde, then preview the installation into your Git project. You need Linux with bubblewrap, Python 3.11+, Node.js 18+ with npm and the Pi coding agent logged in, because every worker runs as a sandboxed Pi process. Pi is the only supported client. Its concorde tool describes and runs public Operations; initialize the project with concorde-init after installation.",
+      "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\n\n# Replace the path with your Git project.\npython3 scripts/install-concorde.py \\\n  --target /absolute/path/to/project --preview\n\n# Review the preview, then rerun with --apply."
     },
     "reference": {
       "title": "Operations and executable entry points",
@@ -124,7 +124,7 @@
         },
         {
           "title": "Model-backed Operations",
-          "description": "These Operations have model execution profiles; they are not a second executable inventory. Each run is a fresh Pi process in a bubblewrap sandbox with host-issued context, tools and limits. Workers with declared children may delegate one level deep, in the foreground and with fresh context.",
+          "description": "These Operations have model execution profiles; they are not a second executable inventory. Each run is a fresh Pi process in a bubblewrap sandbox with host-issued context, tools and limits. Workers are terminal nodes: they cannot delegate or recursively call Operations. The LangGraph host schedules each with its own file and tool grant.",
           "columns": ["Operations", "Responsibility and authority"],
           "rows": [
             [
@@ -164,7 +164,7 @@
             ],
             [
               "Distribution",
-              "Build fresh assets, publish Skills for the Agent Skills CLI, install the Pi session tool and provision the managed runtime."
+              "Build fresh worker instructions and the private Pi catalog, install the Pi session tool and provision the managed runtime. No standalone Skills are published or installed."
             ],
             [
               "Issues",
@@ -191,15 +191,15 @@
             ],
             [
               "python3 scripts/concorde.py <command>",
-              "build, validate, skills, protocol-manifest, docsite and usage: render assets, check the project, publish Skills, accept a Protocol binding, scaffold a docsite and summarize worker usage."
+              "build, validate, select-session, protocol-manifest, docsite and usage: render assets, check the project, verify exact private Pi provenance, accept a Protocol binding, scaffold a docsite and summarize worker usage."
             ],
             [
               "LangGraph Studio",
-              "Run and observe the same admitted public graphs as the CLI and Skills."
+              "Run and observe the same admitted public graphs as the common launcher and Pi tool."
             ],
             [
               "python3 scripts/install-concorde.py",
-              "Preview or apply installation for Claude Code, Codex or Pi."
+              "Preview or apply Pi-only installation; legacy retirement removes only unchanged receipt-owned outputs and preserves external CLI-owned Skills and user content."
             ],
             [
               "python3 scripts/issues.py",

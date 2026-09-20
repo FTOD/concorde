@@ -35,7 +35,7 @@ from concorde.spec.verification import verifies  # noqa: E402
 
 
 def _package(root: Path) -> None:
-    for directory in ("prompts", "protocol", "skills", "operations"):
+    for directory in ("prompts", "protocol", "operations"):
         shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
 
 
@@ -47,7 +47,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         _package(self.root)
-        write_build(self.root, "all")
+        write_build(self.root)
 
     @verifies("scenario.harness.agent-bind")
     def test_resolve_agent_succeeds_for_every_inventory_worker(self):
@@ -121,7 +121,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
         with self.assertRaises(BuildError) as failure:
             resolve_worker(self.root, "programmer")
         self.assertEqual("stale_build", failure.exception.code)
-        write_build(self.root, "all")
+        write_build(self.root)
         self.assertNotEqual(
             before.digest, resolve_worker(self.root, "programmer").digest
         )
@@ -152,7 +152,6 @@ class ProfileValidationTests(unittest.TestCase):
     @verifies("scenario.harness.agent-bind-reject", "scenario.harness.worker-contract")
     def test_profiles_cannot_exceed_their_contract_or_workspace(self):
         planner = worker_profile("planner")
-        programmer = worker_profile("programmer")
         effects = planner.contract.effects
         contract = planner.contract
         for label, agent in {
@@ -221,7 +220,7 @@ class ProfileValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             _package(root)
-            write_build(root, "all")
+            write_build(root)
             modified = dict(profiles.load_worker_profiles())
             modified["planner"] = dataclasses.replace(
                 modified["planner"], tools=("read", "write")

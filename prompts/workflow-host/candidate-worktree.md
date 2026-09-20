@@ -14,13 +14,13 @@ Durable status and runs belong only to the primary coordinator, not duplicate ca
 Task-authorized `.concorde` edits in the owned workspace are not forbidden by directory name;
 preserve task scope, truthful evidence and concurrency safety, and obey actual worker grants.
 
-For Concorde source maintenance, the main creates a candidate and a fresh Skill-free maintenance
+For Concorde source maintenance, the main creates a candidate and a fresh Concorde-catalog-free maintenance
 child with inherited/discovered catalogs disabled. After the writer checks, commits and stops,
-a separate fresh sibling test child receives only exact candidate-built Skills and runtime
-provenance. Neither forks old Skill bodies or delegates tasks. The tester never rewrites governing
-Skills; failures return to maintenance and then a new tester. Maintenance may finish through
-ordinary Git with explicit merge authorization, without Concorde delivery. Skill metadata alone
-is not evidence of loading or execution. Never fall back to global or primary Skills.
+a separate fresh sibling test child receives only the exact candidate-built Pi entry, embedded catalog and runtime
+provenance. Neither forks old Concorde instructions or delegates tasks. The tester never rewrites governing
+Pi integration; failures return to maintenance and then a new tester. Maintenance may finish through
+ordinary Git with explicit merge authorization, without Concorde delivery. Selection metadata alone
+is not evidence of extension loading, tool use or model execution. Never fall back to a global or primary integration.
 
 Report Spec gaps or blocked execution as returned. Non-implementation workers never receive
 implementation code or raw test logs.

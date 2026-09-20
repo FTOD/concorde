@@ -1,6 +1,6 @@
 """Profile 15 operation registry and versioned JSON contracts.
 
-Public operations are each paired with exactly one Skill; non-public operations require
+Public operations are exposed through the Pi catalog; non-public operations require
 declared composition. Model nodes use their State contract directly; only existing host adapters
 own request/response wire envelopes. All executable identities belong to ``operations/``. Exposure, context selection, determinism and composition are derived from their
 declarations; there is no operation class taxonomy. Shared context snapshots and review
@@ -158,7 +158,6 @@ PUBLIC_OPERATIONS = tuple(name for name in OPERATION_NAMES if _MODULES[name].PUB
 INTERNAL_OPERATIONS = tuple(
     name for name in OPERATION_NAMES if not _MODULES[name].PUBLIC
 )
-SKILL_NAMES = PUBLIC_OPERATIONS
 DETERMINISTIC_OPERATIONS = frozenset(
     name for name in OPERATION_NAMES if _MODULES[name].DETERMINISTIC
 )

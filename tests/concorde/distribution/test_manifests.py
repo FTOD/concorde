@@ -23,18 +23,20 @@ class ManifestContractTests(unittest.TestCase):
 
     def test_one_manifest_declares_native_identity_profile_and_install_layout(self):
         manifest = self.manifest
-        self.assertEqual(manifest["schema_version"], 3)
+        self.assertEqual(manifest["schema_version"], 4)
         self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "8.0.0"))
         self.assertEqual(
             (manifest["architecture_profile"], manifest["workspace_protocol"]), (15, 16)
         )
-        self.assertEqual(manifest["integrations"], ["claude", "codex", "pi"])
+        self.assertEqual(manifest["client"], "pi")
+        self.assertNotIn("integrations", manifest)
+        self.assertNotIn("skill_namespace", manifest)
+        self.assertNotIn("skills", manifest["package_roots"])
         self.assertEqual(
             manifest["install"],
             {
                 "framework_root": ".concorde/framework",
                 "receipt": ".concorde/install.json",
-                "skills_cli": "skills@1.7.0",
             },
         )
         self.assertEqual(
@@ -61,7 +63,7 @@ class ManifestContractTests(unittest.TestCase):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
         sys.path.insert(0, str(REPOSITORY_ROOT))
         try:
-            from concorde.distribution.build import SKILL_NAMES
+            from concorde.distribution.build import PUBLIC_OPERATIONS
             from concorde.harness.worker_profile import load_worker_profiles
             from concorde.spec.contracts import load_operation_inventory
         finally:
@@ -69,16 +71,16 @@ class ManifestContractTests(unittest.TestCase):
             sys.path.pop(0)
         operations = load_operation_inventory()
         launcher = ast.parse((REPOSITORY_ROOT / "scripts/run-operation.py").read_text())
-        launcher_skills = next(
+        launcher_operations = next(
             ast.literal_eval(node.value)
             for node in launcher.body
             if isinstance(node, ast.Assign)
             and any(
-                isinstance(target, ast.Name) and target.id == "SKILL_NAMES"
+                isinstance(target, ast.Name) and target.id == "PUBLIC_OPERATIONS"
                 for target in node.targets
             )
         )
-        self.assertEqual(set(SKILL_NAMES), set(launcher_skills))
+        self.assertEqual(set(PUBLIC_OPERATIONS), set(launcher_operations))
         templates = sorted(
             path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md")
         )
@@ -87,7 +89,7 @@ class ManifestContractTests(unittest.TestCase):
             (
                 len(load_worker_profiles()),
                 len(operations.OPERATIONS),
-                len(SKILL_NAMES),
+                len(PUBLIC_OPERATIONS),
                 len(templates),
             ),
             (7, 18, 11, 4),
@@ -137,8 +139,6 @@ class ManifestContractTests(unittest.TestCase):
                     str(REPOSITORY_ROOT / "scripts/install-concorde.py"),
                     "--target",
                     str(target),
-                    "--integration",
-                    "codex",
                     "--apply",
                     "--format",
                     "json",
@@ -163,12 +163,10 @@ class ManifestContractTests(unittest.TestCase):
             )
             self.assertTrue((target / ".concorde/framework/operations").is_dir())
             self.assertFalse((target / ".concorde/framework/capabilities").exists())
-            self.assertTrue(
-                (target / ".agents/skills/concorde-plan/SKILL.md").is_file()
-            )
-            self.assertTrue(
-                (target / ".agents/skills/concorde-context-solve/SKILL.md").is_file()
-            )
+            self.assertTrue((target / ".pi/extensions/concorde-session.ts").is_file())
+            self.assertFalse((target / ".agents").exists())
+            self.assertFalse((target / ".claude").exists())
+            self.assertFalse((target / "skills-lock.json").exists())
             self.assertFalse(
                 (target / ".concorde/framework/docsite/sidebars.docs.ts").exists()
             )

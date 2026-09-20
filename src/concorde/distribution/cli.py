@@ -34,9 +34,6 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--format", choices=["json"], default="json")
 
     build = subparsers.add_parser("build")
-    build.add_argument(
-        "--integration", choices=["claude", "codex", "pi", "all"], default="all"
-    )
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
 
@@ -45,21 +42,12 @@ def create_parser() -> argparse.ArgumentParser:
     protocol_manifest.add_argument("--bind-project", action="store_true")
     protocol_manifest.add_argument("--format", choices=["json"], default="json")
 
-    skills = subparsers.add_parser("skills")
-    skills.add_argument(
-        "--write",
-        action="store_true",
-        help="render the tracked published Skills under skills/ from prompts/skills/",
-    )
-    skills.add_argument("--check", action="store_true")
-    skills.add_argument("--format", choices=["json"], default="json")
-
     selection = subparsers.add_parser("select-session")
-    selection.add_argument(
-        "--mode", choices=["maintenance", "test", "task"], required=True
-    )
-    selection.add_argument("--skill", action="append", default=[])
-    selection.add_argument("--runtime", required=True)
+    selection_mode = selection.add_mutually_exclusive_group(required=True)
+    selection_mode.add_argument("--mode", choices=["maintenance", "test", "task"])
+    selection_mode.add_argument("--verify", type=Path)
+    selection.add_argument("--pi-entry", type=Path)
+    selection.add_argument("--runtime", type=Path)
     selection.add_argument("--output", type=Path)
 
     status = subparsers.add_parser("status")
@@ -145,40 +133,26 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             result = {"tasks": all_status(root)}
         return ToolResult("status", ".", "success", result=result)
     if arguments.tool == "select-session":
-        from .session_selection import select_session
+        from .session_selection import load_selection, save_selection, select_session
+        from .build import BuildError
 
-        selected = select_session(
-            root,
-            mode=arguments.mode,
-            skill_paths=arguments.skill,
-            runtime=Path(arguments.runtime),
-        )
-        if arguments.output:
-            from ..harness.status_store import atomic_write
-            from ..harness.change_worktree import (
-                _exclude_control_files,
-                repository_lock,
+        if arguments.verify:
+            if arguments.pi_entry or arguments.runtime or arguments.output:
+                raise BuildError(
+                    "--verify accepts only a saved selection, not replacement inputs"
+                )
+            selected = load_selection(root, arguments.verify)
+        else:
+            if arguments.runtime is None:
+                raise BuildError("selection requires --runtime")
+            selected = select_session(
+                root,
+                mode=arguments.mode,
+                pi_entry=arguments.pi_entry,
+                runtime=arguments.runtime,
             )
-            from .build import BuildError
-            import json
-
-            try:
-                relative = arguments.output.relative_to(root.resolve()).as_posix()
-            except ValueError as error:
-                raise BuildError(
-                    "selection output must remain in its candidate"
-                ) from error
-            if not relative.startswith(".concorde/work/"):
-                raise BuildError(
-                    "selection output belongs only in candidate .concorde/work scratch"
-                )
-            with repository_lock(root):
-                _exclude_control_files(root)
-                atomic_write(
-                    root.resolve(),
-                    relative,
-                    (json.dumps(selected, sort_keys=True) + "\n").encode(),
-                )
+            if arguments.output:
+                save_selection(root, arguments.output, selected)
         return ToolResult("select-session", ".", "success", result=selected)
     if arguments.tool == "migrate-status":
         from ..harness.status_store import migrate_legacy
@@ -259,7 +233,7 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
 
         try:
             if arguments.check:
-                current, differences = check_build(root, arguments.integration)
+                current, differences = check_build(root)
                 if current:
                     return ToolResult(
                         "build", ".", "success", result={"differences": []}
@@ -274,13 +248,12 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                             "error",
                             "generated/",
                             f"Build outputs are stale or missing: {', '.join(differences)}",
-                            "Run `python -m concorde build` to refresh generated/ outputs and "
-                            "`python -m concorde skills --write` for the tracked skills/.",
+                            "Run `python -m concorde build` to refresh private Pi and runtime outputs.",
                         ),
                     ),
                     result={"differences": list(differences)},
                 )
-            result = write_build(root, arguments.integration)
+            result = write_build(root)
             artifacts = tuple(output.path for output in result.outputs) + (
                 "generated/build-manifest.json",
             )
@@ -302,76 +275,13 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                         "error",
                         "prompts",
                         str(error),
-                        "Repair the prompt, role, or skill source and rebuild.",
+                        "Repair the prompt, role, or operation guidance source and rebuild.",
                     ),
                 ),
             )
-    if arguments.tool == "skills":
-        return _published_skills(root, arguments)
     from ..spec.validation import validate_repository
 
     return validate_repository(root, arguments.target)
-
-
-def _published_skills(root: Path, arguments: argparse.Namespace) -> ToolResult:
-    """Check or write the tracked published Skills (developer-only).
-
-    ``skills/`` is tracked content that the Agent Skills CLI installs into projects, so unlike
-    ``generated/`` it changes only through this explicit step: ``--write`` renders every public
-    Operation's published Skill from its ``prompts/skills/`` source; without it (or with
-    ``--check``) the current files are compared with a fresh render and nothing is written.
-    """
-    from .build import (
-        PUBLISHED_SKILLS_ROOT,
-        BuildError,
-        check_published_skills,
-        write_published_skills,
-    )
-
-    try:
-        if arguments.write:
-            outputs = write_published_skills(root)
-            return ToolResult(
-                "skills",
-                ".",
-                "success",
-                artifacts=tuple(output.path for output in outputs),
-                result={"outputs": len(outputs)},
-            )
-        current, differences = check_published_skills(root)
-    except BuildError as error:
-        return ToolResult(
-            "skills",
-            ".",
-            "invalid",
-            findings=(
-                Finding(
-                    "CONCORDE-SKILLS-001",
-                    "error",
-                    "prompts/skills",
-                    str(error),
-                    "Repair the Skill source or its includes and rerun `skills --write`.",
-                ),
-            ),
-        )
-    if current:
-        return ToolResult("skills", ".", "success", result={"differences": []})
-    return ToolResult(
-        "skills",
-        ".",
-        "invalid",
-        findings=(
-            Finding(
-                "CONCORDE-SKILLS-001",
-                "error",
-                f"{PUBLISHED_SKILLS_ROOT}/",
-                f"Published Skills are stale, missing or retired: {', '.join(differences)}",
-                "Run `python -m concorde skills --write` and commit skills/ with its sources; "
-                "delete the directory of a retired Skill.",
-            ),
-        ),
-        result={"differences": list(differences)},
-    )
 
 
 def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
@@ -498,7 +408,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "docsite",
                 "build",
                 "protocol-manifest",
-                "skills",
                 "usage",
                 "status",
                 "select-session",

@@ -57,3 +57,6 @@ node_modules
 
 # Retired vendored delegation dependency; local checkout may be retained.
 /reference/pi-subagents/
+
+# Candidate-only ephemeral launch/context scratch; never a durable run archive.
+.concorde/work/

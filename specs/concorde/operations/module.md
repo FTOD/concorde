@@ -6,17 +6,17 @@ Operations provides Concorde's executable behavior, from planning and implementi
 
 ## Terminology
 
-| Term                                  | Meaning / definition                                                                                     |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Public operation                      | An operation developers may invoke directly through a Skill, the Pi session tool or the public launcher. |
-| Internal operation                    | An operation available only to declared composing operations, rather than a direct developer entry.      |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework.                                                                           |
-| [Module](../module.md#terminology)    | Defined in Concorde Framework.                                                                           |
-| [Graph](../module.md#terminology)     | Defined in Concorde Framework.                                                                           |
-| [Host](../module.md#terminology)      | Defined in Concorde Framework.                                                                           |
-| [Harness](../module.md#terminology)   | Defined in Concorde Framework.                                                                           |
-| [State](../module.md#terminology)     | Defined in Concorde Framework.                                                                           |
-| [Skill](../module.md#terminology)     | Defined in Concorde Framework.                                                                           |
+| Term                                       | Meaning / definition                                                                                |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Public operation                           | An operation developers may invoke directly through the Pi session tool or the public launcher.     |
+| Internal operation                         | An operation available only to declared composing operations, rather than a direct developer entry. |
+| [Operation](../module.md#terminology)      | Defined in Concorde Framework.                                                                      |
+| [Module](../module.md#terminology)         | Defined in Concorde Framework.                                                                      |
+| [Graph](../module.md#terminology)          | Defined in Concorde Framework.                                                                      |
+| [Host](../module.md#terminology)           | Defined in Concorde Framework.                                                                      |
+| [Harness](../module.md#terminology)        | Defined in Concorde Framework.                                                                      |
+| [State](../module.md#terminology)          | Defined in Concorde Framework.                                                                      |
+| [Pi integration](../module.md#terminology) | Defined in Concorde Framework.                                                                      |
 
 ## Usage
 

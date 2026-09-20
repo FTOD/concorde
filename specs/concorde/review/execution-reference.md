@@ -25,7 +25,7 @@ and transitions are retained here as the single detailed contract.
 | [Graph](../module.md#terminology)                       | Defined in Concorde Framework. |
 | [Operation](../module.md#terminology)                   | Defined in Concorde Framework. |
 | [Public operation](../operations/module.md#terminology) | Defined in Operations.         |
-| [Skill](../module.md#terminology)                       | Defined in Concorde Framework. |
+| [Pi integration](../module.md#terminology)              | Defined in Concorde Framework. |
 
 ## Independent review operation {#review-independent-review-operation}
 
@@ -38,8 +38,8 @@ Module target_id and task, optional same-owner focus_id, constraints and current
 The host deterministically resolves that selection; no router, inferred owner or context expansion
 precedes the fresh reviewer. Their closed request schemas have no review_mode field. Each entry
 selects only its own reviewer; the retired concorde-review operation and its request/response types
-have no alias. The public launcher
-and Studio admit this operation directly. Review runs in the current worktree without creating
+have no alias. The Pi `concorde` tool forwards the selected Operation to the common launcher;
+Studio also admits these public Operations directly. Review runs in the current worktree without creating
 a development change or requiring a preexisting Issue record. The host may persist reports and existing
 change evidence, but reviewers receive no project write authority.
 Spec review uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code review uses those
@@ -86,7 +86,7 @@ It publishes `concorde-review-result@2` adding target/focus, revision and
 semantic_completeness=not_proven. Public response `reviews` contains these typed results, and artifacts
 reference saved review reports. Native receipts and failure diagnostics remain separate host records.
 
-| Review state                                           | Skill outcome and progression                            |
+| Review state                                           | Operation outcome and progression                        |
 | ------------------------------------------------------ | -------------------------------------------------------- |
 | no_findings with nonempty coverage                     | completed; bounded review succeeded                      |
 | findings, all advisory                                 | completed; Issue references retained for the consumer    |

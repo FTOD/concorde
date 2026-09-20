@@ -2,10 +2,10 @@
  * Concorde session extension.
  *
  * The developer's own Pi session loads this extension through the shim the build renders under
- * `.pi/extensions/`. The shim supplies the project root and the catalog: every public Concorde
+ * `generated/session/pi/` (source) or `.pi/extensions/` (installed). The shim supplies the project root and the catalog: every public Concorde
  * Operation with its description, guidance and request schema, the launcher to run and the
  * interpreters to try. The extension is the Pi projection of the public Operations, the
- * counterpart of the Skills rendered for Claude Code and Codex:
+ * only supported Concorde client integration:
  *
  * - it registers one `concorde` tool. Action `describe` returns an Operation's guidance and
  *   request schema; action `run` wraps the caller's input in the typed invocation envelope, runs
@@ -19,7 +19,7 @@
  * Everything the launcher checks (typed request, configuration, worktree lifecycle, permissions)
  * stays with the launcher: this extension grants nothing and knows no internal Operation.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -27,10 +27,10 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
 export interface SessionOperation {
-	/** The public Operation's external name, for example `concorde-main`. */
+	/** The public Operation's external name, for example `concorde-plan`. */
 	name: string;
 	description: string;
-	/** The rendered Skill guidance for this Operation, without launcher mechanics. */
+	/** The rendered Operation guidance for this Operation, without launcher mechanics. */
 	guidance: string;
 	/** The schema version of `<name>-request`, the `input` the tool wraps. */
 	request_version: number;
@@ -42,7 +42,9 @@ export interface SessionCatalog {
 	schema_version: 1;
 	/** Project-relative path of the launcher, `scripts/run-operation.py` in a checkout. */
 	launcher: string;
-	/** Project-relative interpreters tried in order before the ambient `python3`. */
+	/** Project-relative interpreters tried in order; private selection has no ambient fallback.
+	 * Consumer bootstrap alone may fall back to ambient Python before managed-runtime admission.
+	 */
 	interpreters: string[];
 	/** True in Concorde's own source checkout, where a graph runs only on explicit request. */
 	explicit_request_only: boolean;
@@ -79,8 +81,8 @@ export function sessionPrompt(catalog: SessionCatalog): string {
 		lines.push(
 			"",
 			"This is Concorde's own source checkout: run an Operation only when the user explicitly " +
-				"asks for it by name. Source maintenance belongs to a fresh Skill-free candidate writer, " +
-				"followed by a fresh sibling tester using only candidate-built Skills; never rewrite governing Skills.",
+				"asks for it by name. Source maintenance belongs to a fresh catalog-free candidate writer, " +
+				"followed by a fresh sibling tester using only the exact candidate Pi entry/catalog and runtime; never rewrite its governing integration.",
 		);
 	}
 	lines.push("", "Operations:");
@@ -101,11 +103,19 @@ function describe(operation: SessionOperation): string {
 	);
 }
 
-function interpreter(root: string, catalog: SessionCatalog): string {
+function interpreter(
+	root: string,
+	catalog: SessionCatalog,
+	privateSelection = false,
+): string {
 	for (const candidate of catalog.interpreters) {
 		const resolved = path.resolve(root, candidate);
 		if (fs.existsSync(resolved)) return resolved;
 	}
+	if (privateSelection)
+		throw new Error(
+			"private Pi runtime is missing; no ambient interpreter fallback",
+		);
 	return process.platform === "win32" ? "python" : "python3";
 }
 
@@ -206,11 +216,78 @@ function bounded(text: string, label: string): string {
  * Bind the extension to one project: `root` is the project directory that holds the launcher,
  * `catalog` the operations the build rendered for it.
  */
-export function concordeSession(root: string, catalog: SessionCatalog) {
+export function concordeSession(
+	root: string,
+	catalog: SessionCatalog,
+	entryPath?: string,
+) {
+	root = path.resolve(root);
 	if (process.env.CONCORDE_WORKER_POLICY)
-		throw new Error("terminal workers cannot load the Concorde session tool");
+		throw new Error(
+			"terminal workers cannot load the Concorde session tool",
+		);
 	if (catalog.schema_version !== 1)
 		throw new Error("unsupported Concorde session catalog version");
+	// Selection is launch provenance, not permission or proof that a model used this tool.
+	// Capture it once: replacing/rebuilding selection during this session requires a fresh tester.
+	const selectionPath = process.env.CONCORDE_SESSION_SELECTION;
+	if (entryPath && catalog.explicit_request_only && !selectionPath)
+		throw new Error(
+			"private Pi entry requires explicit candidate selection; no ambient fallback",
+		);
+	let selectedIdentity: string | undefined;
+	const verifySelection = () => {
+		if (!selectionPath) return;
+		if (
+			process.env.CONCORDE_SESSION_SELECTION !== selectionPath ||
+			process.env.CONCORDE_STUDIO_URL
+		)
+			throw new Error(
+				"private Pi selection cannot change or redirect to Studio",
+			);
+		const python = catalog.interpreters
+			.map((item) => path.resolve(root, item))
+			.find((item) => fs.existsSync(item));
+		if (!python)
+			throw new Error(
+				"private Pi selection requires the candidate Python environment; no ambient fallback",
+			);
+		const result = spawnSync(
+			python,
+			[
+				path.join(root, "scripts/concorde.py"),
+				"--project-root",
+				root,
+				"select-session",
+				"--verify",
+				selectionPath,
+			],
+			{ encoding: "utf8", maxBuffer: 8 * 1024 * 1024, timeout: 30000 },
+		);
+		if (result.error || result.status !== 0)
+			throw new Error(
+				"private Pi selection verification failed; reselect current candidate artifacts",
+			);
+		const selected = JSON.parse(result.stdout).result;
+		if (
+			selected.mode === "maintenance" ||
+			selected.candidate !== root ||
+			selected.pi_entry?.path !== entryPath ||
+			JSON.stringify(JSON.parse(selected.pi_entry.catalog.content)) !==
+				JSON.stringify(catalog) ||
+			selected.runtime.path !== path.resolve(root, catalog.launcher)
+		)
+			throw new Error(
+				"private Pi entry/catalog/runtime does not match selection",
+			);
+		const identity = JSON.stringify(selected);
+		if (selectedIdentity !== undefined && selectedIdentity !== identity)
+			throw new Error(
+				"private Pi selection changed; start a fresh session",
+			);
+		selectedIdentity = identity;
+	};
+	verifySelection();
 	const operations = new Map(
 		catalog.operations.map((item) => [item.name, item]),
 	);
@@ -243,7 +320,8 @@ export function concordeSession(root: string, catalog: SessionCatalog) {
 					action: {
 						type: "string",
 						enum: ["run", "describe"],
-						description: "describe the Operation, or run it with `input`.",
+						description:
+							"describe the Operation, or run it with `input`.",
 					},
 					input: {
 						type: "object",
@@ -254,13 +332,15 @@ export function concordeSession(root: string, catalog: SessionCatalog) {
 					mode: {
 						type: "string",
 						enum: ["execute", "describe-policy"],
-						description: 'Run mode for action "run"; execute unless given.',
+						description:
+							'Run mode for action "run"; execute unless given.',
 					},
 				},
 				required: ["operation", "action"],
 				additionalProperties: false,
 			}),
 			async execute(_toolCallId, params, signal) {
+				verifySelection();
 				const operation = operations.get(params.operation);
 				if (operation === undefined)
 					throw new Error(
@@ -269,7 +349,10 @@ export function concordeSession(root: string, catalog: SessionCatalog) {
 				if (params.action === "describe") {
 					return {
 						content: [{ type: "text", text: describe(operation) }],
-						details: { operation: operation.name, action: "describe" },
+						details: {
+							operation: operation.name,
+							action: "describe",
+						},
 					};
 				}
 				const input = params.input;
@@ -296,7 +379,7 @@ export function concordeSession(root: string, catalog: SessionCatalog) {
 					},
 				};
 				const argv = [
-					interpreter(root, catalog),
+					interpreter(root, catalog, Boolean(selectionPath)),
 					path.resolve(root, catalog.launcher),
 					operation.name,
 				];

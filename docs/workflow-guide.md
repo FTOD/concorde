@@ -13,7 +13,7 @@ permission policies, checks and reviews make the work and its results inspectabl
 worker's task, while the host limits its context and permissions to the declared scope and a
 bubblewrap sandbox bounds every worker process. Seven built-in Pi workers perform assessment, review, planning, task definition,
 implementation and Issue solving behind the public Operations that
-installed Skills or the Pi session tool invoke. The Issue system records classified bugs, contract
+the Pi session tool invokes. The Issue system records classified bugs, contract
 gaps and limitations as soon as a worker reports them, without stopping its task, and solves an
 explicitly selected Issue to a verified candidate.
 
@@ -60,13 +60,15 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic build's output — eleven Skills exposing public entries
-from one inventory of eighteen Operations, including seven private model-backed nodes. Their common
-worker rules (`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`)
-render to the compatible `generated/agents/<hyphenated>.md` paths. Four Markdown templates and
-the selected client projections accompany them: Codex or Claude Skills, which the installer has the
-Agent Skills CLI (`npx skills add`) place, or for the Pi coding agent the session extension shim under
-`.pi/extensions/`, whose `concorde` tool describes and runs the same public Operations.
+The installer distributes a deterministic Pi-only build with eleven public entries from one
+inventory of eighteen Operations, including seven private model-backed nodes. Common worker rules
+(`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`) render to the
+compatible `generated/agents/<hyphenated>.md` paths. Templates and a receipt-owned Pi session shim
+under `.pi/extensions/` accompany them. Its `concorde` tool describes and runs the public Operations
+using the embedded guidance and exact versioned schemas. Internal worker instructions are not
+Skills. The installer has no client selector and rejects every retired `--integration` argument.
+It installs no standalone Skills and never invokes the Agent Skills CLI. npm remains necessary
+for Pi runtime dependencies; model providers such as OpenAI and Anthropic remain supported.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project and commit the installed framework and root guidance, then invoke the paired init entry.
@@ -85,7 +87,7 @@ validate it, deliver it, and request the primary merge separately.
     "mode": "execute",
     "configuration": {
         "type_id": "concorde-operation-configuration",
-        "schema_version": 1,
+        "schema_version": 2,
         "data": { "model": "openai-codex/gpt-6-astra", "thinking": "medium" }
     },
     "input": {
@@ -96,7 +98,7 @@ validate it, deliver it, and request the primary merge separately.
             "name": "My project",
             "configuration": {
                 "type_id": "concorde-operation-configuration",
-                "schema_version": 1,
+                "schema_version": 2,
                 "data": {
                     "model": "openai-codex/gpt-6-astra",
                     "thinking": "medium"
@@ -169,7 +171,7 @@ worktree, without requiring a development change or preexisting Issue. The host 
 findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline. The former combined
 review entry is removed, not retained as an alias; callers must select one of these two Operations.
 
-No Skill returns a context manifest; `describe-policy` mode previews the exact stage
+No public Operation returns a context manifest; `describe-policy` mode previews the exact stage
 grants any operation would receive without launching an agent or mutating project state. A stable
 task ID names one workspace: a candidate, or primary for direct consumer work. The primary-owned
 `.concorde/status/<change_id>.json` records
@@ -185,7 +187,7 @@ Spec changes stay in the explicitly marked candidate worktree; they do not chang
 primary revision. Changed Spec/intent invalidates stale plan or check evidence.
 The primary keeps stable task records, including terminal outcomes, under `.concorde/status/`;
 unmanaged live worktrees are discovered from Git without inventing task records. Inspect status
-directly; lifecycle observations do not expose other worktrees' Spec or implementation contents. Secondary AGENTS.md/CLAUDE.md guidance also points
+directly; lifecycle observations do not expose other worktrees' Spec or implementation contents. Secondary worktree guidance also points
 to the primary-owned status and primary worktree, without granting access to other worktrees' contents.
 
 To deliver, request `concorde-deliver` from the selected source or primary worktree with its
@@ -257,7 +259,7 @@ clarification. A successful candidate-local close is not a claim about primary. 
 [Issue lifecycle](../specs/concorde/issues/lifecycle.md). Legacy data can be preserved explicitly with
 `scripts/issues.py archive-reflections`; it is never automatically classified or approved.
 
-Concorde 8 uses Package Manifest 3, Architecture Profile 15, registry schema 5, Workspace Protocol
+Concorde 8 uses Pi-only Package Manifest 4, installation receipt 2, Architecture Profile 15, registry schema 5, Workspace Protocol
 16 and Delivery Proposal 10. Older profiles require an explicit migration; normal execution never
 reinterprets old formats. The offline migration planner is not a second supported runtime.
 
@@ -275,21 +277,12 @@ navigation grants no extra agent context.
 The Framework execution profile defines candidate worktrees in [P10](../prompts/protocol/framework-profile.md#p10-fresh-task-sessions-never-session-moves).
 Concorde Spec Protocol 10.0.0 defines readable Module specifications with paired metadata whose entities bind the
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
-the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
-not carry another copy.
-The installer adds a receipt-owned `concorde-protocol` block at the start of the selected root file:
-
-- Codex: `AGENTS.md` explicitly tells the outer session to read
-  `.concorde/protocol/principles.md`. A Markdown link is not treated as an automatic import.
-- Claude: `CLAUDE.md` uses the native `@.concorde/protocol/principles.md` import outside a
-  code span or fence. The path is relative to that root file.
-- Pi: shares the Codex entry in `AGENTS.md`.
-
-These loading choices follow the [Codex instruction discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
-and [Claude import documentation](https://code.claude.com/docs/en/memory), checked on 2026-09-07.
-Codex overrides or instruction size settings and Claude exclusions can suppress project guidance;
-verify the active instruction sources in your client when using such custom settings. Installation
-tests verify entry bytes and asset resolution, not a model's compliance in a live conversation.
+the tests that verify them. Root instructions and runtime drafts refer to that rule; the Pi
+catalog does not carry another copy. The installer adds a receipt-owned `concorde-protocol` block
+to `AGENTS.md`, directing the outer Pi session to read `.concorde/protocol/principles.md`. A
+Markdown link alone is not an automatic import. Verify active context and extension loading when
+using custom discovery settings; installation tests verify entry bytes and asset resolution, not
+a model's compliance in a live conversation.
 Internal agents retain disabled ambient instruction discovery and receive the same Protocol through
 their controlled context; root guidance does not enlarge their permissions.
 
@@ -297,7 +290,11 @@ Commit the installed root entry and framework with the consumer project so commi
 worktrees inherit them. Runtime `concorde-change-worktree` blocks remain local and are stripped at
 delivery; the installed `concorde-protocol` entry remains part of the project.
 The installer preserves root bytes outside its block, including later user edits and file mode.
-Reinstall is idempotent; integration changes remove only the previous receipt-owned entry.
+Reinstall is idempotent. A legacy receipt upgrade to Pi removes only unchanged receipt-owned
+retired outputs and exact owned root blocks, including the old `CLAUDE.md` entry. External
+CLI-owned Skills in `.agents/skills` or `.claude/skills` and `skills-lock.json` remain untouched.
+The installer reports manual retirement in text and JSON: remove only retired Concorde entries
+you own, never whole directories or locks. Empty legacy directories may remain.
 Modified/unowned blocks, ambiguous markers, symlinks and non-file roots conflict without replacement.
 To preview removal of root entries during uninstall, run:
 
@@ -343,8 +340,8 @@ checkout's existing binding unchanged.
 
 ## Development
 
-[LangGraph Studio setup and usage](../scripts/development/STUDIO.md) covers all Skill entries and
-stage events, CLI/Skill forwarding, live execution events, debugging and worktree isolation. Studio
+[LangGraph Studio setup and usage](../scripts/development/STUDIO.md) covers all public Operation entries and
+stage events, CLI/Pi forwarding, live execution events, debugging and worktree isolation. Studio
 is optional; existing JSON stdin/stdout calls continue to work without a server.
 
 Run Python tests with `python3 scripts/development/run-tests.py`, which runs every module under
@@ -362,34 +359,31 @@ that test as suspect and rerun it alone before drawing conclusions. The worker r
 the worker sandbox tests need Linux with a trusted system bubblewrap and a Pi installation on
 PATH; the sandbox tests fail rather than skip where the boundary cannot be enforced.
 
-`prompts/` (including the Skill sources `prompts/skills/`), `pi/extensions/` and the top-level
-`operations/` package produce this checkout's agent surfaces. Never edit `generated/`,
-`generated/session/<client>/` projections or generated worker instructions directly; they are
-untracked build output. Build never installs into ambient client discovery. The published Skills
-under `skills/` are tracked rendered output: never edit them by hand either; after changing a Skill
-source, run `python3 scripts/concorde.py skills --write` and commit `skills/` with the source.
+`prompts/` (including ordinary guidance under `prompts/operation-guidance/`), `pi/extensions/`
+and the top-level `operations/` package produce this checkout's agent surfaces. Never edit
+`generated/`, the private `generated/session/pi/` entry or generated worker instructions directly;
+they are untracked build output. Build never installs into ambient discovery. No standalone
+`skills/` product, private Codex/Claude projection or independent publishing command remains.
 After changing their sources, run the build and the deterministic checks in the same primary or
 linked worktree:
 
 ```bash
 python3 scripts/concorde.py build
-python3 scripts/concorde.py skills --write
 python3 scripts/concorde.py build --check
 python3 scripts/concorde.py validate
 ```
 
-`build` renders every worker, this checkout's Skill projections, Protocol asset and runtime schema
-deterministically from `protocol/`, `prompts/` and `operations/`; `skills --write` renders the
-tracked published Skills the Agent Skills CLI installs; `build --check` verifies those outputs,
-the published Skills and `protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
+`build` renders every worker, the private Pi entry/catalog, Protocol assets and runtime schemas
+deterministically from `protocol/`, `prompts/`, `pi/` and `operations/`; `build --check` verifies
+those outputs, ordinary guidance and `protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
 operation-module, contract, Spec-alignment and build-output checks. Top-level model-backed operations and every Agent launch require a fresh build; deterministic
 lifecycle entry points retain their separate admission/evidence checks. A freshly created worktree
-must be built once before an agent can load Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
+must be built once before a fresh tester can select its private Pi entry. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
 Each of the seven workers is defined under `operations/<name>/`: an authored role `spec.md` plus a
-Python `__init__.py` binding its task contract, workspace kind (`capsule` or `project`), Pi tools,
-children and timeout as optional execution configuration on that Operation. Each worker launches one Pi coding agent
+Python `__init__.py` binding its task contract, workspace kind (`capsule` or `project`), Pi tools
+and timeout as optional execution configuration on that Operation. Each worker launches one Pi coding agent
 process (`pi --mode rpc`) for exactly one invocation. The build renders each worker's instructions
 to `generated/agents/<hyphenated>.md`, combining the common worker rules
 (`prompts/workers/common.md`) with only that worker's role Spec, traceable through the build
@@ -400,34 +394,44 @@ The seven workers are spec-reviewer, context-assessor, planner, task-author, pro
 code-reviewer and issue-solver. Each task contract pairs current input/output types, admits only
 its stage artifacts and narrows the permission ceiling. Only the programmer writes granted code;
 no worker edits Specs, metadata or registry. Every phase and target has a fresh invocation and
-context identity, not the previous worker's conversation or authority. A worker with declared children (spec-reviewer:
-fact-check, consistency; planner: scout; programmer: scout, planner, verifier; code-reviewer: scout,
-verifier) may delegate one level deep through its `subagent` tool, only in the foreground and with
-fresh context; a child runs inside the worker's sandbox under the same gate and grant, cannot
-delegate again and cannot submit the worker's result.
+context identity, not the previous worker's conversation or authority. All workers are terminal
+nodes: they cannot delegate, create children or recursively invoke Operations. The LangGraph/host
+schedules each node with its own file/tool grant. Missing or legacy depth variables do not govern
+leaf launch; outer task delegation limits remain unchanged.
 
-One registry contains eighteen Operations, eleven exposed through public Skills. All use State
+One registry contains eighteen Operations, eleven exposed through the Pi tool. All use State
 contracts and `run(state, runtime)`. DETERMINISTIC means no supported model-call path when true,
 including transitive USES. Only init, configure, validate and deliver are true in the current
 inventory. USES is the sole composition relation, including model nodes; it does not install
 arbitrary Operation calls as worker tools.
 
 **Operation** is the canonical name for a callable or composed Framework function. Harness owns the operation invocation boundary, and
-Operations owns the Operation catalog and the dispatch to each provider. Distribution owns `prompts/skills/`, `prompts/workflow-host/` and the published
-`skills/`, renders the public Skill instructions, has the Agent Skills CLI install them, and keeps
-their projections current. The developer's external agent
-runtime reads those Skills and submits typed operation requests to Harness admission; a Pi session
-instead loads the rendered `.pi/extensions/concorde-session.ts`, whose `concorde` tool submits the
-same requests through the launcher. Skills are not part of a worker's Harness. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
+Operations owns the Operation catalog and dispatch to each provider. Distribution owns
+`prompts/operation-guidance/` and `prompts/workflow-host/`, embeds their resolved guidance with
+exact schemas in the Pi entry, and keeps those projections current. The consumer Pi session
+loads the installed `.pi/extensions/concorde-session.ts`; source testing instead explicitly
+selects `generated/session/pi/concorde-session.ts`. Its `concorde` tool submits typed requests
+through the shared launcher. The catalog is not worker context or a grant. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
 and the [Operation registry](../specs/concorde/operations/composition.md) for definitions and mappings.
 
-Concorde source maintenance defaults to a new candidate and a fresh Skill-free maintenance child.
+Concorde source maintenance defaults to a new candidate and a fresh Concorde-catalog-free writer.
 The main stays in its initial worktree. The writer edits, formats, checks and commits, then stops.
-A separate fresh sibling test child receives only explicit candidate-built private Skills from
-`generated/session/`, with runtime and build provenance checked through `select-session`. Neither
-child inherits/discovers Concorde catalogs, forks old Skill bodies or delegates tasks. Failed tests
+A separate fresh sibling tester receives only the exact candidate-built private Pi entry and its
+embedded catalog, with implementation/build/runtime provenance checked through `select-session`.
+Neither child inherits/discovers Concorde catalogs, forks old instructions or delegates tasks. Failed tests
 return to maintenance and then another fresh tester. Ordinary Git integration is permitted after
 checks and explicit merge authorization; maintenance is not required to use Concorde delivery.
+
+Issue selection with `select-session --mode test --pi-entry <absolute-private-entry.ts> --runtime
+<absolute-candidate-launcher> --output <absolute-candidate-.concorde/work/selection.json>`. Reverify
+using `select-session --verify <absolute-selection>` before launch. The fresh host supplies
+`CONCORDE_SESSION_SELECTION`, a separate host-owned Pi configuration directory, only the returned
+exact `-e` entry and all returned discovery-disable flags. Missing/stale artifacts or a missing
+candidate Python environment block without ambient fallback. Selection is not proof of extension
+loading, tool use or model execution, and never widens the actual task/file/tool grant. The
+private extension reverifies before registration and every tool call; the launcher independently
+reverifies. Private selection rejects Studio and linked-source-worktree redirects, while explicitly
+scoped disposable consumer data remains allowed. `--skill` and schema-1 selections are rejected.
 
 Consumers may delegate complete tasks one layer deep or edit simple authorized tasks directly in
 primary. Bounded Operation workers are not task delegates and never bypass actual harness limits.

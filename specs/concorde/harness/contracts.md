@@ -25,7 +25,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Blocker](../module.md#terminology)                 | Defined in Concorde Framework.                 |
 | [Candidate](../module.md#terminology)               | Defined in Concorde Framework.                 |
 | [Worktree](../module.md#terminology)                | Defined in Concorde Framework.                 |
-| [Skill](../module.md#terminology)                   | Defined in Concorde Framework.                 |
+| [Pi integration](../module.md#terminology)          | Defined in Concorde Framework.                 |
 | [Operation](../module.md#terminology)               | Defined in Concorde Framework.                 |
 | [Evidence](../module.md#terminology)                | Defined in Concorde Framework.                 |
 
@@ -46,7 +46,7 @@ queries; a scenario query resolves to its providing Module's same complete conte
 accepts no other `target_id` kind.
 
 The context Module is host-internal: `resolve_context` produces a private ContextSnapshot behind
-the executable boundary, and no Skill returns it or a redacted projection of it. Its
+the executable boundary, and no public Operation returns it or a redacted projection of it. Its
 inputs are target_id, task, optional focus_id/constraints/phase (default context-solve). Other phases are
 plan, tasks, implementation, spec-review, code-review, validate, deliver and issue-solve.
 Unknown fields/versions/IDs are rejected by the host's own admission, never by an agent-facing
@@ -412,6 +412,6 @@ Failures return structured findings or the declared exception; callers must stop
 | Task context           | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or an Issue selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes.                                                                                                                                                                                                                                             | Every invocation; stage artifacts are optional.                                                                                                                                                                                         |
 
 A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
-Protocol rule bundle and installed Skills are not context: instructions belong to the Agent
-definition and are injected beside the context, and a Skill is the developer-facing projection of
-a public Operation. The snapshot identity covers every admitted byte of every kind.
+Protocol rule bundle and Pi integration are not context: instructions belong to the model
+execution profile and are injected beside the context, while the Pi tool is the developer-facing
+entry to public Operations. The snapshot identity covers every admitted byte of every kind.

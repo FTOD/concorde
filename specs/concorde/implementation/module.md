@@ -18,7 +18,7 @@ Implementation fulfills accepted tasks by changing the code that its worker is a
 | [Delivery](../module.md#terminology)                      | Defined in Concorde Framework.     |
 | [Acceptance task](../planning/tasks.md#terminology)       | Defined in Making work verifiable. |
 | [Internal operation](../operations/module.md#terminology) | Defined in Operations.             |
-| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.     |
+| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.     |
 | [Graph](../module.md#terminology)                         | Defined in Concorde Framework.     |
 | [Entity](../module.md#terminology)                        | Defined in Concorde Framework.     |
 

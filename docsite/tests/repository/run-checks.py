@@ -19,7 +19,6 @@ ROOT = Path(__file__).resolve().parents[3]
 DIRECTORIES = (
     "operations",
     "prompts",
-    "skills",
     "src",
     "protocol",
     "specs",

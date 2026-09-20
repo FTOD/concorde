@@ -1,4 +1,4 @@
-"""The shared executable boundary of every public Skill and Studio entry."""
+"""The shared executable boundary of every public Pi tool and Studio entry."""
 
 from __future__ import annotations
 
@@ -67,11 +67,68 @@ def invocation_failure(operation: str | None, error: Exception) -> dict:
     }
 
 
-def json_main(package_root: Path, operation: str, runner) -> int:
-    """Shared stdin/limit/envelope/result handling for every skill's executable boundary.
+def runtime_selection(package_root: Path) -> dict | None:
+    """Fail closed before selecting runtime code; project data does not select code."""
+    if os.environ.get("CONCORDE_WORKER_POLICY"):
+        raise SpecError(
+            "terminal workers cannot invoke Operations", "permission_denied"
+        )
+    if os.environ.get("CONCORDE_SESSION_SELECTION") and os.environ.get(
+        "CONCORDE_STUDIO_URL"
+    ):
+        raise SpecError(
+            "private candidate selection cannot redirect to Studio",
+            "workspace_mismatch",
+        )
+    selection = None
+    if os.environ.get("CONCORDE_SESSION_SELECTION"):
+        from ..distribution.session_selection import load_selection
 
-    ``runner(state, runtime)`` is the Skill's Operation node. This boundary validates the wire
-    envelope and adapts it to State plus trusted Runtime context; it does not dispatch by name. Only a skill has an executable
+        # Pin code/Pi integration to the candidate while allowing explicitly scoped
+        # disposable consumer projects as data. Never redirect into a sibling
+        # worktree of the source repository with those loaded instructions.
+        if package_root.resolve() != Path.cwd().resolve():
+            from .change_worktree import git
+
+            package_common = git(
+                package_root,
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+                check=False,
+            )
+            project_common = git(
+                Path.cwd(),
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+                check=False,
+            )
+            if (
+                package_common.returncode == 0
+                and project_common.returncode == 0
+                and package_common.stdout.strip() == project_common.stdout.strip()
+            ):
+                raise SpecError(
+                    "private selection cannot redirect into another source worktree",
+                    "workspace_mismatch",
+                )
+        selection = load_selection(
+            package_root, Path(os.environ["CONCORDE_SESSION_SELECTION"])
+        )
+        if selection["mode"] == "maintenance":
+            raise SpecError(
+                "maintenance authoring uses deterministic development commands, not public Operations",
+                "fresh_session_required",
+            )
+    return selection
+
+
+def json_main(package_root: Path, operation: str, runner) -> int:
+    """Shared stdin/limit/envelope/result handling for every public Operation's executable boundary.
+
+    ``runner(state, runtime)`` is the public Operation's node. This boundary validates the wire
+    envelope and adapts it to State plus trusted Runtime context; it does not dispatch by name. Only a public Operation has an executable
     boundary at all, so every caller already knows and validates its own ``operation`` before
     reaching here (``scripts/run-operation.py``); there is no internal/stage fallback to guard.
     """
@@ -105,48 +162,7 @@ def json_main(package_root: Path, operation: str, runner) -> int:
             if state.get("policies"):
                 print(canonical({"policies": state["policies"]}), file=sys.stderr)
         else:
-            selection = None
-            if os.environ.get("CONCORDE_SESSION_SELECTION"):
-                from ..distribution.session_selection import load_selection
-
-                # Pin code/Skills to the candidate while allowing explicitly scoped
-                # disposable consumer projects as data. Never redirect into a sibling
-                # worktree of the source repository with those loaded instructions.
-                if package_root.resolve() != Path.cwd().resolve():
-                    from .change_worktree import git
-
-                    package_common = git(
-                        package_root,
-                        "rev-parse",
-                        "--path-format=absolute",
-                        "--git-common-dir",
-                        check=False,
-                    )
-                    project_common = git(
-                        Path.cwd(),
-                        "rev-parse",
-                        "--path-format=absolute",
-                        "--git-common-dir",
-                        check=False,
-                    )
-                    if (
-                        package_common.returncode == 0
-                        and project_common.returncode == 0
-                        and package_common.stdout.strip()
-                        == project_common.stdout.strip()
-                    ):
-                        raise SpecError(
-                            "private selection cannot redirect into another source worktree",
-                            "workspace_mismatch",
-                        )
-                selection = load_selection(
-                    package_root, Path(os.environ["CONCORDE_SESSION_SELECTION"])
-                )
-                if selection["mode"] == "maintenance":
-                    raise SpecError(
-                        "maintenance authoring uses deterministic development commands, not public Operations",
-                        "fresh_session_required",
-                    )
+            selection = runtime_selection(package_root)
             from .status_store import primary_root
 
             host = OperationHost(

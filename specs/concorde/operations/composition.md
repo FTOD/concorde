@@ -13,14 +13,14 @@ for every worker or library function.
 | [Operation](../module.md#terminology)       | Defined in Concorde Framework. |
 | [Host](../module.md#terminology)            | Defined in Concorde Framework. |
 | [Graph](../module.md#terminology)           | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology)           | Defined in Concorde Framework. |
+| [Pi integration](../module.md#terminology)  | Defined in Concorde Framework. |
 | [Worker](../module.md#terminology)          | Defined in Concorde Framework. |
 | [Module](../module.md#terminology)          | Defined in Concorde Framework. |
 | [Grant](../module.md#terminology)           | Defined in Concorde Framework. |
 
 ## Public entry or internal operation
 
-Developers invoke public Operations through Skills, the Pi tool or common launcher. The outer
+Developers invoke public Operations through the Pi tool or common launcher. The outer
 agent selects the target and orders calls; private model nodes remain available only to their
 declared composing Operation. Knowing an internal name is not permission to invoke it directly.
 

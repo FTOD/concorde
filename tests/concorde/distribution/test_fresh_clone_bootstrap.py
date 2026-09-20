@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -30,7 +31,7 @@ def _run(args: list[str], cwd: Path, **kwargs) -> subprocess.CompletedProcess:
 
 class FreshCloneBootstrapAcceptance(unittest.TestCase):
     """Proposal section 15 (Stage D) / section 16: "a fresh clone works after exactly one build
-    command" and "editing a prompt without rebuilding makes every skill invocation fail with
+    command" and "editing a prompt without rebuilding makes every invocation fail with
     stale_build"."""
 
     @classmethod
@@ -69,7 +70,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
 
     def _validate_invocation(self) -> dict:
         # This fixture tests committed HEAD, not uncommitted transport renames in the caller.
-        # Select the entry spelling from that exact revision's manifest, as for its Skill inventory.
+        # Select the entry spelling from that exact revision's manifest, as for its Operation inventory.
         manifest = json.loads((self.clone / "concorde.json").read_text())
         launcher = manifest["runtime"]["launcher"]
         entry_kind = Path(launcher).stem.removeprefix("run-")
@@ -97,8 +98,10 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         self.assertTrue(process.stdout.strip(), process.stderr)
         return json.loads(process.stdout)
 
-    def test_clone_carries_no_build_output_or_projected_skills(self):
+    def test_clone_carries_no_build_output_or_standalone_skills(self):
         self.assertFalse((self.clone / "generated").exists())
+        self.assertFalse((self.clone / "skills").exists())
+        self.assertFalse((self.clone / ".pi/extensions/concorde-session.ts").exists())
         for integration_root in (".claude/skills", ".agents/skills"):
             projected = sorted(
                 p.name for p in (self.clone / integration_root).glob("concorde-*")
@@ -114,26 +117,32 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
 
         self.assertTrue((self.clone / "generated/build-manifest.json").is_file())
         self.assertTrue((self.clone / "generated/protocol/principles.md").is_file())
-        # This clone tests committed HEAD; the invoking checkout may have a newer, uncommitted
-        # public Skill inventory. Compare projections with the sources of the revision tested.
-        expected_skills = sorted(
-            p.parent.name for p in (self.clone / "skills").glob("concorde-*/SKILL.md")
+        # Assert the new Pi-only contract against committed HEAD, never shim old layouts.
+        expected_operations = sorted(
+            p.stem for p in (self.clone / "prompts/operation-guidance").glob("*.md")
         )
-        self.assertTrue(expected_skills)
-        # The bootstrap fixture tests committed HEAD, which can precede the invoking
-        # maintenance change. New source builds are private; historical clones retain
-        # their own old projection layout until that change is committed.
-        roots = (
-            ("generated/session/claude", "generated/session/codex")
-            if (self.clone / "generated/session").is_dir()
-            else (".claude/skills", ".agents/skills")
+        self.assertEqual(11, len(expected_operations))
+        shim = self.clone / "generated/session/pi/concorde-session.ts"
+        match = re.search(
+            r"const CATALOG: SessionCatalog = (\{.*?\n\});\n\nexport default",
+            shim.read_text(),
+            re.S,
         )
-        for integration_root in roots:
-            skills = sorted(
-                p.parent.name
-                for p in (self.clone / integration_root).glob("concorde-*/SKILL.md")
-            )
-            self.assertEqual(expected_skills, skills)
+        self.assertIsNotNone(match)
+        catalog = json.loads(match.group(1))
+        self.assertEqual(
+            expected_operations, [o["name"] for o in catalog["operations"]]
+        )
+        self.assertTrue(catalog["explicit_request_only"])
+        self.assertEqual("scripts/run-operation.py", catalog["launcher"])
+        for relative in (
+            "skills",
+            "generated/session/codex",
+            "generated/session/claude",
+            ".pi/extensions/concorde-session.ts",
+        ):
+            self.assertFalse((self.clone / relative).exists(), relative)
+        self.assertEqual(7, len(list((self.clone / "generated/agents").glob("*.md"))))
 
         described = self._validate_invocation()
         self.assertEqual("described", described["status"], described)

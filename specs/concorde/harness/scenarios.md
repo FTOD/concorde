@@ -24,7 +24,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions.            |
 | [Entity](../module.md#terminology)                | Defined in Concorde Framework.                 |
 | [Reference](../spec/registry.md#terminology)      | Defined in Registry.                           |
-| [Skill](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Pi integration](../module.md#terminology)        | Defined in Concorde Framework.                 |
 | [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                 |
 | [Issue](../module.md#terminology)                 | Defined in Concorde Framework.                 |
 
@@ -149,6 +149,17 @@ See [the no-wider-retry bound](requirements.md#req.harness.permission-no-retry).
 - AND only separately admitted component work under a current parent plan and matching derived intent may use a distinct component intent without rewriting the root owner
 - AND independent read-only reviews keep their explicit intent without replacing root ownership
 - AND lifecycle metadata supplies recovery identity but never grants implementation access or waives readiness checks
+
+### scenario.harness.worktree-guidance — Pi-only creation preserves historical ownership
+
+- GIVEN a consumer candidate and any existing user-owned root guidance files
+- WHEN the host registers a new Operation change
+- THEN it creates or appends its transient block only in `AGENTS.md`, preserving pre-existing bytes and modes, and leaves `CLAUDE.md` untouched
+- AND failure to register status rolls back the guidance bytes and modes without claiming successful registration
+- AND existing schema-2 status naming a historically owned `CLAUDE.md` block remains admissible with the same change identity, ownership map and created flags
+- AND a deliverable snapshot strips only recorded blocks, preserving unrelated bytes and Git file modes, omitting a host-created file only if it becomes empty
+- AND ambiguous or modified markers block the snapshot rather than discarding content
+- AND snapshot cleanup leaves working files, the caller's index and the status record unchanged
 
 ### scenario.harness.worktree-boundary — Require an isolated worktree before unsafe mutation
 
@@ -326,7 +337,7 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 
 ### scenario.harness.execute-operation — Successful operation execution
 
-- GIVEN an installed `concorde-*` Skill names one registered public Operation
+- GIVEN an installed Pi tool names one registered public Operation
 - AND stdin carries a well-formed `concorde-operation-invocation@3` envelope in `execute` mode
 - WHEN the host admits the request
 - THEN it selects the operation's declared execution Graph and obtains every Agent invocation it needs, bound to current instructions, context and compiled authority, from the invocation host
@@ -350,13 +361,13 @@ See [single boundary](requirements.md#req.harness.single-boundary) and [distinct
 
 ### scenario.harness.invocation-worktree-binding — An invocation binds to the worktree at its working directory
 
-- GIVEN a public Skill submits an invocation through the entry script from some working directory
+- GIVEN a public Pi tool submits an invocation through the entry script from some working directory
 - WHEN the host admits the request
 - THEN it binds the project root to exactly that directory, without searching parent directories
 - AND it reads the registry, every Spec collection and the listed implementation files from that worktree alone, while lifecycle status and durable run evidence come only from the Git-identified primary authority
 - AND a working directory at a Git worktree root yields workspace kind `primary` or `change`, and a directory outside any Git repository yields kind `unversioned`
 - AND a working directory inside a Git worktree that is not its root is refused with `workspace_mismatch` and no Agent is launched
-- BUT the worktree in which the developer's agent session started, the worktree whose rendered Skill supplied the instructions and every other linked worktree contribute no project registry, Spec document or implementation file to the invocation; primary lifecycle records remain separate host metadata
+- BUT the worktree in which the developer's agent session started, the worktree whose Pi entry supplied the catalog and every other linked worktree contribute no project registry, Spec document or implementation file to the invocation; primary lifecycle records remain separate host metadata
 
 See [project root is the entry process's working directory](requirements.md#req.harness.project-root-is-working-directory).
 
@@ -379,7 +390,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND it does not copy uncommitted primary changes into the candidate, records all durable progress and run evidence only in primary without changing primary source or index, and never moves the originating session
 - AND a later request from the primary worktree that names the recorded change_id runs in that candidate again, while a change_id no live candidate records is refused with missing_change
 - AND a candidate that carries its own Concorde runs that code only after verifying its pre-existing current build, without rebuilding during relay, and any other candidate runs the invoking framework with the candidate as its project root
-- BUT source-primary mutations are refused with fresh_session_required even when a change_id names a candidate; source maintenance instead needs an assigned candidate, a fresh Skill-free writer and a separate sibling tester
+- BUT source-primary mutations are refused with fresh_session_required even when a change_id names a candidate; source maintenance instead needs an assigned candidate, a fresh Concorde-catalog-free writer and a separate sibling tester
 
 ### scenario.harness.graph-specs — Every Graph Spec equals its compiled Graph
 
@@ -431,7 +442,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - GIVEN a host-backed Operation invoked through its State interface
 - WHEN admission or execution returns a blocked or failed operation envelope
 - THEN the result channel preserves that envelope and its errors without inventing successful output
-- AND its external Skill adapter preserves the existing versioned wire contract
+- AND its external Pi adapter preserves the existing versioned wire contract
 
 ### scenario.harness.primary-status — Stable primary coordination and run records
 

@@ -53,9 +53,9 @@ Assessors, planners and task authors use only the selected Module's complete
 project-Spec collection and, for planners and task authors, its declared external references.
 They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
-declared read-only subset. Agent instructions, the Protocol rule bundle and Skills are not context:
-instructions belong to a model-backed Operation's execution profile, and a Skill, or the Pi session tool, is the installed projection of a public
-Operation for the developer's own agent runtime. Every worker's system prompt is its common worker
+declared read-only subset. Agent instructions, the Protocol rule bundle and Pi integration are not context:
+instructions belong to a model-backed Operation's execution profile, and the Pi session tool exposes public
+Operations for the developer's own agent runtime. Every worker's system prompt is its common worker
 rules, then its own role instructions, then the Protocol rule bundle; the bundle's files are also
 listed in the index with their digests and readable at their paths.
 
@@ -118,7 +118,7 @@ The same graphs are the inspectable Studio surface, and no operation runs contro
 them. State channels carry data, not execution authority; runtime context and permission checks
 remain separate. Parent graphs define reducers for shared channels explicitly.
 
-Agent instructions, Skills, the Pi session shim, schemas and rule assets are deterministic projections of authored
+Agent instructions, the Pi session shim, schemas and rule assets are deterministic projections of authored
 sources. Generated output is not edited as source. Builds distribute the Module kind definition and
 the accepted Protocol binding. Configuration, installation and publication must agree on that
 binding. Runtime Agent responsibility files are authored implementation assets, not another category
@@ -153,7 +153,7 @@ configuration and are never merged between branches. Host persistence uses repos
 atomic writes without granting a child access to primary source or index. Missing primary authority
 blocks persistence until recovery; it never creates a candidate-local replacement archive.
 
-Evidence binds actual source worktree, branch, commit, dirty input identity and runtime/build/Skill
+Evidence binds actual source worktree, branch, commit, dirty input identity and runtime/build/Pi integration
 provenance when known. A catalog is not execution evidence. Shared-file and shared-Spec edits
 invalidate all affected consumers' evidence. Delivery verifies actual integration, preserves
 unrelated changes and confirms pending entries only when they exist. Completed integration with
@@ -172,13 +172,13 @@ nor computes cross-runtime current/maximum agent depth for these leaves; absent 
 variables do not govern launch. Outer task-subagent limits and all worker file/tool grants remain intact. An Operation in an assigned candidate reuses it instead of creating a nested one.
 Ordinary consumer projects may use direct primary editing for simple authorized tasks.
 
-Concorde source maintenance defaults to a new candidate and a fresh Skill-free maintenance child.
-The main stays in its initial worktree and does not use its own Skills to govern that authoring.
+Concorde source maintenance defaults to a new candidate and a fresh Concorde-catalog-free maintenance child.
+The main stays in its initial worktree and does not use its own Concorde integration to govern that authoring.
 Disable inherited/discovered Concorde catalogs for both maintenance and test children; never fork
-old Skill bodies. After the writer builds, checks and commits, it stops writing. The main starts a
+old Concorde instructions. After the writer builds, checks and commits, it stops writing. The main starts a
 separate fresh sibling test child in that same candidate with only explicitly selected candidate
-Skills, build and runtime provenance. Missing, stale, unreadable or out-of-candidate selections
-fail closed without name-based fallback. The tester cannot rewrite its governing Skills. Failed
+Pi entry, embedded catalog, transitive implementation, build and runtime provenance. Missing, stale, unreadable or out-of-candidate selections
+fail closed without name-based fallback. Selection is not proof of extension loading, tool use or model execution. The tester cannot rewrite its governing Pi integration. Failed
 tests return to maintenance followed by another fresh tester. One writer owns a worktree at a time.
 Maintenance may end through ordinary Git; it is not required to use Concorde delivery. Integration
 requires explicit merge authorization and cleanup remains a separate action.

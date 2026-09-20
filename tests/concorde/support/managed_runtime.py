@@ -118,63 +118,12 @@ def _create_npm_tools(root: Path) -> Path:
         npx_script = tools / "npx.py"
     else:
         npx_script = npx
-    # The Agent Skills CLI as the installer drives it: `npx -y skills@<v> add <source> -a <agent>
-    # ... -y`. It copies every <source>/skills/<name>/SKILL.md into the canonical agent directory
-    # (.agents/skills when Codex is selected, else the first agent's), symlinks the other agents'
-    # directories to it and writes skills-lock.json, as the real CLI does; FAKE_NPX_FAIL injects
-    # a failure.
+    # Poison stub: the Pi-only installer must never invoke an external Skills CLI.
     npx_script.write_text(
         f"#!{sys.executable}\n"
-        "from __future__ import annotations\n"
-        "import json,os,shutil,sys\n"
-        "from pathlib import Path\n"
-        "if os.environ.get('FAKE_NPX_FAIL'):\n"
-        "    print('injected skills CLI failure', file=sys.stderr)\n"
-        "    raise SystemExit(1)\n"
-        "args = sys.argv[1:]\n"
-        "if len(args) < 5 or args[0] != '-y' or not args[1].startswith('skills@') or args[2] != 'add':\n"
-        "    print('unsupported fake npx invocation', file=sys.stderr)\n"
-        "    raise SystemExit(2)\n"
-        "source = Path(args[3])\n"
-        "agents, rest = [], args[4:]\n"
-        "# The real CLI records the source exactly as given, e.g. './.concorde/framework'.\n"
-        "source_argument = args[3]\n"
-        "while rest:\n"
-        "    if rest[0] == '-a' and len(rest) > 1:\n"
-        "        agents.append(rest[1]); rest = rest[2:]\n"
-        "    elif rest[0] == '-y':\n"
-        "        rest = rest[1:]\n"
-        "    else:\n"
-        "        print('unsupported fake npx option', file=sys.stderr)\n"
-        "        raise SystemExit(2)\n"
-        "roots = {'claude-code': Path('.claude/skills'), 'codex': Path('.agents/skills')}\n"
-        "if not agents or any(agent not in roots for agent in agents) or not (source / 'skills').is_dir():\n"
-        "    print('unsupported fake npx agents or source', file=sys.stderr)\n"
-        "    raise SystemExit(2)\n"
-        "canonical = roots['codex'] if 'codex' in agents else roots[agents[0]]\n"
-        "def clear(path):\n"
-        "    if path.is_symlink() or path.is_file():\n"
-        "        path.unlink()\n"
-        "    elif path.is_dir():\n"
-        "        shutil.rmtree(path)\n"
-        "lock = {'version': 1, 'skills': {}}\n"
-        "for directory in sorted((source / 'skills').iterdir()):\n"
-        "    if not (directory / 'SKILL.md').is_file():\n"
-        "        continue\n"
-        "    destination = canonical / directory.name\n"
-        "    destination.parent.mkdir(parents=True, exist_ok=True)\n"
-        "    clear(destination)\n"
-        "    shutil.copytree(directory, destination)\n"
-        "    for agent in agents:\n"
-        "        link = roots[agent] / directory.name\n"
-        "        if link == destination:\n"
-        "            continue\n"
-        "        link.parent.mkdir(parents=True, exist_ok=True)\n"
-        "        clear(link)\n"
-        "        link.symlink_to(os.path.relpath(destination, link.parent))\n"
-        "    lock['skills'][directory.name] = {'source': source_argument, 'sourceType': 'local'}\n"
-        "Path('skills-lock.json').write_text(json.dumps(lock, indent=2) + '\\n', encoding='utf-8')\n"
-        "print(f'fake skills CLI installed {len(lock[\"skills\"])} skills for {agents}')\n",
+        "import sys\n"
+        "print('unexpected npx invocation: Concorde supports only Pi', file=sys.stderr)\n"
+        "raise SystemExit(99)\n",
         encoding="utf-8",
     )
     npx_script.chmod(0o755)

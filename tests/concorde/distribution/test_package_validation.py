@@ -60,11 +60,11 @@ def _operations_package(
     (package / "alpha.py").write_text(alpha_source, encoding="utf-8")
 
 
-def _skill(root: Path, *, operation: str = "alpha") -> None:
-    skill = root / "prompts/skills/concorde-alpha.md"
-    skill.parent.mkdir(parents=True, exist_ok=True)
-    skill.write_text(
-        f"---\nname: concorde-alpha\ndescription: Fixture skill.\noperation: {operation}\n---\n\n# concorde-alpha\n",
+def _guidance(root: Path, *, operation: str = "alpha") -> None:
+    guidance = root / "prompts/operation-guidance/concorde-alpha.md"
+    guidance.parent.mkdir(parents=True, exist_ok=True)
+    guidance.write_text(
+        f"---\nname: concorde-alpha\ndescription: Fixture guidance.\noperation: {operation}\n---\n\n# concorde-alpha\n",
         encoding="utf-8",
     )
 
@@ -155,14 +155,13 @@ class PromptRuleTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
-        shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
 
     def test_clean_prompts_tree_has_no_findings(self) -> None:
         self.assertEqual([], package_validation._validate_prompts(self.root))
 
     def test_resolver_error_is_reported_with_its_rule_id(self) -> None:
-        edited = self.root / "prompts/skills/concorde-context-solve.md"
+        edited = self.root / "prompts/operation-guidance/concorde-context-solve.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n",
             encoding="utf-8",
@@ -215,7 +214,7 @@ class PromptRuleTests(unittest.TestCase):
 
 
 class OperationModuleRuleTests(unittest.TestCase):
-    """Rule 2: operation module inventory, mandatory properties, context selection, USES, Agents, Skills."""
+    """Rule 2: operation module inventory, mandatory properties, context selection, USES, model profiles, Operation guidance."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -372,33 +371,48 @@ class OperationModuleRuleTests(unittest.TestCase):
             findings,
         )
 
-    def test_public_operation_without_a_skill_is_reported(self) -> None:
+    def test_public_operation_without_a_guidance_is_reported(self) -> None:
         broken = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
         _operations_package(self.root, alpha_source=broken)
         findings = package_validation._validate_operation_modules(self.root)
         self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-SKILL-001" for f in findings),
+            any(f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001" for f in findings),
             findings,
         )
 
-    def test_nonpublic_operation_with_a_skill_is_reported(self) -> None:
+    def test_nonpublic_operation_with_a_guidance_is_reported(self) -> None:
         _operations_package(self.root)
-        _skill(self.root)
+        _guidance(self.root)
         findings = package_validation._validate_operation_modules(self.root)
         self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-SKILL-001" for f in findings),
+            any(f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001" for f in findings),
             findings,
         )
 
-    def test_public_operation_with_exactly_one_skill_has_no_skill_finding(
+    def test_public_operation_with_exactly_one_guidance_has_no_guidance_finding(
         self,
     ) -> None:
         broken = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
         _operations_package(self.root, alpha_source=broken)
-        _skill(self.root)
+        _guidance(self.root)
         findings = package_validation._validate_operation_modules(self.root)
         self.assertFalse(
-            any(f.rule_id == "CONCORDE-OPERATION-SKILL-001" for f in findings),
+            any(f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001" for f in findings),
+            findings,
+        )
+
+    @verifies("scenario.distribution.build-pi-session")
+    def test_public_guidance_filename_must_match_external_name(self) -> None:
+        _operations_package(
+            self.root,
+            alpha_source=VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True"),
+        )
+        _guidance(self.root)
+        source = self.root / "prompts/operation-guidance/concorde-alpha.md"
+        source.rename(source.with_name("concorde-wrong.md"))
+        findings = package_validation._validate_operation_modules(self.root)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001" for f in findings),
             findings,
         )
 
@@ -530,7 +544,7 @@ class OperationModuleRuleTests(unittest.TestCase):
             'CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "none"'
         ).replace("PUBLIC = False", "PUBLIC = True")
         _operations_package(self.root, alpha_source=source)
-        _skill(self.root)
+        _guidance(self.root)
         findings = package_validation._validate_operation_modules(self.root)
         self.assertTrue(
             any(f.rule_id == "CONCORDE-OPERATION-CONTEXT-001" for f in findings),
@@ -753,7 +767,6 @@ class BuildOutputRuleTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
-        shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
 
     @verifies("scenario.distribution.build-check")
@@ -765,7 +778,7 @@ class BuildOutputRuleTests(unittest.TestCase):
 
     @verifies("scenario.distribution.build-check")
     def test_stale_source_is_reported(self) -> None:
-        write_build(self.root, "all")
+        write_build(self.root)
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8"
@@ -777,7 +790,7 @@ class BuildOutputRuleTests(unittest.TestCase):
 
     @verifies("scenario.distribution.build-check")
     def test_drifted_output_is_reported(self) -> None:
-        write_build(self.root, "all")
+        write_build(self.root)
         target = self.root / "generated/agents/planner.md"
         target.write_text(
             target.read_text(encoding="utf-8") + "\ntampered\n", encoding="utf-8"
@@ -789,7 +802,7 @@ class BuildOutputRuleTests(unittest.TestCase):
 
     @verifies("scenario.distribution.build-check")
     def test_fresh_build_has_no_findings(self) -> None:
-        write_build(self.root, "all")
+        write_build(self.root)
         self.assertEqual([], package_validation._validate_build_outputs(self.root))
 
     @verifies("scenario.distribution.build-check")
@@ -797,7 +810,7 @@ class BuildOutputRuleTests(unittest.TestCase):
         """`generated/` is a shared, ignored root; a file another tool writes there (for example
         the legacy initializer's diagram renders under `generated/architecture/`) must never be
         reported as drift."""
-        write_build(self.root, "all")
+        write_build(self.root)
         other = self.root / "generated/architecture"
         other.mkdir(parents=True)
         (other / "example.html").write_text(
@@ -807,7 +820,7 @@ class BuildOutputRuleTests(unittest.TestCase):
 
     @verifies("scenario.distribution.build-check")
     def test_unexpected_file_in_an_owned_directory_is_reported(self) -> None:
-        write_build(self.root, "all")
+        write_build(self.root)
         (self.root / "generated/agents/extra.md").write_text(
             "not a build output\n", encoding="utf-8"
         )
@@ -912,7 +925,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
                     "id": "alpha",
                     "public": False,
                     "context_selection": "bound",
-                    "skill": None,
+                    "public_name": None,
                 }
                 if value != "missing":
                     entry["deterministic"] = value
@@ -946,7 +959,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
 
     def test_two_operations_blocks_is_reported(self) -> None:
         _operations_package(self.root)
-        block = '```concorde-operations\n[{"id": "alpha", "public": false, "context_selection": "bound", "deterministic": false, "skill": null}]\n```'
+        block = '```concorde-operations\n[{"id": "alpha", "public": false, "context_selection": "bound", "deterministic": false, "public_name": null}]\n```'
         _document(self.root, "specs/one.md", "document.one", block)
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
@@ -978,7 +991,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
     def test_matching_operations_block_has_no_findings(self) -> None:
         public_alpha = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
         _operations_package(self.root, alpha_source=public_alpha)
-        _skill(self.root)
+        _guidance(self.root)
         block = (
             "```concorde-operations\n"
             + json.dumps(
@@ -988,7 +1001,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
                         "public": True,
                         "context_selection": "bound",
                         "deterministic": False,
-                        "skill": "concorde-alpha",
+                        "public_name": "concorde-alpha",
                     }
                 ]
             )
@@ -1001,10 +1014,69 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
         )
         self.assertEqual([], findings)
 
+    @verifies("scenario.distribution.operation-determinism")
+    def test_public_name_is_code_identity_not_a_skill_prerequisite(self) -> None:
+        _operations_package(
+            self.root,
+            alpha_source=VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True"),
+        )
+        inventory = package_validation._operation_code_inventory(self.root)
+        self.assertEqual("concorde-alpha", inventory["alpha"]["public_name"])
+        self.assertNotIn("skill", inventory["alpha"])
+        # Missing ordinary guidance is independently invalid, not a null executable name.
+        self.assertTrue(
+            any(
+                f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001"
+                for f in package_validation._validate_operation_modules(self.root)
+            )
+        )
+
+    @verifies("scenario.distribution.operation-determinism")
+    def test_retired_skill_metadata_and_wrong_public_names_are_rejected(self) -> None:
+        _operations_package(
+            self.root,
+            alpha_source=VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True"),
+        )
+        _guidance(self.root)
+        expected = package_validation._operation_code_inventory(self.root)["alpha"]
+        legacy = {"id": "alpha", **expected}
+        legacy["skill"] = legacy.pop("public_name")
+        entries = [legacy, {"id": "alpha", **expected, "skill": "concorde-alpha"}]
+        entries.extend(
+            {"id": "alpha", **expected, "public_name": value}
+            for value in (None, False, 1, "concorde-wrong", ["concorde-alpha"])
+        )
+        for entry in entries:
+            with self.subTest(entry=entry):
+                body = "```concorde-operations\\n" + json.dumps([entry]) + "\\n```"
+                _document(self.root, "specs/one.md", "document.one", body)
+                findings = package_validation._validate_spec_operations_block(
+                    self.root, {"specs/one.md": body}
+                )
+                self.assertTrue(
+                    any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings),
+                    findings,
+                )
+
+    @verifies("scenario.distribution.operation-determinism")
+    def test_private_operation_has_no_public_name(self) -> None:
+        _operations_package(self.root)
+        expected = package_validation._operation_code_inventory(self.root)["alpha"]
+        self.assertIsNone(expected["public_name"])
+        entry = {"id": "alpha", **expected, "public_name": "concorde-alpha"}
+        body = "```concorde-operations\\n" + json.dumps([entry]) + "\\n```"
+        _document(self.root, "specs/one.md", "document.one", body)
+        findings = package_validation._validate_spec_operations_block(
+            self.root, {"specs/one.md": body}
+        )
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings), findings
+        )
+
     def test_mismatched_context_selection_is_reported(self) -> None:
         public_alpha = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
         _operations_package(self.root, alpha_source=public_alpha)
-        _skill(self.root)
+        _guidance(self.root)
         block = (
             "```concorde-operations\n"
             + json.dumps(
@@ -1014,7 +1086,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
                         "public": True,
                         "context_selection": "none",
                         "deterministic": False,
-                        "skill": "concorde-alpha",
+                        "public_name": "concorde-alpha",
                     }
                 ]
             )
@@ -1057,14 +1129,14 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
                         "public": False,
                         "context_selection": "bound",
                         "deterministic": False,
-                        "skill": None,
+                        "public_name": None,
                     },
                     {
                         "id": "ghost",
                         "public": False,
                         "context_selection": "bound",
                         "deterministic": False,
-                        "skill": None,
+                        "public_name": None,
                     },
                 ]
             )

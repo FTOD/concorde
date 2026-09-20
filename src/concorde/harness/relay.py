@@ -123,7 +123,7 @@ def bind_worktree(
         and (host.project_root / "concorde.json").is_file()
     ):
         raise SpecError(
-            "source maintenance requires a fresh Skill-free child in an assigned candidate",
+            "source maintenance requires a fresh Concorde-catalog-free child in an assigned candidate",
             "fresh_session_required",
         )
     if task.get("change_id") is not None:

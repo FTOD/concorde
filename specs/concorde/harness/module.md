@@ -35,7 +35,7 @@ and configuration, binds the worktree the request was started in, relays a consu
 from primary into a host-created candidate, and hands the admitted request to the
 [Operations dispatch](../operations/module.md). The request's result envelope always keeps
 admission, domain and execution outcomes apart. Source-primary mutations instead stop for a fresh
-Skill-free writer in an assigned candidate and a separate sibling tester; relay is not a
+catalog-free writer in an assigned candidate and a separate sibling tester; relay is not a
 self-maintenance exception.
 
 A calling workflow gives the Harness Module one worker job or one configured check. Harness fixes the allowed

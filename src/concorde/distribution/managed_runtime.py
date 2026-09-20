@@ -16,7 +16,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 MARKER_NAME = ".concorde-runtime.json"
-MARKER_SCHEMA = 3
+MARKER_SCHEMA = 4
 _LOCK_LINE = re.compile(r"^langgraph==([0-9]+(?:\.[0-9]+){2})$")
 _SEMVER = re.compile(r"^v?([0-9]+)\.([0-9]+)\.([0-9]+)(?:[-+].*)?$")
 # The terminal worker extension dependencies, installed from the package's pinned lock.
@@ -39,7 +39,7 @@ class ManagedRuntimeSpec:
     runtime_sha256: str
     langgraph_version: str
     concorde_version: str
-    skills: tuple[str, ...]
+    operations: tuple[str, ...]
     pi_lock_sha256: str
     typebox_version: str
 
@@ -91,7 +91,7 @@ def load_runtime_spec(
         raise ManagedRuntimeError("runtime.python must be '>=3.11'")
     if venv != ".concorde/.venv":
         raise ManagedRuntimeError("runtime.venv must be .concorde/.venv")
-    from .build import SKILL_NAMES
+    from ..spec.contracts import PUBLIC_OPERATIONS
 
     requirement_path = package_root / requirements
     launcher_path = package_root / launcher
@@ -140,7 +140,7 @@ def load_runtime_spec(
         runtime_sha256=runtime_sha256,
         langgraph_version=match.group(1),
         concorde_version=version,
-        skills=SKILL_NAMES,
+        operations=PUBLIC_OPERATIONS,
         pi_lock_sha256=pi_lock_sha256,
         typebox_version=typebox_version,
     )
@@ -362,7 +362,7 @@ def plan_runtime(
         marker
         and marker.get("requirements_sha256") == spec.requirements_sha256
         and marker.get("pi_lock_sha256") == spec.pi_lock_sha256
-        and marker.get("verified_skills") == list(spec.skills)
+        and marker.get("verified_operations") == list(spec.operations)
     )
     if matches and _healthy(runtime, spec):
         return {**item, "action": "unchanged"}
@@ -382,13 +382,13 @@ def _checked(result: subprocess.CompletedProcess[str], label: str) -> str:
     raise ManagedRuntimeError(f"{label} failed with exit {result.returncode}: {detail}")
 
 
-def _verify_skills(
+def _verify_operations(
     target: Path,
     framework: Path,
     spec: ManagedRuntimeSpec,
     runtime: Path,
 ) -> tuple[str, ...]:
-    """Run every public Skill's launcher runtime check inside the managed runtime itself.
+    """Run every public Operation's launcher runtime check inside the managed runtime itself.
 
     The check must exercise the environment being verified, not the interpreter that runs the
     installer: it is started with the runtime's own interpreter and must report that runtime as
@@ -398,26 +398,26 @@ def _verify_skills(
     environment = _offline_environment()
     observed_python: str | None = None
     verified: list[str] = []
-    for skill in spec.skills:
+    for operation in spec.operations:
         result = _run(
-            [str(python), str(launcher), skill, "--runtime-check"],
+            [str(python), str(launcher), operation, "--runtime-check"],
             cwd=target,
             environment=environment,
         )
-        output = _checked(result, f"operation runtime check for {skill}")
+        output = _checked(result, f"operation runtime check for {operation}")
         try:
             payload = json.loads(output)
         except json.JSONDecodeError as error:
             raise ManagedRuntimeError(
-                f"operation runtime check for {skill} returned invalid JSON"
+                f"operation runtime check for {operation} returned invalid JSON"
             ) from error
-        if not isinstance(payload, dict) or payload.get("operation") != skill:
+        if not isinstance(payload, dict) or payload.get("operation") != operation:
             raise ManagedRuntimeError(
-                f"operation runtime check for {skill} returned mismatched identity"
+                f"operation runtime check for {operation} returned mismatched identity"
             )
         if payload.get("langgraph") != spec.langgraph_version:
             raise ManagedRuntimeError(
-                f"operation runtime check for {skill} returned mismatched LangGraph version"
+                f"operation runtime check for {operation} returned mismatched LangGraph version"
             )
         prefix = payload.get("prefix")
         if (
@@ -426,16 +426,16 @@ def _verify_skills(
             or Path(prefix).resolve() != runtime.resolve()
         ):
             raise ManagedRuntimeError(
-                f"operation runtime check for {skill} ran outside the managed runtime: {prefix!r}"
+                f"operation runtime check for {operation} ran outside the managed runtime: {prefix!r}"
             )
         observed_python = payload.get("python_version")
         if not isinstance(observed_python, str) or not observed_python:
             raise ManagedRuntimeError(
-                f"operation runtime check for {skill} omitted its Python version"
+                f"operation runtime check for {operation} omitted its Python version"
             )
-        verified.append(skill)
+        verified.append(operation)
     if observed_python is None:
-        raise ManagedRuntimeError("managed runtime verified no skills")
+        raise ManagedRuntimeError("managed runtime verified no operations")
     return tuple(verified)
 
 
@@ -454,7 +454,7 @@ def _write_marker(
         "python_version": python_version,
         "pi_lock_sha256": spec.pi_lock_sha256,
         "typebox_version": spec.typebox_version,
-        "verified_skills": list(spec.skills),
+        "verified_operations": list(spec.operations),
     }
     content = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
     marker = runtime / MARKER_NAME
@@ -534,9 +534,9 @@ def provision_runtime(
             _install_pi(runtime, framework, target)
         python = runtime_python(runtime)
         python_version = _python_version(python, target)
-        verified = _verify_skills(target, framework, spec, runtime)
-        if verified != spec.skills:
-            raise ManagedRuntimeError("managed runtime did not verify every skill")
+        verified = _verify_operations(target, framework, spec, runtime)
+        if verified != spec.operations:
+            raise ManagedRuntimeError("managed runtime did not verify every operation")
         _verify_pi(runtime, spec)
         _write_marker(runtime, spec, python_version)
     except Exception:
@@ -556,7 +556,7 @@ def provision_runtime(
         "requirements_sha256": spec.requirements_sha256,
         "runtime_sha256": spec.runtime_sha256,
         "launcher": spec.launcher,
-        "verified_skills": list(verified),
+        "verified_operations": list(verified),
         "pi": {
             "install_relative": PI_INSTALL_RELATIVE,
             "lock_sha256": spec.pi_lock_sha256,

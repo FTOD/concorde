@@ -13,7 +13,7 @@ import subprocess
 import uuid
 from dataclasses import asdict, replace
 
-from ..distribution.build import SkillPrompt, load_model_instructions
+from ..distribution.build import ModelInstructions, load_model_instructions
 from ..harness.change_worktree import (
     git,
     git_value,
@@ -37,7 +37,6 @@ from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_
 from ..spec.typed_data import (
     artifact,
     canonical,
-    checked_path,
     typed,
     validate_typed,
     verify_artifacts,
@@ -122,7 +121,7 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
     return changes
 
 
-def inputs(run, mode: str) -> tuple[dict, SkillPrompt]:
+def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
     repository = SpecRepository(run.repository.root, run.host.package_root)
     target = repository.select(run.target.id, run.task.get("focus_id"))
     if mode not in REVIEW_STAGES:

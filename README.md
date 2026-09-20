@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
   <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-10.0.0-6264e8" alt="Spec Protocol 10.0.0" /></a>
-  <a href="#get-started"><img src="https://img.shields.io/badge/clients-Claude_Code_%C2%B7_Codex_%C2%B7_Pi-273449" alt="Clients: Claude Code, Codex and Pi" /></a>
+  <a href="#get-started"><img src="https://img.shields.io/badge/client-Pi-273449" alt="Client: Pi" /></a>
   <a href="#workflows-are-langgraph-graphs-you-can-inspect"><img src="https://img.shields.io/badge/graphs-LangGraph-273449" alt="Workflows are LangGraph graphs" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -28,8 +28,9 @@ realize it. Each selected model-backed Operation runs as a fresh, sandboxed work
 and only the files and permissions its phase needs. A change is made in its own candidate worktree,
 checked and independently reviewed there, and delivered only when you ask.
 
-You drive Concorde from the agent client you already use: **Claude Code** or **Codex** through
-installed Skills, or the **Pi coding agent** through a `concorde` session tool. Every model-backed
+You drive Concorde from the **Pi coding agent** through its `concorde` session tool. Pi is the
+only supported client; standalone Skills and Codex/Claude client integrations are retired.
+Pi model providers, including OpenAI and Anthropic, remain supported. Every model-backed
 step runs as a [Pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) worker process,
 and each retained Operation uses inspectable LangGraph control flow. The outer agent reads,
 answers and edits Specs directly, then chooses which Operations to call and in what order.
@@ -143,8 +144,8 @@ bypass unfinished planned work or selected required evidence.
 
 **Requirements.** A Git project on **Linux with [bubblewrap](https://github.com/containers/bubblewrap)**,
 working user, mount and PID namespaces and pidfd support: every worker and every configured check
-runs inside it. **Python 3.11+**, **Node.js 18+** and npm, used for the managed runtime and the Agent
-Skills CLI. The [Pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) on
+runs inside it. **Python 3.11+**, **Node.js 18+** and npm, used for the managed runtime and Pi
+extension dependencies, not a Skills installer. The [Pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) on
 `PATH` (`npm install -g @earendil-works/pi-coding-agent`; Concorde is developed against 0.85.1),
 logged in with `pi` then `/login`: workers use that login and Pi's own model providers. The optional
 docsite needs Node.js **20+**.
@@ -157,26 +158,29 @@ cd concorde
 python3 scripts/concorde.py build
 ```
 
-**2. Preview the installation into your project, then apply it.** Use `--integration claude`,
-`codex` or `pi`; repeat the option to set up several clients in one project.
+**2. Preview the Pi-only installation into your project, then apply it.** There is no client
+selector; retired `--integration` flags are rejected, including `--integration pi`.
 
 ```bash
-python3 scripts/install-concorde.py --target /absolute/path/to/project --integration claude --preview
-python3 scripts/install-concorde.py --target /absolute/path/to/project --integration claude --apply
+python3 scripts/install-concorde.py --target /absolute/path/to/project --preview
+python3 scripts/install-concorde.py --target /absolute/path/to/project --apply
 ```
 
 The installer provisions a locked managed runtime at `.concorde/.venv`, deploys the framework to
 `.concorde/framework/`, places the Protocol at `.concorde/protocol/` and adds a guidance block to
-each selected client's root instruction file (`CLAUDE.md` or `AGENTS.md`). For Claude Code and Codex
-it runs the standard [Agent Skills CLI](https://github.com/vercel-labs/skills) (`npx skills add`,
-pinned by the package) so the Skills land in each tool's usual layout; for Pi it installs a session
-extension under `.pi/extensions/` whose `concorde` tool runs the same Operations. It preserves your
-content outside the entries it owns, and the Skills need no Concorde dependencies in your own
-`python3`: the launcher re-runs itself inside the managed runtime.
+`AGENTS.md`. It installs a receipt-owned session extension under `.pi/extensions/` whose
+`concorde` tool describes and runs the eleven public Operations. It preserves your content outside
+the entries it owns, and the launcher re-runs itself inside the managed runtime. No standalone
+Skills are installed and no Skills CLI runs.
+
+Upgrades retire only unchanged receipt-owned outputs and exact owned root blocks. Edited,
+symlinked or unknown content conflicts safely. Old external CLI-owned `.agents/skills`,
+`.claude/skills` entries and `skills-lock.json` are left untouched, with a manual retirement notice;
+remove only your own retired Concorde entries, never those directories or locks wholesale.
 
 **3. Commit the installation, then initialize the project.** Every change, initialization included,
 runs in a candidate worktree created from the committed `HEAD`, so commit the installed framework and
-root guidance first. Then, in an agent session inside your project:
+root guidance first. Then, in a Pi session inside your project:
 
 ```text
 Use concorde-init to initialize this project. Propose the setup for my review.
@@ -213,7 +217,7 @@ explicit target; questions and Spec/registry edits are ordinary outer-agent work
 | Initialize or configure workers                  | `concorde-init` · `concorde-configure`   |
 | Validate or deliver a candidate                  | `concorde-validate` · `concorde-deliver` |
 
-These eleven public Operations are the Skills or Pi tool entries. `describe-policy` previews
+These eleven public Operations are the Pi tool entries. `describe-policy` previews
 bounded grants without launching a worker; initialization/configuration use their explicit
 proposal or apply contracts instead of a policy preview.
 
@@ -285,10 +289,11 @@ starts, completions and failures, not token-level traces of a worker's reasoning
 The existing Studio screenshot in `docs/assets/concorde-studio.png` depicts the retired main
 entry and is historical, not a current invocation example.
 
-To send ordinary Skill or CLI invocations through the server, set
+To send installed-project Pi tool or CLI invocations through the server, set
 `export CONCORDE_STUDIO_URL=http://127.0.0.1:2024` in the shell that launches them; the launcher
 prints the Studio thread and run IDs. See the [Studio guide](scripts/development/STUDIO.md) for
 debugging and [installed-project setup](scripts/development/STUDIO.md#consumer-project-setup).
+Private source-maintenance selection rejects Studio redirects; test only the selected candidate runtime.
 
 ## The Spec Protocol in brief
 
@@ -334,27 +339,28 @@ names a Pi worker:
 
 The eleven host-adapted Operations are public explicit entries. Four of them (`init`, `configure`, `validate`
 and `deliver`) never call a model. Each model-backed Operation keeps its role instructions in
-`operations/<name>/spec.md` and its profile (task contract, workspace kind, Pi tools, children and
-timeout) in `operations/<name>/__init__.py`. A worker with declared children can delegate one level
-deep, in the foreground and with fresh context: the spec reviewer to `fact-check` and `consistency`,
-the planner to `scout`, the programmer to `scout`, `planner` and `verifier`, and the code reviewer to
-`scout` and `verifier`. See [Operations and Harnesses](specs/concorde/harness/agents-and-harnesses.md).
+`operations/<name>/spec.md` and its profile (task contract, workspace kind, Pi tools and timeout)
+in `operations/<name>/__init__.py`. All seven workers are terminal: they do their admitted work
+directly, cannot create children or delegate, and cannot recursively invoke Operations. The
+LangGraph/host schedules worker nodes under their own file/tool grants. Missing or legacy depth
+variables do not govern these leaf launches; outer task-subagent limits remain unchanged. See
+[Operations and Harnesses](specs/concorde/harness/agents-and-harnesses.md).
 
 ### Launchers and tools
 
 Commands are relative to this checkout; installed projects use the same scripts under
 `.concorde/framework/`.
 
-| Entry point                                                        | Use                                                                                                    |
-| :----------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
-| `python3 scripts/run-operation.py <operation> < invocation.json`   | Submit a typed request to one of the eleven public Operations, in `execute` or `describe-policy` mode. |
-| `python3 scripts/concorde.py build` · `validate`                   | Render workers, Skills and schemas; run the Spec, Operation, contract and build-output checks.         |
-| `python3 scripts/concorde.py skills --write` · `protocol-manifest` | Render the published Skills under `skills/`; accept a changed Protocol bundle.                         |
-| `python3 scripts/concorde.py docsite` · `usage`                    | Scaffold a project docsite; summarize recorded worker usage per run.                                   |
-| `python3 scripts/install-concorde.py`                              | Preview or apply installation into a project.                                                          |
-| `python3 scripts/issues.py`                                        | Inspect branch-local Issues from the command line.                                                     |
-| [LangGraph Studio](scripts/development/STUDIO.md)                  | Run and observe the same public graphs through the shared host.                                        |
-| `npm --prefix docsite run <script>`                                | `start`, `build`, `validate`, `typecheck`, `test`, `check`.                                            |
+| Entry point                                                      | Use                                                                                                    |
+| :--------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
+| `python3 scripts/run-operation.py <operation> < invocation.json` | Submit a typed request to one of the eleven public Operations, in `execute` or `describe-policy` mode. |
+| `python3 scripts/concorde.py build` · `validate`                 | Render workers, the Pi catalog and schemas; run the Spec, Operation, contract and build-output checks. |
+| `python3 scripts/concorde.py protocol-manifest`                  | Inspect or explicitly accept and bind a changed Protocol bundle.                                       |
+| `python3 scripts/concorde.py docsite` · `usage`                  | Scaffold a project docsite; summarize recorded worker usage per run.                                   |
+| `python3 scripts/install-concorde.py`                            | Preview or apply installation into a project.                                                          |
+| `python3 scripts/issues.py`                                      | Inspect branch-local Issues from the command line.                                                     |
+| [LangGraph Studio](scripts/development/STUDIO.md)                | Run and observe the same public graphs through the shared host.                                        |
+| `npm --prefix docsite run <script>`                              | `start`, `build`, `validate`, `typecheck`, `test`, `check`.                                            |
 
 The CLI `validate` command checks the project directly; the `concorde-validate` Operation also
 records readiness evidence for a candidate.
@@ -371,12 +377,25 @@ python3 scripts/concorde.py validate
 python3 scripts/development/run-tests.py
 ```
 
-Concorde self-maintenance uses a fresh Skill-free writer in a candidate, followed by a fresh
-sibling tester explicitly supplied only candidate-built Skills. The main session coordinates
-from its initial worktree and integrates only with explicit authorization. Source builds keep
-Skills and the Pi shim private under `generated/session/`, never ambient discovery.
-Never edit build output (`generated/`, the Skill projections or the rendered `skills/`); change
-`prompts/`, `operations/` or `pi/extensions/` and rebuild. See the
+Concorde self-maintenance uses a fresh Concorde-catalog-free writer in a candidate, followed by a
+separate fresh sibling tester supplied only the exact candidate-built Pi entry, embedded catalog
+and runtime provenance. Both disable inherited/discovered Concorde catalogs and never fork old
+instructions or delegate tasks. The main coordinates from its initial worktree and integrates
+only with explicit authorization. The writer formats, checks and commits, then stops writing
+before testing. Failed tests return to maintenance followed by another fresh tester.
+
+Source builds keep the Pi shim private at `generated/session/pi/concorde-session.ts`, never ambient
+discovery. Use `select-session --mode test --pi-entry <absolute-private-entry> --runtime
+<absolute-candidate-launcher> --output <absolute-candidate-.concorde/work/selection.json>` and
+reverify with `select-session --verify <absolute-selection>` before the fresh host starts. Supply
+`CONCORDE_SESSION_SELECTION`, only the returned exact `-e` entry and discovery-disable flags, and
+a separate host-owned Pi configuration directory. Missing/stale artifacts or candidate Python
+block; selection is provenance, not evidence of extension loading, tool use or model execution.
+The host retains the actual file/tool grant; no global fallback or Studio redirect is allowed.
+
+Never edit build output under `generated/`; change `prompts/operation-guidance/`, other authored
+`prompts/`, `operations/` or `pi/extensions/` and rebuild. There is no standalone `skills/` product
+or `skills` publishing command. See the
 [source-checkout policy](AGENTS.md) and [development details](docs/workflow-guide.md#development).
 
 ---

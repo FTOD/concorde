@@ -7,12 +7,12 @@ that occupies a whole line starting at column one:
     @include prompts/workflow-host/candidate-worktree.md
     @include prompts/workflow-host/invoke.md operation=concorde-plan request=concorde-plan-request
 
-Resolution is a pure function of the source tree: given a root (a role root prompt or a skill
+Resolution is a pure function of the source tree: given a root (a role root prompt or an operation guidance
 source), it walks ``@include`` directives, binds per-inclusion ``{KEY}`` variables, and returns the
 fully substituted text. It performs no network or process I/O beyond reading files under
 ``project_root``.
 
-Skill sources (``prompts/skills/<name>.md``) are a distinct front-matter shape (``name``,
+Operation guidance sources (``prompts/operation-guidance/<name>.md``) are a distinct front-matter shape (``name``,
 ``description``, ``operation``) with no ``audience`` field; they are always implicit ``ambient``
 roots and can never be included. WorkerProfile Specs (``operations/<name>/spec.md``) are a third distinct shape: no front matter at all,
 and always an implicit ``worker`` root -- an WorkerProfile Spec carries its own ``# concorde-<name>``
@@ -36,7 +36,7 @@ RESERVED_VARIABLES = frozenset({"OPERATION", "SCRIPT", "FRAMEWORK"})
 PROTOCOL_PREFIX = "prompts/protocol/"
 PROTOCOL_TEXT_ROOT = "protocol/"
 PROMPTS_ROOT = "prompts/"
-SKILLS_ROOT = "prompts/skills/"
+GUIDANCE_ROOT = "prompts/operation-guidance/"
 SPECS_ROOT = "specs/"
 OPERATIONS_ROOT = "operations/"
 
@@ -159,10 +159,10 @@ def _parse_directive(rest: str | None, relative: str) -> tuple[str, dict[str, st
 
 
 def _check_scope(target: str, including: str) -> None:
-    if target.startswith(SKILLS_ROOT) or target == SKILLS_ROOT.rstrip("/"):
+    if target.startswith(GUIDANCE_ROOT) or target == GUIDANCE_ROOT.rstrip("/"):
         raise PromptResolverError(
             "CONCORDE-PROMPT-SCOPE-001",
-            f"{including}: cannot include a skill source: {target}",
+            f"{including}: cannot include an operation guidance source: {target}",
         )
     if target.startswith(SPECS_ROOT) or target == "specs":
         raise PromptResolverError(
@@ -222,7 +222,6 @@ def _resolve_body(
     chain: tuple[str, ...],
     visited: dict[str, tuple[str, ...]],
     sources: set[str],
-    omit: frozenset[str] = frozenset(),
 ) -> str:
     lines = body.split("\n")
     rendered: list[str] = []
@@ -236,10 +235,6 @@ def _resolve_body(
             continue
         target, bindings = _parse_directive(match.group("rest"), relative)
         _check_scope(target, relative)
-        if target in omit:
-            # A projection may leave out an include whose content belongs to another client's
-            # invocation mechanics; the omitted file contributes nothing and is not a source.
-            continue
         if target in chain:
             cycle = chain[chain.index(target) :] + (target,)
             raise PromptResolverError(
@@ -264,7 +259,6 @@ def _resolve_body(
             chain=new_chain,
             visited=visited,
             sources=sources,
-            omit=omit,
         )
         rendered.append(resolved)
         if index != last_index:
@@ -312,16 +306,11 @@ def resolve_role_prompt(project_root: str | Path, relative_path: str) -> Resolve
     return ResolvedPrompt(body=resolved, sources=tuple(sorted({relative, *sources})))
 
 
-def resolve_skill_source(
+def resolve_operation_guidance(
     project_root: str | Path,
     relative_path: str,
-    *,
-    omit: frozenset[str] = frozenset(),
 ) -> ResolvedPrompt:
-    """Resolve the body of one ``prompts/skills/<name>.md`` source as an implicit ambient root.
-
-    ``omit`` names include targets a projection leaves out, such as another client's invocation
-    mechanics; an omitted include renders nothing and is not recorded as a source."""
+    """Resolve one operation-guidance source as an implicit ambient root."""
 
     root = Path(project_root)
     relative = _safe_relative(relative_path)
@@ -331,13 +320,13 @@ def resolve_skill_source(
     except FrontMatterError as error:
         raise PromptResolverError(
             "CONCORDE-PROMPT-AUDIENCE-002",
-            f"invalid skill source front matter in {relative}: {error}",
+            f"invalid operation guidance source front matter in {relative}: {error}",
         ) from error
     required = {"name", "description", "operation"}
     if set(metadata) != required:
         raise PromptResolverError(
             "CONCORDE-PROMPT-AUDIENCE-002",
-            f"skill source {relative} must declare exactly {sorted(required)}, found {sorted(metadata)}",
+            f"operation guidance source {relative} must declare exactly {sorted(required)}, found {sorted(metadata)}",
         )
     sources: set[str] = set()
     resolved = _resolve_body(
@@ -348,7 +337,6 @@ def resolve_skill_source(
         chain=(relative,),
         visited={relative: (relative,)},
         sources=sources,
-        omit=omit,
     )
     resolved = _finalize(resolved, relative)
     return ResolvedPrompt(body=resolved, sources=tuple(sorted({relative, *sources})))
@@ -358,7 +346,7 @@ def resolve_model_instructions(
     project_root: str | Path, relative_path: str
 ) -> ResolvedPrompt:
     """Resolve one WorkerProfile Spec (``operations/<name>/spec.md``): an implicit ``worker`` root with no
-    front matter (workflow/agents-and-harnesses.md A1). Unlike a role root or a skill source, an
+    front matter (workflow/agents-and-harnesses.md A1). Unlike a role root or an operation guidance source, an
     WorkerProfile Spec carries its own ``# concorde-<name>`` heading and behavioral contract directly, so
     there is no ``audience``/``name``/``description``/``operation`` metadata to parse -- only a
     front-matter fence itself is rejected."""
@@ -404,8 +392,8 @@ def find_unreachable_prompts(
     )
     visited: set[str] = set()
     for candidate in roots:
-        if candidate.startswith(SKILLS_ROOT):
-            resolved = resolve_skill_source(root, candidate)
+        if candidate.startswith(GUIDANCE_ROOT):
+            resolved = resolve_operation_guidance(root, candidate)
         elif candidate.startswith(OPERATIONS_ROOT):
             resolved = resolve_model_instructions(root, candidate)
         else:

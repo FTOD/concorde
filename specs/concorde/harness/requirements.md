@@ -172,7 +172,7 @@ process, exactly as resolved and without searching parent directories.
 
 The registry, Spec collections and listed implementation files an invocation
 reads are therefore those of the worktree at that directory. The worktree in which the
-developer's agent session started, the worktree whose rendered Skill supplied the instructions
+developer's agent session started, the worktree whose Pi entry supplied the catalog
 and every other linked worktree are not inputs; see
 [invocation worktree binding](scenarios.md#scenario.harness.invocation-worktree-binding).
 

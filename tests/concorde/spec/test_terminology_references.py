@@ -172,7 +172,7 @@ class TerminologyReferenceTests(unittest.TestCase):
         required = {
             "issues/blockers.md": {"Issue", "Blocker", "Evidence"},
             "harness/graphs-and-loops.md": {"Graph"},
-            "harness/host.md": {"Host", "Graph", "Skill"},
+            "harness/host.md": {"Host", "Graph", "Pi integration"},
             "harness/module.md": {
                 "Spec context",
                 "Implementation context",
@@ -214,7 +214,7 @@ class TerminologyReferenceTests(unittest.TestCase):
             "issues/module.md": {"Disposition"},
             "issues/requirements.md": {"Disposition", "Ready"},
             "distribution/module.md": {"Protocol binding"},
-            "distribution/build.md": {"Public operation", "Skill"},
+            "distribution/build.md": {"Public operation", "Pi integration"},
             "review/review-result.md": {
                 "Issue",
                 "Blocker",

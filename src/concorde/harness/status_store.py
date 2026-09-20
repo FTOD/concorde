@@ -630,15 +630,15 @@ def record_run(
                 build_bytes = manifest.read_bytes()
                 build_reference = f"{RUNS_PATH}/{host.root_invocation_id or host.invocation_id}/builds/{digest(build_bytes).removeprefix('sha256:')}.json"
                 write_run(archive, build_reference, build_bytes)
-            if host.session_provenance:
-                for skill in host.session_provenance["skills"]:
-                    write_run(
-                        archive,
-                        f"{RUNS_PATH}/{host.root_invocation_id or host.invocation_id}/skills/{skill['digest'].removeprefix('sha256:')}.md",
-                        skill["body"].encode(),
-                    )
+            if host.session_provenance and host.session_provenance["pi_entry"]:
+                entry = host.session_provenance["pi_entry"]
+                write_run(
+                    archive,
+                    f"{RUNS_PATH}/{host.root_invocation_id or host.invocation_id}/pi/{entry['digest'].removeprefix('sha256:')}.ts",
+                    entry["content"].encode(),
+                )
             record = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "run_id": host.invocation_id,
                 "root_run_id": host.root_invocation_id or host.invocation_id,
                 "change_id": change["change_id"] if change else None,
@@ -668,22 +668,27 @@ def record_run(
                 "build_digest": digest(manifest.read_bytes())
                 if manifest.is_file()
                 else None,
-                "skill_provenance": {
+                "pi_provenance": {
                     key: value
                     for key, value in host.session_provenance.items()
-                    if key != "skills"
+                    if key != "pi_entry"
                 }
                 | {
-                    "skills": [
-                        {key: value for key, value in skill.items() if key != "body"}
-                        for skill in host.session_provenance["skills"]
-                    ]
+                    "pi_entry": {
+                        "path": host.session_provenance["pi_entry"]["path"],
+                        "digest": host.session_provenance["pi_entry"]["digest"],
+                        "catalog_digest": host.session_provenance["pi_entry"][
+                            "catalog"
+                        ]["digest"],
+                    }
+                    if host.session_provenance["pi_entry"]
+                    else None,
                 }
                 if host.session_provenance
                 else None,
                 "status": "started",
             }
-            # A build catalog is not evidence of Skill loading. Only an explicitly supplied,
+            # A build catalog is not evidence of Pi extension loading or tool execution. Only an explicitly supplied,
             # verified selection can provide that provenance; otherwise it stays unknown.
             if (
                 change
