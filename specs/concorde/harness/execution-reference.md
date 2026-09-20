@@ -380,6 +380,67 @@ contexts; Issue solving may verify current work or return repair intent to the c
 agent directly reads, answers and edits Specs and selects any subsequent work. There is no query,
 topology, specification or development Graph. Delivery remains separately authorized and deterministic.
 
+## Native result acceptance
+
+`NativeResultGate` is a deterministic Host service, not an Agent or a scheduler. Its constructor
+binds one invocation identity, one absolute Host-selected scratch proposal path, a current-input
+recheck, a result validator and the provider's acceptance/persistence callback. These callbacks
+are trusted code, never task input. `submit` checks the identity, closed result schema and business
+constraints and exclusively writes at most 1 MiB of canonical UTF-8 proposal JSON. The Host retains
+its exact bytes and digest independently of that file. Submission returns an explicitly unaccepted
+receipt and does not advance task completion. Invalid submissions can be corrected; a successfully
+submitted proposal cannot be replaced.
+
+The native child's documented typed post-run gate calls `stage`, never the persistence callback.
+Pi-subagents may execute a gate after failed child execution and can observe cancellation after a
+gate returns. Staging therefore checks the same invocation, rejects symlinked or changed proposal
+bytes, rechecks current context/task/configuration and declared policy and validates the result
+again, but returns `state: staged` and `accepted: false`. Its control DTO is at most 8,000 UTF-8
+bytes, comfortably below the native typed-gate limit; larger values fail rather than truncate.
+Full results and evidence remain Host artifacts. Native run receipts and model prose cannot
+replace these checks.
+
+A separate `finalize` calls a trusted native-execution verifier, repeats proposal/current-input
+checks, then calls the provider's trusted acceptance/persistence service. A repeated accepted
+finalization checks current inputs and returns a copy of its control value without replaying
+persistence. Failed or uncertain acceptance is terminal and requires fresh admission or the
+provider's explicit recovery, including the existing Issue closure journal. Cancellation and
+failed child execution revoke unsettled acceptance and retain partial edits. Cancellation after
+a durable domain commit does not erase that commit or imply rollback; the enclosing execution
+outcome remains a separate fact.
+
+`verify_native_children` takes the exact native async directory, run/session identity and ticket
+bound by the owning Pi extension from actual tool results, plus the Host-issued child inventory.
+It reads the documented `status.json` and native per-child metadata referenced by authored
+workflow emissions, not a caller's success booleans. It requires exact nonempty coverage, unique
+keys, matching parent/child run and Agent identities, completed status, zero native exit, no
+execution error, verified acceptance and the exact gate command/proposal digest in its staged
+control value. It rejects missing, oversized, aliased, changed or incomplete evidence. The
+read bound is 16 MiB per native record; it never truncates into successful evidence.
+
+The required adapter ordering is native terminal child status and metadata publication before
+finalization, with authored workflow emissions carrying native references before the final Host
+step. Missing or stale best-effort native publication blocks finalization. The enclosing workflow
+may still be running at the explicit domain commit boundary: this avoids depending on a workflow
+receipt published only after that step. A native failure after a successful staging gate cannot
+commit. Every admitted reviewer retains separate coverage, including scopes above the native
+thirty-two-Host-command bound; there is no per-child Host command requirement.
+
+These are acceptance primitives, not a claim that current public business entries have already
+migrated to native workflows. Their integration must also bind provisional within-workflow
+handoffs explicitly and recheck admission before every dependent model launch; staged values
+cannot masquerade as ordinary accepted plans, tasks or readiness evidence. Production integration
+remains blocked pending a real publication-adapter fixture, a checked retention/cap inventory,
+race-safe native run/session binding and explicit artifact-version admission. In particular,
+inspected pi-subagents 0.69.0 workflow status and per-child debug metadata omit a version field;
+the adapter must not infer lifecycle artifact version 3 from that absence. Synthetic child
+callbacks establish script order only, not production disk publication or live native execution.
+
+This service supplies result admission only. It neither proves that a child stayed within its
+selected read scope nor prevents arbitrary filesystem writes. Native Agent file restrictions are
+prompt-level unless a separately named actual enforcement path applies. The caller must prepare
+and recheck admission before a model launch; post-run acceptance cannot retroactively authorize it.
+
 ## Agent execution {#execution-agent-execution}
 
 #### Configured deterministic checks {#execution-configured-deterministic-checks}

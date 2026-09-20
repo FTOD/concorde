@@ -245,6 +245,29 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 - THEN it raises TypedDataError with a stable code and a JSON-pointer field identifying the problem
 - AND the caller stops the affected transition rather than substituting a default
 
+## Native Agent acceptance
+
+### scenario.harness.native-result-gate — Native submission is a proposal, not completion
+
+- GIVEN a native Pi Agent with a Host-issued invocation identity and proposal location
+- WHEN it submits its bounded result and a native post-run gate validates that proposal
+- THEN submission and gate success change no task-completion state, and the gate checks exact proposal bytes, schema, business identity and current inputs before returning a staged, explicitly unaccepted control value
+- AND a separate Host finalization checks independently correlated native execution evidence and current proposal inputs before trusted persistence
+- AND missing, malformed, oversized, foreign, aliased or changed proposals cannot be accepted
+- AND a duplicate accepted finalization rechecks current inputs without repeating persistence, while failed or uncertain persistence requires fresh admission or explicit provider recovery
+- AND cancellation or failed child execution revokes unsettled acceptance without promising rollback of implementation edits; cancellation after durable commit does not erase committed domain evidence
+- AND the bounded typed control result is rejected rather than truncated; proposal digests and post-run checks do not establish exclusive reads or preventative filesystem confinement
+
+### scenario.harness.native-terminal-evidence — Reconcile terminal children before domain commit
+
+- GIVEN a Host-bound native workflow run and session with issued child keys, Agent identities, proposal digests and exact gate commands
+- WHEN finalization reads the native async status and independently published child metadata before the enclosing workflow receipt exists
+- THEN it requires exact nonempty child coverage, matching workflow/run/Agent/proposal identities, completed child status, successful native exit and the matching verified staging gate
+- AND failed native execution cannot be overridden by a passing gate or an emitted success boolean
+- AND incomplete, missing, foreign, duplicated, cancelled or stale evidence blocks acceptance without inventing coverage
+- AND a scope of forty children needs no per-child Host command or artificial thirty-two-review limit
+- AND these files establish cooperative runtime provenance, not protection against an arbitrary same-user process tampering with native artifacts
+
 ## Agent execution
 
 ### scenario.harness.check-read-only — Project mutation is denied during execution
