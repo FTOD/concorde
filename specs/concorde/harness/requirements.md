@@ -200,3 +200,11 @@ The host SHALL persist task status and durable candidate run evidence only in th
 ### req.harness.task-delegation — One fresh task-child layer
 
 A task subagent SHALL remain in its assigned worktree without further task delegation under the outer task-host delegation limits; terminal Operation workers retain their separate file/tool grants.
+
+### req.harness.local-execution — Consumer execution stays worktree-local
+
+Harness SHALL admit consumer execution only with a verified complete worktree-local installation, never a cross-worktree Framework or dependency fallback.
+
+Creation has explicit host bootstrap authority; adoption/resume missing or stale installation stops
+for the supported installer. Source-private mode remains separate, without ambient installation.
+Installation does not widen worker grants, accept Protocol or duplicate primary status/runs.

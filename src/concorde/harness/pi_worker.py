@@ -305,7 +305,9 @@ class PiWorkerRuntime:
             source.get("PI_CODING_AGENT_DIR")
             or Path(source.get("HOME", "~")).expanduser() / ".pi" / "agent"
         )
-        with tempfile.TemporaryDirectory(prefix="concorde-pi-worker-") as directory:
+        with tempfile.TemporaryDirectory(
+            prefix="concorde-pi-worker-", dir="/tmp"
+        ) as directory:
             run_dir = Path(directory)
             agent_dir, temporary, home = (
                 run_dir / "agent",
@@ -393,9 +395,11 @@ class PiWorkerRuntime:
                     Path(self.package_root).parent
                     / ".venv/share/concorde/pi/node_modules/typebox"
                 )
-                dependencies = (
-                    local if local.is_dir() or not managed.is_dir() else managed
-                ).absolute()
+                installed = (
+                    Path(self.package_root).name == "framework"
+                    and Path(self.package_root).parent.name == ".concorde"
+                )
+                dependencies = (managed if installed else local).absolute()
                 plan = plan_mounts(
                     launch.workspace,
                     launch.write_paths,

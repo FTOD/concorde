@@ -269,7 +269,13 @@ Build authored projections, install and configure owned integrations, provision 
 
 Render Agent instructions and Protocol assets from authored sources and attest their freshness.
 
-This collaboration applies when resolving an Agent binding or admitting the Protocol rule bundle for a launch.
+This collaboration applies when resolving an Agent binding, admitting the Protocol rule bundle,
+or preparing consumer worktree execution. Harness admits the explicit invoking package, bootstraps
+only its newly created consumer candidate, and verifies/reuses local installations on resume and
+installed entry admission. It relies on Distribution's ownership-preserving complete-install
+[service](../distribution/contracts.md#local-installation-service); failure blocks before a worker,
+retains the candidate and requires explicit installation recovery. The host keeps the target
+quiescent; receipt verification supplies no task, Protocol acceptance or lifecycle authority.
 
 - [Load only fresh, source-traceable instructions and pinned rule assets](../distribution/build.md)
 
@@ -298,16 +304,13 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
   exact write boundary for a path that does not exist yet.
 - The sandbox requires Linux with a trusted system bubblewrap and refuses every worker launch
   elsewhere; there is no unconfined fallback and no backend for another platform yet.
-- A mutation relayed into a host-created candidate has these known limits. The candidate's
-  launcher runs with the invoking framework's Python interpreter and installed dependencies even
-  when it runs the candidate's own Concorde code, so a candidate that changes the locked
-  dependencies only sees them after that environment is rebuilt. A self-hosted candidate is
-  verified against its own build, never rebuilt by another checkout's renderer. Durable worker
-  usage, results and logs live only in primary-owned `.concorde/runs/`, preserving candidate
-  source identity. The requesting session receives the result envelope and forwarded stderr;
-  a Studio run in primary shows the relay as one node. A host interrupt gives the relayed launcher thirty seconds
-  to cancel its worker and print its result before the process is killed. A consumer project
-  whose installed framework is not tracked always runs the invoking framework in its candidates.
+- A relayed consumer candidate executes only its own verified installation and managed interpreter.
+  Source candidates require their own fresh private build and local environment instead; no host
+  installs an ambient shim into a source checkout. Durable usage, results and logs remain only in
+  primary-owned `.concorde/runs/`, with candidate source/runtime provenance. The requesting session
+  receives the result and diagnostics; Studio in primary shows relay as one node. A host interrupt
+  gives the launcher thirty seconds to cancel its worker before killing it. Missing or stale resumed
+  installation requires explicit supported installer recovery, not silent reinstallation or fallback.
 - Checks run by `run_checks` use the configured-check executor, but the worker receives only the tail
   of each check's log; whether a longer or structured report is needed is unresolved.
 

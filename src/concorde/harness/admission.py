@@ -27,7 +27,7 @@ from ..spec.typed_data import (
 from .change_worktree import progress, read_change, resume_owner, workspace_identity
 from .configuration import load_configuration
 from .host import OperationHost, resolve_child_operation
-from .relay import bind_worktree
+from .relay import bind_worktree, verify_local_execution
 from .worker_executor import OperationExecutionError
 from .worker_profile import ContractError
 
@@ -151,6 +151,8 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             raise SpecError("unknown registered operation", "unknown_operation")
         if host.mode not in {"execute", "describe-policy"}:
             raise SpecError("unknown operation mode", "invalid_input")
+        if host.depth == 1:
+            verify_local_execution(host)
         if host.depth == 1 and operation not in DETERMINISTIC_OPERATIONS:
             # The build is the only instruction source. Deterministic operations run no agent
             # cognition and load no WorkerProfile, so they never consume generated/; every other

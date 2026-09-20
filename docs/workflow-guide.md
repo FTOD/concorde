@@ -71,13 +71,43 @@ It installs no standalone Skills and never invokes the Agent Skills CLI. npm rem
 for Pi runtime dependencies; model providers such as OpenAI and Anthropic remain supported.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
-project and commit the installed framework and root guidance, then invoke the paired init entry.
-A mutation requested from the primary worktree, including an initialization `apply`, prepares a
-linked worktree from committed HEAD, runs the same request through that candidate's own launcher and
+project and commit project inputs, root guidance and the complete Protocol bundle, then invoke the
+paired init entry. Framework, managed environment, receipt and `.pi` runtime assets may be ignored;
+committing installed binaries is not a prerequisite. A mutation requested from the primary worktree,
+including an initialization `apply`, prepares a linked worktree from committed HEAD, installs and
+verifies a complete local installation from the exact invoking package before execution, runs the
+same request through that candidate's own managed interpreter and launcher and
 returns the candidate's result; its workspace names the candidate's path, branch and change_id, with
 which the same session continues the change. The originating session never follows the task into a
 different checkout. An initialized candidate reaches the primary branch like any other change:
 validate it, deliver it, and request the primary merge separately.
+
+A fresh Pi session in that consumer candidate can load its own `.pi/extensions/concorde-session.ts`
+and use all eleven public Operations. Normal Pi project trust applies; accept the local extension
+only after reviewing it. Each worktree has its own `.concorde/framework`, `.concorde/.venv` with
+independent Python/TypeBox dependencies, and `.concorde/install.json`. System Pi/Node may be shared,
+but no Framework or managed environment is shared, symlinked to primary or temporarily staged.
+Local execution does not fork lifecycle authority: only primary persists durable status and runs.
+
+Current installations are verified and reused without dependency acquisition or receipt/marker
+rewrites. A failed bootstrap retains the candidate and its primary-owned blocked status. A later
+call does not silently reinstall missing, stale or conflicting local assets. Use the supported
+installer explicitly to recover, or to install a normal Git-created consumer worktree:
+
+```bash
+python3 /explicit/provider/.concorde/framework/scripts/install-concorde.py \
+  --target /absolute/consumer-worktree --preserve-project --preview
+# Inspect the proposal and resolve conflicts, then repeat with --apply.
+```
+
+The provider is an explicit verified source or installed package, never a global-name lookup or
+an execution fallback. `--preserve-project` preserves existing root instructions and the complete
+Protocol bundle without adopting inherited ownership; it does not rewrite config, registry, Specs
+or the accepted binding. Partial bundles and modified locally owned assets conflict. Installation
+must finish and verify before project/Protocol admission and worker launch. See the
+[installation contract](../specs/concorde/distribution/installation.md#installing-another-worktree)
+for preservation, locking and retry limits. Concorde source checkouts instead use their own build,
+local development environment and explicit private Pi selection; they receive no ambient install.
 
 ```json
 {
@@ -286,9 +316,11 @@ a model's compliance in a live conversation.
 Internal agents retain disabled ambient instruction discovery and receive the same Protocol through
 their controlled context; root guidance does not enlarge their permissions.
 
-Commit the installed root entry and framework with the consumer project so committed-base linked
-worktrees inherit them. Runtime `concorde-change-worktree` blocks remain local and are stripped at
-delivery; the installed `concorde-protocol` entry remains part of the project.
+Commit the root entry and complete Protocol bundle with the consumer project so committed-base
+linked worktrees inherit project guidance and accepted rule bytes. Their ignored execution assets
+are installed locally as described above, not inherited from primary at runtime.
+Runtime `concorde-change-worktree` blocks remain local and are stripped at delivery; the
+`concorde-protocol` entry remains part of the project.
 The installer preserves root bytes outside its block, including later user edits and file mode.
 Reinstall is idempotent. A legacy receipt upgrade to Pi removes only unchanged receipt-owned
 retired outputs and exact owned root blocks, including the old `CLAUDE.md` entry. External
@@ -321,7 +353,7 @@ import hashlib
 import json
 from pathlib import Path
 
-manifest = Path(".concorde/framework/protocol/manifest.json").read_bytes()
+manifest = Path(".concorde/protocol/manifest.json").read_bytes()
 config_path = Path(".concorde/config.json")
 config = json.loads(config_path.read_text())
 config["protocol"] = {

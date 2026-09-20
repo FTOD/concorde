@@ -206,6 +206,7 @@ def _offline_environment() -> dict[str, str]:
             "PIP_DISABLE_PIP_VERSION_CHECK": "1",
             "PIP_NO_INDEX": "1",
             "PYTHONNOUSERSITE": "1",
+            "PYTHONDONTWRITEBYTECODE": "1",
             "UV_OFFLINE": "1",
             "NPM_CONFIG_AUDIT": "false",
             "NPM_CONFIG_FUND": "false",
@@ -290,6 +291,25 @@ def _verify_pi(runtime: Path, spec: ManagedRuntimeSpec) -> None:
         / "node_modules"
         / PI_TYPEBOX
     )
+    if package_root != package_root.resolve():
+        raise ManagedRuntimeError("installed TypeBox path must not contain symlinks")
+    for path in package_root.rglob("*"):
+        if path.is_symlink():
+            raise ManagedRuntimeError(
+                "installed TypeBox tree must not contain symlinks"
+            )
+    lock_contents = []
+    for source in PI_SOURCES:
+        path = runtime / PI_INSTALL_RELATIVE / PurePosixPath(source).name
+        if path.is_symlink() or not path.is_file():
+            raise ManagedRuntimeError(
+                "installed Pi dependency lock is missing or unsafe"
+            )
+        lock_contents.append(path.read_bytes())
+    if _sha256(b"\0".join(lock_contents)) != spec.pi_lock_sha256:
+        raise ManagedRuntimeError(
+            "installed Pi dependency lock differs from the package"
+        )
     package, _ = _json_object(
         package_root / "package.json", "installed TypeBox package"
     )
@@ -310,11 +330,11 @@ def _healthy(runtime: Path, spec: ManagedRuntimeSpec) -> bool:
     code = (
         "import importlib.metadata,sys;"
         f"assert importlib.metadata.version('langgraph') == {spec.langgraph_version!r};"
-        "assert sys.prefix"
+        f"assert __import__('pathlib').Path(sys.prefix).resolve() == __import__('pathlib').Path({str(runtime)!r}).resolve()"
     )
     try:
         result = _run(
-            [str(python), "-I", "-c", code],
+            [str(python), "-I", "-B", "-c", code],
             cwd=runtime.parent,
             environment=_offline_environment(),
         )
@@ -360,12 +380,20 @@ def plan_runtime(
         }
     matches = bool(
         marker
+        and marker.get("concorde_version") == spec.concorde_version
+        and marker.get("runtime_sha256") == spec.runtime_sha256
+        and marker.get("typebox_version") == spec.typebox_version
         and marker.get("requirements_sha256") == spec.requirements_sha256
         and marker.get("pi_lock_sha256") == spec.pi_lock_sha256
         and marker.get("verified_operations") == list(spec.operations)
     )
     if matches and _healthy(runtime, spec):
-        return {**item, "action": "unchanged"}
+        try:
+            _verify_pi(runtime, spec)
+        except ManagedRuntimeError:
+            pass
+        else:
+            return {**item, "action": "unchanged"}
     return {
         **item,
         "action": "rebuild",
@@ -469,7 +497,13 @@ def _write_marker(
 
 def _python_version(python: Path, cwd: Path) -> str:
     result = _run(
-        [str(python), "-I", "-c", "import platform;print(platform.python_version())"],
+        [
+            str(python),
+            "-I",
+            "-B",
+            "-c",
+            "import platform;print(platform.python_version())",
+        ],
         cwd=cwd,
         environment=_offline_environment(),
     )
@@ -548,6 +582,10 @@ def provision_runtime(
         ):
             shutil.rmtree(runtime)
         raise
+    return _runtime_record(spec, python_version, verified)
+
+
+def _runtime_record(spec, python_version, verified):
     return {
         "path": spec.venv,
         "python": spec.python,
@@ -563,3 +601,58 @@ def provision_runtime(
             "typebox": spec.typebox_version,
         },
     }
+
+
+def verify_runtime(
+    target: Path,
+    framework: Path,
+    spec: ManagedRuntimeSpec,
+    receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Verify the local runtime without acquiring dependencies or rewriting its marker."""
+    runtime = _runtime_path(target, spec)
+    if plan_runtime(target, spec, receipt)["action"] != "unchanged":
+        raise ManagedRuntimeError(
+            "local managed runtime is missing or stale; explicitly reinstall"
+        )
+    marker = _read_marker(runtime)
+    expected = {
+        "concorde_version": spec.concorde_version,
+        "runtime_sha256": spec.runtime_sha256,
+        "requirements_sha256": spec.requirements_sha256,
+        "pi_lock_sha256": spec.pi_lock_sha256,
+        "typebox_version": spec.typebox_version,
+        "verified_operations": list(spec.operations),
+    }
+    if not marker or any(marker.get(key) != value for key, value in expected.items()):
+        raise ManagedRuntimeError(
+            "managed runtime marker identity differs from local package"
+        )
+    _verify_pi(runtime, spec)
+    # A prefix alone can hide a .pth bridge or system-site-packages dependency fallback.
+    # The verified local service requires actual local dependency imports as well.
+    code = (
+        "import pathlib,sys,langgraph.graph;"
+        "p=pathlib.Path; local=p(sys.prefix).resolve(); base=p(sys.base_prefix).resolve();"
+        "assert local != base;"
+        "assert p(langgraph.graph.__file__).resolve().is_relative_to(local);"
+        "assert all(p(s).resolve().is_relative_to(local) or "
+        "(p(s).resolve().is_relative_to(base) and 'site-packages' not in p(s).parts) "
+        "for s in sys.path if s)"
+    )
+    _checked(
+        _run(
+            [str(runtime_python(runtime)), "-I", "-B", "-c", code],
+            cwd=target,
+            environment=_offline_environment(),
+        ),
+        "local dependency isolation check",
+    )
+    version = _python_version(runtime_python(runtime), target)
+    verified = _verify_operations(target, framework, spec, runtime)
+    result = _runtime_record(spec, version, verified)
+    if receipt.get("runtime") != result or marker.get("python_version") != version:
+        raise ManagedRuntimeError(
+            "managed runtime receipt does not attest the observed local runtime"
+        )
+    return result

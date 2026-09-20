@@ -63,7 +63,7 @@ const policyPath = process.env.CONCORDE_WORKER_POLICY;
 const base = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
 const tools = [], events = {};
 let active;
-worker({registerTool: t => tools.push(t), on: (n,h) => events[n] = h,
+await worker({registerTool: t => tools.push(t), on: (n,h) => events[n] = h,
         setActiveTools: t => active = t});
 events.session_start();
 const denied = [];
@@ -74,7 +74,7 @@ const rejected = [];
 for (const change of [{schema_version: 1}, {children: []}, {child_tools: []},
                       {tools: ['submit_result', 'subagent']}, {child_definitions: []}]) {
     fs.writeFileSync(policyPath, JSON.stringify({...base, ...change}));
-    try { worker({}); rejected.push(false); } catch { rejected.push(true); }
+    try { await worker({}); rejected.push(false); } catch { rejected.push(true); }
 }
 let sessionRejected = false;
 try { session.concordeSession('.', {schema_version: 1, operations: []}); }

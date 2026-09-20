@@ -1252,9 +1252,15 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     {"change_id": change_id},
                     host=host,
                 )
-                self.assertEqual(
-                    "delivery_session_required", result["errors"][0]["code"], result
+                # A foreign installed Framework now fails at common local-install admission,
+                # before delivery's distinct participating-session gate. Neither permits effects.
+                expected = (
+                    "local_installation_required"
+                    if host.package_root == third_package
+                    else "delivery_session_required"
                 )
+                self.assertEqual(expected, result["errors"][0]["code"], result)
+                self.assertEqual("blocked", result["status"], result)
         self.assertEqual(old_head, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue(self.change.exists())
 

@@ -117,3 +117,12 @@ Installation SHALL NOT hash or replace user text surrounding an owned root block
 
 A runtime or setup failure during installation SHALL roll back root bytes, modes and the receipt
 together with the other installation outputs.
+
+### req.distribution.worktree-local-install — Independent local execution installation
+
+The installation service SHALL return verified execution paths only for a complete target-local Pi entry, Framework, managed runtime/dependencies and receipt of the exact explicitly admitted package identity.
+
+A source or installed provider supplies installation bytes, not a fallback runtime. Installation
+adds no lifecycle authority: primary alone retains durable status and runs. A caller must complete
+installation verification and ordinary project/Protocol admission before any local Operation or
+worker launch; this service itself launches neither.

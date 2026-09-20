@@ -33,8 +33,8 @@ from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
     resolve_model_instructions,
-    resolve_role_prompt,
     resolve_operation_guidance,
+    resolve_role_prompt,
 )
 
 if TYPE_CHECKING:
@@ -451,6 +451,7 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         "pi/.npmrc",
         "scripts/requirements.lock",
         "scripts/concorde.py",
+        "scripts/install-concorde.py",
         "scripts/run-operation.py",
         "src/concorde/spec/contracts.py",
         "src/concorde/spec/contract_shapes.py",

@@ -351,3 +351,31 @@ validation cannot certify its determinism.
 - AND a launcher already running inside that runtime, such as the one the Pi session tool starts, is not re-executed
 - AND the source checkout, which matches neither layout, keeps the interpreter that started it
 - AND when no verified managed runtime exists and the starting interpreter cannot import LangGraph, the launcher prints a blocked envelope with `missing_runtime` naming that interpreter instead of failing inside the host
+
+### scenario.distribution.install-local-worktree — Full local installs from source or installed providers
+
+- GIVEN an explicitly admitted source package or receipt-verified installed package and a normal Git-created consumer worktree whose ignored runtime and receipt are absent
+- WHEN the host explicitly bootstraps that worktree through the supported installation service or its deployed installer
+- THEN it installs the complete local Framework, Pi entry with embedded catalog, independently provisioned dependencies, managed interpreter and receipt of the exact admitted package identity
+- AND all runtime checks use that local interpreter and the installation remains verifiable without the provider's virtual environment
+- AND current verified local state is reused without reinstalling, acquiring dependencies or rewriting marker/receipt bytes
+- AND no candidate-local durable status/runs are created and no Operation or model is called
+
+### scenario.distribution.install-preserve-project — Preserve inherited project assets without adopting them
+
+- GIVEN a target with committed inherited Protocol and canonical AGENTS guidance but no local installation receipt, or arbitrary existing project-owned root instructions
+- WHEN installation selects explicit preserve-project mode
+- THEN existing complete Protocol, root instruction bytes and modes, config, registry, Specs and accepted binding remain unchanged and unowned content is not adopted
+- AND wholly absent admissible Protocol and absent AGENTS may be seeded as owned outputs, and repeated application retains that ownership and is idempotent
+- AND prior local receipt-owned project entries must still match their recorded ownership and retain it
+- AND partial, aliased or invalid Protocol bundles stop without mixing versions, while a complete incompatible preserved bundle is not automatically accepted for execution
+- BUT the default installer still rejects an unowned marked root block
+
+### scenario.distribution.install-local-failure — Failed local installation never supplies an execution fallback
+
+- GIVEN missing or conflicting local installation state, changed admitted provider bytes, a concurrent installer or a failed acquisition/verification step
+- WHEN local verification or explicitly authorized bootstrap is requested
+- THEN missing/stale state fails clearly without implicit bootstrap, conflicting ownership is preserved, and no primary/global runtime replaces the local installation
+- AND failed creation rolls back owned files and receipt while preserving unrelated project bytes and permits a fresh-plan retry after the cause is corrected
+- AND source/target aliases and active source-checkout targets are refused, and a concurrent supported installer cannot mutate the same installation
+- AND every failed verification returns no successful local execution observation

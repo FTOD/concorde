@@ -42,10 +42,13 @@
         "scripts/requirements.lock",
         "scripts/run-operation.py",
         "src/concorde/distribution/",
+        "src/concorde/distribution/installation.py",
+        "src/concorde/distribution/local_installation.py",
         "src/concorde/spec/project.py",
         "src/concorde/spec/project_graph.py",
         "templates/",
-        "tests/concorde/distribution/"
+        "tests/concorde/distribution/",
+        "tests/concorde/distribution/test_local_installation.py"
       ],
       "meaning": "#entity.distribution.installation"
     },

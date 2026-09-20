@@ -661,7 +661,8 @@ initial command runs, and a background process holding them open cannot prevent 
 
 ##### Launch {#execution-launch}
 
-Each launch gets a private run directory that is removed afterwards. Its `agent/` directory is
+Each launch gets a private run directory under system `/tmp`, outside any worktree even when
+ambient TMPDIR points into a project; it is removed afterwards. Its `agent/` directory is
 Pi's configuration directory for the process (`PI_CODING_AGENT_DIR`): Concorde's own settings
 (project trust never, install telemetry off), the developer's
 Pi credentials (`auth.json` and custom-provider `models.json`, copied from the developer's Pi
@@ -717,6 +718,11 @@ instructions prohibit those workarounds; this change does not redesign process i
 
 The only installed worker JavaScript dependency is pinned TypeBox, installed by `npm ci --prefix pi`
 in a source checkout or under `.concorde/.venv/share/concorde/pi` in a consumer runtime.
+The worker extension imports TypeBox by its exact local file URL, not Pi's bundled bare-name alias.
+Its layout fixes the dependency location; absent local assets fail rather than selecting another
+worktree or temporary asset copies. The complete installation precedes relay and installed admission
+as defined in [worktree admission](admission.md#operation-execution-boundary). Existing runtime
+mount validation, other-worktree masks and task read/write grants remain unchanged.
 
 ##### Host check service {#execution-host-check-service}
 

@@ -17,10 +17,7 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.verification import verifies
-from tests.concorde.support.managed_runtime import (
-    create_langgraph_index,
-    runtime_install_environment,
-)
+from tests.concorde.support.managed_runtime import independent_runtime_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -30,8 +27,9 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.runtime_temporary = tempfile.TemporaryDirectory()
-        index = create_langgraph_index(Path(cls.runtime_temporary.name))
-        cls.runtime_environment = runtime_install_environment(index)
+        cls.runtime_environment = independent_runtime_environment(
+            Path(cls.runtime_temporary.name), REPOSITORY_ROOT
+        )
 
         cls.project_temporary = tempfile.TemporaryDirectory()
         cls.target = Path(cls.project_temporary.name) / "consumer"

@@ -1,8 +1,6 @@
 """Installed source closure and the Pi completion adapter, with explicit process doubles."""
 
-import importlib.util
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -16,6 +14,7 @@ from concorde.spec.repository import SpecRepository
 from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
+from tests.concorde.support.managed_runtime import independent_runtime_environment
 
 from .support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 
@@ -147,24 +146,36 @@ class DistributionTests(unittest.TestCase):
     def test_installed_framework_runs_complete_real_graph_and_checks_for_pi(
         self,
     ):
-        spec = importlib.util.spec_from_file_location(
-            "protocol7_installer", PACKAGE / "scripts/install-concorde.py"
-        )
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-        package = module.load_package(PACKAGE)
+        # Exercise the supported bootstrap and local admission, not hand-copied outputs
+        # or a receipt/dependency double. Only model execution is replaced below.
         for integration in ("pi",):
             with (
                 self.subTest(integration=integration),
                 tempfile.TemporaryDirectory() as directory,
             ):
-                root = Path(directory)
-                for path, (content, _role) in module.desired_outputs(package).items():
-                    p = root / path
-                    p.parent.mkdir(parents=True, exist_ok=True)
-                    p.write_bytes(content)
+                scratch = Path(directory)
+                root = scratch / "consumer"
+                root.mkdir()
+                environment = independent_runtime_environment(scratch, PACKAGE)
+                installed = subprocess.run(
+                    [
+                        sys.executable,
+                        str(PACKAGE / "scripts/install-concorde.py"),
+                        "--target",
+                        str(root),
+                        "--apply",
+                        "--format",
+                        "json",
+                    ],
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                self.assertEqual(
+                    0, installed.returncode, installed.stdout + installed.stderr
+                )
+                local_python = root / ".concorde/.venv/bin/python"
                 driver = root / "driver.py"
                 driver.write_text("""import importlib.util,json,sys
 from pathlib import Path
@@ -183,11 +194,11 @@ for operation in ('plan','tasks','implement','spec-review','code-review','valida
     result=run_operation('concorde-'+operation,None,typed('concorde-'+operation+'-request',task),host_context=host)
     outputs.append(result)
 print(json.dumps({'result':result,'outputs':outputs,'module_source':actual_host.__file__,
-  'stages':[c['stage'] for c in model.calls]}))
+  'python_prefix':sys.prefix,'stages':[c['stage'] for c in model.calls]}))
 """)
                 completed = subprocess.run(
                     [
-                        sys.executable,
+                        str(local_python),
                         str(driver),
                         str(PACKAGE / "tests/concorde/spec/support.py"),
                         integration,
@@ -195,11 +206,12 @@ print(json.dumps({'result':result,'outputs':outputs,'module_source':actual_host.
                     cwd=root,
                     capture_output=True,
                     text=True,
-                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+                    env={**environment, "PYTHONDONTWRITEBYTECODE": "1"},
                 )
                 self.assertEqual(0, completed.returncode, completed.stderr)
                 value = json.loads(completed.stdout)
                 self.assertIn(".concorde/framework/src", value["module_source"])
+                self.assertEqual(str(root / ".concorde/.venv"), value["python_prefix"])
                 self.assertEqual("succeeded", value["result"]["status"], value)
                 self.assertTrue(
                     all(output["status"] == "succeeded" for output in value["outputs"]),

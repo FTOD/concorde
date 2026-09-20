@@ -46,7 +46,11 @@ its result, while the requesting session stays where it is. Uncommitted primary 
 silently carried into it. Resuming preserves the saved task and workspace identity; incompatible
 input is rejected rather than applied to another change. Lifecycle status and durable run evidence
 remain primary-owned and retain the candidate's provenance. A candidate carrying its own framework
-must already have a current build: relay verifies it rather than rebuilding. Source-primary mutation
+must have a complete verified local installation: the host provisions it on creation, verifies/reuses
+it on resume, and stops for explicit installer recovery if it is missing, stale or conflicting.
+A newly opened Pi session uses that candidate's local installed extension, not primary assets.
+A source-maintenance candidate instead needs its own current private build and environment; relay
+never installs an ambient integration or rebuilds another source checkout. Source-primary mutation
 requests are refused, including requests naming a candidate; source maintenance uses a fresh
 catalog-free writer in an assigned candidate followed by a separate sibling tester.
 

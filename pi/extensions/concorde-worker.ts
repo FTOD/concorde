@@ -18,7 +18,8 @@ import * as fs from "node:fs";
 import * as net from "node:net";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import type * as TypeBox from "typebox";
 
 interface WorkerPolicy {
 	schema_version: 2;
@@ -137,7 +138,24 @@ function hostRequest(
 	});
 }
 
-export default function concordeWorker(pi: ExtensionAPI): void {
+export default async function concordeWorker(pi: ExtensionAPI): Promise<void> {
+	// Explicit local dependency import avoids Pi's bundled bare-name TypeBox alias.
+	const framework = path.resolve(
+		path.dirname(fileURLToPath(import.meta.url)),
+		"../..",
+	);
+	const installed =
+		path.basename(framework) === "framework" &&
+		path.basename(path.dirname(framework)) === ".concorde";
+	const dependency = installed
+		? path.join(
+				framework,
+				"../.venv/share/concorde/pi/node_modules/typebox/build/index.mjs",
+			)
+		: path.join(framework, "pi/node_modules/typebox/build/index.mjs");
+	const { Type } = (await import(
+		pathToFileURL(dependency).href
+	)) as typeof TypeBox;
 	const policy = loadPolicy();
 	const readRoots = policy.read_paths.map((entry) =>
 		canonical(policy.workspace, entry),

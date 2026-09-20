@@ -389,7 +389,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND the invocation returns the candidate launcher's complete result envelope, whose workspace names the candidate, and forwards its policy and usage diagnostics
 - AND it does not copy uncommitted primary changes into the candidate, records all durable progress and run evidence only in primary without changing primary source or index, and never moves the originating session
 - AND a later request from the primary worktree that names the recorded change_id runs in that candidate again, while a change_id no live candidate records is refused with missing_change
-- AND a candidate that carries its own Concorde runs that code only after verifying its pre-existing current build, without rebuilding during relay, and any other candidate runs the invoking framework with the candidate as its project root
+- AND a consumer candidate receives a complete verified local installation from the explicitly invoking package before relay and runs only that local runtime; source candidates instead require their own pre-existing current private build and local environment without ambient installation or rebuilding during relay
 - BUT source-primary mutations are refused with fresh_session_required even when a change_id names a candidate; source maintenance instead needs an assigned candidate, a fresh Concorde-catalog-free writer and a separate sibling tester
 
 ### scenario.harness.graph-specs — Every Graph Spec equals its compiled Graph
@@ -469,3 +469,20 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND preview generates no incarnation token; accepted local-state migration binds the current worktree incarnation explicitly and preserves the original source bytes
 - AND same-ID local state and receipt with contradictory source path, recorded branch or bound task intent fail with migration_conflict before any token, journal or import target creation or source removal
 - AND compatible historical source labels can survive a live branch rename and interrupted retry without losing original bytes; disagreeing legacy labels require explicit repair rather than identity inferred from the current checkout
+
+### scenario.harness.local-installation — Complete independent candidate execution
+
+- GIVEN a consumer primary whose installed Framework and runtime are ignored by Git
+- WHEN the host creates a candidate for an admitted Operation
+- THEN the supported installer supplies its complete local Pi entry/catalog, Framework, dependencies, interpreter and receipt before local execution
+- AND later relay verifies/reuses its package identity without reprovisioning or rewriting receipt/marker bytes
+- AND its local Pi session tool can invoke Operations directly, including programmer and read-only review under unchanged grants and other-worktree masks
+- AND durable status/runs stay primary-owned with candidate-local runtime provenance, while source-private candidates receive no ambient installation
+
+### scenario.harness.local-installation-failure — Installation failure retains recoverable work
+
+- GIVEN a missing, stale, conflicting or failed candidate installation, or an installed entry from another project
+- WHEN relay or installed local admission attempts execution
+- THEN it fails clearly before a worker without primary/global fallback or widened sandbox authority
+- AND a newly created candidate survives failed bootstrap with primary blocked installation status and its original owner/task intent
+- AND explicit supported installer recovery followed by retry reuses the same change, while conflicting owned bytes remain protected

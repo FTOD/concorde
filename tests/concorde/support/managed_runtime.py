@@ -3,12 +3,49 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
+import subprocess
 import sys
 import sysconfig
 import zipfile
 from pathlib import Path
 
 LANGGRAPH_VERSION = "1.2.11"
+
+
+def independent_runtime_environment(root: Path, package: Path) -> dict[str, str]:
+    """Real local dependencies for installed-admission tests, not forwarding-wheel doubles."""
+    wheels = os.environ.get("CONCORDE_TEST_WHEELHOUSE")
+    if wheels is None:
+        wheels = str(root / "wheels")
+        download = root / "download"
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(download)],
+            check=True,
+            capture_output=True,
+        )
+        python = download / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+        subprocess.run(
+            [
+                str(python),
+                "-m",
+                "pip",
+                "download",
+                "--dest",
+                wheels,
+                "-r",
+                str(package / "scripts/requirements.lock"),
+            ],
+            check=True,
+            capture_output=True,
+        )
+    return {
+        **os.environ,
+        "PIP_NO_INDEX": "1",
+        "PIP_FIND_LINKS": wheels,
+        "PYTHONNOUSERSITE": "1",
+        "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+        "NPM_CONFIG_OFFLINE": "true",
+    }
 
 
 def create_langgraph_index(root: Path) -> Path:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import subprocess
@@ -10,21 +9,14 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from concorde.distribution import installation as installer
+from concorde.distribution import managed_runtime  # noqa: E402
+from concorde.spec.verification import verifies  # noqa: E402
 from tests.concorde.support.managed_runtime import (
     create_langgraph_index,
     runtime_install_environment,
 )
 from tests.concorde.support.paths import REPOSITORY_ROOT
-
-INSTALLER_PATH = REPOSITORY_ROOT / "scripts/install-concorde.py"
-SPEC = importlib.util.spec_from_file_location("concorde_installer", INSTALLER_PATH)
-assert SPEC and SPEC.loader
-installer = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = installer
-SPEC.loader.exec_module(installer)
-
-from concorde.distribution import managed_runtime  # noqa: E402
-from concorde.spec.verification import verifies  # noqa: E402
 
 
 class NativeInstallerTests(unittest.TestCase):
@@ -231,6 +223,7 @@ class NativeInstallerTests(unittest.TestCase):
                 "concorde.ps1",
                 "concorde.sh",
                 "issues.py",
+                "install-concorde.py",
                 "requirements.lock",
                 "run-operation.py",
             ):
@@ -472,7 +465,10 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertEqual(4, marker["schema_version"])
             self.assertEqual(list(spec.operations), marker["verified_operations"])
             self.assertNotIn("verified_skills", marker)
-            with mock.patch.object(managed_runtime, "_healthy", return_value=True):
+            with (
+                mock.patch.object(managed_runtime, "_healthy", return_value=True),
+                mock.patch.object(managed_runtime, "_verify_pi"),
+            ):
                 self.assertEqual(
                     "unchanged",
                     managed_runtime.plan_runtime(target, spec, {})["action"],

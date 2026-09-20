@@ -178,9 +178,13 @@ symlinked or unknown content conflicts safely. Old external CLI-owned `.agents/s
 `.claude/skills` entries and `skills-lock.json` are left untouched, with a manual retirement notice;
 remove only your own retired Concorde entries, never those directories or locks wholesale.
 
-**3. Commit the installation, then initialize the project.** Every change, initialization included,
-runs in a candidate worktree created from the committed `HEAD`, so commit the installed framework and
-root guidance first. Then, in a Pi session inside your project:
+**3. Commit project inputs, then initialize the project.** Candidate worktrees start from committed
+`HEAD`, so commit your project files, root guidance and complete Protocol bundle first. Framework,
+`.concorde/.venv`, installation receipt and `.pi` runtime assets may remain ignored; they do not
+need to be committed. Before executing a new consumer candidate, the host installs and verifies a
+complete local copy from the exact invoking package. Each candidate has its own Pi session entry,
+Framework and independently provisioned dependencies; it never executes through primary's runtime.
+Then, in a Pi session inside your project, trust the local project extension when Pi asks:
 
 ```text
 Use concorde-init to initialize this project. Propose the setup for my review.
@@ -191,6 +195,24 @@ branch and `change_id`. It records the Pi model and thinking level your workers 
 with `concorde-configure`) and creates an honest stub of the root Module Spec. Complete the stub's
 Purpose, Terminology, Usage, Design and Relationships in that candidate, then bring it into your
 primary branch with `concorde-validate`, `concorde-deliver` and a separate merge request.
+
+Existing current installations are verified and reused, not reinstalled on every call. Missing,
+stale or conflicting local assets block execution and require explicit installer recovery. For a
+normal Git-created worktree, use the same supported installer with `--preserve-project`:
+
+```bash
+python3 /explicit/project/.concorde/framework/scripts/install-concorde.py \
+  --target /absolute/path/to/worktree --preserve-project --preview
+# Inspect the proposal, then repeat with --apply.
+```
+
+This preserves inherited root guidance and a complete Protocol bundle without adopting ownership
+or changing the accepted binding. Installation must finish before local Operations run. System
+Pi/Node may be shared, but Frameworks and managed environments are not shared or symlinked between
+worktrees. A candidate's own Pi session has all eleven public Operations through its local
+`.pi/extensions/concorde-session.ts`; durable status and runs still belong only to primary.
+See [installation and recovery](specs/concorde/distribution/installation.md#installing-another-worktree).
+Source maintenance remains the separate private-entry path below, with no ambient installation.
 
 **4. Read, edit and select Operations.**
 

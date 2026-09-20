@@ -88,8 +88,29 @@ a wider one.
 
 In a consumer project, a mutating Operation request in primary creates a candidate worktree on an isolated branch
 from committed HEAD, records the change in primary status and relays the same request to that candidate's own
-launcher (`relay_operation`): a candidate that carries its own Concorde, the source checkout or a
-consumer whose installed framework is tracked, runs that code after verifying its own current build; any other candidate runs the invoking framework with the candidate as its project root.
+launcher (`relay_operation`). Before relay, the host admits the exact invoking package through
+Distribution's [local installation service](../distribution/contracts.md#local-installation-service).
+Only creation carries host bootstrap authority: the complete local Pi entry/catalog, Framework,
+managed Python/dependencies and receipt must finish verification before candidate execution.
+Resume verifies/reuses that same package identity without acquisition or receipt/marker writes.
+Missing, stale or conflicting local state returns `local_installation_required`; the caller explicitly
+runs the supported installer against the retained candidate and retries the same change. Installation
+failure records blocked status with that outcome in primary and launches no worker. It never deletes
+the candidate or redirects execution to the invoking package. Root owner/task identity is checked
+before bootstrap; independent review intent does not replace it. Installer locking excludes supported
+concurrent installers; the task host still owns exclusive candidate access through launch.
+
+Installed entry admission also verifies the local receipt/runtime before project admission, including
+when a fresh Pi session loads the candidate's local installed extension directly. Admission additionally
+checks the executing Python prefix and actual LangGraph import against that local runtime; a receipt
+cannot attest a foreign running interpreter or dependency. Relay drops inherited Python search/home
+overrides so they cannot select provider dependencies. An installed package
+from a different project cannot execute against this worktree. Source-private execution remains a
+separate explicit mode: its candidate build and local `.venv` are required, no ambient shim is installed
+and no source checkout is modified by bootstrap. Source tests may use explicitly scoped disposable
+consumer data. Neither mode changes ordinary Protocol/configuration admission or primary-only status
+and runs authority. A complete installation does not accept a Protocol or grant execution authority.
+
 The relayed launcher's complete result envelope becomes this invocation's result, its stderr
 diagnostics are forwarded, and its workspace names the candidate; the originating session never
 moves. Uncommitted primary changes are not copied. A request that names a recorded change_id from
@@ -320,6 +341,7 @@ context forms; package/schema alignment checks verify those identities.
 | `unsupported_worktree_version` | Saved worktree progress uses schema 1; archive it explicitly and establish fresh evidence rather than silently reusing renamed fields.                                                                                                                |
 | `use_proposal`                 | `describe-policy` cannot preview `init`/`configure`; use their deterministic proposal graph instead.                                                                                                                                                  |
 | `workspace_mismatch`           | The current worktree, branch, or worktree topology does not match what the requested operation or transition requires, including an entry process whose working directory lies inside a Git worktree but not at its root.                             |
+| `local_installation_required` | A complete current local installation is unavailable or the installed Framework belongs to another project; explicitly install/update the retained worktree and retry, never use primary runtime. |
 | `relay_failed`                 | The candidate worktree's launcher, running a mutation relayed from the primary worktree, returned no result envelope.                                                                                                                                 |
 | `execution_failed`             | The host caught an exception outside the named Spec/typed-data/build error vocabulary.                                                                                                                                                                |
 

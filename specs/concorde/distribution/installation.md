@@ -32,6 +32,36 @@ For example, installing Concorde into a service does not mean Concorde knows tha
 payment policy. Installation supplies the tools; initialization creates an honest starting point;
 Spec authoring establishes the actual promises.
 
+## Installing another worktree
+
+Each consumer worktree needs its own complete installation, even when its Framework, runtime and
+receipt are Git-ignored. Its normal Pi session loads its local entry and uses its own Framework
+and managed dependencies. Use an explicitly admitted source or installed package as the provider,
+not a global package name or a primary-runtime fallback. An installed package includes the same
+supported installer, so a consumer can bootstrap another ordinary Git-created worktree:
+
+```sh
+python3 /explicit/project/.concorde/framework/scripts/install-concorde.py \
+  --target /explicit/new-worktree --preserve-project --preview
+# Inspect the plan, then repeat with --apply.
+```
+
+Preservation leaves existing root instructions and complete project Protocol bytes untouched and
+does not adopt inherited ownership. This handles committed AGENTS guidance without requiring an
+ignored receipt to have been committed too. Missing assets can be seeded only under the
+[project preservation contract](contracts.md#preserve-project-contract). Locally receipt-owned
+edits still conflict; an incomplete Protocol tree is never completed from a different version.
+The accepted binding is not updated. Receiving a complete installation does not make an
+incompatible project runnable until its real Protocol/configuration admission succeeds.
+
+The host can use the [local installation service](contracts.md#local-installation-service) with
+explicit bootstrap authority before admission. Later calls verify/reuse current local assets,
+without reinstalling them. Failed or stale verification stops; it never redirects execution to
+the provider's environment. Package provenance is distinct from project/lifecycle authority:
+primary alone still holds durable status and runs. Installation does not create worktrees,
+move sessions, coordinate work or change worker grants. The installer needs exclusive target
+ownership; it refuses an active Concorde source checkout and unsupported/concurrent locking.
+
 ## Updating without overwriting local work
 
 An update compares the receipt with current bytes. A local change to an installer-owned output is a

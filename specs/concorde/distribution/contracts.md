@@ -213,3 +213,114 @@ remain independent of private selection. The extension verifies through the cand
 30-second verification deadline before registration and each tool call. Verification failure
 registers no tool at startup or fails the current call; the outer host treats a load error as a
 blocked launch. A changed saved identity cannot refresh an existing tester in place.
+
+## Full local installation service {#local-installation-service}
+
+`concorde.distribution.installation` is the supported installer implementation, shared by the
+public script and host bootstrap. The deployed package includes that implementation and the thin
+`scripts/install-concorde.py` bootstrap, whose default package root is its own package, not a
+name discovered globally. A source checkout is validated against its complete source build and
+package contracts. An installed provider has no consumer copy of Concorde's source-project Specs;
+it is instead checked against the complete receipt-owned Framework/Pi deployment and its pure
+installed-layout render. No provider lookup searches primary, global packages or other worktrees.
+
+```text
+load_package(root: Path) -> Package
+package_identity(package: Package) -> dict[str, str]
+installation_plan(target: Path, package: Package, *, remove_protocol_guidance=False,
+                  preserve_project=False) -> (actions, desired, prior_receipt)
+apply_plan(target: Path, package: Package, actions, desired, *,
+           remove_protocol_guidance=False, preserve_project=False) -> "installed"|"unchanged"
+admit_package(root: Path) -> PackageSource
+verify_installation(target: Path, *, expected: PackageSource | None=None) -> LocalInstallation
+ensure_installation(target: Path, source: PackageSource, *, bootstrap=False,
+                    preserve_project=True) -> LocalInstallation
+installation_lock(target: Path) -> context manager
+verify_runtime(target: Path, framework: Path, spec: ManagedRuntimeSpec, receipt) -> dict
+```
+
+The first four functions belong to `installation`; the next four belong to `local_installation`,
+and `verify_runtime` belongs to `managed_runtime`. `Package` has `root: Path` and `manifest`.
+The host explicitly supplies the package that admitted the invoking request to `admit_package`,
+never a task-supplied alternative. The frozen `PackageSource` has `root: Path`, `version`, `digest`
+and `build_digest`. Its `identity` property returns the three string fields. `digest` hashes the
+canonical sorted, compact JSON mapping of every desired deployable output path to its role and
+exact-byte SHA-256, including the bootstrap and dependency locks. `build_digest` hashes the pure
+installed-layout build manifest. Both use `sha256:` plus 64 lowercase hex digits. Source and
+installed providers of the same bytes have the same identity, independent of their absolute roots;
+a version label alone never establishes equality. Re-admission after source edits is explicit.
+
+`LocalInstallation` is a frozen in-process observation with Path fields `target`, `framework`,
+`pi_entry`, `python`, `launcher`, `receipt`; the local `package: PackageSource`; string fields
+`provider_root`, `receipt_digest`, `runtime_digest`, `status="verified"`; and boolean
+`protocol_matches_package`. `provider_root` is historical installation provenance, never an
+execution fallback or a path required to remain available. The Pi entry is the target's
+`.pi/extensions/concorde-session.ts` and contains the embedded catalog. Framework, launcher,
+managed interpreter, TypeBox and receipt are all target-local. System toolchains may be shared;
+Framework and virtual environments are neither shared nor relocated from another worktree.
+
+Verification reads every owned output and compares the complete Framework/extension inventory with
+its current pure render, checks package and receipt identity, and runs local offline runtime health,
+dependency-isolation and all eleven launcher runtime checks. The Python prefix and actual LangGraph
+import belong to the local environment; an external `.pth` bridge or system-site-packages fallback
+cannot attest local health. TypeBox's installed locks, version and entry are checked, with aliased
+paths refused. This is not a cryptographic attestation of every third-party dependency byte.
+Verification writes no marker or receipt and acquires no dependencies. Missing, stale, malformed,
+aliased, incomplete or conflicting state raises `InstallError(ValueError)` (or the underlying I/O
+error), with an explicit local install/update diagnostic and no successful observation.
+`verify_runtime` uses `ManagedRuntimeError` and returns the existing runtime receipt shape, without
+refreshing the marker. It has no alternate-runtime search.
+
+`ensure_installation` reverifies the admitted provider identity, then reuses a verified local
+installation without applying a plan, rewriting a marker or acquiring packages. `bootstrap=True`
+is an explicit host installation grant, not automatic repair on a worker call. Only this grant
+allows a current plan and the same public install transaction to run before final verification.
+Modified owned or unowned conflicting runtime output still refuses bootstrap. Rechecks detect
+changed provider bytes before receipt acceptance. Failure supplies no ready result; retry starts
+from a new actual-state plan, never a saved partial-success claim. Acquisition and all runtime
+checks must complete before the receipt records successful installation. The existing documented
+runtime-rebuild rollback limitation remains applicable; no successful recovery is inferred.
+
+The supported CLI and bootstrap serialize writes using a target-local `.concorde/install.lock`
+regular lock file. POSIX advisory locking is required; concurrent acquisition fails explicitly,
+and process exit releases the lock without replacing its inode. Low-level plan/apply callers own
+exclusive target access and must use this lock; it does not stop an unrelated editor. Callers
+also keep target/provider sources quiescent through verification and subsequent execution, and
+must not provision into another active source-maintenance checkout. The service refuses a target
+that is itself a Concorde source checkout. No API creates a worktree, starts an Operation, changes
+a sandbox/task grant, grants delegation, accepts Protocol or writes lifecycle status/runs.
+
+### Project preservation and receipt compatibility {#preserve-project-contract}
+
+The public installer adds `--preserve-project`, not a client flag. Host worktree bootstrap selects
+its equivalent `preserve_project=True`. Ordinary user-created Git worktrees can explicitly use
+the same script/mode; ignored runtime binaries and receipts need not be committed. The default
+installer retains its original unreceipted-root-block collision behavior. Preservation and
+`--remove-protocol-guidance` are mutually exclusive.
+
+In preservation mode an existing root instruction file is left byte-for-byte and mode-for-mode
+unchanged, whether it contains arbitrary user instructions, inherited canonical Protocol guidance
+or historical CLAUDE text. Its existence grants no new ownership. An absent AGENTS.md may receive
+one newly receipt-owned entry; no CLAUDE entry is created. A prior local receipt's guidance block
+must still match its owned digest; its original ownership and created-file flag remain, rather
+than being dropped or replaced with a digest of edited content. Whole-file comparison used for
+stale-plan detection is not ownership of surrounding user text.
+
+An existing Protocol tree must have a real complete manifest with matching asset digests. The
+whole existing bundle is preserved, never filled piecemeal with a different package version.
+Missing/aliased/changed required assets fail before installation writes. Prior local receipt-owned
+Protocol outputs retain their exact ownership records and must match them. Unreceipted inherited
+Protocol files remain project-owned. A wholly absent bundle may be seeded from the package only
+for an uninitialized project or when its exact manifest already matches the existing accepted
+binding; no config, registry, Specs or accepted binding is rewritten. A complete different bundle
+can remain preserved, but `protocol_matches_package` is false and real Operation admission must
+still reject incompatible or unaccepted project state. Installation success is not that admission.
+
+Receipt schema 2 retains the same exact-output/block ownership semantics and adds `package`
+(the three-field identity above), `provider_root`, `preserve_project: bool`, and `preserved`
+(path/role records for existing unowned project files left in place). Preserved records do not
+carry ownership hashes. Locally owned preserved entries remain in `outputs`, never only in
+`preserved`. Schema-1 and earlier schema-2 receipts remain valid inputs to explicit installer
+migration under the old ownership/conflict rules; local verification requires current package
+provenance and never infers it from an old version label. No wire, Pi catalog, build-manifest,
+Protocol or managed-marker schema changes accompany these additive receipt fields.

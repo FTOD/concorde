@@ -15,7 +15,8 @@
         "src/concorde/harness/configuration.py",
         "src/concorde/harness/entry.py",
         "src/concorde/harness/operation_graph.py",
-        "src/concorde/harness/relay.py"
+        "src/concorde/harness/relay.py",
+        "tests/concorde/harness/test_local_execution.py"
       ],
       "meaning": "#entity.harness.admission"
     }

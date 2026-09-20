@@ -76,7 +76,12 @@ never erases those unowned assets.
 
 <a id="entity.distribution.installation"></a><a id="entity.distribution.install-script"></a><a id="entity.distribution.installation-proposal"></a><a id="entity.distribution.ownership-receipt"></a><a id="entity.distribution.target-project"></a>
 
-Install script exposes Installation's preview/apply boundary. An Installation proposal selects
+Install script exposes Installation's preview/apply boundary and is deployed with the same
+supported Python service. The host can explicitly bootstrap a complete independent consumer
+worktree installation, then verify/reuse it without reinstalling. A provider is bound by exact
+package bytes, never substituted as a cross-worktree runtime. Preservation mode leaves inherited
+project guidance and accepted Protocol untouched and unowned; local receipt ownership still
+applies. See the [service contract](contracts.md#local-installation-service). An Installation proposal selects
 exact owned changes in the Target project; an Ownership receipt records those installed bytes and
 their before-state for later updates. A fresh build is not installation acceptance, and a receipt
 is not permission to overwrite unrelated user content. Failure restores owned installation state.

@@ -11,8 +11,10 @@ from ..spec.typed_data import canonical, decode
 from .change_worktree import (
     create_worktree,
     ensure_change,
+    progress,
     read_change,
     refresh_registry,
+    resume_owner,
     workspace_identity,
 )
 from .host import OperationHost
@@ -35,18 +37,76 @@ def candidate_by_change_id(root: Path, change_id: str) -> dict | None:
     return matches[0] if len(matches) == 1 else None
 
 
-def relay_launcher(host: OperationHost, candidate: Path) -> list[str]:
-    """The launcher that runs an operation inside ``candidate``.
+def source_checkout(root: Path) -> bool:
+    return (root / "concorde.json").is_file() and (root / "src/concorde").is_dir()
 
-    A candidate that carries its own Concorde, the source checkout itself or a consumer project
-    whose installed framework is tracked, runs that code, so a change to Concorde is exercised by
-    the candidate's own framework. Otherwise the invoking framework runs with the candidate as its
-    project root."""
-    for framework in (candidate, candidate / INSTALLED_FRAMEWORK_ROOT):
-        launcher = framework / "scripts/run-operation.py"
-        if launcher.is_file() and (framework / "src/concorde").is_dir():
-            return [sys.executable, str(launcher)]
-    return [sys.executable, str(host.package_root / "scripts/run-operation.py")]
+
+def verify_local_execution(host: OperationHost) -> None:
+    """Installed entry admission is local and read-only; source-private fixtures stay separate."""
+    if (
+        host.package_root.name != "framework"
+        or host.package_root.parent.name != ".concorde"
+    ):
+        return
+    from ..distribution.local_installation import verify_installation
+
+    if host.package_root != host.project_root / INSTALLED_FRAMEWORK_ROOT:
+        raise SpecError(
+            "installed execution requires this worktree's local Framework",
+            "local_installation_required",
+        )
+    try:
+        local = verify_installation(host.project_root)
+        import langgraph.graph
+
+        runtime = local.python.parent.parent
+        if Path(sys.prefix).resolve() != runtime or not Path(
+            langgraph.graph.__file__
+        ).resolve().is_relative_to(runtime):
+            raise ValueError(
+                "the executing interpreter or LangGraph dependency is not worktree-local"
+            )
+    except (ValueError, OSError) as error:
+        raise SpecError(
+            f"local installation unavailable: {error}; run the explicit installer before retrying",
+            "local_installation_required",
+        ) from error
+
+
+def relay_launcher(
+    host: OperationHost, candidate: Path, *, bootstrap: bool = False
+) -> list[str]:
+    """Select only verified candidate-local code and dependencies, never provider execution."""
+    if source_checkout(candidate):
+        from ..distribution.build import verify_fresh
+
+        verify_fresh(candidate)
+        python = candidate / ".venv/bin/python"
+        launcher = candidate / "scripts/run-operation.py"
+        if (
+            not python.is_file()
+            or python.parent.parent.resolve() != candidate / ".venv"
+            or not launcher.is_file()
+            or launcher.resolve() != launcher
+        ):
+            raise SpecError(
+                "source candidate requires its own environment and launcher",
+                "missing_runtime",
+            )
+        return [str(python), str(launcher)]
+    from ..distribution.local_installation import admit_package, ensure_installation
+
+    try:
+        source = admit_package(host.package_root)
+        local = ensure_installation(
+            candidate, source, bootstrap=bootstrap, preserve_project=True
+        )
+    except (ValueError, OSError) as error:
+        raise SpecError(
+            f"candidate local installation unavailable: {error}; explicitly install/update this worktree before retrying",
+            "local_installation_required",
+        ) from error
+    return [str(local.python), str(local.launcher)]
 
 
 def relay_operation(
@@ -58,15 +118,39 @@ def relay_operation(
     relay verifies it without rebuilding or substituting another checkout's outputs. A host
     interrupt reaches the launcher as SIGTERM, which cancels its worker and prints its result;
     only a launcher that does not finish within the grace period is killed."""
-    if (candidate / "concorde.json").is_file() and (
-        candidate / "src/concorde"
-    ).is_dir():
-        from ..distribution.build import verify_fresh
-
-        verify_fresh(candidate)
-    argv = [*relay_launcher(host, candidate), operation]
+    try:
+        if not source_checkout(candidate):
+            state = read_change(candidate, required=True)
+            target = host.relay_target or {}
+            if target.get("change_id") != state["change_id"] or target.get(
+                "path"
+            ) != str(candidate):
+                raise SpecError(
+                    "relay target does not own this candidate", "workspace_mismatch"
+                )
+            # Reject conflicting root intent before installation writes; review intent stays independent.
+            if operation not in {
+                "concorde-code-review",
+                "concorde-spec-review",
+                "concorde-context-solve",
+            }:
+                resume_owner(state, invocation["input"]["data"])
+        argv = [
+            *relay_launcher(
+                host,
+                candidate,
+                bootstrap=bool((host.relay_target or {}).get("bootstrap_installation")),
+            ),
+            operation,
+        ]
+    except SpecError as error:
+        if error.code == "local_installation_required":
+            progress(candidate, status="blocked", outcome=error.code)
+        raise
     environment = {
-        key: value for key, value in os.environ.items() if key != "CONCORDE_STUDIO_URL"
+        key: value
+        for key, value in os.environ.items()
+        if key not in {"CONCORDE_STUDIO_URL", "PYTHONPATH", "PYTHONHOME"}
     }
     import signal
     import subprocess
@@ -184,6 +268,7 @@ def bind_worktree(
         return host, {
             **create_worktree(host.project_root, task, package_root=host.package_root),
             "relay": True,
+            "bootstrap_installation": True,
         }
     if mutation:
         ensure_change(

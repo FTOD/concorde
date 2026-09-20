@@ -1,22 +1,22 @@
 """Primary persistence and migration tested only in disposable Git repositories."""
 
-import json
 import copy
-import threading
-from contextlib import contextmanager
+import json
 import tempfile
+import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
 from concorde.harness.change_worktree import (
     ensure_change,
     git,
-    read_change,
-    save_change,
-    refresh_registry,
     progress,
+    read_change,
+    refresh_registry,
+    save_change,
     save_target_state,
     target_state,
     worktree_incarnation,
@@ -1126,9 +1126,9 @@ class StatusStoreTests(unittest.TestCase):
 
     @verifies("scenario.harness.worktree-relay")
     def test_source_carrying_relay_checks_existing_build_without_rebuilding(self):
+        from concorde.distribution.build import BuildError
         from concorde.harness.host import OperationHost
         from concorde.harness.relay import relay_operation
-        from concorde.distribution.build import BuildError
 
         (self.candidate / "concorde.json").write_text("{}")
         (self.candidate / "src/concorde").mkdir(parents=True)
@@ -1148,6 +1148,10 @@ class StatusStoreTests(unittest.TestCase):
                 )
             verify.assert_called_once_with(self.candidate)
             launch.assert_not_called()
+        (self.candidate / ".venv/bin").mkdir(parents=True)
+        (self.candidate / ".venv/bin/python").write_text("fixture interpreter")
+        (self.candidate / "scripts").mkdir()
+        (self.candidate / "scripts/run-operation.py").write_text("fixture launcher")
         with (
             patch("concorde.distribution.build.verify_fresh") as verify,
             patch("subprocess.Popen") as launch,
@@ -1165,11 +1169,17 @@ class StatusStoreTests(unittest.TestCase):
             verify.assert_called_once_with(self.candidate)
             launch.assert_called_once()
             self.assertEqual("concorde-main", launch.call_args.args[0][-1])
+            self.assertEqual(
+                str(self.candidate / ".venv/bin/python"), launch.call_args.args[0][0]
+            )
+            self.assertNotIn("PYTHONPATH", launch.call_args.kwargs["env"])
+            self.assertNotIn("PYTHONHOME", launch.call_args.kwargs["env"])
             self.assertEqual("diagnostics", diagnostics)
 
     @verifies("scenario.harness.primary-status")
     def test_private_skill_selection_cannot_redirect_to_source_primary(self):
         import io
+
         from concorde.harness.entry import json_main
 
         request = {
