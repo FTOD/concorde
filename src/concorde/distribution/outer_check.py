@@ -30,6 +30,7 @@ def main() -> int:
         ["/bin/bash", "-c", request["command"]],
         timeout=request["timeout"],
         environment=dict(os.environ),
+        private_tmp=True,
     )
     # Diagnostics returned to the tester are not telemetry.
     print(

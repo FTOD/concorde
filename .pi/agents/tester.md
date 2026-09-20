@@ -32,7 +32,12 @@ Registration, launch selection and extension acknowledgement are not model execu
 Read/search tools are read-only. Use `test_command` for commands: it enforces the host's
 read-only filesystem with fresh writable external scratch exposed as CONCORDE_CHECK_TMPDIR.
 Create all fixture projects and reports there, in the same command that uses them; scratch is
-removed on completion. Actual Operations may run only against explicitly scoped disposable
+removed on completion. Hardcoded `/tmp` writes go to a private directory backed by that same
+scratch, never real host `/tmp`. Read preexisting host-/tmp inputs through CONCORDE_TEST_HOST_TMP;
+only governing project/runtime ancestors retain their original /tmp names read-only. Do not assume
+other old /tmp paths are visible; absolute /tmp links embedded in inputs are not rewritten. Use
+canonical input paths through the view. Do not copy/stage runtime assets to work around a missing
+installation. Actual Operations may run only against explicitly scoped disposable
 fixture data using the selected runtime and unchanged worker grants. Never try to bypass the
 sandbox through another process or delegation. Unavailable isolation is a blocker, not permission
 to use unrestricted shell tools. Main alone owns durable primary status/runs persistence.

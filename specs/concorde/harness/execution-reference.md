@@ -392,7 +392,7 @@ including a write followed by restoration. Project-local lifecycle and log paths
 
 ```python
 execute_check(project_root: Path, argv: Sequence[str], *, timeout: float,
-              environment: Mapping[str, str]) -> CheckResult
+              environment: Mapping[str, str], private_tmp: bool = False) -> CheckResult
 CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False)
 CheckBackend.run(project: Path, argv: Sequence[str], scratch: Path,
                  environment: Mapping[str, str], timeout: float) -> CheckResult
@@ -413,6 +413,27 @@ Every call creates independent scratch storage even when ambient TMPDIR points i
 `CONCORDE_CHECK_TMPDIR` names its root and `CONCORDE_CHECK_REPORT_DIR` its reports directory.
 `PYTHONDONTWRITEBYTECODE=1` avoids routine Python cache attempts but is not the write boundary.
 Hardcoded project cache/report paths must migrate; tools that modify sources belong in implementation.
+
+The trusted tester bridge alone selects `private_tmp=True` (`tester-private-tmp-v1`). It is an
+optional host API boolean, not a registry, environment or model-command parameter; other values
+are rejected. The default and `project-read-only-v1` configured-check policy are unchanged.
+This profile binds an empty `private-tmp` directory within the issued scratch onto `/tmp`, so
+hardcoded worker policy/config/socket temporary directories work without a writable real host
+`/tmp`. No runtime assets are copied or staged: fixture Frameworks, virtual environments and Pi
+dependencies still use complete local installations and their existing read-only worker mounts.
+
+Preexisting host `/tmp` is exposed read-only at `CONCORDE_TEST_HOST_TMP` (the issued scratch's
+`host-tmp` mount). Commands must use that explicit view for other host-/tmp input artifacts; there
+is no argv rewriting or unspecified path substitution. Absolute `/tmp` links or paths embedded in
+other input scripts are not retargeted; callers explicitly use canonical inputs through the view
+and account for path-sensitive tools rather than acquiring extra mounts. Governing project, executing Framework,
+Python prefix/base prefix and interpreter locations under `/tmp` retain their original canonical
+names by read-only binds of their top-level `/tmp` ancestors. No task can supply these mount
+sources. A governing project/runtime at `/tmp` itself is refused rather than exposing it writable.
+Other old `/tmp` names are hidden unless covered by those preserved ancestors. Issued scratch
+remains writable at its exact absolute name; new `/tmp` entries belong only to the private backing.
+All backing directories and temporary policy/config/socket data disappear with the same scratch
+lifetime, after PID-namespace descendant cleanup on success, timeout, failure or cancellation.
 Scratch and reports are ephemeral and disappear after the check. No report import into the project
 is implicit. Standard output/error remain separate byte streams for outside-host persistence.
 

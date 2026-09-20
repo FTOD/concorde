@@ -28,6 +28,7 @@ from typing import Mapping, Protocol, Sequence
 
 
 CHECK_POLICY = "project-read-only-v1"
+TESTER_CHECK_POLICY = "tester-private-tmp-v1"
 
 
 @dataclass(frozen=True)
@@ -151,6 +152,9 @@ def _pipe():
 class BubblewrapBackend:
     """Linux backend. The gate prevents command execution until its PID namespace is pinned."""
 
+    def __init__(self, *, private_tmp: bool = False):
+        self.private_tmp = private_tmp
+
     def run(
         self,
         project: Path,
@@ -192,6 +196,30 @@ class BubblewrapBackend:
                 "/proc",
                 "--dev",
                 "/dev",
+            ]
+            if self.private_tmp:
+                command += ["--bind", str(scratch / "private-tmp"), "/tmp"]
+                # Preserve governing/runtime locations under /tmp at their original names.
+                # All sources are host-owned facts, never command arguments or environment.
+                roots = (
+                    project,
+                    Path(__file__).resolve().parents[3],
+                    Path(sys.prefix),
+                    Path(sys.base_prefix),
+                    Path(sys.executable),
+                )
+                preserved = set()
+                for root in roots:
+                    if root.is_relative_to("/tmp"):
+                        relative = root.relative_to("/tmp")
+                        if not relative.parts:
+                            raise CheckSandboxError(
+                                "tester project/runtime cannot be /tmp itself"
+                            )
+                        preserved.add(str(Path("/tmp") / relative.parts[0]))
+                for root in sorted(preserved):
+                    command += ["--ro-bind", root, root]
+            command += [
                 "--bind",
                 str(scratch),
                 str(scratch),
@@ -210,6 +238,10 @@ class BubblewrapBackend:
                 str(status.fileno()),
                 "--clearenv",
             ]
+            if self.private_tmp:
+                # Explicit read-only view for other preexisting /tmp inputs. Never copy
+                # runtime assets or make real host /tmp writable. Mount after scratch.
+                command += ["--ro-bind", "/tmp", str(scratch / "host-tmp")]
             for key, value in environment.items():
                 command.extend(("--setenv", key, value))
             # Preserve the check environment without making its values visible in the monitor's
@@ -311,8 +343,15 @@ def execute_check(
     *,
     timeout: float,
     environment: Mapping[str, str],
+    private_tmp: bool = False,
 ) -> CheckResult:
-    """Run one check with a fresh external scratch directory, removing it after process cleanup."""
+    """Run a check; trusted tester callers may add scratch-backed private /tmp.
+
+    This boolean is host policy, never a registry/command parameter or mount-path grant.
+    Ordinary configured checks keep their unchanged default filesystem boundary.
+    """
+    if type(private_tmp) is not bool:
+        raise CheckSandboxError("private_tmp must be a trusted boolean")
     project = project_root.resolve(strict=True)
     if not project.is_dir() or not argv or not math.isfinite(timeout) or timeout <= 0:
         raise CheckSandboxError(
@@ -329,7 +368,9 @@ def execute_check(
         raise CheckSandboxError(
             "project location cannot be isolated by the Linux check backend"
         )
-    backend: CheckBackend = BubblewrapBackend()
+    if private_tmp and project == Path("/tmp"):
+        raise CheckSandboxError("tester project cannot be /tmp itself")
+    backend: CheckBackend = BubblewrapBackend(private_tmp=private_tmp)
     # An ambient TMPDIR inside the project must never create a writable project mount. Nested
     # checks may use their parent's scratch, provided it is outside their own project.
     candidates = dict.fromkeys(
@@ -354,6 +395,9 @@ def execute_check(
             scratch = Path(temporary.name)
             for name in ("tmp", "cache", "reports", "shm"):
                 (scratch / name).mkdir(mode=0o700)
+            if private_tmp:
+                for name in ("private-tmp", "host-tmp"):
+                    (scratch / name).mkdir(mode=0o700)
             env = {
                 **environment,
                 "PYTHONDONTWRITEBYTECODE": "1",
@@ -365,6 +409,8 @@ def execute_check(
                 "CONCORDE_CHECK_TMPDIR": str(scratch),
                 "CONCORDE_CHECK_REPORT_DIR": str(scratch / "reports"),
             }
+            if private_tmp:
+                env["CONCORDE_TEST_HOST_TMP"] = str(scratch / "host-tmp")
             return backend.run(project, argv, scratch, env, timeout)
     raise CheckSandboxError(
         "no writable host temporary directory outside the project is available"

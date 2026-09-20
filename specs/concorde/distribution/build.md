@@ -121,7 +121,12 @@ Main owns scope, worktree assignment, continuation decisions, selected checks/in
 and integration authorization. Maintenance directly edits and self-checks, never delegates or
 integrates. Tester starts fresh, keeps governing artifacts read-only and returns failures rather
 than repairing. Its command tool uses the existing OS read-only check executor with disposable
-external fixtures; unavailable isolation fails closed. Explicit extension lists disable ambient
+external fixtures and the trusted tester-only scratch-backed private `/tmp` profile; unavailable
+isolation fails closed. Real host `/tmp` inputs use the explicit read-only `CONCORDE_TEST_HOST_TMP`
+view, except governing/runtime locations preserved at their canonical names. This permits normal
+nested terminal preparation without staging runtime assets or making host `/tmp` writable.
+The command schema remains only command/timeout; the model cannot select mounts or weaken this policy.
+Explicit extension lists disable ambient
 catalogs without granting additional tools. Effective discovery/preflight remains host-owned.
 
 Local edits need format/static/targeted checks, coherent changes affected integration, final

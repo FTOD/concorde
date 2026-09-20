@@ -261,6 +261,9 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 - THEN project reads and writes to the issued temporary and cache/report directories succeed
 - AND repeated calls receive separate scratch directories that are removed after execution
 - AND an ambient project-local temporary path cannot become a writable project mount
+- AND the trusted tester-only private-tmp profile allows an installed fixture Operation and its unchanged terminal Pi sandbox to prepare temporary files and submit a result without making real host temporary storage writable
+- AND governing/runtime paths under host /tmp remain read-only at their canonical names, other host-/tmp inputs remain readable through the explicit read-only view, and ordinary configured checks retain their default boundary
+- AND private /tmp, fixture, policy and socket data share the command's descendant-cleanup lifetime without runtime-asset staging or a task-selected mount source
 
 ### scenario.harness.check-result — Output and exit status are returned only to the host
 

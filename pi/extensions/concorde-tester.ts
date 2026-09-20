@@ -21,7 +21,7 @@ export default function (pi: ExtensionAPI) {
 		name: "test_command",
 		label: "Read-only test command",
 		description:
-			"Run a scoped test in the OS read-only host filesystem. Only fresh CONCORDE_CHECK_TMPDIR scratch is writable and removed afterward. Output capped at 20KB per stream. No unrestricted shell fallback.",
+			"Run a scoped test in the OS read-only host filesystem. Fresh CONCORDE_CHECK_TMPDIR scratch and its private /tmp backing are writable and removed afterward. Read other preexisting host-/tmp inputs through CONCORDE_TEST_HOST_TMP; governing project/runtime paths stay canonical and read-only. No runtime-asset staging or unrestricted shell fallback. Output capped at 20KB per stream.",
 		parameters: Type.Object({
 			command: Type.String({ maxLength: 32768 }),
 			timeout: Type.Optional(Type.Number({ minimum: 1, maximum: 3600 })),
