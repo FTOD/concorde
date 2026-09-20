@@ -42,7 +42,7 @@ class SessionSelectionTests(unittest.TestCase):
                 if p.is_file()
             },
             {
-                "APPEND_SYSTEM.md",
+                "extensions/concorde-coordinator.ts",
                 "agents/maintenance-worker.md",
                 "agents/tester.md",
                 "extensions/concorde-observe.ts",

@@ -1,5 +1,6 @@
 """Checked project-discovery projections for outer task roles, never Operation workers."""
 
+import json
 from pathlib import Path
 
 from .prompt_resolver import resolve_role_prompt
@@ -75,7 +76,19 @@ def render(root: Path, framework_prefix: str = ""):
         resolved = resolve_role_prompt(root, SOURCE_ROOTS[0])
         outputs.append(
             BuildOutput(
-                ".pi/APPEND_SYSTEM.md", resolved.body.encode(), resolved.sources
+                ".pi/extensions/concorde-coordinator.ts",
+                (
+                    "// Generated source-main extension; excluded from child extension lists.\n"
+                    "// No Operation catalog, tools, or session control.\n"
+                    'import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";\n'
+                    "const COORDINATOR = " + json.dumps(resolved.body) + ";\n"
+                    "export default function (pi: ExtensionAPI) {\n"
+                    '\tpi.on("before_agent_start", (event) => ({\n'
+                    '\t\tsystemPrompt: event.systemPrompt.trimEnd() + "\\n\\n" + COORDINATOR,\n'
+                    "\t}));\n"
+                    "}\n"
+                ).encode(),
+                resolved.sources,
             )
         )
     outputs.append(

@@ -386,6 +386,8 @@ validation cannot certify its determinism.
 - WHEN main resolves project agents by the exact names maintenance-worker and tester
 - THEN source discovery supplies both canonical fresh-context roles while consumers receive only generic tester
 - AND source-only coordinator/maintenance prompts never enter the installed package
+- AND actual Pi resource loading supplies coordinator instructions only to source main, not to fresh/resumed maintenance-worker, tester or terminal node prompts
+- AND migration retires only the exact previously build-owned unconditional append, refuses edited owned bytes before writing, and preserves unrelated user append content during consumer install/update
 - AND explicit child extensions disable ambient catalogs, delegation tools are absent and tester commands enforce read-only governing artifacts with external scratch
 - AND user-owned agent-file collisions and modified owned definitions block replacement, while unchanged owned updates retain receipt verification
 - AND main chooses check/test scope and continuation, maintenance performs self-checks without independent claims, and tester returns failures without self-repair

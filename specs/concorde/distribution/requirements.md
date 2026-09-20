@@ -134,6 +134,10 @@ Build and installation SHALL provide documented project-discovered outer role de
 Exact names are maintenance-worker and tester. Role definitions and passive telemetry are allowed
 project discovery assets, not public Operation entries. Source Operation shims remain private.
 Existing user agent-file collisions and modified receipt-owned definitions block replacement.
+Coordinator delivery is source-main-only through the explicit extension loading boundary, not a
+project-wide append prompt. Actual Pi effective-prompt loading, including fresh and resumed sessions,
+must keep maintenance-worker, tester and terminal node identities free of source-main instructions.
+Unrelated consumer APPEND_SYSTEM content is not adopted, overwritten or removed.
 
 ### req.distribution.test-evidence — Input-bound test diagnostics
 

@@ -602,6 +602,14 @@ def _legacy_outputs(root: Path) -> dict[str, bytes]:
     path = _checked_output(root, PI_SESSION_SHIM)
     if path.exists():
         contents[PI_SESSION_SHIM] = path.read_bytes()
+    # The old source coordinator append bypassed child context-file inheritance controls.
+    # Only the previous build's exact ownership record admits retirement. User append files
+    # without that record remain outside our ownership (including in consumer projects).
+    retired_append = ".pi/APPEND_SYSTEM.md"
+    if retired_append in _recorded_outputs(root):
+        path = _checked_output(root, retired_append)
+        if path.exists():
+            contents[retired_append] = path.read_bytes()
     return contents
 
 

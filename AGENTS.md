@@ -21,9 +21,11 @@ Neither child creates grandchildren; Operation workers are terminal nodes schedu
 
 Build does not install this checkout's Operation entry/catalog in ambient discovery.
 It does maintain checked source project `.pi/agents/maintenance-worker.md`, `.pi/agents/tester.md`,
-`.pi/APPEND_SYSTEM.md` and a passive observer entry. Canonical sources are `prompts/outer/` and
+a source-main-only `.pi/extensions/concorde-coordinator.ts` and a separate passive observer entry. Canonical sources are `prompts/outer/` and
 `pi/`; do not hand-edit projections. Outer pi-subagents support is a prerequisite, never a
-terminal-worker dependency. The installer ships only generic tester instructions, not source
+terminal-worker dependency. Coordinator delivery uses Pi extension discovery, not APPEND_SYSTEM:
+Pi discovers that append independently of context-file inheritance. Main alone loads the coordinator;
+child explicit extension lists and terminal discovery disablement exclude it. The installer ships only generic tester instructions, not source
 maintenance/coordinator rules. Strict tool profiles omit delegation; tester commands use the
 OS read-only check boundary and external scratch rather than unrestricted bash/write/edit.
 Private artifacts live in `generated/session/`. Use `select-session` with absolute Pi entry and

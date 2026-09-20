@@ -29,11 +29,13 @@ class OuterAgentsTests(unittest.TestCase):
             ).outputs
         }
         self.assertIn(".pi/agents/maintenance-worker.md", source)
-        self.assertIn(".pi/APPEND_SYSTEM.md", source)
+        self.assertIn(".pi/extensions/concorde-coordinator.ts", source)
+        self.assertNotIn(".pi/APPEND_SYSTEM.md", source)
         self.assertNotIn(".pi/extensions/concorde-session.ts", source)
         self.assertIn(".pi/agents/tester.md", installed)
         self.assertNotIn(".pi/agents/maintenance-worker.md", installed)
         self.assertNotIn(".pi/APPEND_SYSTEM.md", installed)
+        self.assertNotIn(".pi/extensions/concorde-coordinator.ts", installed)
         self.assertNotIn(
             "Source maintenance worker",
             installed[".pi/agents/tester.md"].content.decode(),

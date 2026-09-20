@@ -162,6 +162,20 @@ class PiWorkerTests(unittest.TestCase):
         (ambient / "extensions/forbidden.ts").write_text(
             "throw new Error('AMBIENT-EXTENSION');"
         )
+        # Actual source-main delivery must not reach a terminal worker either.
+        from concorde.distribution.outer_agents import render
+
+        coordinator = next(
+            o
+            for o in render(REPOSITORY_ROOT)
+            if o.path == ".pi/extensions/concorde-coordinator.ts"
+        )
+        (ambient / "extensions/concorde-coordinator.ts").write_bytes(
+            coordinator.content
+        )
+        (ambient / "APPEND_SYSTEM.md").write_text(
+            "You are the main coordinator. AMBIENT-APPEND"
+        )
         (ambient / "skills/leak").mkdir(parents=True)
         (ambient / "skills/leak/SKILL.md").write_text("AMBIENT-SKILL-MARKER")
         (self.credentials / "settings.json").write_text(

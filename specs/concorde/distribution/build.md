@@ -103,8 +103,16 @@ Neither child delegates tasks. Ordinary milestones do not replace the maintenanc
 
 `maintenance-worker` and `tester` are project-discovered pi-subagents task roles, not LangGraph
 workers. Canonical prompts under `prompts/outer/` render checked project definitions in
-`.pi/agents/`. Source build also projects the separate coordinator prompt to `.pi/APPEND_SYSTEM.md`
-and a passive native-event observer entry. These explicit assets are not an ambient Operation
+`.pi/agents/`. Source build projects the separate coordinator prompt into the discovered
+`.pi/extensions/concorde-coordinator.ts` extension, with a separate passive native-event observer entry.
+Only the outer source main loads that coordinator: child profiles disable ambient extensions and
+list only their own assets; terminal workers load only their granted extension. The coordinator
+uses Pi's before-agent-start prompt hook and grants no tools or control. It does not infer role from
+task text or inject contradictory instructions into children. Pi discovers APPEND_SYSTEM separately
+from context files, so replacement prompts and context inheritance flags cannot isolate it.
+Build retires the former source `.pi/APPEND_SYSTEM.md` only with exact prior-manifest ownership;
+modified owned bytes fail preflight, while unowned user append files remain untouched. Consumer
+installation never ships the source coordinator and preserves unrelated user append content. These explicit assets are not an ambient Operation
 catalog. Source-only prompts and the maintenance observer wrapper never ship to consumers;
 installer-owned generic tester definitions use the installed local Framework/runtime instead.
 Outer pi-subagents is a host prerequisite, not a new worker dependency.
