@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "name": "concorde",
   "version": "8.0.0",
   "description": "Concorde Framework: architecture-aware Specs, project understanding, agent observability with LangGraph Studio, explicit context and permissions, built-in agents, and branch-local Issues with bounded autonomous resolution",
@@ -16,12 +16,6 @@
     "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv"
   },
-  "templates": [
-    "module-template.md",
-    "plan-template.md",
-    "scenario-template.md",
-    "tasks-template.md"
-  ],
   "package_roots": [
     "operations",
     "docsite",
@@ -29,8 +23,7 @@
     "prompts",
     "protocol",
     "scripts",
-    "src",
-    "templates"
+    "src"
   ],
   "install": {
     "framework_root": ".concorde/framework",

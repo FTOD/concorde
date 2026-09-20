@@ -568,7 +568,6 @@
         "src/concorde/distribution/prompt_resolver.py",
         "src/concorde/spec/project.py",
         "src/concorde/spec/project_graph.py",
-        "templates/",
         "tests/concorde/distribution/",
         "tests/concorde/distribution/test_build.py",
         "tests/concorde/distribution/test_local_installation.py",

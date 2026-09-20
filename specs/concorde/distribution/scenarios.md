@@ -98,6 +98,15 @@ removal of the developer's own retired Concorde entries, never wholesale directo
 The installer performs no CLI delegation, including during migration. Empty retired directories
 may remain; ownership of a file does not grant ownership of neighboring directory contents.
 
+### scenario.distribution.template-ownership — Templates ship only with their owners
+
+- GIVEN a current package and a fresh target or a legacy receipt naming root template outputs
+- WHEN installation previews and applies the current package
+- THEN fresh Framework output has no root templates directory, Module and Scenario starters remain under protocol/templates, and plan/task starters ship in their owning worker Operation packages
+- AND upgrade removes only unchanged receipt-owned obsolete template files, leaving unowned neighboring material untouched and possibly leaving empty legacy directories
+- AND modified owned files, symlinks or changes after preview block before writing, while a failed apply restores retired bytes, modes and the prior receipt
+- AND repeated installation is idempotent and the relocated starters add no worker context, tools or prompt injection
+
 ### scenario.distribution.install-pi-session — Installing places the Pi session extension only
 
 - GIVEN a target project
@@ -127,11 +136,16 @@ verification must finish before installation is accepted; failure restores repla
 receipts. The locked managed Python runtime runs actual operations. Check verifies receipt hashes
 and required runtime identity without changing project behavior.
 
-The distributable manifest is `concorde.json` schema_version 4, Concorde 8.0.0, Architecture
-Profile 15, Workspace Protocol 16 and Delivery Proposal 10. Schema 4 replaces the multi-client
-`integrations` and `skill_namespace` fields with exactly `client: "pi"`, removes the Skills CLI
-pin from `install` and excludes `skills` from package roots. Schema 3 packages are rejected by
-this installer rather than reinterpreted. Runtime/wire and project Protocol versions are unchanged.
+The distributable manifest is `concorde.json` schema_version 5, Concorde 8.0.0, Architecture
+Profile 15, Workspace Protocol 16 and Delivery Proposal 10. Schema 5 removes the top-level
+`templates` inventory field and package root; the retired field is rejected even when empty.
+Module and Scenario starters belong only to `protocol/templates/module.md` and
+`protocol/templates/scenario.md`. Plan and task starters belong to
+`operations/planner/plan-template.md` and `operations/task_author/tasks-template.md`, carried by
+ordinary Operation packaging without runtime injection. Earlier package schemas require an
+explicit package update and are rejected rather than reinterpreted. The Pi-only `client: "pi"`
+layout remains; `integrations`, `skill_namespace`, Skills CLI selection and the `skills` package
+root remain unsupported. Receipt schema 2, runtime/wire and project Protocol versions are unchanged.
 
 Installation receipt schema 2 records `client: "pi"`, not client selections or Skills CLI delegation.
 Schema 1 receipts are explicitly accepted for migration because their exact output-digest and
