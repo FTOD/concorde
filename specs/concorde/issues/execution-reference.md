@@ -192,11 +192,13 @@ from a later mutable review record. Ordinary code-review defect feedback uses ex
 rather than the unchanged-contract wait rule. A completed fresh code review can
 release such a dependency even when it corrects an earlier judgment without further code changes.
 Failed, incomplete and unrelated assessments cannot erase unresolved dependencies. The retired
-`specify` phase is not an executable prerequisite: after direct contract repair, an explicitly
-selected current context assessment can release its necessary-contract relation under
-[Planning's reassessment rules](../planning/execution-reference.md#assessment-context-assessment).
-The original attribution stays in history; other retained phases still need their own accepted
-reassessment. No bytes changing, Issue disposition or unrelated successful review clears a relation.
+`specify` phase is not an executable prerequisite: an accepted current same-intent context
+assessment can supersede its correctly attributed obsolete task relation under
+[Planning's reassessment rules](../planning/execution-reference.md#assessment-context-assessment),
+including missing original revisions and non-contract failures of that retired execution.
+Supersession records current sufficiency and retirement of the prerequisite, never old author
+success, repaired historical defects or Issue closure. Original attribution and failed observations
+stay in history; other retained phases still need their own accepted reassessment. No bytes changing, Issue disposition or unrelated successful review clears a relation.
 
 Releasing a relation means the current work no longer depends on that problem. It does not close
 its Issue, imply delivery or erase history. A workaround can therefore permit work to continue
@@ -231,11 +233,11 @@ candidate's own launcher and its result returned to the requesting session, whic
 primary worktree. Current-worktree bookkeeping operations never create candidates. Repeating solve on an ordinarily closed Issue reports its existing
 disposition, but a candidate-local pending disposition must be recovered before that fast path.
 
-The solver receives the problem and impact plus its complete Module Spec. It chooses ordinary
-development, a fresh Spec repair, Issue-specific verification, a reasoned disposition or a precise
-need for a developer decision. No mandatory triage, reproduction pass or separate investigation
-plan precedes every repair. A bug with enough information can go directly to development; a
-code-free Spec gap can be repaired without an implementation investigation. Decisions do not
+The solver receives the problem and impact plus its complete Module Spec. It chooses whether to
+return needed development or Spec repair to the caller, obtain Issue-specific verification, record
+a reasoned disposition or identify a precise need for a developer decision. No mandatory triage, reproduction pass or separate investigation
+plan precedes every repair. A bug with enough information can return clear implementation intent to the caller; a
+code-free Spec gap can return direct contract-edit intent without an implementation investigation. Decisions do not
 acquire another Module's context or permissions.
 
 A `develop` or `spec-repair` decision returns `unsupported` with the selected target, intended

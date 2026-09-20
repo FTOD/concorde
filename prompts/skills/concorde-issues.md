@@ -1,6 +1,6 @@
 ---
 name: concorde-issues
-description: "Inspect, report, reopen or solve branch-local Issues; solving stops at a verified candidate without automatic delivery."
+description: "Inspect, report, reopen or assess branch-local Issues; return needed repairs to the caller or verify current work without automatic delivery."
 operation: issues
 ---
 
@@ -14,13 +14,19 @@ operation: issues
 Choose action list, show, report, reopen or solve. Show, reopen and solve require one issue_id;
 expected_revision optionally rejects a changed selection. Report requires target_id and a classified
 report; an append also names its issue_id and expected_revision inside the report. Reopen requires
-a note. Only solve starts development; other actions are current-worktree bookkeeping. An Issue is
-not an implementation task, and reporting it neither stops a running agent nor approves a repair.
+a note. Only solve starts the bounded decision and verification lifecycle; other actions are
+current-worktree bookkeeping. An Issue is not an implementation task, and reporting it neither
+stops a running agent nor approves a repair.
 
-Solve may use ordinary development, a fresh Spec repair, or Issue-specific read-only verification.
-It can resolve, identify a duplicate or reject a mistaken report from evidence without mandatory
-human approval. Unresolved product/design choices are returned as needs-decision. Respect the host's
-bounded iteration limit and distinct execution failures. Do not retry by widening permissions.
+Solve returns needed implementation or Spec repair to the calling agent with the selected target,
+intended behavior and rationale. It does not author Specs, change implementation or start planning
+or child development. The caller performs authorized Spec, paired metadata and registry edits or
+selects retained Operations explicitly, then requests fresh verification with current inputs.
+A return-to-caller result preserves the open Issue and is not completed repair or readiness.
+Solve can run Issue-specific read-only verification, resolve, identify a duplicate or reject a
+mistaken report from evidence without mandatory human approval. Unresolved product/design choices
+are returned as needs-decision. Respect the host's bounded iteration limit and distinct execution
+failures. Do not retry by widening permissions.
 
 From the primary worktree the host copies the selected Issue's exact bytes, including an uncommitted
 report, into the candidate worktree it creates, without copying unrelated edits, and solves there;

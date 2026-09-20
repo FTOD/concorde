@@ -52,6 +52,33 @@ class BuildGoldenTests(unittest.TestCase):
         cls.result = build(REPOSITORY_ROOT, "all")
         cls.by_path = {output.path: output for output in cls.result.outputs}
 
+    @verifies(
+        "scenario.distribution.build-render", "scenario.distribution.skills-publish"
+    )
+    def test_issue_guidance_returns_repairs_to_the_caller_without_a_removed_workflow(
+        self,
+    ):
+        for integration in SKILL_INTEGRATIONS:
+            body = self.by_path[
+                f"{INTEGRATION_ROOTS[integration]}/concorde-issues/SKILL.md"
+            ].content.decode()
+            self.assertIn(
+                "Solve returns needed implementation or Spec repair to the calling agent",
+                body,
+            )
+            self.assertIn("A return-to-caller result preserves the open Issue", body)
+            self.assertNotIn("Only solve starts development", body)
+            self.assertNotIn("Solve may use ordinary development", body)
+        published = next(
+            output
+            for output in render_published_skills(REPOSITORY_ROOT)
+            if output.path.endswith("concorde-issues/SKILL.md")
+        )
+        self.assertIn(
+            "Solve returns needed implementation or Spec repair to the calling agent",
+            published.content.decode(),
+        )
+
     @verifies("scenario.distribution.build-render")
     def test_golden_inventory_matches_current_projections(self):
         expected = {
