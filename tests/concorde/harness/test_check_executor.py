@@ -4,7 +4,6 @@ These tests deliberately fail (rather than skip or substitute mocks) when Linux 
 enforcement is unavailable. Run them on an enforcement-capable Linux host.
 """
 
-import errno
 import json
 import os
 import subprocess
@@ -83,7 +82,7 @@ class CheckExecutorTests(unittest.TestCase):
             os.set_inheritable(writable.fileno(), True)
             result = self.run_check(
                 """
-import os,sys,subprocess
+import os,sys,subprocess,json
 from pathlib import Path
 for path in (Path('link'), Path(sys.argv[1]), Path('/proc/self/root')/Path.cwd().relative_to('/')/'unlisted.txt'):
     try: path.write_text('changed')
@@ -94,16 +93,35 @@ for fd in Path('/proc/self/fd').iterdir():
     except FileNotFoundError: continue
     assert 'unlisted.txt' not in target, target
     assert fd.name in ('0','1','2'), (fd,target)
-assert not Path('/proc',sys.argv[2],'root').exists()
+# A nested PID namespace may reuse the parent's numeric PID. Compare the actual
+# kernel namespace identity instead: the original parent remains alive in its
+# captured namespace while this check runs, so it cannot be the visible local PID.
+parent_namespace = sys.argv[3]
+child_namespace = os.readlink('/proc/self/ns/pid')
+assert child_namespace != parent_namespace, 'check did not enter a separate PID namespace'
+process = Path('/proc',sys.argv[2])
+visible_namespace = None
+try:
+    visible_namespace = os.readlink(process/'ns/pid')
+except FileNotFoundError:
+    # A local process may exit during inspection; absence alone must not admit a
+    # still-readable parent root whose namespace entry was merely hidden.
+    assert not (process/'root').exists()
+else:
+    assert visible_namespace != parent_namespace, 'original parent namespace exposed'
+print(json.dumps({'parent_namespace':parent_namespace,'child_namespace':child_namespace,
+                  'same_numeric_pid_namespace':visible_namespace}))
 child=subprocess.run([sys.executable,'-c',"open('unlisted.txt','w').write('child')"],capture_output=True)
 assert child.returncode != 0, child
 print('child denied')
 """,
                 alias,
                 os.getpid(),
+                os.readlink("/proc/self/ns/pid"),
             )
         self.assertEqual(0, result.returncode, result)
         self.assertEqual("original", self.file.read_text())
+        print("Process-isolation evidence:", result.stdout.decode().strip())
 
     @verifies("scenario.harness.check-read-only")
     def test_further_user_namespace_cannot_remount_project_writable(self):

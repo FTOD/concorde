@@ -64,50 +64,102 @@ class PrivateTemporaryBoundaryTests(unittest.TestCase):
 
     @verifies("scenario.harness.check-scratch", "scenario.harness.check-read-only")
     def test_default_unchanged_private_namespace_and_readonly_input_view(self):
+        from concorde.harness import check_executor
+
+        # Control the topology, not the caller's TMPDIR. In a tester, default tempfile
+        # locations share /tmp/concorde-check-<issued>; distinct files there are NOT
+        # necessarily outside the preserved governing/runtime ancestors. These fresh
+        # top-level fixture roots work in both host /tmp and a tester's private /tmp.
+        # execute_check still allocates its own scratch using the unchanged caller env.
         with (
-            tempfile.TemporaryDirectory() as raw,
-            tempfile.NamedTemporaryFile() as source,
+            tempfile.TemporaryDirectory(
+                prefix="concorde-governing-", dir="/tmp"
+            ) as raw,
+            tempfile.TemporaryDirectory(
+                prefix="concorde-unpreserved-", dir="/tmp"
+            ) as outside,
         ):
             project = Path(raw) / "project"
             project.mkdir()
             (project / "source").write_text("governing")
-            source.write(b"host-input")
-            source.flush()
+            roots = (
+                project.resolve(),
+                Path(check_executor.__file__).resolve().parents[3],
+                Path(sys.prefix),
+                Path(sys.base_prefix),
+                Path(sys.executable),
+            )
+            # Establish the documented prerequisites independently of the mount result.
+            preserved = {
+                Path("/tmp") / root.relative_to("/tmp").parts[0]
+                for root in roots
+                if root.is_relative_to("/tmp") and root != Path("/tmp")
+            }
+            shared = Path(raw) / "input"
+            unpreserved = Path(outside) / "input"
+            self.assertIn(shared.parent, preserved)
+            self.assertNotIn(unpreserved.parent, preserved)
+            for source in (shared, unpreserved):
+                source.write_bytes(b"host-input")
             code = """
-import os,sys,tempfile,json
+import os,sys,tempfile
 from pathlib import Path
 private = sys.argv[1] == 'True'
 source = Path(sys.argv[2])
+canonical_visible = not private or sys.argv[3] == 'True'
+protected = [Path.cwd()/'source']
 if private:
     view = Path(os.environ['CONCORDE_TEST_HOST_TMP']) / source.relative_to('/tmp')
     assert view.read_text() == 'host-input'
-    assert not source.exists(), 'unpreserved old /tmp name should be hidden'
-    for path in (view, Path.cwd()/'source', Path('/proc/self/root')/view.relative_to('/')):
-        try: path.write_text('bad')
-        except OSError: pass
-        else: raise AssertionError('host write allowed')
+    protected.append(view)
+assert source.exists() == canonical_visible, (source, canonical_visible)
+if canonical_visible:
+    assert source.read_text() == 'host-input'
+    protected.append(source)
+else:
+    assert not source.parent.exists(), 'unpreserved ancestor unexpectedly visible'
+    assert not (Path('/proc/self/root')/source.relative_to('/')).exists()
+for path in [*protected, *(Path('/proc/self/root')/p.relative_to('/') for p in protected)]:
+    try: path.write_text('bad')
+    except OSError as error: assert error.errno == 30, error
+    else: raise AssertionError('host/project write allowed: '+str(path))
+try: (Path.cwd()/'forbidden-new-file').write_text('bad')
+except OSError as error: assert error.errno == 30, error
+else: raise AssertionError('governing creation allowed')
+if private:
     with tempfile.TemporaryDirectory(prefix='concorde-pi-worker-',dir='/tmp') as run:
         Path(run,'policy.json').write_text('private-policy')
     print(os.environ['CONCORDE_CHECK_TMPDIR'])
 else:
-    assert source.read_text() == 'host-input'
     try: tempfile.TemporaryDirectory(prefix='concorde-pi-worker-',dir='/tmp')
     except OSError as error: assert error.errno == 30
     else: raise AssertionError('default boundary changed')
 """
-            for private in (False, True):
-                result = execute_check(
-                    project,
-                    [sys.executable, "-c", code, str(private), source.name],
-                    timeout=10,
-                    environment=os.environ,
-                    private_tmp=private,
-                )
-                self.assertEqual(0, result.returncode, result.stderr)
-                if private:
-                    self.assertFalse(Path(result.stdout.decode().strip()).exists())
-            self.assertEqual("governing", (project / "source").read_text())
-            self.assertEqual(b"host-input", Path(source.name).read_bytes())
+            for source, visible in ((shared, True), (unpreserved, False)):
+                for private in (False, True):
+                    with self.subTest(preserved=visible, private_tmp=private):
+                        result = execute_check(
+                            project,
+                            [
+                                sys.executable,
+                                "-c",
+                                code,
+                                str(private),
+                                str(source),
+                                str(visible),
+                            ],
+                            timeout=10,
+                            environment=os.environ,
+                            private_tmp=private,
+                        )
+                        self.assertEqual(0, result.returncode, result.stderr)
+                        if private:
+                            self.assertFalse(
+                                Path(result.stdout.decode().strip()).exists()
+                            )
+                        self.assertEqual(b"host-input", source.read_bytes())
+                        self.assertEqual("governing", (project / "source").read_text())
+                        self.assertFalse((project / "forbidden-new-file").exists())
             with self.assertRaises(CheckSandboxError):
                 execute_check(
                     project,
