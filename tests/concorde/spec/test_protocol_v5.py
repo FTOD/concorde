@@ -9,9 +9,7 @@ from unittest.mock import patch
 from concorde.harness.admission import run_operation
 from concorde.harness.context import (
     recheck_context,
-    recheck_discovery_context,
     resolve_context,
-    resolve_discovery_context,
 )
 from concorde.harness.host import OperationHost
 from concorde.harness.revisions import target_revision
@@ -121,39 +119,32 @@ class ProtocolFiveTests(unittest.TestCase):
                 r.spec_files("scenario.transfer.debit"),
             )
 
-    def test_reference_changes_with_identical_files_invalidate_snapshot_discovery_and_revision(
+    def test_reference_changes_with_identical_files_invalidate_snapshot_and_revision(
         self,
     ):
         self.reference("scope.bank", "module", "service.transfer")
         old = self.repository()
         snap = resolve_context(old, "scope.bank")
-        discovery = resolve_discovery_context(
-            old, ("scope.bank",), operation="concorde-main", phase="route", task="Read"
-        )
         revision = target_revision(old, old.select("scope.bank"))
         self.reference("scope.bank", "document", "document.transfer.promises")
         new = self.repository()
         self.assertEqual(old.spec_files("scope.bank"), new.spec_files("scope.bank"))
         self.assertNotEqual(revision, target_revision(new, new.select("scope.bank")))
-        for check in (
-            lambda: recheck_context(new, snap),
-            lambda: recheck_discovery_context(new, discovery),
-        ):
+        for check in (lambda: recheck_context(new, snap),):
             with self.assertRaisesRegex(SpecError, "changed"):
                 check()
         self.registry["targets"][0]["references"] = [
             {"kind": "document", "id": "document.missing"}
         ]
         self.save()
-        for check in (
-            lambda: recheck_context(old, snap),
-            lambda: recheck_discovery_context(old, discovery),
-        ):
+        for check in (lambda: recheck_context(old, snap),):
             with self.assertRaises(SpecError) as failure:
                 check()
             self.assertEqual("stale_context", failure.exception.code)
 
-    def test_source_bytes_are_exact_and_discovery_indexes_each_document_once(self):
+    def test_source_bytes_are_exact_and_selected_context_indexes_each_document_once(
+        self,
+    ):
         path = self.root / "specs/transfer/promises.md"
         raw = path.read_bytes().replace(b"\n", b"\r\n")
         path.write_bytes(raw)
@@ -166,24 +157,13 @@ class ProtocolFiveTests(unittest.TestCase):
         )
         self.assertEqual(digest(raw), source["digest"])
         self.assertNotIn("content", source)
-        snap = resolve_discovery_context(
-            r,
-            ("service.transfer", "module.ledger"),
-            operation="concorde-main",
-            phase="route",
-            task="Read",
-        ).value
+        snap = resolve_context(r, "module.ledger", task="Read").value
+        records = snap["spec_resolution"]["sources"]
         self.assertEqual(
-            1, sum(s["path"].endswith("promises.md") for s in snap["documents"])
+            1, sum(item["path"].endswith("promises.md") for item in records)
         )
-        self.assertTrue(
-            all(
-                "content" not in s
-                for t in snap["targets"]
-                for s in t["spec_resolution"]["sources"]
-            )
-        )
-        self.assertTrue(all("reasons" not in s for s in snap["documents"]))
+        self.assertTrue(all("content" not in item for item in records))
+        self.assertTrue(all("reasons" in item for item in records))
 
     @verifies("scenario.spec.reference-invalid")
     def test_invalid_reference_kinds_unknown_self_and_duplicates_fail_closed(self):
@@ -237,7 +217,7 @@ class ProtocolFiveTests(unittest.TestCase):
         before = (self.root / "specs/ledger/module.md").read_bytes()
 
         def callback(stage, snapshot, result, cwd):
-            if stage == "specify":
+            if stage == "context-solve":
                 result["documents"] = [
                     {
                         "path": "specs/ledger/module.md",
@@ -250,10 +230,11 @@ class ProtocolFiveTests(unittest.TestCase):
             self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
         )
         result = run_operation(
-            "concorde-specify",
+            "concorde-context-solve",
             CONFIGURATION,
             typed(
-                "concorde-specify-request", {"target_id": target.id, "task": "Clarify"}
+                "concorde-context-solve-request",
+                {"target_id": target.id, "task": "Clarify"},
             ),
             host_context=host,
         )
@@ -298,19 +279,15 @@ class ProtocolFiveTests(unittest.TestCase):
             [a["path"] for a in snapshot.value["implementation_artifacts"]],
         )
 
-    def _author_referenced_document(self, block_consumer):
+    def _review_directly_edited_document(self, block_consumer):
         self.reference("module.ledger", "document", "document.transfer.promises")
         path = self.root / "specs/transfer/promises.md"
         before = path.read_bytes()
         proposed = before.decode() + "\nClarified canonical promise.\n"
 
         def callback(stage, snapshot, result, cwd):
-            if stage == "specify":
-                result["documents"] = [
-                    {"path": "specs/transfer/promises.md", "content": proposed}
-                ]
             if stage == "spec-review":
-                self.assertEqual(before, path.read_bytes())
+                self.assertEqual(proposed, path.read_text())
                 self.assertIn(
                     "Clarified canonical promise.",
                     (cwd / "specs/transfer/promises.md").read_text(),
@@ -327,15 +304,16 @@ class ProtocolFiveTests(unittest.TestCase):
                         ],
                     )
 
+        path.write_text(proposed)
         double = ModelProcessDouble(callback)
         host = OperationHost(
             self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
         )
         result = run_operation(
-            "concorde-specify",
+            "concorde-spec-review",
             CONFIGURATION,
             typed(
-                "concorde-specify-request",
+                "concorde-spec-review-request",
                 {
                     "target_id": "service.transfer",
                     "task": "Clarify the canonical promise",
@@ -345,9 +323,9 @@ class ProtocolFiveTests(unittest.TestCase):
         )
         return result, double, before, proposed, path
 
-    @verifies("scenario.spec-authoring.admitted-work")
-    def test_owner_proposal_is_applied_only_after_each_context_accepts(self):
-        result, double, _, proposed, path = self._author_referenced_document(False)
+    @verifies("scenario.spec.reference-resolution")
+    def test_direct_owner_edit_is_reviewed_in_each_affected_context(self):
+        result, double, _, proposed, path = self._review_directly_edited_document(False)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual(proposed, path.read_text())
         self.assertEqual(
@@ -359,10 +337,11 @@ class ProtocolFiveTests(unittest.TestCase):
             },
         )
 
-    def test_consumer_rejection_preserves_all_original_bytes(self):
-        result, _, before, _, path = self._author_referenced_document(True)
+    def test_consumer_rejection_does_not_rollback_or_approve_direct_edits(self):
+        result, _, before, proposed, path = self._review_directly_edited_document(True)
         self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"], result)
-        self.assertEqual(before, path.read_bytes())
+        self.assertEqual(proposed, path.read_text())
+        self.assertNotEqual(before, path.read_bytes())
         from tests.concorde.operations.test_review import issue_observation
 
         self.assertEqual(

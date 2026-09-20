@@ -2,16 +2,13 @@
 
 import json
 from concurrent.futures import ThreadPoolExecutor
-from types import SimpleNamespace
-from typing import Any
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 
 from concorde.harness.batch_graph import run_batch_graph
-from concorde.query_routing.main import MainInvocation
 from concorde.spec.verification import verifies
 from tests.concorde.harness import test_studio as studio_fixtures
 
@@ -30,7 +27,6 @@ class GraphTests(TestCase):
         fixture = self.fixture()
         with (
             patch("concorde.harness.invocation.SpecRepository") as bound,
-            patch("concorde.query_routing.main.SpecRepository") as discovered,
             patch("concorde.operations.dispatch.SpecRepository") as dispatched,
         ):
             drawings = {}
@@ -47,16 +43,14 @@ class GraphTests(TestCase):
                         drawing.to_json(), independent.get_graph(xray=True).to_json()
                     )
                     drawings[operation] = drawing
-            for repository in (bound, discovered, dispatched):
+            for repository in (bound, dispatched):
                 repository.assert_not_called()
         self.assertEqual([], fixture.double.calls)
-        drawing = drawings["concorde-main"]
+        drawing = drawings["concorde-context-solve"]
         self.assertTrue(
-            any(name.endswith(":discover:decide") for name in drawing.nodes)
+            any(name.endswith(":prepare_target:bind_target") for name in drawing.nodes)
         )
-        self.assertTrue(
-            any(name.endswith(":apply_atomically") for name in drawing.nodes)
-        )
+        self.assertTrue(any(name.endswith(":context_solve") for name in drawing.nodes))
         self.assertFalse(
             any(name.endswith(":development_loop") for name in drawing.nodes)
         )
@@ -64,7 +58,7 @@ class GraphTests(TestCase):
     @verifies("scenario.harness.graph-inspection", "scenario.harness.graph-execution")
     def test_nested_updates_and_checkpoints_contain_json_not_host_objects(self):
         fixture = self.fixture()
-        graph = fixture.graph("concorde-main")
+        graph = fixture.graph("concorde-context-solve")
         saver = InMemorySaver()
         graph.checkpointer = saver
         config: RunnableConfig = {"configurable": {"thread_id": "graph-json"}}
@@ -72,7 +66,11 @@ class GraphTests(TestCase):
             graph.stream(
                 {
                     "invocation": invocation(
-                        "concorde-main", data={"task": "Explain transfer"}
+                        "concorde-context-solve",
+                        data={
+                            "target_id": "service.transfer",
+                            "task": "Explain transfer",
+                        },
                     )
                 },
                 config,
@@ -83,8 +81,8 @@ class GraphTests(TestCase):
         # This also catches callbacks accidentally returned through private state channels.
         json.dumps(updates)
         names = {name for _, update in updates for name in update}
-        self.assertIn("decide", names)
-        self.assertIn("expand_context", names)
+        self.assertIn("bind_target", names)
+        self.assertIn("context_solve", names)
         for checkpoint in saver.list(config):
             channels = checkpoint.checkpoint["channel_values"]
             json.dumps(channels)
@@ -109,33 +107,6 @@ class GraphTests(TestCase):
         for value in results:
             ids = {event["invocation_id"] for event in value["events"]}
             self.assertEqual({value["result"]["invocation_id"]}, ids)
-
-    @verifies("scenario.harness.graph-bounds")
-    def test_discovery_can_expand_beyond_the_default_langgraph_limit(self):
-        # Deliberately partial duck-typed fixture; exercise routing without a real Host.
-        main: Any = MainInvocation.__new__(MainInvocation)
-        main.repository = SimpleNamespace(
-            targets={str(i): SimpleNamespace(kind="module") for i in range(40)},
-            select=lambda name: SimpleNamespace(kind="module", id=name),
-        )
-        main.host = SimpleNamespace(mode="execute")
-        main.task = {}
-        main.completed = []
-        main.discovered = ["entry"]
-        main.stage_context_text = lambda _: "\n".join(
-            "module." + str(i) for i in range(35)
-        )
-        main.stage = Mock(
-            side_effect=lambda phase, occurrence: (
-                {"outcome": "expand", "expand_targets": ["module." + str(occurrence)]}
-                if occurrence < 35
-                else {"outcome": "answered", "answer": "Complete"}
-            )
-        )
-        routes, decision = main.discover_routes()
-        self.assertEqual([], routes)
-        self.assertEqual("answered", decision["outcome"])
-        self.assertEqual(36, main.stage.call_count)
 
     @verifies("scenario.harness.graph-bounds", "scenario.harness.graph-execution")
     def test_large_batch_stops_before_running_dependent_items(self):

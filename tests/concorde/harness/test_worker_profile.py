@@ -57,7 +57,18 @@ class ResolveAgentBuildTests(unittest.TestCase):
             (self.root / "generated/build-manifest.json").read_text(encoding="utf-8")
         )
         inventory = profiles.load_worker_profiles()
-        self.assertEqual(12, len(inventory))
+        self.assertEqual(
+            {
+                "context_assessor",
+                "planner",
+                "task_author",
+                "programmer",
+                "spec_reviewer",
+                "code_reviewer",
+                "issue_solver",
+            },
+            set(inventory),
+        )
         for name in inventory:
             with self.subTest(agent=name):
                 agent = worker_profile(name)
@@ -130,9 +141,9 @@ class ResolveAgentBuildTests(unittest.TestCase):
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_missing_rendered_instructions_is_stale_build(self):
-        (self.root / "generated/agents/router.md").unlink()
+        (self.root / "generated/agents/planner.md").unlink()
         with self.assertRaises(BuildError) as failure:
-            resolve_worker(self.root, "concorde-router")
+            resolve_worker(self.root, "concorde-planner")
         self.assertEqual("stale_build", failure.exception.code)
 
 
@@ -263,8 +274,8 @@ class ProfileValidationTests(unittest.TestCase):
             _package(root)
             write_build(root, "all")
             modified = dict(profiles.load_worker_profiles())
-            modified["router"] = dataclasses.replace(
-                modified["router"], tools=("read", "write")
+            modified["planner"] = dataclasses.replace(
+                modified["planner"], tools=("read", "write")
             )
             with (
                 mock.patch.object(
@@ -272,7 +283,7 @@ class ProfileValidationTests(unittest.TestCase):
                 ),
                 self.assertRaises(BuildError) as failure,
             ):
-                resolve_worker(root, "router")
+                resolve_worker(root, "planner")
             self.assertEqual("invalid_agent_binding", failure.exception.code)
 
 

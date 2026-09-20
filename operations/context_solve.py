@@ -1,13 +1,11 @@
-"""Operation: assess a task for missing Spec information within one frozen context.
-
-Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
+"""Operation: assess a task for missing Spec information within one frozen context."""
 
 from concorde.harness.operation_state import StateContract, run_host
 from concorde.spec import contract_shapes as shapes
 
 from . import external_name
 
-PUBLIC = False
+PUBLIC = True
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
 PROFILE = None

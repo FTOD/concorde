@@ -6,26 +6,26 @@ and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Harness](../module.md#terminology) | Defined in Concorde Framework. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Review coverage](module.md#terminology) | Defined in Review. |
-| [Advisory finding](module.md#terminology) | Defined in Review. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Capsule](../harness/module.md#terminology) | Defined in Harness. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                    | Meaning / definition           |
+| ------------------------------------------------------- | ------------------------------ |
+| [Spec](../module.md#terminology)                        | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology)                    | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology)                      | Defined in Concorde Framework. |
+| [Host](../module.md#terminology)                        | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology)                       | Defined in Concorde Framework. |
+| [Harness](../module.md#terminology)                     | Defined in Concorde Framework. |
+| [Issue](../module.md#terminology)                       | Defined in Concorde Framework. |
+| [Blocker](../module.md#terminology)                     | Defined in Concorde Framework. |
+| [Review coverage](module.md#terminology)                | Defined in Review.             |
+| [Advisory finding](module.md#terminology)               | Defined in Review.             |
+| [Candidate](../module.md#terminology)                   | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology)                    | Defined in Concorde Framework. |
+| [Capsule](../harness/module.md#terminology)             | Defined in Harness.            |
+| [Snapshot](../module.md#terminology)                    | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology)                       | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology)                   | Defined in Concorde Framework. |
+| [Public operation](../operations/module.md#terminology) | Defined in Operations.         |
+| [Skill](../module.md#terminology)                       | Defined in Concorde Framework. |
 
 ## Independent review operation {#review-independent-review-operation}
 
@@ -33,13 +33,12 @@ and transitions are retained here as the single detailed contract.
 [typed handoffs](../harness/admission.md#stage-handoffs) and
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-`concorde-spec-review` and `concorde-code-review` are separate public Operations with discover context
-selection, each requiring task with optional target/focus routing hints, constraints and current-worktree
-change_id. Their closed request schemas have no review_mode field. Each entry selects only its own
-reviewer; the retired concorde-review operation and its request/response types have no alias. A new standalone
-request uses Spec-only router discovery to select one owning Module, then starts a fresh
-read-only reviewer. A composing operation may supply its trusted bound target without repeating
-discovery; a current-change resumption supplies both target_id and change_id. The public launcher
+`concorde-spec-review` and `concorde-code-review` are separate public Operations requiring an explicit
+Module target_id and task, optional same-owner focus_id, constraints and current-worktree change_id.
+The host deterministically resolves that selection; no router, inferred owner or context expansion
+precedes the fresh reviewer. Their closed request schemas have no review_mode field. Each entry
+selects only its own reviewer; the retired concorde-review operation and its request/response types
+have no alias. The public launcher
 and Studio admit this operation directly. Review runs in the current worktree without creating
 a development change or requiring a preexisting Issue record. The host may persist reports and existing
 change evidence, but reviewers receive no project write authority.
@@ -87,15 +86,14 @@ It publishes `concorde-review-result@2` adding target/focus, revision and
 semantic_completeness=not_proven. Public response `reviews` contains these typed results, and artifacts
 reference saved review reports. Native receipts and failure diagnostics remain separate host records.
 
-| Review state | Skill outcome and progression |
-| --- | --- |
-| no_findings with nonempty coverage | completed; bounded review succeeded |
-| findings, all advisory | completed; Issue references retained for the consumer |
-| blocking missing/conflicting contract Issues | spec_incomplete; dependent steps pause |
-| other blocking Issues | conflicting; the caller selects bounded repair or a stop |
-| incomplete coverage, invalid result or process failure | failed; an incomplete report, never a clean result |
-| describe-policy | described with not_run; no execution or persistence |
-| run_reviews=false | host records skipped; no reviewer runs |
+| Review state                                           | Skill outcome and progression                            |
+| ------------------------------------------------------ | -------------------------------------------------------- |
+| no_findings with nonempty coverage                     | completed; bounded review succeeded                      |
+| findings, all advisory                                 | completed; Issue references retained for the consumer    |
+| blocking missing/conflicting contract Issues           | spec_incomplete; dependent steps pause                   |
+| other blocking Issues                                  | conflicting; the caller selects bounded repair or a stop |
+| incomplete coverage, invalid result or process failure | failed; an incomplete report, never a clean result       |
+| describe-policy                                        | described with not_run; no execution or persistence      |
 
 The table maps review reports to the Review response's domain `outcome`. An interrupted
 reviewer still produces an `incomplete` review report and a `failed` Review domain outcome.
@@ -117,7 +115,7 @@ cross-target review: the host validates each Module's declared relationship, sta
 its recorded task and admitted collection, then aggregates only typed results; a component's code
 never enters the aggregating Module's reviewer. Spec review always assesses the Module itself. A
 Module whose entities list no implementation files is reviewed in code mode only through its
-recorded components and returns unsupported when it has none. The consumer selects local or recorded-component review only after the required component admission; this provider does not choose development-stage ordering.
+recorded components and returns unsupported when it has none. Explicit component membership comes from accepted component_revisions and the corresponding parent tasks, not retired coordination workflow records. Each component uses the task derived from those accepted tasks and the caller constraints. Current aggregate evidence requires the exact component/changed-file peer set, matching intent, complete coverage, nonblocking findings and intact current report bytes. Aggregate records additionally bind the parent's complete current Spec and target/task/focus/constraints; changed parent inputs during aggregation reject acceptance, and later changes invalidate reuse. A code-free parent has no invented local code-review artifact; its selected requirement is discharged only by that complete nonempty aggregate. Review never refreshes implementation completion. The consumer selects local or recorded-component review only after the required component admission; this provider does not choose development-stage ordering.
 
 #### Scope and feedback relevance {#review-scope-and-feedback-relevance}
 
@@ -127,10 +125,9 @@ code patches. Neither has project write authority.
 A changed file listed by several Modules is reviewed once per listing Module, each from that
 Module's own contract: the host selects the peers of a code review from the files of the reviewed
 Module that differ from the candidate base, so a shared file the candidate did not touch adds no
-peer review, and without a known base revision every covering Module is a peer. A graph-composed
-continuation reuses a consumer's revision-bound review when its intent, constraints and admitted
-input are unchanged, including the consumer reviews that admitted a Spec candidate before its bytes
-were applied; an explicit standalone review is always fresh for the owner and every consumer. Verification declarations in the reviewed files are judged only for scenarios present
+peer review, and without a known base revision every covering Module is a peer. Explicit review is
+always fresh for the owner and every consumer; later checks admit only current revision-bound evidence.
+Verification declarations in the reviewed files are judged only for scenarios present
 in the reviewing Module's admitted context: a test that declares such a scenario without
 exercising its steps is a defect, while a declaration naming a scenario outside that context is
 assessed by the owning Module's review and is neither a defect nor a gap for the reviewing Module.
@@ -175,19 +172,28 @@ Before review/readiness, compute affected Spec consumers from the union of old a
 one-level contexts. A provider document edit, ownership transfer, changed reference or changed
 provider document inventory invalidates each affected context and dependent plan/review. Changed
 code additionally uses the independent listing reverse index. A reference is never a code grant.
-Review attribution follows the [canonical review-result interface](review-result.md). The composing
-Graph routes a provider repair to its sole owner and retains the consumer's blocked-step evidence;
-included-file read scope never grants authority to write the provider definition.
+Review attribution follows the [canonical review-result interface](review-result.md). The calling
+agent selects provider repairs and edits the owned Spec, paired metadata and registry directly;
+included-file read scope never grants a bounded worker authority to write the provider definition.
+The host retains old and current consumers for evidence rechecks. Direct edits are not reviews and
+do not refresh plans, review records or readiness. Planning and task admission that requires Spec
+review checks the complete current owner/consumer scope, not only the owner report.
 
-The host uses version-3 context wrappers and owner-only author proposals. Candidate overlays receive
-separate consumer compatibility reviews; plans, review records and readiness checks bind the complete
-owner/reference resolution. Old and candidate consumers are retained for evidence rechecks.
+A public review matching the managed target's accepted intent records that selected mode as required
+before execution. A failed or stale selected review therefore cannot be bypassed by validation;
+unrelated review questions do not change the accepted intent or downgrade existing requirements.
+When task authoring explicitly selects repair_review, it must identify the current host-recorded
+blocking code review, with matching artifact bytes, target/focus, task/constraints, input digest,
+completed coverage and resolvable Issue receipts. Replaced reports, forged digests, incomplete
+coverage and changed code, Specs or instructions fail admission. Implementation rechecks the same
+feedback before using it; a replacement plan or non-review task list clears old repair feedback
+without clearing review requirements or inventing successful evidence.
 
 ## Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
 its own package `src/concorde/review/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
-creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+does not itself create an Agent grant or configurable arbitrary graph; public exposure is explicit in the catalog. Host admission, phase
 artifacts and permissions remain mandatory. A new graph requires declared composition and an
 implementation of its sequencing, artifact admission, recovery and completion policies before it
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation

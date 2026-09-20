@@ -110,8 +110,10 @@ class NativeInstallerTests(unittest.TestCase):
             )
         )
         self.assertIn(".concorde/framework/skills/concorde-validate/SKILL.md", outputs)
-        self.assertIn(".concorde/framework/skills/concorde-dev-loop/SKILL.md", outputs)
-        self.assertIn(".concorde/framework/prompts/skills/concorde-main.md", outputs)
+        self.assertIn(".concorde/framework/skills/concorde-plan/SKILL.md", outputs)
+        self.assertIn(
+            ".concorde/framework/prompts/skills/concorde-context-solve.md", outputs
+        )
         self.assertIn(".concorde/framework/scripts/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
         self.assertIn(".concorde/framework/pi/package-lock.json", outputs)
@@ -143,17 +145,17 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertNotIn("concorde-validate-context", outputs)
         self.assertNotIn("concorde-validate-author", outputs)
         self.assertNotIn(".specify", plan)
-        skill_body = outputs[".concorde/framework/skills/concorde-dev-loop/SKILL.md"][
+        skill_body = outputs[".concorde/framework/skills/concorde-plan/SKILL.md"][
             0
         ].decode()
-        self.assertIn('operation: "dev_loop"', skill_body)
+        self.assertIn('operation: "plan"', skill_body)
         self.assertIn(
-            "python3 .concorde/framework/scripts/run-operation.py concorde-dev-loop",
+            "python3 .concorde/framework/scripts/run-operation.py concorde-plan",
             skill_body,
         )
         self.assertEqual(
             skill_body,
-            (REPOSITORY_ROOT / "skills/concorde-dev-loop/SKILL.md").read_text(
+            (REPOSITORY_ROOT / "skills/concorde-plan/SKILL.md").read_text(
                 encoding="utf-8"
             ),
         )
@@ -651,8 +653,8 @@ class NativeInstallerTests(unittest.TestCase):
                     (target / ".claude/skills" / name / "SKILL.md").is_file()
                 )
             self.assertIn(
-                "python3 .concorde/framework/scripts/run-operation.py concorde-main",
-                (target / ".claude/skills/concorde-main/SKILL.md").read_text(
+                "python3 .concorde/framework/scripts/run-operation.py concorde-context-solve",
+                (target / ".claude/skills/concorde-context-solve/SKILL.md").read_text(
                     encoding="utf-8"
                 ),
             )
@@ -896,7 +898,12 @@ class NativeInstallerTests(unittest.TestCase):
 
             def check(*interpreter: str) -> subprocess.CompletedProcess:
                 return subprocess.run(
-                    [*interpreter, str(launcher), "concorde-main", "--runtime-check"],
+                    [
+                        *interpreter,
+                        str(launcher),
+                        "concorde-context-solve",
+                        "--runtime-check",
+                    ],
                     cwd=target,
                     capture_output=True,
                     text=True,

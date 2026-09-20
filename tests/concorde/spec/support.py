@@ -652,7 +652,6 @@ class ModelProcessDouble:
             value["data"]["snapshot"]["data"]
             if value["type_id"]
             in {
-                "concorde-main-stage-context",
                 "concorde-agent-stage-context",
                 "concorde-review-stage-context",
             }
@@ -712,180 +711,6 @@ class ModelProcessDouble:
             if self.callback:
                 self.callback(stage, snapshot, data, Path(cwd))
             return self.result(data)
-        if value["type_id"] == "concorde-topology-author-context":
-            # Granted documents are read from the capsule, as a real author would; no body is inline.
-            current = {
-                item["path"]: (Path(cwd) / item["path"]).read_text()
-                for item in snapshot["spec_resolution"]["sources"]
-            }
-            target = snapshot["target"]
-
-            def initial(path):
-                document_id = "document." + re.sub(
-                    r"[^a-z0-9.-]+",
-                    "-",
-                    path.lower().removesuffix(".md").replace("/", "."),
-                )
-                local = target["id"].split(".")[-1]
-                entities = [
-                    {
-                        "id": f"entity.{local}.boundary",
-                        "title": "Provisional boundary",
-                        "kind": "concept",
-                        "responsibility": "Holds the provisional responsibility of "
-                        + target["id"]
-                        + ".",
-                    },
-                    {
-                        "id": f"entity.{local}.developer",
-                        "title": "Developer",
-                        "kind": "external actor",
-                        "responsibility": "Supplies the intended behavior of "
-                        + target["id"]
-                        + ".",
-                    },
-                ]
-                if target["files"]:
-                    entities[0].update(files=target["files"], pending=target["files"])
-                entities.extend(
-                    {
-                        "id": f"entity.{local}.uses-" + peer.split(".")[-1],
-                        "title": peer,
-                        "kind": "module",
-                        "responsibility": "Supplies the operation "
-                        + target["id"]
-                        + " relies on.",
-                        "target_id": peer,
-                    }
-                    for peer in target["uses"]
-                )
-                lines = [
-                    f'    n{index}["{item["title"]}"]'
-                    for index, item in enumerate(entities)
-                ]
-                lines.append("    n1 -->|specifies| n0")
-                lines.extend(
-                    f"    n0 -->|depends on| n{index}"
-                    for index in range(2, len(entities))
-                )
-                diagram = (
-                    "flowchart TB\n    accTitle: " + target["title"] + "\n"
-                    "    accDescr: The developer specifies the provisional boundary of this target and its declared providers.\n"
-                    + "\n".join(lines)
-                )
-                dependencies = [
-                    {
-                        "target_id": peer,
-                        "responsibility": "Supplies the operation "
-                        + target["id"]
-                        + " relies on.",
-                        "selection_condition": "Select for work about " + peer + ".",
-                        "relied_upon_promises": [
-                            "The provider keeps the promises its own Spec states."
-                        ],
-                    }
-                    for peer in target["uses"]
-                ]
-                source = module_document(
-                    document_id,
-                    target["id"],
-                    target["title"],
-                    "Stable target ID: " + target["id"] + ". " + snapshot["task"],
-                    f"### scenario.{local}.provisional — The provisional boundary is recorded\n\n"
-                    "- GIVEN the accepted topology change\n"
-                    "- WHEN the developer supplies this target\n"
-                    "- THEN its provisional boundary is recorded without inventing behavior\n",
-                    (
-                        "The provisional boundary and its declared providers are the only known entities.",
-                        entities,
-                    ),
-                    "The developer specifies the provisional boundary; declared providers remain external.",
-                    diagram,
-                    dependencies,
-                )
-                if Path(path).name == "obligations.md":
-                    assert source.implementation is not None
-                    source.implementation.metadata["document"]["id"] = document_id
-                    return source.implementation
-                return source
-
-            documents = []
-            for path in target["documents"]:
-                if path in current:
-                    reading = current[path]
-                    metadata = current[path + ".json"]
-                else:
-                    source = initial(path)
-                    reading = str(source)
-                    metadata = json.dumps(source.metadata, indent=2) + "\n"
-                documents.extend(
-                    [
-                        {"path": path, "content": reading},
-                        {"path": path + ".json", "content": metadata},
-                    ]
-                )
-            data = {
-                "context_id": snapshot["context_id"],
-                "target_id": target["id"],
-                "outcome": "completed",
-                "answer": "Target-local Spec authored.",
-                "blockers": [],
-                "documents": documents,
-            }
-            if self.callback:
-                self.callback(stage, snapshot, data, Path(cwd))
-            return self.result(data)
-        if value["type_id"] == "concorde-main-stage-context":
-            data = {
-                "context_id": snapshot["context_id"],
-                "outcome": "completed",
-                "answer": "Main answered from complete Spec contexts.",
-                "expand_targets": [],
-                "routes": [],
-                "blockers": [],
-                "topology_design": None,
-            }
-            if stage == "route":
-                hint = snapshot["target_hint"]
-                discovered = [item["target_id"] for item in snapshot["targets"]]
-                if snapshot["action"] == "ask":
-                    target = hint or "service.transfer"
-                    if target not in discovered:
-                        data.update(outcome="expand", expand_targets=[target])
-                elif hint:
-                    data.update(
-                        outcome="routed",
-                        routes=[
-                            {
-                                "target_id": hint,
-                                "focus_id": snapshot["focus_hint"],
-                                "task": snapshot["task"],
-                                "constraints": snapshot["constraints"],
-                            }
-                        ],
-                    )
-                elif "service.transfer" not in discovered:
-                    data.update(outcome="expand", expand_targets=["service.transfer"])
-                else:
-                    data.update(
-                        outcome="routed",
-                        routes=[
-                            {
-                                "target_id": "service.transfer",
-                                "focus_id": None,
-                                "task": snapshot["task"],
-                                "constraints": snapshot["constraints"],
-                            }
-                        ],
-                    )
-            if snapshot["operation"] != "concorde-main":
-                data["routes"] = [
-                    {k: v for k, v in route.items() if k in ("target_id", "focus_id")}
-                    for route in data["routes"]
-                ]
-            if self.callback:
-                self.callback(stage, snapshot, data, Path(cwd))
-            return self.result(data)
         data = {
             "context_id": snapshot["context_id"],
             "outcome": "completed",
@@ -908,7 +733,6 @@ class ModelProcessDouble:
                 "action": action,
                 "intent": "Fulfil the specified pure transfer behavior.",
                 "rationale": "The current contract defines the expected transfer behavior.",
-                "specify": True,
                 "duplicate_of": None,
             }
         if stage == "context-solve":

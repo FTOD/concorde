@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from typing import Any, cast
 from unittest.mock import Mock, patch
-from urllib.error import HTTPError, URLError
+from urllib.error import URLError
 from uuid import uuid4
 
 from concorde.harness.entry import json_main
@@ -207,10 +207,10 @@ class StudioClientTests(unittest.TestCase):
             {"target_id": target.id, "task": "Explain Concorde's Harness"},
             value["input"]["data"],
         )
-        validate_invocation(value, "concorde-main")
+        validate_invocation(value, "concorde-context-solve")
         result = {
             **self.result,
-            "operation_id": "concorde-main",
+            "operation_id": "concorde-context-solve",
             "mode": "describe-policy",
             "status": "described",
         }
@@ -242,7 +242,9 @@ class StudioClientTests(unittest.TestCase):
                 "policy preview must not launch an WorkerProfile"
             )
         )
-        graph = build_studio_graph("concorde-main", PACKAGE, PACKAGE, executor=executor)
+        graph = build_studio_graph(
+            "concorde-context-solve", PACKAGE, PACKAGE, executor=executor
+        )
         preview = graph.invoke(submitted)
         self.assertEqual("described", preview["result"]["status"], preview)
         self.assertTrue(preview["policies"])

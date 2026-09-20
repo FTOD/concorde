@@ -334,13 +334,13 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                     "Use one Operation inventory and one USES composition relation.",
                 )
             )
-        if module.CONTEXT_SELECTION not in {"discover", "bound", "none"}:
+        if module.CONTEXT_SELECTION not in {"bound", "none"}:
             findings.append(
                 _finding(
                     "CONCORDE-OPERATION-CONTEXT-001",
                     source,
                     f"operation {name!r} declares CONTEXT_SELECTION {module.CONTEXT_SELECTION!r}.",
-                    "CONTEXT_SELECTION must be discover, bound or none.",
+                    "CONTEXT_SELECTION must be bound or none.",
                 )
             )
         unknown_uses = sorted(set(module.USES) - declared)
@@ -461,11 +461,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
             return None
         visiting.add(name)
         children = [visit(used, (*chain, name)) for used in module.USES]
-        calls_model = (
-            module.PROFILE is not None
-            or module.CONTEXT_SELECTION == "discover"
-            or any(children)
-        )
+        calls_model = module.PROFILE is not None or any(children)
         resolved = all(child is not None for child in children)
         if resolved and module.DETERMINISTIC != (not calls_model):
             findings.append(
@@ -483,7 +479,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                     "CONCORDE-OPERATION-CONTEXT-001",
                     f"operations/{name}.py",
                     f"operation {name!r} selects no WorkerProfile context but its composition calls a model.",
-                    "Model-backed operations must declare discover or bound context selection.",
+                    "Model-backed operations must declare bound context selection.",
                 )
             )
         visiting.discard(name)
@@ -892,7 +888,7 @@ def _validate_spec_operations_block(
         or not isinstance(item["id"], str)
         or type(item["public"]) is not bool
         or type(item["deterministic"]) is not bool
-        or item["context_selection"] not in ("discover", "bound", "none")
+        or item["context_selection"] not in ("bound", "none")
         or not isinstance(item["uses"], list)
         or not isinstance(item["state"], dict)
         or item["profile"] is not None
@@ -1029,9 +1025,13 @@ def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]
 
 
 def _raised_error_codes(root: Path) -> set[str]:
-    """Every ``code``-shaped literal passed to a ``*Error(...)`` call or an inline ``{"code": ...}``
-    dict under ``src/concorde``, using the AST so message text (which always contains spaces
-    or interpolation) is never mistaken for a code."""
+    """Collect literal error codes, not diagnostic field names or message text.
+
+    Package errors conventionally take (message, code); TypedDataError instead takes
+    (code, field, message), and OperationExecutionError takes (message, outcome, code).
+    Explicit code keywords and inline code records are also supported. This advisory
+    scanner does not execute constructors or infer codes from arbitrary arguments.
+    """
 
     codes: set[str] = set()
     package_dir = root / "src/concorde"
@@ -1055,9 +1055,17 @@ def _raised_error_codes(root: Path) -> set[str]:
                 )
                 if not name or not name.endswith("Error"):
                     continue
+                position = {"TypedDataError": 0, "OperationExecutionError": 2}.get(
+                    name, 1
+                )
+                positional = node.args[position : position + 1]
                 for argument in (
-                    *node.args,
-                    *(keyword.value for keyword in node.keywords),
+                    *positional,
+                    *(
+                        keyword.value
+                        for keyword in node.keywords
+                        if keyword.arg == "code"
+                    ),
                 ):
                     if (
                         isinstance(argument, ast.Constant)

@@ -6,16 +6,16 @@ that later independent checks or delivery have already happened.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| Acceptance task | One item of implementation work with a stated condition for judging whether it has been fulfilled. |
-| Reserved task ID | An identity retained by task history that a new task must not reuse. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                 | Meaning / definition                                                                               |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Acceptance task                      | One item of implementation work with a stated condition for judging whether it has been fulfilled. |
+| Reserved task ID                     | An identity retained by task history that a new task must not reuse.                               |
+| [Spec](../module.md#terminology)     | Defined in Concorde Framework.                                                                     |
+| [Module](../module.md#terminology)   | Defined in Concorde Framework.                                                                     |
+| [Host](../module.md#terminology)     | Defined in Concorde Framework.                                                                     |
+| [Grant](../module.md#terminology)    | Defined in Concorde Framework.                                                                     |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework.                                                                     |
+| [Delivery](../module.md#terminology) | Defined in Concorde Framework.                                                                     |
 
 ## From plan to tasks
 
@@ -32,9 +32,11 @@ change before the programmer can finish its own step. That would reverse the wor
 After blocking code review, an admitted repair can produce new tasks addressing the findings. The
 old list remains history rather than being rewritten to look as if it always described the repair.
 Task-scope recovery similarly corrects a phase-boundary mistake without weakening software acceptance.
-If the intended behavior has changed enough to need a new plan, the author reports that instead.
+Scope repair requires a current plan: any Spec or metadata revision requires explicit replanning
+before task authoring, rather than silently reusing the old contract. If the intended behavior
+needs a new plan, the author reports that instead.
 
-Only the composing workflow may admit repair feedback. Exact fields, reserved-ID rules and failure
+The calling agent explicitly selects repair feedback; the host checks current evidence before admission. Exact fields, reserved-ID rules and failure
 outcomes are defined in the Module's execution reference and interface contracts.
 
 ## Precise specifications

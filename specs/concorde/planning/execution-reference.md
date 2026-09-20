@@ -6,24 +6,24 @@ and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
-| [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
-| [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition                                      |
+| --------------------------------------------------------- | --------------------------------------------------------- |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.                            |
+| [Module](../module.md#terminology)                        | Defined in Concorde Framework.                            |
+| [Worker](../module.md#terminology)                        | Defined in Concorde Framework.                            |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                            |
+| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.                            |
+| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.                            |
+| [Grant](../module.md#terminology)                         | Defined in Concorde Framework.                            |
+| [Spec context](../harness/context.md#terminology)         | Defined in What information a worker receives.            |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations.                                    |
+| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                            |
+| [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                            |
+| [Task sufficiency](assessment.md#terminology)             | Defined in Is the specification sufficient for this task? |
+| [Acceptance task](tasks.md#terminology)                   | Defined in Making work verifiable.                        |
+| [Reserved task ID](tasks.md#terminology)                  | Defined in Making work verifiable.                        |
+| [Evidence](../module.md#terminology)                      | Defined in Concorde Framework.                            |
+| [Delivery](../module.md#terminology)                      | Defined in Concorde Framework.                            |
 
 ## Context assessment {#assessment-context-assessment}
 
@@ -31,8 +31,8 @@ and transitions are retained here as the single detailed contract.
 [typed handoffs](../harness/admission.md#stage-handoffs) and
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
+This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
+The calling agent invokes it through its Skill, Pi projection or common launcher.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
@@ -48,9 +48,20 @@ Outcomes are sufficient, spec_incomplete, unsupported, conflicting or failed. A 
 unsupported, a contradiction conflicting, a known missing runtime field invalid input, and an
 execution failure failed. Gaps identify question, blocked_step and needed_contract, with host-bound
 target/context provenance. The caller pauses the dependent step and may continue independent work.
-Reassessment after an explicit contract repair uses fresh inputs; an unchanged blocked step stays
-blocked. Successful assessment resolves historical phase gaps only after any associated authored
-output has passed host acceptance. It proves no universal completeness.
+Reassessment of retained phases uses fresh accepted phase output; an unchanged blocked step stays blocked.
+A fresh accepted sufficient assessment for the exact accepted target, task, focus and constraints
+may supersede a correctly attributed historical `specify` task relation because that author
+prerequisite has been removed. This includes unknown original revisions and non-contract failures
+of that obsolete execution; it does not infer a historical byte change or successful repair.
+The host retains the original relation, receipt, contexts, source evidence and failed outcome,
+marks only its prerequisite status `superseded`, and records the current assessment context,
+Spec revision and reason `retired_author_prerequisite`. The assessment proves current task
+sufficiency, not that the old author succeeded or its Issue was fixed. An edit alone, unrelated
+intent, malformed attribution, stale, failed, insufficient or gap-reporting assessment cannot
+supersede it. A current contract gap remains blocking. This neither closes its Issue nor refreshes
+required review, checks or retained plan/tasks/implementation/review relations, which need their
+own accepted current output. Current integrity and permission failures remain failures.
+Assessment proves no universal completeness.
 
 ### Precise specifications {#assessment-precise-specifications}
 
@@ -63,8 +74,8 @@ The [common invocation envelope](../harness/admission.md#operation-execution-bou
 [typed handoffs](../harness/admission.md#stage-handoffs) and
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
+This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
+The calling agent invokes it through its Skill, Pi projection or common launcher.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
@@ -83,7 +94,7 @@ Empty or invalid plans are rejected without replacing accepted state. Gaps, conf
 unsupported work, stale context and failed execution stop dependent planning. Relevant Spec or
 intent changes invalidate reuse; a repeated consumer invocation may reuse only current accepted
 artifacts. Planning can be consumed by any declared caller satisfying these preconditions, without
-having to explain its purpose by reference to dev-loop.
+depending on a development workflow.
 
 ### Design {#plan-design}
 
@@ -99,11 +110,11 @@ writes `result=None` on success, or a failure envelope and `route=__end__` on ex
 
 **Nodes.** Both model-backed nodes run their worker as an [Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
+| Node             | Executes                                                                                                                                        | in   | out                    |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------- |
 | `assess_context` | Checks required Spec review and dependency declarations, then assesses the Host-bound task/Spec; chooses author_plan or writes a stop response. | none | route, output?, result |
-| `author_plan` | Invokes the planner with Host-bound context/prior artifact; retains result outside State and chooses persistence or a stop/preview response. | none | route, output?, result |
-| `persist_plan` | Reads the closure-held nonempty plan, writes its artifact and candidate revision/intent, and clears dependent tasks/coordination. | none | route, output, result |
+| `author_plan`    | Invokes the planner with Host-bound context/prior artifact; retains result outside State and chooses persistence or a stop/preview response.    | none | route, output?, result |
+| `persist_plan`   | Reads the closure-held nonempty plan, writes its artifact and candidate revision/intent, and clears dependent tasks/coordination.               | none | route, output, result  |
 
 **Edges.** `assess_context` and `author_plan` each write `route`, and a conditional edge follows it.
 Only a sufficient assessment continues to `author_plan`, and only a returned plan continues to
@@ -142,8 +153,8 @@ The [common invocation envelope](../harness/admission.md#operation-execution-bou
 [typed handoffs](../harness/admission.md#stage-handoffs) and
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
+This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
+The calling agent invokes it through its Skill, Pi projection or common launcher.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
@@ -172,12 +183,15 @@ reserved IDs, each carrying id, target_id, description, acceptance and complete.
 and persists the list as a concorde-implementation-task@1 with its plan; it returns artifact
 references through concorde-tasks-response@3. The author cannot complete tasks or mutate project files.
 
-For scope recovery it receives the plan, prior list, reserved IDs and the fixed
-implementation_boundary feedback, preserving software acceptance. A semantic change requiring a
+For scope recovery the explicit `repair_task_scope` request selects the exact current incomplete
+task list by digest. It requires a current accepted plan, including its Spec revision and intent;
+even a meaning-preserving Spec or metadata edit requires explicit replanning first. Repair cannot
+silently rebind the old plan to new contract bytes. The task author receives the plan, prior list,
+reserved IDs and the fixed implementation_boundary feedback, preserving software acceptance. A semantic change requiring a
 new plan returns conflicting or a gap. Failed, malformed or colliding output never replaces the
 old list or discards history. For review repair, only verified current blocking code feedback may
-be supplied. The current adapter admits that feedback through dev-loop's bounded repair policy;
-this is an adapter restriction, not permission for a new caller to invent a repair transition.
+be supplied. The caller explicitly supplies repair_review as an ArtifactRef. The host verifies its digest,
+current same-target/task input identity, blocking code findings and nonempty coverage before admission.
 The caller owns ordering and invalidation, while this provider owns admissible input and new tasks.
 
 ### Precise specifications {#tasks-precise-specifications}
@@ -189,7 +203,7 @@ These companions are part of the same complete Module specification, not separat
 
 This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
 its own package `src/concorde/planning/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
-creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+does not itself create an Agent grant or configurable arbitrary graph; public exposure is explicit in the catalog. Host admission, phase
 artifacts and permissions remain mandatory. A new graph requires declared composition and an
 implementation of its sequencing, artifact admission, recovery and completion policies before it
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation

@@ -5,16 +5,16 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
-| [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
-| [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
+| Term                                                      | Meaning / definition                                      |
+| --------------------------------------------------------- | --------------------------------------------------------- |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.                            |
+| [Module](../module.md#terminology)                        | Defined in Concorde Framework.                            |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                            |
+| [Task sufficiency](assessment.md#terminology)             | Defined in Is the specification sufficient for this task? |
+| [Acceptance task](tasks.md#terminology)                   | Defined in Making work verifiable.                        |
+| [Reserved task ID](tasks.md#terminology)                  | Defined in Making work verifiable.                        |
+| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.                            |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you.          |
 
 ## Planning
 
@@ -93,3 +93,37 @@ The independent contracts are [Assessment](assessment.md), [Plan](plan.md) and [
 - WHEN the returned task list reuses an admitted reserved ID
 - THEN the host rejects the list and reports the conflicting IDs without rewriting author output
 - AND the prior task list and retained history remain unchanged
+
+### scenario.planning.repair-current — Explicit repair requires current independent evidence
+
+- GIVEN accepted tasks and a caller-selected repair_review ArtifactRef
+- WHEN task authoring admits blocking code-review feedback
+- THEN the reference must match the current host-recorded report and its exact bytes, selected intent, target, focus and current review inputs
+- AND the report must contain completed representative coverage and blocking findings with resolvable Issue receipts
+- AND missing, corrupt, forged, replaced or stale evidence stops before a task worker or task-state replacement
+- AND implementation rechecks the admitted feedback before use without automatically launching review or validation
+
+### scenario.planning.repair-replacement — Replacement retires feedback without losing history
+
+- GIVEN a target has tasks admitted from blocking review feedback
+- WHEN the caller replaces those tasks without repair feedback or obtains a new accepted plan
+- THEN old repair feedback is removed from the replacement state while prior task identities remain reserved in history
+- AND selected independent review requirements remain in force without acquiring fabricated successful evidence
+
+### scenario.planning.historical-author-gap — Supersede an obsolete author prerequisite
+
+- GIVEN a managed change with a correctly attributed same-intent historical specify task relation, including an unknown original revision or obsolete non-contract author failure
+- WHEN the caller makes any necessary direct contract edits and explicitly obtains a sufficient current context assessment for the accepted target, task, focus and constraints
+- THEN the host supersedes only that retired prerequisite with current assessment evidence and an explicit retirement reason while preserving the original receipt, contexts, source evidence and open Issue
+- AND editing alone, malformed attribution, unrelated intent, stale, insufficient or failed assessment cannot supersede it
+- AND no historical success, Issue closure or contract repair is inferred from an obsolete execution failure
+- AND required independent reviews must still be current before planning and task authoring
+- AND retained plan, tasks, implementation and review gaps require their own accepted phase output rather than another phase's success
+
+### scenario.planning.scope-repair — Repair task scope without accepting a stale plan
+
+- GIVEN an accepted current plan and an exact incomplete task list selected by repair_task_scope digest
+- WHEN a fresh task author corrects implementation-boundary acceptance using the plan, prior list, fixed scope feedback and reserved IDs
+- THEN the host accepts only new incomplete tasks and retains the prior list in history without weakening software acceptance
+- AND a stale Spec or plan, mismatched list digest, completed replacement or reserved-ID collision is rejected without replacing the accepted list or history
+- AND implementation, configured checks and required independent review remain separately selected responsibilities

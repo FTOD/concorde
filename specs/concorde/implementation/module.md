@@ -6,26 +6,26 @@ Implementation fulfills accepted tasks by changing the code that its worker is a
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
-| [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition               |
+| --------------------------------------------------------- | ---------------------------------- |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.     |
+| [Module](../module.md#terminology)                        | Defined in Concorde Framework.     |
+| [Worker](../module.md#terminology)                        | Defined in Concorde Framework.     |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.     |
+| [Grant](../module.md#terminology)                         | Defined in Concorde Framework.     |
+| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.     |
+| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.     |
+| [Delivery](../module.md#terminology)                      | Defined in Concorde Framework.     |
+| [Acceptance task](../planning/tasks.md#terminology)       | Defined in Making work verifiable. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations.             |
+| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.     |
+| [Graph](../module.md#terminology)                         | Defined in Concorde Framework.     |
+| [Entity](../module.md#terminology)                        | Defined in Concorde Framework.     |
 
 ## Usage
 
-A declared composing operation calls `implement` with a current accepted plan and nonempty task
-list for one selected Module. This is a private bound provider, not a directly invocable Skill.
+The calling agent invokes `concorde-implement` with a current accepted plan and nonempty task
+list for one selected Module. This is a public explicitly target-bound Operation.
 The programmer receives the complete Module Spec and the implementation paths its own entities
 bind, and must return every admitted task with unchanged identity and acceptance. Only fulfilled
 tasks are complete; completion is not validation, readiness or delivery.
@@ -34,8 +34,8 @@ Missing tasks reject before launch. Incomplete output cannot establish fulfillme
 edits may remain after a failed or cancelled run, so inspect preserved candidate state and re-admit
 current artifacts rather than assuming rollback. A listed test does not grant its transitive inputs:
 record unavailable repository-level execution as deferred host verification, not as a pass.
-Coordination with other Modules requires their separate contexts and the existing enclosing-graph
-adapter; no arbitrary scheduler is accepted.
+Coordination with other Modules returns their separately selectable work to the caller; no arbitrary
+scheduler or automatic child development is accepted.
 
 For example, a test may import a fixture outside the programmer's allowed files. That import does
 not grant access. The programmer records why execution must be deferred to a host-level check and
@@ -52,53 +52,20 @@ before storing completion. Code edits are made inside the candidate, so executio
 leave authorized partial edits; progress and currentness checks support recovery rather than a
 fictional rollback guarantee.
 
-[Component coordination](execution-reference.md#implementation-component-coordination-and-current-adapter-limit)
-separates local tasks from participant work and delegates scheduling/final shared-consumer checks
-to the existing enclosing Graph. Final checks wait for every writer so partly changed shared files
-do not produce misleading consumer evidence. This shared realization does not transfer those Graph
-completion conditions to the reusable local task contract.
-
-`implement` therefore runs in one of two shapes. For a Module whose tasks are all its own, it is a
-single node: one programmer worker run as an
-[Operation node](../harness/execution-reference.md#host-operation-node-operation-node). For a
-composite Module whose tasks name submodules or used Modules, it is the
-[component coordination Graph](execution-reference.md#graphs-component-coordination-graph-coordination-graph),
-which reconciles and implements each component in its own context, runs the programmer for the
-composite's own tasks, and finishes with the
-[stabilization Graph](execution-reference.md#graphs-shared-candidate-stabilization-graph-stabilization-graph).
-A later participant's repair can invalidate evidence an earlier participant already produced, so
-that Graph repeats final verification until one consistently checked candidate remains.
+[Caller-selected component work](execution-reference.md#implementation-component-coordination-and-current-adapter-limit)
+keeps local tasks separate from component obligations. When participating work is missing or stale,
+implementation returns its exact target and intended task to the calling agent. The agent selects
+component Operations and performs any contract edits; there is no automatic authoring, development
+or stabilization workflow. On retry, the host checks every component's current intent and completed
+revision before one bounded local programmer runs. This prevents a component label from granting
+another Module's code or turning an old completion into fresh evidence.
 
 ### Flow overview
 
-This conceptual view explains why coordinated work reconciles contracts before writing code and
-waits for all writers before final shared checks. Boxes group responsibilities, not runtime nodes.
-Local-only implementation uses one programmer invocation; the additional reconciliation and
-stabilization work applies when accepted tasks involve participating Modules. Nested coordination
-may return a draft to its enclosing coordinator rather than claiming final verification.
-
-For exact State channels, node inputs/outputs and stopping predicates, open the full
-[Component coordination Graph Spec](execution-reference.md#graphs-component-coordination-graph-coordination-graph)
-and [Shared candidate stabilization Graph Spec](execution-reference.md#graphs-shared-candidate-stabilization-graph-stabilization-graph).
-Local worker execution uses the [Operation node contract](../harness/execution-reference.md#host-operation-node-operation-node).
-
-```mermaid
-flowchart TB
-    accTitle: Coordinated implementation flow overview
-    accDescr: Reconcile participating contracts before component and local code work. After the writers finish, verify the shared candidate and repeat within bounds when a repair changes shared code. Preserve incomplete work on a stop; task completion is not delivery.
-    contracts["Reconcile participating contracts"]
-    writers["Implement component and local tasks"]
-    verify["Verify the final shared candidate"]
-    complete["Record task completion; no delivery"]
-    stop["Preserve incomplete work and explain the stop"]
-    contracts -->|contracts agree| writers
-    contracts -->|gap or incompatibility| stop
-    writers -->|all writers finished; final checks are due| verify
-    writers -->|incomplete or failed work| stop
-    verify -->|repair changes shared code within the bound| verify
-    verify -->|evidence covers a stable candidate| complete
-    verify -->|verification blocks or repairs do not converge| stop
-```
+The caller completes separately selected component work, then invokes implementation for local
+accepted tasks. The host validates contract structure and component evidence, gives one programmer
+only its local code grant, and records exact task completion. The caller then chooses checks and
+independent review; changed shared files invalidate earlier consumer evidence.
 
 ## Relationships
 

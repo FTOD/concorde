@@ -8,21 +8,21 @@ paths without aliases or symlinks.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Capsule](module.md#terminology) | Defined in Harness. |
-| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
+| Term                                             | Meaning / definition                           |
+| ------------------------------------------------ | ---------------------------------------------- |
+| [Operation](../module.md#terminology)            | Defined in Concorde Framework.                 |
+| [Host](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Worker](../module.md#terminology)               | Defined in Concorde Framework.                 |
+| [Worker profile](module.md#terminology)          | Defined in Harness.                            |
+| [Grant](../module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Snapshot](../module.md#terminology)             | Defined in Concorde Framework.                 |
+| [Capsule](module.md#terminology)                 | Defined in Harness.                            |
+| [Spec context](context.md#terminology)           | Defined in What information a worker receives. |
 | [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Issue](../module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Entity](../module.md#terminology)               | Defined in Concorde Framework.                 |
+| [Module](../module.md#terminology)               | Defined in Concorde Framework.                 |
+| [Reference](../spec/registry.md#terminology)     | Defined in Registry.                           |
 
 ### Policy construction
 
@@ -49,16 +49,16 @@ ArtifactRef into authority.
 
 `NormalizedPolicy` is a frozen record with these attributes:
 
-| Attribute | Type and meaning |
-| --- | --- |
-| operation, stage, role, agent | str; the exact bound operation and worker identities |
-| occurrence | int; this stage occurrence |
-| read_paths, write_paths, deny_paths | tuple[str, ...]; sorted, deduplicated concrete grants/denies |
-| default_deny | bool; compiler results are true |
-| network_enabled | bool; cannot exceed effects |
-| credentials | Literal["none", "declared"]; cannot exceed effects |
-| outer_sandbox_required | bool; retained for a future host-attested sandbox, always false today |
-| digest | str; identity of this binding and effective policy |
+| Attribute                           | Type and meaning                                                      |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| operation, stage, role, agent       | str; the exact bound operation and worker identities                  |
+| occurrence                          | int; this stage occurrence                                            |
+| read_paths, write_paths, deny_paths | tuple[str, ...]; sorted, deduplicated concrete grants/denies          |
+| default_deny                        | bool; compiler results are true                                       |
+| network_enabled                     | bool; cannot exceed effects                                           |
+| credentials                         | Literal["none", "declared"]; cannot exceed effects                    |
+| outer_sandbox_required              | bool; retained for a future host-attested sandbox, always false today |
+| digest                              | str; identity of this binding and effective policy                    |
 
 Spec-only workers receive only their context role. The programmer additionally receives
 `implementation` with writes. Code review and investigation receive the current target's enumerated
@@ -67,7 +67,7 @@ implementation files for reading, with an empty write-role tuple.
 ### Model execution profile and binding
 
 ```python
-Contract(phase: str, context: str, result: str, effects: EffectDeclaration, action: str | None = None,
+Contract(phase: str, context: str, result: str, effects: EffectDeclaration,
          stage_inputs: tuple[str, ...] = (), required_inputs: tuple[str, ...] = (),
          output_fields: tuple[str, ...] = (), outcomes: tuple[str, ...] = ())
 Child(name: str, definition: str)
@@ -82,7 +82,7 @@ All are frozen records. `name` is the catalog key (for example `code_reviewer`);
 `concorde-code-reviewer`. `validate_worker_profile(agent)` requires `operations/<name>/spec.md`, a known workspace,
 a context type paired with its result type, required inputs among admitted inputs, known result
 fields, writes that are also reads, no network or credential effects, implementation reads only in a
-project workspace, discovery-context reads exactly for discovery contexts, distinct known tools
+project workspace, distinct known tools
 including `read`, `edit` or `write` only with a write effect, uniquely named children at
 `operations/<name>/children/<child>.md` and a positive integer timeout; it raises
 `BuildError/invalid_agent_binding`. `child_definitions(package_root, agent)` parses each child's
@@ -109,7 +109,7 @@ validate_worker_policy(agent: WorkerProfile, value: dict, policy: NormalizedPoli
 validate_worker_output(agent: WorkerProfile, value: dict) -> None  # raises ContractError(message, code)
 ```
 
-`validate_worker_input` checks the typed context, phase, action, admitted artifacts, the absence of
+`validate_worker_input` checks the typed context, phase, admitted artifacts, the absence of
 implementation contents for a worker without implementation reads, review-mode binding and the
 absence of implementation patches in a Spec review. `validate_worker_policy` requires one context index
 granted with exactly its listed files, implementation grants inside the selected Module (and, for
@@ -181,9 +181,9 @@ source; there is no separate diagram source record or field.
 
 The fence's bytes already occur in `documents` as ordinary content of that
 document and participate in its document, revision and context digests. A changed fence is a
-changed document like any other prose edit, so authors return it inside `documents`. Shared
-Markdown changes require one proposal from the sole owner and compatibility checks for every affected context consumer. Non-author
-roles cannot replace these sources. Rendered SVG/HTML is never a cognitive input or another
+changed document like any other prose edit. Direct authorized edits preserve the paired model and
+sole ownership, with fresh compatibility checks for affected consumers. Bounded workers cannot
+replace these sources. Rendered SVG/HTML is never a cognitive input or another
 authority.
 
 A prior revision carried diagrams as external JSON sources referenced by a registry `diagrams`

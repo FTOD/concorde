@@ -14,7 +14,7 @@ from pathlib import Path
 
 from ..distribution.build import BuildError, verify_fresh
 from ..operations.dispatch import dispatch_graph_nodes
-from ..spec.contracts import DETERMINISTIC_OPERATIONS, MAIN_OPERATION
+from ..spec.contracts import DETERMINISTIC_OPERATIONS
 from ..spec.repository import SpecError
 from ..spec.typed_data import (
     DATA_SCHEMAS,
@@ -23,7 +23,7 @@ from ..spec.typed_data import (
     canonical,
     validate_typed,
 )
-from .change_worktree import progress, read_change
+from .change_worktree import progress, read_change, resume_owner, workspace_identity
 from .configuration import load_configuration
 from .host import OperationHost, resolve_child_operation
 from .relay import bind_worktree
@@ -152,6 +152,9 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             # top-level invocation is verified once here, and load_model_instructions verifies it
             # again independently before trusting any generated/agents/*.md body.
             verify_fresh(host.package_root)
+        # Establish the exact entry root before reading configuration or project Specs.
+        # A subdirectory must not fail as a misleading missing project instead.
+        workspace_identity(host.project_root)
         configuration = validate_typed(
             configuration
             if configuration is not None
@@ -160,27 +163,40 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         )
         task = validate_typed(runtime_input, OPERATION_CONTRACTS[operation][0])["data"]
         task = copy.deepcopy(task)
-        if operation not in {"concorde-deliver", "concorde-issues"} and not (
-            operation == MAIN_OPERATION
-            and task.get("action") in {"accept-topology", "apply-topology"}
-        ):
+        if operation not in {"concorde-deliver", "concorde-issues"}:
             task.setdefault("task", "Inspect the selected records")
         mutation = operation not in {
-            "concorde-main",
             "concorde-context-solve",
             "concorde-spec-review",
             "concorde-code-review",
         }
         if operation == "concorde-init":
             mutation = task["action"] == "apply"
-        if operation == MAIN_OPERATION:
-            mutation = task["action"] in {"accept-topology", "apply-topology"}
         if operation == "concorde-issues":
             from ..issues.graph import prepare_request
 
             # Issue selection, attribution and current bytes are host-bound before workspace creation.
             task = prepare_request(host.project_root, host.package_root, task)
             mutation = task["action"] == "solve" and not task.get("_issue_closed")
+        if operation not in {"concorde-init", "concorde-configure", "concorde-deliver"}:
+            from ..spec.repository import SpecRepository
+
+            repository = SpecRepository(host.project_root, host.package_root)
+            if mutation:
+                change = read_change(host.project_root)
+                if change:
+                    owner = change.get("target_id")
+                    if owner is not None and owner not in repository.targets:
+                        raise SpecError(
+                            "recorded change owner is not registered",
+                            "invalid_worktree_state",
+                            field="target_id",
+                        )
+                    # Restore only this change's intent. Separately admitted component work
+                    # retains its explicit task and is checked by target admission below.
+                    if owner in {None, task["target_id"]}:
+                        task = resume_owner(change, task)
+            repository.select(task["target_id"], task.get("focus_id"))
 
     def bind_workspace():
         nonlocal host, record_progress
@@ -279,9 +295,6 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                 "completed",
                 "ready",
                 "delivered",
-                "topology_proposed",
-                "topology_prepared",
-                "topology_applied",
             }
             else "failed"
             if outcome == "failed"

@@ -6,13 +6,13 @@ from concorde.spec import contract_shapes as shapes
 from . import external_name
 
 PUBLIC = True
-CONTEXT_SELECTION = "discover"
+CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
 PROFILE = None
-USES = ("router", "code_reviewer")
+USES = ("code_reviewer",)
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
-REQUEST = shapes.obj(shapes.TASK_FIELDS, ("target_id", *shapes.TASK_OPTIONAL))
+REQUEST = shapes.task_request(target_required=True)
 _BASE_RESPONSE = shapes.operation_response()
 RESPONSE = {
     **_BASE_RESPONSE,

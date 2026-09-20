@@ -6,20 +6,20 @@ and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition                             |
+| --------------------------------------------------------- | ------------------------------------------------ |
+| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.                   |
+| [Evidence](../module.md#terminology)                      | Defined in Concorde Framework.                   |
+| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.                   |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.                   |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                   |
+| [Module](../module.md#terminology)                        | Defined in Concorde Framework.                   |
+| [Grant](../module.md#terminology)                         | Defined in Concorde Framework.                   |
 | [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](../module.md#terminology)                      | Defined in Concorde Framework.                   |
+| [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                   |
+| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                   |
 
 ## Validation operation {#validation-validation-operation}
 
@@ -40,6 +40,11 @@ or an attempt. With no authored target plans, validation runs every configured p
 stores root validation evidence against the exact candidate tree. Existing authored plans and tasks
 still require completion; this path cannot bypass unfinished work. Deterministic readiness does not
 claim universal semantic completeness. The primary delivery request accepts the verified candidate.
+
+Unresolved same-scope contract blockers also prevent readiness. Historical author relations can be
+released by current explicit contract reassessment; validation itself never clears them because
+files changed or treats retired author/graph completion as executable work. Original observations
+remain history and required review evidence remains independent.
 
 Existing authored tasks must be complete and every already-required review must be current,
 successful and nonblocking before readiness. Validation does not choose new review requirements,
@@ -105,9 +110,9 @@ file.
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+This provider belongs to Operations; Module parentage does not select its execution order. Its behavior is realized in
 its own package `src/concorde/validation/` and the Harness check runner it shares, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
-creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+creates no additional entry, worker grant or configurable arbitrary graph. Host admission, phase
 artifacts and permissions remain mandatory. A new graph requires declared composition and an
 implementation of its sequencing, artifact admission, recovery and completion policies before it
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation

@@ -2,8 +2,7 @@
 
 Import-cycle-free: this module imports only dependency-free wire and issue shapes. The top-level ``operations/``
 package's modules build their own ``REQUEST``/``RESPONSE`` schemas from these shared shapes; the
-internal (non-operation) data types — topology design/proposal/application, discovery context,
-context snapshots, review internals — stay defined directly in ``contracts.py``.
+shared context snapshots and review records stay defined directly in ``contracts.py``.
 """
 
 from __future__ import annotations
@@ -24,8 +23,6 @@ __all__ = [
     "NULLABLE_ID",
     "BLOCKER",
     "CHECK_RESULT",
-    "ROUTE",
-    "MAIN_OUTCOMES",
     "WORKTREE_SUMMARY",
     "COMPONENT_PROGRESS",
     "WORKSPACE_CONTEXT",
@@ -52,29 +49,6 @@ CHECK_RESULT = obj(
         "log_digest": DIGEST,
     }
 )
-ROUTE = obj(
-    {
-        "target_id": STRING,
-        "focus_id": NULLABLE_ID,
-        "task": STRING,
-        "constraints": array(STRING),
-    }
-)
-MAIN_OUTCOMES = {
-    "enum": [
-        "expand",
-        "routed",
-        "completed",
-        "spec_incomplete",
-        "unsupported",
-        "conflicting",
-        "failed",
-        "described",
-        "topology_proposed",
-        "topology_prepared",
-        "topology_applied",
-    ]
-}
 WORKTREE_SUMMARY = obj(
     {
         "path": STRING,
@@ -120,7 +94,7 @@ def task_request(target_required: bool = True) -> dict:
     """The task-selection request shape shared by every operation.
 
     ``target_required=True`` (the target is already bound) requires
-    ``target_id``; ``target_required=False`` (the router still has to route)
+    ``target_id``; ``target_required=False`` (a bookkeeping request may omit selection)
     leaves it optional alongside the other task fields.
     """
 

@@ -35,7 +35,6 @@ class OperationHost:
     executor: Any = None
     allow_primary_worktree: bool = False
     outer_sandbox: str | None = None
-    routed_target: str | None = None
     # A mutation admitted in the primary worktree runs in a host-created candidate worktree.
     # ``relay`` runs the same invocation there (``relay_operation``, the candidate's own launcher
     # in a subprocess, unless a trusted caller supplies another runner) and ``relay_target``
@@ -49,8 +48,6 @@ class OperationHost:
     coordinated: bool = False
     track_gaps: bool = False
     defer_ready: bool = False
-    defer_component_checks: bool = False
-    finalize_components: bool = False
     issue_intent: str | None = None
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))

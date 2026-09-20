@@ -11,13 +11,10 @@ operation: spec_review
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-spec-review
 @include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-spec-review
 
-The request requires task. A new task may supply target_id and focus_id (a scenario ID) as routing
-hints, plus constraints. The router selects the owning Module. When resuming a bound review with
-change_id, supply its target_id and current-worktree change_id. There is no review_mode selector;
-use concorde-code-review for implementation review. No positional task arguments or domain flags
-are accepted.
-
-@include prompts/workflow-host/main-may-inspect.md WORKERS="a fresh read-only Spec reviewer"
+The request requires target_id and task. The calling agent selects the Module explicitly;
+optional focus_id must name its scenario. Constraints and a current-worktree change_id may be
+supplied. There is no implicit routing or review_mode selector. The host deterministically checks
+the target and freezes its complete context before starting a fresh read-only reviewer.
 
 Review runs in the current worktree without creating a development change or requiring a preexisting
 Issue. It reads the complete selected Module contract, including owned and directly referenced

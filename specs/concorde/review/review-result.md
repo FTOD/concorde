@@ -6,33 +6,33 @@ string, `N` is `S|null`, and `D` is `sha256:` followed by 64 lowercase hexadecim
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                              | Meaning / definition                   |
+| ------------------------------------------------- | -------------------------------------- |
+| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.         |
+| [Evidence](../module.md#terminology)              | Defined in Concorde Framework.         |
+| [Worker](../module.md#terminology)                | Defined in Concorde Framework.         |
+| [Host](../module.md#terminology)                  | Defined in Concorde Framework.         |
+| [Issue](../module.md#terminology)                 | Defined in Concorde Framework.         |
+| [Blocker](../module.md#terminology)               | Defined in Concorde Framework.         |
 | [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Review coverage](module.md#terminology) | Defined in Review. |
-| [Advisory finding](module.md#terminology) | Defined in Review. |
-| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Review coverage](module.md#terminology)          | Defined in Review.                     |
+| [Advisory finding](module.md#terminology)         | Defined in Review.                     |
+| [Reference](../spec/registry.md#terminology)      | Defined in Registry.                   |
 
 ## Result fields and judgments
 
-| Field | Type or allowed values |
-| --- | --- |
-| `context_id` | `D` or null |
-| `input_digest` | `D` |
-| `review_mode` | `spec` or `code` |
-| `status` | `no_findings`, `findings`, `incomplete`, `skipped` or `not_run` |
-| `representative_tasks` | unique `S[]` |
-| `issues` | `IssueJudgment[]` |
-| `answer`, `target_id` | `S` |
-| `focus_id` | `N` |
-| `revision` | closed object with spec_digest, nullable implementation_digest, baseline and head |
-| `semantic_completeness` | exactly `not_proven` |
+| Field                   | Type or allowed values                                                            |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `context_id`            | `D` or null                                                                       |
+| `input_digest`          | `D`                                                                               |
+| `review_mode`           | `spec` or `code`                                                                  |
+| `status`                | `no_findings`, `findings`, `incomplete`, `skipped` or `not_run`                   |
+| `representative_tasks`  | unique `S[]`                                                                      |
+| `issues`                | `IssueJudgment[]`                                                                 |
+| `answer`, `target_id`   | `S`                                                                               |
+| `focus_id`              | `N`                                                                               |
+| `revision`              | closed object with spec_digest, nullable implementation_digest, baseline and head |
+| `semantic_completeness` | exactly `not_proven`                                                              |
 
 Each closed `IssueJudgment` has `issue_id`, `report_id`, `path`, `severity: blocking|advisory` and
 `affected_task`. The first three fields are the host-issued immutable report receipt. The review
@@ -49,8 +49,7 @@ of completion or freshness: the host also checks coverage, bound identities, sou
 bytes and actual worker completion. Old version-1 results are rejected rather than silently reused.
 
 Blocking judgments derive task-local blocker references with `blocked_step=affected_task`. Missing
-or conflicting necessary contracts can stop for Spec repair; implementation defects can enter the
-existing bounded code-repair edge. Reporting an advisory Issue does not stop the review or its
+or conflicting necessary contracts can stop for Spec repair; implementation defects can be selected explicitly as feedback for task authoring and implementation. Reporting an advisory Issue does not stop the review or its
 caller. An interrupted review remains incomplete even when its already acknowledged reports survive.
 
 For admitted tasks/implementation repair, [Harness Module](../harness/module.md) freezes the exact review result together with a

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import sys
@@ -67,6 +68,17 @@ class ManifestContractTests(unittest.TestCase):
             sys.path.pop(0)
             sys.path.pop(0)
         operations = load_operation_inventory()
+        launcher = ast.parse((REPOSITORY_ROOT / "scripts/run-operation.py").read_text())
+        launcher_skills = next(
+            ast.literal_eval(node.value)
+            for node in launcher.body
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "SKILL_NAMES"
+                for target in node.targets
+            )
+        )
+        self.assertEqual(set(SKILL_NAMES), set(launcher_skills))
         templates = sorted(
             path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md")
         )
@@ -78,7 +90,7 @@ class ManifestContractTests(unittest.TestCase):
                 len(SKILL_NAMES),
                 len(templates),
             ),
-            (12, 27, 10, 4),
+            (7, 18, 11, 4),
         )
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),
@@ -152,10 +164,10 @@ class ManifestContractTests(unittest.TestCase):
             self.assertTrue((target / ".concorde/framework/operations").is_dir())
             self.assertFalse((target / ".concorde/framework/capabilities").exists())
             self.assertTrue(
-                (target / ".agents/skills/concorde-dev-loop/SKILL.md").is_file()
+                (target / ".agents/skills/concorde-plan/SKILL.md").is_file()
             )
             self.assertTrue(
-                (target / ".agents/skills/concorde-main/SKILL.md").is_file()
+                (target / ".agents/skills/concorde-context-solve/SKILL.md").is_file()
             )
             self.assertFalse(
                 (target / ".concorde/framework/docsite/sidebars.docs.ts").exists()

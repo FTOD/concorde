@@ -11,19 +11,26 @@ const root = resolve(__dirname, "../../..");
 const consolidated = [
   ["delivery", "delivery"],
   ["implementation", "implementation"],
-  ["spec-authoring", "authoring"],
   ["review", "review"],
   ["validation", "validation"],
-  ["query-routing", "query-and-routing"],
-  ["topology", "topology"],
-  ["dev-loop", "development"],
-  ["specify-loop", "specify-loop"],
 ];
 
 // Editorial cases for this checkout, not a rule forbidding single-topic Modules.
 // verifies: scenario.views.publish-reference-link
 it("publishes consolidated explanations as Module entries while retaining precise specs", () => {
   const registry = loadScopedRegistry(root);
+  for (const retired of [
+    "spec-authoring",
+    "query-routing",
+    "topology",
+    "dev-loop",
+    "specify-loop",
+  ]) {
+    expect(
+      registry.targets.some((target) => target.id === `module.${retired}`),
+    ).toBe(false);
+    expect(existsSync(resolve(root, `specs/concorde/${retired}`))).toBe(false);
+  }
   const reading = scopedSidebar(registry)[0].items!;
   const implementation = scopedSidebar(registry, "implementation")[0].items!;
   const providers = reading.find((item) => item.label === "Operations")!.items!;

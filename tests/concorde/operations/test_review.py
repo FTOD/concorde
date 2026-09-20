@@ -12,6 +12,7 @@ from concorde.harness.admission import run_operation
 from concorde.harness.change_worktree import (
     WORK_PATH,
     ensure_change,
+    bind_owner,
     read_change,
     save_change,
 )
@@ -30,15 +31,6 @@ from tests.concorde.spec.support import (
 )
 
 
-def raw_change(root):
-    # Deliberately malformed fixture state must be inspected without the production admission gate.
-    from concorde.spec.typed_data import decode
-
-    from concorde.harness.status_store import all_status
-
-    return all_status(root)[0]
-
-
 def issue_observation(root, reference):
     from concorde.issues.references import receipt
     from concorde.issues.store import resolve_report
@@ -52,6 +44,7 @@ class ReviewTests(unittest.TestCase):
         from concorde.harness.worker_executor import OperationExecutionError
 
         ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
         before = read_change(self.root, required=True)
         double = self.double()
         execute = double.executor
@@ -252,11 +245,11 @@ class ReviewTests(unittest.TestCase):
         from concorde.spec.repository import SpecError
 
         ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
         schedulers = (
             "src/concorde/review/review.py",
-            "src/concorde/implementation/coordination_graph.py",
-            "src/concorde/dev_loop/loop_graph.py",
-            "src/concorde/specify_loop/specify_graph.py",
+            "src/concorde/operations/dispatch.py",
+            "src/concorde/operations/dispatch_graph.py",
         )
         for mode in ("spec", "code"):
             result = self.review(mode)
@@ -303,549 +296,62 @@ class ReviewTests(unittest.TestCase):
 
     @verifies("scenario.harness.graph-execution")
     def test_reviewer_interruptions_survive_enclosing_graphs_and_final_events(self):
-        from typing import Literal
-
         from concorde.harness.worker_executor import OperationExecutionError
 
-        outcomes: tuple[Literal["cancelled", "limit_exhausted", "failed"], ...] = (
-            "cancelled",
-            "limit_exhausted",
-            "failed",
-        )
-        outcome: Literal["cancelled", "limit_exhausted", "failed"]
-        for operation, review_stage in (
-            ("concorde-specify-loop", "spec-review"),
-            ("concorde-dev-loop", "spec-review"),
-            ("concorde-dev-loop", "code-review"),
-        ):
-            for outcome in outcomes:
-                with self.subTest(
-                    operation=operation, review_stage=review_stage, outcome=outcome
-                ):
-                    fixture = ReviewTests()
-                    fixture.setUp()
-                    try:
-                        unrelated = fixture.root / "unrelated-note.txt"
-                        unrelated.write_text("Preserve this local edit.\n")
-                        double = fixture.double()
-                        execute = double.executor
-                        stages, events, prior = [], [], {}
-                        candidate_bytes, review_outputs = {}, []
-                        from concorde.review import review as review_module
+        for mode in ("spec", "code"):
+            for outcome in ("cancelled", "limit_exhausted", "failed"):
+                with self.subTest(mode=mode, outcome=outcome):
+                    ensure_change(self.root, task=self.task, allow_primary=True)
+                    bind_owner(self.root, self.task)
+                    before = read_change(self.root, required=True)
+                    contents = {
+                        p: p.read_bytes()
+                        for p in (self.root / "specs").rglob("*")
+                        if p.is_file()
+                    }
+                    double = self.double()
 
-                        original_review = review_module.review
-
-                        def capture_review(*args, **kwargs):
-                            output = original_review(*args, **kwargs)
-                            review_outputs.append(output["data"])
-                            return output
-
-                        def interrupted(invocation, **options):
-                            stages.append(invocation.stage)
-                            if invocation.stage == review_stage:
-                                prior.update(read_change(fixture.root, required=True))
-                                for relative in (
-                                    "app/transfer.py",
-                                    "specs/transfer/module.md",
-                                ):
-                                    candidate_bytes[relative] = (
-                                        fixture.root / relative
-                                    ).read_bytes()
-                                raise OperationExecutionError(
-                                    "controlled reviewer failure", outcome=outcome
-                                )
-                            return execute(invocation, **options)
-
-                        double.executor = interrupted
-
-                        def observe(host, event, **details):
-                            events.append({"event": event, **details})
-
-                        with (
-                            patch.object(OperationHost, "observe", observe),
-                            patch.object(
-                                review_module, "review", side_effect=capture_review
-                            ),
-                        ):
-                            result = fixture.call_operation(
-                                operation,
-                                {**fixture.task, "specify": False, "run_reviews": True},
-                                double=double,
-                            )
-                        self.assertEqual("failed", result["status"], result)
-                        self.assertEqual("failed", result["output"]["data"]["outcome"])
-                        state = read_change(fixture.root, required=True)
-                        self.assertEqual(outcome, state["status"])
-                        self.assertEqual("failed", review_outputs[-1]["outcome"])
-                        self.assertEqual(
-                            "incomplete",
-                            review_outputs[-1]["reviews"][0]["data"]["status"],
+                    def interrupted(invocation, **options):
+                        raise OperationExecutionError(
+                            "controlled reviewer failure", outcome=outcome
                         )
-                        for relative, before_bytes in candidate_bytes.items():
-                            self.assertEqual(
-                                before_bytes, (fixture.root / relative).read_bytes()
-                            )
-                        self.assertEqual(prior["targets"], state["targets"])
-                        self.assertEqual(
-                            prior.get("authored_specs"), state.get("authored_specs")
-                        )
-                        self.assertEqual(
-                            prior.get("issue_blockers"), state.get("issue_blockers")
-                        )
-                        self.assertEqual(
-                            "Preserve this local edit.\n", unrelated.read_text()
-                        )
-                        self.assertEqual(
-                            prior["review_requirements"], state["review_requirements"]
-                        )
-                        if outcome != "failed":
-                            self.assertEqual(
-                                "execution_cancelled"
-                                if outcome == "cancelled"
-                                else "execution_limit",
-                                result["errors"][0]["code"],
-                            )
-                        self.assertEqual(review_stage, stages[-1])
-                        graph_stages = [
-                            event["stage"]
-                            for event in events
-                            if event["event"] == "stage_started"
-                        ]
-                        stopping_stage = (
-                            "review_spec"
-                            if review_stage == "spec-review"
-                            else "review_code"
-                        )
-                        self.assertEqual(stopping_stage, graph_stages[-1])
-                        if review_stage == "spec-review":
-                            self.assertFalse(
-                                set(stages)
-                                & {"plan", "tasks", "implementation", "code-review"}
-                            )
-                        else:
-                            self.assertEqual(1, stages.count("tasks"))
-                            self.assertEqual(1, stages.count("implementation"))
-                            self.assertTrue(
-                                all(
-                                    t["complete"]
-                                    for t in state["targets"][
-                                        fixture.task["target_id"]
-                                    ]["tasks"]
-                                )
-                            )
-                        reviews = state["reviews"][fixture.task["target_id"]]
-                        self.assertEqual(
-                            "incomplete", reviews[review_stage.split("-")[0]]["status"]
-                        )
-                        report = json.loads(
-                            (
-                                fixture.root
-                                / reviews[review_stage.split("-")[0]]["artifact"][
-                                    "path"
-                                ]
-                            ).read_text()
-                        )["data"]
-                        self.assertEqual("incomplete", report["status"])
-                        self.assertEqual([], report["issues"])
-                        self.assertIn(
-                            "execution_cancelled"
-                            if outcome == "cancelled"
-                            else "execution_limit"
-                            if outcome == "limit_exhausted"
-                            else "execution_failed",
-                            report["answer"],
-                        )
-                        self.assertFalse(
-                            any(event.get("stage") == "ready" for event in events)
-                        )
-                        self.assertTrue(result["output"]["data"]["artifacts"])
-                        finished = [
-                            event
-                            for event in events
-                            if event["event"] == "operation_finished"
-                            and event["operation"] == operation
-                        ]
-                        self.assertEqual(outcome, finished[-1]["status"])
-                        review_finished = [
-                            event
-                            for event in events
-                            if event["event"] == "operation_finished"
-                            and event["operation"] == f"concorde-{review_stage}"
-                        ]
-                        self.assertTrue(review_finished)
-                        self.assertEqual(outcome, review_finished[-1]["status"])
-                        if operation == "concorde-dev-loop":
-                            graph = state["graph"][fixture.task["target_id"]]
-                            self.assertEqual(0, graph["repair_iteration"])
-                            self.assertEqual(
-                                outcome, graph["transitions"][-1]["status"]
-                            )
-                            self.assertEqual("END", graph["transitions"][-1]["to"])
-                    finally:
-                        fixture.doCleanups()
 
-    @verifies(
-        "scenario.dev-loop.task-scope-repair",
-        "scenario.dev-loop.coordinated",
-        "scenario.dev-loop.spec-gap",
-    )
-    def test_nested_scope_repair_requires_resolved_gap_from_recorded_component_intent(
-        self,
-    ):
-        # Inspect deliberately corrupted fixture bytes without admitting them as valid host state.
-        def read_change(root, required=True):
-            return raw_change(root)
+                    double.executor = interrupted
+                    events = []
 
-        from copy import deepcopy
+                    def observe(host, event, **details):
+                        events.append({"event": event, **details})
 
-        from concorde.spec.repository import digest
-
-        task = {
-            "target_id": "scope.bank",
-            "task": "Implement the audited transfer contract",
-        }
-
-        def coordinate(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0].update(
-                    target_id="scope.audit", description="Implement audited transfers."
-                )
-
-        def initial(stage, snapshot, data, cwd):
-            coordinate(stage, snapshot, data, cwd)
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0]["acceptance"] += " Host validation must finish first."
-            if snapshot["target_id"] == "service.transfer":
-                self.missing("spec-review")(stage, snapshot, data, cwd)
-
-        first = self.call_operation("concorde-dev-loop", task, callback=initial)
-        self.assertEqual("blocked", first["status"], first)
-        state = read_change(self.root, required=True)
-        before = state["targets"]["scope.bank"]
-        cached = before["coordination"]["scope.audit"]
-        child = state["targets"]["scope.audit"]
-        nested = child["coordination"]["service.transfer"]
-        self.assertEqual(cached["task"], child["task"])
-        self.assertEqual(nested["blockers"], cached["blockers"])
-        self.assertEqual(
-            "service.transfer",
-            issue_observation(self.root, cached["blockers"][0])["source"]["target_id"],
-        )
-        self.assertTrue(
-            all(
-                item["target_id"] == "service.transfer"
-                and item["task"] == nested["task"]
-                for item in state["issue_blockers"]
-            )
-        )
-        request = {
-            **task,
-            "repair_task_scope": {"tasks_digest": digest(before["tasks"])},
-        }
-
-        def repair(stage, snapshot, data, cwd):
-            coordinate(stage, snapshot, data, cwd)
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0]["id"] = "task.audit.scope-repair"
-
-        def rejected():
-            prior = read_change(self.root, required=True)
-            result = self.call_operation("concorde-dev-loop", request, callback=repair)
-            self.assertNotEqual("succeeded", result["status"], result)
-            self.assertTrue(result["errors"] or result["output"]["data"]["blockers"])
-            after = read_change(self.root, required=True)
-            for target_id in ("scope.bank", "scope.audit"):
-                for field in ("tasks", "task_history", "coordination"):
+                    with patch.object(OperationHost, "observe", observe):
+                        result = self.review(mode, double=double)
+                    self.assertEqual("failed", result["status"], result)
                     self.assertEqual(
-                        prior["targets"][target_id].get(field),
-                        after["targets"][target_id].get(field),
+                        "incomplete",
+                        result["output"]["data"]["reviews"][0]["data"]["status"],
                     )
-            self.assertEqual(prior["issue_blockers"], after["issue_blockers"])
-
-        rejected()
-
-        document = self.root / "specs/transfer/module.md"
-        document.write_text(
-            document.read_text() + "\nTransfer owns the daily-limit admission rule.\n"
-        )
-        reviewed = self.call_operation(
-            "concorde-spec-review",
-            {
-                "target_id": "service.transfer",
-                "task": nested["task"],
-            },
-        )
-        self.assertEqual("succeeded", reviewed["status"], reviewed)
-        resolved = read_change(self.root, required=True)["issue_blockers"]
-        self.assertTrue(resolved)
-        self.assertTrue(all(item["status"] == "resolved" for item in resolved))
-        self.assertEqual(
-            cached["blockers"],
-            read_change(self.root, required=True)["targets"]["scope.bank"][
-                "coordination"
-            ]["scope.audit"]["blockers"],
-        )
-        # Alter only isolated fixture evidence; neither unrelated history nor a broken
-        # coordination chain can authorize replacement of the parent's accepted tasks.
-        for mismatch in (
-            "missing",
-            "target_id",
-            "context",
-            "reopened",
-            "child-intent",
-            "nested-intent",
-            "missing-coordination",
-            "legacy-cache",
-        ):
-            with self.subTest(provenance=mismatch):
-                state = read_change(self.root, required=True)
-                state["issue_blockers"] = deepcopy(resolved)
-                state["targets"]["scope.audit"] = deepcopy(child)
-                state["targets"]["scope.bank"]["coordination"] = deepcopy(
-                    before["coordination"]
-                )
-                if mismatch == "missing":
-                    state["issue_blockers"] = []
-                elif mismatch in {"target_id", "task"}:
-                    state["issue_blockers"][0][mismatch] = "unrelated"
-                elif mismatch == "context":
-                    state["issue_blockers"][0]["contexts"] = ["sha256:" + "f" * 64]
-                elif mismatch == "reopened":
-                    state["issue_blockers"][0]["status"] = "open"
-                elif mismatch == "child-intent":
-                    state["targets"]["scope.audit"]["task"] = "Unrelated audit task"
-                elif mismatch == "nested-intent":
-                    state["targets"]["scope.audit"]["coordination"]["service.transfer"][
-                        "task"
-                    ] = "Unrelated transfer task"
-                elif mismatch == "missing-coordination":
-                    state["targets"]["scope.audit"]["coordination"] = {}
-                else:
-                    state["targets"]["scope.bank"]["coordination"]["scope.audit"][
-                        "blockers"
-                    ][0].pop("report_id")
-                save_change(self.root, state)
-                rejected()
-        state = read_change(self.root, required=True)
-        state["issue_blockers"] = resolved
-        state["targets"]["scope.audit"] = child
-        state["targets"]["scope.bank"]["coordination"] = before["coordination"]
-        save_change(self.root, state)
-        result = self.call_operation("concorde-dev-loop", request, callback=repair)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
-        state = read_change(self.root, required=True)
-        parent = state["targets"]["scope.bank"]
-        self.assertEqual(before["tasks"], parent["task_history"][-1]["tasks"])
-        self.assertEqual(
-            before["coordination"], parent["task_history"][-1]["coordination"]
-        )
-        self.assertEqual(resolved, state["issue_blockers"])
-        self.assertNotEqual(
-            cached["task"], parent["coordination"]["scope.audit"]["task"]
-        )
-        self.assertTrue(all(item["complete"] for item in parent["tasks"]))
+                    after = read_change(self.root, required=True)
+                    self.assertEqual(outcome, after["status"])
+                    self.assertEqual(before["targets"], after["targets"])
+                    self.assertEqual(contents, {p: p.read_bytes() for p in contents})
+                    self.assertEqual(
+                        outcome,
+                        [e for e in events if e["event"] == "operation_finished"][-1][
+                            "status"
+                        ],
+                    )
+                    self.assertTrue(
+                        after["review_requirements"][self.task["target_id"]][mode]
+                    )
 
     @verifies(
-        "scenario.dev-loop.task-scope-repair",
-        "scenario.dev-loop.coordinated",
-        "scenario.dev-loop.spec-gap",
-        "scenario.review.standalone",
-    )
-    def test_scope_repair_accepts_cached_component_gap_only_after_attributed_resolution(
-        self,
-    ):
-        # Actual operation calls still use production read_change and reject corrupt identities.
-        def read_change(root, required=True):
-            return raw_change(root)
-
-        from copy import deepcopy
-
-        from concorde.spec.repository import digest
-
-        task = {"target_id": "scope.bank", "task": "Implement the transfer contract"}
-
-        def initial(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0]["acceptance"] += " Host validation must finish first."
-            if snapshot["target_id"] == "service.transfer":
-                self.missing("spec-review")(stage, snapshot, data, cwd)
-
-        first = self.call_operation("concorde-dev-loop", task, callback=initial)
-        self.assertEqual("blocked", first["status"], first)
-        before = read_change(self.root, required=True)["targets"]["scope.bank"]
-        cached = before["coordination"]["service.transfer"]
-        self.assertTrue(cached["blockers"])
-        request = {
-            **task,
-            "repair_task_scope": {"tasks_digest": digest(before["tasks"])},
-        }
-
-        def repair(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0]["id"] = "task.transfer.scope-repair"
-
-        def rejected():
-            history = read_change(self.root, required=True)["issue_blockers"]
-            result = self.call_operation("concorde-dev-loop", request, callback=repair)
-            self.assertNotEqual("succeeded", result["status"], result)
-            self.assertTrue(result["errors"] or result["output"]["data"]["blockers"])
-            state = read_change(self.root, required=True)
-            parent = state["targets"]["scope.bank"]
-            self.assertEqual(before["tasks"], parent["tasks"])
-            self.assertEqual(before["coordination"], parent["coordination"])
-            self.assertEqual(
-                before.get("task_history", []), parent.get("task_history", [])
-            )
-            self.assertEqual(history, state["issue_blockers"])
-
-        rejected()  # The actual failed component left an open prerequisite.
-
-        document = self.root / "specs/transfer/module.md"
-        document.write_text(
-            document.read_text() + "\nTransfer owns the daily-limit admission rule.\n"
-        )
-        reviewed = self.call_operation(
-            "concorde-spec-review",
-            {
-                "target_id": "service.transfer",
-                "task": cached["task"],
-            },
-        )
-        self.assertEqual("succeeded", reviewed["status"], reviewed)
-        resolved = read_change(self.root, required=True)["issue_blockers"]
-        self.assertTrue(resolved)
-        self.assertTrue(all(item["status"] == "resolved" for item in resolved))
-        self.assertEqual(
-            cached["blockers"],
-            read_change(self.root, required=True)["targets"]["scope.bank"][
-                "coordination"
-            ]["service.transfer"]["blockers"],
-        )
-
-        # Corrupt only isolated fixture history to prove unknown or unrelated evidence
-        # cannot erase the real cached blocker. Restore the accepted Host history below.
-        for mismatch in ("missing", "target_id", "report", "context", "reopened"):
-            with self.subTest(history=mismatch):
-                state = read_change(self.root, required=True)
-                history = deepcopy(resolved)
-                if mismatch == "missing":
-                    history = []
-                elif mismatch in {"target_id", "task"}:
-                    history[0][mismatch] = "unrelated"
-                elif mismatch == "report":
-                    history[0]["blocker"]["report_id"] = "sha256:" + "f" * 64
-                elif mismatch == "context":
-                    history[0]["contexts"] = ["sha256:" + "f" * 64]
-                else:
-                    history[0]["status"] = "open"
-                state["issue_blockers"] = history
-                save_change(self.root, state)
-                rejected()
-        state = read_change(self.root, required=True)
-        state["issue_blockers"] = resolved
-        save_change(self.root, state)
-        result = self.call_operation("concorde-dev-loop", request, callback=repair)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
-        state = read_change(self.root, required=True)
-        parent = state["targets"]["scope.bank"]
-        self.assertEqual(before["tasks"], parent["task_history"][-1]["tasks"])
-        self.assertEqual(
-            request["repair_task_scope"]["tasks_digest"],
-            parent["task_history"][-1]["tasks_digest"],
-        )
-        self.assertEqual(
-            before["coordination"], parent["task_history"][-1]["coordination"]
-        )
-        self.assertNotEqual(
-            cached["task"], parent["coordination"]["service.transfer"]["task"]
-        )
-        self.assertEqual(resolved, state["issue_blockers"])
-        self.assertTrue(all(item["complete"] for item in parent["tasks"]))
-        calls = [
-            (call["snapshot"]["target_id"], call["stage"]) for call in self.model.calls
-        ]
-        for phase in ("spec-review", "plan", "tasks", "implementation"):
-            self.assertIn(("service.transfer", phase), calls)
-
-    @verifies(
-        "scenario.dev-loop.task-scope-repair",
-        "scenario.dev-loop.coordinated",
-    )
-    def test_coordinated_scope_repair_preserves_state_on_rerouting_or_component_gap(
-        self,
-    ):
-        from concorde.harness.change_worktree import record_task_gaps
-        from concorde.spec.repository import digest
-
-        task = {"target_id": "scope.bank", "task": "Implement the transfer contract"}
-
-        def incomplete(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0]["acceptance"] += " Host validation must finish first."
-            if stage == "implementation":
-                for item in data["tasks"]:
-                    item["complete"] = False
-
-        self.call_operation("concorde-dev-loop", task, callback=incomplete)
-        before = read_change(self.root, required=True)["targets"]["scope.bank"]
-        request = {
-            **task,
-            "repair_task_scope": {"tasks_digest": digest(before["tasks"])},
-        }
-
-        def reroute(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0].update(id="task.repaired", target_id="module.ledger")
-
-        failed = self.call_operation("concorde-dev-loop", request, callback=reroute)
-        self.assertNotEqual("succeeded", failed["status"], failed)
-        after = read_change(self.root, required=True)["targets"]["scope.bank"]
-        self.assertEqual(before["tasks"], after["tasks"])
-        self.assertEqual(before["coordination"], after["coordination"])
-        self.assertFalse(after.get("task_history"))
-        # Host-owned fixture evidence for a real prerequisite in the old child intent.
-        from concorde.issues.store import report_issue
-        from tests.concorde.issues.test_store import report, source
-
-        ref = report_issue(
-            self.root,
-            report(owner_target_id="service.transfer", evidence=[]),
-            source(target_id="service.transfer", context_id="sha256:" + "b" * 64),
-        )
-        record_task_gaps(
-            self.root,
-            "service.transfer",
-            before["coordination"]["service.transfer"]["task"],
-            "spec-review",
-            [{**ref, "blocked_step": self.gap()["blocked_step"]}],
-            "sha256:" + "a" * 64,
-            review_input_digest="sha256:" + "c" * 64,
-        )
-
-        def repair(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0]["id"] = "task.repaired"
-
-        failed = self.call_operation("concorde-dev-loop", request, callback=repair)
-        self.assertNotEqual("succeeded", failed["status"], failed)
-        after = read_change(self.root, required=True)["targets"]["scope.bank"]
-        self.assertEqual(before["tasks"], after["tasks"])
-        self.assertEqual(before["coordination"], after["coordination"])
-        self.assertFalse(after.get("task_history"))
-        self.assertEqual(
-            "open",
-            read_change(self.root, required=True)["issue_blockers"][-1]["status"],
-        )
-
-    @verifies(
-        "scenario.dev-loop.spec-gap",
+        "scenario.issues.blocker-history",
         "scenario.review.standalone",
     )
     def test_lifecycle_only_standalone_review_cannot_resolve_a_required_gap(self):
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
         first = self.call_operation(
-            "concorde-dev-loop", callback=self.missing("spec-review")
+            "concorde-spec-review", callback=self.missing("spec-review")
         )
         self.assertEqual("blocked", first["status"], first)
         original = read_change(self.root, required=True)["issue_blockers"][0]
@@ -861,15 +367,19 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(
             original, read_change(self.root, required=True)["issue_blockers"][0]
         )
-        resumed = self.call_operation("concorde-dev-loop")
+        resumed = self.call_operation("concorde-plan")
         self.assertNotEqual("succeeded", resumed["status"], resumed)
         self.assertFalse(
             any(call["stage"] == "spec-review" for call in self.model.calls)
         )
 
-    @verifies("scenario.dev-loop.spec-gap")
+    @verifies("scenario.issues.blocker-history")
     def test_legacy_gap_identity_is_not_inferred_from_a_later_review(self):
-        self.call_operation("concorde-dev-loop", callback=self.missing("spec-review"))
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
+        self.call_operation(
+            "concorde-spec-review", callback=self.missing("spec-review")
+        )
         state = read_change(self.root, required=True)
         state["issue_blockers"][0].pop("review_input_digest")
         save_change(self.root, state)  # legacy fixture, not a production migration
@@ -882,202 +392,69 @@ class ReviewTests(unittest.TestCase):
         document.write_text(
             document.read_text() + "\nTransfer owns the requested admission rule.\n"
         )
-        result = self.call_operation("concorde-dev-loop")
+        self.assertEqual("succeeded", self.review()["status"])
+        result = self.call_operation("concorde-plan")
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual(
             "resolved",
             read_change(self.root, required=True)["issue_blockers"][0]["status"],
         )
 
-    @verifies(
-        "scenario.dev-loop.task-scope-repair",
-        "scenario.dev-loop.coordinated",
-    )
-    def test_coordinated_scope_repair_rebinds_changed_intent_without_redoing_unchanged_component(
-        self,
-    ):
-        from concorde.spec.repository import digest
-
-        task = {
-            "target_id": "scope.bank",
-            "task": "Implement transfer and ledger contracts",
-        }
-        ledger = {
-            "id": "task.ledger",
-            "target_id": "module.ledger",
-            "description": "Implement ledger reads.",
-            "acceptance": "Return known balances and reject unknown accounts.",
-            "complete": False,
-        }
-
-        def initial(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0]["acceptance"] += (
-                    " Host validation and commit must finish before task completion."
-                )
-                data["tasks"].insert(0, dict(ledger))
-            if (
-                stage == "implementation"
-                and snapshot["target_id"] == "service.transfer"
-            ):
-                for item in data["tasks"]:
-                    item["complete"] = False
-
-        first = self.call_operation("concorde-dev-loop", task, callback=initial)
-        self.assertNotEqual("succeeded", first["status"], first)
-        before = read_change(self.root, required=True)["targets"]["scope.bank"]
-        self.assertEqual(
-            "completed",
-            before["coordination"]["module.ledger"]["implementation_status"],
-        )
-        child_intent = before["coordination"]["service.transfer"]["task"]
-        source_bytes = {
-            p: (self.root / p).read_bytes()
-            for p in (
-                "specs/bank/module.md",
-                "specs/transfer/module.md",
-                "specs/transfer/promises.md",
-                "specs/ledger/module.md",
-            )
-        }
-
-        def repair(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"][0]["id"] = "task.transfer.scope-repair"
-                data["tasks"].insert(0, {**ledger, "id": "task.ledger.scope-repair"})
-
-        result = self.call_operation(
-            "concorde-dev-loop",
-            {**task, "repair_task_scope": {"tasks_digest": digest(before["tasks"])}},
-            callback=repair,
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
-        state = read_change(self.root, required=True)
-        parent = state["targets"]["scope.bank"]
-        self.assertEqual(
-            before["coordination"], parent["task_history"][-1]["coordination"]
-        )
-        self.assertNotEqual(
-            child_intent, parent["coordination"]["service.transfer"]["task"]
-        )
-        self.assertEqual(
-            parent["coordination"]["service.transfer"]["task"],
-            state["targets"]["service.transfer"]["task"],
-        )
-        calls = [
-            (call["snapshot"]["target_id"], call["stage"]) for call in self.model.calls
-        ]
-        self.assertIn(("service.transfer", "plan"), calls)
-        self.assertIn(("service.transfer", "implementation"), calls)
-        self.assertNotIn(("module.ledger", "implementation"), calls)
-        self.assertFalse(any(stage == "specify" for _, stage in calls))
-        for path, content in source_bytes.items():
-            self.assertEqual(content, (self.root / path).read_bytes())
-
-    @verifies(
-        "scenario.planning.task-history-identities",
-        "scenario.dev-loop.task-scope-repair",
-        "scenario.planning.tasks-from-plan",
-        "scenario.planning.tasks-id-conflict",
-    )
+    @verifies("scenario.planning.task-history-identities")
+    @verifies("scenario.planning.tasks-id-conflict")
+    @verifies("scenario.planning.tasks-from-plan")
     def test_replan_author_sees_all_retained_ids_and_collision_is_rejected_without_rewriting(
         self,
     ):
         from concorde.spec.repository import digest
 
-        observed = []
+        self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
+        for index in range(3):
+            state = read_change(self.root, required=True)["targets"][
+                self.task["target_id"]
+            ]
+            request = dict(self.task)
+            if index:
+                request["repair_task_scope"] = {"tasks_digest": digest(state["tasks"])}
 
-        def author(stage, snapshot, data, cwd):
-            if stage == "tasks":
-                identity = next(
-                    v
-                    for v in snapshot["stage_inputs"]
-                    if v["type_id"] == "concorde-task-identity-constraints"
-                )
-                reserved = identity["data"]["reserved_task_ids"]
-                self.assertEqual(
-                    [f"task.round.{i}" for i in range(len(observed))], reserved
-                )
-                self.assertEqual([], snapshot["implementation_artifacts"])
-                self.assertTrue(
-                    all(
-                        "content" not in item
-                        for item in snapshot["implementation_files"]
-                    )
-                )
-                observed.append(snapshot)
-                data["tasks"][0]["id"] = f"task.round.{len(reserved)}"
-            if stage == "implementation":
-                for task in data["tasks"]:
-                    task["complete"] = False
-
-        self.call_operation("concorde-dev-loop", callback=author)
-        for _ in range(2):
-            tasks = read_change(self.root, required=True)["targets"][
-                "service.transfer"
-            ]["tasks"]
-            self.call_operation(
-                "concorde-dev-loop",
-                {**self.task, "repair_task_scope": {"tasks_digest": digest(tasks)}},
-                callback=author,
-            )
-        history = read_change(self.root, required=True)["targets"]["service.transfer"][
-            "task_history"
-        ]
-        self.assertEqual(2, len(history))
-        self.assertEqual(3, len(observed))
-        self.assertEqual(3, len({s["context_id"] for s in observed}))
-
-        # A real Spec revision selects the normal replan edge. Current tasks are cleared,
-        # but the two retained lists must still reach the fresh, Spec-only task author.
-        document = self.root / "specs/transfer/module.md"
-        document.write_text(document.read_text() + "\n")
-        replanned = []
-
-        def collide(stage, snapshot, data, cwd):
-            if stage == "tasks":
-                replanned.append(snapshot)
+            def author(stage, snapshot, data, cwd):
                 values = {v["type_id"]: v["data"] for v in snapshot["stage_inputs"]}
                 self.assertEqual(
-                    ["task.round.0", "task.round.1"],
+                    [f"task.round.{i}" for i in range(index)],
                     values["concorde-task-identity-constraints"]["reserved_task_ids"],
                 )
-                self.assertNotIn("concorde-implementation-task", values)
-                self.assertIn("reserved_task_ids", snapshot["instructions"])
                 self.assertEqual([], snapshot["implementation_artifacts"])
-                data["tasks"][0]["id"] = "task.round.0"
+                data["tasks"][0]["id"] = f"task.round.{index}"
 
-        rejected = self.call_operation("concorde-dev-loop", callback=collide)
-        self.assertEqual("child_blocked", rejected["errors"][0]["code"], rejected)
-        errors = json.loads(
-            rejected["errors"][0]["message"].split("concorde-tasks blocked: ", 1)[1]
+            self.assertEqual(
+                "succeeded",
+                self.call_operation("concorde-tasks", request, callback=author)[
+                    "status"
+                ],
+            )
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(document.read_text() + "\n")
+        self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
+        before = read_change(self.root, required=True)["targets"][
+            self.task["target_id"]
+        ]
+
+        def collide(stage, snapshot, data, cwd):
+            values = {v["type_id"]: v["data"] for v in snapshot["stage_inputs"]}
+            self.assertEqual(
+                ["task.round.0", "task.round.1", "task.round.2"],
+                values["concorde-task-identity-constraints"]["reserved_task_ids"],
+            )
+            self.assertNotIn("concorde-implementation-task", values)
+            data["tasks"][0]["id"] = "task.round.0"
+
+        rejected = self.call_operation("concorde-tasks", callback=collide)
+        self.assertEqual("invalid_completion", rejected["errors"][0]["code"], rejected)
+        self.assertIn("task.round.0", rejected["errors"][0]["message"])
+        self.assertEqual(
+            before,
+            read_change(self.root, required=True)["targets"][self.task["target_id"]],
         )
-        self.assertEqual("invalid_completion", errors[0]["code"])
-        self.assertIn("task.round.0", errors[0]["message"])
-        self.assertEqual(1, len(replanned))
-        self.assertIn("plan", [c["stage"] for c in self.model.calls])
-        state = read_change(self.root, required=True)["targets"]["service.transfer"]
-        self.assertEqual([], state["tasks"])
-        self.assertEqual(history, state["task_history"])
-        self.assertIsNone(state["implementation_digest"])
-        self.assertNotIn("implementation", [c["stage"] for c in self.model.calls])
-
-        def accept(stage, snapshot, data, cwd):
-            if stage == "tasks":
-                reserved = next(
-                    v["data"]["reserved_task_ids"]
-                    for v in snapshot["stage_inputs"]
-                    if v["type_id"] == "concorde-task-identity-constraints"
-                )
-                data["tasks"][0]["id"] = f"task.round.{len(reserved)}.replanned"
-
-        accepted = self.call_operation("concorde-dev-loop", callback=accept)
-        self.assertEqual("succeeded", accepted["status"], accepted)
-        self.assertEqual("ready", accepted["output"]["data"]["outcome"])
-        state = read_change(self.root, required=True)["targets"]["service.transfer"]
-        self.assertEqual("task.round.2.replanned", state["tasks"][0]["id"])
-        self.assertEqual(history, state["task_history"])
 
     @verifies("scenario.validation.blocked")
     def test_deferred_repository_verification_still_requires_passing_host_checks(self):
@@ -1100,7 +477,10 @@ class ReviewTests(unittest.TestCase):
                     [item["path"] for item in snapshot["implementation_files"]],
                 )
 
-        result = self.call_operation("concorde-dev-loop", callback=deferred)
+        self.call_operation("concorde-plan")
+        self.call_operation("concorde-tasks")
+        self.call_operation("concorde-implement", callback=deferred)
+        result = self.call_operation("concorde-validate")
         self.assertNotEqual("succeeded", result["status"], result)
         state = read_change(self.root, required=True)
         target = state["targets"]["service.transfer"]
@@ -1114,7 +494,9 @@ class ReviewTests(unittest.TestCase):
     @verifies("scenario.harness.pi-worker-launch")
     def test_only_project_workers_receive_the_host_check_service(self):
         model = self.double()
-        result = self.call_operation("concorde-dev-loop", double=model)
+        for operation in ("plan", "tasks", "implement", "spec-review", "code-review"):
+            result = self.call_operation("concorde-" + operation, double=model)
+            self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("succeeded", result["status"], result)
         for call in model.calls:
             with self.subTest(stage=call["stage"]):
@@ -1158,8 +540,10 @@ class ReviewTests(unittest.TestCase):
         config = json.loads(config_path.read_text())
         config["operation_configuration"] = self.configuration
         config_path.write_text(json.dumps(config))
-        result = self.call_operation("concorde-dev-loop")
-        self.assertEqual("succeeded", result["status"], result)
+        model = self.double()
+        for operation in ("plan", "tasks", "implement", "code-review"):
+            result = self.call_operation("concorde-" + operation, double=model)
+            self.assertEqual("succeeded", result["status"], result)
         launched = {
             call["stage"]: (call["launch"].model, call["launch"].thinking)
             for call in self.model.calls
@@ -1190,102 +574,112 @@ class ReviewTests(unittest.TestCase):
             for item in self.host.descriptions
         }
         self.assertEqual(
-            expected,
+            {stage: expected[stage] for stage in described if stage in expected},
             {stage: described[stage] for stage in expected if stage in described},
         )
 
-    @verifies("scenario.dev-loop.task-scope-repair")
+    @verifies("scenario.planning.scope-repair")
     def test_invalid_scope_repair_cannot_replace_or_complete_original_tasks(self):
         from concorde.spec.repository import digest
 
-        def incomplete(stage, snapshot, data, cwd):
-            if stage == "implementation":
-                for task in data["tasks"]:
-                    task["complete"] = False
-
-        self.call_operation("concorde-dev-loop", callback=incomplete)
-        original = read_change(self.root, required=True)["targets"]["service.transfer"][
-            "tasks"
+        self.call_operation("concorde-plan")
+        self.call_operation("concorde-tasks")
+        before = read_change(self.root, required=True)["targets"][
+            self.task["target_id"]
         ]
-        request = {**self.task, "repair_task_scope": {"tasks_digest": digest(original)}}
-        for invalid in ("completed", "reused_id"):
+        request = {
+            **self.task,
+            "repair_task_scope": {"tasks_digest": digest(before["tasks"])},
+        }
+        for invalid in ("completed", "reused_id", "digest", "stale_spec"):
+            with self.subTest(invalid=invalid):
+                selected = dict(request)
+                if invalid == "digest":
+                    selected["repair_task_scope"] = {
+                        "tasks_digest": "sha256:" + "0" * 64
+                    }
+                if invalid == "stale_spec":
+                    path = self.root / "specs/transfer/module.md.json"
+                    path.write_text(path.read_text() + "\n")
 
-            def reject(stage, snapshot, data, cwd, invalid=invalid):
-                if stage == "tasks" and invalid == "completed":
-                    data["tasks"][0]["complete"] = True
+                def reject(stage, snapshot, data, cwd):
+                    if invalid == "completed":
+                        data["tasks"][0].update(id="task.repair", complete=True)
 
-            result = self.call_operation("concorde-dev-loop", request, callback=reject)
-            self.assertNotEqual("succeeded", result["status"], result)
-            state = read_change(self.root, required=True)["targets"]["service.transfer"]
-            self.assertEqual(original, state["tasks"])
-            self.assertEqual([], state.get("task_history", []))
-            self.assertIsNone(state.get("implementation_digest"))
+                result = self.call_operation(
+                    "concorde-tasks", selected, callback=reject
+                )
+                self.assertNotEqual("succeeded", result["status"], result)
+                if invalid == "stale_spec":
+                    self.assertEqual("stale_context", result["errors"][0]["code"])
+                    self.assertEqual([], self.model.calls)
+                self.assertEqual(
+                    before,
+                    read_change(self.root, required=True)["targets"][
+                        self.task["target_id"]
+                    ],
+                )
 
-    @verifies("scenario.dev-loop.task-scope-repair")
+    @verifies("scenario.planning.scope-repair")
+    @verifies("scenario.validation.ready")
     def test_incomplete_phase_tasks_repair_then_implementation_validation_review_ready(
         self,
     ):
         from concorde.spec.repository import digest
 
-        def incomplete(stage, snapshot, data, cwd):
-            if stage == "tasks":
-                data["tasks"][0]["acceptance"] += (
-                    " Host review and validation then commit must finish first."
-                )
-            if stage == "implementation":
-                for task in data["tasks"]:
-                    task["complete"] = False
+        self.call_operation("concorde-plan")
 
-        first = self.call_operation("concorde-dev-loop", callback=incomplete)
-        self.assertNotEqual("succeeded", first["status"])
-        original = read_change(self.root, required=True)["targets"]["service.transfer"][
-            "tasks"
-        ]
-        # A new Framework binding also changes this revision. Exercise fresh review
-        # and task revalidation with a meaning-preserving contract revision.
-        document = self.root / "specs/transfer/module.md"
-        document.write_text(document.read_text() + "\n")
+        def bad_task(stage, snapshot, data, cwd):
+            data["tasks"][0]["acceptance"] += (
+                " Host review and commit must finish first."
+            )
+
+        self.call_operation("concorde-tasks", callback=bad_task)
+
+        def incomplete(stage, snapshot, data, cwd):
+            for task in data["tasks"]:
+                task["complete"] = False
+
+        first = self.call_operation("concorde-implement", callback=incomplete)
+        self.assertEqual("incomplete_tasks", first["errors"][0]["code"], first)
+        original = read_change(self.root, required=True)["targets"][
+            self.task["target_id"]
+        ]["tasks"]
         request = {**self.task, "repair_task_scope": {"tasks_digest": digest(original)}}
 
         def repair(stage, snapshot, data, cwd):
-            if stage == "tasks":
-                feedback = next(
-                    v
-                    for v in snapshot["stage_inputs"]
-                    if v["type_id"] == "concorde-task-scope-feedback"
-                )
-                self.assertEqual("implementation_boundary", feedback["data"]["reason"])
-                self.assertEqual([], snapshot["implementation_artifacts"])
-                self.assertTrue(
-                    all(
-                        "content" not in item
-                        for item in snapshot["implementation_files"]
-                    )
-                )
-                data["tasks"][0]["id"] += ".scope-repair"
+            values = {v["type_id"]: v["data"] for v in snapshot["stage_inputs"]}
+            self.assertEqual(
+                "implementation_boundary",
+                values["concorde-task-scope-feedback"]["reason"],
+            )
+            self.assertEqual(original, values["concorde-implementation-task"]["tasks"])
+            self.assertEqual([], snapshot["implementation_artifacts"])
+            data["tasks"][0]["id"] += ".scope-repair"
 
-        repaired = self.call_operation("concorde-dev-loop", request, callback=repair)
+        repaired = self.call_operation("concorde-tasks", request, callback=repair)
         self.assertEqual("succeeded", repaired["status"], repaired)
-        self.assertEqual("ready", repaired["output"]["data"]["outcome"])
-        stages = [call["stage"] for call in self.model.calls]
-        self.assertLess(stages.index("tasks"), stages.index("implementation"))
-        self.assertLess(stages.index("implementation"), stages.index("code-review"))
+        for operation in (
+            "concorde-implement",
+            "concorde-spec-review",
+            "concorde-code-review",
+            "concorde-validate",
+        ):
+            result = self.call_operation(operation)
+            self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"])
         state = read_change(self.root, required=True)
-        history = state["targets"]["service.transfer"]["task_history"]
-        self.assertEqual(original, history[0]["tasks"])
-        self.assertTrue(all(not t["complete"] for t in history[0]["tasks"]))
-        self.assertTrue(state["review_requirements"]["service.transfer"]["spec"])
-        self.assertTrue(state["review_requirements"]["service.transfer"]["code"])
-        replay = self.call_operation("concorde-dev-loop", request)
-        self.assertEqual("succeeded", replay["status"], replay)
-        self.assertFalse(
-            any(c["stage"] in {"tasks", "implementation"} for c in self.model.calls)
+        self.assertEqual(
+            original,
+            state["targets"][self.task["target_id"]]["task_history"][0]["tasks"],
         )
-        stale = self.call_operation(
-            "concorde-dev-loop",
-            {**request, "repair_task_scope": {"tasks_digest": "sha256:" + "0" * 64}},
+        self.assertEqual(
+            {"spec": True, "code": True},
+            state["review_requirements"][self.task["target_id"]],
         )
-        self.assertNotEqual("succeeded", stale["status"])
+        replay = self.call_operation("concorde-tasks", request)
+        self.assertEqual("incompatible_handoff", replay["errors"][0]["code"], replay)
+        self.assertEqual([], self.model.calls)
 
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -1312,7 +706,6 @@ class ReviewTests(unittest.TestCase):
             executor=self.model.executor,
             allow_primary_worktree=True,
             mode=mode,
-            routed_target=(data or self.task)["target_id"],
         )
         return run_operation(
             operation,
@@ -1334,7 +727,7 @@ class ReviewTests(unittest.TestCase):
             "concorde-spec-review",
             self.configuration,
             self.task,
-            OperationHost(self.root, PACKAGE, routed_target=self.task["target_id"]),
+            OperationHost(self.root, PACKAGE),
         )
 
     def commit_fixture(self):
@@ -1555,6 +948,7 @@ class ReviewTests(unittest.TestCase):
     def test_failed_policy_preview_does_not_persist_artifacts_or_change_state(self):
         # A reviewer grant the compiler refuses is simulated at policy compilation.
         ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
         before = read_change(self.root)
         refused = PermissionPolicyError(
             "simulated: the reviewer grant widens its declared effects"
@@ -1701,34 +1095,33 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("failed", result["status"])
         self.assertIn("stale_context", result["output"]["data"]["answer"])
 
-    @verifies("scenario.dev-loop.ready")
+    @verifies("scenario.validation.ready")
+    @verifies("scenario.validation.blocked")
     def test_required_reviews_surround_planning_and_follow_checks_before_ready(self):
-        observed = []
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
+        self.assertEqual("succeeded", self.review()["status"])
+        for operation in ("concorde-plan", "concorde-tasks", "concorde-implement"):
+            result = self.call_operation(operation)
+            self.assertEqual("succeeded", result["status"], result)
 
-        def inspect(stage, snapshot, data, cwd):
-            if stage == "code-review":
-                state = read_change(self.root, required=True)
-                observed.append(state["status"])
-                self.assertEqual(
-                    "passed",
-                    state["targets"][self.task["target_id"]]["checks"][0]["status"],
-                )
+        def incomplete(stage, snapshot, data, cwd):
+            data.update(status="incomplete", answer="Review unfinished")
 
-        result = self.call_operation("concorde-dev-loop", callback=inspect)
-        self.assertEqual("succeeded", result["status"], result)
-        stages = [x["stage"] for x in self.model.calls]
-        self.assertLess(stages.index("specify"), stages.index("spec-review"))
-        self.assertLess(stages.index("spec-review"), stages.index("plan"))
-        self.assertLess(stages.index("implementation"), stages.index("code-review"))
-        self.assertNotIn("ready", observed)
-        self.assertEqual("ready", read_change(self.root, required=True)["status"])
+        self.assertEqual("failed", self.review("code", callback=incomplete)["status"])
+        blocked = self.call_operation("concorde-validate")
+        self.assertEqual("review_required", blocked["errors"][0]["code"], blocked)
+        self.assertNotEqual("ready", read_change(self.root, required=True)["status"])
+        self.assertEqual("succeeded", self.review("code")["status"])
+        result = self.call_operation("concorde-validate")
+        self.assertEqual("ready", result["output"]["data"]["outcome"], result)
         self.assertIsNotNone(current(self.invocation(), "spec"))
         self.assertIsNotNone(current(self.invocation(), "code"))
 
     def test_review_freshness_covers_spec_code_intent_and_artifact_integrity(self):
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-dev-loop")["status"]
-        )
+        self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
+        self.review("spec")
+        self.review("code")
         (self.root / "app/ledger.py").write_text("Unrelated implementation\n")
         self.assertIsNotNone(current(self.invocation(), "spec"))
         self.assertIsNotNone(current(self.invocation(), "code"))
@@ -1792,8 +1185,10 @@ class ReviewTests(unittest.TestCase):
             "incomplete", result["output"]["data"]["reviews"][0]["data"]["status"]
         )
 
-    @verifies("scenario.dev-loop.spec-gap")
+    @verifies("scenario.issues.blocker-history")
     def test_changed_review_instructions_reassess_without_erasing_gaps_on_failure(self):
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
         import hashlib
         from contextlib import contextmanager
 
@@ -1802,11 +1197,11 @@ class ReviewTests(unittest.TestCase):
         from concorde.harness.worker_profile import binding_digest
 
         first = self.call_operation(
-            "concorde-dev-loop", callback=self.missing("spec-review")
+            "concorde-spec-review", callback=self.missing("spec-review")
         )
         self.assertEqual("blocked", first["status"], first)
         original = read_change(self.root, required=True)["issue_blockers"][0]
-        self.call_operation("concorde-dev-loop")
+        self.call_operation("concorde-plan")
         self.assertFalse(any(c["stage"] == "spec-review" for c in self.model.calls))
         rendered = Path(tempfile.mkdtemp())
         self.addCleanup(
@@ -1872,7 +1267,7 @@ class ReviewTests(unittest.TestCase):
                 )
 
         with instructions(changed):
-            result = self.call_operation("concorde-dev-loop", callback=incomplete)
+            result = self.call_operation("concorde-spec-review", callback=incomplete)
             self.assertEqual("failed", result["status"], result)
             self.assertTrue(any(c["stage"] == "spec-review" for c in self.model.calls))
             self.assertEqual(
@@ -1891,97 +1286,136 @@ class ReviewTests(unittest.TestCase):
                 data["blockers"] = []
 
         with instructions(changed_again):
-            result = self.call_operation("concorde-dev-loop", callback=advisory)
+            result = self.call_operation("concorde-spec-review", callback=advisory)
         self.assertEqual("succeeded", result["status"], result)
         state = read_change(self.root, required=True)
         self.assertEqual("resolved", state["issue_blockers"][0]["status"])
         self.assertEqual(original["blocker"], state["issue_blockers"][0]["blocker"])
         self.assertEqual([], state["blockers"])
 
-    @verifies("scenario.dev-loop.spec-gap")
+    @verifies("scenario.issues.blocker-history")
     def test_gap_persists_deduplicates_and_requires_spec_repair_before_resume(self):
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
         result = self.call_operation(
-            "concorde-dev-loop", callback=self.missing("spec-review")
+            "concorde-spec-review", callback=self.missing("spec-review")
         )
         self.assertEqual("blocked", result["status"], result)
         self.assertNotIn("plan", [x["stage"] for x in self.model.calls])
         before = read_change(self.root, required=True)
         self.assertEqual(1, len(before["issue_blockers"]))
-        retry = self.call_operation("concorde-dev-loop")
+        retry = self.call_operation("concorde-plan")
         self.assertEqual("blocked", retry["status"], retry)
         self.assertEqual(
             1, len(read_change(self.root, required=True)["issue_blockers"])
         )
         self.assertEqual(1, len(read_change(self.root, required=True)["blockers"]))
-        self.assertEqual(before["blockers"][0], retry["output"]["data"]["blockers"][0])
+        self.assertEqual("review_required", retry["errors"][0]["code"], retry)
+        self.assertEqual(
+            before["blockers"], read_change(self.root, required=True)["blockers"]
+        )
         self.assertNotIn("plan", [x["stage"] for x in self.model.calls])
         spec = self.root / "specs/transfer/module.md"
         spec.write_text(
             spec.read_text()
             + "\nThe transfer operation owns a daily limit of 1000 units.\n"
         )
-        resumed = self.call_operation("concorde-dev-loop")
+        self.assertEqual("succeeded", self.review()["status"])
+        resumed = self.call_operation("concorde-plan")
         self.assertEqual("succeeded", resumed["status"], resumed)
         state = read_change(self.root, required=True)
         self.assertEqual([], state["blockers"])
         self.assertEqual("resolved", state["issue_blockers"][0]["status"])
-        self.assertEqual("ready", state["status"])
+        self.assertEqual("active", state["status"])
         self.assertNotIn("specify", [x["stage"] for x in self.model.calls])
 
-    @verifies("scenario.dev-loop.spec-gap", "scenario.planning.assessment-gap")
+    @verifies("scenario.planning.assessment-gap", "scenario.concorde.develop-gap")
+    @verifies("scenario.issues.blocker-history")
     def test_real_task_phases_preserve_gaps_and_resume_after_repair(self):
-        for phase in ("context-solve", "plan", "tasks", "implementation"):
-            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as temporary:
-                original_root = self.root
-                self.root = Path(temporary)
-                project(self.root)
-                result = self.call_operation(
-                    "concorde-dev-loop", callback=self.missing(phase)
-                )
-                self.assertEqual("blocked", result["status"], result)
-                self.assertEqual(
-                    phase,
-                    read_change(self.root, required=True)["issue_blockers"][0]["phase"],
-                )
-                spec = self.root / "specs/transfer/module.md"
-                spec.write_text(
-                    spec.read_text()
-                    + "\nThe transfer operation owns the necessary daily limit.\n"
-                )
-                resumed = self.call_operation("concorde-dev-loop")
-                self.assertEqual("succeeded", resumed["status"], resumed)
-                self.assertEqual([], read_change(self.root, required=True)["blockers"])
-                self.root = original_root
+        for phase, operation in (
+            ("context-solve", "concorde-context-solve"),
+            ("plan", "concorde-plan"),
+            ("tasks", "concorde-tasks"),
+            ("implementation", "concorde-implement"),
+        ):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                previous, self.root = self.root, Path(directory)
+                try:
+                    project(self.root)
+                    ensure_change(self.root, task=self.task, allow_primary=True)
+                    bind_owner(self.root, self.task)
+                    if phase in {"tasks", "implementation"}:
+                        self.call_operation("concorde-plan")
+                    if phase == "implementation":
+                        self.call_operation("concorde-tasks")
+                    result = self.call_operation(
+                        operation, callback=self.missing(phase)
+                    )
+                    self.assertEqual("blocked", result["status"], result)
+                    history = read_change(self.root, required=True)["issue_blockers"]
+                    self.assertEqual(phase, history[0]["phase"])
+                    self.assertNotEqual(
+                        "ready", read_change(self.root, required=True)["status"]
+                    )
+                    spec = self.root / "specs/transfer/module.md"
+                    spec.write_text(
+                        spec.read_text() + "\nTransfer owns the daily limit.\n"
+                    )
+                    self.assertEqual(
+                        history, read_change(self.root, required=True)["issue_blockers"]
+                    )
+                    if phase in {"tasks", "implementation"}:
+                        self.assertEqual(
+                            "succeeded", self.call_operation("concorde-plan")["status"]
+                        )
+                    if phase == "implementation":
 
-    def test_fast_loop_records_skips_and_cannot_downgrade_required_review(self):
-        result = self.call_operation(
-            "concorde-dev-loop", {**self.task, "specify": False, "run_reviews": False}
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        state = read_change(self.root, required=True)
-        self.assertEqual(
-            {"skipped"},
-            {x["status"] for x in state["reviews"][self.task["target_id"]].values()},
-        )
-        self.assertIn("spec=skipped", result["output"]["data"]["answer"])
-        self.assertIn("code=skipped", result["output"]["data"]["answer"])
-        self.assertEqual(2, len(result["output"]["data"]["artifacts"]))
-        self.assertFalse(any("review" in x["stage"] for x in self.model.calls))
-        result = self.call_operation(
-            "concorde-dev-loop",
-            {**self.task, "specify": False, "run_reviews": True},
-            callback=self.missing("spec-review"),
-        )
+                        def new_tasks(stage, snapshot, data, cwd):
+                            data["tasks"][0]["id"] += ".replanned"
+
+                        self.assertEqual(
+                            "succeeded",
+                            self.call_operation("concorde-tasks", callback=new_tasks)[
+                                "status"
+                            ],
+                        )
+                    resumed = self.call_operation(operation)
+                    self.assertEqual("succeeded", resumed["status"], resumed)
+                    state = read_change(self.root, required=True)
+                    self.assertEqual([], state["blockers"])
+                    self.assertEqual("resolved", state["issue_blockers"][0]["status"])
+                    self.assertEqual(
+                        history[0]["contexts"], state["issue_blockers"][0]["contexts"]
+                    )
+                finally:
+                    self.root = previous
+
+    @verifies("scenario.validation.blocked")
+    def test_explicit_review_requirement_cannot_be_downgraded(self):
+        from concorde.review.review import require_reviews
+
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
+        result = self.review(callback=self.missing("spec-review"))
         self.assertEqual("blocked", result["status"], result)
-        retried = self.call_operation(
-            "concorde-dev-loop", {**self.task, "specify": False, "run_reviews": False}
-        )
-        self.assertEqual("blocked", retried["status"], retried)
-        self.assertTrue(
-            read_change(self.root, required=True)["review_requirements"][
-                self.task["target_id"]
-            ]["spec"]
-        )
+        require_reviews(self.invocation(), False, modes=["spec"])
+        state = read_change(self.root, required=True)
+        self.assertTrue(state["review_requirements"][self.task["target_id"]]["spec"])
+        for operation in ("concorde-plan", "concorde-validate"):
+            result = self.call_operation(
+                operation,
+                {
+                    **self.task,
+                    **(
+                        {"run_checks": False}
+                        if operation == "concorde-validate"
+                        else {}
+                    ),
+                },
+            )
+            self.assertEqual("review_required", result["errors"][0]["code"], result)
+            self.assertEqual([], self.model.calls)
+        self.assertNotEqual("ready", read_change(self.root, required=True)["status"])
 
     @verifies("scenario.review.standalone")
     def test_independent_contract_findings_remain_visible_without_claiming_completeness(
@@ -2031,46 +1465,29 @@ class ReviewTests(unittest.TestCase):
                     json.loads((self.root / reference["path"]).read_text())["data"],
                 )
 
+    @verifies("scenario.validation.blocked")
     def test_advisory_findings_do_not_block_but_required_incomplete_review_does(self):
-        def advisory(stage, snapshot, data, cwd):
-            if stage == "code-review":
-                data.update(
-                    status="findings",
-                    issues=[
-                        {
-                            "id": "clarity",
-                            "severity": "advisory",
-                            "target_id": "service.transfer",
-                            "document": "specs/transfer/module.md",
-                            "contract": "Pure transfer",
-                            "location": {"path": "app/transfer.py", "line": 1},
-                            "problem": "An example could be clearer.",
-                            "affected_task": "Read the implementation",
-                        }
-                    ],
-                )
+        for operation in ("concorde-plan", "concorde-tasks", "concorde-implement"):
+            self.assertEqual("succeeded", self.call_operation(operation)["status"])
 
+        def advisory(stage, snapshot, data, cwd):
+            data.update(
+                status="findings",
+                issues=[{**ExplicitRepairTests.finding(), "severity": "advisory"}],
+            )
+
+        self.assertEqual("succeeded", self.review("code", callback=advisory)["status"])
         self.assertEqual(
-            "succeeded",
-            self.call_operation("concorde-dev-loop", callback=advisory)["status"],
+            "ready",
+            self.call_operation("concorde-validate")["output"]["data"]["outcome"],
         )
-        state = read_change(self.root, required=True)
-        state["reviews"][self.task["target_id"]].pop("code")
-        save_change(self.root, state)
 
         def incomplete(stage, snapshot, data, cwd):
-            if stage == "code-review":
-                data.update(
-                    status="incomplete", answer="Required review could not complete."
-                )
+            data.update(status="incomplete", answer="Review could not complete.")
 
-        result = self.call_operation(
-            "concorde-dev-loop",
-            {**self.task, "specify": False, "run_reviews": False},
-            callback=incomplete,
-        )
-        self.assertEqual("failed", result["status"], result)
-        self.assertNotEqual("ready", read_change(self.root, required=True)["status"])
+        self.assertEqual("failed", self.review("code", callback=incomplete)["status"])
+        result = self.call_operation("concorde-validate")
+        self.assertEqual("review_required", result["errors"][0]["code"], result)
         self.assertIsNone(read_change(self.root, required=True)["validated_tree"])
 
     @verifies("scenario.harness.execute-success")
@@ -2102,9 +1519,9 @@ class ReviewTests(unittest.TestCase):
         self.assertNotIn("report_issue", launch.child_tools)
 
     def test_unrelated_review_query_cannot_replace_required_lifecycle_evidence(self):
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-dev-loop")["status"]
-        )
+        self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
+        self.review("spec")
+        self.review("code")
         before = read_change(self.root)
         result = self.call_operation(
             "concorde-spec-review",
@@ -2121,9 +1538,7 @@ class ReviewTests(unittest.TestCase):
     def test_standalone_dependent_steps_cannot_bypass_a_failed_required_spec_review(
         self,
     ):
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-dev-loop")["status"]
-        )
+        self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
         blocked = self.review(callback=self.missing("spec-review"))
         self.assertEqual("blocked", blocked["status"], blocked)
         tasks = read_change(self.root, required=True)["targets"][
@@ -2150,9 +1565,7 @@ class ReviewTests(unittest.TestCase):
         from concorde.harness.revisions import target_revision
         from concorde.spec.repository import SpecRepository
 
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-dev-loop")["status"]
-        )
+        self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
         documents = {
             path: path.read_bytes() for path in (self.root / "specs").rglob("*.md")
         }
@@ -2189,9 +1602,7 @@ class ReviewTests(unittest.TestCase):
 
     @verifies("scenario.planning.plan-empty", "scenario.planning.plan-stale")
     def test_an_empty_or_stale_planner_result_preserves_the_accepted_plan(self):
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-dev-loop")["status"]
-        )
+        self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
         self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
         accepted = read_change(self.root, required=True)["targets"][
             self.task["target_id"]
@@ -2235,9 +1646,7 @@ class ReviewTests(unittest.TestCase):
         "scenario.planning.tasks-missing-plan", "scenario.implementation.missing-tasks"
     )
     def test_task_authoring_and_implementation_refuse_their_missing_prerequisite(self):
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-dev-loop")["status"]
-        )
+        self.assertEqual("succeeded", self.call_operation("concorde-plan")["status"])
         history = read_change(self.root, required=True)["targets"][
             self.task["target_id"]
         ].get("task_history", [])
@@ -2284,7 +1693,7 @@ class ReviewTests(unittest.TestCase):
                 try:
                     project(self.root)
                     self.assertEqual(
-                        "succeeded", self.call_operation("concorde-dev-loop")["status"]
+                        "succeeded", self.call_operation("concorde-plan")["status"]
                     )
                     for operation in ("concorde-plan", "concorde-tasks"):
                         self.assertEqual(
@@ -2311,7 +1720,7 @@ class ReviewTests(unittest.TestCase):
                 finally:
                     self.root = previous_root
 
-    @verifies("scenario.dev-loop.spec-gap")
+    @verifies("scenario.issues.blocker-history", "scenario.concorde.develop-gap")
     def test_upstream_task_gaps_block_standalone_dependents_but_allow_independent_queries(
         self,
     ):
@@ -2322,7 +1731,10 @@ class ReviewTests(unittest.TestCase):
                 try:
                     project(self.root)
                     self.assertEqual(
-                        "succeeded", self.call_operation("concorde-dev-loop")["status"]
+                        "succeeded", self.call_operation("concorde-plan")["status"]
+                    )
+                    self.assertEqual(
+                        "succeeded", self.call_operation("concorde-tasks")["status"]
                     )
                     self.assertEqual(
                         "blocked",
@@ -2351,7 +1763,7 @@ class ReviewTests(unittest.TestCase):
                         spec.read_text() + "\nThe daily-limit owner is transfer.\n"
                     )
                     self.assertEqual(
-                        "succeeded", self.call_operation("concorde-dev-loop")["status"]
+                        "succeeded", self.call_operation("concorde-plan")["status"]
                     )
                     self.assertEqual(
                         "resolved",
@@ -2362,7 +1774,7 @@ class ReviewTests(unittest.TestCase):
                 finally:
                     self.root = previous_root
 
-    @verifies("scenario.dev-loop.resume-bound")
+    @verifies("scenario.harness.invocation-worktree-binding")
     def test_review_binds_actual_worktree_even_with_identical_unversioned_bytes(self):
         original = inputs(self.invocation(), "spec")[0]["input_digest"]
         with tempfile.TemporaryDirectory() as directory:
@@ -2382,189 +1794,112 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("missing_change", rejected["errors"][0]["code"])
         self.assertEqual([], self.model.calls)
 
-    @verifies("scenario.dev-loop.coordinated")
-    def test_domain_review_aggregates_only_separate_recorded_component_contexts(self):
+    @verifies("scenario.review.standalone")
+    def test_explicit_component_reviews_keep_separate_recorded_contexts(self):
+        from concorde.implementation.implement import component_intent
+
         task = {
             "target_id": "scope.bank",
-            "task": "Implement the transfer and ledger promises",
+            "task": "Implement transfer and ledger promises",
         }
 
         def components(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"].append(
-                    {
-                        "id": "task.ledger",
-                        "target_id": "module.ledger",
-                        "description": "Implement the ledger read promise.",
-                        "acceptance": "Read known balances and reject unknown accounts.",
-                        "complete": False,
-                    }
+            data["tasks"].append(
+                {
+                    "id": "task.ledger",
+                    "target_id": "module.ledger",
+                    "description": "Implement ledger reads.",
+                    "acceptance": "Return known balances and reject unknown accounts.",
+                    "complete": False,
+                }
+            )
+
+        self.assertEqual(
+            "succeeded", self.call_operation("concorde-plan", task)["status"]
+        )
+        self.assertEqual(
+            "succeeded",
+            self.call_operation("concorde-tasks", task, callback=components)["status"],
+        )
+        parent = read_change(self.root, required=True)["targets"]["scope.bank"]
+        for target in ("service.transfer", "module.ledger"):
+            selected = [t for t in parent["tasks"] if t["target_id"] == target]
+            child = {"target_id": target, "task": component_intent(selected)}
+            for operation in ("plan", "tasks", "implement", "validate"):
+                result = self.call_operation("concorde-" + operation, child)
+                self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(
+            "succeeded", self.call_operation("concorde-implement", task)["status"]
+        )
+        reviewed = []
+        for target in ("service.transfer", "module.ledger"):
+            selected = [t for t in parent["tasks"] if t["target_id"] == target]
+            child = {"target_id": target, "task": component_intent(selected)}
+            result = self.call_operation("concorde-code-review", child)
+            self.assertEqual("succeeded", result["status"], result)
+            reviewed.extend(
+                r["data"]["target_id"] for r in result["output"]["data"]["reviews"]
+            )
+            for call in self.model.calls:
+                paths = {
+                    x["path"] for x in call["snapshot"]["implementation_artifacts"]
+                }
+                foreign = (
+                    "app/ledger.py"
+                    if target == "service.transfer"
+                    else "app/transfer.py"
                 )
+                self.assertNotIn(foreign, paths)
+        self.assertCountEqual(["service.transfer", "module.ledger"], reviewed)
 
-        result = self.call_operation("concorde-dev-loop", task, callback=components)
-        self.assertEqual("succeeded", result["status"], result)
-        references = {ref["id"] for ref in result["output"]["data"]["artifacts"]}
-        self.assertIn("review.module.ledger.code", references)
-        self.assertIn("review.service.transfer.code", references)
-        result = self.call_operation("concorde-code-review", dict(task))
-        self.assertEqual("succeeded", result["status"], result)
-        reviews = result["output"]["data"]["reviews"]
-        self.assertEqual(
-            {"service.transfer", "module.ledger"},
-            {x["data"]["target_id"] for x in reviews},
-        )
-        self.assertEqual(
-            ["code-review", "code-review"], [x["stage"] for x in self.model.calls]
-        )
-        for call in self.model.calls:
-            paths = {x["path"] for x in call["snapshot"]["implementation_artifacts"]}
-            if call["snapshot"]["target_id"] == "service.transfer":
-                self.assertNotIn("app/ledger.py", paths)
-            else:
-                self.assertNotIn("app/transfer.py", paths)
-        self.assertNotIn("def transfer", json.dumps(result))
-
-    @verifies("scenario.dev-loop.coordinated")
-    def test_domain_resume_upgrades_component_reviews_before_reusing_completed_work(
-        self,
-    ):
-        task = {"target_id": "scope.bank", "task": "Implement the transfer promise"}
-        self.assertEqual(
-            "succeeded",
-            self.call_operation(
-                "concorde-dev-loop", {**task, "specify": False, "run_reviews": False}
-            )["status"],
-        )
-
-        def component_gap(stage, snapshot, data, cwd):
-            if snapshot["target_id"] == "service.transfer":
-                self.missing("spec-review")(stage, snapshot, data, cwd)
-
-        result = self.call_operation(
-            "concorde-dev-loop",
-            {**task, "specify": False, "run_reviews": True},
-            callback=component_gap,
-        )
-        self.assertEqual("blocked", result["status"], result)
-        state = read_change(self.root, required=True)
-        self.assertTrue(state["review_requirements"]["service.transfer"]["spec"])
-        self.assertNotEqual("ready", state["status"])
-        spec = self.root / "specs/transfer/module.md"
-        spec.write_text(
-            spec.read_text()
-            + "\nThe transfer daily-limit owner supplies the required rule.\n"
-        )
-        resumed = self.call_operation(
-            "concorde-dev-loop", {**task, "specify": False, "run_reviews": False}
-        )
-        self.assertEqual("succeeded", resumed["status"], resumed)
-        self.assertIn(
-            ("service.transfer", "code-review"),
-            [
-                (call["snapshot"]["target_id"], call["stage"])
-                for call in self.model.calls
-            ],
-        )
-
-    def test_standalone_review_does_not_substitute_for_standard_loop_authoring(self):
-        ensure_change(self.root, task=self.task, allow_primary=True)
-        self.assertEqual(
-            "succeeded",
-            self.call_operation(
-                "concorde-spec-review",
-                {
-                    **self.task,
-                    "task": "Inspect a separate possible use",
-                },
-            )["status"],
-        )
-        result = self.call_operation("concorde-dev-loop")
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("specify", self.model.calls[0]["stage"])
-
-    @verifies(
-        "scenario.dev-loop.spec-gap",
-        "scenario.spec-authoring.invalid-output",
-    )
-    def test_rejected_authoring_preserves_gaps_until_the_host_accepts_the_repair(self):
-        result = self.call_operation(
-            "concorde-specify", callback=self.missing("specify")
-        )
-        self.assertEqual("blocked", result["status"], result)
-        original = (self.root / "specs/transfer/module.md").read_bytes()
-        gap = read_change(self.root, required=True)["issue_blockers"][0]
-
-        def invalid(stage, snapshot, data, cwd):
-            data["documents"] = [
-                {
-                    "path": "specs/transfer/module.md",
-                    "content": "Missing document declaration",
-                }
-            ]
-
-        result = self.call_operation("concorde-specify", callback=invalid)
-        self.assertNotEqual("succeeded", result["status"], result)
-        state = read_change(self.root, required=True)
-        self.assertEqual(gap, state["issue_blockers"][0])
-        self.assertEqual([gap["blocker"]], state["blockers"])
-        self.assertEqual(
-            original, (self.root / "specs/transfer/module.md").read_bytes()
-        )
-
-        def repair(stage, snapshot, data, cwd):
-            data["documents"] = [
-                {
-                    "path": "specs/transfer/module.md",
-                    "content": original.decode()
-                    + "\nThe daily-limit owner is transfer.\n",
-                }
-            ]
-
-        self.assertEqual(
-            "succeeded",
-            self.call_operation("concorde-specify", callback=repair)["status"],
-        )
-        self.assertEqual(
-            "resolved",
-            read_change(self.root, required=True)["issue_blockers"][0]["status"],
-        )
-
-    @verifies("scenario.dev-loop.spec-gap")
+    @verifies("scenario.issues.blocker-history")
     def test_rejected_plan_tasks_and_implementation_cannot_resolve_previous_gaps(self):
-        for phase in ("plan", "tasks", "implementation"):
+        for phase, operation in (
+            ("plan", "concorde-plan"),
+            ("tasks", "concorde-tasks"),
+            ("implementation", "concorde-implement"),
+        ):
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
-                previous_root = self.root
-                self.root = Path(directory)
+                previous, self.root = self.root, Path(directory)
                 try:
                     project(self.root)
+                    if phase in {"tasks", "implementation"}:
+                        self.call_operation("concorde-plan")
+                    if phase == "implementation":
+                        self.call_operation("concorde-tasks")
                     self.assertEqual(
                         "blocked",
-                        self.call_operation(
-                            "concorde-dev-loop", callback=self.missing(phase)
-                        )["status"],
+                        self.call_operation(operation, callback=self.missing(phase))[
+                            "status"
+                        ],
                     )
                     spec = self.root / "specs/transfer/module.md"
                     spec.write_text(
-                        spec.read_text() + "\nThe daily-limit owner is transfer.\n"
+                        spec.read_text() + "\nTransfer owns the daily limit.\n"
                     )
+                    if phase in {"tasks", "implementation"}:
+                        self.call_operation("concorde-plan")
+                    if phase == "implementation":
 
-                    def invalid(stage, snapshot, data, cwd, phase=phase):
+                        def new_tasks(stage, snapshot, data, cwd):
+                            data["tasks"][0]["id"] += ".replanned"
+
+                        self.call_operation("concorde-tasks", callback=new_tasks)
+                    before = read_change(self.root, required=True)["issue_blockers"]
+
+                    def invalid(stage, snapshot, data, cwd):
                         if stage == phase:
                             data["plan" if phase == "plan" else "tasks"] = (
                                 "" if phase == "plan" else []
                             )
 
-                    result = self.call_operation("concorde-dev-loop", callback=invalid)
+                    result = self.call_operation(operation, callback=invalid)
                     self.assertNotEqual("succeeded", result["status"], result)
                     self.assertEqual(
-                        "open",
-                        read_change(self.root, required=True)["issue_blockers"][0][
-                            "status"
-                        ],
+                        before, read_change(self.root, required=True)["issue_blockers"]
                     )
-                    self.assertTrue(read_change(self.root, required=True)["blockers"])
                     self.assertEqual(
-                        "succeeded", self.call_operation("concorde-dev-loop")["status"]
+                        "succeeded", self.call_operation(operation)["status"]
                     )
                     self.assertEqual(
                         "resolved",
@@ -2573,15 +1908,19 @@ class ReviewTests(unittest.TestCase):
                         ],
                     )
                 finally:
-                    self.root = previous_root
+                    self.root = previous
 
-    @verifies("scenario.dev-loop.spec-gap", "scenario.concorde.develop-failure")
+    @verifies(
+        "scenario.issues.blocker-history",
+        "scenario.planning.plan-empty",
+        "scenario.concorde.develop-failure",
+    )
     def test_failed_plan_artifact_write_can_resume_and_resolve_the_planning_gap(self):
         from concorde.planning import plan as planning
 
         self.assertEqual(
             "blocked",
-            self.call_operation("concorde-dev-loop", callback=self.missing("plan"))[
+            self.call_operation("concorde-plan", callback=self.missing("plan"))[
                 "status"
             ],
         )
@@ -2596,12 +1935,13 @@ class ReviewTests(unittest.TestCase):
 
         with patch.object(planning, "apply_files", side_effect=reject_plan):
             self.assertNotEqual(
-                "succeeded", self.call_operation("concorde-dev-loop")["status"]
+                "succeeded", self.call_operation("concorde-plan")["status"]
             )
-        self.assertEqual(
-            "open", read_change(self.root, required=True)["issue_blockers"][0]["status"]
-        )
-        resumed = self.call_operation("concorde-dev-loop")
+        failed_state = read_change(self.root, required=True)
+        self.assertEqual("open", failed_state["issue_blockers"][0]["status"])
+        self.assertNotEqual("ready", failed_state["status"])
+        self.assertNotEqual("delivered", failed_state.get("outcome"))
+        resumed = self.call_operation("concorde-plan")
         self.assertEqual("succeeded", resumed["status"], resumed)
         self.assertIn("plan", [call["stage"] for call in self.model.calls])
         self.assertEqual(
@@ -2638,10 +1978,345 @@ class ReviewTests(unittest.TestCase):
             "open", read_change(self.root, required=True)["issue_blockers"][0]["status"]
         )
 
+    @verifies(
+        "scenario.planning.historical-author-gap", "scenario.issues.blocker-history"
+    )
+    def test_historical_author_gap_direct_edit_fresh_assessment_review_plan_tasks(self):
+        from concorde.harness.change_worktree import record_task_gaps
+        from concorde.issues.store import read_issue, report_issue
+        from tests.concorde.issues.test_store import report, source
 
-class RepairLoopTests(unittest.TestCase):
-    """R-069: the dev-loop's only automatic revision edge is review_code -> tasks, bounded by
-    the declared max_repair_iterations policy (see operations/dev_loop.GRAPH)."""
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
+        self.assertEqual("succeeded", self.review()["status"])
+        run = self.invocation()
+        reference = report_issue(
+            self.root,
+            report(owner_target_id=self.task["target_id"], evidence=[]),
+            source(
+                agent="spec-author",
+                operation="concorde-specify",
+                phase="specify",
+                target_id=self.task["target_id"],
+                change_id=run.change_id,
+            ),
+        )
+        record_task_gaps(
+            self.root,
+            self.task["target_id"],
+            self.task["task"],
+            "specify",
+            [{**reference, "blocked_step": "Specify retry ownership"}],
+            run.blocker_revision("specify"),
+            spec_resolution=run.repository.spec_context(run.target.id).value,
+        )
+        original = read_change(self.root, required=True)["issue_blockers"]
+        issue_before = (self.root / reference["path"]).read_bytes()
+
+        # An unsuccessful reassessment cannot retire the old prerequisite.
+        def failed_assessment(stage, snapshot, data, cwd):
+            data.update(outcome="failed", answer="No accepted assessment.")
+
+        self.assertEqual(
+            "blocked",
+            self.call_operation("concorde-context-solve", callback=failed_assessment)[
+                "status"
+            ],
+        )
+        self.assertEqual(
+            original, read_change(self.root, required=True)["issue_blockers"]
+        )
+        self.assertEqual(
+            "blocked",
+            self.call_operation(
+                "concorde-validate", {**self.task, "run_checks": False}
+            )["status"],
+        )
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(
+            document.read_text()
+            + "\nTransfer owns retry admission; callers never retry implicitly.\n"
+        )
+        metadata = Path(str(document) + ".json")
+        body = json.loads(metadata.read_text())
+        entity = next(e for e in body["entities"] if "files" in e)
+        entity["files"].append("app/retry.py")
+        metadata.write_text(json.dumps(body, indent=2) + "\n")
+        (self.root / "app/retry.py").write_text(
+            "# Retry admission belongs to transfer.\n"
+        )
+        registry_path = self.root / ".concorde/specs.json"
+        registry = json.loads(registry_path.read_text())
+        target = next(
+            t for t in registry["targets"] if t["id"] == self.task["target_id"]
+        )
+        target["files"] = sorted([*target["files"], "app/retry.py"])
+        registry_path.write_text(json.dumps(registry, indent=2) + "\n")
+        self.assertEqual(
+            original, read_change(self.root, required=True)["issue_blockers"]
+        )
+        self.assertIsNone(current(self.invocation(), "spec"))
+        self.assertEqual(
+            "blocked",
+            self.call_operation(
+                "concorde-validate", {**self.task, "run_checks": False}
+            )["status"],
+        )
+        assessed = self.call_operation("concorde-context-solve")
+        self.assertEqual("succeeded", assessed["status"], assessed)
+        history = read_change(self.root, required=True)["issue_blockers"]
+        self.assertEqual("superseded", history[0]["status"])
+        self.assertEqual(
+            original[0],
+            {
+                k: v
+                for k, v in {**history[0], "status": "open"}.items()
+                if k != "reassessment"
+            },
+        )
+        self.assertEqual(
+            assessed["output"]["data"]["context_id"],
+            history[0]["reassessment"]["context_id"],
+        )
+        # Assessment is not an independent review and cannot refresh its requirement.
+        self.assertEqual(
+            "review_required", self.call_operation("concorde-plan")["errors"][0]["code"]
+        )
+        self.assertEqual("succeeded", self.review()["status"])
+        for operation in ("concorde-plan", "concorde-tasks"):
+            result = self.call_operation(operation)
+            self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(issue_before, (self.root / reference["path"]).read_bytes())
+        self.assertEqual(
+            "open", read_issue(self.root, reference["issue_id"])[0]["status"]
+        )
+        self.assertEqual(
+            history, read_change(self.root, required=True)["issue_blockers"]
+        )
+
+    @verifies("scenario.planning.historical-author-gap")
+    def test_historical_author_gap_rejects_stale_failed_and_unrelated_assessment(self):
+        from concorde.harness.change_worktree import record_task_gaps
+        from concorde.issues.store import report_issue
+        from tests.concorde.issues.test_store import report, source
+
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
+        run = self.invocation()
+        reference = report_issue(
+            self.root,
+            report(owner_target_id=self.task["target_id"], evidence=[]),
+            source(
+                target_id=self.task["target_id"],
+                phase="specify",
+                operation="concorde-specify",
+            ),
+        )
+        record_task_gaps(
+            self.root,
+            self.task["target_id"],
+            self.task["task"],
+            "specify",
+            [{**reference, "blocked_step": "Specify retry ownership"}],
+            run.blocker_revision("specify"),
+        )
+        before = read_change(self.root, required=True)["issue_blockers"]
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(document.read_text() + "\nTransfer owns retries.\n")
+        for selected in (
+            {**self.task, "task": "An unrelated question"},
+            {**self.task, "constraints": ["Assess only documentation spelling"]},
+            {"target_id": "module.ledger", "task": self.task["task"]},
+        ):
+            result = self.call_operation("concorde-context-solve", selected)
+            self.assertEqual("succeeded", result["status"], result)
+            self.assertEqual(
+                before, read_change(self.root, required=True)["issue_blockers"]
+            )
+
+        def fail(stage, snapshot, data, cwd):
+            data.update(outcome="failed", answer="Assessment failed.")
+
+        self.assertNotEqual(
+            "succeeded",
+            self.call_operation("concorde-context-solve", callback=fail)["status"],
+        )
+
+        def stale(stage, snapshot, data, cwd):
+            document.write_text(document.read_text() + "\nConcurrent edit.\n")
+
+        result = self.call_operation("concorde-context-solve", callback=stale)
+        self.assertEqual("stale_context", result["errors"][0]["code"], result)
+        self.assertEqual(
+            before, read_change(self.root, required=True)["issue_blockers"]
+        )
+        # An accepted planner cannot bypass an unresolved historical blocker.
+        self.assertEqual("succeeded", self.review()["status"])
+        self.assertEqual(
+            "blocked",
+            self.call_operation(
+                "concorde-validate", {**self.task, "run_checks": False}
+            )["status"],
+        )
+        self.assertEqual(
+            before, read_change(self.root, required=True)["issue_blockers"]
+        )
+        self.assertEqual(
+            "succeeded", self.call_operation("concorde-context-solve")["status"]
+        )
+        self.assertEqual(
+            "superseded",
+            read_change(self.root, required=True)["issue_blockers"][0]["status"],
+        )
+
+    @verifies("scenario.planning.historical-author-gap")
+    def test_obsolete_author_relations_supersede_without_inventing_past_success(self):
+        from concorde.harness.change_worktree import record_task_gaps
+        from concorde.issues.store import report_issue
+        from tests.concorde.issues.test_store import report, source
+
+        for original_revision, issue_type in (
+            (None, "gap"),
+            ("known", "bug"),
+            ("known", "gap"),
+        ):
+            with self.subTest(revision=original_revision, issue_type=issue_type):
+                fixture = ReviewTests()
+                fixture.setUp()
+                try:
+                    ensure_change(fixture.root, task=fixture.task, allow_primary=True)
+                    bind_owner(fixture.root, fixture.task)
+                    run = fixture.invocation()
+                    payload = report(owner_target_id=run.target.id, evidence=[])
+                    payload["type"] = issue_type
+                    if issue_type == "bug":
+                        payload["subtype"] = None
+                    reference = report_issue(
+                        fixture.root,
+                        payload,
+                        source(
+                            target_id=run.target.id,
+                            phase="specify",
+                            operation="concorde-specify",
+                        ),
+                    )
+                    revision = (
+                        run.blocker_revision("specify") if original_revision else None
+                    )
+                    record_task_gaps(
+                        fixture.root,
+                        run.target.id,
+                        run.task["task"],
+                        "specify",
+                        [{**reference, "blocked_step": "Retired author failed"}],
+                        revision,
+                    )
+                    before = read_change(fixture.root, required=True)["issue_blockers"][
+                        0
+                    ]
+                    issue_bytes = (fixture.root / reference["path"]).read_bytes()
+                    result = fixture.call_operation("concorde-context-solve")
+                    self.assertEqual("succeeded", result["status"], result)
+                    after = read_change(fixture.root, required=True)["issue_blockers"][
+                        0
+                    ]
+                    self.assertEqual("superseded", after["status"])
+                    self.assertEqual(
+                        "retired_author_prerequisite", after["reassessment"]["reason"]
+                    )
+                    self.assertEqual(
+                        before,
+                        {
+                            key: value
+                            for key, value in {**after, "status": "open"}.items()
+                            if key != "reassessment"
+                        },
+                    )
+                    self.assertEqual(
+                        issue_bytes, (fixture.root / reference["path"]).read_bytes()
+                    )
+                finally:
+                    fixture.doCleanups()
+
+    @verifies("scenario.planning.historical-author-gap")
+    def test_insufficient_assessment_keeps_obsolete_relation_and_records_current_gap(
+        self,
+    ):
+        from concorde.harness.change_worktree import record_task_gaps
+        from concorde.issues.store import report_issue
+        from tests.concorde.issues.test_store import report, source
+
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
+        run = self.invocation()
+        reference = report_issue(
+            self.root,
+            report(owner_target_id=run.target.id, evidence=[]),
+            source(
+                target_id=run.target.id, phase="specify", operation="concorde-specify"
+            ),
+        )
+        record_task_gaps(
+            self.root,
+            run.target.id,
+            run.task["task"],
+            "specify",
+            [{**reference, "blocked_step": "Old author dependency"}],
+            None,
+        )
+        before = read_change(self.root, required=True)["issue_blockers"][0]
+        result = self.call_operation(
+            "concorde-context-solve", callback=self.missing("context-solve")
+        )
+        self.assertEqual("blocked", result["status"], result)
+        relations = read_change(self.root, required=True)["issue_blockers"]
+        self.assertEqual(before, relations[0])
+        self.assertEqual("context-solve", relations[1]["phase"])
+        self.assertEqual("open", relations[1]["status"])
+        result = self.call_operation("concorde-context-solve")
+        self.assertEqual("succeeded", result["status"], result)
+        relations = read_change(self.root, required=True)["issue_blockers"]
+        self.assertEqual("superseded", relations[0]["status"])
+        # The retained assessment's own unchanged contract gap is still a prerequisite.
+        self.assertEqual("open", relations[1]["status"])
+        self.assertEqual("blocked", self.call_operation("concorde-plan")["status"])
+
+    @verifies("scenario.planning.historical-author-gap")
+    def test_obsolete_author_relation_rejects_ambiguous_attribution(self):
+        from concorde.harness.change_worktree import record_task_gaps
+        from concorde.issues.store import report_issue
+        from tests.concorde.issues.test_store import report, source
+
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
+        run = self.invocation()
+        reference = report_issue(
+            self.root,
+            report(owner_target_id=run.target.id, evidence=[]),
+            source(
+                target_id=run.target.id,
+                phase="implementation",
+                operation="concorde-implement",
+            ),
+        )
+        record_task_gaps(
+            self.root,
+            run.target.id,
+            run.task["task"],
+            "specify",
+            [{**reference, "blocked_step": "Incorrectly attributed execution"}],
+            None,
+        )
+        before = read_change(self.root, required=True)["issue_blockers"]
+        result = self.call_operation("concorde-context-solve")
+        self.assertEqual("invalid_worktree_state", result["errors"][0]["code"], result)
+        self.assertEqual(
+            before, read_change(self.root, required=True)["issue_blockers"]
+        )
+
+
+class ExplicitRepairTests(unittest.TestCase):
+    """Caller-selected repair consumes current review evidence, not graph history."""
 
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -2668,7 +2343,6 @@ class RepairLoopTests(unittest.TestCase):
             executor=self.model.executor,
             allow_primary_worktree=True,
             mode=mode,
-            routed_target=(data or self.task)["target_id"],
         )
         return run_operation(
             operation,
@@ -2710,374 +2384,240 @@ class RepairLoopTests(unittest.TestCase):
                 }
             ]
 
+    def prepare_review(self):
+        for operation in ("plan", "tasks", "implement"):
+            result = self.call_operation("concorde-" + operation)
+            self.assertEqual("succeeded", result["status"], result)
+
+        def finding(stage, snapshot, data, cwd):
+            if stage == "code-review":
+                data.update(status="findings", issues=[self.finding()], blockers=[])
+
+        result = self.call_operation("concorde-code-review", callback=finding)
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual(["code-review"], [c["stage"] for c in self.model.calls])
+        return result["output"]["data"]["artifacts"][0]
+
+    def target(self):
+        return read_change(self.root, required=True)["targets"]["service.transfer"]
+
+    def new_tasks(self, stage, snapshot, data, cwd):
+        if stage == "tasks":
+            data["tasks"][0]["id"] = "task.transfer.repaired"
+
     @verifies(
         "scenario.planning.task-history-identities",
-        "scenario.dev-loop.repair",
         "scenario.planning.tasks-id-conflict",
     )
-    def test_code_review_repair_reserves_current_ids_before_archiving_them(self):
-        def callback(stage, snapshot, data, cwd):
-            if stage == "code-review":
-                data.update(status="findings", issues=[self.finding()], blockers=[])
-            if stage == "tasks":
-                values = {v["type_id"]: v["data"] for v in snapshot["stage_inputs"]}
-                reserved = values["concorde-task-identity-constraints"][
-                    "reserved_task_ids"
-                ]
-                self.assertEqual(
-                    ["task.transfer"] if "concorde-review-result" in values else [],
-                    reserved,
-                )
-                # The unchanged process-double result deliberately reuses task.transfer.
-
-        rejected = self.call_operation("concorde-dev-loop", callback=callback)
-        self.assertEqual("child_blocked", rejected["errors"][0]["code"], rejected)
-        errors = json.loads(
-            rejected["errors"][0]["message"].split("concorde-tasks blocked: ", 1)[1]
-        )
-        self.assertEqual("invalid_completion", errors[0]["code"])
-        self.assertIn("task.transfer", errors[0]["message"])
-        change = read_change(self.root, required=True)
-        state = change["targets"]["service.transfer"]
-        self.assertEqual([], state.get("task_history", []))
-        self.assertTrue(all(t["complete"] for t in state["tasks"]))
-        self.assertIsNotNone(change["graph"]["service.transfer"]["repair"])
-        self.assertEqual(
-            1, [c["stage"] for c in self.model.calls].count("implementation")
-        )
-
-    @verifies("scenario.dev-loop.repair", "scenario.implementation.admitted-work")
-    def test_blocking_then_clean_repairs_once_and_reaches_ready(self):
-        counter = [0]
-        reviews = {"count": 0}
-        checked_rounds = []
-
-        def callback(stage, snapshot, data, cwd):
-            if stage == "code-review":
-                candidate = read_change(self.root, required=True)
-                target = candidate["targets"]["service.transfer"]
-                self.assertTrue(target["checks"])
-                self.assertTrue(
-                    all(check["status"] == "passed" for check in target["checks"])
-                )
-                self.assertTrue(all(task["complete"] for task in target["tasks"]))
-                checked_rounds.append([task["id"] for task in target["tasks"]])
-                reviews["count"] += 1
-                if reviews["count"] == 1:
-                    data.update(status="findings", issues=[self.finding()], blockers=[])
-            if stage == "tasks":
-                counter[0] += 1
-                self.repair_tasks(counter, snapshot, data)
-
-        result = self.call_operation("concorde-dev-loop", callback=callback)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
-        stages = [c["stage"] for c in self.model.calls]
-        self.assertEqual(2, stages.count("implementation"))
-        self.assertEqual(2, stages.count("code-review"))
-        tasks_calls = [c for c in self.model.calls if c["stage"] == "tasks"]
-        self.assertEqual(2, len(tasks_calls))
-        second_inputs = tasks_calls[1]["snapshot"]["stage_inputs"]
-        types = {item["type_id"] for item in second_inputs}
-        self.assertIn("concorde-implementation-task", types)
-        self.assertIn("concorde-review-result", types)
-        implementation_task_input = next(
-            item
-            for item in second_inputs
-            if item["type_id"] == "concorde-implementation-task"
-        )
-        self.assertTrue(implementation_task_input["data"]["tasks"])
-        self.assertTrue(
-            all(t["complete"] for t in implementation_task_input["data"]["tasks"])
-        )
-        implement_calls = [
-            c for c in self.model.calls if c["stage"] == "implementation"
-        ]
-        self.assertEqual(2, len(implement_calls))
-        repair_implement_types = {
-            item["type_id"] for item in implement_calls[1]["snapshot"]["stage_inputs"]
-        }
-        self.assertIn("concorde-review-result", repair_implement_types)
-        feedback = next(
-            item
-            for item in second_inputs
-            if item["type_id"] == "concorde-review-result"
-        )
-        self.assertEqual("code", feedback["data"]["review_mode"])
-        self.assertEqual("findings", feedback["data"]["status"])
-        self.assertEqual(1, len(feedback["data"]["issues"]))
-        observed = issue_observation(self.root, feedback["data"]["issues"][0])
-        self.assertEqual(self.finding()["problem"], observed["report"]["description"])
-        self.assertEqual(
-            self.finding()["severity"], feedback["data"]["issues"][0]["severity"]
-        )
-        self.assertEqual(
-            feedback,
-            next(
-                item
-                for item in implement_calls[1]["snapshot"]["stage_inputs"]
-                if item["type_id"] == "concorde-review-result"
-            ),
-        )
-        self.assertEqual(
-            [["task.transfer"], ["task.transfer.repair.2"]], checked_rounds
-        )
-        self.assertEqual(
-            ["tasks", "implementation", "code-review"] * 2,
-            [
-                stage
-                for stage in stages
-                if stage in {"tasks", "implementation", "code-review"}
-            ],
-        )
-        state = read_change(self.root, required=True)
-        self.assertEqual(1, state["graph"]["service.transfer"]["repair_iteration"])
-        self.assertEqual(
-            2, state["graph"]["service.transfer"]["policy"]["max_repair_iterations"]
-        )
-        transitions = state["graph"]["service.transfer"]["transitions"]
-        repairs = [
-            t for t in transitions if t["trigger"] == "ai-review" and t["to"] == "tasks"
-        ]
-        self.assertEqual(1, len(repairs))
-        self.assertEqual("model-driven", repairs[0]["source"])
-        self.assertEqual(
-            [feedback["data"]["issues"][0]["issue_id"]], repairs[0]["finding_ids"]
-        )
-        self.assertIsNotNone(repairs[0]["artifact"])
-        self.assertEqual(1, len(state["targets"]["service.transfer"]["task_history"]))
-
-    def _assert_stopped_repair_progress(self, state, rounds):
-        target = state["targets"]["service.transfer"]
-        self.assertTrue(target["plan"])
-        self.assertTrue(all(task["complete"] for task in target["tasks"]))
-        self.assertEqual(rounds, len(target["task_history"]))
-        self.assertEqual(
-            rounds + 1, [call["stage"] for call in self.model.calls].count("tasks")
-        )
-        final = state["graph"]["service.transfer"]["transitions"][-1]
-        self.assertEqual(
-            ("review_code", "END", "code-driven", "conflicting", state["status"]),
-            (
-                final["from"],
-                final["to"],
-                final["source"],
-                final["outcome"],
-                final["status"],
-            ),
-        )
-        self.assertEqual(self.last_review_progress["plan"], target["plan"])
-        self.assertEqual(self.last_review_progress["tasks"], target["tasks"])
-        self.assertEqual(
-            self.last_review_progress["task_history"], target["task_history"]
-        )
-        self.assertEqual(
-            self.last_review_bytes, (self.root / "app/transfer.py").read_bytes()
-        )
-
-    def _capture_review_progress(self):
-        self.last_review_progress = read_change(self.root, required=True)["targets"][
-            "service.transfer"
-        ]
-        self.last_review_bytes = (self.root / "app/transfer.py").read_bytes()
-
-    def _reach_unchanged_feedback_waiting(self):
-        counter = [0]
-
-        def callback(stage, snapshot, data, cwd):
-            if stage == "code-review":
-                self._capture_review_progress()
-                data.update(status="findings", issues=[self.finding()], blockers=[])
-            if stage == "tasks":
-                counter[0] += 1
-                self.repair_tasks(counter, snapshot, data)
-
-        result = self.call_operation("concorde-dev-loop", callback=callback)
-        self.assertEqual("blocked", result["status"], result)
-        return result
-
-    @verifies("scenario.dev-loop.repair-exhausted")
-    def test_unchanged_blocking_feedback_stops_waiting_after_one_repair(self):
-        result = self._reach_unchanged_feedback_waiting()
-        self.assertEqual("conflicting", result["output"]["data"]["outcome"])
-        state = read_change(self.root, required=True)
-        self.assertEqual("waiting", state["status"])
-        self._assert_stopped_repair_progress(state, rounds=1)
-        stages = [c["stage"] for c in self.model.calls]
-        self.assertEqual(2, stages.count("implementation"))
-        self.assertEqual(2, stages.count("code-review"))
-
-    @verifies(
-        "scenario.dev-loop.repair",
-        "scenario.dev-loop.repair-exhausted",
-    )
-    def test_repeated_different_blocking_feedback_stops_at_the_declared_limit(self):
-        review_counter = [0]
-        counter = [0]
-
-        def callback(stage, snapshot, data, cwd):
-            if stage == "code-review":
-                review_counter[0] += 1
-                self._capture_review_progress()
-                data.update(
-                    status="findings",
-                    blockers=[],
-                    issues=[
-                        self.finding(
-                            problem=f"Distinct defect variant {review_counter[0]}.",
-                            finding_id=f"defect-{review_counter[0]}",
-                        )
-                    ],
-                )
-            if stage == "tasks":
-                counter[0] += 1
-                self.repair_tasks(counter, snapshot, data)
-
-        result = self.call_operation("concorde-dev-loop", callback=callback)
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual("conflicting", result["output"]["data"]["outcome"])
-        state = read_change(self.root, required=True)
-        self.assertEqual("limit_exhausted", state["status"])
-        self._assert_stopped_repair_progress(state, rounds=2)
-        stages = [c["stage"] for c in self.model.calls]
-        self.assertEqual(3, stages.count("implementation"))
-        self.assertEqual(3, stages.count("code-review"))
-        self.assertEqual(2, state["graph"]["service.transfer"]["repair_iteration"])
-        self.assertEqual(
-            2, state["graph"]["service.transfer"]["policy"]["max_repair_iterations"]
-        )
-
-    @verifies("scenario.dev-loop.spec-gap")
-    def test_spec_gap_in_spec_review_stops_waiting_before_planning(self):
-        def callback(stage, snapshot, data, cwd):
-            if stage == "spec-review":
-                data.update(
-                    status="findings",
-                    blockers=[
-                        {
-                            "question": "Who owns the daily limit?",
-                            "blocked_step": "Decide daily-limit admission",
-                            "needed_contract": "The transfer daily-limit owner and admission rule",
-                        }
-                    ],
-                    issues=[
-                        {
-                            "id": "missing-limit",
-                            "severity": "blocking",
-                            "target_id": snapshot["target_id"],
-                            "document": "specs/transfer/module.md",
-                            "contract": "The transfer daily-limit owner and admission rule",
-                            "location": {
-                                "path": "specs/transfer/module.md",
-                                "line": 12,
-                            },
-                            "problem": "A required daily-limit promise is absent.",
-                            "affected_task": "Decide daily-limit admission",
-                        }
-                    ],
-                )
-
-        result = self.call_operation("concorde-dev-loop", callback=callback)
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"])
-        self.assertEqual("waiting", read_change(self.root, required=True)["status"])
-        self.assertNotIn("plan", [c["stage"] for c in self.model.calls])
-
-    def test_admitted_specify_spec_change_does_not_spuriously_reset_the_graph_record(
+    def test_explicit_review_repair_reserves_current_ids_and_preserves_rejected_state(
         self,
     ):
-        def callback(stage, snapshot, data, cwd):
-            if stage == "specify" and snapshot["target_id"] == "service.transfer":
-                document = next(
-                    d
-                    for d in snapshot["spec_resolution"]["sources"]
-                    if d["path"] == "specs/transfer/module.md"
+        reference = self.prepare_review()
+        before = self.target()
+        result = self.call_operation(
+            "concorde-tasks", {**self.task, "repair_review": reference}
+        )
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("invalid_completion", result["errors"][0]["code"])
+        self.assertIn("task.transfer", result["errors"][0]["message"])
+        self.assertEqual(before, self.target())
+        values = {
+            v["type_id"]: v["data"]
+            for v in self.model.calls[-1]["snapshot"]["stage_inputs"]
+        }
+        self.assertEqual(
+            ["task.transfer"],
+            values["concorde-task-identity-constraints"]["reserved_task_ids"],
+        )
+        self.assertTrue(values["concorde-review-result"]["issues"])
+
+    @verifies(
+        "scenario.planning.repair-current", "scenario.implementation.admitted-work"
+    )
+    def test_caller_orders_repair_implementation_review_and_validation(self):
+        reference = self.prepare_review()
+        before = self.target()
+        repaired = self.call_operation(
+            "concorde-tasks",
+            {**self.task, "repair_review": reference},
+            callback=self.new_tasks,
+        )
+        self.assertEqual("succeeded", repaired["status"], repaired)
+        self.assertEqual(["tasks"], [c["stage"] for c in self.model.calls])
+        self.assertEqual(before["tasks"], self.target()["task_history"][-1]["tasks"])
+        feedback = next(
+            v
+            for v in self.model.calls[-1]["snapshot"]["stage_inputs"]
+            if v["type_id"] == "concorde-review-result"
+        )
+        implemented = self.call_operation("concorde-implement")
+        self.assertEqual("succeeded", implemented["status"], implemented)
+        self.assertEqual(["implementation"], [c["stage"] for c in self.model.calls])
+        self.assertIn(feedback, self.model.calls[-1]["snapshot"]["stage_inputs"])
+        self.assertNotIn("repair_review", self.target())
+        reviewed = self.call_operation("concorde-code-review")
+        self.assertEqual("succeeded", reviewed["status"], reviewed)
+        validated = self.call_operation("concorde-validate")
+        self.assertEqual("succeeded", validated["status"], validated)
+        self.assertEqual("ready", validated["output"]["data"]["outcome"])
+        self.assertFalse(read_change(self.root, required=True).get("graph"))
+
+    @verifies("scenario.planning.repair-current")
+    def test_missing_corrupt_forged_and_replaced_reviews_fail_before_task_worker(self):
+        from concorde.spec.typed_data import artifact, canonical
+
+        reference = self.prepare_review()
+        before = self.target()
+        saved = (self.root / reference["path"]).read_bytes()
+        cases = [
+            {**reference, "path": ".concorde/runs/missing.json"},
+            {**reference, "digest": "sha256:" + "0" * 64},
+        ]
+        forged = json.loads(saved)
+        forged["data"]["input_digest"] = "sha256:" + "f" * 64
+        path = ".concorde/runs/forged.json"
+        (self.root / path).write_text(canonical(forged))
+        cases.append(artifact(self.root, reference["id"], path))
+        for selected in cases:
+            with self.subTest(reference=selected):
+                result = self.call_operation(
+                    "concorde-tasks",
+                    {**self.task, "repair_review": selected},
+                    callback=self.new_tasks,
                 )
-                data["documents"] = [
-                    {
-                        "path": "specs/transfer/module.md",
-                        "content": (cwd / document["path"]).read_text()
-                        + "\nThe transfer operation documents an additional promise.\n",
-                    }
-                ]
-
-        result = self.call_operation("concorde-dev-loop", callback=callback)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
-        self.assertIn(
-            "The transfer operation documents an additional promise.",
-            (self.root / "specs/transfer/module.md").read_text(),
-        )
+                self.assertEqual("blocked", result["status"], result)
+                self.assertEqual([], self.model.calls)
+                self.assertEqual(before, self.target())
+        # A newer clean review supersedes the old blocking report even at unchanged bytes.
         self.assertEqual(
-            [],
-            read_change(self.root, required=True)["graph"]["service.transfer"][
-                "transitions"
-            ],
+            "succeeded", self.call_operation("concorde-code-review")["status"]
         )
-        # A second dev-loop resumes without re-authoring; the first run's own admitted Spec change
-        # must not be mistaken for an out-of-band human edit and spuriously reset the record.
-        second = self.call_operation("concorde-dev-loop")
-        self.assertEqual("succeeded", second["status"], second)
-        self.assertNotIn("specify", [c["stage"] for c in self.model.calls])
-        record = read_change(self.root, required=True)["graph"]["service.transfer"]
-        self.assertEqual(
-            [], [t for t in record["transitions"] if t["trigger"] == "human"]
+        before = self.target()
+        result = self.call_operation(
+            "concorde-tasks",
+            {**self.task, "repair_review": reference},
+            callback=self.new_tasks,
         )
-        # A genuinely human Spec edit between runs still resets the record.
-        spec = self.root / "specs/transfer/module.md"
-        spec.write_text(spec.read_text() + "\nA human directly edited this Spec.\n")
-        third = self.call_operation("concorde-dev-loop")
-        self.assertEqual("succeeded", third["status"], third)
-        record = read_change(self.root, required=True)["graph"]["service.transfer"]
-        human_transitions = [
-            t for t in record["transitions"] if t["trigger"] == "human"
-        ]
-        self.assertEqual(1, len(human_transitions))
-        self.assertEqual("spec_changed", human_transitions[0]["outcome"])
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual([], self.model.calls)
+        self.assertEqual(before, self.target())
 
-    @verifies("scenario.dev-loop.repair-exhausted")
-    def test_human_implementation_edit_resets_the_repair_record(self):
-        self._reach_unchanged_feedback_waiting()
-        before = read_change(self.root, required=True)
-        self.assertEqual(1, before["graph"]["service.transfer"]["repair_iteration"])
+    @verifies("scenario.planning.repair-current")
+    def test_changed_code_invalidates_explicit_repair_evidence(self):
+        reference = self.prepare_review()
+        before = self.target()
         code = self.root / "app/transfer.py"
-        code.write_text(code.read_text() + "\n# a human edited this directly\n")
-        review_count = [0]
+        code.write_text(code.read_text() + "\n# directly edited\n")
+        result = self.call_operation(
+            "concorde-tasks",
+            {**self.task, "repair_review": reference},
+            callback=self.new_tasks,
+        )
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("stale_evidence", result["errors"][0]["code"])
+        self.assertEqual([], self.model.calls)
+        self.assertEqual(before, self.target())
 
-        def callback(stage, snapshot, data, cwd):
-            if stage == "code-review":
-                review_count[0] += 1
-                candidate = read_change(self.root, required=True)
-                if review_count[0] == 1:
-                    # The same feedback must be eligible again only after admission resets
-                    # the old count and fingerprint for the intervening implementation edit.
-                    self.assertEqual(
-                        0, candidate["graph"]["service.transfer"]["repair_iteration"]
-                    )
-                    self.assertEqual(
-                        before["targets"]["service.transfer"]["task_history"],
-                        candidate["targets"]["service.transfer"]["task_history"],
-                    )
-                    data.update(status="findings", issues=[self.finding()], blockers=[])
-            if stage == "tasks":
-                self.repair_tasks([3], snapshot, data)
-
-        result = self.call_operation("concorde-dev-loop", callback=callback)
+    @verifies(
+        "scenario.planning.repair-replacement",
+        "scenario.planning.task-history-identities",
+    )
+    def test_replacement_clears_old_feedback_but_preserves_ids_and_review_requirement(
+        self,
+    ):
+        reference = self.prepare_review()
+        result = self.call_operation(
+            "concorde-tasks",
+            {**self.task, "repair_review": reference},
+            callback=self.new_tasks,
+        )
         self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(reference, self.target()["repair_review"])
+
+        def replacement(stage, snapshot, data, cwd):
+            if stage == "tasks":
+                data["tasks"][0]["id"] = "task.transfer.replacement"
+
+        result = self.call_operation("concorde-tasks", callback=replacement)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertNotIn("repair_review", self.target())
+        self.assertEqual(2, len(self.target()["task_history"]))
+        self.assertTrue(
+            read_change(self.root, required=True)["review_requirements"][
+                "service.transfer"
+            ]["code"]
+        )
+        result = self.call_operation("concorde-plan")
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(3, len(self.target()["task_history"]))
+        result = self.call_operation("concorde-tasks")
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("invalid_completion", result["errors"][0]["code"])
+        self.assertEqual([], self.target()["tasks"])
+
+    @verifies(
+        "scenario.planning.plan-current",
+        "scenario.planning.plan-stale",
+        "scenario.implementation.admitted-work",
+    )
+    def test_direct_paired_spec_and_registry_edits_then_explicit_operations(self):
+        spec = self.root / "specs/transfer/module.md"
+        metadata = self.root / "specs/transfer/module.md.json"
+        registry = self.root / ".concorde/specs.json"
+        spec.write_text(
+            spec.read_text()
+            + "\nThe calculation may share its pure arithmetic helpers.\n"
+        )
+        declaration = json.loads(metadata.read_text())
+        entity = next(
+            e
+            for e in declaration["entities"]
+            if e["id"] == "entity.transfer.calculation"
+        )
+        entity["files"].append("app/arithmetic.py")
+        metadata.write_text(json.dumps(declaration, indent=2) + "\n")
+        registration = json.loads(registry.read_text())
+        target = next(
+            t for t in registration["targets"] if t["id"] == self.task["target_id"]
+        )
+        target["files"].append("app/arithmetic.py")
+        target["files"].sort()
+        registry.write_text(json.dumps(registration, indent=2) + "\n")
+        (self.root / "app/arithmetic.py").write_text(
+            "def subtract(balance, amount):\n    return balance - amount\n"
+        )
+        from concorde.spec.validation import validate_repository
+
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        for operation in (
+            "plan",
+            "tasks",
+            "implement",
+            "spec-review",
+            "code-review",
+            "validate",
+        ):
+            result = self.call_operation("concorde-" + operation)
+            self.assertEqual("succeeded", result["status"], result)
+            for call in self.model.calls:
+                paths = {
+                    source["path"]
+                    for source in call["snapshot"]["spec_resolution"]["sources"]
+                }
+                self.assertIn("specs/transfer/module.md", paths)
+                self.assertIn("specs/transfer/module.md.json", paths)
+                self.assertNotIn(call["stage"], {"specify", "route", "topology-author"})
         self.assertEqual("ready", result["output"]["data"]["outcome"])
-        stages = [call["stage"] for call in self.model.calls]
-        self.assertNotIn("plan", stages)
-        self.assertEqual(1, stages.count("tasks"))
-        self.assertEqual(2, stages.count("code-review"))
-        state = read_change(self.root, required=True)
-        record = state["graph"]["service.transfer"]
-        self.assertEqual(1, record["repair_iteration"])
-        self.assertEqual(2, len(state["targets"]["service.transfer"]["task_history"]))
-        human_transitions = [
-            t for t in record["transitions"] if t["trigger"] == "human"
-        ]
-        self.assertEqual(1, len(human_transitions))
-        self.assertEqual("implementation_changed", human_transitions[0]["outcome"])
+        self.assertFalse(read_change(self.root, required=True).get("graph"))
+        # Even a metadata-only byte change invalidates the accepted plan and selected reviews.
+        before = self.target()
+        metadata.write_text(metadata.read_text() + "\n")
+        result = self.call_operation("concorde-tasks", callback=self.new_tasks)
+        self.assertEqual("blocked", result["status"], result)
+        self.assertIn(result["errors"][0]["code"], {"stale_context", "review_required"})
+        self.assertEqual([], self.model.calls)
+        self.assertEqual(before, self.target())
 
     def test_operation_execution_error_during_standalone_code_review_maps_to_execution_limit(
         self,
@@ -3086,6 +2626,7 @@ class RepairLoopTests(unittest.TestCase):
         from concorde.harness.worker_executor import OperationExecutionError
 
         ensure_change(self.root, task=self.task, allow_primary=True)
+        bind_owner(self.root, self.task)
         double = self.double()
 
         def fail(invocation, **options):
@@ -3109,3 +2650,163 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual(
             "limit_exhausted", read_change(self.root, required=True)["status"]
         )
+
+
+class ExplicitComponentTests(unittest.TestCase):
+    """Components are explicit caller work, admitted only from current parent intent."""
+
+    setUp = ReviewTests.setUp
+    double = ReviewTests.double
+    call_operation = ReviewTests.call_operation
+
+    def prepare_parent(self):
+        self.task = {
+            "target_id": "scope.bank",
+            "task": "Implement the transfer contract",
+        }
+        for operation in ("plan", "tasks"):
+            result = self.call_operation("concorde-" + operation)
+            self.assertEqual("succeeded", result["status"], result)
+        change = read_change(self.root, required=True)
+        from concorde.implementation.implement import component_intent
+
+        selected = [
+            t
+            for t in change["targets"]["scope.bank"]["tasks"]
+            if t["target_id"] == "service.transfer"
+        ]
+        self.assertTrue(selected)
+        return {"target_id": "service.transfer", "task": component_intent(selected)}
+
+    @verifies("scenario.implementation.caller-components")
+    def test_component_work_returns_to_caller_and_preserves_root_owner(self):
+        child = self.prepare_parent()
+        result = self.call_operation("concorde-implement")
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("unsupported", result["output"]["data"]["outcome"])
+        self.assertIn("service.transfer", result["output"]["data"]["answer"])
+        self.assertEqual([], self.model.calls)
+        self.assertNotIn(
+            "service.transfer", read_change(self.root, required=True)["targets"]
+        )
+        for operation in ("plan", "tasks", "implement", "validate"):
+            result = self.call_operation("concorde-" + operation, child)
+            self.assertEqual("succeeded", result["status"], result)
+            self.assertEqual(
+                "scope.bank", read_change(self.root, required=True)["target_id"]
+            )
+        result = self.call_operation("concorde-implement")
+        self.assertEqual("succeeded", result["status"], result)
+        parent = read_change(self.root, required=True)["targets"]["scope.bank"]
+        self.assertIn("service.transfer", parent["component_revisions"])
+        self.assertTrue(all(t["complete"] for t in parent["tasks"]))
+        result = self.call_operation("concorde-validate")
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"])
+        code = self.root / "app/transfer.py"
+        code.write_text(code.read_text() + "\n# changed component\n")
+        result = self.call_operation("concorde-implement")
+        self.assertEqual("unsupported", result["output"]["data"]["outcome"])
+        self.assertEqual([], self.model.calls)
+
+    @verifies("scenario.review.explicit-components")
+    def test_code_free_parent_aggregates_fresh_component_review_without_child_work(
+        self,
+    ):
+        child = self.prepare_parent()
+        for operation in ("plan", "tasks", "implement", "validate"):
+            result = self.call_operation("concorde-" + operation, child)
+            self.assertEqual("succeeded", result["status"], result)
+        result = self.call_operation("concorde-implement")
+        self.assertEqual("succeeded", result["status"], result)
+        state = read_change(self.root, required=True)
+        self.assertNotIn("coordination", state["targets"]["scope.bank"])
+        result = self.call_operation("concorde-code-review")
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(["code-review"], [c["stage"] for c in self.model.calls])
+        self.assertEqual(
+            ["service.transfer"],
+            [r["data"]["target_id"] for r in result["output"]["data"]["reviews"]],
+        )
+        self.assertEqual(child["task"], self.model.calls[0]["snapshot"]["task"])
+        state = read_change(self.root, required=True)
+        self.assertNotIn("scope.bank", state.get("reviews", {}))
+        self.assertTrue(state["review_requirements"]["scope.bank"]["code"])
+        from concorde.review.review import current_code_scope, verify_required
+
+        parent = Invocation(
+            "concorde-code-review", self.configuration, self.task, self.host
+        )
+        references = current_code_scope(parent)
+        self.assertTrue(references)
+        verify_required(parent)
+        # Neither a changed question nor corrupt persisted bytes can borrow the aggregate.
+        changed = Invocation(
+            "concorde-code-review",
+            self.configuration,
+            {**self.task, "constraints": ["Other intent"]},
+            self.host,
+        )
+        self.assertIsNone(current_code_scope(changed))
+        changed_task = Invocation(
+            "concorde-code-review",
+            self.configuration,
+            {**self.task, "task": "Unrelated parent question"},
+            self.host,
+        )
+        self.assertIsNone(current_code_scope(changed_task))
+        parent_source = self.root / "specs/bank/module.md"
+        original_parent = parent_source.read_bytes()
+        parent_source.write_bytes(original_parent + b"\nChanged parent contract.\n")
+        self.assertIsNone(current_code_scope(parent))
+        parent_source.write_bytes(original_parent)
+        self.assertIsNotNone(current_code_scope(parent))
+        report = self.root / references[0]["path"]
+        original = report.read_bytes()
+        report.write_bytes(original + b"\n")
+        self.assertIsNone(current_code_scope(parent))
+        report.write_bytes(original)
+        code = self.root / "app/transfer.py"
+        code.write_text(code.read_text() + "\n# changed after review\n")
+        self.assertIsNone(current_code_scope(parent))
+        result = self.call_operation("concorde-code-review")
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(["code-review"], [c["stage"] for c in self.model.calls])
+        self.assertIsNotNone(current_code_scope(parent))
+        # Current review is not fabricated completion of the changed implementation.
+        result = self.call_operation("concorde-validate")
+        self.assertEqual("blocked", result["status"], result)
+
+        def concurrent_parent_edit(stage, snapshot, data, cwd):
+            if stage == "code-review":
+                parent_source.write_bytes(
+                    original_parent + b"\nConcurrent parent contract edit.\n"
+                )
+
+        result = self.call_operation(
+            "concorde-code-review", callback=concurrent_parent_edit
+        )
+        self.assertEqual("stale_context", result["errors"][0]["code"], result)
+        self.assertIsNone(current_code_scope(parent))
+
+    @verifies("scenario.implementation.component-stale-parent")
+    def test_stale_parent_or_mismatched_component_request_is_rejected(self):
+        child = self.prepare_parent()
+        for request in (
+            {**child, "task": "A different task"},
+            {**child, "constraints": ["Unaccepted constraint"]},
+        ):
+            before = read_change(self.root, required=True)["targets"]
+            result = self.call_operation("concorde-plan", request)
+            self.assertEqual("blocked", result["status"], result)
+            self.assertEqual([], self.model.calls)
+            self.assertEqual(before, read_change(self.root, required=True)["targets"])
+        spec = self.root / "specs/bank/module.md"
+        spec.write_text(
+            spec.read_text() + "\nThe calling agent changed this contract.\n"
+        )
+        before = read_change(self.root, required=True)["targets"]
+        result = self.call_operation("concorde-plan", child)
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual([], self.model.calls)
+        self.assertEqual(before, read_change(self.root, required=True)["targets"])

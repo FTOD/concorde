@@ -26,29 +26,32 @@ ARTIFACT = obj({"id": STRING, "path": PATH, "digest": DIGEST})
 ISSUE_RESULT_TYPES = frozenset(
     {
         "concorde-agent-stage-result",
-        "concorde-main-stage-result",
         "concorde-review-stage-result",
-        "concorde-topology-author-result",
         "concorde-review-result",
     }
 )
 VERSION_FOUR_TYPES = frozenset(
     {
         "concorde-agent-stage-context",
-        "concorde-main-stage-context",
         "concorde-review-stage-context",
-        "concorde-topology-author-context",
     }
 )
 
 
 def type_version(type_id: str) -> int:
+    # Explicit-target review and current-evidence repair replace the former entry contracts.
+    # Never reinterpret a version-1 request as one of these new requests.
+    if type_id in {
+        "concorde-spec-review-request",
+        "concorde-code-review-request",
+        "concorde-tasks-request",
+    }:
+        return 2
+    # Issue decisions no longer include the automatic-authoring `specify` selector.
+    if type_id == "concorde-agent-stage-result":
+        return 3
     if type_id == "concorde-context-snapshot":
         return 6
-    if type_id == "concorde-discovery-context":
-        return 6
-    if type_id == "concorde-main-stage-context":
-        return 5
     if type_id == "concorde-issues-response":
         return 2
     if type_id in {

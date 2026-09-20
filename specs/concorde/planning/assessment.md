@@ -6,15 +6,15 @@ question.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| Task sufficiency | Whether the admitted Spec provides the meaning necessary to plan this particular task, not every possible task. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition                                                                                            |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Task sufficiency                                          | Whether the admitted Spec provides the meaning necessary to plan this particular task, not every possible task. |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.                                                                                  |
+| [Module](../module.md#terminology)                        | Defined in Concorde Framework.                                                                                  |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                                                                                  |
+| [Blocker](../module.md#terminology)                       | Defined in Concorde Framework.                                                                                  |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations.                                                                                          |
+| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                                                                                  |
 
 ## Before planning
 
@@ -33,8 +33,13 @@ An explicit prohibition means the task is unsupported, not unspecified. Contradi
 reconciliation. A malformed request or failed execution is another kind of problem. These distinctions
 help the caller choose clarification, correction or recovery instead of treating every stop as a Spec
 gap. Reassessment uses current inputs; an unchanged blocker is not cleared by repeating the call.
+For an obsolete author prerequisite, select a fresh context assessment for the accepted task,
+after any necessary direct contract edits. This supersedes only the removed step, including when
+its original revision is unknown or its execution failed; it never claims the old author succeeded.
+Its observation and Issue remain in history,
+and required independent review still needs fresh evidence; assessment never stands in for review.
 
-Assessment is an internal operation used by declared workflows, not a standalone developer Skill.
+Assessment is available as the explicit-target `concorde-context-solve` Skill.
 The result and admission details are in Implementation Specs.
 
 ## Precise specifications

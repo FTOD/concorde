@@ -94,10 +94,10 @@ change project files, reclassify the report or invent product requirements.
 
 Return one `issue_decision` choosing the next bounded action:
 
-- `develop`: ordinary development from an intended behavior, with `specify=true` only when a
-  contract must be authored. The host preserves your first development intent for this candidate.
-- `spec-repair`: a fresh Spec author can resolve a missing/conflicting promise from admitted
-  contracts and constraints. State intended behavior only, not implementation guesses.
+- `develop`: return intended implementation work to the calling agent, which selects and orders
+  retained Operations explicitly. No automatic development workflow runs.
+- `spec-repair`: return the missing/conflicting promise and needed owner-local Spec, paired metadata
+  or registry changes to the calling agent. No author worker runs and no Spec is changed here.
 - `verify`: ask fresh read-only reviewers to verify this specific problem against current inputs.
   A code-free Module uses Spec review; a code-owning Module also uses code review.
 - `resolved`: the problem is actually resolved, with the host's current Issue-specific verification.
@@ -110,7 +110,7 @@ Return one `issue_decision` choosing the next bounded action:
   the admitted information. Explain the precise question, alternatives and blocked work.
 
 Use `intent` for contract-level intended behavior, `rationale` for the evidence-grounded reason,
-`specify` for whether development needs Spec authoring, and `duplicate_of=null` except for duplicate.
+`duplicate_of=null` except for duplicate.
 Never close merely because one attempt did not reproduce, a workaround exists, code was edited,
 or unrelated checks passed. Temporary infrastructure failure is not a product decision. Do not
 retry unchanged failed work indefinitely. The host bounds the decision loop and preserves progress.
@@ -131,7 +131,7 @@ not an earlier worker's transcript. Any duplicate candidates are explicit select
 
 ## Expected results
 
-Submit `concorde-agent-stage-result@2` with `issue_decision`, a meaningful answer, empty documents,
+Submit `concorde-agent-stage-result@3` with `issue_decision`, a meaningful answer, empty documents,
 plan and tasks, and no blockers when the decision itself completes. A need for human judgment is
 `action=needs-decision`, not an invented change or a failed process. You may report additional
 concrete Issues through `report_issue`; that does not authorize repairing unrelated work.

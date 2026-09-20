@@ -83,7 +83,6 @@ class GraphSpecTests(unittest.TestCase):
     def test_catalog_compiles_every_graph_without_a_repository_or_agent(self):
         with (
             patch("concorde.harness.invocation.SpecRepository") as bound,
-            patch("concorde.query_routing.main.SpecRepository") as discovered,
             patch("concorde.operations.dispatch.SpecRepository") as dispatched,
         ):
             for name, build in catalog().items():
@@ -92,7 +91,7 @@ class GraphSpecTests(unittest.TestCase):
                     self.assertIn("__start__", shape["nodes"])
                     self.assertIn("__end__", shape["nodes"])
                     self.assertTrue(shape["edges"])
-            for repository in (bound, discovered, dispatched):
+            for repository in (bound, dispatched):
                 repository.assert_not_called()
 
     @verifies("scenario.harness.graph-specs")
@@ -293,10 +292,7 @@ class GraphSpecTests(unittest.TestCase):
         findings = graph_spec_findings(repository, limited)
         messages = [finding.message for finding in findings]
         self.assertTrue(
-            any(
-                "binds unknown Graph development_graph" in message
-                for message in messages
-            ),
+            any("binds unknown Graph plan_graph" in message for message in messages),
             messages,
         )
         self.assertFalse(any("has no Graph Spec" in message for message in messages))

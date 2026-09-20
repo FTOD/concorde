@@ -11,7 +11,6 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
-from concorde.harness.status_store import all_status
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.harness.invocation import Invocation
@@ -343,8 +342,6 @@ class ModuleImplementationTests(unittest.TestCase):
 
     def test_non_code_agents_receive_the_whole_module_and_only_file_names(self):
         for phase in (
-            "ask",
-            "specify",
             "plan",
             "tasks",
             "context-solve",
@@ -1340,24 +1337,26 @@ class ModuleImplementationTests(unittest.TestCase):
                     ]
 
             double = ModelProcessDouble(author)
+            host = OperationHost(
+                root, PACKAGE, executor=double.executor, allow_primary_worktree=True
+            )
+            task = {"target_id": "service.transfer", "task": "Implement transfer"}
+            for operation in ("concorde-plan", "concorde-tasks"):
+                admitted = run_operation(
+                    operation,
+                    self.configuration,
+                    typed(operation + "-request", task),
+                    host_context=host,
+                )
+                self.assertEqual("succeeded", admitted["status"], admitted)
             result = run_operation(
-                "concorde-dev-loop",
+                "concorde-implement",
                 self.configuration,
-                typed(
-                    "concorde-dev-loop-request",
-                    {
-                        "target_id": "service.transfer",
-                        "task": "Implement transfer",
-                        "run_reviews": False,
-                    },
-                ),
-                host_context=OperationHost(
-                    root, PACKAGE, executor=double.executor, allow_primary_worktree=True
-                ),
+                typed("concorde-implement-request", task),
+                host_context=host,
             )
             self.assertEqual("blocked", result["status"], result)
-            self.assertEqual("child_blocked", result["errors"][0]["code"])
-            self.assertIn("permission_denied", result["errors"][0]["message"])
+            self.assertEqual("permission_denied", result["errors"][0]["code"])
             self.assertIn(
                 "cannot author Spec documents", result["errors"][0]["message"]
             )
@@ -1402,20 +1401,26 @@ class ModuleImplementationTests(unittest.TestCase):
                 )
 
             double = ModelProcessDouble(implement)
+            host = OperationHost(
+                root, PACKAGE, executor=double.executor, allow_primary_worktree=True
+            )
+            task = {
+                "target_id": "service.transfer",
+                "task": "Implement the pure transfer contract",
+            }
+            for operation in ("concorde-plan", "concorde-tasks"):
+                admitted = run_operation(
+                    operation,
+                    self.configuration,
+                    typed(operation + "-request", task),
+                    host_context=host,
+                )
+                self.assertEqual("succeeded", admitted["status"], admitted)
             result = run_operation(
-                "concorde-dev-loop",
+                "concorde-implement",
                 self.configuration,
-                typed(
-                    "concorde-dev-loop-request",
-                    {
-                        "target_id": "service.transfer",
-                        "task": "Implement the pure transfer contract",
-                        "run_reviews": False,
-                    },
-                ),
-                host_context=OperationHost(
-                    root, PACKAGE, executor=double.executor, allow_primary_worktree=True
-                ),
+                typed("concorde-implement-request", task),
+                host_context=host,
             )
             self.assertEqual("succeeded", result["status"], result)
             self.assertEqual(
@@ -1434,186 +1439,6 @@ class ModuleImplementationTests(unittest.TestCase):
             self.assertEqual(
                 "success", validate_repository(root, package_root=PACKAGE).status
             )
-
-    def test_composite_keeps_its_plan_and_verifies_shared_code_after_all_writers(self):
-        from concorde.harness.admission import run_operation
-        from concorde.harness.host import OperationHost
-        from concorde.spec.typed_data import typed
-        from tests.concorde.spec.support import ModelProcessDouble, project
-
-        for shared, nested in (
-            (False, False),
-            (True, False),
-            (False, True),
-            (True, True),
-        ):
-            with (
-                self.subTest(shared=shared, nested=nested),
-                tempfile.TemporaryDirectory() as directory,
-            ):
-                root = Path(directory)
-                registry = project(root)
-                bank, audit, transfer, ledger = registry["targets"]
-                bank["uses"].remove("service.transfer")
-                transfer["parent"] = "scope.bank"
-                audit["uses"] = []
-                if nested:
-                    ledger["parent"] = "service.transfer"
-                    bank["uses"].remove("module.ledger")
-                else:
-                    transfer["uses"] = []
-                # Every declared collaborator and every entity that stands for a Module must match
-                # the Module's actual children and dependencies after the topology is rearranged.
-                keep = {
-                    "scope.audit",
-                    "service.transfer",
-                    *(() if nested else ("module.ledger",)),
-                }
-                self.retain_dependencies(root / bank["documents"][0], keep)
-                self.retain_dependencies(root / audit["documents"][0], set())
-                self.retain_dependencies(
-                    root / transfer["documents"][0],
-                    {"module.ledger"} if nested else set(),
-                )
-                self.drop_entity(root / audit["documents"][0], "entity.audit.transfer")
-                if nested:
-                    self.drop_entity(root / bank["documents"][0], "entity.bank.ledger")
-                else:
-                    self.drop_entity(
-                        root / transfer["documents"][0], "entity.transfer.ledger"
-                    )
-                # Bank owns coordination code of its own, in a file the transfer Module may share.
-                self.add_entity(
-                    root / bank["documents"][0],
-                    {
-                        "id": "entity.bank.result",
-                        "title": "Bank result",
-                        "kind": "function",
-                        "responsibility": "Computes the settled result through the private transfer Module.",
-                        "files": ["app/bank.py"],
-                    },
-                    "    request -->|computed by| result",
-                )
-                bank["files"] = ["app/bank.py"]
-                (root / "app/bank.py").write_text(
-                    "from app.transfer import transfer\ndef result():\n    return 0\n"
-                )
-                if shared:
-                    self.add_entity(
-                        root / transfer["documents"][0],
-                        {
-                            "id": "entity.transfer.bank",
-                            "title": "Bank result",
-                            "kind": "function",
-                            "responsibility": "Calls the transfer calculation from the Banking Module.",
-                            "files": ["app/bank.py"],
-                        },
-                        "    calculation -->|called by| bank",
-                    )
-                    transfer["files"] = sorted([*transfer["files"], "app/bank.py"])
-                bank["checks"] = ["check.bank"]
-                registry["checks"].append(
-                    {
-                        "id": "check.bank",
-                        "target_id": "scope.bank",
-                        "argv": [
-                            "{python}",
-                            "-c",
-                            "from app.bank import result; assert result()==80",
-                        ],
-                        "timeout_seconds": 10,
-                    }
-                )
-                (root / ".concorde/specs.json").write_text(json.dumps(registry))
-                self.assertEqual(
-                    "success",
-                    validate_repository(root, package_root=PACKAGE).status,
-                    [
-                        f.message
-                        for f in validate_repository(
-                            root, package_root=PACKAGE
-                        ).findings
-                    ],
-                )
-                coding_targets = []
-
-                def implement(
-                    stage,
-                    snapshot,
-                    result,
-                    cwd,
-                    nested=nested,
-                    coding_targets=coding_targets,
-                ):
-                    if (
-                        nested
-                        and stage == "tasks"
-                        and snapshot["target_id"] == "service.transfer"
-                    ):
-                        result["tasks"].append(
-                            {
-                                "id": "task.ledger-read",
-                                "target_id": "module.ledger",
-                                "description": "Implement the private ledger read interface.",
-                                "acceptance": "read returns an integer or raises KeyError.",
-                                "complete": False,
-                            }
-                        )
-                    if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                        result["tasks"].append(
-                            {
-                                "id": "task.bank-result",
-                                "target_id": "scope.bank",
-                                "description": "Implement the bank result interface.",
-                                "acceptance": "result() returns 80.",
-                                "complete": False,
-                            }
-                        )
-                    if stage == "implementation":
-                        coding_targets.append(snapshot["target_id"])
-                        if snapshot["target_id"] == "scope.bank":
-                            self.assertNotIn(
-                                "TRANSFER_IMPLEMENTATION_CODE", json.dumps(snapshot)
-                            )
-                            self.assertEqual(
-                                {"app/bank.py"},
-                                {
-                                    item["path"]
-                                    for item in snapshot["implementation_artifacts"]
-                                },
-                            )
-                            (cwd / "app/bank.py").write_text(
-                                "from app.transfer import transfer\ndef result():\n    return transfer(100,20)\n"
-                            )
-
-                double = ModelProcessDouble(implement)
-                task = "Implement the bank result using its private transfer Module"
-                result = run_operation(
-                    "concorde-dev-loop",
-                    self.configuration,
-                    typed(
-                        "concorde-dev-loop-request",
-                        {"target_id": "scope.bank", "task": task},
-                    ),
-                    host_context=OperationHost(
-                        root,
-                        PACKAGE,
-                        executor=double.executor,
-                        allow_primary_worktree=True,
-                    ),
-                )
-                self.assertEqual("succeeded", result["status"], result)
-                self.assertEqual("ready", result["output"]["data"]["outcome"])
-                self.assertEqual(
-                    (["module.ledger"] if nested else [])
-                    + ["service.transfer", "scope.bank"],
-                    coding_targets,
-                )
-                state = all_status(root)[0]["targets"]["scope.bank"]
-                self.assertEqual(task, state["task"])
-                self.assertEqual(2, len(state["tasks"]))
-                self.assertNotIn("scope.bank", state["coordination"])
-                self.assertTrue(all(item["complete"] for item in state["tasks"]))
 
     def retain_dependencies(self, path, keep):
         metadata = Path(str(path) + ".json")

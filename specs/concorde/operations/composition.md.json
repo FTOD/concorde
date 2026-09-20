@@ -11,75 +11,12 @@
   "extensions": {
     "concorde.operations": [
       {
-        "id": "main",
-        "public": true,
-        "context_selection": "discover",
-        "deterministic": false,
-        "skill": "concorde-main",
-        "uses": [
-          "answerer",
-          "router",
-          "topology_designer",
-          "topology_author"
-        ],
-        "state": {
-          "input": "concorde-main-request",
-          "output": null
-        },
-        "profile": null
-      },
-      {
-        "id": "dev-loop",
-        "public": true,
-        "context_selection": "discover",
-        "deterministic": false,
-        "skill": "concorde-dev-loop",
-        "uses": [
-          "router",
-          "specify_loop",
-          "code_review",
-          "plan",
-          "tasks",
-          "implement",
-          "validate"
-        ],
-        "state": {
-          "input": "concorde-dev-loop-request",
-          "output": null
-        },
-        "profile": null
-      },
-      {
-        "id": "specify-loop",
-        "public": true,
-        "context_selection": "discover",
-        "deterministic": false,
-        "skill": "concorde-specify-loop",
-        "uses": [
-          "router",
-          "specify",
-          "spec_review"
-        ],
-        "state": {
-          "input": "concorde-specify-loop-request",
-          "output": null
-        },
-        "profile": null
-      },
-      {
         "id": "issues",
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-issues",
-        "uses": [
-          "issue_solver",
-          "dev_loop",
-          "specify",
-          "spec_review",
-          "code_review",
-          "validate"
-        ],
+        "uses": ["issue_solver", "spec_review", "code_review", "validate"],
         "state": {
           "input": "concorde-issues-request",
           "output": null
@@ -139,30 +76,12 @@
         "profile": null
       },
       {
-        "id": "specify",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "skill": null,
-        "uses": [
-          "spec_author"
-        ],
-        "state": {
-          "input": "concorde-specify-request",
-          "output": null
-        },
-        "profile": null
-      },
-      {
         "id": "spec-review",
         "public": true,
-        "context_selection": "discover",
+        "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-spec-review",
-        "uses": [
-          "router",
-          "spec_reviewer"
-        ],
+        "uses": ["spec_reviewer"],
         "state": {
           "input": "concorde-spec-review-request",
           "output": null
@@ -172,13 +91,10 @@
       {
         "id": "code-review",
         "public": true,
-        "context_selection": "discover",
+        "context_selection": "bound",
         "deterministic": false,
         "skill": "concorde-code-review",
-        "uses": [
-          "router",
-          "code_reviewer"
-        ],
+        "uses": ["code_reviewer"],
         "state": {
           "input": "concorde-code-review-request",
           "output": null
@@ -187,13 +103,11 @@
       },
       {
         "id": "context-solve",
-        "public": false,
+        "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
-        "uses": [
-          "context_assessor"
-        ],
+        "skill": "concorde-context-solve",
+        "uses": ["context_assessor"],
         "state": {
           "input": "concorde-context-solve-request",
           "output": null
@@ -202,14 +116,11 @@
       },
       {
         "id": "plan",
-        "public": false,
+        "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
-        "uses": [
-          "context_assessor",
-          "planner"
-        ],
+        "skill": "concorde-plan",
+        "uses": ["context_assessor", "planner"],
         "state": {
           "input": "concorde-plan-request",
           "output": null
@@ -218,13 +129,11 @@
       },
       {
         "id": "tasks",
-        "public": false,
+        "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
-        "uses": [
-          "task_author"
-        ],
+        "skill": "concorde-tasks",
+        "uses": ["task_author"],
         "state": {
           "input": "concorde-tasks-request",
           "output": null
@@ -233,128 +142,16 @@
       },
       {
         "id": "implement",
-        "public": false,
+        "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null,
-        "uses": [
-          "programmer"
-        ],
+        "skill": "concorde-implement",
+        "uses": ["programmer"],
         "state": {
           "input": "concorde-implement-request",
           "output": null
         },
         "profile": null
-      },
-      {
-        "id": "answerer",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "skill": null,
-        "uses": [],
-        "state": {
-          "input": "concorde-main-stage-context",
-          "output": "concorde-main-stage-result"
-        },
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
-          "children": []
-        }
-      },
-      {
-        "id": "router",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "skill": null,
-        "uses": [],
-        "state": {
-          "input": "concorde-main-stage-context",
-          "output": "concorde-main-stage-result"
-        },
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
-          "children": []
-        }
-      },
-      {
-        "id": "topology-designer",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "skill": null,
-        "uses": [],
-        "state": {
-          "input": "concorde-main-stage-context",
-          "output": "concorde-main-stage-result"
-        },
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
-          "children": []
-        }
-      },
-      {
-        "id": "spec-author",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "skill": null,
-        "uses": [],
-        "state": {
-          "input": "concorde-agent-stage-context",
-          "output": "concorde-agent-stage-result"
-        },
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
-          "children": []
-        }
-      },
-      {
-        "id": "topology-author",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "skill": null,
-        "uses": [],
-        "state": {
-          "input": "concorde-topology-author-context",
-          "output": "concorde-topology-author-result"
-        },
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
-          "children": []
-        }
       },
       {
         "id": "spec-reviewer",
@@ -369,16 +166,8 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
-          "children": [
-            "consistency",
-            "fact-check"
-          ]
+          "tools": ["find", "grep", "ls", "read"],
+          "children": ["consistency", "fact-check"]
         }
       },
       {
@@ -394,12 +183,7 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
+          "tools": ["find", "grep", "ls", "read"],
           "children": []
         }
       },
@@ -416,15 +200,8 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
-          "children": [
-            "scout"
-          ]
+          "tools": ["find", "grep", "ls", "read"],
+          "children": ["scout"]
         }
       },
       {
@@ -440,12 +217,7 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
+          "tools": ["find", "grep", "ls", "read"],
           "children": []
         }
       },
@@ -472,11 +244,7 @@
             "run_checks",
             "write"
           ],
-          "children": [
-            "planner",
-            "scout",
-            "verifier"
-          ]
+          "children": ["planner", "scout", "verifier"]
         }
       },
       {
@@ -492,16 +260,8 @@
         },
         "profile": {
           "workspace": "project",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
-          "children": [
-            "scout",
-            "verifier"
-          ]
+          "tools": ["find", "grep", "ls", "read"],
+          "children": ["scout", "verifier"]
         }
       },
       {
@@ -517,12 +277,7 @@
         },
         "profile": {
           "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ],
+          "tools": ["find", "grep", "ls", "read"],
           "children": []
         }
       }

@@ -17,7 +17,6 @@ from concorde.harness.worker_profile import WorkerProfile
 from concorde.spec.contracts import (
     COMPOSITE_OPERATIONS,
     DETERMINISTIC_OPERATIONS,
-    DISCOVERY_OPERATIONS,
     INTERNAL_OPERATIONS,
     OPERATION_NAMES,
     PUBLIC_OPERATIONS,
@@ -44,13 +43,13 @@ class OperationModuleContractTests(unittest.TestCase):
     @verifies("scenario.harness.operation-state")
     def test_one_inventory_includes_model_code_and_composed_nodes(self):
         modules = _modules()
-        self.assertEqual(27, len(modules))
+        self.assertEqual(18, len(modules))
         self.assertEqual(
             set(OPERATION_NAMES), {m.EXTERNAL_NAME for m in modules.values()}
         )
         self.assertEqual(len(operations.OPERATIONS), len(set(operations.OPERATIONS)))
         self.assertEqual(
-            12, sum(isinstance(m.PROFILE, WorkerProfile) for m in modules.values())
+            7, sum(isinstance(m.PROFILE, WorkerProfile) for m in modules.values())
         )
         self.assertFalse(hasattr(operations, "AGENTS"))
         for name, module in modules.items():
@@ -78,13 +77,10 @@ class OperationModuleContractTests(unittest.TestCase):
             name = module.EXTERNAL_NAME
             self.assertIs(type(module.PUBLIC), bool)
             self.assertIs(type(module.DETERMINISTIC), bool)
-            self.assertIn(module.CONTEXT_SELECTION, {"discover", "bound", "none"})
+            self.assertIn(module.CONTEXT_SELECTION, {"bound", "none"})
             self.assertEqual(module.PUBLIC, name in PUBLIC_OPERATIONS)
             self.assertEqual(not module.PUBLIC, name in INTERNAL_OPERATIONS)
             self.assertEqual(module.DETERMINISTIC, name in DETERMINISTIC_OPERATIONS)
-            self.assertEqual(
-                module.CONTEXT_SELECTION == "discover", name in DISCOVERY_OPERATIONS
-            )
             if hasattr(module, "REQUEST"):
                 self.assertEqual(module.REQUEST, exported[f"{name}-request"])
                 self.assertEqual(module.RESPONSE, exported[f"{name}-response"])
@@ -92,20 +88,18 @@ class OperationModuleContractTests(unittest.TestCase):
             else:
                 self.assertNotIn(name, contracts())
                 self.assertIsNotNone(module.PROFILE)
-        self.assertEqual(15, len(contracts()))
-        self.assertEqual(10, len(SKILL_NAMES))
+        self.assertEqual(11, len(contracts()))
+        self.assertEqual(11, len(SKILL_NAMES))
         self.assertEqual(
             set(SKILL_NAMES), {m.EXTERNAL_NAME for m in _modules().values() if m.PUBLIC}
         )
-        self.assertEqual(
+        self.assertTrue(
             {
                 "concorde-main",
                 "concorde-dev-loop",
                 "concorde-specify-loop",
-                "concorde-spec-review",
-                "concorde-code-review",
-            },
-            set(DISCOVERY_OPERATIONS),
+                "concorde-specify",
+            }.isdisjoint(OPERATION_NAMES)
         )
 
     def test_review_entries_have_fixed_authority_and_no_legacy_selector(self):
@@ -118,19 +112,27 @@ class OperationModuleContractTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 operation = f"concorde-{kind}-review"
                 module = modules[f"{kind}_review"]
-                self.assertEqual(("router", f"{kind}_reviewer"), module.USES)
-                self.assertEqual(["task"], module.REQUEST["required"])
+                self.assertEqual((f"{kind}_reviewer",), module.USES)
+                self.assertEqual({"target_id", "task"}, set(module.REQUEST["required"]))
                 self.assertNotIn("review_mode", module.REQUEST["properties"])
-                typed(operation + "-request", {"task": "Inspect"})
+                typed(
+                    operation + "-request",
+                    {"target_id": "module.example", "task": "Inspect"},
+                )
                 with self.assertRaises(TypedDataError):
                     typed(
-                        operation + "-request", {"task": "Inspect", "review_mode": kind}
+                        operation + "-request",
+                        {
+                            "target_id": "module.example",
+                            "task": "Inspect",
+                            "review_mode": kind,
+                        },
                     )
 
     def test_uses_is_the_only_dependency_relation_and_is_acyclic(self):
         modules = _modules()
         self.assertEqual(("context_assessor", "planner"), modules["plan"].USES)
-        self.assertEqual(("spec_author",), modules["specify"].USES)
+        self.assertNotIn("specify", modules)
         self.assertEqual(
             set(COMPOSITE_OPERATIONS),
             {m.EXTERNAL_NAME for m in modules.values() if m.USES},

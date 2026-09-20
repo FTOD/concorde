@@ -6,25 +6,25 @@ Review independently examines whether current specifications or code support the
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| Review coverage | The representative questions and cases actually examined by this review. |
-| Advisory finding | A concrete problem recorded for consideration that does not block the admitted task. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                 | Meaning / definition                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------ |
+| Review coverage                      | The representative questions and cases actually examined by this review.             |
+| Advisory finding                     | A concrete problem recorded for consideration that does not block the admitted task. |
+| [Spec](../module.md#terminology)     | Defined in Concorde Framework.                                                       |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework.                                                       |
+| [Worker](../module.md#terminology)   | Defined in Concorde Framework.                                                       |
+| [Host](../module.md#terminology)     | Defined in Concorde Framework.                                                       |
+| [Grant](../module.md#terminology)    | Defined in Concorde Framework.                                                       |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework.                                                       |
+| [Graph](../module.md#terminology)    | Defined in Concorde Framework.                                                       |
 
 ## Usage
 
 Use `concorde-spec-review` to assess a Module's complete specification and design, or
 `concorde-code-review` to compare its authorized implementation with that contract. These are
-separate public Operations, not modes of one entry. Both require a task; optional target/focus hints
-help the router select one owner. An existing-change resumption supplies its bound target and change
-ID. Neither accepts a review-mode selector. A standalone review runs in the current worktree without
+separate public Operations, not modes of one entry. Both require an explicit Module target and task;
+optional focus selects a scenario owned by that Module without trimming its complete context.
+An existing-change request supplies the current change ID. Neither accepts a review-mode selector. A standalone review runs in the current worktree without
 creating a development change, and neither reviewer can repair files.
 
 Spec review always checks terminology semantic consistency across its complete admitted reading
@@ -39,7 +39,7 @@ Read the typed [review result](review-result.md), including representative cover
 gaps and exact revision. No findings is a bounded conclusion, not universal proof; skipped,
 not-run and incomplete are distinct from success. Missing necessary contracts pause dependent work,
 while independent defects can remain advisory. Explicit standalone review is fresh; a composing
-Graph can reuse only current evidence for the same intent. Failure, cancellation and invalid output
+caller can rely only on current evidence for the same intent. Failure, cancellation and invalid output
 cannot masquerade as clean review. The caller decides whether an admitted repair is appropriate;
 the reviewer itself does not execute it.
 
@@ -61,9 +61,8 @@ Each worker runs as one
 [Operation node](../harness/execution-reference.md#host-operation-node-operation-node) with its own
 read-only grant. Neither public entry has a separate Graph of its own. The common
 [target admission Graph](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
-first binds the given owner or routes the task through the
-[discovery Graph](../query-routing/execution-reference.md#query-and-routing-discovery-graph-discovery-graph),
-and the router returns only the owner and focus, never a rewritten task. The
+deterministically validates the caller's selected Module and focus before admitting the reviewer.
+The
 [dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)'s
 `review` leaf then reviews the owner, followed by each affected Module one at a time through the
 [Sequential work items Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph);
@@ -80,7 +79,7 @@ its wire representation does not authorize a repair or override lifecycle gates.
 ## Relationships
 
 This view covers selection, review admission and the resulting evidence, not a repair workflow.
-[Query and Routing](../query-routing/module.md) selects the owner of an unbound standalone request; [Spec Module](../spec/module.md) supplies current scope
+The calling agent selects the Module; [Spec Module](../spec/module.md) supplies current scope
 and finding ownership; [Harness Module](../harness/module.md) isolates the reviewer with read-only access. [Harness admission](../harness/admission.md) accepts
 and stores the Review result against the frozen Review input. None of these dependency edges gives
 the reviewer write authority, and the result does not itself advance delivery or repair files.
@@ -88,14 +87,12 @@ the reviewer write authority, and the result does not itself advance delivery or
 ```mermaid
 flowchart TB
     accTitle: Review entities and dependencies
-    accDescr: Review routes unbound tasks, resolves current review scope and finding owners, binds independent read-only reviewers and publishes coverage and findings through the host.
+    accDescr: Review validates the selected target, resolves current review scope and finding owners, binds independent read-only reviewers and publishes coverage and findings through the host.
     e0["Review adapter"]
     e2["Harness"]
     e3["Spec"]
-    e4["Query and Routing"]
     e0 -->|binds independent reviewers with read access, and admits review intent and saves reports through| e2
     e0 -->|resolves review scope and finding owners through| e3
-    e0 -->|routes standalone review through| e4
     domain_review_input["Review input"]
     e0 -->|freezes the reviewed scope in| domain_review_input
     domain_result["Review result"]
@@ -126,16 +123,6 @@ Resolve complete review contracts, sole finding owners and the current implement
 This collaboration applies when freezing a review scope, attributing findings or rechecking its Spec and code revision.
 
 - [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
-
-### Query and Routing
-
-<a id="entity.review.query-routing"></a><a id="agreement.document.review.module.4"></a>
-
-Select one owning Module for a new standalone review while preserving its original task, focus and constraints.
-
-This collaboration applies when a new standalone review has neither a trusted bound target nor a bound current-change resumption.
-
-- [Explicit discovery and routing](../query-routing/module.md#usage); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
 
 ## Precise specifications
 

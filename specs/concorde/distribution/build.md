@@ -13,18 +13,18 @@ conventions belong to the execution profile, not the independent standard.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
+| Term                                                      | Meaning / definition                |
+| --------------------------------------------------------- | ----------------------------------- |
+| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.      |
+| [Worker](../module.md#terminology)                        | Defined in Concorde Framework.      |
+| [Operation](../module.md#terminology)                     | Defined in Concorde Framework.      |
+| [Public operation](../operations/module.md#terminology)   | Defined in Operations.              |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations.              |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.      |
+| [Worktree](../module.md#terminology)                      | Defined in Concorde Framework.      |
+| [Protocol binding](../spec/values.md#terminology)         | Defined in Identities and versions. |
+| [Document role](../spec/values.md#terminology)            | Defined in Identities and versions. |
+| [Worker profile](../harness/module.md#terminology)        | Defined in Harness.                 |
 
 The build no longer emits the docsite-only `generated/docs/instructions.json` or
 `generated/docs/wire.json`; normal owned-output cleanup retires old copies. This does not remove
@@ -85,7 +85,7 @@ updates preserve the existing binding until explicitly accepted.
 
 ### Projection identity
 
-Agent builds publish twelve independent worker projections and no separate common one. Each
+Agent builds publish seven independent worker projections and no separate common one. Each
 rendered `generated/agents/<name>.md` concatenates the shared common worker rules
 (`prompts/workers/common.md`) and that worker's own role Spec source; the manifest records both
 sources, together with the bytes of each of that worker's declared child definitions. Package
@@ -96,6 +96,14 @@ Agent instruction file membership must equal the declared worker inventory. Agen
 role Spec bodies, child definitions and available operation/wire sources are recorded build
 inputs; changing them makes verify_fresh reject the old build even when the shared common
 instruction body is unchanged.
+
+### Projection test fixtures
+
+The explicit fixture command `PYTHONPATH=src .venv/bin/python -m tests.concorde.support.build_fixture`
+refreshes the tracked projection goldens from this checkout's pure build renderer. It records exactly
+seven worker bodies, two client projections of eleven public Skills, and one Pi shim. It does not
+copy installed/global Skills or build another worktree, and it removes retired fixture members.
+Golden comparisons remain exact (apart from the documented Skill source-line normalization).
 
 ## Precise specifications
 

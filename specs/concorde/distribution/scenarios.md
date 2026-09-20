@@ -5,23 +5,23 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Public operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition                         |
+| --------------------------------------------------------- | -------------------------------------------- |
+| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.               |
+| [Worker](../module.md#terminology)                        | Defined in Concorde Framework.               |
+| [Worker profile](../harness/module.md#terminology)        | Defined in Harness.                          |
+| [Operation](../module.md#terminology)                     | Defined in Concorde Framework.               |
+| [Public operation](../operations/module.md#terminology)   | Defined in Operations.                       |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations.                       |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.               |
+| [Worktree](../module.md#terminology)                      | Defined in Concorde Framework.               |
+| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.               |
+| [Installation](installation.md#terminology)               | Defined in Installing and updating Concorde. |
+| [Update](installation.md#terminology)                     | Defined in Installing and updating Concorde. |
+| [Installation receipt](installation.md#terminology)       | Defined in Installing and updating Concorde. |
+| [Initialization](../spec/initialize.md#terminology)       | Defined in Project initialization.           |
+| [Protocol binding](../spec/values.md#terminology)         | Defined in Identities and versions.          |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.               |
 
 ## Installation service
 
@@ -55,7 +55,7 @@ entry below `pi/` is deployed like the rest of the package. It also installs eac
 root rule entry: `AGENTS.md` explicitly directs Codex and Pi to read
 `.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of the
 same file. It seeds the Concorde-owned defaults a project starts from,
-`.concorde/issues/.gitignore` and `.concorde/topology-proposals/.gitignore`, only when absent;
+`.concorde/issues/.gitignore`, only when absent;
 these defaults are excluded from the installation receipt and never overwritten on update.
 Everything that exists only because Concorde is installed is the installer's output or its
 delegation to the Skills CLI; initialization creates only what the user's project generates
@@ -141,11 +141,11 @@ receipts. The locked managed Python runtime runs actual operations. Check verifi
 and required runtime identity without changing project behavior.
 
 The distributable manifest is `concorde.json` schema_version 3, Concorde 8.0.0, Architecture
-Profile 15, Workspace Protocol 16 and Delivery Proposal 10. The single inventory has 27
-Operations: 10 public Skill entries and 17 private nodes, including 12 model-backed nodes with
+Profile 15, Workspace Protocol 16 and Delivery Proposal 10. The single inventory has 18
+Operations: 11 public Skill entries and seven private model-backed nodes with
 Pi worker profiles. It declares package roots including `prompts`/`operations`/`protocol`, with
 no separate `agents` authoring root, and 4 templates. Codex `.agents/skills` and Claude
-`.claude/skills` expose the same 10 Skills; non-public Operations remain private. Every Skill sends a typed `invocation@3` to
+`.claude/skills` expose the same 11 Skills; non-public Operations remain private. Every Skill sends a typed `concorde-operation-invocation@3` to
 `scripts/run-operation.py` and does not inspect project context.
 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
@@ -233,7 +233,8 @@ that need persistent source or dependency changes must prepare them in the imple
 - AND unknown Skill directories, including names beginning with `concorde-`, and unselected integrations remain untouched
 - BUT a retired path that is not a directory, a symlink in its integration ancestors or contents, or any extra directory content causes write_build to fail before deleting or writing outputs
 
-The explicit retirement inventory currently contains `concorde-reflections-triage` and `concorde-review`; new retirements
+The explicit retirement inventory currently contains `concorde-reflections-triage`, `concorde-review`, `concorde-main`,
+`concorde-dev-loop` and `concorde-specify-loop`; new retirements
 extend that inventory rather than authorizing deletion by prefix. An already empty retired directory
 is removed too. When `integration_root` is supplied, retirement uses that destination, not the
 source package's Skill directories. All retirement candidates are preflighted before any output
@@ -274,10 +275,10 @@ prefixes themselves.
 
 ### scenario.distribution.operation-determinism — Operation metadata accounts for model calls
 
-- GIVEN operation modules declaring public exposure, context selection, Agents, host routing and acyclic `USES` composition
+- GIVEN operation modules declaring public exposure, context selection, workers and acyclic `USES` composition
 - WHEN package validation checks their metadata
 - THEN each module must declare a boolean `DETERMINISTIC`, rejecting missing values, strings and integers
-- AND the flag must be true exactly when neither its model profile, host routing nor any transitive USES operation can call a model
+- AND the flag must be true exactly when neither its model profile nor any transitive USES operation can call a model
 - AND an operation declaring no Agent context selection must have no model-call path
 - AND the single registered `concorde-operations` block must contain the same boolean `deterministic` for every operation alongside its `id`, `public`, `context_selection` and `skill`
 - BUT a path that skips model execution does not make a model-backed operation deterministic

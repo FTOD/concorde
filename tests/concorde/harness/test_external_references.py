@@ -26,7 +26,7 @@ class ExternalReferenceTests(unittest.TestCase):
         expected = repository.external_reference_records(repository.select("module.a"))
         self.assertEqual(1, len(expected))
         for phase, agent, inputs in (
-            ("specify", worker_profile("spec-author"), ()),
+            ("context-solve", worker_profile("context-assessor"), ()),
             ("plan", worker_profile("planner"), ()),
             ("code-review", worker_profile("code-reviewer"), ()),
             (
@@ -52,7 +52,9 @@ class ExternalReferenceTests(unittest.TestCase):
                 ).value
                 self.assertEqual(6, snapshot["schema_version"])
                 self.assertEqual(expected, snapshot["external_references"])
-        ask = resolve_context(repository, "module.a", phase="ask", task="Adapt")
+        ask = resolve_context(
+            repository, "module.a", phase="context-solve", task="Adapt"
+        )
         self.fixture.write("reference/lib/diagram.png", "other binary")
         recheck_context(self.fixture.repository(), ask)
         self.fixture.write("reference/lib/api.md", "## connect(url, timeout)\n")

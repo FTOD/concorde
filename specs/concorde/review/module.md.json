@@ -11,11 +11,12 @@
       "title": "Review adapter",
       "kind": "shared program",
       "files": [
-        "operations/spec_review.py",
         "operations/code_review.py",
+        "operations/spec_review.py",
         "src/concorde/review/",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",
+        "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/operations/test_target_discovery.py"
       ],
@@ -34,13 +35,6 @@
       "kind": "used module",
       "target_id": "module.spec",
       "meaning": "#entity.review.spec"
-    },
-    {
-      "id": "entity.review.query-routing",
-      "title": "Query and Routing",
-      "kind": "used module",
-      "target_id": "module.query-routing",
-      "meaning": "#entity.review.query-routing"
     },
     {
       "id": "entity.review.review-input",
@@ -63,10 +57,6 @@
     {
       "target_id": "module.spec",
       "meaning": "#agreement.document.review.module.3"
-    },
-    {
-      "target_id": "module.query-routing",
-      "meaning": "#agreement.document.review.module.4"
     }
   ],
   "bindings": []

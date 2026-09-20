@@ -119,7 +119,13 @@ PI_OMITTED_INCLUDES = frozenset(
 CONSUMER_RUNTIME_VENV = ".concorde/.venv"
 # Keep explicit ownership after a Skill leaves SKILL_NAMES, even if a newer manifest
 # has already forgotten it. A name prefix alone never authorizes deletion.
-RETIRED_SKILL_NAMES = ("concorde-reflections-triage", "concorde-review")
+RETIRED_SKILL_NAMES = (
+    "concorde-reflections-triage",
+    "concorde-review",
+    "concorde-main",
+    "concorde-dev-loop",
+    "concorde-specify-loop",
+)
 
 MODEL_ROOTS: dict[str, str] = {
     agent.name.replace("_", "-"): agent.spec

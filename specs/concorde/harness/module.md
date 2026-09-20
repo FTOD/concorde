@@ -6,27 +6,27 @@ The Harness Module admits every operation request at one common boundary, then p
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| Worker profile | The instructions and maximum tools, workspace and effects available to a kind of worker; a particular job can be narrower. |
-| Tool gate | The checks applied inside the agent process before a model-requested tool runs. |
-| Worker sandbox | The operating-system boundary around a worker process: the host filesystem read-only with the developer's secret locations, agent-client state and other worktrees masked, the grant and run directory writable, a private temporary directory and process namespace. |
-| Capsule | A temporary workspace containing the documents admitted for one Spec-only worker invocation. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Harness](../module.md#terminology) | Defined in Concorde Framework. |
-| [Context](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
-| [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
-| [Resource context](context.md#terminology) | Defined in What information a worker receives. |
-| [Task context](context.md#terminology) | Defined in What information a worker receives. |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| Term                                              | Meaning / definition                                                                                                                                                                                                                                                  |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Worker profile                                    | The instructions and maximum tools, workspace and effects available to a kind of worker; a particular job can be narrower.                                                                                                                                            |
+| Tool gate                                         | The checks applied inside the agent process before a model-requested tool runs.                                                                                                                                                                                       |
+| Worker sandbox                                    | The operating-system boundary around a worker process: the host filesystem read-only with the developer's secret locations, agent-client state and other worktrees masked, the grant and run directory writable, a private temporary directory and process namespace. |
+| Capsule                                           | A temporary workspace containing the documents admitted for one Spec-only worker invocation.                                                                                                                                                                          |
+| [Worker](../module.md#terminology)                | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Harness](../module.md#terminology)               | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Context](../module.md#terminology)               | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Grant](../module.md#terminology)                 | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Operation](../module.md#terminology)             | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Graph](../module.md#terminology)                 | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Candidate](../module.md#terminology)             | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Worktree](../module.md#terminology)              | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
+| [Spec context](context.md#terminology)            | Defined in What information a worker receives.                                                                                                                                                                                                                        |
+| [Implementation context](context.md#terminology)  | Defined in What information a worker receives.                                                                                                                                                                                                                        |
+| [Resource context](context.md#terminology)        | Defined in What information a worker receives.                                                                                                                                                                                                                        |
+| [Task context](context.md#terminology)            | Defined in What information a worker receives.                                                                                                                                                                                                                        |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions.                                                                                                                                                                                                                                   |
 
 ## Usage
 
@@ -199,7 +199,7 @@ acceptance cases belong to the Harness Module's [requirements](requirements.md) 
 
 ### Context freezing
 
-Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; see
+Realized by `resolve_context` and its recheck; see
 [context](context.md).
 
 ### Operation profile and Harness binding
@@ -318,7 +318,7 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
 - Checks run by `run_checks` use the configured-check executor, but the worker receives only the tail
   of each check's log; whether a longer or structured report is needed is unresolved.
 
-The Harness implements Protocol 5 ownership/reference resolution and version-2 context handoffs. See [context migration status](context.md#implementation-status).
+The Harness implements Protocol 10 ownership/reference resolution and independently versioned context handoffs. See [context migration status](context.md#implementation-status).
 Referenced definitions remain read-only and do not enter local entity/file grants.
 
 ## Precise specifications

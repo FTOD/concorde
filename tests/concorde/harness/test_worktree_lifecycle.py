@@ -79,9 +79,16 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
 
     def ready(self, callback=None, task=None):
-        result = self.call_operation(
-            self.change, "concorde-dev-loop", task or self.task, callback
-        )
+        # Explicit caller-selected setup; no discovery, authoring or automatic child work.
+        selected = task or self.task
+        for operation in (
+            "concorde-plan",
+            "concorde-tasks",
+            "concorde-implement",
+            "concorde-validate",
+        ):
+            result = self.call_operation(self.change, operation, selected, callback)
+            self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"], result)
         state = read_change(self.change, required=True)
@@ -104,7 +111,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
     @verifies("scenario.harness.workspace-inventory")
     def test_main_sees_primary_inventory_and_secondary_draft_identity(self):
         result = self.call_operation(
-            self.change, "concorde-main", {"task": "Explain transfer"}
+            self.change,
+            "concorde-context-solve",
+            {"target_id": "scope.bank", "task": "Explain transfer"},
         )
         self.assertEqual("succeeded", result["status"], result)
         observed = self.last_double.calls[0]["snapshot"]["workspace"]
@@ -121,7 +130,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
         unmanaged = self.directory / "unmanaged"
         git(self.primary, "worktree", "add", "-b", "another-change", str(unmanaged))
         result = self.call_operation(
-            self.primary, "concorde-main", {"task": "Explain transfer"}
+            self.primary,
+            "concorde-context-solve",
+            {"target_id": "scope.bank", "task": "Explain transfer"},
         )
         self.assertEqual("succeeded", result["status"], result)
         workspace = self.last_double.calls[0]["snapshot"]["workspace"]
@@ -157,7 +168,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
         entry = self.change / "specs/bank/module.md"
         entry.write_text(entry.read_text() + f"\n{marker}\n")
         result = self.call_operation(
-            self.change, "concorde-main", {"task": "Explain transfer"}
+            self.change,
+            "concorde-context-solve",
+            {"target_id": "scope.bank", "task": "Explain transfer"},
         )
         self.assertEqual("succeeded", result["status"], result)
         candidate = self.last_double.calls[0]["snapshot"]
@@ -167,19 +180,25 @@ class WorktreeLifecycleTests(unittest.TestCase):
         from concorde.spec.repository import digest as digest_bytes
 
         candidate_bank = next(
-            d for d in candidate["documents"] if d["path"] == "specs/bank/module.md"
+            d
+            for d in candidate["spec_resolution"]["sources"]
+            if d["path"] == "specs/bank/module.md"
         )
         self.assertEqual(digest_bytes(entry.read_bytes()), candidate_bank["digest"])
         self.assertNotIn(marker, json.dumps(candidate))
         result = self.call_operation(
-            self.primary, "concorde-main", {"task": "Explain transfer"}
+            self.primary,
+            "concorde-context-solve",
+            {"target_id": "scope.bank", "task": "Explain transfer"},
         )
         self.assertEqual("succeeded", result["status"], result)
         primary = self.last_double.calls[0]["snapshot"]
         self.assertEqual("primary", primary["workspace"]["kind"])
         self.assertEqual(str(self.primary), primary["workspace"]["current_worktree"])
         primary_bank = next(
-            d for d in primary["documents"] if d["path"] == "specs/bank/module.md"
+            d
+            for d in primary["spec_resolution"]["sources"]
+            if d["path"] == "specs/bank/module.md"
         )
         self.assertEqual(
             digest_bytes((self.primary / "specs/bank/module.md").read_bytes()),
@@ -187,7 +206,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertNotEqual(candidate_bank["digest"], primary_bank["digest"])
         result = self.call_operation(
-            self.primary / "app", "concorde-main", {"task": "Explain transfer"}
+            self.primary / "app",
+            "concorde-context-solve",
+            {"target_id": "scope.bank", "task": "Explain transfer"},
         )
         self.assertNotEqual("succeeded", result["status"], result)
         self.assertEqual(
@@ -198,7 +219,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
         unversioned.mkdir()
         project(unversioned)
         result = self.call_operation(
-            unversioned, "concorde-main", {"task": "Explain transfer"}
+            unversioned,
+            "concorde-context-solve",
+            {"target_id": "scope.bank", "task": "Explain transfer"},
         )
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual(
@@ -231,23 +254,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before["blockers"], after["blockers"])
         self.assertTrue(after["blockers"])
 
-    @verifies("scenario.query-routing.answer-question")
-    def test_main_answers_workspace_metadata_directly(self):
-        def status(stage, snapshot, data, cwd):
-            if stage == "route":
-                data.update(
-                    outcome="completed",
-                    answer="One change is in progress on candidate.",
-                    routes=[],
-                    expand_targets=[],
-                )
-
-        result = self.call_operation(
-            self.primary, "concorde-main", {"task": "What work is in progress?"}, status
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(["route"], [x["stage"] for x in self.last_double.calls])
-
     def test_guidance_and_initial_state_rollback_together(self):
         before = (self.change / "AGENTS.md").read_bytes()
         with patch.object(
@@ -256,7 +262,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
             side_effect=OSError("fixture state transaction failure"),
         ):
             result = self.call_operation(
-                self.change, "concorde-main", {"task": "Explain transfer"}
+                self.change,
+                "concorde-context-solve",
+                {"target_id": "scope.bank", "task": "Explain transfer"},
             )
         self.assertNotEqual("succeeded", result["status"], result)
         self.assertEqual(before, (self.change / "AGENTS.md").read_bytes())
@@ -302,7 +310,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_primary_mutation_runs_in_a_host_created_candidate(self):
         result = self.call_operation(
             self.primary,
-            "concorde-dev-loop",
+            "concorde-plan",
             self.task,
             host=self.primary_host(self.relay_in_process()),
         )
@@ -310,13 +318,13 @@ class WorktreeLifecycleTests(unittest.TestCase):
         created = relayed["candidate"]
         self.addCleanup(self.remove_candidate, created)
         self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"], result)
+        self.assertEqual("completed", result["output"]["data"]["outcome"], result)
         self.assertEqual(str(created), result["workspace"]["path"], result)
         self.assertEqual(str(self.primary), result["workspace"]["primary_worktree"])
-        self.assertEqual("concorde-dev-loop", relayed["operation"])
+        self.assertEqual("concorde-plan", relayed["operation"])
         invocation = relayed["invocation"]
         self.assertEqual(
-            ("concorde-operation-invocation", 3, "concorde-dev-loop", "execute", None),
+            ("concorde-operation-invocation", 3, "concorde-plan", "execute", None),
             (
                 invocation["type_id"],
                 invocation["schema_version"],
@@ -329,7 +337,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(state["change_id"], invocation["input"]["data"]["change_id"])
         self.assertEqual(state["change_id"], result["workspace"]["change_id"])
         self.assertEqual(self.task["task"], invocation["input"]["data"]["task"])
-        self.assertEqual("ready", state["status"])
+        self.assertEqual("active", state["status"])
         # No agent ran in the primary worktree and nothing was recorded there.
         self.assertEqual([], self.outer_double.calls)
         self.assertTrue(relayed["calls"])
@@ -340,27 +348,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(result, json.loads(json.dumps(result)))
 
-    @verifies("scenario.harness.worktree-relay", "scenario.specify-loop.independent")
-    def test_specify_loop_from_primary_relays_and_stops_at_spec_completion(self):
-        result = self.call_operation(
-            self.primary,
-            "concorde-specify-loop",
-            self.task,
-            host=self.primary_host(self.relay_in_process()),
-        )
-        [relayed] = self.relayed
-        self.addCleanup(self.remove_candidate, relayed["candidate"])
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("completed", result["output"]["data"]["outcome"], result)
-        stages = [call["stage"] for call in relayed["calls"]]
-        self.assertNotIn("implementation", stages)
-        self.assertEqual([], self.outer_double.calls)
-
     @verifies("scenario.harness.worktree-relay")
     def test_primary_mutation_with_an_unknown_change_id_is_refused(self):
         result = self.call_operation(
             self.primary,
-            "concorde-dev-loop",
+            "concorde-plan",
             {**self.task, "change_id": "change.unknown"},
             host=self.primary_host(self.relay_in_process()),
         )
@@ -369,103 +361,86 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual([], self.relayed)
 
     @verifies(
-        "scenario.dev-loop.resume-unbound",
         "scenario.harness.change-owner",
         "scenario.harness.worktree-relay",
     )
     def test_primary_resume_by_change_id_relays_into_the_recorded_candidate(self):
-        for specify in (False, True):
-            for reviews in (False, True):
-                with self.subTest(specify=specify, reviews=reviews):
-                    task = {
-                        "task": self.task["task"],
-                        "constraints": ["Keep the API"],
-                        "specify": specify,
-                        "run_reviews": reviews,
+        task = {
+            "task": self.task["task"],
+            "constraints": ["Keep the API"],
+            "target_id": self.task["target_id"],
+        }
+        prepared = []
+
+        def prepare_only(host, operation, invocation, candidate, prepared=prepared):
+            # An interrupted first run: the candidate exists and records the
+            # change, but nothing was routed or executed in it.
+            prepared.append(candidate)
+            return {
+                "type_id": "concorde-operation-result",
+                "schema_version": 3,
+                "operation_id": operation,
+                "invocation_id": "relay-interrupted",
+                "mode": "execute",
+                "status": "failed",
+                "workspace": None,
+                "output": None,
+                "errors": [
+                    {
+                        "code": "execution_cancelled",
+                        "field": "",
+                        "message": "interrupted",
                     }
-                    prepared = []
+                ],
+            }, ""
 
-                    def prepare_only(
-                        host, operation, invocation, candidate, prepared=prepared
-                    ):
-                        # An interrupted first run: the candidate exists and records the
-                        # change, but nothing was routed or executed in it.
-                        prepared.append(candidate)
-                        return {
-                            "type_id": "concorde-operation-result",
-                            "schema_version": 3,
-                            "operation_id": operation,
-                            "invocation_id": "relay-interrupted",
-                            "mode": "execute",
-                            "status": "failed",
-                            "workspace": None,
-                            "output": None,
-                            "errors": [
-                                {
-                                    "code": "execution_cancelled",
-                                    "field": "",
-                                    "message": "interrupted",
-                                }
-                            ],
-                        }, ""
+        initial = self.call_operation(
+            self.primary,
+            "concorde-plan",
+            task,
+            host=self.primary_host(prepare_only),
+        )
+        self.assertEqual("failed", initial["status"], initial)
+        self.assertEqual("execution_cancelled", initial["errors"][0]["code"])
+        [created] = prepared
+        try:
+            state = read_change(created, required=True)
+            self.assertIsNone(state["target_id"])
+            self.assertEqual({}, state["targets"])
+            resumed = self.call_operation(
+                self.primary,
+                "concorde-plan",
+                {**task, "change_id": state["change_id"]},
+                host=self.primary_host(self.relay_in_process()),
+            )
+            [relayed] = self.relayed
+            self.assertEqual(created, relayed["candidate"])
+            self.assertEqual("succeeded", resumed["status"], resumed)
+            self.assertEqual("completed", resumed["output"]["data"]["outcome"])
+            stages = [call["stage"] for call in relayed["calls"]]
+            self.assertEqual(["context-solve", "plan"], stages)
+            owner = read_change(created, required=True)
+            self.assertEqual("service.transfer", owner["target_id"])
+            self.assertEqual(task["task"], owner["task"])
+            self.assertEqual(task["constraints"], owner["constraints"])
+        finally:
+            git(self.primary, "worktree", "remove", "--force", str(created))
+            created.parent.rmdir()
 
-                    initial = self.call_operation(
-                        self.primary,
-                        "concorde-dev-loop",
-                        task,
-                        host=self.primary_host(prepare_only),
-                    )
-                    self.assertEqual("failed", initial["status"], initial)
-                    self.assertEqual(
-                        "execution_cancelled", initial["errors"][0]["code"]
-                    )
-                    [created] = prepared
-                    try:
-                        state = read_change(created, required=True)
-                        self.assertIsNone(state["target_id"])
-                        self.assertEqual({}, state["targets"])
-                        resumed = self.call_operation(
-                            self.primary,
-                            "concorde-dev-loop",
-                            {**task, "change_id": state["change_id"]},
-                            host=self.primary_host(self.relay_in_process()),
-                        )
-                        [relayed] = self.relayed
-                        self.assertEqual(created, relayed["candidate"])
-                        self.assertEqual("succeeded", resumed["status"], resumed)
-                        self.assertEqual("ready", resumed["output"]["data"]["outcome"])
-                        stages = [call["stage"] for call in relayed["calls"]]
-                        # Fixture discovery expands once, then selects exactly one route.
-                        self.assertEqual(["route", "route"], stages[:2])
-                        self.assertEqual(2, stages.count("route"))
-                        self.assertEqual(specify, "specify" in stages)
-                        self.assertEqual(reviews, "spec-review" in stages)
-                        self.assertEqual(reviews, "code-review" in stages)
-                        owner = read_change(created, required=True)
-                        self.assertEqual("service.transfer", owner["target_id"])
-                        self.assertEqual(task["task"], owner["task"])
-                        self.assertEqual(task["constraints"], owner["constraints"])
-                    finally:
-                        git(self.primary, "worktree", "remove", "--force", str(created))
-                        created.parent.rmdir()
-
-    @verifies("scenario.dev-loop.resume-bound", "scenario.harness.change-owner")
+    @verifies("scenario.harness.change-owner")
     def test_bound_resume_restores_focus_and_constraints_and_rejects_conflicts(self):
         task = {
             **self.task,
             "constraints": ["Keep API"],
             "focus_id": "scenario.transfer.debit",
-            "specify": False,
-            "run_reviews": False,
         }
         change_id = self.ready(task=task)
         resumed_task = {
+            "target_id": task["target_id"],
             "change_id": change_id,
             "task": task["task"],
-            "specify": False,
-            "run_reviews": False,
         }
-        result = self.call_operation(self.change, "concorde-dev-loop", resumed_task)
+        result = self.call_operation(self.change, "concorde-plan", resumed_task)
         self.assertEqual("succeeded", result["status"], result)
         self.assertNotIn("route", [call["stage"] for call in self.last_double.calls])
         self.assertEqual(task["focus_id"], result["output"]["data"]["focus_id"])
@@ -478,7 +453,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             with self.subTest(field=field):
                 before = self.state_file().read_bytes()
                 result = self.call_operation(
-                    self.change, "concorde-dev-loop", {**resumed_task, field: value}
+                    self.change, "concorde-plan", {**resumed_task, field: value}
                 )
                 self.assertEqual("blocked", result["status"], result)
                 self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
@@ -486,14 +461,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 self.assertEqual([], self.last_double.calls)
                 self.assertEqual(before, self.state_file().read_bytes())
 
-    @verifies("scenario.dev-loop.resume-unbound", "scenario.harness.change-owner")
-    def test_unbound_resume_retains_hints_and_refuses_changed_intent(self):
+    @verifies("scenario.harness.change-owner")
+    def test_unbound_resume_retains_explicit_selection_and_refuses_changed_intent(self):
         task = {
             **self.task,
             "constraints": ["Keep API"],
             "focus_id": "scenario.transfer.debit",
-            "specify": False,
-            "run_reviews": False,
         }
         state = change_worktree.ensure_change(self.change, task=task)
         for field, value in (
@@ -505,7 +478,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 before = self.state_file().read_bytes()
                 result = self.call_operation(
                     self.change,
-                    "concorde-dev-loop",
+                    "concorde-plan",
                     {**task, "change_id": state["change_id"], field: value},
                 )
                 self.assertEqual(
@@ -515,17 +488,16 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 self.assertEqual(before, self.state_file().read_bytes())
         result = self.call_operation(
             self.change,
-            "concorde-dev-loop",
+            "concorde-plan",
             {
+                "target_id": task["target_id"],
                 "task": task["task"],
                 "change_id": state["change_id"],
-                "specify": False,
-                "run_reviews": False,
             },
         )
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual(
-            ["route"],
+            [],
             [
                 call["stage"]
                 for call in self.last_double.calls
@@ -534,26 +506,25 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(task["focus_id"], result["output"]["data"]["focus_id"])
 
-    @verifies("scenario.dev-loop.resume-bound", "scenario.harness.change-owner")
+    @verifies("scenario.harness.change-owner")
     def test_resume_rejects_missing_wrong_and_malformed_worktree_state(self):
         task = {
+            "target_id": self.task["target_id"],
             "task": self.task["task"],
             "change_id": "change.absent",
-            "specify": False,
-            "run_reviews": False,
         }
-        result = self.call_operation(self.change, "concorde-dev-loop", task)
+        result = self.call_operation(self.change, "concorde-plan", task)
         self.assertEqual("missing_change", result["errors"][0]["code"], result)
         self.assertFalse(self.state_file().exists())
         state = change_worktree.ensure_change(self.change, task=self.task)
         before = self.state_file().read_bytes()
-        result = self.call_operation(self.change, "concorde-dev-loop", task)
+        result = self.call_operation(self.change, "concorde-plan", task)
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
         self.assertEqual(before, self.state_file().read_bytes())
         # From the primary worktree the recorded change is relayed into its candidate.
         result = self.call_operation(
             self.primary,
-            "concorde-dev-loop",
+            "concorde-plan",
             {**task, "change_id": state["change_id"]},
             host=self.primary_host(self.relay_in_process()),
         )
@@ -579,7 +550,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 damaged = self.state_file().read_bytes()
                 result = self.call_operation(
                     self.change,
-                    "concorde-dev-loop",
+                    "concorde-plan",
                     {**task, "change_id": state["change_id"]},
                 )
                 self.assertEqual(code, result["errors"][0]["code"], result)
@@ -592,7 +563,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 self.state_file().write_text(json.dumps(corrupted))
                 result = self.call_operation(
                     self.change,
-                    "concorde-dev-loop",
+                    "concorde-plan",
                     {**task, "change_id": state["change_id"]},
                 )
                 self.assertEqual(
@@ -613,19 +584,17 @@ class WorktreeLifecycleTests(unittest.TestCase):
             self.assertEqual(field, caught.exception.field)
         self.assertIsNone(read_change(self.change, required=True)["target_id"])
 
-    @verifies("scenario.dev-loop.resume-bound", "scenario.harness.change-owner")
-    def test_trusted_component_route_keeps_root_owner_and_rejects_mismatch(self):
-        change_id = self.ready(
-            task={**self.task, "specify": False, "run_reviews": False}
-        )
+    @verifies("scenario.harness.change-owner")
+    def test_independent_component_review_keeps_root_owner_and_rejects_foreign_focus(
+        self,
+    ):
+        change_id = self.ready()
         owner = read_change(self.change, required=True)
         double = ModelProcessDouble()
         host = OperationHost(
             self.change,
             PACKAGE,
             executor=double.executor,
-            routed_target="module.ledger",
-            coordinated=True,
         )
         task = {
             "target_id": "module.ledger",
@@ -644,10 +613,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
         result = self.call_operation(
             self.change,
             "concorde-code-review",
-            {**task, "target_id": "service.transfer"},
+            {**task, "focus_id": "scenario.transfer.debit"},
             host=host,
         )
-        self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
+        self.assertEqual("invalid_focus", result["errors"][0]["code"], result)
         self.assertEqual([], double.calls)
 
     @verifies("scenario.harness.worktree-relay")
@@ -706,155 +675,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
         self.assertEqual("ready", read_change(self.change, required=True)["status"])
-
-    @verifies(
-        "scenario.dev-loop.spec-gap",
-        "scenario.dev-loop.coordinated",
-        "scenario.concorde.develop-gap",
-    )
-    def test_partial_spec_reconciliation_is_explicit_and_resumes_completed_authors(
-        self,
-    ):
-        before_primary = (self.primary / "specs/transfer/module.md").read_bytes()
-        from tests.concorde.spec.support import add_binding
-
-        def binding(role, peer):
-            return {
-                "id": "contract.fixture.sync",
-                "version": 1,
-                "role": role,
-                "peer": peer,
-                "selection_condition": "When coordinating values.",
-                "relied_upon_guarantees": ["Return the agreed representation."],
-                "obligations": ["Handle the agreed value."],
-            }
-
-        add_binding(
-            self.change,
-            "specs/transfer/module.md",
-            binding("required", "module.ledger"),
-        )
-        provider = self.change / "specs/ledger/obligations.md"
-        provider.write_text(
-            provider.read_text()
-            + "\n```concorde-contract\n"
-            + json.dumps(
-                {
-                    "id": "contract.fixture.sync",
-                    "version": 1,
-                    "schema": {"type": "integer"},
-                    "semantics": "The coordinated value has the agreed representation.",
-                    "example": 7,
-                }
-            )
-            + "\n```\n"
-        )
-        add_binding(
-            self.change,
-            "specs/ledger/obligations.md",
-            binding("provided", "service.transfer"),
-        )
-        registry_path = self.change / ".concorde/specs.json"
-        registry = json.loads(registry_path.read_text())
-        next(t for t in registry["targets"] if t["id"] == "service.transfer")[
-            "references"
-        ] = [{"kind": "document", "id": "document.ledger.api.obligations"}]
-        registry_path.write_text(json.dumps(registry))
-        task = {
-            "target_id": "scope.bank",
-            "task": "Coordinate transfer and ledger changes",
-        }
-
-        def partial(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
-                data["tasks"].append(
-                    {
-                        "id": "task.ledger",
-                        "target_id": "module.ledger",
-                        "description": "Implement the ledger API",
-                        "acceptance": "Read a known balance",
-                        "complete": False,
-                    }
-                )
-            if stage == "specify" and snapshot["target_id"] == "service.transfer":
-                reading = "specs/transfer/module.md"
-                metadata = reading + ".json"
-                value = json.loads((cwd / metadata).read_text())
-                value["bindings"][0]["version"] = 2
-                data["documents"] = [
-                    {
-                        "path": reading,
-                        "content": (cwd / reading).read_text()
-                        + "\nClarified candidate promise.\n",
-                    },
-                    {"path": metadata, "content": json.dumps(value)},
-                ]
-            if stage == "specify" and snapshot["target_id"] == "module.ledger":
-                data.update(
-                    outcome="spec_incomplete",
-                    blockers=[
-                        {
-                            "question": "Which account is known?",
-                            "blocked_step": "Author the ledger view",
-                            "needed_contract": "Known account identity",
-                        }
-                    ],
-                )
-
-        result = self.call_operation(self.change, "concorde-dev-loop", task, partial)
-        self.assertEqual("blocked", result["status"], result)
-        state = read_change(self.change, required=True)
-        records = state["targets"]["scope.bank"]["coordination"]
-        self.assertEqual("completed", records["service.transfer"]["spec_status"])
-        self.assertEqual("blocked", records["module.ledger"]["spec_status"])
-        self.assertEqual("spec_reconciliation", state["phase"])
-        self.assertEqual("spec_incomplete", state["outcome"])
-        self.assertIn(
-            "Clarified candidate promise",
-            (self.change / "specs/transfer/module.md").read_text(),
-        )
-        self.assertEqual(
-            before_primary, (self.primary / "specs/transfer/module.md").read_bytes()
-        )
-        self.assertEqual(
-            "invalid", validate_repository(self.change, package_root=PACKAGE).status
-        )
-        self.assertFalse(
-            any(c["stage"] == "implementation" for c in self.last_double.calls)
-        )
-
-        def finish_provider(stage, snapshot, data, cwd):
-            if stage == "specify" and snapshot["target_id"] == "module.ledger":
-                reading = "specs/ledger/obligations.md"
-                metadata = reading + ".json"
-                replacement = (
-                    (cwd / reading)
-                    .read_text()
-                    .replace('"version": 1', '"version": 2')
-                    .replace('"type": "integer"', '"type": "string"')
-                    .replace('"example": 7', '"example": "new"')
-                )
-                value = json.loads((cwd / metadata).read_text())
-                value["bindings"][0]["version"] = 2
-                data["documents"] = [
-                    {"path": reading, "content": replacement},
-                    {"path": metadata, "content": json.dumps(value)},
-                ]
-
-        result = self.call_operation(
-            self.change, "concorde-dev-loop", task, finish_provider
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        authors = [
-            c["snapshot"]["target_id"]
-            for c in self.last_double.calls
-            if c["stage"] == "specify"
-        ]
-        self.assertEqual(["module.ledger"], authors)
-        self.assertEqual(
-            state["change_id"], read_change(self.change, required=True)["change_id"]
-        )
-        self.assertTrue(self.change.exists())
 
     @verifies("scenario.delivery.branch", "scenario.concorde.deliver-stage")
     def test_source_delivery_removes_active_worktree_and_retry_does_not_republish(self):
@@ -1381,7 +1201,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self,
     ):
         original = (self.primary / "AGENTS.md").read_text()
-        self.call_operation(self.change, "concorde-main", {"task": "Explain transfer"})
+        self.call_operation(
+            self.change,
+            "concorde-context-solve",
+            {"target_id": "scope.bank", "task": "Explain transfer"},
+        )
         path = self.change / "AGENTS.md"
         path.write_text(path.read_text() + "\nA deliberately authored convention.\n")
         change_id = self.ready()

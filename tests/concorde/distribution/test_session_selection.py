@@ -27,7 +27,9 @@ class SessionSelectionTests(unittest.TestCase):
             )
         write_published_skills(self.root)
         write_build(self.root)
-        self.skill = self.root / "generated/session/claude/concorde-main/SKILL.md"
+        self.skill = (
+            self.root / "generated/session/claude/concorde-context-solve/SKILL.md"
+        )
         self.runtime = self.root / "scripts/run-operation.py"
 
     @verifies(
@@ -56,7 +58,7 @@ class SessionSelectionTests(unittest.TestCase):
     @verifies("scenario.distribution.private-selection")
     def test_selection_never_falls_back(self):
         for path in (
-            "concorde-main",
+            "concorde-context-solve",
             str(self.root.parent / "SKILL.md"),
             str(self.root / "missing/SKILL.md"),
         ):
@@ -158,7 +160,7 @@ class SessionSelectionTests(unittest.TestCase):
         request = {
             "type_id": "concorde-operation-invocation",
             "schema_version": 3,
-            "operation_id": "concorde-main",
+            "operation_id": "concorde-context-solve",
             "mode": "execute",
             "configuration": None,
             "input": {},
@@ -177,7 +179,7 @@ class SessionSelectionTests(unittest.TestCase):
             patch("sys.stdin", io.StringIO(json.dumps(request))),
             patch("sys.stdout", output),
         ):
-            self.assertEqual(3, json_main(self.root, "concorde-main", runner))
+            self.assertEqual(3, json_main(self.root, "concorde-context-solve", runner))
         self.assertEqual(
             "workspace_mismatch", json.loads(output.getvalue())["errors"][0]["code"]
         )
@@ -209,11 +211,12 @@ class SessionSelectionTests(unittest.TestCase):
         request = {
             "type_id": "concorde-operation-invocation",
             "schema_version": 3,
-            "operation_id": "concorde-main",
+            "operation_id": "concorde-context-solve",
             "mode": "describe-policy",
             "configuration": None,
             "input": typed(
-                "concorde-main-request", {"task": "Inspect disposable project"}
+                "concorde-context-solve-request",
+                {"target_id": "module.project", "task": "Inspect disposable project"},
             ),
         }
         with (
@@ -226,7 +229,7 @@ class SessionSelectionTests(unittest.TestCase):
             patch("sys.stdout", io.StringIO()),
             patch("pathlib.Path.cwd", return_value=project),
         ):
-            self.assertEqual(0, json_main(self.root, "concorde-main", runner))
+            self.assertEqual(0, json_main(self.root, "concorde-context-solve", runner))
         self.assertEqual(project, observed["host"].project_root)
         self.assertEqual(self.root, observed["host"].package_root)
         self.assertEqual(

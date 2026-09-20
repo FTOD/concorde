@@ -79,8 +79,17 @@ class IssueGraphTests(unittest.TestCase):
         self.assertEqual(before, read_issue(self.root, self.ref["issue_id"]))
 
     @verifies("scenario.issues.solve-ready")
-    def test_solve_uses_development_and_verifies_disposition_before_ready(self):
-        result = self.call("solve")
+    def test_caller_work_then_solve_verifies_disposition_before_ready(self):
+        returned = self.call("solve")
+        self.assertEqual("blocked", returned["status"], returned)
+        self.assertEqual("develop", returned["output"]["data"]["decision"])
+        self.assertEqual("unsupported", returned["output"]["data"]["outcome"])
+        self.assertEqual(["issue-solve"], [call["stage"] for call in self.model.calls])
+        self.assertEqual(
+            "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]
+        )
+        self.healthy_implementation()
+        result = self.call("solve", self.resolved)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
         self.assertEqual("resolved", result["output"]["data"]["decision"])
@@ -92,7 +101,7 @@ class IssueGraphTests(unittest.TestCase):
             revision, change["issue_solutions"][record["id"]]["closed_revision"]
         )
         stages = [call["stage"] for call in self.model.calls]
-        self.assertIn("implementation", stages)
+        self.assertNotIn("implementation", stages)
         self.assertGreaterEqual(stages.count("code-review"), 2)
         self.assertFalse((self.root / ".concorde/deliveries").exists())
         repeated = self.call("solve")
@@ -109,38 +118,60 @@ class IssueGraphTests(unittest.TestCase):
         ]["properties"]["action"]["enum"]
         self.assertEqual(set(actions), set(DECISION_ROUTES))
         self.assertLessEqual(set(DECISION_ROUTES.values()), set(NODES))
-        self.assertEqual("repair_spec", DECISION_ROUTES["spec-repair"])
+        self.assertEqual("finish", DECISION_ROUTES["spec-repair"])
+        self.assertEqual("finish", DECISION_ROUTES["develop"])
+
+    @staticmethod
+    def resolved(stage, snapshot, data, cwd):
+        if stage == "issue-solve":
+            data["issue_decision"]["action"] = "resolved"
 
     @verifies("scenario.issues.solve-spec-repair")
-    def test_spec_repair_enters_the_author_then_continues_development(self):
-        def choose(stage, snapshot, data, cwd):
-            if (
-                stage == "issue-solve"
-                and sum(c["stage"] == stage for c in self.model.calls) == 1
-            ):
-                data["issue_decision"]["action"] = "spec-repair"
+    def test_needed_work_returns_without_automatic_authoring_or_development(self):
+        before = {
+            p.relative_to(self.root): p.read_bytes()
+            for directory in ("specs", "app")
+            for p in (self.root / directory).rglob("*")
+            if p.is_file()
+        }
+        registry = (self.root / ".concorde/specs.json").read_bytes()
+        for action in ("spec-repair", "develop"):
+            with self.subTest(action=action):
 
-        result = self.call("solve", choose)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
-        stages = [call["stage"] for call in self.model.calls]
-        self.assertEqual(["issue-solve", "specify", "issue-solve"], stages[:3])
-        self.assertIn("implementation", stages)
-        author = self.model.calls[1]["snapshot"]
-        self.assertIn(
-            "concorde-issue-intent",
-            [value["type_id"] for value in author["stage_inputs"]],
-        )
-        self.assertNotIn(
-            "concorde-issue-selection",
-            [value["type_id"] for value in author["stage_inputs"]],
-        )
-        self.assertEqual(
-            "closed", read_issue(self.root, self.ref["issue_id"])[0]["status"]
-        )
+                def choose(stage, snapshot, data, cwd):
+                    if stage == "issue-solve":
+                        data["issue_decision"].update(
+                            action=action, intent="Clarify the transfer promise."
+                        )
+
+                result = self.call("solve", choose)
+                self.assertEqual("blocked", result["status"], result)
+                self.assertEqual("unsupported", result["output"]["data"]["outcome"])
+                self.assertEqual(action, result["output"]["data"]["decision"])
+                self.assertIn(
+                    "Clarify the transfer promise.", result["output"]["data"]["answer"]
+                )
+                self.assertIn("service.transfer", result["output"]["data"]["answer"])
+                self.assertEqual(
+                    ["issue-solve"], [c["stage"] for c in self.model.calls]
+                )
+                self.assertEqual(
+                    before, {p: (self.root / p).read_bytes() for p in before}
+                )
+                self.assertEqual(
+                    registry, (self.root / ".concorde/specs.json").read_bytes()
+                )
+                self.assertEqual(
+                    "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]
+                )
+                solution = read_change(self.root, required=True)["issue_solutions"][
+                    self.ref["issue_id"]
+                ]
+                self.assertIsNone(solution["verified_inputs"])
+                self.assertEqual(action, solution["history"][-1]["decision"]["action"])
 
     @verifies("scenario.issues.solve-spec-repair")
-    def test_code_free_spec_repair_can_continue_directly_to_verification(self):
+    def test_code_free_direct_spec_edit_continues_to_fresh_verification(self):
         self.healthy_implementation()
         self.ref = report_issue(
             self.root,
@@ -150,20 +181,23 @@ class IssueGraphTests(unittest.TestCase):
 
         def choose(stage, snapshot, data, cwd):
             if stage == "issue-solve":
-                count = sum(call["stage"] == stage for call in self.model.calls)
-                if count <= 2:
-                    data["issue_decision"]["action"] = (
-                        "spec-repair" if count == 1 else "verify"
-                    )
+                data["issue_decision"]["action"] = "spec-repair"
 
-        result = self.call("solve", choose)
+        returned = self.call("solve", choose)
+        self.assertEqual("unsupported", returned["output"]["data"]["outcome"])
+        spec = self.root / "specs/audit/module.md"
+        spec.write_text(
+            spec.read_text() + "\nAudit observes the specified transfer behavior.\n"
+        )
+        result = self.call("solve", self.resolved)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
         stages = [call["stage"] for call in self.model.calls]
-        self.assertEqual(["issue-solve", "specify", "issue-solve"], stages[:3])
         self.assertIn("spec-review", stages)
         self.assertNotIn("code-review", stages)
         self.assertNotIn("implementation", stages)
+        self.assertNotIn("specify", stages)
+        self.assertEqual({}, read_change(self.root, required=True)["targets"])
 
     @verifies("scenario.issues.solve-decision")
     def test_unsettled_design_stays_open_without_a_human_approval_gate_for_every_issue(
@@ -376,8 +410,11 @@ class IssueGraphTests(unittest.TestCase):
 
         self.assertEqual("blocked", self.call("solve", wait)["status"])
 
+        self.healthy_implementation()
+
         def observe(stage, snapshot, data, cwd):
             if stage == "issue-solve":
+                data["issue_decision"]["action"] = "resolved"
                 self.assertIn(
                     "Use the existing pure-transfer contract.",
                     snapshot["stage_inputs"][0]["data"]["feedback"],

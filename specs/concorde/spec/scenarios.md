@@ -5,30 +5,30 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Context](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
-| [Ownership](registry.md#terminology) | Defined in Registry. |
-| [Composition](registry.md#terminology) | Defined in Registry. |
-| [Use](registry.md#terminology) | Defined in Registry. |
-| [Reference](registry.md#terminology) | Defined in Registry. |
-| [Implementation binding](registry.md#terminology) | Defined in Registry. |
-| [Document unit](values.md#terminology) | Defined in Identities and versions. |
-| [Document role](values.md#terminology) | Defined in Identities and versions. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Requirement](../module.md#terminology) | Defined in Concorde Framework. |
-| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                              | Meaning / definition                             |
+| ------------------------------------------------- | ------------------------------------------------ |
+| [Module](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                   |
+| [Registry](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Context](../module.md#terminology)               | Defined in Concorde Framework.                   |
+| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Protocol binding](values.md#terminology)         | Defined in Identities and versions.              |
+| [Ownership](registry.md#terminology)              | Defined in Registry.                             |
+| [Composition](registry.md#terminology)            | Defined in Registry.                             |
+| [Use](registry.md#terminology)                    | Defined in Registry.                             |
+| [Reference](registry.md#terminology)              | Defined in Registry.                             |
+| [Implementation binding](registry.md#terminology) | Defined in Registry.                             |
+| [Document unit](values.md#terminology)            | Defined in Identities and versions.              |
+| [Document role](values.md#terminology)            | Defined in Identities and versions.              |
+| [Entity](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Requirement](../module.md#terminology)           | Defined in Concorde Framework.                   |
+| [Scenario](../module.md#terminology)              | Defined in Concorde Framework.                   |
 | [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
-| [Initialization](initialize.md#terminology) | Defined in Project initialization. |
-| [Initial proposal](initialize.md#terminology) | Defined in Project initialization. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Initialization](initialize.md#terminology)       | Defined in Project initialization.               |
+| [Initial proposal](initialize.md#terminology)     | Defined in Project initialization.               |
+| [Issue](../module.md#terminology)                 | Defined in Concorde Framework.                   |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives.   |
 
 ## Spec
 
@@ -239,7 +239,7 @@ It is independent documentation evidence, not a lifecycle check or a semantic-co
 - GIVEN a previously returned proposal whose destinations are still absent and whose Protocol binding is current
 - WHEN the developer requests action apply with that exact proposal
 - THEN the operation validates the complete resulting registry and documents and commits every file in one transaction
-- AND it creates nothing that exists only because Concorde is installed: the Protocol copy, the Issue directory defaults and the topology-artifact ignore file are the installer's outputs
+- AND it creates nothing that exists only because Concorde is installed: the Protocol copy, and the Issue directory defaults are the installer's outputs
 - AND the response reports status applied with the applied paths
 
 ### scenario.spec.reject-already-initialized — Rejecting an already-configured project

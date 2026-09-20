@@ -75,6 +75,15 @@ def plan_nodes(run):
             run.task.get("focus_id"),
             create=True,
         )
+        if state["tasks"]:
+            state.setdefault("task_history", []).append(
+                {
+                    "reason": "replan",
+                    "tasks": state["tasks"],
+                    "implementation_digest": state.get("implementation_digest"),
+                }
+            )
+        state.pop("repair_review", None)
         state.pop("coordination", None)
         state.pop("component_revisions", None)
         state.update(

@@ -182,7 +182,7 @@ class PromptRuleTests(unittest.TestCase):
         self.assertEqual([], package_validation._validate_prompts(self.root))
 
     def test_resolver_error_is_reported_with_its_rule_id(self) -> None:
-        edited = self.root / "prompts/skills/concorde-main.md"
+        edited = self.root / "prompts/skills/concorde-context-solve.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n",
             encoding="utf-8",
@@ -530,7 +530,7 @@ class OperationModuleRuleTests(unittest.TestCase):
         self.assertEqual([], package_validation._validate_operation_modules(self.root))
 
     @verifies("scenario.distribution.operation-determinism")
-    def test_host_routing_counts_as_a_model_call(self) -> None:
+    def test_removed_discovery_selection_is_rejected(self) -> None:
         pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
         _operations_package(self.root, alpha_source=pure)
@@ -540,7 +540,7 @@ class OperationModuleRuleTests(unittest.TestCase):
         _operations_package(self.root, alpha_source=pure)
         findings = package_validation._validate_operation_modules(self.root)
         self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-DETERMINISTIC-001" for f in findings),
+            any(f.rule_id == "CONCORDE-OPERATION-CONTEXT-001" for f in findings),
             findings,
         )
 
@@ -782,7 +782,7 @@ class ContractRuleTests(unittest.TestCase):
             + (
                 "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
                 "def exported_types():\n"
-                "    return (*_ORIGINAL_EXPORTED_TYPES(), 'concorde-main-request')\n"
+                "    return (*_ORIGINAL_EXPORTED_TYPES(), 'concorde-context-solve-request')\n"
             ),
             encoding="utf-8",
         )
@@ -790,7 +790,7 @@ class ContractRuleTests(unittest.TestCase):
         self.assertTrue(
             any(f.rule_id == "CONCORDE-CONTRACT-UNIQUE-001" for f in findings), findings
         )
-        self.assertIn("concorde-main-request", str(findings))
+        self.assertIn("concorde-context-solve-request", str(findings))
 
 
 class BuildOutputRuleTests(unittest.TestCase):
@@ -1314,6 +1314,28 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
             self.root, _required_documents(self.root)
         )
         self.assertEqual([], findings)
+
+    @verifies("scenario.distribution.build-check")
+    def test_error_scanner_distinguishes_code_from_diagnostic_fields(self) -> None:
+        self._package_module(
+            "fixture.py",
+            'SpecError("message_token", "invalid_target", field="target_id")\n'
+            'TypedDataError("invalid_field", "target_id", "message_token")\n'
+            'OperationExecutionError("message_token", "failed", "execution_failed")\n'
+            'FixtureError("message_token", code="fixture_code", field="focus_id")\n'
+            'ValueError("message_token")\n'
+            'record = {"code": "record_code", "field": "target_id"}\n',
+        )
+        self.assertEqual(
+            {
+                "invalid_target",
+                "invalid_field",
+                "execution_failed",
+                "fixture_code",
+                "record_code",
+            },
+            package_validation._raised_error_codes(self.root),
+        )
 
     def test_documented_error_code_has_no_findings(self) -> None:
         self._package_module(

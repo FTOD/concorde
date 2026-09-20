@@ -6,29 +6,29 @@ and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery receipt](module.md#terminology) | Defined in Delivery. |
-| [Delivered branch](module.md#terminology) | Defined in Delivery. |
-| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                         | Meaning / definition           |
+| -------------------------------------------- | ------------------------------ |
+| [Candidate](../module.md#terminology)        | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology)            | Defined in Concorde Framework. |
+| [Delivery](../module.md#terminology)         | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology)         | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology)         | Defined in Concorde Framework. |
+| [Host](../module.md#terminology)             | Defined in Concorde Framework. |
+| [Delivery receipt](module.md#terminology)    | Defined in Delivery.           |
+| [Delivered branch](module.md#terminology)    | Defined in Delivery.           |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry.           |
+| [Grant](../module.md#terminology)            | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology)            | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology)            | Defined in Concorde Framework. |
 
 ## Delivery operation {#delivery-delivery-operation}
 
 Delivery consumes host-recorded candidate identity, progress and current validation/review evidence.
 The [common worktree metadata](../harness/admission.md#worktree-awareness) supplies those
-records; the producer graph owns its ordering and progress policy. A candidate's draft Spec bytes
+records; the caller selects retained Operations and their order. A candidate's draft Spec bytes
 are not visible in the primary worktree before delivery.
 
-Standard and fast loops end at ready. Request concorde-deliver with the selected change_id from
+Readiness is established from current selected evidence, not loop history. Request concorde-deliver with the selected change_id from
 either its source worktree or the primary worktree. A third-worktree session or nested Operation call cannot initiate delivery for that pair; a
 one-layer task child in a participant may continue the change to delivery. The host verifies the exact candidate and its actual integration
 with the current primary commit, then creates `concorde/delivered/<change_id>` in the shared Git
@@ -84,13 +84,15 @@ in the primary run, and uses that package binding for Spec/package validation an
 build outputs do not alter the deliverable tree. Build or validation failure preserves both
 participants and prevents the primary update; no stale-output gate is disabled or bypassed.
 
-The producer graph need not be dev-loop. A directly authored verified candidate is admitted under the same completion, current review, pending-entry confirmation and integration gates. Missing, stale or incomplete evidence rejects delivery; no plan is invented to make evidence appear valid.
+A directly authored verified candidate is admitted without authoring or development-graph records.
+A planned candidate still needs its accepted tasks complete; both paths retain their selected
+current review/check evidence, pending-entry confirmation and actual integration gates. Missing, stale or incomplete evidence rejects delivery; no plan is invented to make evidence appear valid.
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+This provider belongs to Operations; Module parentage does not select its execution order. Its behavior is realized in
 the worktree delivery module it shares with Harness, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
-creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+creates no additional entry, worker grant or configurable arbitrary graph. Host admission, phase
 artifacts and permissions remain mandatory. A new graph requires declared composition and an
 implementation of its sequencing, artifact admission, recovery and completion policies before it
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation

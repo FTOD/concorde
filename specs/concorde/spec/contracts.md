@@ -5,33 +5,33 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ownership](registry.md#terminology) | Defined in Registry. |
-| [Composition](registry.md#terminology) | Defined in Registry. |
-| [Use](registry.md#terminology) | Defined in Registry. |
-| [Reference](registry.md#terminology) | Defined in Registry. |
-| [Implementation binding](registry.md#terminology) | Defined in Registry. |
-| [Document unit](values.md#terminology) | Defined in Identities and versions. |
-| [Document role](values.md#terminology) | Defined in Identities and versions. |
-| [Source-member role](values.md#terminology) | Defined in Identities and versions. |
-| [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Requirement](../module.md#terminology) | Defined in Concorde Framework. |
-| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| Term                                              | Meaning / definition                             |
+| ------------------------------------------------- | ------------------------------------------------ |
+| [Module](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                   |
+| [Registry](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                   |
+| [Ownership](registry.md#terminology)              | Defined in Registry.                             |
+| [Composition](registry.md#terminology)            | Defined in Registry.                             |
+| [Use](registry.md#terminology)                    | Defined in Registry.                             |
+| [Reference](registry.md#terminology)              | Defined in Registry.                             |
+| [Implementation binding](registry.md#terminology) | Defined in Registry.                             |
+| [Document unit](values.md#terminology)            | Defined in Identities and versions.              |
+| [Document role](values.md#terminology)            | Defined in Identities and versions.              |
+| [Source-member role](values.md#terminology)       | Defined in Identities and versions.              |
+| [Protocol binding](values.md#terminology)         | Defined in Identities and versions.              |
+| [Entity](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Requirement](../module.md#terminology)           | Defined in Concorde Framework.                   |
+| [Scenario](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives.   |
 | [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
-| [Initialization](initialize.md#terminology) | Defined in Project initialization. |
-| [Initial proposal](initialize.md#terminology) | Defined in Project initialization. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
+| [Initialization](initialize.md#terminology)       | Defined in Project initialization.               |
+| [Initial proposal](initialize.md#terminology)     | Defined in Project initialization.               |
+| [Worker](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Grant](../module.md#terminology)                 | Defined in Concorde Framework.                   |
+| [Issue](../module.md#terminology)                 | Defined in Concorde Framework.                   |
 
 ## Registry
 
@@ -174,7 +174,7 @@ implementation queries remain separate from the explicit context resolver.
 
 ### Selection and returned values {#values-selection-and-returned-values}
 
-SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
+SpecRepository(project_root, package_root=None, \*, registry_bytes=None, document_overrides=None)
 admits Profile 15 and registry schema 5. The optional bytes and document overrides form an in-memory
 candidate; they never authorize ambient agent reads. Construction rejects malformed identities,
 unknown parents/uses/references, composition cycles, duplicate file owners within one Module and
@@ -224,10 +224,10 @@ The Typed values interface admits the following existing version-1 records in th
 `{type_id, schema_version: 1, data}`. Their data objects are closed as well; all fields below are
 required. They carry task metadata, not implementation contents or execution authority.
 
-| Type ID | Data shape | Meaning |
-| --- | --- | --- |
-| `concorde-task-scope-feedback` | `{tasks_digest: sha256, reason: "implementation_boundary"}` | Host feedback identifying the exact task list whose implementation acceptance must be separated from later Host responsibilities. `tasks_digest` is `sha256:` plus 64 lowercase hexadecimal digits, computed over the canonical JSON task list. The fixed reason requests preservation of software acceptance while correcting that phase boundary. |
-| `concorde-task-identity-constraints` | `{reserved_task_ids: string[]}` | The IDs a fresh task author must not reuse: retained history and, during replacement, the current task list. Strings are nonblank and unique; an empty array is valid. These are identity reservations only, not additional work obligations or permission to replay prior work. |
+| Type ID                              | Data shape                                                  | Meaning                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `concorde-task-scope-feedback`       | `{tasks_digest: sha256, reason: "implementation_boundary"}` | Host feedback identifying the exact task list whose implementation acceptance must be separated from later Host responsibilities. `tasks_digest` is `sha256:` plus 64 lowercase hexadecimal digits, computed over the canonical JSON task list. The fixed reason requests preservation of software acceptance while correcting that phase boundary. |
+| `concorde-task-identity-constraints` | `{reserved_task_ids: string[]}`                             | The IDs a fresh task author must not reuse: retained history and, during replacement, the current task list. Strings are nonblank and unique; an empty array is valid. These are identity reservations only, not additional work obligations or permission to replay prior work.                                                                    |
 
 `typed(type_id, data)` constructs and validates the envelope; `validate_typed(value, expected=None,
 field="")` validates an existing envelope and optionally its expected type. The validator checks
@@ -259,7 +259,7 @@ writes nothing.
 ### Request and proposal shapes {#initialize-request-and-proposal-shapes}
 
 The public input is `concorde-init-request@2`, an ordinary
-`{type_id, schema_version: 1, data}` envelope. `data` is a closed object with required
+`{type_id, schema_version: 2, data}` envelope. `data` is a closed object with required
 `action: "propose"|"apply"` and optional `name`, `target_id`, `configuration` and `proposal`.
 `name` and `target_id`, when supplied, are nonblank strings. `configuration` is
 `concorde-operation-configuration@1`, whose data is the Pi worker model selection: an optional
@@ -274,8 +274,7 @@ unknown properties.
 
 Initialization produces only what the user's project generates through Concorde: its
 configuration, its registry and its first Module Spec. Everything that exists only because Concorde
-is installed, the Protocol copy under `.concorde/protocol/`, the Issue directory defaults and the
-topology-artifact ignore file, is the installer's output and is never created here.
+is installed, the Protocol copy under `.concorde/protocol/`, and the Issue directory defaults, is the installer's output and is never created here.
 
 `action: "propose"` additionally requires `name` and `configuration` and optionally a `target_id`
 (default `module.project`); `action: "apply"` requires the returned typed project proposal. A
@@ -316,12 +315,12 @@ on exception it also sets `route=__end__`, possibly before a normal output exist
 
 **Nodes.** All three leaves are deterministic Operations; none calls a model.
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `select_action` | Reads Host-bound operation/action; refuses describe-policy because proposals are the preview. | none | route, result |
-| `configure` | Writes the Host-bound typed configuration into project settings, optionally rebinding explicitly accepted Protocol bytes. | none | route, output, result |
-| `propose` | Uses Host-bound name/configuration to produce the initialization proposal, base digest and files without applying it. | none | route, output, result |
-| `apply` | Applies the Host-bound unchanged proposal atomically and returns applied paths. | none | route, output, result |
+| Node            | Executes                                                                                                                  | in   | out                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------- |
+| `select_action` | Reads Host-bound operation/action; refuses describe-policy because proposals are the preview.                             | none | route, result         |
+| `configure`     | Writes the Host-bound typed configuration into project settings, optionally rebinding explicitly accepted Protocol bytes. | none | route, output, result |
+| `propose`       | Uses Host-bound name/configuration to produce the initialization proposal, base digest and files without applying it.     | none | route, output, result |
+| `apply`         | Applies the Host-bound unchanged proposal atomically and returns applied paths.                                           | none | route, output, result |
 
 **Edges.** `select_action` writes `route` from the operation and its action, and a conditional
 edge follows it to `configure`, `propose` or `apply`; a refused describe-policy request or an error
@@ -371,16 +370,15 @@ and directed relationships; further diagrams may appear in other registered docu
 containing Markdown document is the diagram's only authored source.
 
 The diagram's bytes already occur in `documents` and participate in document,
-revision and context digests; no separate diagram-source pool or result field exists. Authors
-return a changed fence as part of the changed `documents` entry that contains it. Shared Markdown
-changes are authored once by the sole owner and reviewed for all affected direct context consumers; non-author roles
+revision and context digests; no separate diagram-source pool or result field exists. The task-authorized outer agent
+edits a changed fence in its containing reading member and checks the paired metadata and registry. Shared Markdown
+changes retain their sole owner and are reviewed for affected direct context consumers; bounded workers
 cannot replace these sources; and rendered SVG/HTML is never a cognitive input or another
 authority.
 
 Spec review receives scoped Markdown changes, including any diagram fence they touch, and
-attributes findings to that registered document and owning Module. A blocked author returns no
-replacements. A prepared application binds the complete accepted document set and every
-before-digest. Syntax and publication failures remain distinct from an incomplete or contradictory
+attributes findings to that registered document and owning Module. Direct edits are not review evidence. File transactions, when used, bind the complete accepted
+change set and every before-digest. Syntax and publication failures remain distinct from an incomplete or contradictory
 behavioral contract. Publication renders the same Mermaid source as part of the Markdown page.
 
 ## Framework configuration and storage versions {#values-framework-configuration-and-storage-versions}
@@ -393,7 +391,7 @@ Registry schema 5 stores exactly `schema_version`, `project_id`, `entry_target`,
 
 ## Registry admission details {#structure-registry-admission-details}
 
-Registry schema 5 contains `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. A Module descriptor has `id`, `kind="module"`, `title`, `documents`, `references`, `parent`, `uses`, `files` and `checks`. Every array is explicit. `files` holds listing entries: an exact project file, or a directory prefix written with a trailing `/` that binds every regular file below it. It MUST equal the sorted union of the Module's own entity listing declarations, entry for entry, so a directory prefix appears as that prefix and never as its expanded file names; membership, composition and dependency are checked independently of that entry set. The entry names one Module, and its complete collection starts routing.
+Registry schema 5 contains `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. A Module descriptor has `id`, `kind="module"`, `title`, `documents`, `references`, `parent`, `uses`, `files` and `checks`. Every array is explicit. `files` holds listing entries: an exact project file, or a directory prefix written with a trailing `/` that binds every regular file below it. It MUST equal the sorted union of the Module's own entity listing declarations, entry for entry, so a directory prefix appears as that prefix and never as its expanded file names; membership, composition and dependency are checked independently of that entry set. The entry names one Module as the project reading entry; it does not start automatic routing.
 
 Each registered reading document has a `.md.json` companion with `schema_version: 2`, `document`
 identity/owner/role and explicit `entities`, `dependencies` and `bindings` arrays. Entity records contain
@@ -409,7 +407,10 @@ edge. Scoped omission of an inventory node is permitted; inventing a node is not
 retain id/target_id/argv/timeout_seconds and optional inputs. Shared implementation changes concern
 every listing Module, whose contract is evaluated separately.
 
-The [Topology Module](../topology/module.md) preparation step stores the exact validated registry/document replacements below the ignored `.concorde/topology-proposals/` host area. Its public ArtifactRef binds path and digest. Applying the artifact rechecks its embedded design identity, discovery context, Protocol, registry base and every file before-digest before one atomic transaction.
+The task-authorized outer agent reconciles structural changes directly across the registry and
+paired document members. Repository overlays and deterministic validation can inspect a combined
+candidate without applying it; neither a valid overlay nor a direct edit supplies review evidence.
+No topology proposal store or authoring Operation remains.
 
 ### Reference and interface validation
 

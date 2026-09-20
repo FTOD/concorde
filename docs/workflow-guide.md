@@ -11,14 +11,13 @@ them so developers can understand the project. **Agent observability** covers th
 agent-process events, recorded usage shows what each worker launch consumed, and recorded context,
 permission policies, checks and reviews make the work and its results inspectable. Specs guide each
 worker's task, while the host limits its context and permissions to the declared scope and a
-bubblewrap sandbox bounds every worker process. Twelve built-in Pi workers — one per lifecycle role,
-from answering questions and routing through Spec authoring, review, planning and task definition to
-implementation, code review and Issue solving — do this work behind the public Operations that
+bubblewrap sandbox bounds every worker process. Seven built-in Pi workers perform assessment, review, planning, task definition,
+implementation and Issue solving behind the public Operations that
 installed Skills or the Pi session tool invoke. The Issue system records classified bugs, contract
 gaps and limitations as soon as a worker reports them, without stopping its task, and solves an
 explicitly selected Issue to a verified candidate.
 
-The development and delivery workflows below use **Spec Protocol 10.0.0**. It defines one Module
+The explicitly selected work and delivery examples below use **Spec Protocol 10.0.0**. It defines one Module
 Spec content model and the human-readable subset of that content. Reading begins with Purpose,
 Terminology, Usage, Design and Relationships in module-role entries, followed by explanatory topics
 that each open with their own Terminology table. Formal requirements,
@@ -61,8 +60,8 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic build's output — ten Skills exposing selected entries
-from one inventory of twenty-seven Operations, including twelve model-backed nodes. Their common
+The installer distributes a deterministic build's output — eleven Skills exposing public entries
+from one inventory of eighteen Operations, including seven private model-backed nodes. Their common
 worker rules (`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`)
 render to the compatible `generated/agents/<hyphenated>.md` paths. Four Markdown templates and
 the selected client projections accompany them: Codex or Claude Skills, which the installer has the
@@ -80,12 +79,31 @@ validate it, deliver it, and request the primary merge separately.
 
 ```json
 {
-  "type_id": "concorde-operation-invocation",
-  "schema_version": 3,
-  "operation_id": "concorde-init",
-  "mode": "execute",
-  "configuration": {"type_id":"concorde-operation-configuration","schema_version":1,"data":{"model":"openai-codex/gpt-6-astra","thinking":"medium"}},
-  "input": {"type_id":"concorde-init-request","schema_version":1,"data":{"action":"propose","name":"My project","configuration":{"type_id":"concorde-operation-configuration","schema_version":1,"data":{"model":"openai-codex/gpt-6-astra","thinking":"medium"}}}}
+    "type_id": "concorde-operation-invocation",
+    "schema_version": 3,
+    "operation_id": "concorde-init",
+    "mode": "execute",
+    "configuration": {
+        "type_id": "concorde-operation-configuration",
+        "schema_version": 1,
+        "data": { "model": "openai-codex/gpt-6-astra", "thinking": "medium" }
+    },
+    "input": {
+        "type_id": "concorde-init-request",
+        "schema_version": 2,
+        "data": {
+            "action": "propose",
+            "name": "My project",
+            "configuration": {
+                "type_id": "concorde-operation-configuration",
+                "schema_version": 1,
+                "data": {
+                    "model": "openai-codex/gpt-6-astra",
+                    "thinking": "medium"
+                }
+            }
+        }
+    }
 }
 ```
 
@@ -98,56 +116,55 @@ requirements/scenarios and implementation. Topic documents have their own metada
 need not repeat the entry template. All selected pairs enter context whole.
 `.concorde/config.json` pins the Protocol and references `.concorde/specs.json`; that registry explicitly
 records document members, parent/uses relationships, each Module's `files` and deterministic checks.
-Local dependency declarations state the promises needed for routing and planning; validation keeps
+Local dependency declarations state the promises needed for explicit selection and planning; validation keeps
 them aligned with direct relationships. Arbitrary nearby Markdown is not context.
 Document declarations are likewise checked against reverse registry membership.
 
 ## Run a change
 
-Send this invocation on stdin to `scripts/run-operation.py concorde-dev-loop` (or
+Send this invocation on stdin to `scripts/run-operation.py concorde-plan` (or
 `.concorde/framework/scripts/run-operation.py` in an installed consumer project):
 
 ```json
 {
-  "type_id":"concorde-operation-invocation","schema_version":3,
-  "operation_id":"concorde-dev-loop","mode":"execute","configuration":null,
-  "input":{"type_id":"concorde-dev-loop-request","schema_version":1,
-    "data":{"target_id":"module.transfer","task":"Implement the specified transfer contract"}}
+    "type_id": "concorde-operation-invocation",
+    "schema_version": 3,
+    "operation_id": "concorde-plan",
+    "mode": "execute",
+    "configuration": null,
+    "input": {
+        "type_id": "concorde-plan-request",
+        "schema_version": 1,
+        "data": {
+            "target_id": "module.transfer",
+            "task": "Implement the specified transfer contract"
+        }
+    }
 }
 ```
 
-Null configuration asks the trusted host to load initialized settings. The `ask` action of
-`concorde-main` may omit target_id: the router or answerer selects needed Module Spec contexts, Python
-resolves their complete documents, grants them read-only beside an index, and the answerer
-opens the originals it needs and answers directly from them. Shared documents are granted once
-while preserving each Module's membership. A supplied target_id is a routing hint,
-not a context grant. The loop executes specification,
-context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
+Null configuration asks the trusted host to load initialized settings. The caller reads and
+selects complete Specs directly, answers questions and edits reading, metadata and registry under
+its task grant. Every bounded Operation receives an explicit Module target; `focus_id` is an
+optional scenario of that Module, never permission to trim its context.
 
-Every callable entry is an Operation. Each independently declares public exposure, context
-selection, determinism, an optional model execution profile and the Operations it uses; its size or
-position in a Graph does not create a separate type. A Graph organizes calls, branches and loops. A Skill exposes a
-public Operation to the developer's external agent runtime.
+`concorde-plan` assesses sufficiency and accepts a revision-bound plan, not a completed change.
+The caller may next select `concorde-tasks`, then `concorde-implement`, reviews and validation.
+Tasks require a current plan and implementation requires accepted tasks. The caller selects
+component work separately; no parent develops children automatically. Direct manual candidates
+need no invented plan, but cannot bypass unfinished planned work or already-required reviews.
 
-Operations with `CONTEXT_SELECTION="discover"` use the router to discover complete Module
-contracts; `bound` consumes the selected Module without expanding its context; `none` performs
-deterministic host work without Agent context selection. `PUBLIC` independently decides whether a
-Operation has a Skill. For example, issues is public and uses a bound Module, while
-specify is non-public and runs only through declared composition.
-
-`concorde-specify-loop` routes a task, authors or revises its Spec and independently reviews it,
-then returns completed. `concorde-dev-loop` calls that Operation before planning, tasks,
-implementation, checks and code review. Both accept `specify` and `run_reviews` flags: the former
-can skip authoring; the latter records explicit review skips without cancelling a review already
-required for the change. The Spec loop affects only Spec review, while development also requires
-code review for code-owning targets. Accepted Spec work can continue into development in the same
-change without repeating current evidence.
+Every callable entry is an Operation with declared State, effects, context selection, determinism
+and USES. `bound` receives one selected Module without context expansion; `none` performs
+deterministic host work without worker context selection. Discovery, automatic Spec authoring,
+topology proposal/application and development-loop entries are retired, not aliases. `PUBLIC`
+controls entry availability independently of these guarantees.
 
 `concorde-spec-review` reviews the specification itself, including every imported terminology
 restatement's semantic consistency with its canonical definition. Different wording is allowed.
 `concorde-code-review` reviews or diagnoses the admitted implementation against its Spec. Each
-separate Operation accepts a `task` and optional target/focus routing hints, with no review_mode
-selector. Each selects the owning Module and starts its own fresh read-only reviewer in the current
+separate Operation accepts an explicit `target_id` and `task`, with optional local `focus_id`
+and no review_mode selector. Each binds the selected Module and starts its own fresh read-only reviewer in the current
 worktree, without requiring a development change or preexisting Issue. The host returns structured
 findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline. The former combined
 review entry is removed, not retained as an alias; callers must select one of these two Operations.
@@ -161,22 +178,22 @@ live under `.concorde/work/`; there is no separate attempt lifecycle.
 Context solving reports missing or inconsistent local dependency promises as structured Module Spec
 gaps before planning or task generation.
 
-A blocked change preserves evidence and names missing contracts or failed admission. Author missing
-facts through an explicit local Spec task, reconcile affected consumer/provider views and resolve a
+A blocked change preserves evidence and names missing contracts or failed admission. Edit missing
+promises directly in the owning paired Spec and registry under explicit task authority, reconcile affected consumer/provider views and resolve a
 new context. Completed component work can be resumed when its bound inputs remain current. Partial
 Spec changes stay in the explicitly marked candidate worktree; they do not change the accepted
 primary revision. Changed Spec/intent invalidates stale plan or check evidence.
 The primary keeps stable task records, including terminal outcomes, under `.concorde/status/`;
-unmanaged live worktrees are discovered from Git without inventing task records. `concorde-main` receives this inventory and identifies whether its own
-session is in the primary or a candidate worktree. Secondary AGENTS.md/CLAUDE.md guidance also points
+unmanaged live worktrees are discovered from Git without inventing task records. Inspect status
+directly; lifecycle observations do not expose other worktrees' Spec or implementation contents. Secondary AGENTS.md/CLAUDE.md guidance also points
 to the primary-owned status and primary worktree, without granting access to other worktrees' contents.
 
 To deliver, request `concorde-deliver` from the selected source or primary worktree with its
 change_id. The host checks the candidate and current integration, creates the independent branch
 `concorde/delivered/<change_id>`, and removes the source worktree by default. `keep_worktree:true`
 explicitly retains it; otherwise the source agent ends its session after delivery. The primary
-branch, index and project files stay unchanged, including any local edits. Development loops stop
-at ready and never deliver automatically.
+branch, index and project files stay unchanged, including any local edits. The caller establishes current readiness
+through selected evidence; no automatic development sequence delivers.
 
 Only an explicit user request to merge into the primary branch authorizes a separate
 `merge_primary:true` request with the delivered change_id, from the primary worktree's sole writing
@@ -209,17 +226,13 @@ Only the outside host saves stdout/stderr and lifecycle evidence in the project.
 checkout's docsite type check prepares its sidebar and any missing dependencies in an external copy.
 This boundary does not define finer read, network or credential policies.
 
-For architecture changes, invoke `concorde-main` with `action:design-topology`. It returns a complete
-candidate registry and target-local Spec tasks without writing. Send the exact returned proposal with
-`action:accept-topology` only after developer review. The host then runs private target authors and
-stores exact registry/document bytes in an ignored application artifact, returning only its path and
-digest. Review that artifact outside agent cognition, then send its ArtifactRef with
-`action:apply-topology`. Stale inputs or invalid target state prevent writes; successful application
-updates the registry and documents atomically. The former standalone ask operation does not exist.
-A shared document unit has one owner. Only that owner proposes its source replacements; each
-consumer contributes separate compatibility evidence from its own complete context, never duplicate
-replacement bytes. An implementation file may be listed by several Modules; a topology change to
-its bindings reconciles every listing Module without transferring ownership or widening grants.
+For architecture changes, the task-authorized caller edits the registry and paired document
+members directly, keeping parentage, uses, ownership, explicit references, interface bindings and
+file listings consistent as one candidate. Validate that combined model before dependent work.
+A shared document has one owner and one canonical definition; affected consumers receive separate
+complete contexts and current compatibility evidence, not copied definitions or broader grants.
+A file may be listed by several Modules without merging their responsibilities. No deleted author
+or topology artifact is required, and a direct edit is never fabricated review or completion evidence.
 
 [Operation registry](../specs/concorde/operations/composition.md) ·
 [Operation admission boundary](../specs/concorde/harness/admission.md)
@@ -238,8 +251,8 @@ observations during work. Stage blockers and review judgments reference those im
 Reporting does not itself stop an agent or start a repair, and a workaround can leave an Issue open.
 
 An explicit solve request selects one Issue and its current revision. The bounded solver can use
-ordinary development, Spec repair and read-only verification, then include the disposition in final
-candidate checks. Unresolved choices return needs-decision; an explicit solve note supplies developer
+read-only verification or return needed development/Spec repair intent to the caller.
+Caller-performed edits require fresh verification before supported disposition and final candidate checks. Unresolved choices return needs-decision; an explicit solve note supplies developer
 clarification. A successful candidate-local close is not a claim about primary. See the
 [Issue lifecycle](../specs/concorde/issues/lifecycle.md). Legacy data can be preserved explicitly with
 `scripts/issues.py archive-reflections`; it is never automatically classified or approved.
@@ -259,7 +272,7 @@ navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades
 
-The Framework execution profile defines candidate worktrees in [P10](../prompts/protocol/framework-profile.md#p10-candidate-worktrees-not-session-moves).
+The Framework execution profile defines candidate worktrees in [P10](../prompts/protocol/framework-profile.md#p10-fresh-task-sessions-never-session-moves).
 Concorde Spec Protocol 10.0.0 defines readable Module specifications with paired metadata whose entities bind the
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
 the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
@@ -351,8 +364,8 @@ PATH; the sandbox tests fail rather than skip where the boundary cannot be enfor
 
 `prompts/` (including the Skill sources `prompts/skills/`), `pi/extensions/` and the top-level
 `operations/` package produce this checkout's agent surfaces. Never edit `generated/`,
-`.agents/skills/concorde-*`, `.claude/skills/concorde-*`, `.pi/extensions/concorde-session.ts` or
-generated Issue-solving agents directly; they are untracked build output. The published Skills
+`generated/session/<client>/` projections or generated worker instructions directly; they are
+untracked build output. Build never installs into ambient client discovery. The published Skills
 under `skills/` are tracked rendered output: never edit them by hand either; after changing a Skill
 source, run `python3 scripts/concorde.py skills --write` and commit `skills/` with the source.
 After changing their sources, run the build and the deterministic checks in the same primary or
@@ -374,7 +387,7 @@ lifecycle entry points retain their separate admission/evidence checks. A freshl
 must be built once before an agent can load Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
-Each of the twelve workers is defined under `operations/<name>/`: an authored role `spec.md` plus a
+Each of the seven workers is defined under `operations/<name>/`: an authored role `spec.md` plus a
 Python `__init__.py` binding its task contract, workspace kind (`capsule` or `project`), Pi tools,
 children and timeout as optional execution configuration on that Operation. Each worker launches one Pi coding agent
 process (`pi --mode rpc`) for exactly one invocation. The build renders each worker's instructions
@@ -383,22 +396,17 @@ to `generated/agents/<hyphenated>.md`, combining the common worker rules
 manifest; `describe-policy` mode (see above) shows the bound worker, its profile and effective
 timeout for every stage it previews, alongside its read/write grants.
 
-The worker inventory follows stable context and authority boundaries: answerer, router and
-topology-designer handle ask, route and design-topology; spec-author, topology-author,
-spec-reviewer, context-assessor, planner and task-author handle specify, topology-author,
-spec-review, context-solve, plan and tasks; programmer and code-reviewer handle implementation and
-code review, while the Spec-only issue-solver selects bounded actions for an explicit Issue. Each worker's task contract explicitly
-pairs input and output types, admits specific stage artifacts and narrows its permission ceiling.
-The Host applies structured Spec replacements. Only the programmer may write granted code; reviews
-and the Issue solver remain read-only. Every phase and target gets a fresh invocation and context
-identity, so a reviewer never inherits the author's conversation, artifacts or write authority
-merely because they share the common worker rules. A worker with declared children (spec-reviewer:
+The seven workers are spec-reviewer, context-assessor, planner, task-author, programmer,
+code-reviewer and issue-solver. Each task contract pairs current input/output types, admits only
+its stage artifacts and narrows the permission ceiling. Only the programmer writes granted code;
+no worker edits Specs, metadata or registry. Every phase and target has a fresh invocation and
+context identity, not the previous worker's conversation or authority. A worker with declared children (spec-reviewer:
 fact-check, consistency; planner: scout; programmer: scout, planner, verifier; code-reviewer: scout,
 verifier) may delegate one level deep through its `subagent` tool, only in the foreground and with
 fresh context; a child runs inside the worker's sandbox under the same gate and grant, cannot
 delegate again and cannot submit the worker's result.
 
-One registry contains twenty-seven Operations, ten exposed through public Skills. All use State
+One registry contains eighteen Operations, eleven exposed through public Skills. All use State
 contracts and `run(state, runtime)`. DETERMINISTIC means no supported model-call path when true,
 including transitive USES. Only init, configure, validate and deliver are true in the current
 inventory. USES is the sole composition relation, including model nodes; it does not install

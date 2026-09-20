@@ -6,17 +6,17 @@ Validation checks specification structure and runs configured verification comma
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition                             |
+| --------------------------------------------------------- | ------------------------------------------------ |
+| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.                   |
+| [Evidence](../module.md#terminology)                      | Defined in Concorde Framework.                   |
+| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.                   |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.                   |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                   |
 | [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
-| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Scenario](../module.md#terminology)                      | Defined in Concorde Framework.                   |
+| [Operation](../module.md#terminology)                     | Defined in Concorde Framework.                   |
 
 ## Usage
 
@@ -58,8 +58,8 @@ previously required review.
 
 `validate` runs as a single deterministic node that calls no model. Invoked directly, it is the
 `validate` leaf the [dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)
-selects once target admission has bound the candidate's owner; inside the development Graph it is
-the `validate` stage between implementation and code review.
+selects once target admission has bound the candidate's owner. The caller chooses when to validate;
+no development Graph runs other stages before or after it.
 
 ## Relationships
 

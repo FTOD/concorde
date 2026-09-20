@@ -58,7 +58,6 @@ class AgentBindingTests(unittest.TestCase):
             executor=double.executor if double else None,
             allow_primary_worktree=True,
             mode=mode,
-            routed_target=(data or self.task)["target_id"],
         )
         return run_operation(
             name,
@@ -103,7 +102,7 @@ class AgentBindingTests(unittest.TestCase):
 
     @verifies("scenario.harness.worker-selection")
     def test_describe_policy_descriptions_expose_the_worker_and_its_selection(self):
-        result = self.call_operation("concorde-dev-loop", mode="describe-policy")
+        result = self.call_operation("concorde-plan", mode="describe-policy")
         self.assertEqual("described", result["status"], result)
         self.assertTrue(self.host.descriptions)
         for policy in self.host.descriptions:
@@ -300,19 +299,6 @@ class AgentBindingTests(unittest.TestCase):
             for call in (first, second)
         ]
         self.assertEqual(granted[0], granted[1])
-
-    @verifies("scenario.harness.execute-failure")
-    def test_dev_loop_composition_records_child_limit_status_on_the_change(self):
-        double = ModelProcessDouble()
-        self._fail_implementation(
-            double, "limit_exhausted", "the worker ran past its 10s timeout"
-        )
-        result = self.call_operation("concorde-dev-loop", double=double)
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual("child_blocked", result["errors"][0]["code"], result)
-        self.assertEqual(
-            "limit_exhausted", read_change(self.root, required=True)["status"]
-        )
 
 
 if __name__ == "__main__":

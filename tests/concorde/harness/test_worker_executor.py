@@ -66,7 +66,6 @@ class WorkerExecutorTests(unittest.TestCase):
             PACKAGE,
             executor=executor,
             allow_primary_worktree=True,
-            routed_target="service.transfer",
         )
         return run_operation(
             "concorde-plan",

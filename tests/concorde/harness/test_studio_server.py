@@ -80,7 +80,7 @@ class StudioServerTests(unittest.TestCase):
             "        raise RuntimeError('fixture executor failure')\n"
             "    return double.executor(launch, checks=checks, report_issue=report_issue)\n"
             "for op in SKILL_NAMES:\n"
-            f"    roots = {{'concorde-dev-loop': {str(cls.change_fixture.change)!r}, 'concorde-specify-loop': {str(cls.spec_fixture.change)!r}}}\n"
+            f"    roots = {{**dict.fromkeys(('concorde-plan', 'concorde-tasks', 'concorde-implement', 'concorde-validate'), {str(cls.change_fixture.change)!r}), 'concorde-spec-review': {str(cls.spec_fixture.change)!r}}}\n"
             f"    root = Path(roots.get(op, {str(cls.root)!r}))\n"
             "    globals()[op.replace('-', '_')] = build_studio_graph(op, root, "
             f"Path({str(PACKAGE)!r}), executor=executor)\n"
@@ -228,35 +228,12 @@ class StudioServerTests(unittest.TestCase):
                 nodes = {node["id"] for node in drawing["nodes"]}
                 self.assertIn(operation + ":admit_request", nodes)
                 self.assertIn(operation + ":execute:select_operation", nodes)
-                if operation == "concorde-main":
+                self.assertFalse(
+                    any("discover" in node or "specify_loop" in node for node in nodes)
+                )
+                if operation == "concorde-plan":
                     self.assertTrue(
-                        any(node.endswith(":discover:expand_context") for node in nodes)
-                    )
-                    self.assertTrue(
-                        any(node.endswith(":apply_atomically") for node in nodes)
-                    )
-                if operation == "concorde-dev-loop":
-                    self.assertTrue(
-                        any(
-                            edge["source"].endswith(":review_code")
-                            and edge["target"].endswith(":tasks")
-                            for edge in drawing["edges"]
-                        )
-                    )
-                if operation == "concorde-specify-loop":
-                    self.assertTrue(
-                        any(node.endswith(":specify_loop:specify") for node in nodes)
-                    )
-                    self.assertTrue(
-                        any(
-                            node.endswith(":specify_loop:review_spec") for node in nodes
-                        )
-                    )
-                    self.assertFalse(
-                        any(
-                            node.endswith((":plan", ":tasks", ":implement", ":ready"))
-                            for node in nodes
-                        )
+                        any(node.endswith(":author_plan:planner") for node in nodes)
                     )
 
     @verifies("scenario.harness.execute-operation")
@@ -283,7 +260,10 @@ class StudioServerTests(unittest.TestCase):
                     self.assertEqual(json.loads(result.stdout), saved["result"])
 
     def test_live_custom_stream_contains_process_stages_and_persisted_result(self):
-        value = invocation("concorde-main", data={"task": "Explain transfer"})
+        value = invocation(
+            "concorde-context-solve",
+            data={"target_id": "service.transfer", "task": "Explain transfer"},
+        )
         thread = self.request("/threads", {})["thread_id"]
         payload = {
             "assistant_id": value["operation_id"],
@@ -304,13 +284,13 @@ class StudioServerTests(unittest.TestCase):
         state = self.request(f"/threads/{thread}/state")["values"]
         self.assertEqual("succeeded", state["result"]["status"], state)
         self.assertEqual(
-            ["route", "route"],
+            ["context-solve"],
             [e["stage"] for e in state["events"] if e["event"] == "agent_finished"],
         )
         self.assertEqual("operation_finished", state["events"][-1]["event"])
 
     def test_describe_policy_stderr_and_error_exit_compatibility(self):
-        value = invocation("concorde-main", "describe-policy")
+        value = invocation("concorde-context-solve", "describe-policy")
         result = self.cli(value)
         self.assertEqual(0, result.returncode, result.stderr + result.stdout)
         self.assertEqual("described", json.loads(result.stdout)["status"])
@@ -358,30 +338,24 @@ class StudioServerTests(unittest.TestCase):
         )
 
     @verifies("scenario.harness.graph-execution")
-    def test_loop_executes_mutations_and_checkpoints_only_inside_fixture_worktree(self):
+    def test_explicit_work_executes_mutations_and_checkpoints_only_inside_fixture_worktree(
+        self,
+    ):
         primary_transfer = self.change_fixture.primary / "app/transfer.py"
         primary_before = primary_transfer.read_bytes()
-        thread, state = self.run_graph(
-            invocation(
-                "concorde-dev-loop",
-                data={
-                    **self.change_fixture.task,
-                    "specify": False,
-                    "run_reviews": False,
-                },
+        for operation in (
+            "concorde-plan",
+            "concorde-tasks",
+            "concorde-implement",
+            "concorde-validate",
+        ):
+            thread, state = self.run_graph(
+                invocation(operation, data=self.change_fixture.task)
             )
-        )
-        self.assertEqual("succeeded", state["result"]["status"], state)
+            self.assertEqual("succeeded", state["result"]["status"], state)
+            saved = self.request(f"/threads/{thread}/state")["values"]
+            self.assertEqual(state["result"], saved["result"])
         self.assertEqual("ready", state["result"]["output"]["data"]["outcome"])
-        phases = [e["stage"] for e in state["events"] if e["event"] == "stage_finished"]
-        self.assertIn("validate", phases)
-        self.assertEqual("ready", phases[-1])
-        self.assertTrue(
-            any(
-                e["event"] == "operation_started" and e["depth"] == 2
-                for e in state["events"]
-            )
-        )
         saved = self.request(f"/threads/{thread}/state")["values"]
         self.assertEqual(state["result"], saved["result"])
         self.assertIn(
@@ -390,9 +364,13 @@ class StudioServerTests(unittest.TestCase):
         )
         self.assertEqual(primary_before, primary_transfer.read_bytes())
 
-    @verifies("scenario.specify-loop.independent", "scenario.harness.graph-inspection")
-    def test_standalone_specify_loop_finishes_spec_only_in_its_own_fixture(self):
+    @verifies("scenario.harness.graph-inspection")
+    def test_standalone_review_finishes_spec_only_in_its_own_fixture(self):
         fixture = self.spec_fixture
+        from concorde.harness.change_worktree import ensure_change, bind_owner
+
+        ensure_change(fixture.change, task=fixture.task)
+        bind_owner(fixture.change, fixture.task)
 
         def tracked_bytes(root):
             paths = (
@@ -407,26 +385,24 @@ class StudioServerTests(unittest.TestCase):
         primary_before = tracked_bytes(fixture.primary)
         other_primary_before = tracked_bytes(self.change_fixture.primary)
         other_candidate_before = tracked_bytes(self.change_fixture.change)
-        other_lifecycle_before = read_change(self.change_fixture.change, required=True)
+        other_lifecycle_before = read_change(self.change_fixture.change)
         implementation_before = (fixture.change / "app/transfer.py").read_bytes()
         thread, state = self.run_graph(
-            invocation(
-                "concorde-specify-loop", data={**fixture.task, "run_reviews": True}
-            )
+            invocation("concorde-spec-review", data=fixture.task)
         )
         self.assertEqual("succeeded", state["result"]["status"], state)
         self.assertEqual("concorde-operation-result", state["result"]["type_id"])
         self.assertEqual(3, state["result"]["schema_version"])
-        self.assertEqual("concorde-specify-loop", state["result"]["operation_id"])
+        self.assertEqual("concorde-spec-review", state["result"]["operation_id"])
         self.assertEqual(
-            "concorde-specify-loop-response", state["result"]["output"]["type_id"]
+            "concorde-spec-review-response", state["result"]["output"]["type_id"]
         )
-        self.assertEqual(2, state["result"]["output"]["schema_version"])
+        self.assertEqual(3, state["result"]["output"]["schema_version"])
         self.assertEqual("completed", state["result"]["output"]["data"]["outcome"])
         stages = [e["stage"] for e in state["events"] if e["event"] == "agent_finished"]
-        self.assertEqual(["route", "specify", "spec-review"], stages)
+        self.assertEqual(["spec-review"], stages)
         started = [e for e in state["events"] if e["event"] == "agent_started"]
-        self.assertEqual(3, len({e["invocation_id"] for e in started}))
+        self.assertEqual(1, len({e["invocation_id"] for e in started}))
         self.assertEqual(
             [(e["stage"], e["invocation_id"]) for e in started],
             [
@@ -471,7 +447,7 @@ class StudioServerTests(unittest.TestCase):
         )
         self.assertEqual(
             other_lifecycle_before,
-            read_change(self.change_fixture.change, required=True),
+            read_change(self.change_fixture.change),
         )
         saved = self.request(f"/threads/{thread}/state")["values"]
         self.assertEqual(state["result"], saved["result"])
@@ -522,11 +498,9 @@ class StudioServerTests(unittest.TestCase):
                     request = {
                         **fixture.task,
                         "change_id": change["change_id"],
-                        "specify": False,
-                        "run_reviews": True,
                     }
                     _, stopped = self.run_graph(
-                        invocation("concorde-specify-loop", data=request)
+                        invocation("concorde-spec-review", data=request)
                     )
                     self.assertNotEqual(
                         "succeeded", stopped["result"]["status"], stopped
@@ -564,40 +538,14 @@ class StudioServerTests(unittest.TestCase):
                         implementation_before,
                         (fixture.change / "app/transfer.py").read_bytes(),
                     )
-                    _, disabled = self.run_graph(
-                        invocation(
-                            "concorde-specify-loop",
-                            data={**request, "run_reviews": False},
-                        )
-                    )
-                    self.assertNotEqual(
-                        "succeeded", disabled["result"]["status"], disabled
-                    )
-                    self.assertTrue(
-                        read_change(fixture.change, required=True)[
-                            "review_requirements"
-                        ][fixture.task["target_id"]]["spec"]
-                    )
-                    self.assertFalse(
-                        any(
-                            e.get("stage")
-                            in {
-                                "plan",
-                                "tasks",
-                                "implementation",
-                                "validate",
-                                "code-review",
-                                "ready",
-                            }
-                            for e in disabled["events"]
-                        )
-                    )
-                    self.assertEqual(primary_before, tracked_bytes(fixture.primary))
         finally:
             self.review_mode.write_text("success")
 
     def test_executor_failure_survives_forwarding_with_events_and_exit_three(self):
-        value = invocation("concorde-main", data={"task": "Trigger executor failure"})
+        value = invocation(
+            "concorde-context-solve",
+            data={"target_id": "service.transfer", "task": "Trigger executor failure"},
+        )
         _, state = self.run_graph(value)
         self.assertEqual("failed", state["result"]["status"], state)
         self.assertTrue(

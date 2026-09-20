@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import os
+import re
 import subprocess
 import tempfile
 import threading
@@ -18,14 +19,13 @@ from pathlib import Path
 from typing import Literal, overload
 
 from ..spec.changes import apply_files, file_change
-from ..spec.repository import SpecError, identifier, read_file
+from ..spec.repository import SpecError, identifier
 from ..spec.typed_data import canonical, checked_path, decode
 from .status_store import (
     STATUS_PATH,
     all_status,
-    primary_root,
     read_status,
-    status_path,
+    status_path as status_path,
     write_status,
 )
 
@@ -40,6 +40,7 @@ LOCAL_PATHS = (
     WORK_PATH,
     DELIVERIES_PATH,
     ".concorde/runs",
+    # Historical local artifacts remain excluded from deliverable trees; no producer remains.
     ".concorde/topology-proposals",
     ".concorde/*.legacy-archive",
 )
@@ -396,10 +397,24 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             observation = resolve_report(root, receipt(item["blocker"]))
             if (
                 item["id"] != expected
-                or item["status"] not in {"open", "resolved"}
+                or item["status"] not in {"open", "resolved", "superseded"}
                 or observation["source"]["context_id"] not in item["contexts"]
             ):
                 raise ValueError("Issue blocker identity or provenance changed")
+            if item["status"] == "superseded":
+                reassessment = item.get("reassessment", {})
+                if (
+                    item["phase"] != "specify"
+                    or reassessment.get("phase") != "context-solve"
+                    or reassessment.get("reason") != "retired_author_prerequisite"
+                    or not re.fullmatch(
+                        r"sha256:[0-9a-f]{64}", reassessment.get("context_id", "")
+                    )
+                    or not re.fullmatch(
+                        r"sha256:[0-9a-f]{64}", reassessment.get("spec_digest", "")
+                    )
+                ):
+                    raise ValueError("invalid retired-prerequisite supersession")
     except (ValueError, KeyError, TypeError) as error:
         raise SpecError(
             f"invalid Issue blocker history: {error}", "invalid_worktree_state"
@@ -426,10 +441,6 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
         )
     for target in state["targets"].values():
         verify_target_owner(state, target)
-    if "graph" in state and not isinstance(state["graph"], dict):
-        raise SpecError(
-            "worktree graph state has an invalid shape", "invalid_worktree_state"
-        )
     return state
 
 
@@ -530,8 +541,8 @@ def _guidance_changes(root: Path, state: dict) -> list[dict]:
     block = (
         GUIDANCE_START + "## Concorde change worktree\n\n"
         "This agent session starts in a secondary worktree containing an unfinished candidate change.\n"
-        f"The primary coordinator records its lifecycle in `{STATUS_PATH}/{state['change_id']}.json`. `concorde-main` receives this worktree's\n"
-        "identity, draft status and the primary worktree's live change inventory. Partial Spec and\n"
+        f"The primary coordinator records its lifecycle in `{STATUS_PATH}/{state['change_id']}.json`. Inspect status directly.\n"
+        "The caller selects retained Operations and their explicit targets. Partial Spec and\n"
         "implementation edits are draft state; resume the recorded phase before claiming completion.\n\n"
         "You may invoke `concorde-deliver` from this source worktree or the destination worktree.\n"
         f"The destination is the primary worktree: {state['primary_worktree']}.\n"
@@ -541,7 +552,7 @@ def _guidance_changes(root: Path, state: dict) -> list[dict]:
         "The host removes this source unless keep_worktree:true was explicitly requested.\n"
         "End this session after removal. Only an explicit user request to the sole primary writer\n"
         "authorizes a separate merge_primary:true request from the primary session.\n"
-        "Development loops stop at a ready candidate and never deliver automatically.\n"
+        "Validation and selected reviews establish current readiness; no Operation delivers automatically.\n"
         + GUIDANCE_END
     )
     changes = []
@@ -766,7 +777,7 @@ def resume_owner(state: dict, task: dict) -> dict:
         return result
     fields = ["task", "constraints", "focus_id"]
     if state["target_id"] is not None:
-        fields.append("target_id")
+        fields.insert(0, "target_id")
     for field in fields:
         if field in task and task[field] != state[field]:
             raise SpecError(
@@ -777,6 +788,12 @@ def resume_owner(state: dict, task: dict) -> dict:
         if state[field] is not None:
             result[field] = copy.deepcopy(state[field])
     if state["target_id"] is None and state.get("target_hint") is not None:
+        if task.get("target_id", state["target_hint"]) != state["target_hint"]:
+            raise SpecError(
+                "resume target_id conflicts with the recorded initial selection",
+                "incompatible_handoff",
+                field="target_id",
+            )
         result.setdefault("target_id", state["target_hint"])
     return result
 
@@ -908,91 +925,6 @@ def progress(
     save_change(root, state)
 
 
-def graph_state(
-    root: Path,
-    target_id: str,
-    *,
-    policy: dict,
-    spec_digest: str,
-    implementation_digest: str | None,
-) -> dict:
-    """Create or return this target's dev-loop repair-graph record.
-
-    A human editing the Spec or the implementation directly (outside an admitted repair)
-    invalidates any pending repair count and feedback fingerprint: the record resets to
-    iteration zero and a ``human`` transition is appended, so a stale repair state never
-    silently controls a re-run driven by new human input.
-    """
-
-    change = read_change(root, required=True)
-    graph = change.setdefault("graph", {})
-    record = graph.get(target_id)
-    if record is None:
-        record = {
-            "policy": dict(policy),
-            "spec_digest": spec_digest,
-            "repair_iteration": 0,
-            "last_feedback_digest": None,
-            "last_implementation_digest": implementation_digest,
-            "repair": None,
-            "transitions": [],
-        }
-        graph[target_id] = record
-    else:
-        spec_changed = record["spec_digest"] != spec_digest
-        implementation_changed = (
-            record["last_implementation_digest"] is not None
-            and implementation_digest is not None
-            and record["last_implementation_digest"] != implementation_digest
-        )
-        if spec_changed or implementation_changed:
-            record.update(
-                spec_digest=spec_digest,
-                repair_iteration=0,
-                last_feedback_digest=None,
-                repair=None,
-            )
-            record["transitions"].append(
-                {
-                    "iteration": 0,
-                    "from": "human",
-                    "to": "reset",
-                    "trigger": "human",
-                    "outcome": "spec_changed"
-                    if spec_changed
-                    else "implementation_changed",
-                    "artifact": None,
-                    "input_digest": None,
-                    "finding_ids": [],
-                    "status": None,
-                }
-            )
-        record["last_implementation_digest"] = implementation_digest
-    save_change(root, change)
-    return copy.deepcopy(record)
-
-
-def record_transition(root: Path, target_id: str, **fields) -> None:
-    """Append one Graph transition record for this target (G4: attributed selected transitions)."""
-
-    change = read_change(root, required=True)
-    graph = change.setdefault("graph", {})
-    record = graph.setdefault(
-        target_id,
-        {
-            "policy": {},
-            "spec_digest": None,
-            "repair_iteration": 0,
-            "last_feedback_digest": None,
-            "last_implementation_digest": None,
-            "repair": None,
-            "transitions": [],
-        },
-    )
-    record["transitions"].append(dict(fields))
-    save_change(root, change)
-
-
 def blocker_scope(state: dict, target_id: str, task: str | None) -> str | None:
     """Bind a request to accepted candidate work, not an ID hashed from task wording.
 
@@ -1034,6 +966,7 @@ def record_task_gaps(
     review_input_digest: str | None = None,
     spec_resolution: dict | None = None,
     scope_id: str | None = None,
+    assessment_context_id: str | None = None,
 ) -> None:
     """Retain Issue dependencies by change/Module/phase/Issue, never by task wording.
 
@@ -1102,14 +1035,46 @@ def record_task_gaps(
         if context_id not in item["contexts"]:
             item["contexts"].append(context_id)
     for item in history:
+        # A current assessment can replace the retired prerequisite, not prove
+        # that the old author succeeded or that its independently recorded Issue is fixed.
+        reassessed_author = (
+            phase == "context-solve"
+            and item["phase"] == "specify"
+            and assessment_context_id is not None
+            and item["target_id"] == target_id
+            and item["scope_id"] == scope_id
+            and item["status"] == "open"
+            and not blockers
+        )
+        if reassessed_author:
+            observation = resolve_report(root, receipt(item["blocker"]))
+            source = observation["source"]
+            if (
+                item.get("task") != task
+                or source.get("target_id") != target_id
+                or source.get("phase") != "specify"
+                or source.get("operation") != "concorde-specify"
+            ):
+                raise SpecError(
+                    "retired author relation has ambiguous attribution",
+                    "invalid_worktree_state",
+                )
+            item["status"] = "superseded"
+            item["reassessment"] = {
+                "phase": phase,
+                "context_id": assessment_context_id,
+                "spec_digest": spec_digest,
+                "reason": "retired_author_prerequisite",
+            }
+            continue
         if (
             item["target_id"] == target_id
             and item["scope_id"] == scope_id
+            and item["status"] == "open"
             and item["phase"] == phase
             and not blockers
             and (
-                phase == "specify"
-                or item.get("spec_digest") != spec_digest
+                item.get("spec_digest") != spec_digest
                 or (
                     review_input_digest is not None
                     and item.get("review_input_digest") is not None
@@ -1245,8 +1210,6 @@ def snapshot_tree(root: Path, state: dict | None = None) -> str | None:
                 "\0"
             )
             for member in filter(None, tracked):
-                if member == ".concorde/topology-proposals/.gitignore":
-                    continue
                 git(root, "update-index", "--force-remove", "--", member, env=env)
         for relative, metadata in (state or {}).get("guidance", {}).items():
             path = checked_path(root, relative)

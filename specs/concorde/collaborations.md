@@ -6,30 +6,30 @@ meaning and links to the included providers.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module](module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](module.md#terminology) | Defined in Concorde Framework. |
-| [Host](module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](module.md#terminology) | Defined in Concorde Framework. |
-| [Protocol binding](spec/values.md#terminology) | Defined in Identities and versions. |
-| [Registry](module.md#terminology) | Defined in Concorde Framework. |
-| [Spec context](harness/context.md#terminology) | Defined in What information a worker receives. |
+| Term                                                     | Meaning / definition                           |
+| -------------------------------------------------------- | ---------------------------------------------- |
+| [Module](module.md#terminology)                          | Defined in Concorde Framework.                 |
+| [Spec](module.md#terminology)                            | Defined in Concorde Framework.                 |
+| [Operation](module.md#terminology)                       | Defined in Concorde Framework.                 |
+| [Worker](module.md#terminology)                          | Defined in Concorde Framework.                 |
+| [Host](module.md#terminology)                            | Defined in Concorde Framework.                 |
+| [Graph](module.md#terminology)                           | Defined in Concorde Framework.                 |
+| [Candidate](module.md#terminology)                       | Defined in Concorde Framework.                 |
+| [Evidence](module.md#terminology)                        | Defined in Concorde Framework.                 |
+| [Protocol binding](spec/values.md#terminology)           | Defined in Identities and versions.            |
+| [Registry](module.md#terminology)                        | Defined in Concorde Framework.                 |
+| [Spec context](harness/context.md#terminology)           | Defined in What information a worker receives. |
 | [Implementation context](harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Skill](module.md#terminology) | Defined in Concorde Framework. |
-| [Issue](module.md#terminology) | Defined in Concorde Framework. |
-| [Blocker](module.md#terminology) | Defined in Concorde Framework. |
-| [Disposition](issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Delivery](module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](module.md#terminology)                           | Defined in Concorde Framework.                 |
+| [Issue](module.md#terminology)                           | Defined in Concorde Framework.                 |
+| [Blocker](module.md#terminology)                         | Defined in Concorde Framework.                 |
+| [Disposition](issues/lifecycle.md#terminology)           | Defined in Solving a recorded problem.         |
+| [Delivery](module.md#terminology)                        | Defined in Concorde Framework.                 |
+| [Ready](module.md#terminology)                           | Defined in Concorde Framework.                 |
 
 ## Local collaboration agreements
 
-These entries describe the seven children registered for this Module from the Framework's own perspective. Each child's complete contract is its own registered collection; these promises are only what the composition relies on.
+These entries describe the six children registered for this Module from the Framework's own perspective. Each child's complete contract is its own registered collection; these promises are only what the composition relies on.
 
 ### Spec
 
@@ -39,7 +39,7 @@ The [Spec Module](spec/module.md) owns the project Spec model: the pinned Protoc
 
 This collaboration applies when any entry must identify a Module, resolve its documents and entity file bindings, or initialize a project.
 
-- [Use deterministic identity and context resolution for routing](spec/contracts.md#registry-stable-id-spec-context-queries)
+- [Use deterministic identity and context resolution for explicit selection](spec/contracts.md#registry-stable-id-spec-context-queries)
 - [Require structural validation before bounded work](spec/scenarios.md#scenario.spec.validate-success)
 - [Begin with an honest pinned stub when creating a project](spec/scenarios.md#project-initialization)
 
@@ -95,4 +95,4 @@ This collaboration applies when a developer wants to read Specs.
 
 <a id="entity.concorde.operations"></a><a id="operations-collaboration"></a>
 
-The [Operations Module](operations/module.md) keeps the catalog of every Operation, dispatches each admitted request to its provider and groups the responsibilities that provide reusable and composed Operations. This collaboration applies when a developer selects behavior such as planning, authoring, development or delivery. The Framework relies on the [complete Operation contract](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
+The [Operations Module](operations/module.md) keeps the catalog of every Operation, dispatches each admitted request to its provider and groups the responsibilities that provide reusable and composed Operations. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [complete Operation contract](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.

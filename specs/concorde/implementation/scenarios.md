@@ -5,15 +5,15 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                | Meaning / definition               |
+| --------------------------------------------------- | ---------------------------------- |
+| [Spec](../module.md#terminology)                    | Defined in Concorde Framework.     |
+| [Module](../module.md#terminology)                  | Defined in Concorde Framework.     |
+| [Worker](../module.md#terminology)                  | Defined in Concorde Framework.     |
+| [Host](../module.md#terminology)                    | Defined in Concorde Framework.     |
+| [Grant](../module.md#terminology)                   | Defined in Concorde Framework.     |
+| [Candidate](../module.md#terminology)               | Defined in Concorde Framework.     |
+| [Ready](../module.md#terminology)                   | Defined in Concorde Framework.     |
 | [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
 
 ## Implementation
@@ -50,3 +50,18 @@ The detailed contract is [Exact tasks and bounded code effects](execution-refere
 - THEN the failure neither establishes task completion nor implies rollback of those code edits
 - AND the host preserves the candidate and progress for inspection and recovery
 - AND a subsequent attempt re-admits current task artifacts and context in a fresh invocation without wider permissions
+
+### scenario.implementation.caller-components — Separate component work returns to the caller
+
+- GIVEN a current accepted task list names local work and declared component Modules
+- WHEN implementation lacks current complete component evidence
+- THEN it returns the exact target and derived task intent to the calling agent without launching child development, authoring or implementation workers
+- AND after the caller separately completes the component work, a retry checks its intent, complete tasks and current Spec/code revisions before local implementation
+- AND the root change owner is preserved and subsequent component changes invalidate dependent completion
+
+### scenario.implementation.component-stale-parent — Component admission requires current parent intent
+
+- GIVEN the caller explicitly selects component work derived from an accepted parent plan and tasks
+- WHEN the parent's Spec or registration has changed, or the component request differs from the derived task or accepted constraints
+- THEN admission rejects before launching a component worker or replacing accepted target state
+- AND the caller must reconcile and replan explicitly rather than reuse stale parent artifacts

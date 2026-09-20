@@ -5,62 +5,45 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module](module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](module.md#terminology) | Defined in Concorde Framework. |
-| [Issue](module.md#terminology) | Defined in Concorde Framework. |
-| [Disposition](issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Protocol binding](spec/values.md#terminology) | Defined in Identities and versions. |
-| [Spec context](harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Initialization](spec/initialize.md#terminology) | Defined in Project initialization. |
+| Term                                             | Meaning / definition                           |
+| ------------------------------------------------ | ---------------------------------------------- |
+| [Module](module.md#terminology)                  | Defined in Concorde Framework.                 |
+| [Spec](module.md#terminology)                    | Defined in Concorde Framework.                 |
+| [Candidate](module.md#terminology)               | Defined in Concorde Framework.                 |
+| [Ready](module.md#terminology)                   | Defined in Concorde Framework.                 |
+| [Delivery](module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Evidence](module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Worker](module.md#terminology)                  | Defined in Concorde Framework.                 |
+| [Worktree](module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Issue](module.md#terminology)                   | Defined in Concorde Framework.                 |
+| [Disposition](issues/lifecycle.md#terminology)   | Defined in Solving a recorded problem.         |
+| [Protocol binding](spec/values.md#terminology)   | Defined in Identities and versions.            |
+| [Spec context](harness/context.md#terminology)   | Defined in What information a worker receives. |
+| [Initialization](spec/initialize.md#terminology) | Defined in Project initialization.             |
 
 ## Concorde Framework
 
 ### scenario.concorde.develop-change — Successful development to a ready candidate
 
 - GIVEN a developer supplies intended behavior and constraints
-- WHEN the Framework routes the change to its providing Module and coordinates specification, planning, implementation and required evidence
+- WHEN the caller explicitly selects the owning Module, edits its contract as needed and invokes planning, tasks, implementation and required evidence Operations
 - THEN the request completes with one ready candidate that meets its configured completion conditions
 - AND delivery to a destination remains a separate, explicitly authorized transition
 
 ### scenario.concorde.develop-gap — Missing promise stops dependent work
 
-- GIVEN a routed change depends on a Module promise that is not specified
-- WHEN development reaches that dependency
+- GIVEN an explicitly selected change depends on a Module promise that is not specified
+- WHEN assessment or planning reaches that dependency
 - THEN the Framework stops the dependent work and reports the gap against its owning Module
-- AND independent work in the same candidate continues
+- AND the caller may select independent work in the same candidate
 - BUT the candidate does not reach ready
 
 ### scenario.concorde.develop-failure — Failed step preserves inspectable progress
 
-- GIVEN a routed change fails during specification, planning, implementation or evidence collection
+- GIVEN an explicit change fails during planning, implementation or evidence collection
 - WHEN the failure occurs
 - THEN the candidate's progress remains inspectable and resumable
 - BUT the candidate is not represented as a completed delivery
-
-### scenario.concorde.inspect-answer — Answering a Spec-grounded question
-
-- GIVEN a developer asks a Spec-grounded question or requests a Spec or existing code-graph view
-- WHEN the request is routed to [Query and Routing](query-routing/module.md) or [Views Module](views/module.md)
-- THEN the response is grounded in registered Spec documents and declared relationships, or in an existing raw code graph
-- AND answering the question does not mutate any project contract
-
-Project-owned custom documentation is a separate human reading surface outside Spec queries and
-agent Spec context; it does not acquire authority as a registered Module contract.
-
-### scenario.concorde.inspect-gap — Missing Spec promise reported
-
-- GIVEN a requested answer depends on a promise that is not specified
-- WHEN the query is answered
-- THEN the selected interface reports the missing promise
-- BUT does not guess or invent the missing behavior
 
 ### scenario.concorde.adopt-initialize — Initializing an uninitialized project
 

@@ -6,21 +6,21 @@ access.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Tool gate](module.md#terminology) | Defined in Harness. |
-| [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                         | Meaning / definition           |
+| -------------------------------------------- | ------------------------------ |
+| [Tool gate](module.md#terminology)           | Defined in Harness.            |
+| [Worker profile](module.md#terminology)      | Defined in Harness.            |
+| [Worker](../module.md#terminology)           | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology)            | Defined in Concorde Framework. |
+| [Host](../module.md#terminology)             | Defined in Concorde Framework. |
+| [Module](../module.md#terminology)           | Defined in Concorde Framework. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry.           |
+| [Worktree](../module.md#terminology)         | Defined in Concorde Framework. |
 
 ## How access is selected
 
 The worker's profile declares its maximum kinds of access. The host narrows those limits to the task's
-specific files and operations. Both must permit an action. Spec authors and planners receive reading
+specific files and operations. Both must permit an action. Assessors and planners receive reading
 access without source-code writes; programmers may write only the selected implementation scope;
 reviewers remain read-only.
 

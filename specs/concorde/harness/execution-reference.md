@@ -6,27 +6,27 @@ and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Harness](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Context](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Capsule](module.md#terminology) | Defined in Harness. |
-| [Tool gate](module.md#terminology) | Defined in Harness. |
-| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
-| [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
-| [Task context](context.md#terminology) | Defined in What information a worker receives. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition                             |
+| --------------------------------------------------------- | ------------------------------------------------ |
+| [Operation](../module.md#terminology)                     | Defined in Concorde Framework.                   |
+| [Worker](../module.md#terminology)                        | Defined in Concorde Framework.                   |
+| [Worker profile](module.md#terminology)                   | Defined in Harness.                              |
+| [Harness](../module.md#terminology)                       | Defined in Concorde Framework.                   |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                   |
+| [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                   |
+| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                   |
+| [Context](../module.md#terminology)                       | Defined in Concorde Framework.                   |
+| [Grant](../module.md#terminology)                         | Defined in Concorde Framework.                   |
+| [Snapshot](../module.md#terminology)                      | Defined in Concorde Framework.                   |
+| [Capsule](module.md#terminology)                          | Defined in Harness.                              |
+| [Tool gate](module.md#terminology)                        | Defined in Harness.                              |
+| [Spec context](context.md#terminology)                    | Defined in What information a worker receives.   |
+| [Implementation context](context.md#terminology)          | Defined in What information a worker receives.   |
+| [Task context](context.md#terminology)                    | Defined in What information a worker receives.   |
+| [Issue](../module.md#terminology)                         | Defined in Concorde Framework.                   |
+| [Evidence](../module.md#terminology)                      | Defined in Concorde Framework.                   |
+| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.                   |
+| [Worktree](../module.md#terminology)                      | Defined in Concorde Framework.                   |
 | [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
@@ -44,16 +44,16 @@ document identity and requirement/scenario anchors remain stable for existing li
 **Operation = input State + output State updates + execution implementation and constraints.**
 **Invocation = Operation + Module/version + admitted artifacts + actual grant + runtime settings.**
 
-| Term | Meaning |
-| --- | --- |
-| Operation | The one executable identity, usable as a LangGraph node or composed subgraph |
-| State contract | Declared input channels and output updates; wire shapes are checked at runtime |
-| Model execution profile | Instructions, task/effect contract, workspace, tools, children and timeout on an Operation |
-| Worker | One fresh Pi RPC process executing a model-backed Operation invocation |
-| Child helper | A bounded pi-subagents session internal to a worker; not an independently callable Framework node |
-| Harness | Context resolution, worker runtime, model selection, permissions and environment |
-| Skill | Instructions for an external developer runtime to invoke one public Operation |
-| Tool | An interface admitted by the worker's actual tool grant, not by graph composition alone |
+| Term                    | Meaning                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| Operation               | The one executable identity, usable as a LangGraph node or composed subgraph                      |
+| State contract          | Declared input channels and output updates; wire shapes are checked at runtime                    |
+| Model execution profile | Instructions, task/effect contract, workspace, tools, children and timeout on an Operation        |
+| Worker                  | One fresh Pi RPC process executing a model-backed Operation invocation                            |
+| Child helper            | A bounded pi-subagents session internal to a worker; not an independently callable Framework node |
+| Harness                 | Context resolution, worker runtime, model selection, permissions and environment                  |
+| Skill                   | Instructions for an external developer runtime to invoke one public Operation                     |
+| Tool                    | An interface admitted by the worker's actual tool grant, not by graph composition alone           |
 
 A deterministic Operation makes no model call on any supported path, including its transitive
 composition. It may still read Git, files or subprocess results; determinism here does not mean
@@ -147,28 +147,21 @@ its State and USES declarations. There is no separate `concorde.agents` metadata
 
 Each worker fulfils exactly one task contract. The table uses these typed pairs: **stage** =
 `concorde-agent-stage-context` / `concorde-agent-stage-result`, **review** =
-`concorde-review-stage-context` / `concorde-review-stage-result`, **discovery** =
-`concorde-main-stage-context` / `concorde-main-stage-result`, and **topology** =
-`concorde-topology-author-context` / `concorde-topology-author-result`.
+`concorde-review-stage-context` / `concorde-review-stage-result`.
 
-| Worker | Pair and phase/action | Admitted stage artifacts | Result and authority |
-| --- | --- | --- | --- |
-| answerer | discovery; route/ask | none | Direct answer, expansion or gaps; no routes, topology design or writes |
-| router | discovery; route/route | none | One owning Module route, expansion or gaps; no implementation or writes |
-| topology-designer | discovery; route/design-topology | none | Candidate topology from selected complete Specs and the explicit inventory; no document bodies or writes |
-| spec-author | stage; specify | none | Structured document replacements, applied by the host |
-| topology-author | topology; topology-author | none | Only candidate-owned documents for host application |
-| spec-reviewer | review; spec-review | none | Independent Spec findings; no author artifacts or writes |
-| context-assessor | stage; context-solve | none | Sufficient, incomplete, unsupported or conflicting assessment; no authored artifacts |
-| planner | stage; plan | optional concorde-plan-artifact | Plan only; external references readable; no source contents or writes |
-| task-author | stage; tasks | required concorde-plan-artifact and concorde-task-identity-constraints; optional concorde-implementation-task, concorde-review-result and concorde-task-scope-feedback | Implementation acceptance tasks with new IDs outside the reserved set; no source contents or writes |
-| programmer | stage; implementation | required concorde-implementation-task; optional concorde-review-result | Fulfilled tasks only; may write the selected Module's listed implementation paths |
-| code-reviewer | review; code-review | none | Independent code findings; authorized code read-only |
-| issue-solver | stage; issue-solve | required concorde-issue-selection | Bounded next action or disposition; Spec-only, no project writes |
+| Worker           | Pair and phase/action | Admitted stage artifacts                                                                                                                                               | Result and authority                                                                                |
+| ---------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| spec-reviewer    | review; spec-review   | none                                                                                                                                                                   | Independent Spec findings; no author artifacts or writes                                            |
+| context-assessor | stage; context-solve  | none                                                                                                                                                                   | Sufficient, incomplete, unsupported or conflicting assessment; no authored artifacts                |
+| planner          | stage; plan           | optional concorde-plan-artifact                                                                                                                                        | Plan only; external references readable; no source contents or writes                               |
+| task-author      | stage; tasks          | required concorde-plan-artifact and concorde-task-identity-constraints; optional concorde-implementation-task, concorde-review-result and concorde-task-scope-feedback | Implementation acceptance tasks with new IDs outside the reserved set; no source contents or writes |
+| programmer       | stage; implementation | required concorde-implementation-task; optional concorde-review-result                                                                                                 | Fulfilled tasks only; may write the selected Module's listed implementation paths                   |
+| code-reviewer    | review; code-review   | none                                                                                                                                                                   | Independent code findings; authorized code read-only                                                |
+| issue-solver     | stage; issue-solve    | required concorde-issue-selection                                                                                                                                      | Bounded next action or disposition; Spec-only, no project writes                                    |
 
 The host selects the worker before freezing its context and compiling its permissions, and the
 executor checks that selection again before any process starts. A context of the wrong type or
-phase, a wrong discovery action, unadmitted or missing required artifacts, implementation contents
+phase, unadmitted or missing required artifacts, implementation contents
 admitted to a worker without implementation reads, and a policy wider than the contract are
 rejected. After the process, a result whose type, outcome or populated fields the contract does not
 permit is rejected: disallowed authored fields as `permission_denied`, other contract violations as
@@ -213,13 +206,12 @@ scripts, because a Graph whose control flow lives inside ordinary Python compile
 opaque node with nothing for a Graph Spec, the Graph Spec check or Studio to inspect. Authored
 descriptions and new Python factories use Graph and `build_*_graph`; LangGraph API names such as
 `StateGraph`, `get_graph()` and the `graphs` configuration key keep their library spelling.
-Existing stable Spec identities, import aliases and persisted `graph` records remain compatible.
+Retained stable Spec identities remain addressable. Deleted operation identities have no import
+aliases; persisted historical `graph` records are history rather than executable prerequisites.
 
-A Graph's state is a typed LangGraph state schema: the development and specification Graphs carry
-the last stage's typed response in `output`, a terminal failure envelope in `result` and the
-accumulated artifact references in `artifacts` under a reducer, and each stage node selects its own
-transition by returning a `Command` whose `goto` names a declared destination. No node smuggles
-routing or evidence through untyped fields. Every model-backed node executes its worker through an
+A Graph's state is a typed LangGraph state schema. Each retained Graph declares its own channels
+and reducers; historical development/specification Graph records are not executable prerequisites.
+Every model-backed node executes its worker through an
 `OperationNode`: a State-based node/subgraph adapter whose input schema is generated from the worker contract's
 admitted context type and whose output schema is generated from its result type, so the contract is
 the graph state, and the Pi worker launch with its admission checks stays a host-private launcher
@@ -272,7 +264,7 @@ cancellation, failure and execution-limit conditions. Limits may be time, iterat
 budgets or an explicit bounded host policy; an unbounded retry is not an implicit default.
 
 A model Operation's Harness supplies its local tool loop. A composed Graph may additionally
-coordinate loops across several Operations, such as author → reviewer → author. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
+coordinate loops across several Operations, such as an Issue solver deciding whether current verification is sufficient. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
 conditions. Orchestration between workers is always a Graph transition: one worker never starts
 another. Inside one worker, delegation is limited to one level of its own declared children, as
 defined in A5; a child's work is evidence for its worker, not a Graph step.
@@ -289,13 +281,13 @@ and the transition it can affect. AI feedback and human decisions MUST remain di
 The representation may use existing typed review, task and acceptance artifacts; this requirement
 does not introduce a separate comment store or mandatory feedback report.
 
-| Feedback | Example | Permitted effect |
-| --- | --- | --- |
-| AI assessment | A context assessor identifies a necessary missing contract | Block the dependent step and name the required information |
-| AI review | A reviewer identifies a defect against the bound Spec | Select an admitted repair path and recheck the revised result |
-| Human clarification | A developer supplies missing intent or corrects a goal | Produce an explicit task or context revision for fresh admission |
-| Human acceptance | A developer accepts a specific topology or delivery proposal | Enable only the transition and effects covered by that acceptance |
-| Human rejection or cancellation | A developer rejects a proposal or ends the task | Revise, wait or terminate according to the Graph contract |
+| Feedback                        | Example                                                            | Permitted effect                                                  |
+| ------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| AI assessment                   | A context assessor identifies a necessary missing contract         | Block the dependent step and name the required information        |
+| AI review                       | A reviewer identifies a defect against the bound Spec              | Select an admitted repair path and recheck the revised result     |
+| Human clarification             | A developer supplies missing intent or corrects a goal             | Produce an explicit task or context revision for fresh admission  |
+| Human acceptance                | A developer accepts a specific initialization or delivery proposal | Enable only the transition and effects covered by that acceptance |
+| Human rejection or cancellation | A developer rejects a proposal or ends the task                    | Revise, wait or terminate according to the Graph contract         |
 
 AI feedback cannot substitute for a required human acceptance. Human text that merely mentions a
 Tool or broader context is not an automatic permission grant. Every transition MUST preserve the
@@ -309,10 +301,8 @@ admitted feedback and selected transitions. It MUST distinguish completed, waiti
 cancelled, failed and limit-exhausted outcomes. A supported resume operation MUST revalidate the
 saved state and feedback against the current task and authority before choosing the next transition.
 
-New development-graph transition records use `source: code-driven|model-driven` for this
-classification. A review-selected repair is model-driven; host stops for unchanged feedback,
-exhausted repair limits or failed checks/execution are code-driven. Existing `trigger` strings
-remain descriptive compatibility labels for historical records, not a second dispatch taxonomy.
+Historical development-graph transition records and their `trigger` strings remain diagnostic
+history, not a requirement to run a deleted graph or fabricate new transitions.
 
 Review and check results are evidence about the bound revision. They do not remain valid after
 relevant Agent Specs, Harness configurations, operation contracts, project inputs or policies
@@ -387,15 +377,11 @@ or documents.
 
 #### Concorde Graph responsibilities {#graphs-and-loops-concorde-graph-responsibilities}
 
-The query Graph coordinates explicit context selection, deterministic source indexing and grant, and direct answers. The topology Graph
-coordinates design, human acceptance and separately bound Spec authors. [Specification Graph](../specify-loop/module.md) independently coordinates authoring and Spec review. [Development Graph](../dev-loop/module.md)
-consumes it and the sibling Planning, Implementation, [Validation Module](../validation/module.md) and Review providers, with explicit
-repair or human-clarification loops. Issue solving may select verification, Spec repair or development
-Graph after a human disposition. Delivery remains a separately authorized deterministic operation of the [Delivery Module](../delivery/module.md).
-
-Existing topic Specs retain their task and authority contracts. The operation adapter
-and existing Skill names remain compatible identifiers. A stage sequence satisfies only the
-transitions it implements and records; a graph library or a function name proves nothing by itself.
+The retained admission and dispatch Graphs validate and execute caller-selected entries. Planning
+assesses the selected contract before writing a plan; scoped reviews use independently bounded
+contexts; Issue solving may verify current work or return repair intent to the caller. The outer
+agent directly reads, answers and edits Specs and selects any subsequent work. There is no query,
+topology, specification or development Graph. Delivery remains separately authorized and deterministic.
 
 ## Agent execution {#execution-agent-execution}
 
@@ -469,7 +455,7 @@ their kinds are listed in [Agents and Harnesses](execution-reference.md).
   external references a worker with the `references` effect receives. It is the Pi process's
   working directory, and the tool gate's read grant is that directory, so the project root, the
   candidate worktree, other worktrees and the developer's home directory are outside the grant.
-  The discovery, Spec, assessment, planning and task workers use this kind.
+  The Spec-review, assessment, planning, Issue-solving and task workers use this kind.
 - A **project** workspace is the candidate worktree itself and the Pi process's working directory.
   The snapshot is written below `.concorde/work/<invocation>/<uuid>/context.json` inside that
   worktree; the grant covers it, the Spec documents and the installed Protocol copy under
@@ -490,9 +476,9 @@ context: task context inline, Spec context as the index of granted files. Its ou
 type narrowed by the verified worker profile's permitted authored fields. Optional fields the
 profile cannot author are omitted from the closed tool schema; required compatibility fields keep
 their original schema and additionally admit only their empty value (an empty array or string, or
-null for the nullable topology payload). Fields the profile can author retain their wire schemas.
-For example, a Spec author can submit document replacements but cannot submit an Issue solver's
-`issue_decision`; the Issue solver retains that field. The shared wire type and graph State channels
+null for a nullable field). Fields the profile can author retain their wire schemas.
+For example, a planner can submit a plan but cannot submit document replacements or an Issue solver's
+`issue_decision`; only the Issue solver retains that optional field. The shared wire type and graph State channels
 are unchanged. Tool validation rejects unauthorized populated fields before successful submission
 ends the run, allowing a corrected submission within the same invocation and original deadline;
 this is not a host retry or wider grant. The executor still wraps the single submitted value as its
@@ -788,8 +774,8 @@ every control flow uses, and the optional Studio view. Value records are defined
 The Studio adapter starts or observes the same OperationHost used by CLI and Skill invocations, with
 the same worker executor. Its generated LangGraph configuration exposes one Graph per Skill. Studio
 expands the same admission, dispatch and composed Graph instances used by local calls, including
-query/discovery, topology, planning, development and Issue-solving branches. Non-public Operations
-remain callable through declared composition. Batch and coordination Graphs are also inspectable from
+explicit target admission, planning, review and Issue-solving branches. Non-public Operations
+remain callable through declared composition. Batch Graphs are also inspectable from
 their executable factories; their runtime instances depend on host admission. Studio receives an
 invocation wrapper containing the existing schema-3 invocation and an optional expected_workspace
 assertion. Project and package roots remain host-bound; the assertion does not select another
@@ -818,8 +804,7 @@ selected Module's configured checks read-only and returns each check's status an
 log.
 
 One Harness launch service realizes this sequence for every model-backed stage, whichever
-provider requests it: the Module-bound stage, the discovery stage of Query and Routing, the
-owner-local topology author and the reviewer all pass through the same index materialization,
+provider requests it: the Module-bound stage and the reviewer both pass through the same index materialization,
 policy compilation, receipt, preview, single-result admission and rechecks of the registry,
 frozen context, configuration and index. A provider supplies only the context it froze, the
 value its worker receives, the judgement of the result and the preview answer; it cannot skip
@@ -832,8 +817,8 @@ thinking level and timeout.
 
 #### Control-graph substrate {#host-control-graph-substrate}
 
-Every operation Graph, including the global discovery loop, the development loop, topology
-evolution, Issue solving and the deterministic operations, is a LangGraph `StateGraph` built
+Every retained operation Graph, including assessment, planning, review,
+Issue solving and the deterministic operations, is a LangGraph `StateGraph` built
 with the Graph API, never with the Functional API. Its nodes are deterministic steps, which make no
 model call, or worker invocations, which do. These Graphs are the Studio surface; no operation runs
 its control flow outside them. Graph structure alone proves nothing about semantics: transitions,
@@ -857,8 +842,8 @@ request/output fields of every other Operation.
 
 **Nodes.**
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
+| Node      | Executes                                                                                                                | in                                      | out                                                                           |
+| --------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
 | `planner` | One Pi worker under the host launcher, which validates the input/result contract and records usage outside Graph State. | snapshot, change_id, expected_artifacts | context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision |
 
 **Edges.** None branch: the Graph runs its one node from `__start__` to `__end__`. What runs next is
@@ -878,10 +863,9 @@ flowchart TB
 
 #### Sequential work items Graph (`batch_graph`) {#host-sequential-work-items-graph-batch-graph}
 
-Independently admitted work items (consumer reviews, component Specs, component implementations,
-participant finalization) run one at a time through this Graph; the item node is named per use
-(`review_module`, `author_module`, `develop_module`, `finalize_module`; the catalog compiles it as
-`execute_item`).
+Independently admitted review items run one at a time through this Graph; the item node is named
+per use (`review_module`; the catalog compiles it as `execute_item`). The factory itself does not
+author Specs, develop components or choose participants.
 
 **State.** `index` (the next item), `output` (the first non-None item result, which stops the
 Graph), `stop`. `index` is an integer and `stop` a boolean; `output` admits the caller's item
@@ -890,9 +874,9 @@ The finite item tuple and the callable are held by the Host closure, not in Stat
 
 **Nodes.**
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `select_item` | Deterministic: compares index to the length of the Host-bound item tuple. | index | stop |
+| Node           | Executes                                                                                                    | in    | out                 |
+| -------------- | ----------------------------------------------------------------------------------------------------------- | ----- | ------------------- |
+| `select_item`  | Deterministic: compares index to the length of the Host-bound item tuple.                                   | index | stop                |
 | `execute_item` | Calls the Host-bound operation on items[index], increments index and sets stop when its result is not None. | index | output, index, stop |
 
 **Edges.** Both nodes route on `stop` through conditional edges: `select_item` ends the Graph when no
@@ -928,7 +912,7 @@ not permission. `compile_policy` compiles the contract's declared `EffectDeclara
 host-supplied, narrowing `PolicyBinding` and the concrete role paths the host resolved, so it can only
 produce a policy at or under that authority boundary, never beyond it.
 
-The host supplies the role paths from the frozen context: the `spec-context` or `discovery-context`
+The host supplies the role paths from the frozen context: the `spec-context`
 role names the context index file and every document and Protocol file it lists; `implementation`
 names the selected Module's bound implementation files, or its listed entries for a code writer; and
 `references` names the Module's external reference roots. Context descriptions, installed resources
@@ -1001,7 +985,7 @@ normalizes only the encoding choices stated above.
 
 A TypedValue is exactly `{type_id: str, schema_version: int, data: object}`. This API constructs
 and accepts each registered type's exact declared version (an integer, never a boolean); context
-payloads/wrappers use version 2 and unchanged stage values retain version 1. The separate outer native/operation
+payloads/wrappers and stage values use the independent versions listed in admission contracts. The separate outer native/operation
 completion envelopes may have other versions; they are not constructed by this helper.
 `validate_typed` returns a deep copy after validating the registered payload schema and applicable
 type-specific rules. `expected` requires an exact type ID match. Errors are
@@ -1015,21 +999,20 @@ Profile 15 type-ID-to-payload-schema mapping. `exported_types()` enumerates its 
 request/response types followed by internal stage types; callers can use each ID with `json_schema`
 to obtain its exact envelope and recursively referenced payload schemas. These returned schemas
 are the supported machine-readable discovery interface, not a grant to inspect implementation.
-`dependencies(operation)` returns its declared host role/operation dependencies, including a main
-coordinator for main-routed operations, or an empty tuple when none are declared. It does not
+`dependencies(operation)` returns its declared host role/operation dependencies, or an empty tuple when none are declared. It does not
 return Agent delegation edges, select context or grant invocation authority. Retained legacy
 low-level data types cannot reactivate retired public workflows.
 
 The recursive Agent adapter adds these version-1 payload contracts. All listed fields are required,
 unknown properties are rejected, `S` means a nonblank string and `N` means `S | null`:
 
-| Type ID | Payload |
-| --- | --- |
-| `concorde-agent-task` | `task: S`, `target_id: S` |
-| `concorde-agent-answer` | `answer: S` |
-| `concorde-agent-interruption` | `gaps: Gap[]`, `decision: N` |
+| Type ID                       | Payload                                                                                                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----- |
+| `concorde-agent-task`         | `task: S`, `target_id: S`                                                                                                                                   |
+| `concorde-agent-answer`       | `answer: S`                                                                                                                                                 |
+| `concorde-agent-interruption` | `gaps: Gap[]`, `decision: N`                                                                                                                                |
 | `concorde-agent-loop-context` | `invocation_id: S`, `parent_id: N`, `agent_id: S`, `input_json: S`, `context_json: S`, `feedback: Feedback[]`, `children: Child[]`, `result_schema_json: S` |
-| `concorde-agent-loop-step` | `source: "code-driven" | "model-driven"`,`action: "delegate" | "complete"`,`agent_id: N`,`value_json: N`,`outcome: Outcome`,`details: TypedValue<concorde-agent-interruption> | null` |
+| `concorde-agent-loop-step`    | `source: "code-driven"                                                                                                                                      | "model-driven"`,`action: "delegate" | "complete"`,`agent_id: N`,`value_json: N`,`outcome: Outcome`,`details: TypedValue<concorde-agent-interruption> | null` |
 
 `Gap` has `question`, `blocked_step`, `needed_contract`, `target_id` and `context_id`, all `S`;
 `context_id` additionally must be `sha256:` followed by exactly 64 lowercase hexadecimal digits.

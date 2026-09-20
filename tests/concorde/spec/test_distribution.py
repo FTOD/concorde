@@ -23,9 +23,9 @@ from .support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([], validate_package(PACKAGE))
-        self.assertEqual(27, len(OPERATION_NAMES))
-        self.assertEqual(12, len(MODEL_OPERATIONS))
-        self.assertIn("concorde-main", OPERATION_NAMES)
+        self.assertEqual(18, len(OPERATION_NAMES))
+        self.assertEqual(7, len(MODEL_OPERATIONS))
+        self.assertIn("concorde-context-solve", OPERATION_NAMES)
         self.assertNotIn("concorde-ask", OPERATION_NAMES)
         self.assertIn("concorde-planner", MODEL_OPERATIONS)
         self.assertNotIn("concorde-main", MODEL_OPERATIONS)
@@ -44,7 +44,7 @@ class DistributionTests(unittest.TestCase):
         repo = SpecRepository(PACKAGE)
         report = validate_repository(PACKAGE)
         self.assertEqual("success", report.status, [f.message for f in report.findings])
-        self.assertEqual(17, len(repo.targets))
+        self.assertEqual(12, len(repo.targets))
         self.assertTrue(all(t.kind == "module" for t in repo.targets.values()))
         self.assertEqual("module.concorde", repo.select("module.views").parent)
         self.assertIn(
@@ -66,9 +66,8 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual(
             {
                 "module.harness",
-                "module.dev-loop",
-                "module.specify-loop",
-                "module.spec-authoring",
+                "module.planning",
+                "module.review",
             },
             {
                 t.id
@@ -91,11 +90,11 @@ class DistributionTests(unittest.TestCase):
             root = Path(directory)
             project(root)
             launcher = str(PACKAGE / "scripts/run-operation.py")
-            internal_command = [sys.executable, launcher, "concorde-plan"]
+            internal_command = [sys.executable, launcher, "concorde-planner"]
             internal_value = {
                 "type_id": "concorde-operation-invocation",
                 "schema_version": 3,
-                "operation_id": "concorde-plan",
+                "operation_id": "concorde-planner",
                 "mode": "execute",
                 "configuration": None,
                 "input": typed(
@@ -180,13 +179,13 @@ from concorde.harness.admission import run_operation
 from concorde.harness.host import OperationHost
 import concorde.harness.admission as actual_host
 model=helper.ModelProcessDouble();host=OperationHost(root,framework,executor=model.executor,allow_primary_worktree=True)
-spec_result=run_operation('concorde-specify-loop',None,typed('concorde-specify-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
-spec_stages=[c['stage'] for c in model.calls]
-result=run_operation('concorde-dev-loop',None,typed('concorde-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
-before=len(model.calls)
-ask=run_operation('concorde-main',None,typed('concorde-main-request',{'task':'Explain transfer'}),host_context=host)
-print(json.dumps({'result':result,'spec_result':spec_result,'spec_stages':spec_stages,'ask':ask,'module_source':actual_host.__file__,
-  'stages':[c['stage'] for c in model.calls[:before]],'ask_stages':[c['stage'] for c in model.calls[before:]]}))
+task={'target_id':'service.transfer','task':'Implement transfer'}
+outputs=[]
+for operation in ('plan','tasks','implement','spec-review','code-review','validate'):
+    result=run_operation('concorde-'+operation,None,typed('concorde-'+operation+'-request',task),host_context=host)
+    outputs.append(result)
+print(json.dumps({'result':result,'outputs':outputs,'module_source':actual_host.__file__,
+  'stages':[c['stage'] for c in model.calls]}))
 """)
                 completed = subprocess.run(
                     [
@@ -204,19 +203,25 @@ print(json.dumps({'result':result,'spec_result':spec_result,'spec_stages':spec_s
                 value = json.loads(completed.stdout)
                 self.assertIn(".concorde/framework/src", value["module_source"])
                 self.assertEqual("succeeded", value["result"]["status"], value)
-                self.assertEqual("succeeded", value["spec_result"]["status"], value)
-                self.assertEqual(
-                    "completed", value["spec_result"]["output"]["data"]["outcome"]
+                self.assertTrue(
+                    all(output["status"] == "succeeded" for output in value["outputs"]),
+                    value,
                 )
-                self.assertEqual(["specify", "spec-review"], value["spec_stages"][-2:])
-                self.assertNotIn("plan", value["spec_stages"])
-                self.assertEqual(1, value["stages"].count("specify"))
+                self.assertEqual(
+                    [
+                        "context-solve",
+                        "plan",
+                        "tasks",
+                        "implementation",
+                        "spec-review",
+                        "code-review",
+                    ],
+                    value["stages"],
+                )
                 self.assertEqual("ready", value["result"]["output"]["data"]["outcome"])
                 self.assertEqual(
                     "passed", value["result"]["output"]["data"]["checks"][0]["status"]
                 )
-                self.assertEqual("succeeded", value["ask"]["status"], value)
-                self.assertEqual(["route", "route"], value["ask_stages"])
 
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
         from concorde.harness.admission import run_operation
@@ -243,15 +248,15 @@ print(json.dumps({'result':result,'spec_result':spec_result,'spec_stages':spec_s
                 root, PACKAGE, executor=executor, allow_primary_worktree=True
             )
             task = typed(
-                "concorde-main-request",
+                "concorde-context-solve-request",
                 {"target_id": "service.transfer", "task": "Explain transfer"},
             )
             first = run_operation(
-                "concorde-main", CONFIGURATION, task, host_context=host
+                "concorde-context-solve", CONFIGURATION, task, host_context=host
             )
             replay[0] = True
             second = run_operation(
-                "concorde-main", CONFIGURATION, task, host_context=host
+                "concorde-context-solve", CONFIGURATION, task, host_context=host
             )
             self.assertEqual("succeeded", first["status"])
             self.assertEqual("blocked", second["status"])

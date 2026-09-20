@@ -161,8 +161,6 @@ def worker_result_parameters(agent: worker_profile.WorkerProfile) -> dict[str, A
         "documents": [],
         "plan": "",
         "tasks": [],
-        "routes": [],
-        "topology_design": None,
     }
     for field in worker_profile.RESULT_FIELDS:
         if field not in properties or field in agent.contract.output_fields:

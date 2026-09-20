@@ -6,22 +6,22 @@ and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                              | Meaning / definition                           |
+| ------------------------------------------------- | ---------------------------------------------- |
+| [Issue](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Blocker](../module.md#terminology)               | Defined in Concorde Framework.                 |
+| [Candidate](../module.md#terminology)             | Defined in Concorde Framework.                 |
+| [Evidence](../module.md#terminology)              | Defined in Concorde Framework.                 |
+| [Disposition](lifecycle.md#terminology)           | Defined in Solving a recorded problem.         |
+| [Worker](../module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                 |
+| [Grant](../module.md#terminology)                 | Defined in Concorde Framework.                 |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                 |
+| [Ready](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Delivery](../module.md#terminology)              | Defined in Concorde Framework.                 |
+| [Worktree](../module.md#terminology)              | Defined in Concorde Framework.                 |
+| [Graph](../module.md#terminology)                 | Defined in Concorde Framework.                 |
 
 ## Issue records and reporting {#issues-issue-records-and-reporting}
 
@@ -188,11 +188,15 @@ new owner. Replanning cannot strand a dependency solely because its task wording
 An unchanged necessary-contract dependency waits for repair. Fresh successful phase assessment
 can release the phase's earlier relations after the relevant inputs change; review evidence uses
 its independently bound review input identity. Missing original review identity is never inferred
-from a later mutable review record. Ordinary code-review defect feedback follows the bounded
-repair/review loop rather than the unchanged-contract wait rule. A completed fresh code review can
+from a later mutable review record. Ordinary code-review defect feedback uses explicitly selected task repair and fresh review
+rather than the unchanged-contract wait rule. A completed fresh code review can
 release such a dependency even when it corrects an earlier judgment without further code changes.
-Failed, incomplete and unrelated assessments cannot erase unresolved dependencies. Successful Spec
-authoring can release its own phase's dependencies; other affected phases still need reassessment.
+Failed, incomplete and unrelated assessments cannot erase unresolved dependencies. The retired
+`specify` phase is not an executable prerequisite: after direct contract repair, an explicitly
+selected current context assessment can release its necessary-contract relation under
+[Planning's reassessment rules](../planning/execution-reference.md#assessment-context-assessment).
+The original attribution stays in history; other retained phases still need their own accepted
+reassessment. No bytes changing, Issue disposition or unrelated successful review clears a relation.
 
 Releasing a relation means the current work no longer depends on that problem. It does not close
 its Issue, imply delivery or erase history. A workaround can therefore permit work to continue
@@ -201,15 +205,12 @@ solving decision with evidence. Neither an open Issue elsewhere in the project n
 report is a blanket gate on readiness.
 
 Target-bound snapshots expose only their Module's blocker references, never another Module's
-problem text. Discovery may observe aggregate bookkeeping identities but receives no implicit Issue
-file grant. A reporter's known provider owner remains distinct from the consumer task and context
-that encountered the problem. Fixing that provider requires its own authoring or implementation
-boundary. No problem record permits reading outside the admitted context.
+problem text. Selecting context receives no implicit Issue file grant. A reporter's known provider owner remains distinct from the consumer task and context
+that encountered the problem. Fixing that provider requires the caller's explicit Spec-edit authority or a separately selected implementation boundary. No problem record permits reading outside the admitted context.
 
 Reports are acknowledged during execution and survive cancellation, timeout or invalid final
 output. These observations do not establish review coverage or stage success. Description-only
-previews launch no reporter. Query workers may explicitly report an Issue, but have no code/Spec
-write authority. The former two-step gap-history-to-Reflection capture path is removed.
+previews launch no reporter. Spec-only workers may explicitly report an Issue, but have no code/Spec write authority. The former two-step gap-history-to-Reflection capture path is removed.
 
 Review inputs remain bound to Spec, code, task/focus/constraints, configuration, worker instructions,
 Protocol/build binding, candidate identity and scoped patches. Changed relevant inputs invalidate
@@ -237,16 +238,14 @@ plan precedes every repair. A bug with enough information can go directly to dev
 code-free Spec gap can be repaired without an implementation investigation. Decisions do not
 acquire another Module's context or permissions.
 
-The first development intent is retained for the candidate. It becomes the `concorde-issue-intent`
-stage artifact for ordinary authoring, assessment, planning, tasks and implementation; it contains
-only intended behavior. A later incompatible intended change requires a new decision instead of
-silently reusing old plans. An admitted `spec-repair` runs the ordinary owner-only author, then
-returns to fresh development or Issue-specific verification. Decision actions map explicitly to
-declared graph nodes; `spec-repair` selects `repair_spec`, not a name inferred by punctuation
-replacement. Failed/incomplete child execution stays failed; a reported blocker
-can select a bounded next decision. Six decision invocations is the limit per unchanged input
-state, counted before launch, with history retained even after cancellation. A fresh external
-Spec/code change permits a new bounded attempt. No unbounded nested Issue repair is implied.
+A `develop` or `spec-repair` decision returns `unsupported` with the selected target, intended
+behavior and rationale, preserving the open Issue and decision history. The graph executes no
+planning, implementation or Spec authoring for that decision. The caller chooses retained
+Operations, performs authorized Spec/metadata/registry edits and explicitly retries with current
+inputs. Neither a return-to-caller response nor direct editing fabricates verification evidence.
+Six decision invocations is the limit per unchanged input state, counted before launch, with history
+retained even after cancellation. A fresh external Spec/code change permits a new bounded attempt.
+No unbounded nested Issue repair is implied.
 
 Resolution requires fresh Issue-specific independent Spec review and, for a code-owning Module,
 code review. A successful unrelated check, single non-reproduction or workaround is not enough.
@@ -294,39 +293,33 @@ effects, not a `disposition` State channel.
 
 **Nodes.**
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `select_operation` | Selects the Host-bound action. | none | route, result |
-| `inspect` | Looks up the Host-bound selection in branch-local records. | none | output, result |
-| `report` | Records the Host-bound report under its scoped grant. | none | output, result |
-| `reopen` | Reopens the selected revision with the developer's note. | none | output, result |
-| `prepare` | Reads selected bytes, recovers a pending disposition and binds durable attempts/current inputs. | none | route, result |
-| `decide` | Invokes a fresh Issue solver with the Host-held problem, Spec and evidence; records decision/history outside State. | none | route, result |
-| `develop` | Calls the Development Operation through admission with bound intent; retains child output/feedback outside State. | none | route, result |
-| `repair_spec` | Calls owner-only Spec Authoring with intended contract; resets stale verification and records feedback. | none | route, result |
-| `verify` | Calls the verification Graph below with Issue-specific and lifecycle review intents; records current evidence outside State. | none | route, result |
-| `close` | Uses Host-held decision/evidence to write the recovery journal and disposition after stale checks. | none | result |
-| `ready` | Validates the candidate including disposition bytes; restores the Issue if validation fails, otherwise records completion. | none | output, result |
-| `finish` | Builds the stopped/already-completed response from Host-held reason, Issue records and any child blockers. | none | output, result |
+| Node               | Executes                                                                                                                     | in   | out            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ---- | -------------- |
+| `select_operation` | Selects the Host-bound action.                                                                                               | none | route, result  |
+| `inspect`          | Looks up the Host-bound selection in branch-local records.                                                                   | none | output, result |
+| `report`           | Records the Host-bound report under its scoped grant.                                                                        | none | output, result |
+| `reopen`           | Reopens the selected revision with the developer's note.                                                                     | none | output, result |
+| `prepare`          | Reads selected bytes, recovers a pending disposition and binds durable attempts/current inputs.                              | none | route, result  |
+| `decide`           | Invokes a fresh Issue solver with the Host-held problem, Spec and evidence; records decision/history outside State.          | none | route, result  |
+| `verify`           | Calls the verification Graph below with Issue-specific and lifecycle review intents; records current evidence outside State. | none | route, result  |
+| `close`            | Uses Host-held decision/evidence to write the recovery journal and disposition after stale checks.                           | none | result         |
+| `ready`            | Validates the candidate including disposition bytes; restores the Issue if validation fails, otherwise records completion.   | none | output, result |
+| `finish`           | Builds the stopped/already-completed response from Host-held reason, Issue records and any child blockers.                   | none | output, result |
 
-**Edges.** `select_operation`, `prepare`, `decide`, `develop`, `repair_spec` and `verify` write
-`route`, and a conditional edge follows it. The requested action selects inspection, reporting,
-reopening or solving. While solving, the solver's decision in `decide` selects development, Spec
-repair, verification, a supported disposition in `close`, or `finish` for a needed human decision
-or an exhausted decision limit; `develop`, `repair_spec` and `verify` return to `decide` for the
-next bounded decision or stop at `finish`. After `close`, a conditional edge reads `result`: an
-accepted disposition proceeds to `ready`. An error in any routing node ends the Graph, and no edge
-delivers the candidate.
+**Edges.** `select_operation`, `prepare`, `decide` and `verify` write `route`, and a
+conditional edge follows it. The requested action selects inspection, reporting, reopening or
+solving. While solving, `decide` selects verification, supported disposition in `close`, or
+`finish` to return needed development, Spec repair, a human decision or an exhausted decision limit.
+Only verification returns to `decide` for another bounded judgment. After `close`, an edge reads
+`result`: an accepted disposition proceeds to `ready`, while guard failure ends the Graph.
 
 `decide` checks the durable attempt count against six before launching and increments it before
-the worker starts. A non-successful worker outcome or `needs-decision` chooses `finish`.
-`develop`, `spec-repair` and `verify` decisions select their corresponding nodes; `resolved`
-selects `verify` instead of `close` unless `verified_inputs == current_inputs()`. `duplicate`
-and `not-actionable` select `close`, whose own stale/duplicate checks can still fail. Development
-returns to decision after a non-error child result (including a business blocker), but execution
-errors or changed bound intent stop at `finish`. Verification similarly returns blockers as
-feedback to `decide`, while execution errors stop. The close edge tests result truthiness;
-failed final validation is a business `output` from `ready`, not a retry edge.
+the worker starts. A non-successful worker outcome, `develop`, `spec-repair` or `needs-decision`
+chooses `finish`. `resolved` selects `verify` instead of `close` unless
+`verified_inputs == current_inputs()`. `duplicate` and `not-actionable` select `close`, whose own
+stale/duplicate checks can still fail. Verification returns blockers as feedback to `decide`,
+while execution errors stop. The close edge tests result truthiness; failed final validation is
+a business `output` from `ready`, not a retry edge. No edge delivers the candidate.
 
 ```mermaid
 flowchart TB
@@ -340,8 +333,6 @@ flowchart TB
     reopen["reopen<br/>in: none<br/>out: output, result"]
     prepare["prepare<br/>in: none<br/>out: route, result"]
     decide["decide<br/>in: none<br/>out: route, result"]
-    develop["develop<br/>in: none<br/>out: route, result"]
-    repair_spec["repair_spec<br/>in: none<br/>out: route, result"]
     verify["verify<br/>in: none<br/>out: route, result"]
     close["close<br/>in: none<br/>out: result"]
     ready["ready<br/>in: none<br/>out: output, result"]
@@ -357,15 +348,9 @@ flowchart TB
     reopen --> __end__
     prepare -->|open| decide
     prepare -->|already disposed| finish
-    decide -->|development| develop
-    decide -->|contract repair| repair_spec
     decide -->|verify, or resolved without current verification| verify
     decide -->|verified resolved, duplicate or not-actionable| close
-    decide -->|worker stop, needs-decision or six-attempt limit| finish
-    develop -->|child result without execution errors| decide
-    develop -->|execution failure or changed intent| finish
-    repair_spec -->|repair accepted| decide
-    repair_spec -->|blocked or failed| finish
+    decide -->|needed implementation/Spec edits, worker stop, needs-decision or limit| finish
     verify -->|verification result| decide
     verify -->|execution failed| finish
     close -->|result falsey: disposition accepted| ready
@@ -373,8 +358,6 @@ flowchart TB
     select_operation -->|error| __end__
     prepare -->|error| __end__
     decide -->|error| __end__
-    develop -->|error| __end__
-    repair_spec -->|error| __end__
     verify -->|error| __end__
     ready --> __end__
     finish --> __end__
@@ -398,8 +381,8 @@ node's guard.
 
 **Nodes.**
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
+| Node          | Executes                                                                                                                                       | in    | out                 |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------------------- |
 | `review_item` | Reviews Host-held items[index], collects evidence outside State, increments index and sets stop on a returned route update or list exhaustion. | index | index, stop, output |
 
 **Edges.** After each review a conditional edge reads `stop`: while reviews remain and none has

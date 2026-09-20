@@ -3,17 +3,9 @@
     {
       "id": "check.harness.graph-specs",
       "target_id": "module.harness",
-      "argv": [
-        "{python}",
-        "scripts/development/check-graph-specs.py"
-      ],
+      "argv": ["{python}", "scripts/development/check-graph-specs.py"],
       "timeout_seconds": 120,
-      "inputs": [
-        "scripts",
-        "src/concorde",
-        "operations",
-        "specs/concorde"
-      ]
+      "inputs": ["scripts", "src/concorde", "operations", "specs/concorde"]
     },
     {
       "argv": [
@@ -44,15 +36,9 @@
     {
       "id": "check.harness.reference-versions",
       "target_id": "module.harness",
-      "argv": [
-        "{python}",
-        "scripts/development/check-reference-versions.py"
-      ],
+      "argv": ["{python}", "scripts/development/check-reference-versions.py"],
       "timeout_seconds": 60,
-      "inputs": [
-        "reference/langgraph/libs/langgraph/pyproject.toml",
-        "uv.lock"
-      ]
+      "inputs": ["reference/langgraph/libs/langgraph/pyproject.toml", "uv.lock"]
     },
     {
       "argv": [
@@ -65,11 +51,7 @@
         "tests.concorde.harness.test_check_executor"
       ],
       "id": "check.harness.runtime",
-      "inputs": [
-        "src",
-        "protocol",
-        "tests/concorde/harness"
-      ],
+      "inputs": ["src", "protocol", "tests/concorde/harness"],
       "target_id": "module.harness",
       "timeout_seconds": 180
     },
@@ -82,19 +64,12 @@
         "tests.concorde.spec.test_module_architecture"
       ],
       "id": "check.spec.model",
-      "inputs": [
-        "src",
-        "protocol",
-        "tests/concorde/spec"
-      ],
+      "inputs": ["src", "protocol", "tests/concorde/spec"],
       "target_id": "module.spec",
       "timeout_seconds": 120
     },
     {
-      "argv": [
-        "{python}",
-        "scripts/development/check-docsite-types.py"
-      ],
+      "argv": ["{python}", "scripts/development/check-docsite-types.py"],
       "id": "check.views.publication-types",
       "inputs": [
         "docsite/tsconfig.json",
@@ -108,10 +83,7 @@
       "timeout_seconds": 120
     },
     {
-      "argv": [
-        "{python}",
-        "docsite/tests/repository/run-checks.py"
-      ],
+      "argv": ["{python}", "docsite/tests/repository/run-checks.py"],
       "id": "check.views.repository-regressions",
       "inputs": [
         "operations",
@@ -206,10 +178,6 @@
           "kind": "module"
         },
         {
-          "id": "module.spec-authoring",
-          "kind": "module"
-        },
-        {
           "id": "module.review",
           "kind": "module"
         },
@@ -222,22 +190,6 @@
           "kind": "module"
         },
         {
-          "id": "module.query-routing",
-          "kind": "module"
-        },
-        {
-          "id": "module.topology",
-          "kind": "module"
-        },
-        {
-          "id": "module.dev-loop",
-          "kind": "module"
-        },
-        {
-          "id": "module.specify-loop",
-          "kind": "module"
-        },
-        {
           "kind": "module",
           "id": "module.operations"
         }
@@ -246,9 +198,7 @@
       "uses": []
     },
     {
-      "checks": [
-        "check.spec.model"
-      ],
+      "checks": ["check.spec.model"],
       "documents": [
         "specs/concorde/spec/module.md",
         "specs/concorde/spec/registry.md",
@@ -306,10 +256,6 @@
         {
           "kind": "document",
           "id": "document.harness.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.topology.module"
         }
       ],
       "title": "Spec",
@@ -385,12 +331,12 @@
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/operations/test_graph_surfaces.py",
         "tests/concorde/operations/test_operation_modules.py",
+        "tests/concorde/operations/test_orchestration_removal.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",
         "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/operations/test_target_discovery.py",
-        "tests/concorde/operations/test_typed_graphs.py",
         "tests/concorde/spec/test_operations_migration.py",
         "tests/concorde/spec/test_typed_data.py",
         "tests/concorde/support/fake_openai_provider.py",
@@ -416,10 +362,6 @@
         {
           "id": "document.reflections.issues",
           "kind": "document"
-        },
-        {
-          "id": "module.specify-loop",
-          "kind": "module"
         },
         {
           "kind": "external",
@@ -456,10 +398,6 @@
         {
           "kind": "document",
           "id": "document.delivery.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.dev-loop.module"
         },
         {
           "kind": "document",
@@ -503,11 +441,7 @@
         }
       ],
       "title": "Harness",
-      "uses": [
-        "module.spec",
-        "module.distribution",
-        "module.operations"
-      ]
+      "uses": ["module.spec", "module.distribution", "module.operations"]
     },
     {
       "checks": [],
@@ -528,7 +462,8 @@
         "src/concorde/issues/",
         "src/concorde/spec/issue_shapes.py",
         "tests/concorde/harness/test_pi_worker.py",
-        "tests/concorde/issues/"
+        "tests/concorde/issues/",
+        "tests/concorde/operations/test_review.py"
       ],
       "id": "module.issues",
       "kind": "module",
@@ -537,14 +472,6 @@
         {
           "kind": "module",
           "id": "module.spec"
-        },
-        {
-          "kind": "module",
-          "id": "module.dev-loop"
-        },
-        {
-          "kind": "module",
-          "id": "module.spec-authoring"
         },
         {
           "kind": "module",
@@ -585,14 +512,20 @@
         {
           "kind": "document",
           "id": "document.operations.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.planning.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.planning.assessment"
         }
       ],
       "title": "Issues",
       "uses": [
         "module.harness",
         "module.spec",
-        "module.dev-loop",
-        "module.spec-authoring",
         "module.review",
         "module.validation"
       ]
@@ -682,9 +615,7 @@
         }
       ],
       "title": "Distribution",
-      "uses": [
-        "module.spec"
-      ]
+      "uses": ["module.spec"]
     },
     {
       "checks": [
@@ -736,9 +667,7 @@
         }
       ],
       "title": "Views",
-      "uses": [
-        "module.spec"
-      ]
+      "uses": ["module.spec"]
     },
     {
       "checks": [],
@@ -756,7 +685,8 @@
         "operations/plan.py",
         "operations/tasks.py",
         "src/concorde/planning/",
-        "tests/concorde/operations/test_review.py"
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_specify_loop.py"
       ],
       "id": "module.planning",
       "kind": "module",
@@ -832,10 +762,7 @@
         }
       ],
       "title": "Planning",
-      "uses": [
-        "module.harness",
-        "module.spec"
-      ]
+      "uses": ["module.harness", "module.spec"]
     },
     {
       "checks": [],
@@ -933,110 +860,7 @@
         }
       ],
       "title": "Implementation",
-      "uses": [
-        "module.harness",
-        "module.spec"
-      ]
-    },
-    {
-      "checks": [],
-      "documents": [
-        "specs/concorde/spec-authoring/module.md",
-        "specs/concorde/spec-authoring/requirements.md",
-        "specs/concorde/spec-authoring/scenarios.md",
-        "specs/concorde/spec-authoring/execution-reference.md"
-      ],
-      "files": [
-        "operations/specify.py",
-        "src/concorde/spec_authoring/",
-        "tests/concorde/harness/test_boundaries.py",
-        "tests/concorde/operations/test_review.py",
-        "tests/concorde/operations/test_specify_loop.py",
-        "tests/concorde/spec/test_content_repository.py",
-        "tests/concorde/spec/test_protocol_v5.py"
-      ],
-      "id": "module.spec-authoring",
-      "kind": "module",
-      "parent": "module.operations",
-      "references": [
-        {
-          "kind": "module",
-          "id": "module.harness"
-        },
-        {
-          "kind": "module",
-          "id": "module.spec"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.composition"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.blockers"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.review-result"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.build"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.contracts"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.concorde.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.topology.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.installation"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.lifecycle"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.module"
-        }
-      ],
-      "title": "Spec Authoring",
-      "uses": [
-        "module.harness",
-        "module.spec"
-      ]
+      "uses": ["module.harness", "module.spec"]
     },
     {
       "checks": [],
@@ -1053,6 +877,7 @@
         "src/concorde/review/",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",
+        "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/operations/test_target_discovery.py"
       ],
@@ -1067,10 +892,6 @@
         {
           "kind": "module",
           "id": "module.spec"
-        },
-        {
-          "kind": "module",
-          "id": "module.query-routing"
         },
         {
           "kind": "document",
@@ -1130,11 +951,7 @@
         }
       ],
       "title": "Review",
-      "uses": [
-        "module.harness",
-        "module.spec",
-        "module.query-routing"
-      ]
+      "uses": ["module.harness", "module.spec"]
     },
     {
       "checks": [],
@@ -1227,10 +1044,7 @@
         }
       ],
       "title": "Validation",
-      "uses": [
-        "module.harness",
-        "module.spec"
-      ]
+      "uses": ["module.harness", "module.spec"]
     },
     {
       "checks": [],
@@ -1319,452 +1133,14 @@
         }
       ],
       "title": "Delivery",
-      "uses": [
-        "module.harness",
-        "module.spec",
-        "module.distribution"
-      ]
-    },
-    {
-      "checks": [],
-      "documents": [
-        "specs/concorde/query-routing/module.md",
-        "specs/concorde/query-routing/requirements.md",
-        "specs/concorde/query-routing/scenarios.md",
-        "specs/concorde/query-routing/execution-reference.md"
-      ],
-      "files": [
-        "operations/main.py",
-        "src/concorde/query_routing/",
-        "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/operations/test_graph_surfaces.py"
-      ],
-      "id": "module.query-routing",
-      "kind": "module",
-      "parent": "module.operations",
-      "references": [
-        {
-          "kind": "module",
-          "id": "module.harness"
-        },
-        {
-          "kind": "module",
-          "id": "module.spec"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.composition"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.blockers"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.review-result"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.build"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.contracts"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.concorde.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.topology.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.installation"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.lifecycle"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.module"
-        }
-      ],
-      "title": "Query and Routing",
-      "uses": [
-        "module.harness",
-        "module.spec"
-      ]
-    },
-    {
-      "checks": [],
-      "documents": [
-        "specs/concorde/topology/module.md",
-        "specs/concorde/topology/requirements.md",
-        "specs/concorde/topology/scenarios.md",
-        "specs/concorde/topology/execution-reference.md"
-      ],
-      "files": [
-        "operations/main.py",
-        "src/concorde/topology/",
-        "tests/concorde/harness/test_scoped_protocol.py"
-      ],
-      "id": "module.topology",
-      "kind": "module",
-      "parent": "module.operations",
-      "references": [
-        {
-          "kind": "module",
-          "id": "module.harness"
-        },
-        {
-          "kind": "module",
-          "id": "module.spec"
-        },
-        {
-          "kind": "module",
-          "id": "module.query-routing"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.composition"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.blockers"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.review-result"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.build"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.contracts"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.concorde.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.installation"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.lifecycle"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.module"
-        }
-      ],
-      "title": "Topology",
-      "uses": [
-        "module.harness",
-        "module.spec",
-        "module.query-routing"
-      ]
-    },
-    {
-      "checks": [],
-      "documents": [
-        "specs/concorde/dev-loop/module.md",
-        "specs/concorde/dev-loop/requirements.md",
-        "specs/concorde/dev-loop/scenarios.md",
-        "specs/concorde/dev-loop/execution-reference.md"
-      ],
-      "files": [
-        "operations/dev_loop.py",
-        "src/concorde/dev_loop/",
-        "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/operations/test_review.py",
-        "tests/concorde/operations/test_specify_loop.py",
-        "tests/concorde/operations/test_target_discovery.py"
-      ],
-      "id": "module.dev-loop",
-      "kind": "module",
-      "parent": "module.operations",
-      "references": [
-        {
-          "kind": "module",
-          "id": "module.harness"
-        },
-        {
-          "kind": "module",
-          "id": "module.spec"
-        },
-        {
-          "kind": "module",
-          "id": "module.query-routing"
-        },
-        {
-          "kind": "module",
-          "id": "module.specify-loop"
-        },
-        {
-          "kind": "module",
-          "id": "module.planning"
-        },
-        {
-          "kind": "module",
-          "id": "module.implementation"
-        },
-        {
-          "kind": "module",
-          "id": "module.validation"
-        },
-        {
-          "kind": "module",
-          "id": "module.review"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.composition"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.blockers"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.review-result"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.build"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.contracts"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.concorde.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.installation"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.lifecycle"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.module"
-        }
-      ],
-      "title": "Development Graph",
-      "uses": [
-        "module.harness",
-        "module.spec",
-        "module.query-routing",
-        "module.specify-loop",
-        "module.planning",
-        "module.implementation",
-        "module.validation",
-        "module.review"
-      ]
-    },
-    {
-      "checks": [],
-      "documents": [
-        "specs/concorde/specify-loop/module.md",
-        "specs/concorde/specify-loop/requirements.md",
-        "specs/concorde/specify-loop/scenarios.md",
-        "specs/concorde/specify-loop/execution-reference.md"
-      ],
-      "files": [
-        "operations/specify_loop.py",
-        "src/concorde/specify_loop/",
-        "tests/concorde/harness/test_studio_server.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/operations/test_specify_loop.py"
-      ],
-      "id": "module.specify-loop",
-      "kind": "module",
-      "parent": "module.operations",
-      "references": [
-        {
-          "kind": "module",
-          "id": "module.harness"
-        },
-        {
-          "kind": "module",
-          "id": "module.spec"
-        },
-        {
-          "kind": "module",
-          "id": "module.query-routing"
-        },
-        {
-          "kind": "module",
-          "id": "module.spec-authoring"
-        },
-        {
-          "kind": "module",
-          "id": "module.review"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.composition"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.blockers"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.review-result"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.build"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.contracts"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.scenarios"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.concorde.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.dev-loop.module"
-        },
-        {
-          "kind": "document",
-          "id": "document.distribution.installation"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.lifecycle"
-        },
-        {
-          "kind": "document",
-          "id": "document.issues.execution-reference"
-        },
-        {
-          "kind": "document",
-          "id": "document.operations.module"
-        }
-      ],
-      "title": "Specification Graph",
-      "uses": [
-        "module.harness",
-        "module.spec",
-        "module.query-routing",
-        "module.spec-authoring",
-        "module.review"
-      ]
+      "uses": ["module.harness", "module.spec", "module.distribution"]
     },
     {
       "id": "module.operations",
       "kind": "module",
       "title": "Operations",
       "parent": "module.concorde",
-      "uses": [
-        "module.harness",
-        "module.spec",
-        "module.issues"
-      ],
+      "uses": ["module.harness", "module.spec", "module.issues"],
       "documents": [
         "specs/concorde/operations/module.md",
         "specs/concorde/operations/composition.md",
@@ -1776,21 +1152,16 @@
       "files": [
         "src/concorde/operations/",
         "tests/concorde/operations/__init__.py",
+        "tests/concorde/operations/test_orchestration_removal.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",
         "tests/concorde/operations/test_target_discovery.py"
       ],
-      "checks": [
-        "check.operations.runtime"
-      ],
+      "checks": ["check.operations.runtime"],
       "references": [
         {
           "kind": "module",
           "id": "module.delivery"
-        },
-        {
-          "kind": "module",
-          "id": "module.dev-loop"
         },
         {
           "kind": "module",
@@ -1802,23 +1173,7 @@
         },
         {
           "kind": "module",
-          "id": "module.query-routing"
-        },
-        {
-          "kind": "module",
           "id": "module.review"
-        },
-        {
-          "kind": "module",
-          "id": "module.spec-authoring"
-        },
-        {
-          "kind": "module",
-          "id": "module.specify-loop"
-        },
-        {
-          "kind": "module",
-          "id": "module.topology"
         },
         {
           "kind": "module",

@@ -22,7 +22,8 @@
         "tests/concorde/operations/__init__.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",
-        "tests/concorde/operations/test_target_discovery.py"
+        "tests/concorde/operations/test_target_discovery.py",
+        "tests/concorde/operations/test_orchestration_removal.py"
       ]
     },
     {

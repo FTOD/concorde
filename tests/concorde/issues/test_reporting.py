@@ -88,7 +88,7 @@ class ReportingIntegrationTests(unittest.TestCase):
 
     def call(self, behavior, *, operation="concorde-plan", mode="execute"):
         def callback(stage, snapshot, data, cwd):
-            if stage == "plan" or operation == "concorde-main":
+            if stage == "plan" or operation == "concorde-context-solve":
                 reporter = double.calls[-1]["report_issue"]
                 self.assertIsNotNone(reporter)
                 self.assertIn("report_issue", double.calls[-1]["launch"].tools)
@@ -102,7 +102,6 @@ class ReportingIntegrationTests(unittest.TestCase):
             mode=mode,
             executor=double.executor,
             allow_primary_worktree=True,
-            routed_target="service.transfer",
         )
         request = {"target_id": "service.transfer", "task": "Plan transfer"}
         return run_operation(
@@ -128,10 +127,10 @@ class ReportingIntegrationTests(unittest.TestCase):
         self.assertTrue(all(item["type"] == "gap" for item in list_issues(self.root)))
 
     @verifies("scenario.issues.report-independent")
-    def test_queries_can_report_without_acquiring_project_write_authority(self):
+    def test_assessment_can_report_without_acquiring_project_write_authority(self):
         result = self.call(
             lambda reporter, data: self.observed(reporter, "query"),
-            operation="concorde-main",
+            operation="concorde-context-solve",
         )
         self.assertEqual("succeeded", result["status"], result)
         self.assertGreaterEqual(len(list_issues(self.root)), 1)

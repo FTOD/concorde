@@ -1,8 +1,8 @@
 """One operation invocation bound to a selected Module, and its model-backed stages.
 
 ``Invocation`` binds a task to its owning Module and change. ``stage`` freezes that Module's
-complete context, compiles the worker's grant and launches the bound worker; the providers of
-planning, authoring, implementation, validation and development compose these stages.
+complete context, compiles the worker's grant and launches the bound worker. Retained providers
+consume these stages under explicit caller selection; no stage authors project Specs.
 """
 
 from __future__ import annotations
@@ -33,8 +33,6 @@ class Invocation:
         configuration: dict,
         task: dict,
         host: OperationHost,
-        *,
-        candidate_repository: SpecRepository | None = None,
     ):
         self.operation, self.configuration, self.task, self.host = (
             operation,
@@ -42,19 +40,7 @@ class Invocation:
             task,
             host,
         )
-        self.candidate_review = candidate_repository is not None
-        if candidate_repository is not None and (
-            operation != "concorde-spec-review"
-            or candidate_repository.root != host.project_root.resolve()
-            or candidate_repository.package_root != host.package_root.resolve()
-        ):
-            raise SpecError(
-                "candidate overlays are limited to the bound read-only Spec review",
-                "permission_denied",
-            )
-        self.repository = candidate_repository or SpecRepository(
-            host.project_root, host.package_root
-        )
+        self.repository = SpecRepository(host.project_root, host.package_root)
         self.target = self.repository.select(task["target_id"], task.get("focus_id"))
         change = read_change(host.project_root)
         if task.get("change_id") is not None and (
@@ -113,8 +99,6 @@ class Invocation:
         )
 
     def record_gaps(self, phase, blockers, *, review_input_digest=None):
-        if getattr(self, "candidate_review", False):
-            return
         if self.host.mode != "execute":
             return
         change = read_change(self.repository.root)
@@ -131,11 +115,38 @@ class Invocation:
                 "constraints": self.task.get("constraints", []),
             }
         )
+        assessment_intent = False
+        if phase == "context-solve" and change:
+            intent = {
+                "task": self.task["task"],
+                "focus_id": self.task.get("focus_id"),
+                "constraints": self.task.get("constraints", []),
+            }
+            records = [
+                change if change.get("target_id") == self.target.id else {},
+                change.get("targets", {}).get(self.target.id, {}),
+                change.get("review_intents", {}).get(self.target.id, {}),
+            ]
+            for name in ("shared_spec_reviews", "shared_implementation_reviews"):
+                records.extend(
+                    consumers.get(self.target.id, {})
+                    for consumers in change.get(name, {}).values()
+                )
+            assessment_intent = any(
+                {
+                    key: record.get(key, [] if key == "constraints" else None)
+                    for key in intent
+                }
+                == intent
+                for record in records
+            )
+            if not assessment_intent:
+                return
         if (
             self.host.track_gaps
+            or assessment_intent
             or required_review
-            or self.operation
-            not in {"concorde-main", "concorde-context-solve", *REVIEW_OPERATIONS}
+            or self.operation not in {"concorde-context-solve", *REVIEW_OPERATIONS}
         ):
             from .change_worktree import record_task_gaps
 
@@ -148,6 +159,7 @@ class Invocation:
                 self.blocker_revision(phase),
                 review_input_digest=review_input_digest,
                 spec_resolution=self.repository.spec_context(self.target.id).value,
+                assessment_context_id=self.last_context if assessment_intent else None,
             )
 
     def pending_gaps(
@@ -158,11 +170,9 @@ class Invocation:
         include_prerequisites=True,
         review_input_digest=None,
     ):
-        if getattr(self, "candidate_review", False):
-            return []
         from .change_worktree import unchanged_task_gaps
 
-        if phase == "specify" or self.host.mode != "execute":
+        if self.host.mode != "execute":
             return []
         blockers = unchanged_task_gaps(
             self.repository.root,
@@ -174,7 +184,6 @@ class Invocation:
         )
         if include_prerequisites:
             order = (
-                "specify",
                 "spec-review",
                 "context-solve",
                 "plan",
@@ -185,6 +194,14 @@ class Invocation:
             prerequisites = (
                 set(order[: order.index(phase)]) if phase in order else set()
             )
+            if phase in {
+                "spec-review",
+                "plan",
+                "tasks",
+                "implementation",
+                "code-review",
+            }:
+                prerequisites.add("specify")
             change = read_change(self.repository.root)
             blockers.extend(
                 dict(item["blocker"])
@@ -239,7 +256,7 @@ class Invocation:
             agent=agent,
         )
         self.last_context = snapshot.id
-        if self.operation not in {"concorde-main", "concorde-context-solve"}:
+        if self.operation not in {"concorde-context-solve"}:
             pending = self.pending_gaps(
                 phase, snapshot, include_prerequisites=not readonly
             )
@@ -399,8 +416,8 @@ class Invocation:
         )
         if self.host.mode == "describe-policy":
             return data
-        if phase != "specify" and data["documents"]:
-            # There is no Implementation Spec any more: only the Spec author writes Spec text.
+        if data["documents"]:
+            # Project Specs are edited by the authorized outer agent, never this worker.
             raise SpecError(
                 "this phase cannot author Spec documents", "permission_denied"
             )
@@ -417,10 +434,8 @@ class Invocation:
             self.record_gaps(phase, data["blockers"])
         return data
 
-    def check_state(self, state: dict, *, allow_stale_spec: bool = False) -> None:
-        if not allow_stale_spec and state.get("spec_digest") != target_revision(
-            self.repository, self.target
-        ):
+    def check_state(self, state: dict) -> None:
+        if state.get("spec_digest") != target_revision(self.repository, self.target):
             raise SpecError(
                 "selected Spec or its registered authority changed; replan this change",
                 "stale_context",

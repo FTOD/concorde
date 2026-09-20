@@ -1,230 +1,124 @@
-"""The discovery child shown by each public parent must be the child it executes."""
+"""Explicit target admission is the same inspectable child for every retained entry."""
 
 import unittest
-from typing import Any, cast
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from concorde.harness.admission import run_operation
-from concorde.harness.change_worktree import read_change
-from concorde.harness.host import OperationHost
 from concorde.harness.studio import build_studio_graph
-from concorde.operations import target_graph
-from concorde.query_routing.main import MainInvocation
 from concorde.spec.repository import SpecRepository
-from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
 from tests.concorde.harness import test_worktree_lifecycle as lifecycle_fixtures
 from tests.concorde.harness.test_studio import invocation
-from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDouble
+from tests.concorde.spec.support import PACKAGE, ModelProcessDouble
 
 
-class TargetDiscoveryTests(unittest.TestCase):
+class ExplicitTargetTests(unittest.TestCase):
     def fixture(self, callback=None):
         fixture = lifecycle_fixtures.WorktreeLifecycleTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
-        model = ModelProcessDouble(callback)
-        return fixture, model
-
-    def graph(self, operation, fixture, model):
-        built = []
-        build = target_graph.build_discovery_graph
-
-        def instrument(nodes):
-            child = build(nodes)
-            child.invoke = Mock(wraps=child.invoke)
-            built.append(child)
-            return child
-
-        with (
-            patch.object(target_graph, "build_discovery_graph", side_effect=instrument),
-            patch.object(
-                SpecRepository,
-                "__init__",
-                side_effect=AssertionError("inspection resolved context"),
-            ),
-        ):
-            graph = build_studio_graph(
-                operation, fixture.change, PACKAGE, executor=model.executor
-            )
-            drawing = graph.get_graph(xray=True).to_json()
-            self.assertEqual(drawing, graph.get_graph(xray=True).to_json())
-        self.assertEqual([], model.calls)
-        parent = (
-            cast(Any, graph.nodes[operation].subgraphs[0]).nodes["execute"].subgraphs[0]
-        )
-        preparation = parent.nodes["prepare_target"].subgraphs[0]
-        child = preparation.nodes["discover"].subgraphs[0]
-        self.assertEqual([child], built)
-        self.assertIs(child.checkpointer, False)
-        child.invoke.assert_not_called()
-        prefix = operation + ":execute:prepare_target:"
-        nodes = {n["id"] for n in drawing["nodes"]}
-        self.assertTrue(
-            {
-                prefix + "initialize_target",
-                prefix + "bind_target",
-                prefix + "discover:decide",
-                prefix + "discover:expand_context",
-                prefix + "discover:bind_routes",
-                prefix + "discover:finish",
-            }
-            <= nodes
-        )
-        return graph, child
-
-    @verifies(
-        "scenario.harness.graph-inspection",
-        "scenario.harness.graph-execution",
-        "scenario.dev-loop.resume-bound",
-        "scenario.review.standalone",
-    )
-    def test_public_parent_executes_its_inspected_child_and_resume_skips_discovery(
-        self,
-    ):
-        for operation in (
-            "concorde-spec-review",
-            "concorde-dev-loop",
-            "concorde-specify-loop",
-        ):
-            with self.subTest(operation=operation):
-                fixture, model = self.fixture()
-                graph, child = self.graph(operation, fixture, model)
-                task: dict[str, Any] = dict(fixture.task)
-                task.update(
-                    {}
-                    if operation == "concorde-spec-review"
-                    else {"specify": False, "run_reviews": True}
-                )
-                request = invocation(operation, data=task)
-                # Hidden callback discovery cannot supply this execution evidence.
-                with patch.object(
-                    MainInvocation,
-                    "discover_routes",
-                    side_effect=AssertionError(
-                        "discovery must run in the composed child"
-                    ),
-                ):
-                    first = graph.invoke({"invocation": request})
-                    self.assertEqual("succeeded", first["result"]["status"], first)
-                    child.invoke.assert_called_once()
-                    self.assertEqual(1, sum(c["stage"] == "route" for c in model.calls))
-                    if operation == "concorde-spec-review":
-                        from operations import spec_review as review_operation
-
-                        route = next(c for c in model.calls if c["stage"] == "route")
-                        self.assertEqual("concorde-router", route["operation"])
-                        self.assertIn("router", review_operation.USES)
-                    model.calls.clear()
-                    second = graph.invoke({"invocation": request})
-                self.assertEqual("succeeded", second["result"]["status"], second)
-                self.assertNotEqual(
-                    first["result"]["invocation_id"], second["result"]["invocation_id"]
-                )
-                if operation == "concorde-spec-review":
-                    self.assertEqual(2, child.invoke.call_count)
-                    self.assertEqual(1, sum(c["stage"] == "route" for c in model.calls))
-                else:
-                    child.invoke.assert_called_once()
-                    self.assertFalse(any(c["stage"] == "route" for c in model.calls))
-                    self.assertEqual(
-                        fixture.task["task"],
-                        read_change(fixture.change, required=True)["task"],
-                    )
+        return fixture, ModelProcessDouble(callback)
 
     @verifies("scenario.harness.graph-inspection", "scenario.harness.graph-execution")
-    def test_blocked_discovery_keeps_typed_output_and_never_enters_dependent_work(self):
-        def unsupported(stage, snapshot, data, cwd):
-            if stage == "route":
-                data.update(
-                    outcome="unsupported",
-                    answer="Controlled routing stop",
-                    routes=[],
-                    expand_targets=[],
-                    blockers=[],
-                )
-
+    def test_explicit_target_child_is_inspectable_without_discovery_or_project_reads(
+        self,
+    ):
+        fixture, model = self.fixture()
         for operation in (
+            "concorde-plan",
             "concorde-spec-review",
-            "concorde-dev-loop",
-            "concorde-specify-loop",
+            "concorde-code-review",
         ):
             with self.subTest(operation=operation):
-                fixture, model = self.fixture(unsupported)
-                graph, child = self.graph(operation, fixture, model)
-                task = dict(fixture.task)
-                before = (fixture.change / "app/transfer.py").read_bytes()
-                result = graph.invoke({"invocation": invocation(operation, data=task)})[
-                    "result"
-                ]
+                with patch.object(
+                    SpecRepository,
+                    "__init__",
+                    side_effect=AssertionError("inspection read project"),
+                ):
+                    graph = build_studio_graph(
+                        operation, fixture.change, PACKAGE, executor=model.executor
+                    )
+                    drawing = graph.get_graph(xray=True).to_json()
+                    self.assertEqual(drawing, graph.get_graph(xray=True).to_json())
+                nodes = {node["id"] for node in drawing["nodes"]}
+                self.assertIn(operation + ":execute:prepare_target:bind_target", nodes)
+                self.assertFalse(
+                    any("discover" in node or "router" in node for node in nodes)
+                )
+                self.assertEqual([], model.calls)
+                result = graph.invoke(
+                    {"invocation": invocation(operation, data=fixture.task)}
+                )["result"]
+                self.assertEqual("succeeded", result["status"], result)
+                self.assertTrue(model.calls)
+                self.assertTrue(
+                    all(
+                        call["snapshot"]["target_id"] == fixture.task["target_id"]
+                        for call in model.calls
+                    )
+                )
+                self.assertNotIn("route", [call["stage"] for call in model.calls])
+                model.calls.clear()
+
+    @verifies("scenario.harness.typed-reject", "scenario.harness.change-owner")
+    def test_invalid_explicit_selection_stops_before_candidate_or_worker_effects(self):
+        fixture, model = self.fixture()
+        graph = build_studio_graph(
+            "concorde-plan", fixture.change, PACKAGE, executor=model.executor
+        )
+        before = (fixture.change / "app/transfer.py").read_bytes()
+        for data, code in (
+            ({"task": "Plan"}, "invalid_field"),
+            ({"target_id": "module.absent", "task": "Plan"}, "unknown_target"),
+            ({**fixture.task, "focus_id": "scenario.ledger.read"}, "invalid_focus"),
+        ):
+            with self.subTest(data=data):
+                result = graph.invoke(
+                    {"invocation": invocation("concorde-plan", data=data)}
+                )["result"]
                 self.assertEqual("blocked", result["status"], result)
-                self.assertEqual(operation + "-response", result["output"]["type_id"])
-                self.assertEqual("unsupported", result["output"]["data"]["outcome"])
-                self.assertEqual(["route"], [c["stage"] for c in model.calls])
-                child.invoke.assert_called_once()
+                self.assertEqual(code, result["errors"][0]["code"])
+                self.assertEqual([], model.calls)
+                self.assertFalse(fixture.state_file().exists())
                 self.assertEqual(
                     before, (fixture.change / "app/transfer.py").read_bytes()
                 )
 
     @verifies("scenario.harness.graph-execution", "scenario.harness.describe-policy")
-    def test_trusted_bound_target_and_policy_preview_preserve_admission(self):
-        fixture, model = self.fixture()
-        host = OperationHost(
-            fixture.change,
-            PACKAGE,
-            executor=model.executor,
-            routed_target="service.transfer",
-        )
-        with patch.object(
-            MainInvocation,
-            "stage",
-            side_effect=AssertionError("bound child routed again"),
-        ):
-            result = run_operation(
-                "concorde-dev-loop",
-                CONFIGURATION,
-                typed("concorde-dev-loop-request", {**fixture.task, "specify": False}),
-                host_context=host,
-            )
-        self.assertEqual("succeeded", result["status"], result)
-        model.calls.clear()
-        wrong = run_operation(
-            "concorde-spec-review",
-            CONFIGURATION,
-            typed(
-                "concorde-spec-review-request",
-                {"target_id": "scope.bank", "task": "Review"},
-            ),
-            host_context=host,
-        )
-        self.assertEqual("incompatible_handoff", wrong["errors"][0]["code"])
-        self.assertEqual([], model.calls)
-        graph = build_studio_graph(
-            "concorde-spec-review", fixture.change, PACKAGE, executor=model.executor
-        )
-        preview = graph.invoke(
-            {
-                "invocation": invocation(
-                    "concorde-spec-review",
-                    mode="describe-policy",
-                    data={**fixture.task},
+    def test_assessment_stop_keeps_typed_output_and_preview_runs_no_worker(self):
+        def unsupported(stage, snapshot, data, cwd):
+            if stage == "context-solve":
+                data.update(
+                    outcome="unsupported", answer="Explicit contract forbids this work."
                 )
-            }
+
+        fixture, model = self.fixture(unsupported)
+        graph = build_studio_graph(
+            "concorde-plan", fixture.change, PACKAGE, executor=model.executor
         )
+        request = invocation("concorde-plan", data=fixture.task)
+        preview = graph.invoke({"invocation": {**request, "mode": "describe-policy"}})
         self.assertEqual("described", preview["result"]["status"], preview)
         self.assertEqual([], model.calls)
+        self.assertFalse(fixture.state_file().exists())
+        result = graph.invoke({"invocation": request})["result"]
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("concorde-plan-response", result["output"]["type_id"])
+        self.assertEqual("unsupported", result["output"]["data"]["outcome"])
+        self.assertEqual(["context-solve"], [call["stage"] for call in model.calls])
 
     @verifies("scenario.harness.graph-execution")
-    def test_target_and_dispatch_graph_revisions_invalidate_review_evidence(self):
+    def test_target_and_dispatch_revisions_invalidate_review_evidence(self):
         from concorde.review import review
         from tests.concorde.operations.test_review import ReviewTests
 
         fixture = ReviewTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
-        result = fixture.call_operation(
-            "concorde-specify-loop", {**fixture.task, "specify": False}
-        )
+        from concorde.harness.change_worktree import ensure_change, bind_owner
+
+        ensure_change(fixture.root, task=fixture.task, allow_primary=True)
+        bind_owner(fixture.root, fixture.task)
+        result = fixture.call_operation("concorde-spec-review", fixture.task)
         self.assertEqual("succeeded", result["status"], result)
         run = fixture.invocation()
         self.assertIsNotNone(review.current(run, "spec"))
@@ -236,9 +130,7 @@ class TargetDiscoveryTests(unittest.TestCase):
 
             def revised(root, path, source=source):
                 data = read(root, path)
-                return (
-                    data + b"\n# changed executable Graph\n" if path == source else data
-                )
+                return data + b"\n# changed Graph\n" if path == source else data
 
             with (
                 self.subTest(source=source),

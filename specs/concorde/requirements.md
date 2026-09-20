@@ -5,26 +5,26 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module](module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](module.md#terminology) | Defined in Concorde Framework. |
-| [Context](module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](module.md#terminology) | Defined in Concorde Framework. |
-| [Host](module.md#terminology) | Defined in Concorde Framework. |
-| [Issue](module.md#terminology) | Defined in Concorde Framework. |
+| Term                                             | Meaning / definition               |
+| ------------------------------------------------ | ---------------------------------- |
+| [Module](module.md#terminology)                  | Defined in Concorde Framework.     |
+| [Spec](module.md#terminology)                    | Defined in Concorde Framework.     |
+| [Operation](module.md#terminology)               | Defined in Concorde Framework.     |
+| [Candidate](module.md#terminology)               | Defined in Concorde Framework.     |
+| [Context](module.md#terminology)                 | Defined in Concorde Framework.     |
+| [Grant](module.md#terminology)                   | Defined in Concorde Framework.     |
+| [Worker](module.md#terminology)                  | Defined in Concorde Framework.     |
+| [Host](module.md#terminology)                    | Defined in Concorde Framework.     |
+| [Issue](module.md#terminology)                   | Defined in Concorde Framework.     |
 | [Initialization](spec/initialize.md#terminology) | Defined in Project initialization. |
-| [Delivery](module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](module.md#terminology)                | Defined in Concorde Framework.     |
+| [Ready](module.md#terminology)                   | Defined in Concorde Framework.     |
 
 ## Concorde Framework
 
 ### req.concorde.routing-no-access — No access beyond frozen context
 
-A routing or target/focus hint SHALL NOT by itself grant file access beyond the selected Module's
+An explicit target or scenario focus SHALL NOT by itself grant file access beyond the selected Module's
 frozen context.
 
 ### req.concorde.read-no-mutate — No mutation from read operations

@@ -13,7 +13,8 @@
       "meaning": "#entity.issues.runtime",
       "files": [
         "operations/issues.py",
-        "scripts/issues.py"
+        "scripts/issues.py",
+        "tests/concorde/operations/test_review.py"
       ]
     },
     {
@@ -21,9 +22,7 @@
       "title": "Issue solver",
       "kind": "agent",
       "meaning": "#entity.issues.solver",
-      "files": [
-        "operations/issue_solver/"
-      ]
+      "files": ["operations/issue_solver/"]
     },
     {
       "id": "entity.issues.langgraph",
@@ -44,20 +43,6 @@
       "kind": "used module",
       "meaning": "#entity.issues.spec",
       "target_id": "module.spec"
-    },
-    {
-      "id": "entity.issues.dev-loop",
-      "title": "Development Graph",
-      "kind": "used module",
-      "meaning": "#entity.issues.dev-loop",
-      "target_id": "module.dev-loop"
-    },
-    {
-      "id": "entity.issues.spec-authoring",
-      "title": "Spec Authoring",
-      "kind": "used module",
-      "meaning": "#entity.issues.spec-authoring",
-      "target_id": "module.spec-authoring"
     },
     {
       "id": "entity.issues.review",
@@ -82,14 +67,6 @@
     {
       "target_id": "module.spec",
       "meaning": "#entity.issues.spec"
-    },
-    {
-      "target_id": "module.dev-loop",
-      "meaning": "#entity.issues.dev-loop"
-    },
-    {
-      "target_id": "module.spec-authoring",
-      "meaning": "#entity.issues.spec-authoring"
     },
     {
       "target_id": "module.review",

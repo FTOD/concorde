@@ -5,7 +5,7 @@ shared``. A prompt body may reference other prompts through one explicit ``@incl
 that occupies a whole line starting at column one:
 
     @include prompts/workflow-host/candidate-worktree.md
-    @include prompts/workflow-host/invoke.md operation=concorde-main request=concorde-main-request
+    @include prompts/workflow-host/invoke.md operation=concorde-plan request=concorde-plan-request
 
 Resolution is a pure function of the source tree: given a root (a role root prompt or a skill
 source), it walks ``@include`` directives, binds per-inclusion ``{KEY}`` variables, and returns the

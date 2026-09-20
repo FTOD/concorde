@@ -18,12 +18,16 @@ class OperationsMigrationTests(unittest.TestCase):
     @verifies("scenario.harness.typed-reject")
     def test_changed_wire_types_advance_versions_and_reject_old_versions(self):
         for name, current in {
-            "concorde-discovery-context": 6,
-            "concorde-main-stage-context": 5,
+            "concorde-context-snapshot": 6,
+            "concorde-agent-stage-context": 4,
+            "concorde-agent-stage-result": 3,
+            "concorde-spec-review-request": 2,
+            "concorde-code-review-request": 2,
+            "concorde-tasks-request": 2,
             "concorde-init-request": 2,
             "concorde-configure-request": 2,
             "concorde-configure-response": 2,
-            "concorde-dev-loop-response": 3,
+            "concorde-plan-response": 3,
             "concorde-issues-response": 2,
         }.items():
             with self.subTest(name=name):
@@ -42,22 +46,88 @@ class OperationsMigrationTests(unittest.TestCase):
                 }
             )
 
+    @verifies("scenario.harness.typed-reject")
+    def test_current_shapes_do_not_restore_implicit_targets_or_author_decisions(self):
+        for name in ("spec-review", "code-review", "tasks"):
+            with self.subTest(name=name), self.assertRaises(TypedDataError):
+                typed(f"concorde-{name}-request", {"task": "Explicit target required"})
+        result = {
+            "context_id": "sha256:" + "0" * 64,
+            "outcome": "completed",
+            "answer": "Return intent to caller",
+            "blockers": [],
+            "documents": [],
+            "plan": "",
+            "tasks": [],
+            "issue_decision": {
+                "action": "spec-repair",
+                "intent": "Clarify contract",
+                "rationale": "Missing promise",
+                "duplicate_of": None,
+            },
+        }
+        self.assertEqual(
+            3, typed("concorde-agent-stage-result", result)["schema_version"]
+        )
+        result["issue_decision"]["specify"] = True
+        with self.assertRaises(TypedDataError) as refusal:
+            typed("concorde-agent-stage-result", result)
+        self.assertEqual("invalid_field", refusal.exception.code)
+
+    @verifies("scenario.harness.typed-reject")
+    def test_removed_wire_types_are_unknown_not_version_aliases(self):
+        from concorde.spec.typed_data import DATA_SCHEMAS, json_schema
+
+        removed = (
+            "main-request",
+            "main-response",
+            "dev-loop-request",
+            "dev-loop-response",
+            "specify-loop-request",
+            "specify-loop-response",
+            "specify-request",
+            "specify-response",
+            "discovery-context",
+            "main-stage-context",
+            "main-stage-result",
+            "topology-design",
+            "topology-proposal",
+            "topology-application",
+            "topology-author-context",
+            "topology-author-result",
+        )
+        for suffix in removed:
+            name = "concorde-" + suffix
+            with self.subTest(name=name):
+                self.assertNotIn(name, DATA_SCHEMAS)
+                with self.assertRaises(KeyError):
+                    json_schema(name)
+                for version in (1, 2, 3, 4, 5, 6):
+                    with self.assertRaises(TypedDataError) as refusal:
+                        validate_typed(
+                            {"type_id": name, "schema_version": version, "data": {}}
+                        )
+                    self.assertEqual("unknown_type", refusal.exception.code)
+
     @verifies("scenario.harness.operation-state")
     def test_retired_envelope_and_identity_field_are_not_current_aliases(self):
         current = {
             "type_id": "concorde-operation-invocation",
             "schema_version": 3,
-            "operation_id": "concorde-main",
+            "operation_id": "concorde-context-solve",
             "mode": "execute",
             "configuration": None,
-            "input": typed("concorde-main-request", {"task": "Inspect"}),
+            "input": typed(
+                "concorde-context-solve-request",
+                {"target_id": "module.project", "task": "Inspect"},
+            ),
         }
         self.assertEqual(current, validate_invocation(current))
         for old in (
             {**current, "type_id": "concorde-capability-invocation"},
             {
                 **{k: v for k, v in current.items() if k != "operation_id"},
-                "capability_id": "concorde-main",
+                "capability_id": "concorde-context-solve",
             },
         ):
             with self.subTest(fields=list(old)), self.assertRaises(SpecError):

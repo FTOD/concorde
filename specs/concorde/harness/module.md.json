@@ -27,10 +27,10 @@
         "src/concorde/harness/",
         "tests/concorde/harness/",
         "tests/concorde/operations/test_operation_modules.py",
+        "tests/concorde/operations/test_orchestration_removal.py",
         "tests/concorde/operations/test_run_operation.py",
         "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/operations/test_standalone_review.py",
-        "tests/concorde/operations/test_typed_graphs.py",
         "tests/concorde/spec/test_operations_migration.py",
         "tests/concorde/support/operation_json.py"
       ],

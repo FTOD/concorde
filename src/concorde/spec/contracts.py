@@ -3,9 +3,8 @@
 Public operations are each paired with exactly one Skill; non-public operations require
 declared composition. Model nodes use their State contract directly; only existing host adapters
 own request/response wire envelopes. All executable identities belong to ``operations/``. Exposure, context selection, determinism and composition are derived from their
-declarations; there is no operation class taxonomy. The internal data types below — topology
-design/proposal/application, discovery context, context snapshots, review internals — are not
-owned by any one operation and stay defined directly here.
+declarations; there is no operation class taxonomy. Shared context snapshots and review
+records stay defined directly here.
 """
 
 from __future__ import annotations
@@ -14,10 +13,8 @@ from .contract_shapes import (
     ARTIFACT,
     BLOCKER,
     DIGEST,
-    MAIN_OUTCOMES,
     NULLABLE_ID,
     PATH,
-    ROUTE,
     STRING,
     WORKSPACE_CONTEXT,
     array,
@@ -94,7 +91,6 @@ REGISTRY = obj(
         "checks": array(CHECK),
     }
 )
-SPEC_TASK = obj({"target_id": STRING, "task": STRING})
 PROPOSAL_FILE = obj(
     {
         "path": PATH,
@@ -126,7 +122,6 @@ def load_operation_inventory():
 
 # Each bound operation stage runs the one worker whose contract names that phase.
 MODEL_STAGES = {
-    "concorde-specify": ("specify", "concorde-spec-author"),
     "concorde-plan": ("plan", "concorde-planner"),
     "concorde-tasks": ("tasks", "concorde-task-author"),
     "concorde-implement": ("implementation", "concorde-programmer"),
@@ -142,14 +137,6 @@ REVIEW_STAGES = {
     "spec": ("spec-review", "concorde-spec-reviewer"),
     "code": ("code-review", "concorde-code-reviewer"),
 }
-# Main discovery runs one worker per action; accepted topologies are authored by fresh authors.
-DISCOVERY_NODES = {
-    "ask": "concorde-answerer",
-    "route": "concorde-router",
-    "design-topology": "concorde-topology-designer",
-}
-TOPOLOGY_AUTHOR_NODE = "concorde-topology-author"
-MAIN_OPERATION = "concorde-main"
 
 
 def operation_modules() -> dict:
@@ -172,9 +159,6 @@ INTERNAL_OPERATIONS = tuple(
     name for name in OPERATION_NAMES if not _MODULES[name].PUBLIC
 )
 SKILL_NAMES = PUBLIC_OPERATIONS
-DISCOVERY_OPERATIONS = frozenset(
-    name for name in OPERATION_NAMES if _MODULES[name].CONTEXT_SELECTION == "discover"
-)
 DETERMINISTIC_OPERATIONS = frozenset(
     name for name in OPERATION_NAMES if _MODULES[name].DETERMINISTIC
 )
@@ -195,14 +179,6 @@ INTERNAL_DATA_TYPES = (
     "concorde-review-stage-result",
     "concorde-review-result",
     "concorde-context-snapshot",
-    "concorde-discovery-context",
-    "concorde-main-stage-context",
-    "concorde-main-stage-result",
-    "concorde-topology-author-context",
-    "concorde-topology-author-result",
-    "concorde-topology-application",
-    "concorde-topology-design",
-    "concorde-topology-proposal",
 )
 
 
@@ -455,114 +431,11 @@ def schemas() -> dict:
                     },
                     "intent": STRING,
                     "rationale": STRING,
-                    "specify": {"type": "boolean"},
                     "duplicate_of": NULLABLE_ID,
                 }
             ),
         },
         ("issue_decision",),
-    )
-    result["concorde-topology-design"] = obj(
-        {
-            "summary": STRING,
-            "registry": REGISTRY,
-            "spec_tasks": {**array(SPEC_TASK), "minItems": 1},
-            "migration_constraints": array(STRING),
-            "acceptance": {**array(STRING), "minItems": 1},
-        }
-    )
-    result["concorde-topology-proposal"] = obj(
-        {
-            "proposal_id": DIGEST,
-            "base_registry_digest": DIGEST,
-            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-            "context_id": DIGEST,
-            "discovered_targets": {**array(STRING, unique=True), "minItems": 1},
-            "task": STRING,
-            "constraints": array(STRING),
-            "target_hint": NULLABLE_ID,
-            "focus_hint": NULLABLE_ID,
-            "design": typed_schema("concorde-topology-design"),
-            "workspace": WORKSPACE_CONTEXT,
-        }
-    )
-    result["concorde-topology-application"] = obj(
-        {
-            "application_id": DIGEST,
-            "topology_proposal": typed_schema("concorde-topology-proposal"),
-            "base_registry_digest": DIGEST,
-            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-            "files": {**array(PROPOSAL_FILE), "minItems": 1},
-        }
-    )
-    discovery_target = obj(
-        {
-            "target_id": STRING,
-            "kind": {"const": "module"},
-            "spec_resolution": resolution(source),
-        }
-    )
-    result["concorde-discovery-context"] = obj(
-        {
-            "context_id": DIGEST,
-            "schema_version": {"const": 6},
-            "operation": {"enum": sorted(DISCOVERY_OPERATIONS)},
-            "phase": {"const": "route"},
-            "action": {"enum": ["route", "ask", "design-topology"]},
-            "task": STRING,
-            "constraints": array(STRING),
-            "target_hint": NULLABLE_ID,
-            "focus_hint": NULLABLE_ID,
-            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-            "protocol": array(protocol_document),
-            "topology": {"anyOf": [REGISTRY, {"type": "null"}]},
-            "targets": array(discovery_target),
-            "documents": array(document_ref),
-            "instructions": {"type": "string"},
-            "workspace": WORKSPACE_CONTEXT,
-        }
-    )
-    result["concorde-main-stage-context"] = obj(
-        {"snapshot": typed_schema("concorde-discovery-context")}
-    )
-    result["concorde-main-stage-result"] = obj(
-        {
-            "context_id": DIGEST,
-            "outcome": MAIN_OUTCOMES,
-            "answer": {"type": "string"},
-            "expand_targets": array(STRING, unique=True),
-            # Selection-only routes keep single-target intent in host-owned input. Full routes
-            # remain readable for existing routers, but explicit echoes are checked exactly.
-            "routes": array(obj(ROUTE["properties"], ("task", "constraints"))),
-            "blockers": array(BLOCKER),
-            "topology_design": {
-                "anyOf": [typed_schema("concorde-topology-design"), {"type": "null"}]
-            },
-        }
-    )
-    result["concorde-topology-author-context"] = obj(
-        {
-            "context_id": DIGEST,
-            "base_registry_digest": DIGEST,
-            "target": TARGET_DESCRIPTOR,
-            "task": STRING,
-            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-            "protocol": array(protocol_document),
-            "candidate_references": array(REFERENCE, unique=True),
-            "spec_resolution": resolution(source),
-            "instructions": {"type": "string"},
-            "workspace": WORKSPACE_CONTEXT,
-        }
-    )
-    result["concorde-topology-author-result"] = obj(
-        {
-            "context_id": DIGEST,
-            "target_id": STRING,
-            "outcome": WORKER_OUTCOMES,
-            "answer": {"type": "string"},
-            "blockers": array(BLOCKER),
-            "documents": array(DOCUMENT_CHANGE),
-        }
     )
     result.update(_operation_schemas())
     return result

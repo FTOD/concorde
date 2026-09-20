@@ -41,15 +41,14 @@ def issue_decision():
         "action": "needs-decision",
         "intent": "Decide the scope",
         "rationale": "An external grant is missing",
-        "specify": True,
         "duplicate_of": None,
     }
 
 
 class WorkerResultSchemaTests(unittest.TestCase):
     @verifies("scenario.harness.worker-contract", "scenario.harness.execute-failure")
-    def test_spec_author_cannot_submit_an_issue_solver_decision(self):
-        profile = worker_profile("spec_author")
+    def test_planner_cannot_submit_an_issue_solver_decision(self):
+        profile = worker_profile("planner")
         broad = result_parameters(profile.contract.result)
         narrowed = worker_result_parameters(profile)
         valid = stage_result()
@@ -68,12 +67,12 @@ class WorkerResultSchemaTests(unittest.TestCase):
         validate_worker_output(profile, typed(profile.contract.result, valid))
         authored = {
             **valid,
-            "documents": [{"path": "specs/service/module.md", "content": "# Spec\n"}],
+            "plan": "An authorized implementation plan",
         }
         Draft202012Validator(narrowed).validate(authored)
         validate_worker_output(profile, typed(profile.contract.result, authored))
         for field, value in (
-            ("plan", "A plan outside this worker's authority"),
+            ("documents", [{"path": "specs/service/module.md", "content": "# Spec\n"}]),
             (
                 "tasks",
                 [
@@ -144,8 +143,8 @@ class WorkerResultSchemaTests(unittest.TestCase):
     ):
         pi = installed_pi()
         assert pi is not None
-        profile = worker_profile("spec_author")
-        valid = stage_result()
+        profile = worker_profile("context_assessor")
+        valid = {**stage_result(), "outcome": "sufficient"}
         turns = [
             {
                 "tool": "submit_result",

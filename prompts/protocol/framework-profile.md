@@ -43,16 +43,13 @@ the invocation input: stage artifacts and, for a review, the typed changes to th
 own Spec documents or implementation files since the baseline revision. Those changes are derived
 from files inside the phase's visible scope, add no file to it and replace no granted file. A
 kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author inputs
-contain no implementation file contents. Global discovery workers may reason across explicitly selected
-complete Module Spec contexts for questions, routing and topology design. The host deterministically
-resolves their registered documents, grants each source once as a read-only file listed in the
-index, and preserves unique ownership, per-Module inclusion provenance and source byte digests. Questions are answered directly from these original
-sources; additional Module contexts require explicit selection. For mutations, each selected worker
-is a fresh invocation with only its own complete Module context. Routing metadata is an explicit
-input, not permission to inspect implementation. Discovery never loads implementation
-files.
+contain no implementation file contents. The outer agent reads and selects complete Module Specs
+directly and answers questions within its own task grant. It chooses an explicit Module target for
+each retained Operation, rather than asking a discovery worker to route or expand a task. Every
+bounded worker is fresh and receives only its selected complete Module context. Additional outer
+reading never becomes an implicit worker grant.
 
-Spec authors, assessors, planners and task authors use only the selected Module's complete
+Assessors, planners and task authors use only the selected Module's complete
 project-Spec collection and, for planners and task authors, its declared external references.
 They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
@@ -112,8 +109,9 @@ Every composed Operation's control flow is a LangGraph graph built with the Grap
 inside ordinary Python where neither a Graph Spec nor Studio can inspect it; a deterministic check
 refuses it. Every executable node is an Operation with declared input State and output State
 updates. Its implementation may be deterministic code, a model invocation or a compiled subgraph;
-these are not separate entity kinds. Composition produces another Operation, including dev-loop
-and specify-loop. Operation composition uses one explicit USES relation, distinct from Module
+these are not separate entity kinds. Composition produces another Operation. The outer agent
+chooses which public Operations to invoke and in what order; no development or Spec-authoring
+orchestrator is supplied. Operation composition uses one explicit USES relation, distinct from Module
 ownership and the explicit references selecting context.
 Model instructions, tools and limits are execution configuration, not a parallel Agent identity.
 The same graphs are the inspectable Studio surface, and no operation runs control flow outside
@@ -128,21 +126,20 @@ of project Spec.
 
 ### P8. Structure and file listings change together
 
-Topology changes reconcile Module parentage, uses, document ownership, explicit references,
-interface bindings and file listings as one consistent proposal. A candidate registry states each
-Module's `files` as exact files and directory prefixes; the private author of that Module writes
-entity declarations whose entry union equals it, entry for entry, marking files and directories that
-do not yet exist as pending. Within one Module the most specific entry owns a file, and a listed
-directory never contains a registered Spec document. The reverse index identifies every listing
-Module before a shared file changes. A new or changed Module's author sees its resolved context but
-may propose replacements only for its owned documents; referenced provider documents remain
-read-only. A canonical shared-interface change is authored once by its owner and checked in every
-affected consumer context; consumer agreement does not mean several authors submit identical copies.
-Ownership transfers and reference changes reconcile old and candidate affected contexts atomically.
-Each code-writing invocation receives the listed entries and the files they bind. Other Module
-contracts are reviewed separately. An atomic application checks source versions and preserves prior
-bytes if applying the proposed structure fails. Human acceptance is explicit where the selected
-workflow requires it; direct maintenance follows the developer's explicit task authorization.
+Direct structural edits reconcile Module parentage, uses, document ownership, explicit references,
+interface bindings and file listings as one consistent candidate. The task-authorized outer agent
+edits the reading, paired metadata and registry directly. A Module's entity entry union equals its
+registry `files`, entry for entry, marking absent intended entries pending. Within one Module the
+most specific entry owns a file, and a listed directory never contains a registered Spec document.
+The reverse index identifies every listing Module before a shared file changes.
+
+Ownership is independent of the editing session: a shared contract is defined once by its owner,
+not copied into consumers. Reconcile both members, old and candidate affected contexts, links and
+participant versions together. Validate the combined candidate before dependent work; do not claim
+a partially edited model is admitted. Fresh reviews use separate complete owner/consumer contexts.
+Code-writing workers retain their own listed implementation grant and never edit either Spec member
+or the registry. Direct edits confer no successful assessment, review, check or completion evidence;
+selected retained Operations re-admit actual current inputs without requiring deleted workflow history.
 
 ### P9. Task status and evidence have one primary authority
 
@@ -198,10 +195,11 @@ referenced by metadata. Group adjacent anchors on one line when a coherent expla
 several entities. Do not replace the retired JSON inventory with another giant human inventory.
 
 Both source members are indexed, granted whole and byte-bound. A metadata-only change invalidates
-owner and direct-consumer evidence. Authors return complete changed source members in `documents`;
-a topology author returns both members of every candidate-owned unit in registration order.
-Validate one combined overlay, not one file at a time. Ordinary authoring preserves document identity
-and ownership; topology reconciles structural changes. Code writers never edit either member.
+owner and direct-consumer evidence. The outer agent edits authored reading and metadata directly
+within its task authorization, reconciling the registry and topology as needed. Validate the complete
+combined candidate, not isolated files. Preserve stable identity and unique ownership through
+relocation and structural change. No private author result or topology application artifact is
+required. Bounded code writers never edit either member.
 
 A requirement is one Module-wide SHALL statement with a stable heading ID. A scenario has ordered
 GIVEN/WHEN/THEN steps and its own situational guarantees, not attached requirements. Internal

@@ -5,25 +5,25 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Review coverage](module.md#terminology) | Defined in Review. |
+| Term                                     | Meaning / definition           |
+| ---------------------------------------- | ------------------------------ |
+| [Spec](../module.md#terminology)         | Defined in Concorde Framework. |
+| [Issue](../module.md#terminology)        | Defined in Concorde Framework. |
+| [Host](../module.md#terminology)         | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology)       | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology)        | Defined in Concorde Framework. |
+| [Module](../module.md#terminology)       | Defined in Concorde Framework. |
+| [Review coverage](module.md#terminology) | Defined in Review.             |
 
 ## Review
 
 ### scenario.review.standalone — Public review without a development change
 
 - GIVEN an initialized project without a managed development change or preexisting Issue record
-- AND a task with optional target/focus routing hints and no review-mode selector
+- AND a task with an explicit Module target, optional same-owner scenario focus and no review-mode selector
 - WHEN the user invokes `concorde-spec-review` or `concorde-code-review` through its public Skill or Studio entry
-- THEN a Spec-only router selects one owning Module and a separate fresh reviewer receives its complete contract and, for `concorde-code-review`, only its admitted implementation files and scoped changes
-- AND neither Agent receives write, network or credential authority
+- THEN the host validates the caller selection and a fresh reviewer receives its complete contract and, for `concorde-code-review`, only its admitted implementation files and scoped changes
+- AND the reviewer receives no write, network or credential authority
 - AND the host returns typed review coverage, findings, gaps and completion status, persisting the review report without creating a development change or changing project Specs or implementation
 - AND an unmanaged Git checkout uses HEAD as the scoped change baseline
 
@@ -46,3 +46,21 @@ The detailed contract is [Independent current review](execution-reference.md#rev
 - THEN `concorde-spec-review` selects only the Spec reviewer and `concorde-code-review` selects only the code reviewer
 - AND a request containing review_mode is rejected rather than changing that Operation's authority
 - AND the retired `concorde-review` entry is rejected without an alias or implicit migration
+
+### scenario.review.consumer-currentness — Owner and consumer evidence stay independently current
+
+- GIVEN a managed target with required Spec review and direct consumers of its complete paired contract
+- WHEN review evidence is checked after direct source, metadata, registration or intent changes
+- THEN each owner and consumer needs its own current complete-context review under its accepted intent
+- AND missing, corrupt, skipped, incomplete, empty-coverage, blocking or unrelated evidence cannot satisfy the requirement
+- AND same-scope unresolved contract blockers prevent cached evidence reuse while unrelated work does not clear or inherit those dependencies
+- AND an explicitly selected review runs fresh bounded reviewers and preserves historical reports rather than reusing a deleted workflow's completion
+
+### scenario.review.explicit-components — Code-free parents aggregate only current component evidence
+
+- GIVEN a code-free Module with accepted tasks and separately completed explicit component work
+- WHEN the caller selects code review for that Module
+- THEN each recorded component with implementation files receives a fresh read-only reviewer under its derived task and constraints
+- AND the parent aggregates only typed reports without starting component development or receiving component code
+- AND readiness checks the exact current component review scope, coverage, intent and artifact bytes without requiring a fictional local code review
+- AND changed inputs, corrupt reports or unrelated intent invalidate reuse while fresh review does not fabricate implementation completion

@@ -80,7 +80,15 @@ def _stage_context():
 class OperationNodeTests(unittest.TestCase):
     @verifies("scenario.harness.agent-node")
     def test_node_schemas_are_exactly_the_contract_fields(self):
-        for name in ("planner", "code_reviewer", "router", "topology_author"):
+        for name in (
+            "context_assessor",
+            "planner",
+            "task_author",
+            "programmer",
+            "spec_reviewer",
+            "code_reviewer",
+            "issue_solver",
+        ):
             with self.subTest(worker=name):
                 agent = worker_profile(name)
                 node = OperationNode(agent.name)

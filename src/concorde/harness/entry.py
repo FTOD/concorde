@@ -163,6 +163,11 @@ def json_main(package_root: Path, operation: str, runner) -> int:
         )
     except Exception as error:
         result = invocation_failure(operation, error)
+        # Once the envelope has selected a host, a rejected State projection still
+        # belongs to that admitted mode, just like Studio's guarded admission.
+        # Pre-host and invalid-mode failures retain the null pre-admission value.
+        if host is not None and host.mode in {"execute", "describe-policy"}:
+            result["mode"] = host.mode
     if host and host.descriptions:
         print(canonical({"policies": host.descriptions}), file=sys.stderr)
     if host is not None and result.get("invocation_id"):

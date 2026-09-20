@@ -1,13 +1,11 @@
-"""Operation: turn an admitted plan into tasks with observable acceptance conditions.
-
-Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
+"""Operation: turn an admitted plan into tasks with observable acceptance conditions."""
 
 from concorde.harness.operation_state import StateContract, run_host
 from concorde.spec import contract_shapes as shapes
 
 from . import external_name
 
-PUBLIC = False
+PUBLIC = True
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
 PROFILE = None
@@ -17,9 +15,10 @@ EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 REQUEST = shapes.obj(
     {
         **shapes.TASK_FIELDS,
+        "repair_review": shapes.ARTIFACT,
         "repair_task_scope": shapes.obj({"tasks_digest": shapes.DIGEST}),
     },
-    (*shapes.TASK_OPTIONAL, "repair_task_scope"),
+    (*shapes.TASK_OPTIONAL, "repair_task_scope", "repair_review"),
 )
 RESPONSE = shapes.operation_response()
 

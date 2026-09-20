@@ -27,8 +27,8 @@ from .store import (
 
 MAX_DECISIONS = 6
 DECISION_ROUTES = {
-    "develop": "develop",
-    "spec-repair": "repair_spec",
+    "develop": "finish",
+    "spec-repair": "finish",
     "verify": "verify",
     "resolved": "close",
     "duplicate": "close",
@@ -42,8 +42,6 @@ NODES = (
     "reopen",
     "prepare",
     "decide",
-    "develop",
-    "repair_spec",
     "verify",
     "close",
     "ready",
@@ -75,9 +73,9 @@ def build_issue_graph(node_factory):
     graph.add_conditional_edges(
         "decide",
         lambda state: state["route"],
-        ["develop", "repair_spec", "verify", "close", "finish", END],
+        ["verify", "close", "finish", END],
     )
-    for name in ("develop", "repair_spec", "verify"):
+    for name in ("verify",):
         graph.add_conditional_edges(
             name, lambda state: state["route"], ["decide", "finish", END]
         )
@@ -542,6 +540,22 @@ def issue_nodes(run):
         )
         save()
         action = decision["action"]
+        if action in {"develop", "spec-repair"}:
+            solution["verified_inputs"] = None
+            save()
+            return stop(
+                "unsupported",
+                "Calling agent action required for "
+                + run.target.id
+                + ": "
+                + decision["intent"]
+                + "\n"
+                + decision["rationale"]
+                + "\nEdit the necessary Specs, paired metadata and registry directly, "
+                "or select the retained planning/implementation Operations explicitly. "
+                "Retry solving only with current inputs; no repair was executed.",
+                action,
+            )
         if action == "needs-decision":
             return stop("conflicting", decision["rationale"], "needs-decision")
         if action == "resolved" and solution["verified_inputs"] != current_inputs():
@@ -552,7 +566,6 @@ def issue_nodes(run):
     def child(operation, payload, *, coordinated=True):
         child_host = replace(
             run.host,
-            routed_target=run.target.id,
             coordinated=coordinated,
             issue_intent=solution["intent"],
         )
@@ -572,62 +585,6 @@ def issue_nodes(run):
             "change_id": run.change_id,
             **({"focus_id": task["focus_id"]} if task.get("focus_id") else {}),
         }
-
-    def develop(state):
-        nonlocal feedback, verification, child_output
-        if solution["intent"] is None:
-            solution["intent"] = decision["intent"]
-        elif solution["intent"] != decision["intent"]:
-            return stop(
-                "conflicting",
-                "The proposed resolution changes the bound intent; a new decision is needed.",
-                "needs-decision",
-            )
-        solution["verified_inputs"] = None
-        verification = ""
-        save()
-        result = child(
-            "concorde-dev-loop",
-            {**base_task(), "specify": decision["specify"], "run_reviews": True},
-        )
-        child_output = result.get("output") or {}
-        if result["status"] == "failed" or result.get("errors"):
-            return stop(
-                "failed",
-                "Development failed; accepted Issues and partial changes are retained.",
-                "failed",
-            )
-        feedback = (
-            child_output["data"]["answer"]
-            if child_output
-            else "Development did not complete."
-        )
-        if result["status"] == "succeeded":
-            feedback = "Development and its required checks/reviews completed. Verify the selected Issue before resolving it."
-        solution["inputs"] = current_inputs()
-        save()
-        return {"route": "decide"}
-
-    def repair_spec(state):
-        nonlocal feedback, verification
-        # A fresh author receives only intended behavior, not code evidence or a previous transcript.
-        intent = decision["intent"]
-        previous = solution["intent"]
-        solution["intent"] = intent
-        result = child("concorde-specify", base_task())
-        solution["intent"] = previous or intent
-        solution["verified_inputs"] = None
-        verification = ""
-        solution["inputs"] = current_inputs()
-        save()
-        if result["status"] != "succeeded":
-            return stop(
-                "failed" if result["status"] == "failed" else "conflicting",
-                "The authorized Spec repair could not complete; dependent work remains blocked.",
-                "blocked",
-            )
-        feedback = "The Spec author applied the intended contract repair. Resume ordinary development with fresh inputs."
-        return {"route": "decide"}
 
     def verify(state):
         nonlocal feedback, verification, child_output
@@ -834,8 +791,6 @@ def issue_nodes(run):
         "reopen": reopen,
         "prepare": prepare,
         "decide": decide,
-        "develop": develop,
-        "repair_spec": repair_spec,
         "verify": verify,
         "close": close,
         "ready": ready,

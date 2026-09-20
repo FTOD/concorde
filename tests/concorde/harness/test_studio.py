@@ -15,6 +15,7 @@ from concorde.harness.studio import build_studio_graph
 from concorde.spec.contracts import INTERNAL_OPERATIONS, SKILL_NAMES
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
+from concorde.spec.wire_shapes import type_version
 from tests.concorde.spec.support import (
     CONFIGURATION as CONFIGURATION,
 )
@@ -25,9 +26,10 @@ from tests.concorde.spec.support import (
 )
 
 EXPECTED_PUBLIC = (
-    "concorde-main",
-    "concorde-dev-loop",
-    "concorde-specify-loop",
+    "concorde-context-solve",
+    "concorde-plan",
+    "concorde-tasks",
+    "concorde-implement",
     "concorde-issues",
     "concorde-init",
     "concorde-configure",
@@ -40,7 +42,7 @@ EXPECTED_PUBLIC = (
 
 def assert_public_inventory(case, names):
     names = list(names)
-    case.assertEqual(10, len(names))
+    case.assertEqual(11, len(names))
     case.assertEqual(len(names), len(set(names)))
     case.assertEqual(set(EXPECTED_PUBLIC), set(names))
 
@@ -51,10 +53,10 @@ class PublicInventoryTests(unittest.TestCase):
         assert_public_inventory(self, EXPECTED_PUBLIC)
         for names in (
             EXPECTED_PUBLIC[:-1],
-            EXPECTED_PUBLIC + ("concorde-plan",),
+            EXPECTED_PUBLIC + ("concorde-main",),
             EXPECTED_PUBLIC + (EXPECTED_PUBLIC[0],),
             EXPECTED_PUBLIC[:-1] + (EXPECTED_PUBLIC[0],),
-            EXPECTED_PUBLIC[:-1] + ("concorde-plan",),
+            EXPECTED_PUBLIC[:-1] + ("concorde-main",),
         ):
             with self.subTest(names=names), self.assertRaises(AssertionError):
                 assert_public_inventory(self, names)
@@ -69,7 +71,7 @@ def invocation(operation="concorde-issues", mode="execute", data=None):
         "configuration": None,
         "input": {
             "type_id": operation + "-request",
-            "schema_version": 1,
+            "schema_version": type_version(operation + "-request"),
             "data": data
             if data is not None
             else {
@@ -191,8 +193,11 @@ class StudioTests(unittest.TestCase):
         )
 
     def test_streamed_agent_stages_use_native_executor_and_fresh_invocations(self):
-        graph = self.graph("concorde-main")
-        value = invocation("concorde-main", data={"task": "Explain transfer"})
+        graph = self.graph("concorde-context-solve")
+        value = invocation(
+            "concorde-context-solve",
+            data={"target_id": "service.transfer", "task": "Explain transfer"},
+        )
         from typing import Any
 
         chunks: list[Any] = list(
@@ -200,15 +205,15 @@ class StudioTests(unittest.TestCase):
         )
         custom = [data for mode, data in chunks if mode == "custom"]
         actual = [
-            data["concorde-main"]
+            data["concorde-context-solve"]
             for mode, data in chunks
-            if mode == "updates" and "concorde-main" in data
+            if mode == "updates" and "concorde-context-solve" in data
         ][0]
         self.assertEqual("succeeded", actual["result"]["status"], actual)
         self.assertEqual(custom, actual["events"])
         started = [e for e in custom if e["event"] == "agent_started"]
-        self.assertEqual(["route", "route"], [e["stage"] for e in started])
-        self.assertEqual(2, len({e["invocation_id"] for e in started}))
+        self.assertEqual(["context-solve"], [e["stage"] for e in started])
+        self.assertEqual(1, len({e["invocation_id"] for e in started}))
         self.assertTrue(
             all(
                 "context.json" in p["read_paths"]
@@ -227,8 +232,8 @@ class StudioTests(unittest.TestCase):
         )
 
     def test_describe_policy_does_not_start_agents(self):
-        actual = self.graph("concorde-dev-loop").invoke(
-            {"invocation": invocation("concorde-dev-loop", "describe-policy")}
+        actual = self.graph("concorde-plan").invoke(
+            {"invocation": invocation("concorde-plan", "describe-policy")}
         )
         self.assertEqual("described", actual["result"]["status"], actual)
         self.assertTrue(actual["policies"])
@@ -296,39 +301,48 @@ class StudioTests(unittest.TestCase):
             host.assert_not_called()
 
     def test_utf8_input_limit_matches_cli_without_ascii_escape_expansion(self):
-        value = invocation("concorde-main", data={"task": "测" * 180000})
+        value = invocation(
+            "concorde-context-solve",
+            data={"target_id": "service.transfer", "task": "测" * 180000},
+        )
         self.assertLess(
             len(json.dumps(value, ensure_ascii=False).encode()), 1024 * 1024
         )
-        graph = self.graph("concorde-main")
-        state = graph.invoke({"invocation": value}, interrupt_before=["concorde-main"])
+        graph = self.graph("concorde-context-solve")
+        state = graph.invoke(
+            {"invocation": value}, interrupt_before=["concorde-context-solve"]
+        )
         self.assertIsNone(state["result"])
         self.assertEqual([], self.double.calls)
 
     def test_configuration_and_agent_completion_cannot_bypass_authority(self):
-        value = invocation("concorde-main", data={"task": "Explain transfer"})
+        value = invocation(
+            "concorde-context-solve",
+            data={"target_id": "service.transfer", "task": "Explain transfer"},
+        )
         value["configuration"] = typed(
             "concorde-operation-configuration",
             {"model": "openai-codex/gpt-6-astra", "thinking": "high"},
         )
-        actual = self.graph("concorde-main").invoke({"invocation": value})
+        actual = self.graph("concorde-context-solve").invoke({"invocation": value})
         self.assertEqual(
             "configuration_mismatch", actual["result"]["errors"][0]["code"]
         )
         self.assertEqual([], self.double.calls)
         value["configuration"] = None
-        actual = self.graph("concorde-main", Mock(return_value={})).invoke(
+        actual = self.graph("concorde-context-solve", Mock(return_value={})).invoke(
             {"invocation": value}
         )
         self.assertEqual("invalid_completion", actual["result"]["errors"][0]["code"])
 
     def test_agent_failure_is_a_failed_result_with_final_event(self):
         actual = self.graph(
-            "concorde-main", Mock(side_effect=RuntimeError("process broke"))
+            "concorde-context-solve", Mock(side_effect=RuntimeError("process broke"))
         ).invoke(
             {
                 "invocation": invocation(
-                    "concorde-main", data={"task": "Explain transfer"}
+                    "concorde-context-solve",
+                    data={"target_id": "service.transfer", "task": "Explain transfer"},
                 )
             }
         )
@@ -357,44 +371,6 @@ class StudioTests(unittest.TestCase):
             ),
         )
         self.assertEqual("succeeded", result["status"])
-
-    @verifies("scenario.harness.graph-execution")
-    def test_loop_emits_child_operations_and_deterministic_phases(self):
-        from tests.concorde.harness.test_worktree_lifecycle import (
-            WorktreeLifecycleTests,
-        )
-
-        fixture = WorktreeLifecycleTests()
-        fixture.setUp()
-        self.addCleanup(fixture.doCleanups)
-        actual = build_studio_graph(
-            "concorde-dev-loop", fixture.change, PACKAGE, executor=self.double.executor
-        ).invoke(
-            {
-                "invocation": invocation(
-                    "concorde-dev-loop",
-                    data={**fixture.task, "specify": False, "run_reviews": False},
-                )
-            }
-        )
-        self.assertEqual("succeeded", actual["result"]["status"], actual)
-        stages = [
-            e["stage"] for e in actual["events"] if e["event"] == "stage_finished"
-        ]
-        self.assertIn("validate", stages)
-        self.assertEqual("ready", stages[-1])
-        self.assertTrue(
-            any(
-                e["event"] == "operation_started" and e["depth"] == 2
-                for e in actual["events"]
-            )
-        )
-        self.assertTrue(
-            any(
-                e.get("stage") == "implementation" and e["event"] == "agent_finished"
-                for e in actual["events"]
-            )
-        )
 
     def test_source_studio_delivery_retains_its_worktree(self):
         from tests.concorde.harness.test_worktree_lifecycle import (

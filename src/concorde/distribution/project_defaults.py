@@ -5,6 +5,7 @@ binds and agents are granted, and the Concorde-owned defaults a project starts f
 deploys them; initialization creates none of them, because initialization produces only what the
 user's project generates through Concorde (its configuration, registry and Module stub).
 """
+
 from __future__ import annotations
 
 import json
@@ -17,16 +18,16 @@ PROTOCOL_DIR = ".concorde/protocol"
 PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
 RENDERED_PROTOCOL_PREFIX = "generated/protocol/"
 ISSUES_IGNORE_PATH = ".concorde/issues/.gitignore"
-TOPOLOGY_IGNORE_PATH = ".concorde/topology-proposals/.gitignore"
-TOPOLOGY_IGNORE = b"# Exact topology applications are local, developer-reviewed host artifacts.\n*\n!.gitignore\n"
 
 
 def protocol_asset_path(asset_path: str) -> str:
     """Where a rendered Protocol asset is installed: ``generated/protocol/<name>`` becomes
     ``.concorde/protocol/<name>`` in the project."""
     if not asset_path.startswith(RENDERED_PROTOCOL_PREFIX):
-        raise SpecError(f"unexpected Protocol asset path: {asset_path}", "protocol_mismatch")
-    return PROTOCOL_DIR + "/" + asset_path[len(RENDERED_PROTOCOL_PREFIX):]
+        raise SpecError(
+            f"unexpected Protocol asset path: {asset_path}", "protocol_mismatch"
+        )
+    return PROTOCOL_DIR + "/" + asset_path[len(RENDERED_PROTOCOL_PREFIX) :]
 
 
 def protocol_files(package: Path) -> dict[str, bytes]:
@@ -36,6 +37,7 @@ def protocol_files(package: Path) -> dict[str, bytes]:
     rendered asset the manifest lists. Agents are granted the Protocol as these project files.
     """
     from .build import BuildError, verify_fresh
+
     try:
         verify_fresh(package)
     except BuildError as error:
@@ -45,7 +47,9 @@ def protocol_files(package: Path) -> dict[str, bytes]:
     for item in decode(raw.decode())["assets"]:
         content = read_file(package, item["path"])
         if digest(content) != item["digest"]:
-            raise SpecError(f"Protocol asset has changed: {item['path']}", "protocol_mismatch")
+            raise SpecError(
+                f"Protocol asset has changed: {item['path']}", "protocol_mismatch"
+            )
         files[protocol_asset_path(item["path"])] = content
     return files
 
@@ -54,7 +58,6 @@ def project_default_files(package: Path) -> dict[str, bytes]:
     """Concorde-owned defaults a project starts from; the installer seeds them only when absent."""
     return {
         ISSUES_IGNORE_PATH: b"# Issue records are versioned project data. Host locks live under ../runs/.\n",
-        TOPOLOGY_IGNORE_PATH: TOPOLOGY_IGNORE,
     }
 
 

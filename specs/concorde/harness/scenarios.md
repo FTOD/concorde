@@ -5,28 +5,28 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Context](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
-| [Task context](context.md#terminology) | Defined in What information a worker receives. |
-| [Capsule](module.md#terminology) | Defined in Harness. |
-| [Tool gate](module.md#terminology) | Defined in Harness. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                              | Meaning / definition                           |
+| ------------------------------------------------- | ---------------------------------------------- |
+| [Worker](../module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Worker profile](module.md#terminology)           | Defined in Harness.                            |
+| [Context](../module.md#terminology)               | Defined in Concorde Framework.                 |
+| [Grant](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                 |
+| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                 |
+| [Graph](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Operation](../module.md#terminology)             | Defined in Concorde Framework.                 |
+| [Spec context](context.md#terminology)            | Defined in What information a worker receives. |
+| [Task context](context.md#terminology)            | Defined in What information a worker receives. |
+| [Capsule](module.md#terminology)                  | Defined in Harness.                            |
+| [Tool gate](module.md#terminology)                | Defined in Harness.                            |
+| [Candidate](../module.md#terminology)             | Defined in Concorde Framework.                 |
+| [Worktree](../module.md#terminology)              | Defined in Concorde Framework.                 |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions.            |
+| [Entity](../module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Reference](../spec/registry.md#terminology)      | Defined in Registry.                           |
+| [Skill](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                 |
+| [Issue](../module.md#terminology)                 | Defined in Concorde Framework.                 |
 
 ## Harness
 
@@ -60,7 +60,7 @@ rule: see [names for every phase](requirements.md#req.harness.context-file-names
 - GIVEN a Module whose registration declares `references` of kind `external`, such as the vendored documentation and source of a library it builds on
 - WHEN the host resolves a context for any phase
 - THEN the snapshot lists each external reference with one digest over its readable files, and a launch of a worker whose contract declares the `references` effect grants exactly those entries read-only, copied as the same readable files into the capsule when the worker runs in one
-- AND a worker without that effect, such as the spec author, spec reviewer or context assessor, sees the entries but receives no grant
+- AND a worker without that effect, such as the spec reviewer or context assessor, sees the entries but receives no grant
 - AND a change to an entry's readable bytes makes every admitted snapshot of the Module stale, while a missing entry fails resolution
 - AND a host-created candidate worktree receives the primary worktree's reference checkouts without network access
 - BUT no phase receives network access or an installed dependency's sources in place of the declared references, and media and archives below an entry are neither digested nor copied
@@ -85,21 +85,11 @@ rule: see [names for every phase](requirements.md#req.harness.context-file-names
 
 - GIVEN a previously resolved context snapshot
 - AND a document, ownership, reference declaration, inclusion reason, Protocol binding or other admitted byte has since changed
-- WHEN recheck_context or recheck_discovery_context is called with that snapshot
+- WHEN recheck_context is called with that snapshot
 - THEN the call raises SpecError with code stale_context
 - AND the caller must resolve a fresh snapshot before continuing
 
 See [the changed-input recheck bound](requirements.md#req.harness.context-recheck).
-
-### scenario.harness.context-discovery — Assemble several explicit Module contexts for a discovery worker
-
-- GIVEN a nonempty, duplicate-free ordered tuple of registered Module IDs, an operation, a phase of route, and an action of route, ask or design-topology
-- WHEN resolve_discovery_context is called
-- THEN the host returns a DiscoveryContext whose documents pool indexes the one-level union for every selected Module, deduplicated with ownership and inclusion reasons, and the router, answerer or topology designer launch grants those documents and the Protocol files read-only in its capsule
-- AND a focus hint is admitted only when it names a scenario of the target hint's own Module
-- AND the returned topology equals the exact registry only for the design-topology action, and is null for every other action
-
-See [the no-recursive-expansion bound](requirements.md#req.harness.context-discovery-no-recurse).
 
 ### scenario.harness.context-gap — Report a missing local dependency promise as a Spec gap
 
@@ -148,14 +138,16 @@ See [the no-wider-retry bound](requirements.md#req.harness.permission-no-retry).
 
 ### scenario.harness.change-owner — Preserve and validate candidate ownership
 
-- GIVEN primary-owned candidate state bound to the current worktree, possibly created before routing
+- GIVEN primary-owned candidate state bound to the current worktree, possibly interrupted before binding its explicit initial target
 - WHEN the host reads, restores or binds its owner
 - THEN an unbound owner remains distinct from an absent or malformed record, and persisted change, path, branch, owner and intent fields are validated before use
 - AND a requested existing change cannot silently create replacement state in another worktree
 - AND schema-1 candidate progress is refused with unsupported_worktree_version without rewriting its bytes or reusing its readiness evidence
 - AND missing binding task or target returns a structured invalid_input error instead of a field lookup exception
-- AND binding preserves the recorded task and constraints, while conflicting bound intent is rejected with incompatible_handoff and its field
-- AND only a trusted coordinated child may use a distinct component intent without rewriting the root owner
+- AND a retained explicit-target mutation restores omitted focus and constraints for that same owner before selection and rejects conflicting task, focus, constraints or initial target with incompatible_handoff and its field before progress writes
+- AND an unknown recorded owner is rejected as invalid_worktree_state rather than used as authority
+- AND only separately admitted component work under a current parent plan and matching derived intent may use a distinct component intent without rewriting the root owner
+- AND independent read-only reviews keep their explicit intent without replacing root ownership
 - AND lifecycle metadata supplies recovery identity but never grants implementation access or waives readiness checks
 
 ### scenario.harness.worktree-boundary — Require an isolated worktree before unsafe mutation
@@ -187,19 +179,19 @@ settling-is-not-completion bound](requirements.md#req.harness.execute-exit-insuf
 
 ### scenario.harness.worker-contract — A worker runs only its own task contract
 
-- GIVEN the twelve catalog workers and a selected Module or discovery collection
+- GIVEN the seven catalog workers and an explicitly selected Module
 - WHEN the host binds a worker and the executor admits its launch and its result
 - THEN only the common worker rules, that worker's role Spec and the Protocol rule bundle form its system prompt
-- AND a mismatched phase or action, context or result type, unadmitted or missing required stage artifacts, implementation contents for a worker without implementation reads and a policy wider than the contract are rejected before a process starts
+- AND a mismatched phase, context or result type, unadmitted or missing required stage artifacts, implementation contents for a worker without implementation reads and a policy wider than the contract are rejected before a process starts
 - AND the submission tool omits unauthorized optional authored fields and constrains required unauthorized compatibility fields to their empty values, without changing authorized fields or the shared wire type
 - AND an unauthorized tool submission is rejected without ending the run, so a corrected submission can succeed within the same invocation and unchanged deadline
 - AND a result with an outcome or a populated field its contract does not permit is independently rejected by the host, disallowed authored fields as permission_denied
-- AND an author and a reviewer of the same Module have different invocation and context identities with no shared conversation, stage artifacts or write grant
+- AND a planner and a reviewer of the same Module have different invocation and context identities with no shared conversation, stage artifacts or write grant
 
 ### scenario.harness.usage-accounting — Record what every worker launch consumed, per step
 
 - GIVEN a Pi worker that settled and reported its session statistics
-- WHEN the host accepts the WorkerOutcome of a stage, review, discovery or topology-author launch
+- WHEN the host accepts the WorkerOutcome of a stage or review launch
 - THEN the outcome carries an ExecutionUsage record with the reported input, cached and output tokens, cost and turns, the configured model and thinking level, the host-measured wall time and the prompt and context sizes
 - AND the host appends one schema-2 JSON line labelled with the operation, stage, target, worker, change and launch identity to `.concorde/runs/<root invocation>/usage.jsonl`, where the root invocation is the top-level operation invocation of the whole Graph run
 - AND the host observer receives the same record as an `agent_usage` event, and the `usage` Tool and the executable boundary summarize those lines per step, stage, target and worker
@@ -414,7 +406,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - GIVEN an admitted operation request through a local or Studio entry
 - WHEN the host executes the request
 - THEN the same compiled Graph definitions select its operation branch, Agent stages and feedback transitions
-- AND discovery expansion, topology authors, component work and Issue resolutions advance through bounded Graph transitions
+- AND selected assessment, planning, scoped review and Issue verification advance through bounded Graph transitions without automatic authoring or child development
 - AND failed admission or a stopping outcome prevents dependent nodes from running
 - AND existing task identity, context isolation, review requirements and delivery authorization remain enforced
 - AND a change to the Graph that schedules scoped reviews invalidates their recorded input identity
@@ -422,7 +414,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 ### scenario.harness.graph-bounds — Preserve domain limits across Graph composition
 
 - GIVEN a Graph whose admitted work requires more than LangGraph's default scheduling limit
-- WHEN the host executes its bounded discovery, batch or review-repair transitions
+- WHEN the host executes its bounded batch or Issue-verification transitions
 - THEN the configured scheduling allowance permits the admitted sequence to reach its domain completion or limit outcome
 - AND exhausting a declared domain limit does not silently restart the Graph or widen its authority
 

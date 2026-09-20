@@ -17,7 +17,7 @@ input; do not perform it directly in this ambient conversation or inspect additi
 
 Send one concorde-operation-invocation@3 JSON object on stdin to `python3 .concorde/framework/scripts/run-operation.py concorde-issues`. Its exact fields
 are type_id, schema_version:3, operation_id:"concorde-issues", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-issues-request@1).
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (the independently versioned concorde-issues-request; use the exact schema below).
 
 Choose action list, show, report, reopen or solve. Show, reopen and solve require one issue_id;
 expected_revision optionally rejects a changed selection. Report requires target_id and a classified

@@ -6,16 +6,16 @@ Delivery publishes a verified candidate as an independent branch and normally re
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| Delivered branch | The independent branch published by delivery without advancing the primary checked-out branch. |
-| Delivery receipt | The saved record distinguishing branch publication, source cleanup and any later primary merge. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                  | Meaning / definition                                                                            |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Delivered branch                      | The independent branch published by delivery without advancing the primary checked-out branch.  |
+| Delivery receipt                      | The saved record distinguishing branch publication, source cleanup and any later primary merge. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework.                                                                  |
+| [Ready](../module.md#terminology)     | Defined in Concorde Framework.                                                                  |
+| [Delivery](../module.md#terminology)  | Defined in Concorde Framework.                                                                  |
+| [Worktree](../module.md#terminology)  | Defined in Concorde Framework.                                                                  |
+| [Evidence](../module.md#terminology)  | Defined in Concorde Framework.                                                                  |
+| [Host](../module.md#terminology)      | Defined in Concorde Framework.                                                                  |
 
 ## Usage
 
@@ -29,8 +29,8 @@ removal; retries then use the primary session and recorded change ID.
 Merging primary is a separate `merge_primary:true` request after delivery, authorized explicitly
 and issued by the sole primary writer. Conflicts, local primary edits, failed checks or stale evidence
 block the transition; unrelated edits are never discarded. Receipts distinguish publication, cleanup and
-merge: cleanup retries do not republish and accepted merge retries do not merge again. The producer
-need not be dev-loop, but every candidate must meet the same evidence gates.
+merge: cleanup retries do not republish and accepted merge retries do not merge again. Directly authored and explicitly planned candidates retain the same applicable current-evidence
+gates without inventing deleted workflow history. Direct editing cannot waive an already-required review.
 
 For example, ready means a proposed change has passed its required gates. Delivering it makes a
 separate verified branch available; neither state means it is already merged into the main development
@@ -55,7 +55,7 @@ and pending-entry confirmation remain currentness gates, not inferred success fr
 `deliver` runs as a single deterministic node that calls no model: the `deliver` leaf of the
 [dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph),
 entered directly from operation selection without target admission, because the change identity
-already names the candidate. No development, specification or Issue Graph has an edge into it.
+already names the candidate. No automatic task sequence or Issue Graph has an edge into it.
 
 ## Relationships
 

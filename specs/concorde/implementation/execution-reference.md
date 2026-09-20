@@ -6,22 +6,22 @@ and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                      | Meaning / definition                           |
+| --------------------------------------------------------- | ---------------------------------------------- |
+| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.                 |
+| [Module](../module.md#terminology)                        | Defined in Concorde Framework.                 |
+| [Worker](../module.md#terminology)                        | Defined in Concorde Framework.                 |
+| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                 |
+| [Grant](../module.md#terminology)                         | Defined in Concorde Framework.                 |
+| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.                 |
+| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.                 |
+| [Acceptance task](../planning/tasks.md#terminology)       | Defined in Making work verifiable.             |
+| [Spec context](../harness/context.md#terminology)         | Defined in What information a worker receives. |
+| [Internal operation](../operations/module.md#terminology) | Defined in Operations.                         |
+| [Skill](../module.md#terminology)                         | Defined in Concorde Framework.                 |
+| [Graph](../module.md#terminology)                         | Defined in Concorde Framework.                 |
+| [Entity](../module.md#terminology)                        | Defined in Concorde Framework.                 |
+| [Evidence](../module.md#terminology)                      | Defined in Concorde Framework.                 |
 
 ## Implementation operation {#implementation-implementation-operation}
 
@@ -29,8 +29,8 @@ and transitions are retained here as the single detailed contract.
 [typed handoffs](../harness/admission.md#stage-handoffs) and
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
+This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
+The calling agent invokes it through its Skill, Pi projection or common launcher.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
@@ -41,7 +41,7 @@ intent stop admission. A fresh programmer receives the complete selected
 Spec and contents of the files its own entities bind. Only those implementation paths are writable;
 registered Specs, registry, entity declarations and configuration are not. Network and credentials
 remain disabled. Optional concorde-review-result@2 is admitted only after the host verifies the
-current dev-loop repair round; structural validity does not authorize repair.
+current explicitly selected review feedback; structural validity does not authorize repair.
 
 The worker returns every exact admitted task with unchanged identity and acceptance, marked complete
 only when fulfilled. Missing or incomplete tasks produce incomplete_tasks, never ready. The host
@@ -59,132 +59,22 @@ defect or missing implementation obligation remains incomplete; Host checks stil
 
 ### Design {#implementation-design}
 
-#### Component coordination and current adapter limit {#implementation-component-coordination-and-current-adapter-limit}
+#### Caller-selected component work {#implementation-component-coordination-and-current-adapter-limit}
 
-A selected Module may contain local code tasks and tasks for its direct children or used Modules.
-Local tasks retain their original plan and identity; they do not recursively invoke a new loop for
-the same Module. Each participant has a separately selected complete contract and grant. All affected
-provider/consumer Spec views must agree before component code changes; incomplete reconciliation
-remains inspectable. Component ancestry supplies no extra file access.
+Tasks may name the selected Module, its direct children or declared used Modules. Implementation
+checks those identities deterministically. It does not author Specs, schedule child development or
+repair shared contracts. Missing component completion returns `unsupported` with each exact target
+and derived task intent, so the calling agent can select the necessary Operations and perform any
+Spec, paired metadata or registry edits directly.
 
-The current adapter delegates component lifecycle scheduling and final shared-consumer checks to
-its existing enclosing development Graph. That graph's ready, defer_component_checks and bounded
-repair policies are not implementation completion conditions. Reusing this provider for a different
-coordinated graph requires a declared implementation adapter for its component scheduling and evidence
-handoffs; no arbitrary scheduler input or additional callable entry is introduced here. The local
-task contract is independently reusable under current host admission. Missing contracts stop the
-dependent task; an actual implementation defect remains incomplete; cancellation and limits retain
-their separate execution outcomes.
-
-### Coordination Graphs
-
-A composite Module's implementation runs the component coordination Graph, which finishes with
-the shared candidate stabilization Graph. Each Graph Spec follows the
-[Graph Spec convention](../harness/execution-reference.md#graphs-and-loops-graph-specs): its
-State, Nodes and Edges are stated in turn, and its diagram is bound to its compiled Graph by
-`%% graph:` and kept equal to it by the configured Graph Spec check.
-
-#### Component coordination Graph (`coordination_graph`) {#graphs-component-coordination-graph-coordination-graph}
-
-A composite Module's implementation runs this Graph when its tasks name submodules or used Modules.
-
-**State.** `output` (a typed blocking response, or None while the Graph advances; the final node
-writes the completion response), `route` (shared schema field, unused by coordination). Both use
-replacement updates. The candidate's target record carries the coordination table (component
-tasks, Spec/implementation status, digests and gaps) and local tasks. The admitted `run`, component
-list, local task list and accumulated review artifacts live in the Host/node closures. These are
-not Graph channels, even though the implementation calls the durable target record `state`.
-`none` below means no Graph-channel read, not an absence of those external inputs/effects.
-
-**Nodes.** The work-item nodes run the [Sequential work items Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph).
-
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `reconcile_specs` | Calls the batch Graph over Host-bound component tasks; runs/reuses owner-local authoring and updates durable coordination records. | none | output |
-| `validate_specs` | Validates participant contracts and updates the durable phase; returns output=None on success or raises on incompatibility. | none | output |
-| `implement_components` | Calls the batch Graph: each component develops from its own grant with specify=false; retains review artifacts outside Graph State. | none | output |
-| `implement_local` | Runs/reuses the local programmer invocation and persists exact completed local tasks/digest. | none | output |
-| `finalize_components` | Calls stabilization below unless the Host defers component checks; records component revisions/evidence outside State. | none | output |
-| `record_completion` | Persists completed tasks, component revisions and implementation digest; returns the completion response with review artifact references. | none | output |
-
-**Edges.** After every nonfinal step, the conditional edge tests `state.get("output") is not None`:
-a returned blocking response ends the Graph, while None advances. This is not a truthiness test.
-`record_completion` always ends the Graph with its successful response. Invalid contracts and
-other raised exceptions unwind to the enclosing admission guard; these helper nodes have no
-`result` channel and do not convert exceptions into the displayed output-based branches.
-When the Host defers final checks, `finalize_components` writes None without running stabilization;
-this continuation records a draft, not final shared-candidate verification.
-
-```mermaid
-flowchart TB
-    %% graph: coordination_graph
-    accTitle: Component coordination Graph
-    accDescr: Component Specs are reconciled and validated, components and local code are implemented, and every participant is finalized until stable before completion is recorded; a blocked step ends the Graph with that result.
-    __start__["start"]
-    reconcile_specs["reconcile_specs<br/>in: none<br/>out: output"]
-    validate_specs["validate_specs<br/>in: none<br/>out: output"]
-    implement_components["implement_components<br/>in: none<br/>out: output"]
-    implement_local["implement_local<br/>in: none<br/>out: output"]
-    finalize_components["finalize_components<br/>in: none<br/>out: output"]
-    record_completion["record_completion<br/>in: none<br/>out: output"]
-    __end__["end"]
-    __start__ --> reconcile_specs
-    reconcile_specs -->|output is None| validate_specs
-    reconcile_specs -->|output is not None| __end__
-    validate_specs -->|output is None| implement_components
-    validate_specs -->|output is not None| __end__
-    implement_components -->|output is None| implement_local
-    implement_components -->|output is not None| __end__
-    implement_local -->|output is None| finalize_components
-    implement_local -->|output is not None| __end__
-    finalize_components -->|output is None: stable or checks deferred| record_completion
-    finalize_components -->|output is not None| __end__
-    record_completion --> __end__
-```
-
-#### Shared candidate stabilization Graph (`stabilization_graph`) {#graphs-shared-candidate-stabilization-graph-stabilization-graph}
-
-**State.** `output` (a failed participant's typed response or None), `route` (`snapshot` or
-`__end__`), both using replacement updates. The enclosing closure holds the participant set,
-before-round implementation digest, finalized set and remaining-round counter, initially
-`1 + 2 * participant_count`. None of those is a Graph channel. A later participant's repair can
-stale an earlier participant's evidence, so the Host compares implementation digests each round.
-`snapshot` returns no channel update; the previous output/route values are retained until their
-next writer. All nodes obtain business inputs from the enclosing coordination.
-
-**Nodes.**
-
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `snapshot` | Decrements the closure-held budget, captures the before-round digest and clears the finalized set; raises if no rounds remain. | none | none |
-| `verify_components` | Calls the batch Graph over Host-held participants; final development calls run checks/reviews and update durable evidence and closure-held artifacts. | none | output |
-| `check_stability` | Compares current participant implementation digest to the closure-held before-round digest; selects repeat or end. | none | route |
-
-**Edges.** `snapshot` always continues to `verify_components`. After verification a conditional
-edge reads `output`: a failed participant ends the Graph, otherwise `check_stability` runs.
-`check_stability` writes `route`: when verification changed the candidate the round repeats from
-`snapshot`, and when it did not the Graph ends. The round budget checked in `snapshot` bounds the
-loop. The output predicate is `is not None`; the stability predicate is equality of the before
-and after implementation digests. Exhausting the budget raises to the enclosing invocation; it
-does not traverse an additional `snapshot` error edge or produce a successful stable result.
-
-```mermaid
-flowchart TB
-    %% graph: stabilization_graph
-    accTitle: Shared candidate stabilization Graph
-    accDescr: Each round snapshots the candidate, verifies every participant and repeats while a repair changed the candidate; a failed participant ends the Graph.
-    __start__["start"]
-    snapshot["snapshot<br/>in: none<br/>out: none"]
-    verify_components["verify_components<br/>in: none<br/>out: output"]
-    check_stability["check_stability<br/>in: none<br/>out: route"]
-    __end__["end"]
-    __start__ --> snapshot
-    snapshot --> verify_components
-    verify_components -->|output is None| check_stability
-    verify_components -->|output is not None| __end__
-    check_stability -->|route = snapshot: implementation digest changed| snapshot
-    check_stability -->|route = __end__: implementation digest unchanged| __end__
-```
+A separately selected component request requires a current accepted parent plan and Spec/registration
+revision, and must match the derived parent task intent and constraints;
+that admission preserves the root change owner and grants only the selected component's own context.
+When retried, implementation accepts component completion only for that same intent, current Spec
+and implementation revision and complete tasks. It validates shared contract structure before its
+own programmer runs, records component revisions and exact local completion, and leaves checks,
+independent review, readiness and delivery to explicit later calls. A subsequent participant edit
+invalidates dependent evidence rather than starting an automatic stabilization loop.
 
 ### Precise specifications {#implementation-precise-specifications}
 
@@ -195,7 +85,7 @@ These companions are part of the same complete Module specification, not separat
 
 This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
 its own package `src/concorde/implementation/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
-creates no public Skill, Agent grant or configurable arbitrary graph. Host admission, phase
+does not itself create an Agent grant or configurable arbitrary graph; public exposure is explicit in the catalog. Host admission, phase
 artifacts and permissions remain mandatory. A new graph requires declared composition and an
 implementation of its sequencing, artifact admission, recovery and completion policies before it
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation

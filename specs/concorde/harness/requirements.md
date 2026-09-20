@@ -5,26 +5,26 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Context](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
-| [Task context](context.md#terminology) | Defined in What information a worker receives. |
-| [Capsule](module.md#terminology) | Defined in Harness. |
-| [Tool gate](module.md#terminology) | Defined in Harness. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                    | Meaning / definition                           |
+| --------------------------------------- | ---------------------------------------------- |
+| [Worker](../module.md#terminology)      | Defined in Concorde Framework.                 |
+| [Worker profile](module.md#terminology) | Defined in Harness.                            |
+| [Context](../module.md#terminology)     | Defined in Concorde Framework.                 |
+| [Grant](../module.md#terminology)       | Defined in Concorde Framework.                 |
+| [Snapshot](../module.md#terminology)    | Defined in Concorde Framework.                 |
+| [Host](../module.md#terminology)        | Defined in Concorde Framework.                 |
+| [Spec context](context.md#terminology)  | Defined in What information a worker receives. |
+| [Task context](context.md#terminology)  | Defined in What information a worker receives. |
+| [Capsule](module.md#terminology)        | Defined in Harness.                            |
+| [Tool gate](module.md#terminology)      | Defined in Harness.                            |
+| [Module](../module.md#terminology)      | Defined in Concorde Framework.                 |
+| [Entity](../module.md#terminology)      | Defined in Concorde Framework.                 |
+| [Scenario](../module.md#terminology)    | Defined in Concorde Framework.                 |
+| [Spec](../module.md#terminology)        | Defined in Concorde Framework.                 |
+| [Registry](../module.md#terminology)    | Defined in Concorde Framework.                 |
+| [Operation](../module.md#terminology)   | Defined in Concorde Framework.                 |
+| [Graph](../module.md#terminology)       | Defined in Concorde Framework.                 |
+| [Worktree](../module.md#terminology)    | Defined in Concorde Framework.                 |
 
 ## Harness
 
@@ -63,13 +63,8 @@ replace no granted file. See [Spec context grant](contracts.md#context-spec-cont
 
 ### req.harness.context-recheck — Recheck rejects reuse after changes
 
-recheck_context and recheck_discovery_context SHALL reject reuse whenever any admitted input has
+recheck_context SHALL reject reuse whenever any admitted input has
 changed since resolution.
-
-### req.harness.context-discovery-no-recurse — Discovery never expands via relationships
-
-resolve_discovery_context SHALL NOT follow a dependency or hyperlink to add another Module's
-documents to the discovery context.
 
 ### req.harness.profile-within-contract — A profile never exceeds its contract
 

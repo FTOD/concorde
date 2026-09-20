@@ -120,70 +120,6 @@ class BoundaryTests(unittest.TestCase):
         )
         self.assertNotIn("specs/transfer/module.md", json.dumps(module))
 
-    @verifies("scenario.spec-authoring.foreign-output")
-    def test_consumer_author_cannot_change_provider_truth(self):
-        self.registry["targets"][3]["references"].append(
-            {"kind": "document", "id": "document.transfer.promises"}
-        )
-        self.save()
-        update_document_declaration(
-            self.root, "specs/transfer/promises.md", owner="service.transfer"
-        )
-        path = self.root / "specs/transfer/promises.md"
-        before = path.read_bytes()
-
-        def cb(stage, snap, data, cwd):
-            if stage == "specify":
-                data["documents"] = [
-                    {
-                        "path": "specs/transfer/promises.md",
-                        "content": path.read_text() + "\nChanged by one target.\n",
-                    }
-                ]
-
-        result = self.call_operation(
-            "concorde-specify",
-            data={"target_id": "module.ledger", "task": "Clarify consumer"},
-            callback=cb,
-        )
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual(before, path.read_bytes())
-        self.assertEqual("permission_denied", result["errors"][0]["code"])
-
-    def test_target_author_cannot_persist_duplicate_document_identity(self):
-        path = self.root / "specs/transfer/module.md.json"
-        before = path.read_bytes()
-        replacement = path.read_text().replace(
-            '"id": "document.transfer.feature"', '"id": "document.ledger.api"'
-        )
-
-        def cb(stage, snap, data, cwd):
-            if stage == "specify":
-                data["documents"] = [
-                    {"path": "specs/transfer/module.md.json", "content": replacement}
-                ]
-
-        result = self.call_operation("concorde-specify", callback=cb)
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual(before, path.read_bytes())
-        self.assertIn("identity", result["errors"][0]["message"])
-
-    def test_target_author_can_change_local_truth_without_changing_its_declaration(
-        self,
-    ):
-        path = self.root / "specs/transfer/module.md"
-        replacement = path.read_text() + "\nA clarified local promise.\n"
-
-        def cb(stage, snap, data, cwd):
-            if stage == "specify":
-                data["documents"] = [
-                    {"path": "specs/transfer/module.md", "content": replacement}
-                ]
-
-        result = self.call_operation("concorde-specify", callback=cb)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(replacement, path.read_text())
-
     def test_a_directory_is_listed_only_with_an_explicit_trailing_slash(self):
         self.registry["targets"][3]["files"] = ["app"]
         self.save()
@@ -305,9 +241,9 @@ class BoundaryTests(unittest.TestCase):
             {"model": CONFIGURATION["data"]["model"], "thinking": "high"},
         )
         result = run_operation(
-            "concorde-main",
+            "concorde-context-solve",
             other,
-            typed("concorde-main-request", self.task),
+            typed("concorde-context-solve-request", self.task),
             host_context=OperationHost(self.root, PACKAGE),
         )
         self.assertEqual("configuration_mismatch", result["errors"][0]["code"])
@@ -315,16 +251,18 @@ class BoundaryTests(unittest.TestCase):
     @verifies("scenario.harness.typed-reject")
     def test_wrong_version_and_extra_fields_are_rejected(self):
         for value in [
-            dict(typed("concorde-main-request", self.task), schema_version=True),
-            dict(typed("concorde-main-request", self.task), schema_version=7),
+            dict(
+                typed("concorde-context-solve-request", self.task), schema_version=True
+            ),
+            dict(typed("concorde-context-solve-request", self.task), schema_version=7),
             {
-                "type_id": "concorde-main-request",
+                "type_id": "concorde-context-solve-request",
                 "schema_version": 1,
                 "data": {**self.task, "read_paths": ["secret.py"]},
             },
         ]:
             with self.subTest(value=value), self.assertRaises(TypedDataError):
-                validate_typed(value, "concorde-main-request")
+                validate_typed(value, "concorde-context-solve-request")
 
     def test_unsupported_is_not_spec_incomplete(self):
         def cb(stage, snapshot, data, cwd):
@@ -350,7 +288,7 @@ class BoundaryTests(unittest.TestCase):
         )
 
     def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
-        result = self.call_operation("concorde-dev-loop", mode="describe-policy")
+        result = self.call_operation("concorde-plan", mode="describe-policy")
         self.assertEqual("described", result["status"])
         self.assertEqual([], self.double.calls)
         for policy in self.host.descriptions:
@@ -358,18 +296,23 @@ class BoundaryTests(unittest.TestCase):
                 self.assertSpecOnlyReads(policy["read_paths"])
                 self.assertEqual([], policy["write_paths"])
 
-    def test_ask_policy_describes_only_the_route_phase_without_launching(self):
+    def test_assessment_policy_describes_only_its_bound_phase_without_launching(self):
         result = self.call_operation(
-            "concorde-main",
+            "concorde-context-solve",
             {"task": "Explain transfer", "target_id": "service.transfer"},
             mode="describe-policy",
         )
         self.assertEqual("described", result["status"])
         self.assertEqual([], self.double.calls)
-        self.assertEqual(["route"], [item["phase"] for item in self.host.descriptions])
-        self.assertSpecOnlyReads(self.host.descriptions[0]["read_paths"])
         self.assertEqual(
-            ["scope.bank"], self.host.descriptions[0]["discovered_targets"]
+            ["context-solve"], [item["phase"] for item in self.host.descriptions]
+        )
+        self.assertSpecOnlyReads(self.host.descriptions[0]["read_paths"])
+        self.assertIn(
+            "specs/transfer/module.md.json", self.host.descriptions[0]["read_paths"]
+        )
+        self.assertNotIn(
+            "specs/ledger/module.md", self.host.descriptions[0]["read_paths"]
         )
         self.assertTrue(
             all(item["write_paths"] == [] for item in self.host.descriptions)
@@ -391,52 +334,28 @@ class BoundaryTests(unittest.TestCase):
             "blocked", self.call_operation("concorde-tasks", task)["status"]
         )
 
-    def test_spec_author_cannot_edit_provider_or_registry(self):
-        def cb(stage, snap, data, cwd):
-            if stage == "specify":
-                data["documents"] = [
-                    {"path": "specs/ledger/module.md", "content": "Changed"}
-                ]
-
-        old = (self.root / "specs/ledger/module.md").read_bytes()
-        result = self.call_operation("concorde-specify", callback=cb)
-        self.assertEqual("blocked", result["status"])
-        self.assertEqual(old, (self.root / "specs/ledger/module.md").read_bytes())
-
-    def test_domain_author_cannot_persist_missing_participant_routing(self):
-        path = self.root / "specs/bank/module.md.json"
-        old = path.read_bytes()
-        metadata = json.loads(old)
-        metadata["dependencies"] = []
-
-        def cb(stage, snap, data, cwd):
-            if stage == "specify":
-                data["documents"] = [
-                    {
-                        "path": "specs/bank/module.md.json",
-                        "content": json.dumps(metadata),
-                    }
-                ]
-
-        result = self.call_operation(
-            "concorde-specify",
-            {"target_id": "scope.bank", "task": "Edit banking rules"},
-            cb,
+    @verifies("scenario.harness.permission-reject", "scenario.harness.worker-contract")
+    def test_planner_cannot_emit_spec_metadata_provider_or_registry_replacements(self):
+        paths = (
+            "specs/transfer/module.md",
+            "specs/transfer/module.md.json",
+            "specs/ledger/module.md",
+            ".concorde/specs.json",
         )
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual(old, path.read_bytes())
-        self.assertIn("dependency promises", result["errors"][0]["message"])
+        before = {path: (self.root / path).read_bytes() for path in paths}
+        for path in paths:
 
-    def test_planner_cannot_emit_spec_replacements(self):
-        def cb(stage, snap, data, cwd):
-            if stage == "plan":
-                data["documents"] = [
-                    {"path": "specs/transfer/module.md", "content": "Changed"}
-                ]
+            def cb(stage, snap, data, cwd, path=path):
+                if stage == "plan":
+                    data["documents"] = [{"path": path, "content": "Changed"}]
 
-        self.assertEqual(
-            "blocked", self.call_operation("concorde-plan", callback=cb)["status"]
-        )
+            with self.subTest(path=path):
+                result = self.call_operation("concorde-plan", callback=cb)
+                self.assertEqual("blocked", result["status"], result)
+                self.assertEqual("permission_denied", result["errors"][0]["code"])
+                self.assertEqual(
+                    before, {item: (self.root / item).read_bytes() for item in paths}
+                )
 
     def test_delivery_requires_real_current_checks(self):
         task = self.change()
@@ -522,6 +441,6 @@ class BoundaryTests(unittest.TestCase):
 
     def test_profile7_cannot_be_silently_used_by_new_agent_runtime(self):
         self.downgrade_to_profile7()
-        result = self.call_operation("concorde-main")
+        result = self.call_operation("concorde-context-solve")
         self.assertEqual("blocked", result["status"])
         self.assertEqual([], self.double.calls)

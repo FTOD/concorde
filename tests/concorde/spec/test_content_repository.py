@@ -701,30 +701,26 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         self.assertEqual(set(overrides), set(candidate.spec_files("module.d")))
         self.assertFalse((self.root / "specs/d").exists())
 
-    def test_discovery_pool_keeps_complete_pairs_and_one_copy_of_shared_sources(self):
+    def test_separate_contexts_keep_complete_pairs_and_reference_provenance(self):
         repository = self.repository()
-        selected = [
-            repository.spec_context(name).value for name in ("module.a", "module.b")
-        ]
-        pool = {
-            record["path"]: {
-                key: value for key, value in record.items() if key != "reasons"
-            }
-            for resolution in selected
-            for record in resolution["sources"]
-        }
-        value = {"protocol": [], "documents": [pool[path] for path in sorted(pool)]}
-        granted = context_documents(repository, value)
-        self.assertEqual(14, len(granted))
-        self.assertEqual(set(granted), set(context_grants(value)))
-        self.assertEqual(
-            1, sum(path == "specs/b/interface.md.json" for path in granted)
-        )
-        self.assertIn(
-            "specs/c/module.md.json",
-            granted,
-            "B explicitly selected C in its own context",
-        )
+        for name in ("module.a", "module.b"):
+            resolution = repository.spec_context(name).value
+            paths = [record["path"] for record in resolution["sources"]]
+            self.assertEqual(sorted(set(paths)), paths)
+            self.assertEqual(1, paths.count("specs/b/interface.md.json"))
+            for record in resolution["sources"]:
+                self.assertEqual(
+                    record["digest"], digest(repository.source_bytes(record["path"]))
+                )
+                if record["role"] == "reading":
+                    partner = next(
+                        item
+                        for item in resolution["sources"]
+                        if item["path"] == record["path"] + ".json"
+                    )
+                    self.assertEqual(record["owner"], partner["owner"])
+                    self.assertEqual(record["reasons"], partner["reasons"])
+            self.assertEqual(name == "module.b", "specs/c/module.md.json" in paths)
 
     def test_entire_checkout_is_admitted_through_the_bound_document_unit_repository(
         self,
@@ -932,38 +928,17 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
             candidate.source_is_overridden("specs/b/interface.md"),
             "a metadata-only override selects the candidate for both source members",
         )
-        # Exercise the actual topology author source assembler with an explicit test Protocol
-        # index. This is not installation/profile admission or a worker launch.
-        from concorde.harness.context import (
-            PROTOCOL_PATHS,
-            resolve_topology_author_context,
-        )
-
-        before.protocol_assets = dict.fromkeys(
-            PROTOCOL_PATHS, b"Test Protocol index source\n"
-        )
-        before.config = {
-            "protocol": {"version": "8.0.0", "digest": digest("test binding")}
-        }
-        snapshot = resolve_topology_author_context(
-            before,
-            registry["targets"][2],
-            task="Transfer interface ownership",
-            instructions="Read only owned and explicitly included units.",
-            workspace={},
-            candidate_repository=candidate,
-        )
+        resolution = candidate.spec_context("module.c").value
         records = [
             record
-            for record in snapshot.value["spec_resolution"]["sources"]
+            for record in resolution["sources"]
             if record["document_id"] == "document.b.interface"
         ]
         self.assertEqual(2, len(records))
         self.assertTrue(all(record["owner"] == "module.c" for record in records))
-        granted = context_documents(
-            before, snapshot.value, candidate_repository=candidate
+        self.assertEqual(
+            encoded(b), candidate.source_bytes("specs/b/interface.md.json")
         )
-        self.assertEqual(encoded(b), granted["specs/b/interface.md.json"])
 
     def test_pending_confirmation_edits_only_metadata_and_keeps_missing_entries(self):
         path = self.root / "specs/a/module.md.json"

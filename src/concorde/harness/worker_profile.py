@@ -27,15 +27,13 @@ WORKER_TOOLS = frozenset(
 CHILD_TOOLS = frozenset({"read", "grep", "find", "ls", "bash", "run_checks"})
 CONTEXT_RESULT_PAIRS = {
     f"concorde-{kind}-context": f"concorde-{kind}-result"
-    for kind in ("agent-stage", "review-stage", "main-stage", "topology-author")
+    for kind in ("agent-stage", "review-stage")
 }
 RESULT_FIELDS = (
     "documents",
     "plan",
     "tasks",
     "issue_decision",
-    "routes",
-    "topology_design",
 )
 _CHILD_SETTINGS = {
     "systemPromptMode": "replace",
@@ -62,7 +60,6 @@ class Contract:
     context: str
     result: str
     effects: EffectDeclaration
-    action: str | None = None
     stage_inputs: tuple[str, ...] = ()
     required_inputs: tuple[str, ...] = ()
     output_fields: tuple[str, ...] = ()
@@ -169,12 +166,6 @@ def validate_worker_profile(agent: WorkerProfile) -> None:
     if "implementation" in effects.reads and agent.workspace != "project":
         raise _invalid(
             f"agent {agent.name!r} reads implementation files outside a project workspace"
-        )
-    if ("discovery-context" in effects.reads) != (
-        contract.context == "concorde-main-stage-context"
-    ):
-        raise _invalid(
-            f"agent {agent.name!r} must read discovery context exactly for main-stage contexts"
         )
     tools = set(agent.tools)
     if len(tools) != len(agent.tools) or tools - WORKER_TOOLS:
@@ -312,8 +303,6 @@ def validate_worker_input(agent: WorkerProfile, value: dict, *, phase: str) -> N
     snapshot = data.get("snapshot", {}).get("data", data)
     if snapshot.get("phase", phase) != phase:
         raise ValueError("snapshot phase does not match the contract")
-    if contract.action is not None and snapshot.get("action") != contract.action:
-        raise ValueError("discovery action does not match the contract")
     validate_worker_artifacts(agent, snapshot.get("stage_inputs", []))
     if "implementation" not in contract.effects.reads and snapshot.get(
         "implementation_artifacts"
@@ -357,7 +346,7 @@ def validate_worker_output(agent: WorkerProfile, value: dict) -> None:
 
 def context_role(agent: WorkerProfile) -> str:
     """The read role that carries a worker's frozen context index and granted documents."""
-    return "discovery-context" if agent.contract.action is not None else "spec-context"
+    return "spec-context"
 
 
 def validate_worker_policy(

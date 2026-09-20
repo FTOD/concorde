@@ -8,8 +8,9 @@ Studio is an optional development interface; ordinary CLI and Skill calls need n
 ## Start a server in this source worktree
 
 Use Python 3.11 or newer and run these commands from the intended Concorde checkout. When working
-through an agent, follow its `AGENTS.md` worktree ownership policy: the session stays in the
-worktree that supplied its Skills and never creates another worktree itself.
+through an agent, follow `AGENTS.md`: the main session coordinates from its initial worktree;
+a task child stays in its assigned candidate and never delegates tasks or creates/moves worktrees.
+Source maintenance and independent Skill testing use separate fresh sibling sessions.
 
 ```bash
 uv sync --locked --group studio
@@ -18,18 +19,18 @@ uv run --locked --group studio langgraph dev --config generated/langgraph.json -
 ```
 
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
-`generated/langgraph.json` (build output; run the build before starting Studio) registers all ten
-Graphs, one per Skill, derived from `skills/`. The five non-public operations run through their
-composing Skill and remain visible in stage/process events; non-public operations have no
+`generated/langgraph.json` (build output; run the build before starting Studio) registers all eleven
+Graphs, one per public Operation, derived from the authored inventory. The seven non-public model
+Operations run through declared compositions and remain visible in worker events; non-public operations have no
 executable entry, and Studio does not restore one. API health
 is available at <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
 The separate `concorde-spec-review` and `concorde-code-review` assistants each accept `task` plus
-optional target/focus routing hints, with no review_mode selector. They run standalone read-only
+required explicit `target_id` and optional local `focus_id`, with no review_mode selector. They run standalone read-only
 reviews without creating a development change. Spec review includes terminology semantic consistency.
 The local dev API works without model credentials for deterministic operations and policy previews.
 The hosted Studio UI requires a LangSmith account; follow the official
 [Studio setup](https://docs.langchain.com/oss/python/langgraph/studio) for its authentication setup.
-Actual agent execution still requires the project's configured Codex or Claude runtime and credentials.
+Actual worker execution still requires Pi and the project's configured model credentials.
 
 `generated/langgraph.json` disables LangSmith tracing by default. Local thread/checkpoint files are
 stored in ignored `.langgraph_api/`. The dev server is intended for local use. Keep it on loopback
@@ -43,22 +44,25 @@ not installed into consumer projects; see the consumer setup below.
 
 ## Start and debug a operation in Studio
 
-Select `concorde-main`, create a new thread, and enter this complete input in Graph mode:
+Select `concorde-context-solve`, create a new thread, and enter this complete input in Graph mode:
 
 ```json
 {
-  "invocation": {
-    "type_id": "concorde-operation-invocation",
-    "schema_version": 3,
-    "operation_id": "concorde-main",
-    "mode": "describe-policy",
-    "configuration": null,
-    "input": {
-      "type_id": "concorde-main-request",
-      "schema_version": 1,
-      "data": {"task": "Explain Concorde's Harness", "target_id": "module.harness"}
+    "invocation": {
+        "type_id": "concorde-operation-invocation",
+        "schema_version": 3,
+        "operation_id": "concorde-context-solve",
+        "mode": "describe-policy",
+        "configuration": null,
+        "input": {
+            "type_id": "concorde-context-solve-request",
+            "schema_version": 1,
+            "data": {
+                "task": "Explain Concorde's Harness",
+                "target_id": "module.harness"
+            }
+        }
     }
-  }
 }
 ```
 
@@ -71,7 +75,7 @@ has the same six fields and 1 MiB size limit as CLI stdin. Optional `expected_wo
 
 The public Graph has a `validate_invocation` node followed by the named operation subgraph. Expand
 that subgraph to inspect admission, workspace/configuration binding and the operation's real dispatch
-branches. Query/discovery, topology, planning, development and reflection Graphs are composed below it;
+branches. Explicit target admission, planning, review and Issue-solving Graphs are composed below it;
 `get_graph(xray=True)` exposes the same definitions. Use Studio interrupt-before on the public operation
 node to inspect the invocation before executing it. Replay rechecks the envelope and workspace assertion.
 Internal host Graphs deliberately disable checkpoints: host objects live in per-run runtime context,
@@ -106,8 +110,8 @@ export CONCORDE_STUDIO_URL=http://127.0.0.1:2024
 Keep using the same JSON invocation on stdin, without the Studio `invocation` wrapper:
 
 ```bash
-python3 scripts/run-operation.py concorde-main <<'JSON'
-{"type_id":"concorde-operation-invocation","schema_version":3,"operation_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's Harness","target_id":"module.harness"}}}
+python3 scripts/run-operation.py concorde-context-solve <<'JSON'
+{"type_id":"concorde-operation-invocation","schema_version":3,"operation_id":"concorde-context-solve","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-context-solve-request","schema_version":1,"data":{"task":"Explain Concorde's Harness","target_id":"module.harness"}}}
 JSON
 ```
 
@@ -131,17 +135,16 @@ original environment allowlist and native enforcement; they do not inherit this 
 
 Custom stream events are emitted live and retained as JSON in final `events`:
 
-| Event | Meaning |
-| --- | --- |
-| `operation_started`, `operation_finished` | Top-level and nested host operation invocation, with invocation ID, depth and final status |
-| `stage_started`, `stage_finished`, `stage_failed` | Development-loop stage, including deterministic validation, review skips and readiness; carries `trigger` (`deterministic` or `ai-review` on these events; the persisted `.concorde/worktree.json` graph record also distinguishes `ai-assessment` and `human`) and `iteration`, the repair-loop cycle number for that stage |
+| Event                                             | Meaning                                                                                                                                                                                                             |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `operation_started`, `operation_finished`         | Top-level and nested host operation invocation, with invocation ID, depth and final status                                                                                                                          |
 | `agent_started`, `agent_finished`, `agent_failed` | Agent executor handoff with operation, stage, role and invocation ID; the same launch's `agent`, `harness` and `agent_binding_digest` identity is available in the run's persisted `policies` (policy descriptions) |
 
 Use API streaming with `stream_mode: ["custom", "updates"]` to receive these events while a run is
 active. Studio can inspect persisted `events` and `policies` on completion. Agent events describe
 process handoffs, not token-level traces, internal tool calls or proof that a completion passed
 admission. The final operation result reports completion/admission failures. Ordinary host graph
-nodes encapsulate their stages; loop events do not create independently replayable phase
+nodes encapsulate their stages; events do not create independently replayable phase
 checkpoints. Abrupt server/process termination may leave only the events already streamed.
 
 A successful Agent Server run can contain a Concorde `blocked` or `failed` result: inspect
@@ -189,7 +192,7 @@ for operation in SKILL_NAMES:
 ```
 
 Register those variables in that project's `langgraph.json` (for example,
-`"concorde-main": "./studio.py:concorde_main"`) and start the server from that project with the
+`"concorde-context-solve": "./studio.py:concorde_context_solve"`) and start the server from that project with the
 same loopback/single-job options. Its CLI must run from the same project root with the colocated
 `.concorde/framework` package. Server roots are trusted startup code, never user input. An updated
 installed framework is required; a source server cannot substitute for a consumer server.
@@ -206,16 +209,14 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p '
 ```
 
 The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-ten assistants, operation admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
+eleven assistants, operation admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.
-The standalone Specification Graph test also invalidates accepted review evidence in its temporary
-candidate and supplies failed, incomplete and blocking model responses. Disabling review must still
-preserve the recorded requirement and stop Spec completion. These are real server runs with model
-process doubles, not evidence of model review quality. The forwarding-example test parses the JSON
-above, exercises describe-policy through the bound Studio Graph, and rejects either mismatched root.
-
+Standalone review tests retain failed, incomplete and blocking outcomes without treating them as
+success. These are real server runs with model process doubles, not evidence of model review quality.
+The forwarding-example test parses the JSON above, exercises describe-policy through the bound Studio
+Graph, and rejects either mismatched root.
 
 ### Bounded inspection surfaces
 
@@ -223,24 +224,18 @@ above, exercises describe-policy through the bound Studio Graph, and rejects eit
 `build_operation_graph` instance at the public operation node through
 `expose_stateless_subgraph`; `get_graph(xray=True)` expands that instance without executing it.
 The operation name and project/package roots are startup bindings. Request input cannot select
-another workspace. The attached operation factory and its discovery/review/component scheduling
-are supplied by Development.
+another workspace. Operations supplies dispatch and explicit target admission; the retained providers supply their
+local planning, review and Issue-verification scheduling. The caller chooses broader task order.
 
 `src/concorde/harness/batch_graph.py:build_batch_graph` is a separately inspectable sequential
 batch surface. Its host-selected `name` and `item_node` identify a variant; both the next-item and
 stop branches are visible. `run_batch_graph` uses this same factory, with an immutable item tuple
 and a host callback held outside checkpoint state. Inspection does not call that callback.
-The batch factory alone does not establish which Development review or component paths use it.
-Those call sites must be inspected under Development's implementation grant when auditing fresh
-review discovery, dev-loop discovery, scoped reviews and component coordination.
+The batch factory alone does not establish the Review caller's participant selection.
+Those call sites remain subject to their owning Module's implementation grant.
 
-For fresh review and dev-loop discovery, the local inspection entry is the corresponding public
-Studio Graph, expanded with `xray=True`. Its operation selects the attached Development factory;
-the admitted task, target/focus hints and current candidate state select execution scope through
-the Host. Harness's attachment does not independently define those discovery branches.
-For scoped review and component coordination, the local batch factory exposes selection,
-item execution, continuation and early stop. The host supplies the item sequence, callback and
-variant name; inspecting a `review_module` or `coordinate_component` variant verifies that batch
-topology, not the foreign caller's choice of participants. Verification of those call sites and
-their public expansion remains a Development check. No omitted Harness topology is established
+For scoped review, the local batch factory exposes selection, item execution, continuation and early
+stop. The host supplies the item sequence, callback and variant name; inspecting a `review_module`
+variant verifies that batch topology, not the caller's participant choice. There is no discovery or
+component-development batch to inspect. No omitted Harness topology is established
 merely by an opaque imported callback, and these inspection APIs grant no access to its source.

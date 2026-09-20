@@ -5,20 +5,20 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                    | Meaning / definition                   |
+| --------------------------------------- | -------------------------------------- |
+| [Issue](../module.md#terminology)       | Defined in Concorde Framework.         |
+| [Blocker](../module.md#terminology)     | Defined in Concorde Framework.         |
+| [Candidate](../module.md#terminology)   | Defined in Concorde Framework.         |
+| [Evidence](../module.md#terminology)    | Defined in Concorde Framework.         |
 | [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology)       | Defined in Concorde Framework.         |
+| [Delivery](../module.md#terminology)    | Defined in Concorde Framework.         |
+| [Worker](../module.md#terminology)      | Defined in Concorde Framework.         |
+| [Host](../module.md#terminology)        | Defined in Concorde Framework.         |
+| [Grant](../module.md#terminology)       | Defined in Concorde Framework.         |
+| [Spec](../module.md#terminology)        | Defined in Concorde Framework.         |
+| [Worktree](../module.md#terminology)    | Defined in Concorde Framework.         |
 
 ## Issue interface
 
@@ -43,6 +43,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 - AND the Issue itself remains open unless separately disposed with evidence
 - AND another Module's blocker is absent from the worker's bounded workspace context
 
+### scenario.issues.component-scope — Select component work without transferring authority
+
+- GIVEN an accepted parent plan and tasks naming one declared component
+- WHEN the caller explicitly selects retained Operations for that component
+- THEN component workers receive only their own complete context and phase grant while the root owner stays unchanged
+- AND parent implementation cannot automatically start the component's work
+- AND an undeclared task target is rejected before any implementation worker starts
+
 ### scenario.issues.archive — Preserve legacy history explicitly
 
 - GIVEN legacy Reflection data and no archive destination
@@ -56,17 +64,17 @@ Subject headings organize the Module's obligations; they do not create separate 
 ### scenario.issues.solve-ready — Resolve and verify the candidate
 
 - GIVEN an explicitly selected open Issue with current evidence
-- WHEN bounded development and Issue-specific verification succeed
+- WHEN caller-performed work and fresh Issue-specific verification succeed
 - THEN the authorized solver can resolve the Issue and final checks bind the disposition bytes
 - AND the result is a ready candidate without automatic delivery or primary merge
 
-### scenario.issues.solve-spec-repair — Route contract repair to the ordinary author
+### scenario.issues.solve-spec-repair — Return needed edits to the caller
 
-- GIVEN an admitted solver decision with action spec-repair
-- WHEN the graph selects the next operation
-- THEN it enters the declared repair_spec node and invokes the owner-only Spec author
-- AND the author receives intended behavior without the solver's selection or prior transcript
-- AND accepted repair can continue to development or, for a code-free Module, Spec-only verification
+- GIVEN an admitted solver decision with action spec-repair or develop
+- WHEN the graph selects its response
+- THEN it returns unsupported with the exact selected target, intended behavior and rationale while retaining the open Issue and decision history
+- AND it launches no author, planner or programmer and changes no Spec, metadata, registry or implementation
+- AND after the caller performs authorized edits, a fresh solve can request current independent verification without automatic development prerequisites
 
 ### scenario.issues.solve-decision — Ask only for genuinely unsettled decisions
 
@@ -125,7 +133,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ### scenario.issues.report-independent — Report without ending the task
 
-- GIVEN a worker or question-answering invocation with reporting authority
+- GIVEN a worker assessment or review invocation with reporting authority
 - WHEN it reports issues and then completes its own task
 - THEN the reports remain available and the task can complete successfully
 - AND the reporting tool itself neither terminates the worker nor starts a repair

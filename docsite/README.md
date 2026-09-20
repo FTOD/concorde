@@ -64,9 +64,15 @@ Protocol 10 retains the requirement for every `.md.json` to use schema 2 and dec
 
 ```json
 {
-  "schema_version": 2,
-  "document": {"id": "document.example.requirements", "owner": "module.example", "role": "implementation"},
-  "entities": [], "dependencies": [], "bindings": []
+    "schema_version": 2,
+    "document": {
+        "id": "document.example.requirements",
+        "owner": "module.example",
+        "role": "implementation"
+    },
+    "entities": [],
+    "dependencies": [],
+    "bindings": []
 }
 ```
 
@@ -87,7 +93,7 @@ content; never configure these companions as `customDocs`.
 
 Without implementation-role companions there is no Implementation Specs tab; an honest newly
 initialized draft can have only its explanatory entry until actual obligations are authored.
-All 17 Concorde Modules have migrated, with requirements and scenarios directly owned by each
+All retained Concorde Modules have migrated, with requirements and scenarios directly owned by each
 Module and explanatory topics retained in Module Specs. A source relocation still requires updating source links:
 stable definition IDs do not by themselves redirect old page/fragment URLs.
 
@@ -122,18 +128,18 @@ oriented review; a correct table shape is not proof that prose is understandable
 The adapter reads `docsite/site.json` (site identity schema 1). Project-specific content is optional;
 without classified implementation companions or custom docs, the only documentation tab is **Module Specs**.
 
-| Field | Type | Rule |
-| --- | --- | --- |
-| `schema_version` | integer | Exactly `1`. |
-| `title` | string | Non-empty; site and navbar title. |
-| `url` | string | Absolute `http(s)://` URL without path. |
-| `baseUrl` | string | Starts and ends with `/`. |
-| `organizationName` | string | Non-empty. |
-| `projectName` | string | Non-empty. |
-| `repository` | string, optional | Absolute URL; enables the navbar repository link (a GitHub host renders the icon-only link; any other host renders a labeled "Source" link). |
-| `tagline` | string, optional | Falls back to a generic tagline when absent. |
-| `customDocs` | array, optional | Independent project-owned documentation collections; see below. |
-| `homepage` | object, optional | Enables the project introduction at `/`; omitted by default so the root redirects to the registered entry Module. |
+| Field              | Type             | Rule                                                                                                                                         |
+| ------------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version`   | integer          | Exactly `1`.                                                                                                                                 |
+| `title`            | string           | Non-empty; site and navbar title.                                                                                                            |
+| `url`              | string           | Absolute `http(s)://` URL without path.                                                                                                      |
+| `baseUrl`          | string           | Starts and ends with `/`.                                                                                                                    |
+| `organizationName` | string           | Non-empty.                                                                                                                                   |
+| `projectName`      | string           | Non-empty.                                                                                                                                   |
+| `repository`       | string, optional | Absolute URL; enables the navbar repository link (a GitHub host renders the icon-only link; any other host renders a labeled "Source" link). |
+| `tagline`          | string, optional | Falls back to a generic tagline when absent.                                                                                                 |
+| `customDocs`       | array, optional  | Independent project-owned documentation collections; see below.                                                                              |
+| `homepage`         | object, optional | Enables the project introduction at `/`; omitted by default so the root redirects to the registered entry Module.                            |
 
 The optional `homepage` object contains project-owned presentation copy. Its required fields are
 nonempty strings `eyebrow`, `title` and `description`; `features` with a nonempty `title` and `items`
@@ -168,22 +174,23 @@ Module's own Usage reading and should not be copied into a competing external ma
 
 1. Create `docsite/custom-docs/guides/index.md`:
 
-   ```markdown
-   ---
-   slug: /
-   ---
-   # Team handbook
+    ```markdown
+    ---
+    slug: /
+    ---
 
-   Human-authored onboarding and operating notes.
-   ```
+    # Team handbook
+
+    Human-authored onboarding and operating notes.
+    ```
 
 2. Add a collection to `docsite/site.json`:
 
-   ```json
-   "customDocs": [
-     {"id": "guides", "label": "Handbook", "path": "./custom-docs/guides", "routeBasePath": "handbook"}
-   ]
-   ```
+    ```json
+    "customDocs": [
+      {"id": "guides", "label": "Handbook", "path": "./custom-docs/guides", "routeBasePath": "handbook"}
+    ]
+    ```
 
 3. Run `npm run build`. The Handbook tab opens `/handbook`, has its own generated sidebar and
    participates in local search. Use `slug: /` on its landing document as above.
@@ -199,12 +206,14 @@ use Windows drive prefixes or backslashes. Content paths name directories; sideb
 For executable custom pages, create `docsite/custom-docs/index.ts` and export an additive extension:
 
 ```typescript
-import type {CustomDocsExtension} from '../plugins/scoped-content/custom-docs';
-import handbookPlugin from './handbook-plugin';
+import type { CustomDocsExtension } from "../plugins/scoped-content/custom-docs";
+import handbookPlugin from "./handbook-plugin";
 
 export default {
-  plugins: [handbookPlugin],
-  navbarItems: [{to: '/handbook-app', label: 'Handbook app', position: 'left'}],
+    plugins: [handbookPlugin],
+    navbarItems: [
+        { to: "/handbook-app", label: "Handbook app", position: "left" },
+    ],
 } satisfies CustomDocsExtension;
 ```
 
@@ -266,14 +275,14 @@ on each launch; incremental recompilation within a running preview still uses We
 
 Run commands from `docsite/`:
 
-| Command | Purpose |
-| --- | --- |
-| `npm run validate` | Validate registered sources, identities, relations, routes, provenance and links. |
-| `npm run start` | Materialize the current registered content, then start Docusaurus preview. |
-| `npm test` | Run unit, contract, fixture, and integration evidence. |
-| `npm run build` | Build, validate, and atomically promote the verified site. |
-| `npm run typecheck` | Type-check maintained TypeScript. |
-| `npm run check` | Run typechecking, all tests, source validation, and a production build. |
+| Command             | Purpose                                                                           |
+| ------------------- | --------------------------------------------------------------------------------- |
+| `npm run validate`  | Validate registered sources, identities, relations, routes, provenance and links. |
+| `npm run start`     | Materialize the current registered content, then start Docusaurus preview.        |
+| `npm test`          | Run unit, contract, fixture, and integration evidence.                            |
+| `npm run build`     | Build, validate, and atomically promote the verified site.                        |
+| `npm run typecheck` | Type-check maintained TypeScript.                                                 |
+| `npm run check`     | Run typechecking, all tests, source validation, and a production build.           |
 
 Successful builds emit `build/build-manifest.json` using Build Manifest 21. It records registered
 document routes, aliases, reading collections and exact source identities. It neither emits nor requires

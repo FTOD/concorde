@@ -33,15 +33,16 @@ describe("Explicit Concorde self specification", () => {
       .split("\n## Local collaboration agreements")[0];
     expect(relationships).toContain('dispatch["Operation dispatch"]');
     expect(relationships).toContain(
-      "harness -->|hands admitted requests to| dispatch",
+      "harness -->|admits requests for| dispatch",
     );
     expect(relationships).toContain(
-      "dispatch -->|routes each request to the entry of| operations",
+      "dispatch -->|selects requested| operations",
     );
-    expect(relationships).toContain(
-      "a deterministic\noperation need not start a worker.",
+    expect(entry.content).toContain(
+      "no provider completion silently invokes a development or Spec-authoring workflow",
     );
-    expect(relationships).toContain("such as isolated checks");
+    expect(entry.content).toContain("State carries data, not");
+    expect(entry.content).toContain("execution authority");
     expect(relationships).not.toContain("runs admitted work through");
   });
   it("contains independently complete public Skill and business scope descriptions", () => {
@@ -58,11 +59,16 @@ describe("Explicit Concorde self specification", () => {
       r.pages.find((p) => p.documentId === "document.harness.scenarios")!
         .content,
     ).toContain("scenario.harness.execute-operation");
-    const specGraph = r.pages.find(
-      (p) => p.documentId === "document.specify-loop.scenarios",
+    expect(
+      r.pages.some((page) =>
+        page.documentId.startsWith("document.specify-loop."),
+      ),
+    ).toBe(false);
+    const planning = r.pages.find(
+      (page) => page.documentId === "document.planning.scenarios",
     )!;
-    expect(specGraph.readingCollection).toBe("implementation");
-    expect(specGraph.content).toContain("scenario.specify-loop.independent");
+    expect(planning.readingCollection).toBe("implementation");
+    expect(planning.content).toContain("scenario.planning.");
     for (const module of r.targets.filter((t) => t.kind === "module")) {
       expect(
         module.documents.some(

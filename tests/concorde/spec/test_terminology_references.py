@@ -34,7 +34,10 @@ def terminology_rows(text: str) -> dict[str, str | None]:
             continue
         if line.startswith("#"):
             break
-        if line.strip() == "| Term | Meaning / definition |":
+        if [cell.strip() for cell in line.strip().strip("|").split("|")] == [
+            "Term",
+            "Meaning / definition",
+        ]:
             table = True
             continue
         if not table:
@@ -90,6 +93,15 @@ class TerminologyReferenceTests(unittest.TestCase):
 | field | string |
 """
         self.assertEqual({"Real": None}, terminology_rows(text))
+        self.assertEqual(
+            {"Real": None},
+            terminology_rows(
+                text.replace(
+                    "| Term | Meaning / definition |",
+                    "| Term   | Meaning / definition   |",
+                )
+            ),
+        )
 
     @verifies("scenario.spec.reader-parts")
     def test_all_registered_roles_have_page_specific_orientation(self):
@@ -203,11 +215,6 @@ class TerminologyReferenceTests(unittest.TestCase):
             "issues/requirements.md": {"Disposition", "Ready"},
             "distribution/module.md": {"Protocol binding"},
             "distribution/build.md": {"Public operation", "Skill"},
-            "spec-authoring/module.md": {
-                "Module Specs",
-                "Implementation Specs",
-                "Ownership",
-            },
             "review/review-result.md": {
                 "Issue",
                 "Blocker",
@@ -220,19 +227,6 @@ class TerminologyReferenceTests(unittest.TestCase):
                 "Delivered branch",
                 "Evidence",
             },
-            "query-routing/module.md": {"Spec context"},
-            "topology/module.md": {
-                "Ownership",
-                "Composition",
-                "Reference",
-                "Implementation binding",
-            },
-            "dev-loop/execution-reference.md": {
-                "Spec context",
-                "Acceptance task",
-                "Reserved task ID",
-            },
-            "specify-loop/module.md": {"Blocker", "Ready"},
         }
         for path, terms in required.items():
             with self.subTest(path=path):
@@ -273,8 +267,8 @@ class TerminologyReferenceTests(unittest.TestCase):
             self.pages[PREFIX + "review/execution-reference.md"],
         )
         self.assertIn(
-            "both document roles and metadata",
-            self.pages[PREFIX + "query-routing/module.md"],
+            "reading and metadata",
+            " ".join(self.pages[PREFIX + "spec/module.md"].split()),
         )
 
     def test_orientation_precedes_interface_fields_and_examples(self):
@@ -285,7 +279,10 @@ class TerminologyReferenceTests(unittest.TestCase):
         for path, marker in markers.items():
             text = self.pages[PREFIX + path]
             with self.subTest(path=path):
-                self.assertLess(text.index("## Terminology"), text.index(marker))
+                self.assertLess(
+                    text.index("## Terminology"),
+                    re.search(re.escape(marker.rstrip(" |")) + r"\s*\|", text).start(),
+                )
 
 
 if __name__ == "__main__":

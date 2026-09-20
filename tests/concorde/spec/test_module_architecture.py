@@ -11,7 +11,6 @@ from concorde.harness.admission import run_operation
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.spec.initialize import (
     apply_project_proposal,
-    empty_target,
     project_proposal,
 )
 from concorde.spec.repository import SpecError, SpecRepository, digest
@@ -249,174 +248,52 @@ class ModuleArchitectureTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "changed"):
             recheck_context(repository, snapshot)
 
-    def test_spec_author_can_update_its_own_inline_diagram_but_not_a_foreign_document(
-        self,
-    ):
+    @verifies("scenario.spec.rollback-on-failure")
+    def test_direct_diagram_transaction_is_scoped_to_its_explicit_allowed_paths(self):
+        from concorde.spec.changes import apply_files, file_change
+
         path = self.root / self.main
         after = path.read_text().replace(
             "accDescr: A transfer request reaches the transfer service",
             "accDescr: One transfer request reaches the transfer service",
         )
-
-        def callback(stage, snapshot, result, cwd):
-            if stage == "specify":
-                result["documents"] = [{"path": self.main, "content": after}]
-
-        result = self.call(
-            "concorde-specify",
-            {"target_id": "scope.bank", "task": "Clarify the banking overview"},
-            callback,
+        self.assertNotEqual(path.read_text(), after)
+        apply_files(
+            self.root,
+            [file_change(self.root, self.main, after)],
+            {self.main},
+            verify=lambda: SpecRepository(self.root).validate(),
         )
-        self.assertEqual("succeeded", result["status"], result)
         self.assertEqual(after, path.read_text())
         foreign = "specs/audit/module.md"
-        foreign_before = (self.root / foreign).read_bytes()
+        before = (self.root / foreign).read_bytes()
+        with self.assertRaises(SpecError):
+            apply_files(
+                self.root, [file_change(self.root, foreign, after)], {self.main}
+            )
+        self.assertEqual(before, (self.root / foreign).read_bytes())
 
-        def illegal(stage, snapshot, result, cwd):
-            if stage == "specify":
-                result["documents"] = [{"path": foreign, "content": after}]
-
-        result = self.call(
-            "concorde-specify",
-            {"target_id": "scope.bank", "task": "Clarify the banking overview"},
-            illegal,
-        )
-        self.assertEqual("permission_denied", result["errors"][0]["code"], result)
-        self.assertEqual(foreign_before, (self.root / foreign).read_bytes())
-
+    @verifies(
+        "scenario.spec.rollback-on-failure",
+        "scenario.spec.validate-architecture-mismatch",
+    )
     def test_an_invalid_inline_diagram_rolls_the_whole_document_back(self):
+        from concorde.spec.changes import apply_files, file_change
+
         path = self.root / self.main
         original = path.read_bytes()
         broken = original.decode().replace(
             "transfer -->|reports accepted changes to| audit", "transfer --> audit"
         )
-
-        def callback(stage, snapshot, result, cwd):
-            if stage == "specify":
-                result["documents"] = [{"path": self.main, "content": broken}]
-
-        result = self.call(
-            "concorde-specify",
-            {"target_id": "scope.bank", "task": "Update overview and rules"},
-            callback,
-        )
-        self.assertNotEqual("succeeded", result["status"], result)
-        self.assertEqual("invalid_spec", result["errors"][0]["code"], result)
+        self.assertNotEqual(original.decode(), broken)
+        with self.assertRaises(SpecError):
+            apply_files(
+                self.root,
+                [file_change(self.root, self.main, broken)],
+                {self.main},
+                verify=lambda: SpecRepository(self.root).validate(),
+            )
         self.assertEqual(original, path.read_bytes())
-
-    def test_new_module_topology_authors_and_applies_its_own_contract(self):
-        def callback(stage, snapshot, result, cwd):
-            if stage == "route" and snapshot["action"] == "design-topology":
-                registry = copy.deepcopy(snapshot["topology"])
-                target = empty_target(
-                    "scope.risk",
-                    "module",
-                    "Risk",
-                    ["specs/risk/module.md", "specs/risk/obligations.md"],
-                )
-                target["parent"] = "scope.bank"
-                registry["targets"].append(target)
-                design = typed(
-                    "concorde-topology-design",
-                    {
-                        "summary": "Add a Risk Module.",
-                        "registry": registry,
-                        "spec_tasks": [
-                            {
-                                "target_id": "scope.bank",
-                                "task": "Route risk modeling tasks to scope.risk.",
-                            },
-                            {
-                                "target_id": "scope.risk",
-                                "task": "Define the known authoring boundary and name missing risk rules.",
-                            },
-                        ],
-                        "migration_constraints": [],
-                        "acceptance": ["Risk is registered and routable."],
-                    },
-                )
-                result.update(
-                    outcome="topology_proposed",
-                    answer="Risk Module proposed.",
-                    routes=[],
-                    expand_targets=[],
-                    blockers=[],
-                    topology_design=design,
-                )
-
-            if stage == "topology-author" and snapshot["target"]["id"] == "scope.bank":
-                item = next(
-                    item for item in result["documents"] if item["path"] == self.main
-                )
-                member = next(
-                    item
-                    for item in result["documents"]
-                    if item["path"] == self.main + ".json"
-                )
-                metadata = json.loads(member["content"])
-                anchor = "entity.bank.risk"
-                metadata["entities"].append(
-                    {
-                        "id": anchor,
-                        "title": "Risk",
-                        "kind": "module",
-                        "meaning": "#" + anchor,
-                        "target_id": "scope.risk",
-                    }
-                )
-                metadata["dependencies"].append(
-                    {"target_id": "scope.risk", "meaning": "#" + anchor}
-                )
-                member["content"] = json.dumps(metadata, indent=2) + "\n"
-                item["content"] = (
-                    item["content"]
-                    .replace(
-                        '    audit["Audit"]', '    audit["Audit"]\n    risk["Risk"]'
-                    )
-                    .replace(
-                        "    transfer -->|reports accepted changes to| audit",
-                        "    transfer -->|reports accepted changes to| audit\n    request -->|assessed by| risk",
-                    )
-                )
-                item["content"] += (
-                    f'\n<a id="{anchor}"></a>\n\nRisk describes risk modeling when risk rules are needed; unknown rules remain explicit rather than inferred from code.\n'
-                )
-
-        result = self.call(
-            "concorde-main",
-            {"action": "design-topology", "task": "Add the Risk Module"},
-            callback,
-        )
-        self.assertEqual(
-            "topology_proposed", result["output"]["data"]["outcome"], result
-        )
-        proposal = result["output"]["data"]["topology_proposal"]
-        prepared = self.call(
-            "concorde-main",
-            {"action": "accept-topology", "topology_proposal": proposal},
-            callback,
-        )
-        self.assertIsNotNone(prepared["output"], prepared)
-        self.assertEqual(
-            "topology_prepared", prepared["output"]["data"]["outcome"], prepared
-        )
-        self.assertFalse((self.root / "specs/risk/module.md").exists())
-        application = prepared["output"]["data"]["application"]
-        applied = self.call(
-            "concorde-main",
-            {"action": "apply-topology", "application": application},
-            callback,
-        )
-        self.assertEqual(
-            "topology_applied", applied["output"]["data"]["outcome"], applied
-        )
-        self.assertTrue((self.root / "specs/risk/module.md").is_file())
-        report = validate_repository(self.root)
-        self.assertEqual("success", report.status, [f.message for f in report.findings])
-        repository = SpecRepository(self.root)
-        risk = repository.select("scope.risk")
-        self.assertEqual((), risk.files)
-        self.assertTrue(repository.scenarios(risk))
 
 
 class InitialModuleTests(unittest.TestCase):

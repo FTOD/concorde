@@ -5,29 +5,29 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Context](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Capsule](module.md#terminology) | Defined in Harness. |
-| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
-| [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
-| [Resource context](context.md#terminology) | Defined in What information a worker receives. |
-| [Task context](context.md#terminology) | Defined in What information a worker receives. |
-| [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Source-member role](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                                | Meaning / definition                           |
+| --------------------------------------------------- | ---------------------------------------------- |
+| [Worker](../module.md#terminology)                  | Defined in Concorde Framework.                 |
+| [Host](../module.md#terminology)                    | Defined in Concorde Framework.                 |
+| [Context](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Grant](../module.md#terminology)                   | Defined in Concorde Framework.                 |
+| [Snapshot](../module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Capsule](module.md#terminology)                    | Defined in Harness.                            |
+| [Spec context](context.md#terminology)              | Defined in What information a worker receives. |
+| [Implementation context](context.md#terminology)    | Defined in What information a worker receives. |
+| [Resource context](context.md#terminology)          | Defined in What information a worker receives. |
+| [Task context](context.md#terminology)              | Defined in What information a worker receives. |
+| [Document unit](../spec/values.md#terminology)      | Defined in Identities and versions.            |
+| [Source-member role](../spec/values.md#terminology) | Defined in Identities and versions.            |
+| [Protocol binding](../spec/values.md#terminology)   | Defined in Identities and versions.            |
+| [Reference](../spec/registry.md#terminology)        | Defined in Registry.                           |
+| [Issue](../module.md#terminology)                   | Defined in Concorde Framework.                 |
+| [Blocker](../module.md#terminology)                 | Defined in Concorde Framework.                 |
+| [Candidate](../module.md#terminology)               | Defined in Concorde Framework.                 |
+| [Worktree](../module.md#terminology)                | Defined in Concorde Framework.                 |
+| [Skill](../module.md#terminology)                   | Defined in Concorde Framework.                 |
+| [Operation](../module.md#terminology)               | Defined in Concorde Framework.                 |
+| [Evidence](../module.md#terminology)                | Defined in Concorde Framework.                 |
 
 ## Context resolution
 
@@ -35,9 +35,8 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 `resolve_context` freezes one Module's Spec context with its task context, its external
 references, and, for code phases, its implementation context, into a private
-`concorde-context-snapshot@6`. `resolve_discovery_context`
-freezes several explicitly selected complete Spec contexts for the global coordinator.
-`recheck_context` and `recheck_discovery_context` reject reuse after any admitted input changed.
+`concorde-context-snapshot@6`. `recheck_context` rejects reuse after any admitted input changed.
+There is no global discovery or topology-author context API.
 The sections below define the exact inputs, records, phases and errors.
 
 The required Profile 15 boundary below is Module-oriented: it accepts a Module `target_id` and an
@@ -48,8 +47,8 @@ accepts no other `target_id` kind.
 
 The context Module is host-internal: `resolve_context` produces a private ContextSnapshot behind
 the executable boundary, and no Skill returns it or a redacted projection of it. Its
-inputs are target_id, task, optional focus_id/constraints/phase (default ask). Other phases are
-specify, plan, tasks, implementation, spec-review, code-review, validate, deliver and context-solve.
+inputs are target_id, task, optional focus_id/constraints/phase (default context-solve). Other phases are
+plan, tasks, implementation, spec-review, code-review, validate, deliver and issue-solve.
 Unknown fields/versions/IDs are rejected by the host's own admission, never by an agent-facing
 schema. `describe-policy` mode on any operation previews the exact grant an execution would receive —
 context_id, read/write paths and a policy digest, printed to stderr — without launching an agent,
@@ -59,11 +58,11 @@ locators or the reusable cognitive snapshot itself.
 The host-internal Python call is:
 
 ```python
-resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
+resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "context-solve",
                 task: str = "Understand this Spec", focus_id: str | None = None,
                 constraints: tuple[str, ...] = (), instructions: str = "",
                 stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None,
-                agent: Agent | None = None
+                agent: WorkerProfile | None = None
                 ) -> ContextSnapshot
 ```
 
@@ -140,12 +139,11 @@ project workspace the files are granted in place after the host verifies that th
 still match the index. No document or Protocol body is embedded in the invocation input or
 prompt: the
 agent opens the granted files with its own tools, starting from `spec_resolution.reading_entry`,
-and reads what its task needs. `context_grants` derives that path set from any of the three
-context kinds, `context_documents` produces the verified bytes and raises `stale_context` when a
-listed file changed, and `validate_mode_policy` rejects a launch whose `spec-context` role paths
+and reads what its task needs. `context_grants` derives that path set from the bounded snapshot, `context_documents` produces the verified bytes and raises `stale_context` when a
+listed file changed, and `validate_worker_policy` rejects a launch whose `spec-context` role paths
 are not exactly the index plus its grants. After the process exits the host rereads the index file
 and re-resolves the repository, so a change to a granted project document is rejected as
-`stale_context`. The discovery and topology author contexts are delivered the same way.
+`stale_context`.
 
 Task context is embedded rather than granted. The stage inputs and, for a review, the
 `concorde-review-input` with its `changes` travel inline in the invocation input beside the index.
@@ -170,9 +168,10 @@ review's target/focus, context/input identities, spec/code mode, status, represe
 Issue judgments, answer, revision and `semantic_completeness: "not_proven"`. A judgment carries
 immutable receipt fields, blocking/advisory severity and affected_task. The host admits only the
 selected observation descriptions through concorde-issue-context, not the whole Issue history. Revisions bind Spec/implementation digests and nullable base/head commits.
-This service enforces the declared type and phase; the common host enforces [Development Graph](../dev-loop/module.md) policy and independently verifies
-current, target-bound code-review repair evidence and the bounded repair policy before supplying
-it. This addition preserves the existing review-driven repair edge without granting raw code reads.
+This service enforces the declared type and phase; the common host independently verifies
+current, target-bound code-review repair evidence before supplying it to explicitly selected tasks
+or implementation. The calling agent chooses the order; no development Graph or author completion
+is a prerequisite. Scope repair requires a current plan and cannot waive stale contract checks.
 
 The private snapshots also carry declared `workspace` lifecycle metadata: current and
 primary worktree identities/branches, current change phase/status/outcome, its task-scoped Issue blocker references and
@@ -182,8 +181,7 @@ permission to read another worktree. A secondary context is explicitly a candida
 The record is computed from the invocation's own project root, the worktree at the entry process's
 working directory, with each task summary read from the primary-owned status record.
 The host rechecks the current workspace identity and lifecycle after a stage; other worktrees' frozen
-summaries may advance independently. Topology proposals retain their originating workspace observation
-so the relayed run in a committed-base candidate can recheck the same admitted Spec and design inputs.
+summaries may advance independently. These observations are not implicit context grants.
 
 That closed record has `kind: primary|change|unversioned`, `current_worktree: str`, nullable string
 `current_branch`, `primary_worktree`, `primary_branch`, `change_id`, `phase`, `status` and `outcome`,
@@ -216,32 +214,18 @@ unchanged, and resolution rejects `protocol_mismatch` until the developer explic
 installed version through `concorde-configure` with `accept_protocol`. Changed bindings require new contexts.
 Stage inputs must be versioned plan, implementation-task, task-identity-constraints,
 task-scope-feedback, issue-selection, issue-intent, issue-context or review-result
-values (the last only accompanies a bounded dev-loop code-review repair round: see
-`concorde-dev-loop` in the Development Graph contract). Code bytes
+values (the last only accompanies explicitly admitted current code-review repair). Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
 code references and separate host-issued implementation grants. Spec review has no code references.
 The review host adds a separately typed, target-scoped changes/revision input; ordinary stage_inputs
 cannot smuggle patches or arbitrary artifacts into a Spec worker.
 Membership, configuration, Protocol or admitted bytes changing after resolution invalidates reuse.
 
-Main discovery admits explicitly selected complete Module collections for global reasoning,
-questions and routing. A new admitted collection produces a new context identity and a fresh
-coordinator invocation. Python indexes the deduplicated original documents once, with per-Module
-resolution provenance and original owners, and grants them read-only in the coordinator's capsule
-together with the Protocol files. The coordinator opens them on demand and answers directly from
-those complete contexts. Implementation source bodies never enter this context.
-During design-topology, exact registry metadata additionally describes Module composition,
-dependencies and entity listing entries. It supplies structure, not hidden behavioral meaning.
-After the design is accepted, each fresh Module author receives the proposed descriptor and its
-complete resolved context. Candidate sources enter through explicit ownership/references only.
-An author may replace only that Module's owned documents; referenced definitions remain read-only.
-The owner authors a shared-interface change once. Every old or candidate context consumer receives
-a separate compatibility review, retaining local obligations and pointing to the same canonical
-definition. A transfer assigns exactly one candidate owner and preserves stable IDs and links.
-The host validates all replacements and declarations atomically before exposing an application.
-Ownership/reference changes invalidate affected snapshots even when source paths stay equal.
-Ordinary owner authoring can update content and diagram fences while preserving metadata;
-document ID, owner or registered references change through topology reconciliation.
+The outer agent selects and reads Specs directly, answers questions and edits paired reading,
+metadata and registry within its task authority. Complete one-level context resolution, sole
+ownership, structural validation and affected-consumer invalidation still apply. A worker never
+expands its selection or proposes Spec replacements. Changed ownership or references require
+reconciling old and candidate affected contexts and obtaining fresh selected evidence.
 
 Context solving invokes the context-assessor Operation in a separate fresh worker, selected by the
 `concorde-context-solve` operation or as `concorde-plan`'s preliminary sufficiency check. It returns
@@ -299,57 +283,8 @@ in characters. The example’s target ID illustrates a separately registered con
 
 The canonical [review-result record](../review/review-result.md)
 is owned by Review and included by Harness's explicit document reference. Harness validates
-and freezes it only in admitted tasks/implementation repair contexts, after the composing Graph
+and freezes it only in admitted tasks/implementation repair contexts, after the host
 has checked current review intent and evidence before providing it. Neither party copies or widens its definition.
-
-### Global Spec context assembly {#context-global-spec-context-assembly}
-
-The host-internal Python API resolves several explicitly selected Module contexts for a
-coordinator with a global view:
-
-```python
-resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str, ...], *,
-    operation: str, phase: str, task: str, action: str = "route",
-    target_hint: str | None = None, focus_hint: str | None = None,
-    constraints: tuple[str, ...] = (), instructions: str = "",
-    workspace: dict | None = None, agent: Agent | None = None) -> DiscoveryContext
-```
-
-Here each selected Spec's context means its complete resolved document-unit context (reading plus metadata), including its
-inline architecture diagrams. The Python resolver determines membership without model judgment. It
-includes non-main documents in full, never follows dependencies or hyperlinks implicitly, and never
-substitutes an answer or summary for an original source.
-
-Inputs require a nonempty, duplicate-free ordered tuple of Module IDs, a nonblank task,
-operation concorde-main, concorde-dev-loop, concorde-specify-loop, concorde-spec-review or concorde-code-review, phase route, and action route, ask or
-design-topology. A focus hint requires a target hint and must belong to that Module. Unsupported
-phases/actions, invalid selections, unavailable required files and inconsistent membership reject
-resolution; no partial context is returned. Hints do not themselves add a Module's documents.
-
-DiscoveryContext has serialized, value and id accessors like ContextSnapshot. Its canonical
-concorde-discovery-context@6 payload contains context_id, schema_version, operation, phase,
-action, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology,
-targets, documents, instructions and workspace. Topology is the exact registry
-only for design-topology; otherwise it is null.
-
-Each target has `target_id`, `kind: module` and `spec_resolution`, the
-[Spec record](../spec/contracts.md#registry-stable-id-spec-context-queries) with its source index records and
-reasons. The top-level `documents` pool contains each document's index record once, without
-per-selection reasons, sorted by path; per-target reasons remain in the target resolutions. Every
-pooled document has exactly one owner. Overlapping selections preserve all attribution and grant
-the file once: the coordinator launch copies every pooled document and Protocol file into its
-capsule and grants exactly those paths read-only, as the Spec context grant above describes. No
-provider references are recursively followed and no diagram pool exists.
-
-The coordinator opens these granted originals directly, combines facts across selected contexts,
-and returns an answer or an attributed Spec gap. No separate reading Agent, recursive reading
-factory or worker-result synthesis is provided. Mutating workers retain their single-Module
-context and separately bound permissions.
-
-recheck_discovery_context(repository, snapshot) reconstructs the same selection from current
-repository inputs. Ownership, references, provenance, document order, original bytes, Protocol, instructions and
-lifecycle metadata bind context identity; changes reject reuse with SpecError/stale_context.
-Context assembly and rechecking launch no model and grant no write or network authority.
 
 The Protocol schema asset is produced by the wire provider from its registered schemas: stable
 IDs, exact closed versioned payloads and self-contained local definitions. This Module verifies
@@ -362,9 +297,9 @@ no author stage_inputs. The Issue solver receives a selected problem and bounded
 [Implementation Module](../implementation/module.md) receives its tasks and optional admitted review/Issue context. No phase inherits
 conversation, private reasoning or another Module's implementation.
 
-The optional host-only Mode argument to resolve_context rejects incompatible phases and artifact
+The optional host-only worker-profile argument to resolve_context rejects incompatible phases and artifact
 types before resolving implementation digests. It permits missing prerequisites only for policy
-preview; actual launch admission requires every mode-required input.
+preview; actual launch admission requires every profile-required input.
 
 <a id="participation.document.harness.context.1"></a>
 
@@ -469,12 +404,12 @@ Failures return structured findings or the declared exception; callers must stop
 
 ## Context kinds
 
-| Kind | Content | Required for |
-| --- | --- | --- |
-| Spec context | The selected Module's complete resolved document-unit context (reading plus metadata), exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. The Protocol fixes only this visible set; the Framework delivers it as a context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation. |
-| Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets. | Entries and file names: every phase. File contents: code-writing and code-review phases only. |
-| Resource context | The contracts of the Operations and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Operation and Tool contracts: none admitted by any current Agent. |
-| Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or an Issue selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes. | Every invocation; stage artifacts are optional. |
+| Kind                   | Content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Required for                                                                                                                                                                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Spec context           | The selected Module's complete resolved document-unit context (reading plus metadata), exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. The Protocol fixes only this visible set; the Framework delivers it as a context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation.                                                                                                                                                                                                          |
+| Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets.                                                                                                                                       | Entries and file names: every phase. File contents: code-writing and code-review phases only.                                                                                                                                           |
+| Resource context       | The contracts of the Operations and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts.                                                                                                                                       | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Operation and Tool contracts: none admitted by any current Agent. |
+| Task context           | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or an Issue selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes.                                                                                                                                                                                                                                             | Every invocation; stage artifacts are optional.                                                                                                                                                                                         |
 
 A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
 Protocol rule bundle and installed Skills are not context: instructions belong to the Agent

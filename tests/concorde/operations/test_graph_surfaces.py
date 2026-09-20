@@ -2,19 +2,11 @@
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from concorde.harness.host import OperationHost
-from concorde.implementation.coordination_graph import (
-    build_coordination_graph,
-    build_stabilization_graph,
-)
-from concorde.query_routing import discovery_graph
-from concorde.query_routing.main import MainInvocation
 from concorde.review import review
-from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
 
 
@@ -64,7 +56,7 @@ class GraphSurfaceTests(TestCase):
                             }
                             for name in ("peer", "removed")
                         }
-                        state = {field: {"owner": deepcopy(old)}}
+                        state = {"targets": {}, field: {"owner": deepcopy(old)}}
                         calls = []
 
                         def reviewed(
@@ -97,10 +89,20 @@ class GraphSurfaceTests(TestCase):
                             patch.object(review, "save_change") as save,
                             patch.object(
                                 review,
+                                "_code_scope_identity",
+                                return_value="fixture-parent-scope",
+                            ),
+                            patch.object(
+                                review,
                                 "spec_consumers",
                                 return_value={"peer"} if remaining else set(),
                             ),
                             patch.object(review, "review", side_effect=reviewed),
+                            patch.object(
+                                review,
+                                "code_review_peers",
+                                return_value=(peer,) if remaining else (),
+                            ),
                             patch(
                                 "concorde.review.review.Invocation",
                                 side_effect=lambda *args, peer=peer: SimpleNamespace(
@@ -136,6 +138,11 @@ class GraphSurfaceTests(TestCase):
                                         else "Check this Module's own contract against the shared implementation change. Review"
                                     ),
                                     "constraints": [],
+                                    **(
+                                        {"scope_digest": "fixture-parent-scope"}
+                                        if mode == "code"
+                                        else {}
+                                    ),
                                 },
                                 records["peer"],
                             )
@@ -167,9 +174,16 @@ class GraphSurfaceTests(TestCase):
                 state = {
                     "targets": {
                         "owner": {
-                            "coordination": {"peer": {"task": "Review peer"}}
+                            "component_revisions": {"peer": {}} if coordinated else {},
+                            "tasks": [
+                                {
+                                    "target_id": "peer",
+                                    "description": "Review peer",
+                                    "acceptance": "Peer contract",
+                                }
+                            ]
                             if coordinated
-                            else {}
+                            else [],
                         }
                     }
                 }
@@ -235,131 +249,6 @@ class GraphSurfaceTests(TestCase):
         self.assertTrue(
             all(pair in edges for pair in zip(path, path[1:], strict=False))
         )
-
-    @verifies(
-        "scenario.harness.graph-execution",
-        "scenario.harness.graph-bounds",
-        "scenario.harness.graph-inspection",
-    )
-    def test_fresh_discovery_uses_inspected_factory_and_preserves_intent(self):
-        for operation in (
-            "concorde-spec-review",
-            "concorde-code-review",
-            "concorde-dev-loop",
-        ):
-            for terminal in ("routed", "failed"):
-                with self.subTest(operation=operation, terminal=terminal):
-                    run: Any = MainInvocation.__new__(MainInvocation)
-                    run.operation = operation
-                    run.repository = SimpleNamespace(
-                        targets={
-                            str(i): SimpleNamespace(kind="module") for i in range(40)
-                        },
-                        select=lambda name, focus=None: SimpleNamespace(
-                            kind="module", id=name
-                        ),
-                    )
-                    run.host = SimpleNamespace(mode="execute")
-                    run.task = {
-                        "task": "Original intent",
-                        "constraints": ["Keep scope"],
-                    }
-                    run.completed, run.discovered = [], ["entry"]
-                    run.stage_context_text = lambda _: " ".join(
-                        "module." + str(i) for i in range(35)
-                    )
-                    run.stage = Mock(
-                        side_effect=lambda phase, occurrence, terminal=terminal: (
-                            {
-                                "outcome": "expand",
-                                "expand_targets": ["module." + str(occurrence)],
-                            }
-                            if occurrence < 35
-                            else {
-                                "outcome": terminal,
-                                "answer": "Stopped",
-                                "routes": [
-                                    {"target_id": "module.34", "focus_id": None}
-                                ],
-                            }
-                        )
-                    )
-                    visited, drawings = [], []
-                    with patch.object(
-                        discovery_graph,
-                        "build_discovery_graph",
-                        side_effect=self.instrument(
-                            discovery_graph.build_discovery_graph, visited, drawings
-                        ),
-                    ):
-                        routes, decision = run.discover_routes()
-                    self.assertEqual(36, run.stage.call_count)
-                    self.assert_path(drawings[0], visited)
-                    if terminal == "routed":
-                        self.assertEqual("Original intent", routes[0]["task"])
-                        self.assertEqual(["Keep scope"], routes[0]["constraints"])
-                        self.assertIsNone(decision)
-                    else:
-                        self.assertEqual([], routes)
-                        self.assertEqual("failed", decision["outcome"])
-
-    @verifies("scenario.harness.graph-bounds", "scenario.query-routing.discovery-limit")
-    def test_discovery_domain_limit_does_not_restart(self):
-        run: Any = MainInvocation.__new__(MainInvocation)
-        run.repository = SimpleNamespace(
-            targets={"entry": SimpleNamespace(kind="module")}
-        )
-        run.stage = Mock()
-        with self.assertRaises(SpecError) as caught:
-            run.discovery_nodes()["decide"]({"occurrence": 2})
-        self.assertEqual("context_limit", caught.exception.code)
-        run.stage.assert_not_called()
-
-    @verifies("scenario.harness.graph-execution", "scenario.harness.graph-inspection")
-    def test_coordination_variants_stop_before_dependent_nodes(self):
-        names = [
-            "reconcile_specs",
-            "validate_specs",
-            "implement_components",
-            "implement_local",
-            "finalize_components",
-            "record_completion",
-        ]
-        for stop in [None, *names[:-1]]:
-            visited, drawings = [], []
-
-            def node(name, stop=stop):
-                return lambda state: {
-                    "output": {"outcome": "failed"} if name == stop else None
-                }
-
-            graph = self.instrument(build_coordination_graph, visited, drawings)(node)
-            graph.invoke({})
-            self.assertEqual(
-                names if stop is None else names[: names.index(stop) + 1], visited
-            )
-            self.assert_path(drawings[0], visited)
-
-    @verifies("scenario.harness.graph-bounds", "scenario.harness.graph-inspection")
-    def test_stabilization_repeats_without_leaking_state(self):
-        for _ in range(2):
-            visited, drawings, rounds = [], [], []
-
-            def node(name, rounds=rounds):
-                def execute(state):
-                    if name == "snapshot":
-                        rounds.append(len(rounds))
-                    return {
-                        "route": "__end__" if len(rounds) == 30 else "snapshot",
-                        "output": None,
-                    }
-
-                return execute
-
-            graph = self.instrument(build_stabilization_graph, visited, drawings)(node)
-            graph.invoke({}, {"recursion_limit": 93})
-            self.assertEqual(30, len(rounds))
-            self.assert_path(drawings[0], visited)
 
     @verifies(
         "scenario.harness.graph-execution",

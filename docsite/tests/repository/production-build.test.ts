@@ -170,28 +170,26 @@ it("publishes each Operation Graph only inside its owning Module Specs", async (
   expect(home).not.toContain("agent-graphs");
   expect(home).not.toContain("Agent Graphs");
   const entry = await readFile(
-    resolve(output, "specs/concorde/dev-loop/module.html"),
+    resolve(output, "specs/concorde/planning/module.html"),
     "utf8",
   );
   expect(entry).toContain(
-    'href="/concorde/specs/concorde/dev-loop/execution-reference#development-development-graph-development-graph"',
+    'href="/concorde/specs/concorde/planning/execution-reference#plan-planning-graph-plan-graph"',
   );
   const graphSpec = await readFile(
-    resolve(output, "specs/concorde/dev-loop/execution-reference.html"),
+    resolve(output, "specs/concorde/planning/execution-reference.html"),
     "utf8",
   );
-  expect(graphSpec).toContain(
-    'id="development-development-graph-development-graph"',
-  );
+  expect(graphSpec).toContain('id="plan-planning-graph-plan-graph"');
   const section = graphSpec.slice(
-    graphSpec.indexOf('id="development-development-graph-development-graph"'),
+    graphSpec.indexOf('id="plan-planning-graph-plan-graph"'),
   );
   const parts = ["State.", "Nodes.", "Edges."].map((part) =>
     section.indexOf(`<strong>${part}</strong>`),
   );
   expect(parts.every((index) => index > 0)).toBe(true);
   expect(parts).toEqual([...parts].sort((a, b) => a - b));
-  expect(section).toContain("<code>review_code</code>");
+  expect(section).toContain("<code>assess_context</code>");
 });
 // verifies: scenario.views.protocol-docs-tab
 it("publishes the independent standard with chapter navigation and no Spec wrapper", async () => {
@@ -244,8 +242,24 @@ it("publishes the configured introduction at the root while preserving direct Sp
   expect(home).toContain("Launchers and supporting tools");
   expect(home).toContain("concorde-issues");
   expect(home).not.toContain("concorde-reflections-triage");
-  expect(home).toContain("concorde-specify-loop");
-  expect(home).toContain("27 Operations");
+  for (const retired of [
+    "concorde-main",
+    "concorde-specify-loop",
+    "concorde-dev-loop",
+    "topology-author",
+    "spec-author",
+  ]) {
+    expect(home).not.toContain(retired);
+  }
+  for (const retained of [
+    "concorde-context-solve",
+    "concorde-plan",
+    "concorde-tasks",
+    "concorde-implement",
+  ]) {
+    expect(home).toContain(retained);
+  }
+  expect(home).toContain("18 Operations");
   expect(home).toContain("concorde-spec-review");
   expect(home).toContain("concorde-code-review");
   expect(home).not.toContain("concorde-review");

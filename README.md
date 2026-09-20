@@ -24,14 +24,15 @@
 
 Concorde keeps a project's Specs at the center of AI-assisted development. A Spec explains what
 each Module is responsible for, how it is designed, which precise promises it makes and which files
-realize it. Every agent step then runs as a fresh, sandboxed worker that receives one Module's Spec
+realize it. Each selected model-backed Operation runs as a fresh, sandboxed worker that receives one Module's Spec
 and only the files and permissions its phase needs. A change is made in its own candidate worktree,
 checked and independently reviewed there, and delivered only when you ask.
 
 You drive Concorde from the agent client you already use: **Claude Code** or **Codex** through
 installed Skills, or the **Pi coding agent** through a `concorde` session tool. Every model-backed
 step runs as a [Pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) worker process,
-and every workflow is a LangGraph graph you can open in LangGraph Studio.
+and each retained Operation uses inspectable LangGraph control flow. The outer agent reads,
+answers and edits Specs directly, then chooses which Operations to call and in what order.
 
 ## Why Concorde
 
@@ -57,12 +58,12 @@ Concorde checks all of this for consistency and tracks which Module contracts a 
 
 A worker bound to a Module receives four kinds of context, frozen for its invocation:
 
-| Context | What it contains | Who receives it |
-| :--- | :--- | :--- |
-| **Spec** | The Module's own documents plus the ones it explicitly references, one level deep | Every phase |
-| **Implementation** | The files bound by the Module's entities | Names for every phase; contents only for code writing and code review |
-| **Resource** | Vendored, version-pinned documentation and source of the libraries it declares, such as LangGraph | Planning, task authoring, code writing and code review, read-only |
-| **Task** | The request, constraints and the stage artifacts admitted for this phase | Every phase |
+| Context            | What it contains                                                                                  | Who receives it                                                       |
+| :----------------- | :------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------- |
+| **Spec**           | The Module's own documents plus the ones it explicitly references, one level deep                 | Every phase                                                           |
+| **Implementation** | The files bound by the Module's entities                                                          | Names for every phase; contents only for code writing and code review |
+| **Resource**       | Vendored, version-pinned documentation and source of the libraries it declares, such as LangGraph | Planning, task authoring, code writing and code review, read-only     |
+| **Task**           | The request, constraints and the stage artifacts admitted for this phase                          | Every phase                                                           |
 
 Planners and task authors reason from the Spec alone. If the Spec does not say something the task
 needs, the worker reports a Spec gap as an Issue instead of guessing from code, and the dependent step
@@ -87,8 +88,8 @@ An unavailable sandbox refuses the launch rather than running the worker unconfi
 
 Concorde has one executable concept, the **Operation**: a LangGraph node with declared input State,
 output State updates, effects, use conditions and execution policy. An Operation runs deterministic
-code, calls a model, or runs a compiled graph of other Operations; `dev-loop` and `specify-loop` are
-composed Operations. Every graph is built with LangGraph's Graph API and documented by a Graph Spec
+code, calls a model, or runs a compiled graph of other Operations. There is no built-in
+development or Spec-authoring orchestrator. Every graph is built with LangGraph's Graph API and documented by a Graph Spec
 whose diagram a deterministic check keeps equal to the compiled graph. Each Operation is explained,
 with its Graph Spec, in the Specs of the Module that owns it; the same graphs appear in LangGraph
 Studio, and every worker launch records its tokens, cost and wall time for
@@ -98,8 +99,8 @@ Studio, and every worker launch records its tokens, cost and wall time for
 
 A change requested from your primary worktree runs in a candidate worktree that the host creates from
 the committed `HEAD`. Your session stays where it is and receives the candidate's result, including
-its path, branch and `change_id`, with which you continue the change. A development loop stops at a
-**ready** candidate. Delivery is a separate request that publishes the branch
+its path, branch and `change_id`, with which you continue the change. Current validation and selected review evidence can establish a
+**ready** candidate; no loop history is required. Delivery is a separate request that publishes the branch
 `concorde/delivered/<change_id>`; merging into your primary branch needs another explicit request.
 
 ### Problems become tracked Issues
@@ -107,37 +108,36 @@ its path, branch and `change_id`, with which you continue the change. A developm
 Workers record bugs, missing or conflicting promises and limitations as Git-versioned
 [Issues](specs/concorde/issues/module.md) under `.concorde/issues/`. Reporting does not stop a worker
 or authorize a repair. `concorde-issues` lists, shows, reports, reopens or solves an explicitly
-selected Issue; solving uses the ordinary development and review Operations and stops at a verified
-candidate, never at delivery.
+selected Issue. Verification uses retained review/check Operations; repair decisions return
+selected intent to the caller without automatic authoring or development, and never deliver.
 
-## How a change flows
+## Choose work explicitly
 
-`concorde-dev-loop` runs in a candidate worktree created from the committed `HEAD`:
+The outer agent reads the relevant complete Specs, selects the owner and directly edits reading,
+paired metadata and registry/topology within the task grant. These edits retain deterministic Spec
+consistency and ownership rules; they do not create review or completion evidence.
 
-```text
-Route ─▶ Specify ─▶ Review Spec ─▶ Plan ─▶ Tasks ─▶ Implement ─▶ Validate ─▶ Code review ─▶ Ready
-                                             ▲                                    │
-                                             └─ blocking findings, repairs left ──┘
+A caller-selected sequence might be contract edits, Spec review, assessment/planning, tasks,
+implementation, code review and validation. This is not an executable development workflow: the
+caller chooses each Operation and explicit Module target. Dependencies remain enforced — tasks
+need a current accepted plan, implementation needs accepted tasks, and a selected review must
+actually be current and successful. Component work is selected separately, not developed by a parent.
 
-Ready candidate ─▶ concorde-deliver ─▶ branch concorde/delivered/<change_id> ─▶ merge on request
-```
+| Operation          | Worker                             | Reads                                         | May change                               |
+| :----------------- | :--------------------------------- | :-------------------------------------------- | :--------------------------------------- |
+| Context assessment | `context-assessor`                 | Complete selected Spec                        | Nothing; reports sufficiency or blockers |
+| Spec review        | `spec-reviewer`                    | Complete Spec context, fresh                  | Nothing; returns findings                |
+| Plan               | `context-assessor`, then `planner` | Spec, resources and implementation file names | Nothing; returns a current plan          |
+| Tasks              | `task-author`                      | Spec, resources and accepted plan             | Nothing; returns acceptance tasks        |
+| Implement          | `programmer`                       | Spec, tasks, resources and listed files       | Only the Module's listed implementation  |
+| Code review        | `code-reviewer`                    | Spec and authorized code                      | Nothing; returns independent findings    |
+| Validate           | none                               | Structural and configured checks              | Records current evidence                 |
 
-| Step | Worker | Reads | May change |
-| :--- | :--- | :--- | :--- |
-| Route | `router` | The Specs it selects, starting from the entry Module | Nothing; selects the owning Module |
-| Specify | `spec-author` | The Module's Spec context | Proposes Spec documents; the host validates and applies them |
-| Review Spec | `spec-reviewer` | The Spec context, in a fresh conversation | Nothing; returns findings |
-| Plan | `context-assessor`, then `planner` | Spec, resources and implementation file names | Nothing; a gap stops before planning |
-| Tasks | `task-author` | Spec, resources and the accepted plan | Nothing; returns acceptance tasks |
-| Implement | `programmer` | Spec, tasks, resources and the listed files | Only the Module's listed files |
-| Validate | none (deterministic) | Configured checks in a read-only sandbox | Records evidence |
-| Code review | `code-reviewer` | Spec and the authorized code, read-only | Nothing; returns findings |
-
-`specify=false` works from the existing Spec, and `run_reviews=false` records explicit review skips
-that stay distinguishable from successful reviews. A Spec gap, a failed check or an exhausted repair
-budget stops with inspectable progress that the next invocation resumes from its current evidence.
-`concorde-specify-loop` runs only the first three steps; `concorde-main` answers questions without
-starting a change.
+Missing promises, stale plans, incomplete tasks and required failed/stale reviews block dependent
+work. For a repair, the caller can explicitly select current blocking code-review evidence for
+new tasks, implement them and obtain fresh evidence. No automatic author or repair loop runs.
+Delivery is always a separate request; direct/manual candidates need no invented plan, but cannot
+bypass unfinished planned work or selected required evidence.
 
 ## Get started
 
@@ -188,33 +188,34 @@ with `concorde-configure`) and creates an honest stub of the root Module Spec. C
 Purpose, Terminology, Usage, Design and Relationships in that candidate, then bring it into your
 primary branch with `concorde-validate`, `concorde-deliver` and a separate merge request.
 
-**4. Ask, specify and develop.**
+**4. Read, edit and select Operations.**
 
 ```text
-Use concorde-main to explain how requests reach the storage layer.
-Use concorde-dev-loop to implement the change described below: …
+Read the complete registered Specs and explain how requests reach storage.
+Edit the selected Module's contract and paired metadata to describe this approved change.
+Use concorde-plan for target module.storage and task “Implement the approved retry policy”.
 ```
 
-In Pi, ask the session to use the `concorde` tool for the same Operations. See the
-[workflow guide](docs/workflow-guide.md) for typed JSON requests, delivery, topology changes and
-Protocol upgrades.
+In Pi, use the `concorde` tool for the same retained Operations. Every bounded task receives an
+explicit target; questions and Spec/registry edits are ordinary outer-agent work, not routed Operations.
 
 ## Choose an entry point
 
-| You want to… | Use |
-| :--- | :--- |
-| Ask about the system, route a task or design Module topology | `concorde-main` |
-| Write or revise a Spec and have it reviewed before implementation | `concorde-specify-loop` |
-| Take a change through specification, implementation and checks to a ready candidate | `concorde-dev-loop` |
-| Review a Spec, including terminology semantic consistency | `concorde-spec-review` |
-| Review or diagnose code against its Spec | `concorde-code-review` |
-| Report, inspect, reopen or solve an Issue | `concorde-issues` |
-| Initialize a project or change the worker model | `concorde-init` · `concorde-configure` |
-| Validate a candidate or deliver a verified change | `concorde-validate` · `concorde-deliver` |
+| You want to…                                     | Use                                      |
+| :----------------------------------------------- | :--------------------------------------- |
+| Assess the selected Spec for a task              | `concorde-context-solve`                 |
+| Plan an explicit-target change                   | `concorde-plan`                          |
+| Turn a current plan into acceptance tasks        | `concorde-tasks`                         |
+| Implement accepted tasks within listed files     | `concorde-implement`                     |
+| Review a Spec, including terminology consistency | `concorde-spec-review`                   |
+| Review code against its Spec                     | `concorde-code-review`                   |
+| Inspect, report, reopen or solve an Issue        | `concorde-issues`                        |
+| Initialize or configure workers                  | `concorde-init` · `concorde-configure`   |
+| Validate or deliver a candidate                  | `concorde-validate` · `concorde-deliver` |
 
-These ten public Operations are the Skills (or the Pi tool's operations). Every one also accepts
-`mode: "describe-policy"`, which previews the exact context and permissions each stage would receive
-without starting a worker.
+These eleven public Operations are the Skills or Pi tool entries. `describe-policy` previews
+bounded grants without launching a worker; initialization/configuration use their explicit
+proposal or apply contracts instead of a policy preview.
 
 ## Explore Concorde
 
@@ -254,34 +255,35 @@ uv run --locked --group studio langgraph dev \
 
 Open **[LangGraph Studio](https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024)**, sign
 in to LangSmith for run interactions and allow local network access if your browser asks. Select
-**concorde-main**, create a thread, choose **View Raw** and submit this policy preview:
+**concorde-context-solve**, create a thread, choose **View Raw** and submit this policy preview:
 
 ```json
 {
-  "invocation": {
-    "type_id": "concorde-operation-invocation",
-    "schema_version": 3,
-    "operation_id": "concorde-main",
-    "mode": "describe-policy",
-    "configuration": null,
-    "input": {
-      "type_id": "concorde-main-request",
-      "schema_version": 1,
-      "data": {
-        "task": "Explain Concorde's workflow host",
-        "target_id": "module.harness"
-      }
+    "invocation": {
+        "type_id": "concorde-operation-invocation",
+        "schema_version": 3,
+        "operation_id": "concorde-context-solve",
+        "mode": "describe-policy",
+        "configuration": null,
+        "input": {
+            "type_id": "concorde-context-solve-request",
+            "schema_version": 1,
+            "data": {
+                "task": "Assess the Harness contract for explaining worker boundaries",
+                "target_id": "module.harness"
+            }
+        }
     }
-  }
 }
 ```
 
 It shows the admitted permissions without starting a worker. With `mode` set to `execute`, the
-question runs through a Pi worker with the project's configured model and your Pi login; inspect
+assessment runs through a Pi worker with the project's configured model and your Pi login; inspect
 **result**, **policies** and **events** in the state. Events report operation, stage and worker
 starts, completions and failures, not token-level traces of a worker's reasoning.
 
-![LangGraph Studio connected to Concorde's local server, showing the concorde-main graph and policy-preview input](docs/assets/concorde-studio.png)
+The existing Studio screenshot in `docs/assets/concorde-studio.png` depicts the retired main
+entry and is historical, not a current invocation example.
 
 To send ordinary Skill or CLI invocations through the server, set
 `export CONCORDE_STUDIO_URL=http://127.0.0.1:2024` in the shell that launches them; the launcher
@@ -294,13 +296,13 @@ Concorde's independent **[Spec Protocol 10.0.0](protocol/README.md)** defines on
 category, the Module Spec, and which part of it is written for human reading. A Module's reading entry
 `module.md` answers five questions in order:
 
-| Section | The question it answers |
-| :--- | :--- |
-| **Purpose** | What responsibility does this Module own, for whom and within which scope? |
-| **Terminology** | Which concepts does the reader need, each defined once in its canonical table? |
-| **Usage** | When and how is it used, with which inputs, results, errors and limits? |
-| **Design** | How do its decomposition, state and constraints fulfill its guarantees, and why? |
-| **Relationships** | Which entities collaborate, under which conditions, as a labeled Mermaid view? |
+| Section           | The question it answers                                                          |
+| :---------------- | :------------------------------------------------------------------------------- |
+| **Purpose**       | What responsibility does this Module own, for whom and within which scope?       |
+| **Terminology**   | Which concepts does the reader need, each defined once in its canonical table?   |
+| **Usage**         | When and how is it used, with which inputs, results, errors and limits?          |
+| **Design**        | How do its decomposition, state and constraints fulfill its guarantees, and why? |
+| **Relationships** | Which entities collaborate, under which conditions, as a labeled Mermaid view?   |
 
 Explanatory topics join the entry with `document.role: module`. Formal requirements, scenarios and
 structured contracts live only in companions with `document.role: implementation`, owned by the same
@@ -317,23 +319,20 @@ or [Concorde's own root Spec](specs/concorde/module.md), which applies it to thi
 
 ### Operations
 
-Concorde defines **27 Operations**, listed in [`operations/`](operations/__init__.py); the
-[operation registry](specs/concorde/operations/composition.md) describes their contracts. Ten are
-public, fifteen are host-adapted, and twelve are model-backed Operations whose execution profile
+Concorde defines **18 Operations**, listed in [`operations/`](operations/__init__.py); the
+[operation registry](specs/concorde/operations/composition.md) describes their contracts. Eleven are
+public host adapters and seven are private model-backed Operations whose execution profile
 names a Pi worker:
 
-| Model-backed Operation | Responsibility and authority |
-| :--- | :--- |
-| `answerer` · `router` · `topology-designer` | Answer questions, select the owning Module or design topology from selected complete Specs; no implementation contents, no writes. |
-| `spec-author` · `topology-author` | Propose Spec or topology documents that the host validates and applies. |
+| Model-backed Operation               | Responsibility and authority                                                        |
+| :----------------------------------- | :---------------------------------------------------------------------------------- |
 | `spec-reviewer` · `context-assessor` | Review a Spec independently or assess whether its context is sufficient; read-only. |
-| `planner` · `task-author` | Produce a plan and acceptance tasks without reading source contents. |
-| `programmer` | Implement tasks, writing only the selected Module's listed files. |
-| `code-reviewer` | Review code independently; authorized code read-only. |
-| `issue-solver` | Choose bounded work or an evidence-grounded disposition for one selected Issue. |
+| `planner` · `task-author`            | Produce a plan and acceptance tasks without reading source contents.                |
+| `programmer`                         | Implement tasks, writing only the selected Module's listed files.                   |
+| `code-reviewer`                      | Review code independently; authorized code read-only.                               |
+| `issue-solver`                       | Choose bounded work or an evidence-grounded disposition for one selected Issue.     |
 
-The host-adapted Operations are the ten public ones plus `specify`, `context-solve`, `plan`,
-`tasks` and `implement`, which `dev-loop` composes. Four of them (`init`, `configure`, `validate`
+The eleven host-adapted Operations are public explicit entries. Four of them (`init`, `configure`, `validate`
 and `deliver`) never call a model. Each model-backed Operation keeps its role instructions in
 `operations/<name>/spec.md` and its profile (task contract, workspace kind, Pi tools, children and
 timeout) in `operations/<name>/__init__.py`. A worker with declared children can delegate one level
@@ -346,16 +345,16 @@ the planner to `scout`, the programmer to `scout`, `planner` and `verifier`, and
 Commands are relative to this checkout; installed projects use the same scripts under
 `.concorde/framework/`.
 
-| Entry point | Use |
-| :--- | :--- |
-| `python3 scripts/run-operation.py <operation> < invocation.json` | Submit a typed request to one of the ten public Operations, in `execute` or `describe-policy` mode. |
-| `python3 scripts/concorde.py build` · `validate` | Render workers, Skills and schemas; run the Spec, Operation, contract and build-output checks. |
-| `python3 scripts/concorde.py skills --write` · `protocol-manifest` | Render the published Skills under `skills/`; accept a changed Protocol bundle. |
-| `python3 scripts/concorde.py docsite` · `usage` | Scaffold a project docsite; summarize recorded worker usage per run. |
-| `python3 scripts/install-concorde.py` | Preview or apply installation into a project. |
-| `python3 scripts/issues.py` | Inspect branch-local Issues from the command line. |
-| [LangGraph Studio](scripts/development/STUDIO.md) | Run and observe the same public graphs through the shared host. |
-| `npm --prefix docsite run <script>` | `start`, `build`, `validate`, `typecheck`, `test`, `check`. |
+| Entry point                                                        | Use                                                                                                    |
+| :----------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
+| `python3 scripts/run-operation.py <operation> < invocation.json`   | Submit a typed request to one of the eleven public Operations, in `execute` or `describe-policy` mode. |
+| `python3 scripts/concorde.py build` · `validate`                   | Render workers, Skills and schemas; run the Spec, Operation, contract and build-output checks.         |
+| `python3 scripts/concorde.py skills --write` · `protocol-manifest` | Render the published Skills under `skills/`; accept a changed Protocol bundle.                         |
+| `python3 scripts/concorde.py docsite` · `usage`                    | Scaffold a project docsite; summarize recorded worker usage per run.                                   |
+| `python3 scripts/install-concorde.py`                              | Preview or apply installation into a project.                                                          |
+| `python3 scripts/issues.py`                                        | Inspect branch-local Issues from the command line.                                                     |
+| [LangGraph Studio](scripts/development/STUDIO.md)                  | Run and observe the same public graphs through the shared host.                                        |
+| `npm --prefix docsite run <script>`                                | `start`, `build`, `validate`, `typecheck`, `test`, `check`.                                            |
 
 The CLI `validate` command checks the project directly; the `concorde-validate` Operation also
 records readiness evidence for a candidate.

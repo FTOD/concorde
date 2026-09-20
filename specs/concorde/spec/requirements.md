@@ -5,20 +5,20 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Implementation binding](registry.md#terminology) | Defined in Registry. |
+| Term                                              | Meaning / definition                             |
+| ------------------------------------------------- | ------------------------------------------------ |
+| [Module](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                   |
+| [Registry](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Entity](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Implementation binding](registry.md#terminology) | Defined in Registry.                             |
 | [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Initialization](initialize.md#terminology) | Defined in Project initialization. |
-| [Initial proposal](initialize.md#terminology) | Defined in Project initialization. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                   |
+| [Initialization](initialize.md#terminology)       | Defined in Project initialization.               |
+| [Initial proposal](initialize.md#terminology)     | Defined in Project initialization.               |
+| [Worktree](../module.md#terminology)              | Defined in Concorde Framework.                   |
 
 ## Spec
 
@@ -115,8 +115,7 @@ Every validation result SHALL carry a source digest of the exact state it assess
 
 ### req.spec.init-allowed-files — Initialization touches only its allowed files
 
-Application SHALL touch only .concorde/config.json, .concorde/specs.json,
-.concorde/topology-proposals/.gitignore, .concorde/issues/.gitignore and the explicit document paths named in the proposed registry.
+Application SHALL touch only .concorde/config.json, .concorde/specs.json and the explicit document paths named in the proposed registry.
 
 ### req.spec.init-null-digests — Every proposed file has a null before_digest
 

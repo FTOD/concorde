@@ -6,22 +6,22 @@ Issues keeps a durable record of observed problems and supports their explicit i
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                    | Meaning / definition                   |
+| --------------------------------------- | -------------------------------------- |
+| [Issue](../module.md#terminology)       | Defined in Concorde Framework.         |
+| [Blocker](../module.md#terminology)     | Defined in Concorde Framework.         |
+| [Candidate](../module.md#terminology)   | Defined in Concorde Framework.         |
+| [Ready](../module.md#terminology)       | Defined in Concorde Framework.         |
+| [Evidence](../module.md#terminology)    | Defined in Concorde Framework.         |
 | [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology)      | Defined in Concorde Framework.         |
+| [Host](../module.md#terminology)        | Defined in Concorde Framework.         |
+| [Spec](../module.md#terminology)        | Defined in Concorde Framework.         |
+| [Graph](../module.md#terminology)       | Defined in Concorde Framework.         |
 
 ## Usage
 
-Workers use `report_issue` during any admitted invocation, including a Spec-only query or review.
+Workers use `report_issue` during any admitted invocation, including Spec-only assessment or review.
 The host returns an immutable receipt and the current record revision before the worker continues.
 A final stage blocker or review judgment references that receipt instead of repeating the problem.
 A reviewer can collect all independently assessable findings before finishing; an implementer can
@@ -29,8 +29,8 @@ repair or work around a problem only within the current task and its existing au
 
 Use `concorde-issues` with `action=list|show|report|reopen|solve`. Listing and showing records are
 read-only. Reporting is bookkeeping without a managed change requirement. Solve selects one Issue,
-uses ordinary development and optional verification or Spec repair, and ends at a verified ready
-candidate, a bounded stop or a precise need for a developer decision. It never delivers or merges.
+returns needed implementation or Spec edits to the caller, or runs independent verification and
+disposition checks. It ends at a verified ready candidate, a bounded stop or a precise need for a developer decision. It never delivers or merges.
 See [the public interface](interfaces.md), [records and reporting](issues.md) and
 [the solving lifecycle](lifecycle.md) for fields, effects and error behavior.
 
@@ -53,9 +53,8 @@ mutable task description. Reassessment can release a dependency without closing 
 
 The Issue solver is a fresh Spec-only decision worker, invoked only when solve is requested. It
 selects intended development, bounded Spec repair, Issue-specific review or a reasoned disposition.
-It does not perform intake classification or implementation. Only its intended behavior becomes
-an input to ordinary development; code evidence, old logs and previous conversations are excluded
-from Spec authoring. Decisions bind the selected record revision and current input identities.
+It does not perform intake classification or implementation. Needed implementation and Spec edits return as intended behavior and rationale to the calling agent,
+which selects retained Operations and edits contracts directly. Decisions bind the selected record revision and current input identities.
 
 <a id="entity.issues.langgraph"></a>
 
@@ -63,10 +62,10 @@ from Spec authoring. Decisions bind the selected record revision and current inp
 [target admission](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
 has bound the owning Module, as the [Issue Graph](execution-reference.md#lifecycle-issue-graph-issue-graph).
 Listing, showing, reporting and reopening are single deterministic nodes. Solving is a bounded loop
-around the `decide` node, where one Issue solver worker chooses the next action: the ordinary
-development Graph, owner-only Spec authoring, or Issue-specific reviews, which run as the
+around the `decide` node, where one Issue solver worker chooses the next action: return needed implementation or Spec edits to the caller, or run Issue-specific reviews as the
 [Issue verification Graph](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
-Each of those returns to `decide` until a disposition closes the Issue or a stop ends the attempt.
+Verification returns to `decide`; needed edits stop the attempt with the Issue open until the caller
+returns with current inputs. A supported disposition closes the Issue only after its evidence checks.
 LangGraph compiles the declared `issue_graph` nodes and routes before execution. The host retains
 attempt counts before model calls, current intended behavior and evidence in candidate bookkeeping.
 No autonomous nested repair escapes the selected goal or the declared iteration limit.
@@ -75,8 +74,8 @@ No autonomous nested repair escapes the selected goal or the declared iteration 
 
 This conceptual view follows an explicitly requested solve, not the runtime's complete node/edge
 catalog. Listing, reporting and reopening do not start this repair loop. The solver chooses work
-but does not perform it: development, contract authoring and independent review retain their own
-authority. Resolution needs current Issue-specific evidence; duplicate and not-actionable
+but does not perform implementation or Spec authoring: those return to the outer agent.
+Independent review retains its own authority. Resolution needs current Issue-specific evidence; duplicate and not-actionable
 outcomes instead need their own supported reasons. Any final readiness claim includes the
 written disposition, and never means the primary branch has changed.
 
@@ -87,19 +86,19 @@ the full [Issue Graph Spec](execution-reference.md#lifecycle-issue-graph-issue-g
 ```mermaid
 flowchart TB
     accTitle: Issue solving flow overview
-    accDescr: Select one Issue, make bounded decisions, and use ordinary development, Spec repair or independent verification as needed. A supported disposition is written before final candidate validation. Stops retain progress; failed final validation leaves the Issue open subject to safe restoration.
+    accDescr: Select one Issue, make bounded decisions, and return needed work to the caller or request independent verification. A supported disposition is written before final candidate validation. Stops retain progress; failed final validation leaves the Issue open subject to safe restoration.
     selection["Select the current Issue and goal"]
     decision["Choose the next bounded action"]
-    work["Develop, clarify the Spec or verify the Issue"]
+    work["Verify the selected Issue"]
     close["Record a supported disposition"]
     check["Validate the candidate including disposition"]
     ready["Ready candidate; delivery is separate"]
     stop["Retain progress and report the needed decision"]
     selection -->|admitted open Issue| decision
-    decision -->|more work or evidence is needed| work
+    decision -->|independent evidence is needed| work
     work -->|return current results and feedback| decision
     decision -->|disposition has its required support| close
-    decision -->|human choice, blocked execution or exhausted limit| stop
+    decision -->|implementation, Spec edits, human choice or bounded stop| stop
     work -->|execution cannot continue| stop
     close -->|disposition safely recorded| check
     check -->|current candidate passes| ready
@@ -115,14 +114,12 @@ allow the Issue solver to edit a Spec or implementation directly.
 ```mermaid
 flowchart TB
     accTitle: Issue reporting and solving
-    accDescr: The runtime stores classified observations, binds a solver decision and uses ordinary development, Spec repair, review and validation without automatic delivery.
+    accDescr: The runtime stores classified observations, binds a solver decision and returns needed edits to the caller and uses review and validation without automatic delivery.
     runtime["Issue runtime"]
     store["Issue store"]
     solver["Issue solver"]
     harness["Harness"]
     spec["Spec"]
-    loop["Development Graph"]
-    author["Spec Authoring"]
     review["Review"]
     validation["Validation"]
     langgraph["LangGraph"]
@@ -130,8 +127,6 @@ flowchart TB
     runtime -->|requests bounded decisions from| solver
     runtime -->|admits workers through| harness
     runtime -->|resolves attribution with| spec
-    runtime -->|implements intended behavior through| loop
-    runtime -->|repairs necessary contracts through| author
     runtime -->|checks the selected problem through| review
     runtime -->|verifies final candidate bytes through| validation
     runtime -->|executes declared transitions with| langgraph
@@ -152,18 +147,6 @@ effect, never worker filesystem write authority or permission to advance a faile
 [current registered context](../spec/contracts.md#registry-stable-id-spec-context-queries), not a path guess.
 Included definitions retain their owner; unknown ownership remains null. Historical report owners
 need not remain in a later registry. Invalid current target selections stop solving.
-
-<a id="entity.issues.dev-loop"></a>
-
-[Development Graph](../dev-loop/module.md) supplies [ordinary development](../dev-loop/module.md#usage) for the selected goal.
-The Issue runtime preserves the goal, constraints, file boundaries, required checks and independent
-reviews. A blocked child yields a new bounded decision rather than automatic delivery or wider access.
-
-<a id="entity.issues.spec-authoring"></a>
-
-[Spec Authoring](../spec-authoring/module.md) supplies [owner-only contract changes](../spec-authoring/module.md#usage) when an
-admitted decision can settle a required contract. The author receives intended behavior, not code
-investigation. Missing product choices remain explicit; shared changes retain consumer checks.
 
 <a id="entity.issues.review"></a>
 

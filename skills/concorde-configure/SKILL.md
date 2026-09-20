@@ -18,7 +18,7 @@ This is a deterministic lifecycle operation: it runs no agent cognition and sele
 
 Send one concorde-operation-invocation@3 JSON object on stdin to `python3 .concorde/framework/scripts/run-operation.py concorde-configure`. Its exact fields
 are type_id, schema_version:3, operation_id:"concorde-configure", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-configure-request@1).
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (the independently versioned concorde-configure-request; use the exact schema below).
 Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
 change_id.
 Initialization uses its typed propose/apply request; use the published request schema.

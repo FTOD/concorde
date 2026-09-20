@@ -10,7 +10,7 @@ PUBLIC = True
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
 PROFILE = None
-USES = ("issue_solver", "dev_loop", "specify", "spec_review", "code_review", "validate")
+USES = ("issue_solver", "spec_review", "code_review", "validate")
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 REQUEST = shapes.obj(
     {

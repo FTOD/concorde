@@ -6,25 +6,25 @@ normal sequence and why repetition eventually stops.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [State](../module.md#terminology) | Defined in Concorde Framework. |
-| Graph Spec | The section of a Module's Implementation Specs that specifies one executable Graph by its State, its Nodes and its Edges, with a flowchart the Graph Spec check keeps equal to the compiled Graph. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                  | Meaning / definition                                                                                                                                                                               |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Graph](../module.md#terminology)     | Defined in Concorde Framework.                                                                                                                                                                     |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework.                                                                                                                                                                     |
+| [State](../module.md#terminology)     | Defined in Concorde Framework.                                                                                                                                                                     |
+| Graph Spec                            | The section of a Module's Implementation Specs that specifies one executable Graph by its State, its Nodes and its Edges, with a flowchart the Graph Spec check keeps equal to the compiled Graph. |
+| [Worker](../module.md#terminology)    | Defined in Concorde Framework.                                                                                                                                                                     |
+| [Ready](../module.md#terminology)     | Defined in Concorde Framework.                                                                                                                                                                     |
+| [Delivery](../module.md#terminology)  | Defined in Concorde Framework.                                                                                                                                                                     |
 
 ## Follow the normal path first
 
-For a change handled by [Development Graph](../dev-loop/module.md), the broad sequence is specification, planning, tasks, implementation,
-checks and review. Each operation receives only its own admitted inputs. A review finding may
-select an allowed repair path; it does not let the reviewer edit code itself.
+The caller chooses retained Operations and their order. For example, after directly editing a
+contract the caller may request Spec review, planning, tasks, implementation, validation and code
+review. This is an example of caller choices, not a built-in development sequence. Each invocation
+receives only its own admitted inputs. A review finding cannot let the reviewer edit code itself.
 
-A useful example is a failed acceptance case: the review identifies the violated promise, new tasks
-address it, and the changed result is checked again. Repeating identical blocking feedback is not
-progress. Limits and stopping rules prevent an indefinite cycle.
+The caller can select current blocking code-review evidence for task repair and then recheck the
+changed implementation. No automatic authoring, child development or review-repair loop runs.
 
 ## Who makes a decision
 
@@ -59,11 +59,9 @@ it again. A Graph Spec answers three questions in LangGraph's own terms:
   State channel the node wrote, or the node itself names its successor. The diagram labels every
   branch with the condition that selects it.
 
-For example, in the development Graph the `review_code` node reads the Spec, the changed files and
-the tasks, and writes its review results. Its Edges say that it names its own successor: `ready`
-when no finding blocks, `tasks` for a bounded repair, or `summarize` to stop. A reader can follow
-one change through the Graph without reading the implementation, and the Graph Spec check keeps
-that picture equal to the Graph that actually runs.
+For example, the admission Graph checks a request, workspace and configuration before dispatch.
+Its conditional edges send a failed check directly to finalization. A reader can inspect that
+actual stopping behavior without mistaking the caller's broader task sequence for a built-in graph.
 
 ## Precise specifications
 

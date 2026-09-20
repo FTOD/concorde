@@ -6,24 +6,24 @@ Planning checks whether a task is sufficiently specified, produces a plan and tu
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
-| [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
-| [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                              | Meaning / definition                                      |
+| ------------------------------------------------- | --------------------------------------------------------- |
+| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                            |
+| [Worker](../module.md#terminology)                | Defined in Concorde Framework.                            |
+| [Candidate](../module.md#terminology)             | Defined in Concorde Framework.                            |
+| [Ready](../module.md#terminology)                 | Defined in Concorde Framework.                            |
+| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                            |
+| [Skill](../module.md#terminology)                 | Defined in Concorde Framework.                            |
+| [Graph](../module.md#terminology)                 | Defined in Concorde Framework.                            |
+| [Task sufficiency](assessment.md#terminology)     | Defined in Is the specification sufficient for this task? |
+| [Acceptance task](tasks.md#terminology)           | Defined in Making work verifiable.                        |
+| [Reserved task ID](tasks.md#terminology)          | Defined in Making work verifiable.                        |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives.            |
+| [Grant](../module.md#terminology)                 | Defined in Concorde Framework.                            |
 
 ## Usage
 
-Consume Planning from a declared in-process operation, not a public Skill. First use
+Select `concorde-context-solve`, `concorde-plan` or `concorde-tasks` explicitly from the calling agent. First use
 [context assessment](assessment.md) with the selected complete Module contract and explicit task.
 A sufficient result permits [planning](plan.md); an accepted current nonempty plan permits
 [task authoring](tasks.md). Supply current candidate identity and admitted artifact references where

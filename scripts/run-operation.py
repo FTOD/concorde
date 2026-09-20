@@ -27,9 +27,10 @@ FRAMEWORK_ROOT = Path(__file__).resolve().parent.parent
 MANAGED_RUNTIME_MARKER = ".concorde-runtime.json"
 
 SKILL_NAMES = (
-    "concorde-main",
-    "concorde-dev-loop",
-    "concorde-specify-loop",
+    "concorde-context-solve",
+    "concorde-plan",
+    "concorde-tasks",
+    "concorde-implement",
     "concorde-issues",
     "concorde-spec-review",
     "concorde-code-review",

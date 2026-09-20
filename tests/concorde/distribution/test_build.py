@@ -99,9 +99,9 @@ class BuildGoldenTests(unittest.TestCase):
     def test_skill_source_line_names_the_skill_source(self):
         for integration in ("claude", "codex"):
             mine = self.by_path[
-                f"{INTEGRATION_ROOTS[integration]}/concorde-main/SKILL.md"
+                f"{INTEGRATION_ROOTS[integration]}/concorde-context-solve/SKILL.md"
             ].content.decode("utf-8")
-            self.assertIn('source: "prompts/skills/concorde-main.md"', mine)
+            self.assertIn('source: "prompts/skills/concorde-context-solve.md"', mine)
 
     @verifies(
         "scenario.distribution.build-checkout-skills-user-invoked",
@@ -174,7 +174,7 @@ class BuildGoldenTests(unittest.TestCase):
                 self.assertNotIn("disable-model-invocation", codex_front)
 
     @verifies("scenario.distribution.build-render")
-    def test_twenty_skills_twelve_agents_and_one_langgraph_config(self):
+    def test_twenty_two_skills_seven_workers_and_one_langgraph_config(self):
         skill_outputs = [
             path
             for path in self.by_path
@@ -185,8 +185,8 @@ class BuildGoldenTests(unittest.TestCase):
         agent_outputs = [
             path for path in self.by_path if path.startswith("generated/agents/")
         ]
-        self.assertEqual(len(skill_outputs), 20)
-        self.assertEqual(len(agent_outputs), 12)
+        self.assertEqual(len(skill_outputs), 22)
+        self.assertEqual(len(agent_outputs), 7)
         self.assertIn(PI_SESSION_SHIM, self.by_path)
         # One flat rendered file per worker, never a mode subdirectory.
         self.assertTrue(all(path.count("/") == 2 for path in agent_outputs))
@@ -229,7 +229,7 @@ class BuildGoldenTests(unittest.TestCase):
             any(path.startswith("generated/docs/") for path in self.by_path)
         )
         schemas = json.loads(self.by_path["generated/protocol/schemas.json"].content)
-        self.assertIn("concorde-main-request", schemas)
+        self.assertIn("concorde-context-solve-request", schemas)
 
 
 class BuildDeterminismTests(unittest.TestCase):
@@ -843,7 +843,7 @@ class BuildErrorTests(unittest.TestCase):
             shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol")
             shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
-            main = root / "prompts/skills/concorde-main.md"
+            main = root / "prompts/skills/concorde-context-solve.md"
             main.write_text(
                 main.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n",
                 encoding="utf-8",
@@ -932,7 +932,7 @@ class BuildErrorTests(unittest.TestCase):
                 + (
                     "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
                     "def exported_types():\n"
-                    "    return tuple(n for n in _ORIGINAL_EXPORTED_TYPES() if n != 'concorde-main-request')\n"
+                    "    return tuple(n for n in _ORIGINAL_EXPORTED_TYPES() if n != 'concorde-context-solve-request')\n"
                 ),
                 encoding="utf-8",
             )
@@ -943,7 +943,7 @@ class BuildErrorTests(unittest.TestCase):
                 ):
                     surface(root)
                 self.assertEqual("invalid_build", failure.exception.code)
-                self.assertIn("concorde-main-request", str(failure.exception))
+                self.assertIn("concorde-context-solve-request", str(failure.exception))
             self.assertFalse((root / "generated").exists())
 
 

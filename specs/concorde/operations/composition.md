@@ -6,27 +6,28 @@ for every worker or library function.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Public operation](module.md#terminology) | Defined in Operations. |
-| [Internal operation](module.md#terminology) | Defined in Operations. |
-| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
-| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| Term                                        | Meaning / definition           |
+| ------------------------------------------- | ------------------------------ |
+| [Public operation](module.md#terminology)   | Defined in Operations.         |
+| [Internal operation](module.md#terminology) | Defined in Operations.         |
+| [Operation](../module.md#terminology)       | Defined in Concorde Framework. |
+| [Host](../module.md#terminology)            | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology)           | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology)           | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology)          | Defined in Concorde Framework. |
+| [Module](../module.md#terminology)          | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology)           | Defined in Concorde Framework. |
 
 ## Public entry or internal operation
 
-Developers invoke public operations through Skills or the common launcher. Some operations, such
-as planning one already selected Module, are internal building blocks used by declared workflows.
-Knowing an internal operation's name is not permission to invoke it directly.
+Developers invoke public Operations through Skills, the Pi tool or common launcher. The outer
+agent selects the target and orders calls; private model nodes remain available only to their
+declared composing Operation. Knowing an internal name is not permission to invoke it directly.
 
-For example, [Development Graph](../dev-loop/module.md) uses planning and implementation as separate steps. [Planning Module](../planning/module.md) returns
-a plan; the [Implementation Module](../implementation/module.md) fulfills accepted tasks. The Graph chooses their order, while each provider
-owns what its result means. A caller does not acquire the provider's responsibilities by composing it.
+For example, Planning returns a current plan and tasks, while Implementation fulfills accepted
+tasks under its bounded grant. The caller chooses their order without acquiring either provider's
+authority or bypassing current-input checks. Spec and registry edits are direct agent work, not
+an authoring Operation or an implicit step in a development graph.
 
 ## Why data and authority are separate
 

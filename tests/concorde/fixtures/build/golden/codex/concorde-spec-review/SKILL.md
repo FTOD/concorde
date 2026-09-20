@@ -17,16 +17,12 @@ input; do not perform it directly in this ambient conversation or inspect additi
 
 Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-spec-review`. Its exact fields
 are type_id, schema_version:3, operation_id:"concorde-spec-review", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-spec-review-request@1).
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (the independently versioned concorde-spec-review-request; use the exact schema below).
 
-The request requires task. A new task may supply target_id and focus_id (a scenario ID) as routing
-hints, plus constraints. The router selects the owning Module. When resuming a bound review with
-change_id, supply its target_id and current-worktree change_id. There is no review_mode selector;
-use concorde-code-review for implementation review. No positional task arguments or domain flags
-are accepted.
-
-Main may explicitly admit complete Module Specs for routing, but cannot read implementation files.
-It returns one typed route for this operation; the host then starts a fresh read-only Spec reviewer.
+The request requires target_id and task. The calling agent selects the Module explicitly;
+optional focus_id must name its scenario. Constraints and a current-worktree change_id may be
+supplied. There is no implicit routing or review_mode selector. The host deterministically checks
+the target and freezes its complete context before starting a fresh read-only reviewer.
 
 Review runs in the current worktree without creating a development change or requiring a preexisting
 Issue. It reads the complete selected Module contract, including owned and directly referenced
@@ -56,7 +52,7 @@ This complete schema is the invocation's input field. It does not grant project 
     },
     "schema_version": {
       "type": "integer",
-      "const": 1
+      "const": 2
     },
     "data": {
       "$ref": "#/$defs/concorde-spec-review-request"
@@ -97,6 +93,7 @@ This complete schema is the invocation's input field. It does not grant project 
         }
       },
       "required": [
+        "target_id",
         "task"
       ],
       "additionalProperties": false

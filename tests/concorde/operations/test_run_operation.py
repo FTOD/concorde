@@ -8,14 +8,16 @@ import sys
 import unittest
 
 from concorde.spec.verification import verifies
+from concorde.spec.wire_shapes import type_version
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 LAUNCHER = REPOSITORY_ROOT / "scripts/run-operation.py"
 
 PUBLIC_SKILLS = (
-    "concorde-main",
-    "concorde-dev-loop",
-    "concorde-specify-loop",
+    "concorde-context-solve",
+    "concorde-plan",
+    "concorde-tasks",
+    "concorde-implement",
     "concorde-issues",
     "concorde-code-review",
     "concorde-spec-review",
@@ -48,8 +50,11 @@ class RunOperationLauncherTests(unittest.TestCase):
                     "configuration": None,
                     "input": {
                         "type_id": f"{name}-request",
-                        "schema_version": 1,
-                        "data": {"task": "Explain transfer"},
+                        "schema_version": type_version(name + "-request"),
+                        "data": {
+                            "target_id": "module.harness",
+                            "task": "Explain transfer",
+                        },
                     },
                 }
                 process = _run([name], json.dumps(invocation))
@@ -65,7 +70,7 @@ class RunOperationLauncherTests(unittest.TestCase):
 
     @verifies("scenario.operations.execute-unregistered")
     def test_refuses_a_nonpublic_operation_name(self):
-        process = _run(["concorde-plan"], "")
+        process = _run(["concorde-planner"], "")
         self.assertEqual(3, process.returncode)
         output = json.loads(process.stdout)
         self.assertEqual("blocked", output["status"])
@@ -96,7 +101,7 @@ class RunOperationLauncherTests(unittest.TestCase):
                 )
 
     def test_refuses_zero_or_multiple_arguments(self):
-        for argv in ([], ["concorde-main", "concorde-init"]):
+        for argv in ([], ["concorde-context-solve", "concorde-init"]):
             with self.subTest(argv=argv):
                 process = _run(argv, "")
                 self.assertEqual(3, process.returncode)
@@ -118,8 +123,8 @@ class RunOperationLauncherTests(unittest.TestCase):
 
     def test_runtime_check_refuses_a_nonpublic_operation_and_extra_arguments(self):
         for argv in (
-            ["concorde-plan", "--runtime-check"],
-            ["concorde-main", "--runtime-check", "extra"],
+            ["concorde-planner", "--runtime-check"],
+            ["concorde-context-solve", "--runtime-check", "extra"],
         ):
             with self.subTest(argv=argv):
                 process = _run(argv)
@@ -131,18 +136,18 @@ class RunOperationLauncherTests(unittest.TestCase):
         invocation = {
             "type_id": "concorde-operation-invocation",
             "schema_version": 3,
-            "operation_id": "concorde-main",
+            "operation_id": "concorde-context-solve",
             "mode": "describe-policy",
             "configuration": None,
             "input": {
-                "type_id": "concorde-main-request",
+                "type_id": "concorde-context-solve-request",
                 "schema_version": 1,
-                "data": {"task": "Explain transfer"},
+                "data": {"target_id": "module.harness", "task": "Explain transfer"},
             },
         }
-        process = _run(["concorde-main"], json.dumps(invocation))
+        process = _run(["concorde-context-solve"], json.dumps(invocation))
         output = json.loads(process.stdout)
-        self.assertEqual("concorde-main", output["operation_id"])
+        self.assertEqual("concorde-context-solve", output["operation_id"])
         self.assertIn(output["status"], {"described", "blocked", "failed"})
         # A well-formed describe-policy request against the real project must at least be
         # admitted and dispatched, not refused as an unknown or mismatched operation.
@@ -150,6 +155,35 @@ class RunOperationLauncherTests(unittest.TestCase):
             self.assertNotIn(
                 error["code"], {"unknown_operation", "incompatible_handoff"}
             )
+
+    @verifies("scenario.harness.typed-reject")
+    def test_invalid_payload_retains_the_admitted_mode_without_execution(self):
+        for mode in ("execute", "describe-policy"):
+            with self.subTest(mode=mode):
+                value = {
+                    "type_id": "concorde-operation-invocation",
+                    "schema_version": 3,
+                    "operation_id": "concorde-context-solve",
+                    "mode": mode,
+                    "configuration": None,
+                    "input": {
+                        "type_id": "concorde-context-solve-request",
+                        "schema_version": 1,
+                        "data": {
+                            "target_id": "module.harness",
+                            "task": "Assess",
+                            "unknown": True,
+                        },
+                    },
+                }
+                process = _run(["concorde-context-solve"], json.dumps(value))
+                result = json.loads(process.stdout)
+                self.assertEqual(3, process.returncode)
+                self.assertEqual(mode, result["mode"])
+                self.assertEqual("blocked", result["status"])
+                self.assertEqual("invalid_field", result["errors"][0]["code"])
+                self.assertIsNone(result["output"])
+                self.assertIsNone(result["workspace"])
 
     @verifies("scenario.review.standalone", "scenario.harness.describe-policy")
     def test_public_review_launcher_previews_scoped_code_authority(self):
@@ -161,7 +195,7 @@ class RunOperationLauncherTests(unittest.TestCase):
             "configuration": None,
             "input": {
                 "type_id": "concorde-code-review-request",
-                "schema_version": 1,
+                "schema_version": 2,
                 "data": {
                     "task": "Review the operation dispatch",
                     "target_id": "module.operations",
