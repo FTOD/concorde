@@ -414,6 +414,10 @@ validation cannot certify its determinism.
 - AND explicit child extensions disable ambient catalogs, delegation tools are absent and tester commands enforce read-only governing artifacts with external scratch
 - AND user-owned agent-file collisions and modified owned definitions block replacement, while unchanged owned updates retain receipt verification
 - AND main chooses check/test scope and continuation, maintenance performs self-checks without independent claims, and tester returns failures without self-repair
+- AND source-main instructions require verified primary status registration before maintenance launch, reuse/reconciliation of the actual stable change identity and immediate binding of the actual launched child rather than a workflow container
+- AND those instructions require a verified stopped child and release of its exact existing ownership before a tester or resumed-author handoff, with failed registration, launch or binding stopping dependent work without claiming success or overwriting another coordinator's status
+- AND run evidence, coordinator notes and mission records cannot replace canonical status; terminal history remains while integration and separately authorized cleanup stay distinct
+- BUT rebuilding source-main instructions does not retroactively update already-running peer sessions
 
 ### scenario.distribution.test-timing — Test reasons and measured input identity
 

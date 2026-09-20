@@ -19,6 +19,70 @@ pi-subagents is a prerequisite, not a terminal-worker dependency. Disable ambien
 in children, retaining only their explicitly configured local observation/check assets. Never
 install this source checkout's Operation entry into ambient discovery.
 
+## Register before launch; bind and release real children
+
+Every source-maintenance candidate needs a real primary `.concorde/status/<change_id>.json`
+record before launching its maintenance-worker. From primary, after creating the candidate from
+a committed base, use the existing host CLI (not a public Operation):
+
+```sh
+.venv/bin/python scripts/concorde.py status --register "$candidate" --task "$goal" --mode maintenance
+.venv/bin/python scripts/concorde.py status
+```
+
+`candidate` is the absolute candidate worktree path; run these commands in primary, never in the
+child. Retain the returned stable `change_id`, then reread the persisted record in the `status`
+result's `tasks` list. Verify its candidate path, repository/worktree identity, committed base,
+goal, mode and child ownership before launch. Registration failure or an absent/mismatched record
+blocks launch. For the same candidate/change, reuse and reconcile its actual existing identity;
+registration can return an existing record without changing its goal or mode. Do not invent a
+second ID, silently adopt a different task or overwrite another coordinator's status. Resolve
+conflicts with the owning coordinator before proceeding. Branch/path labels are not task identity.
+
+Only after verified registration launch the fresh catalog-free maintenance-worker. Immediately
+bind the actual launched child run ID, then reread status to verify that exact binding:
+
+```sh
+.venv/bin/python scripts/concorde.py status --change-id "$change_id" --child "$child_id" --phase maintenance
+.venv/bin/python scripts/concorde.py status
+```
+
+`child_id` is the actual child session/run identity returned by the host, not a workflow container
+ID, mission label, proposed ID or role name. If a launch returns a workflow container, resolve its
+actual launched child before binding. If launch fails, retain the registration and report failure;
+if child identity or binding cannot be verified, stop dependent work and stop any launched child
+before recovery. Never claim ownership or successful handoff from an attempted command. Reread
+actual status and reconcile only your own task; do not clear another coordinator's owner.
+
+Before a tester or resumed-author ownership handoff, verify the current child has stopped writing
+and executing; a report or milestone alone is not that evidence. Reread the current owner and
+release that exact existing child with the supported CLI, then verify `child` is null:
+
+```sh
+.venv/bin/python scripts/concorde.py status --change-id "$change_id" --child "$child_id" --phase maintenance --release
+.venv/bin/python scripts/concorde.py status
+```
+
+Use the current owner's phase (`maintenance` or `test`) on release. Only after verified release
+launch the selected fresh tester or resume the same maintenance-worker session; immediately bind
+its actual child ID with `--phase test` or `--phase maintenance` respectively and reread status.
+The same stop/release/bind sequence applies when returning from tester to author. Do not replace
+the author across ordinary milestones, and do not release it merely to create a new author.
+Any release/binding failure blocks the handoff, never permits concurrent ownership.
+
+Primary `.concorde/status/` is the canonical task/ownership store. Primary `.concorde/runs/`
+evidence, including `runs/<task>/coordinator.json` supporting notes, and pi-subagents mission
+records cannot substitute for status registration or child binding. Never create a shadow ledger
+or candidate-local status/runs fallback. Preserve terminal task records. Record ordinary-Git
+integration only after explicit authorization and observed success, using `status --change-id
+"$change_id" --manual-merge "$commit" --cleanup pending` (or the actually observed supported
+cleanup outcome); recording does not perform or authorize a merge. Cleanup is separately
+authorized, not a condition for retaining terminal history or proof that integration failed.
+Instruction changes govern coordinators that actually load them, not already-running peers;
+reconcile an existing task explicitly rather than assuming a prompt update registered it.
+
+## Verification and continuation
+
 Choose validation by changed inputs: local edits need formatting, static and targeted tests;
 a coherent change needs affected integration checks; a stage report alone needs no full suite.
 For final stable input run one full Python suite plus applicable TypeScript/build gates. A
