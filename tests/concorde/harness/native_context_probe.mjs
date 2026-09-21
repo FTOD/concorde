@@ -309,13 +309,33 @@ setChildSessionFactory({
           toolName: "structured_output",
           args,
         });
-        const result = await executeWithSdkValidation(
-          sdk,
-          childTools.get("structured_output"),
-          "structured-1",
-          args,
-        );
+        let result;
+        try {
+          result = await executeWithSdkValidation(
+            sdk,
+            childTools.get("structured_output"),
+            "structured-1",
+            args,
+          );
+        } catch (error) {
+          // SDK immediate validation failures bypass tool_result but emit this supported event.
+          const ended = {
+            type: "tool_execution_end",
+            toolName: "structured_output",
+            toolCallId: "structured-1",
+            result: {
+              content: [{ type: "text", text: error.message }],
+              details: {},
+            },
+            isError: true,
+          };
+          for (const handler of childHandlers.get("tool_execution_end") ?? [])
+            await handler(ended, ctx);
+          send(ended);
+          throw error;
+        }
         const event = {
+          toolCallId: "structured-1",
           toolName: "structured_output",
           input: args,
           content: result.content,
@@ -465,6 +485,24 @@ assert.equal(
   ].includes(scenario),
   JSON.stringify(acceptance),
 );
+if (scenario === "business-invalid") {
+  const feedback = acceptance.result.errors[0].feedback;
+  assert.equal(feedback.layer, "native-slot");
+  assert.equal(feedback.causes[0].layer, "host-submit");
+  assert.equal(feedback.causes[0].code, "invalid_completion");
+  assert.equal(
+    feedback.causes[0].message,
+    "stage outcome does not match its task blockers",
+  );
+  assert(feedback.causes[0].attempt);
+  assert.equal(final.isError, true);
+}
+if (scenario === "malformed") {
+  const feedback = acceptance.result.errors[0].feedback;
+  assert.match(JSON.stringify(feedback), /schema-rejection/);
+  assert.match(JSON.stringify(feedback), /Validation failed for tool/);
+  assert(!JSON.stringify(feedback).includes("Received arguments:"));
+}
 if (scenario === "cancel")
   assert.equal(acceptance.state, "cancelled", JSON.stringify(acceptance));
 if (scenario === "stale")

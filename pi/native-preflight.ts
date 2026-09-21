@@ -1,3 +1,4 @@
+import { errorFeedback, executionError } from "./execution-error.mjs";
 import { createRequire } from "node:module";
 import * as path from "node:path";
 
@@ -16,7 +17,13 @@ export async function nativePreflight(
 		parentSessionId: options.parentSessionId,
 		parentSessionFile: options.parentSessionFile,
 	});
-	if (!preflight.ok) throw new Error(preflight.message);
+	if (!preflight.ok)
+		throw executionError(
+			errorFeedback(preflight, {
+				layer: "native-preflight",
+				category: "host-refusal",
+			}),
+		);
 	if (
 		preflight.contract.agent.source !== "project" ||
 		preflight.contract.agent.filePath !==

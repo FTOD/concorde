@@ -35,6 +35,12 @@ from .context import (
     resolve_context,
 )
 from .entry import invocation_failure, runtime_selection, validate_invocation
+from .execution_error import (
+    ExecutionFailure,
+    exception_feedback,
+    failure,
+    native_feedback,
+)
 from .host import OperationHost
 from .invocation import validate_stage_identity
 from .model_selection import worker_selection
@@ -179,10 +185,42 @@ def _reporter(run, descriptor, snapshot):
     return reporter
 
 
+def _remember_failure(directory, feedback, name="failure.json"):
+    # First failure remains causal even when a later gate merely sees an invalid slot.
+    path = directory / name
+    if not path.exists():
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(canonical(feedback))
+            stream.flush()
+            os.fsync(stream.fileno())
+
+
+def _slot_failure(directory, *, missing=False):
+    paths = (
+        [directory / "failure.json"] if (directory / "failure.json").exists() else []
+    )
+    paths.extend(sorted(directory.glob("submission-error-*.json")))
+    return ExecutionFailure(
+        failure(
+            "native child submitted no captured result"
+            if missing
+            else "native invocation is invalidated; fresh admission required",
+            code="invalid_completion",
+            layer="native-slot",
+            category="no-submission" if missing and not paths else "host-refusal",
+            causes=[_record(path) for path in paths],
+            references=[str(path) for path in paths],
+        )
+    )
+
+
 def _proposal(run, descriptor, snapshot):
     directory = Path(descriptor["directory"])
     if (directory / "invalid").exists():
-        raise SpecError("native proposal slot is invalidated", "invalid_completion")
+        raise _slot_failure(directory)
+    if not (directory / "proposal.json").exists():
+        raise _slot_failure(directory, missing=True)
     value = _record(directory / "proposal.json")
     if (
         set(value) != {"invocation_id", "result"}
@@ -705,8 +743,11 @@ def _execute(
             )
         assert descriptor is not None
         directory = Path(descriptor["directory"])
-        if action != "invalidate" and (directory / "invalid").exists():
-            raise SpecError("native invocation is invalidated", "invalid_completion")
+        if (
+            action not in {"invalidate", "observe-error"}
+            and (directory / "invalid").exists()
+        ):
+            raise _slot_failure(directory)
         if (directory / "terminal.json").exists():
             raise SpecError(
                 "native invocation is already terminal; prepare a fresh assessment",
@@ -760,13 +801,48 @@ def _execute(
             ):
                 from .worker_executor import OperationExecutionError
 
-                raise OperationExecutionError(
+                error = OperationExecutionError(
                     "native worker did not complete",
-                    outcome="cancelled"
+                    outcome="limit_exhausted"
+                    if rows[0].get("timedOut")
+                    else "cancelled"
                     if rows[0].get("interrupted") or rows[0].get("stopped")
                     else "failed",
                 )
-        if action == "invalidate":
+                error.feedback = native_feedback(rows[0], attempt=descriptor["ticket"])
+                error.feedback["causes"].extend(
+                    _slot_failure(directory).feedback["causes"]
+                )
+                raise error
+        if action == "observe-error":
+            # Observation is not acceptance and does not invalidate a correctable SDK rejection.
+            observed = payload.get("feedback", {})
+            feedback = failure(
+                observed.get(
+                    "message", "Native structured submission failed before capture"
+                ),
+                layer="structured-output",
+                category=observed.get("category", "unknown"),
+                attempt=observed.get("attempt") or descriptor["ticket"],
+                diagnostics=observed.get("diagnostics", {}).get("text"),
+            )
+            _remember_failure(
+                directory,
+                feedback,
+                "submission-error-" + digest(feedback)[7:] + ".json",
+            )
+            result.update(state="observed", accepted=False)
+        elif action == "invalidate":
+            if payload.get("reason"):
+                _remember_failure(
+                    directory,
+                    failure(
+                        payload["reason"],
+                        layer="proposal",
+                        category="capture-failure",
+                        attempt=descriptor["ticket"],
+                    ),
+                )
             (directory / "invalid").touch(exist_ok=True)
             result.update(state="invalidated", accepted=False)
         elif action == "report":
@@ -793,7 +869,27 @@ def _execute(
                     )
                 _write(directory / "proposal.json", payload)
                 _proposal(run, descriptor, snapshot)
-            except BaseException:
+            except BaseException as error:
+                try:
+                    _remember_failure(
+                        directory,
+                        exception_feedback(
+                            error, layer="host-submit", attempt=descriptor["ticket"]
+                        ),
+                    )
+                except (OSError, ValueError) as observation_error:
+                    error.feedback = failure(
+                        "Native submission failed and its diagnostic could not be retained",
+                        layer="host-submit",
+                        attempt=descriptor["ticket"],
+                        causes=[
+                            exception_feedback(error),
+                            exception_feedback(
+                                observation_error, layer="failure-observation"
+                            ),
+                        ],
+                    )
+                    error.feedback["diagnostics"]["complete"] = False
                 (directory / "invalid").touch(exist_ok=True)
                 raise
             result.update(state="proposed", accepted=False)

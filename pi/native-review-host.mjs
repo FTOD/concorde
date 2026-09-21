@@ -1,3 +1,4 @@
+import { installHostErrors } from "./native-host-error.mjs";
 /** Finite review preflight/aggregation; no model calls. */
 import fs from "node:fs";
 import path from "node:path";
@@ -5,6 +6,7 @@ import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 const [action, file, checksum] = process.argv.slice(2);
 const base = JSON.parse(fs.readFileSync(file, "utf8"));
+installHostErrors(base.directory, action, base.ticket);
 const invoke = (step) =>
   JSON.parse(
     execFileSync(

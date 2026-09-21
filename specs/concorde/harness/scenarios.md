@@ -569,3 +569,12 @@ See [project root is the entry process's working directory](requirements.md#req.
 - THEN the actual StateGraph invokes that service and validates State input/output synchronously or asynchronously
 - AND State cannot choose authority, a missing service refuses, and Studio inspects the same graph
 - AND native capability workflows have no mirrored or mandatory graph backend
+
+### scenario.harness.execution-feedback — Preserve causal failures through callers
+
+- GIVEN a native proposal, workflow child, finite Host command or optional StateGraph service fails with a known lower-level cause
+- WHEN the parent reports the failure, including later gate or result polling after invalidation
+- THEN it preserves that cause's code, sanitized message and known attempt identity while adding its own layer context
+- AND no-submission, schema rejection, Host refusal, capture, exit, cancellation, timeout, transport and observation failures remain distinguishable without claiming unobserved causes
+- AND diagnostics too large for display have explicit completeness and retrieval facts, with export failure reported rather than silently clipped
+- AND failure never becomes completion or permits an automatic invalid-slot retry, widened grant or credential disclosure

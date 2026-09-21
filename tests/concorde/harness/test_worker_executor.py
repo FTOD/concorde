@@ -11,7 +11,6 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.concorde.support.native_planning import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.pi_rpc import PiRun
 from concorde.harness.pi_worker import Outcome, WorkerExecutionError
@@ -36,6 +35,7 @@ from tests.concorde.spec.support import (
     ModelProcessDouble,
     project,
 )
+from tests.concorde.support.native_planning import OperationHost
 
 
 class WorkerExecutorTests(unittest.TestCase):
@@ -294,8 +294,13 @@ class WorkerExecutorTests(unittest.TestCase):
         self.assertEqual("failed", result["status"])
         self.assertEqual(
             [{"code": "execution_limit", "field": "", "message": "safe timeout"}],
-            result["errors"],
+            [
+                {key: item[key] for key in ("code", "field", "message")}
+                for item in result["errors"]
+            ],
         )
+        self.assertIn("feedback", result["errors"][0])
+        self.assertFalse(result["errors"][0]["feedback"]["diagnostics"]["complete"])
 
     @verifies("scenario.harness.execute-failure", "scenario.harness.worker-contract")
     def test_results_outside_the_type_or_contract_are_invalid_completions(self):

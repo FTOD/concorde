@@ -1,3 +1,4 @@
+import { installHostErrors } from "./native-host-error.mjs";
 /** Fixed deterministic workflow steps. Never starts a model or schedules a child. */
 import fs from "node:fs";
 import path from "node:path";
@@ -5,6 +6,7 @@ import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 const [action, descriptorPath, checksum] = process.argv.slice(2);
 const descriptor = JSON.parse(fs.readFileSync(descriptorPath, "utf8"));
+installHostErrors(descriptor.directory, action, descriptor.ticket);
 const python = descriptor.python;
 const launcher = path.join(descriptor.package_root, "scripts/run-operation.py");
 const invoke = (step, file = descriptorPath, hash = checksum) =>

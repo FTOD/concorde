@@ -1,4 +1,17 @@
 // Authored bounded Issue decide/verify loop. Only real native children do cognition.
+function stop(message, child, key) {
+  const feedback = failure(message, {
+    layer: "workflow",
+    attempt: key,
+    causes: child ? [nativeFeedback(child, { attempt: key })] : [],
+  });
+  emit({ kind: "concorde.failure", key, feedback });
+  throw new Error(
+    message +
+      "; full causal feedback: workflow status concorde.failure emission for " +
+      key,
+  );
+}
 const root = __CONCORDE_ISSUE__;
 const call = __ISSUE_CALL__;
 function control(text, iteration) {
@@ -43,7 +56,7 @@ function leaf(key) {
       child.terminalOutcome ||
       child.results?.length !== 1
     )
-      throw new Error("Issue child incomplete");
+      stop("Issue child incomplete", child, key);
     const row = child.results[0],
       gates = row.acceptance?.verifyRuns;
     if (
@@ -56,7 +69,7 @@ function leaf(key) {
       gates?.length !== 1 ||
       gates[0].status !== "passed"
     )
-      throw new Error("Issue child failed staging/completion");
+      stop("Issue child failed staging/completion", child, key);
     const staged = JSON.parse(gates[0].stdout),
       ticket = root.ticket + ":" + key;
     if (
@@ -65,7 +78,7 @@ function leaf(key) {
       staged.state !== "staged" ||
       staged.accepted !== false
     )
-      throw new Error("Foreign Issue proposal");
+      stop("Foreign Issue proposal", child, key);
     const result = {};
     for (const field of [
       "agent",

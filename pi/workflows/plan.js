@@ -1,4 +1,17 @@
 // Authored native control flow. Substituted only with Host-issued JSON/constants.
+function stop(message, child, key) {
+  const feedback = failure(message, {
+    layer: "workflow",
+    attempt: key,
+    causes: child ? [nativeFeedback(child, { attempt: key })] : [],
+  });
+  emit({ kind: "concorde.failure", key, feedback });
+  throw new Error(
+    message +
+      "; full causal feedback: workflow status concorde.failure emission for " +
+      key,
+  );
+}
 const request = __CONCORDE_PLAN__;
 function control(text) {
   if (typeof text !== "string" || text.length > 30000)
@@ -14,7 +27,7 @@ function childEvidence(child, key, ticket) {
     child.terminalOutcome ||
     child.results?.length !== 1
   )
-    throw new Error("Native planning child did not complete");
+    stop("Native planning child did not complete", child, key);
   const row = child.results[0];
   if (
     row.exitCode !== 0 ||
@@ -23,14 +36,14 @@ function childEvidence(child, key, ticket) {
     row.outputSaveError ||
     row.transcriptError
   )
-    throw new Error("Native planning child failed or lost evidence");
+    stop("Native planning child failed or lost evidence", child, key);
   const acceptance = row.acceptance;
   if (
     acceptance?.status !== "verified" ||
     acceptance.verifyRuns?.length !== 1 ||
     acceptance.verifyRuns[0].status !== "passed"
   )
-    throw new Error("Planning staging gate failed");
+    stop("Planning staging gate failed", child, key);
   const staged = control(acceptance.verifyRuns[0].stdout);
   if (
     staged.schema_version !== 1 ||
@@ -39,7 +52,7 @@ function childEvidence(child, key, ticket) {
     staged.state !== "staged" ||
     staged.accepted !== false
   )
-    throw new Error("Foreign planning stage");
+    stop("Foreign planning stage", child, key);
   const result = {};
   for (const field of [
     "agent",

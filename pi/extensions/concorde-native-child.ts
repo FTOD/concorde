@@ -2,6 +2,8 @@
 import { spawn } from "node:child_process";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { errorFeedback, failure, executionError } from "../execution-error.mjs";
+import { errorDisplay } from "../error-display.mjs";
 import { observeNativeProposal } from "../native-proposal.ts";
 
 export interface NativeBinding {
@@ -30,6 +32,8 @@ export function nativeCommand(
 			},
 		);
 		let expired = false;
+		let overflow = false;
+		let stderr = "";
 		const timer = setTimeout(
 			() => {
 				expired = true;
@@ -43,31 +47,82 @@ export function nativeCommand(
 		let text = "";
 		child.stdout.on("data", (chunk) => {
 			text += chunk;
-			if (Buffer.byteLength(text) > 2 * 1024 * 1024) child.kill();
+			if (Buffer.byteLength(text) > 2 * 1024 * 1024) {
+				overflow = true;
+				child.kill("SIGKILL");
+			}
 		});
-		child.stderr.resume();
+		child.stderr.on("data", (chunk) => {
+			stderr += chunk;
+			if (Buffer.byteLength(stderr) > 2 * 1024 * 1024) {
+				overflow = true;
+				child.kill("SIGKILL");
+			}
+		});
 		child.on("error", (error) => {
 			clearTimeout(timer);
 			signal?.removeEventListener("abort", abort);
-			reject(error);
+			reject(
+				executionError(
+					errorFeedback(error, {
+						layer: "native-command",
+						category: "transport",
+						attempt: binding.digest,
+					}),
+					error,
+				),
+			);
 		});
-		child.on("close", (code) => {
+		child.on("close", (code, processSignal) => {
 			clearTimeout(timer);
 			signal?.removeEventListener("abort", abort);
+			let response: any;
+			let parseError: unknown;
 			try {
-				if (expired)
-					throw new Error(
-						"Native Host command timed out; inspect retained evidence before retrying",
-					);
-				const result = JSON.parse(text);
-				if (code !== 0)
-					throw Object.assign(new Error(JSON.stringify(result)), {
-						response: result,
-					});
-				resolve(result);
+				response = JSON.parse(text);
 			} catch (error) {
-				reject(error);
+				parseError = error;
 			}
+			if (
+				expired ||
+				signal?.aborted ||
+				overflow ||
+				code !== 0 ||
+				parseError ||
+				response?.state === "rejected"
+			) {
+				const feedback = failure(`Native Host ${action} failed`, {
+					layer: "native-command",
+					attempt: binding.digest,
+					category: expired
+						? "timeout"
+						: signal?.aborted
+							? "cancelled"
+							: overflow
+								? "observation"
+								: response?.result?.errors?.length
+									? "host-refusal"
+									: code !== 0
+										? "native-exit"
+										: "transport",
+					causes: response?.result?.errors?.length
+						? [errorFeedback({ response })]
+						: parseError
+							? [errorFeedback(parseError)]
+							: [],
+					diagnostics: JSON.stringify({
+						exitCode: code,
+						processSignal,
+						stdout: response ? undefined : text,
+						stderr,
+					}),
+					complete: !overflow,
+				});
+				const error = executionError(feedback);
+				error.message = errorDisplay(feedback);
+				Object.assign(error, { response });
+				reject(error);
+			} else resolve(response);
 		});
 		child.stdin.on("error", () => {});
 		child.stdin.end(JSON.stringify(value));
@@ -83,6 +138,9 @@ export function nativeContextChild(binding: NativeBinding) {
 			},
 			async (reason) => {
 				await nativeCommand(binding, "invalidate", { reason });
+			},
+			async (feedback) => {
+				await nativeCommand(binding, "observe-error", { feedback });
 			},
 		);
 		if (binding.checks)

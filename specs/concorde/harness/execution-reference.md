@@ -1339,3 +1339,45 @@ tool, proposal hook and Host gate. Host business/currentness checks remain indep
 schema-valid foreign context still rejects without completion. SDK validation errors are not proof
 that a model never attempted a tool call, and correcting schema composition does not repair missing,
 wrong-typed or extra fields in a model's value.
+
+## Causal execution feedback {#execution-feedback}
+
+Every execution boundary preserves the specific lower-level failure rather than substituting a
+successful result or a generic parent failure. The additive diagnostic `feedback` on an operation
+error, and `failure` on a native response, use a version-1 record: `schema_version`, `code`, `message`,
+`layer`, nullable `attempt`, ordered `causes`, and `diagnostics`. Diagnostics carry `complete`,
+`redacted`, nullable selected `text` and retrieval `references`. These are diagnostic records, not
+TypedValues, execution authority or a change to acceptance/status enums. Existing code/field/message
+and operation-result version 3 remain compatible; readers ignoring the additive diagnostic field
+still see the original public error. Upper layers add context as causes, retaining underlying codes,
+messages and known issued ticket/run/tool-call identity. Unknown causes and attempts remain unknown.
+
+Categories distinguish `no-submission` (no captured result and no retained failed attempt),
+`schema-rejection`, `host-refusal`, `capture-failure`, `native-exit`, `cancelled`, `timeout`,
+`transport`, `observation`, `invalid-completion` and `unknown`. Missing successful submission alone does not establish zero
+attempts. SDK rejection can precede proposal capture and bypass the tool-result hook; its supported
+tool-execution-end notification is observed without invalidating an otherwise
+correctable slot. A Host refusal invalidates its slot and retains its first cause across subsequent
+gate/acceptance calls. Neither observing errors nor returning a reference retries an invalidated slot.
+Failed invalidation or evidence retention is an additional observation failure, not replacement of
+the original cause. Existing native result schema composition and all independent acceptance checks
+remain unchanged.
+
+Direct Agents, authored plan/review/Issue workflows, finite Host command/relay adapters and optional
+sync/async StateGraph Operations propagate this feedback. Workflow failure emissions preserve child
+facts independently of successful child-terminal emissions; fixed Host steps retain errors before
+native stdout/stderr previews can clip them. Result polling returns those causes even when no domain
+receipt exists. A failed execution stays failed despite a prior accepted domain effect, whose receipt
+remains historical evidence. No task/result/body or transcript is copied merely to explain failure.
+
+Messages and selected diagnostics redact common credential-labelled values and bearer tokens; raw
+request, environment, credential-store and unrelated transcript objects are never serialized.
+Redaction is not a guarantee that arbitrary unlabelled secrets in third-party error prose are
+recognizable; producers must not put secrets in errors. Full sanitized causes are not silently
+clipped. Bounded Pi display exports the full sanitized record to a mode-0600 local temporary file,
+returning its exact reference, digest, size and temporary retention warning. Export refusal reports
+incompleteness and the observation error without claiming a retrievable full record. Native preview
+completeness remains false, with metadata/status references; references do not grant reads or promise
+survival of native/scratch cleanup. The owning Host must archive needed evidence under existing primary
+authority. Retained historical RPC stderr tails explicitly report completeness and observed byte count;
+missing earlier bytes cannot be reconstructed or described as complete diagnostics.

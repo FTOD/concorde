@@ -16,6 +16,7 @@ from ..issues.graph import MAX_DECISIONS
 from ..issues.solve import IssueSolve
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import canonical, typed
+from .execution_error import response_failure, safe_text, workflow_feedback
 from .host import OperationHost
 from .invocation import Invocation
 from .native_evidence import NativeChildEvidence, _record, verify_native_children
@@ -203,8 +204,8 @@ def _prepare_slot(package, root, path, checksum, key, operation, task, selection
         package, "prepare-issue-item" if selection else "prepare-review-item", payload
     )
     if value.get("state") != "prepared":
-        raise SpecError(
-            "Issue slot preparation refused: " + canonical(value), "invalid_completion"
+        raise response_failure(
+            "Issue slot preparation refused", value, layer="issues", attempt=key
         )
     entry = {k: value[k] for k in ("descriptor", "digest", "ticket", "call")}
     entry.update(root_digest=checksum, key=key)
@@ -246,8 +247,11 @@ def _correlated(package, root, state, status, binding, key):
         entry["digest"],
     )
     if value.get("state") != "admitted":
-        raise SpecError(
-            "Issue proposal was not admitted: " + canonical(value), "invalid_completion"
+        raise response_failure(
+            "Issue proposal was not admitted",
+            value,
+            layer="issues",
+            attempt=slot["ticket"],
         )
     return value
 
@@ -307,7 +311,12 @@ def workflow_service(package, action, path, checksum):
                 }
             ),
             "native_state": status.get("state"),
-            "native_error": status.get("error"),
+            "native_error": safe_text(status["error"]) if status.get("error") else None,
+            "failure": workflow_feedback(root, status, binding)
+            if status.get("state") not in {"running", "complete"}
+            or status.get("error")
+            or (status.get("state") != "running" and not receipt.exists())
+            else None,
             "run_id": binding["runId"],
         }
     with (directory / "host.lock").open("a") as lock:
