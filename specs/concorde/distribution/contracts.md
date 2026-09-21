@@ -415,3 +415,44 @@ source. Subsequent explicitly granted installed fixture execution uses those exa
 locally separated environment while the caller keeps source and installed bytes quiescent. A stale
 source, nonempty/aliased/out-of-scratch target or mismatched installed identity refuses. No installer
 or source-selection validation is patched. This source test recipe is not distributed to consumers.
+
+
+## Source outer task lifecycle {#outer-task-lifecycle}
+
+The explicit source-only `concorde-outer-lifecycle.ts` extension is separate from passive timing.
+It loads only for source main and maintenance roles, never tester or terminal domain Agents, and
+registers no model tool, catalog, provider, setting, scheduler or delegation. Pi's native threshold
+check uses projected current tokens and resolved model reserve; its overflow recovery compacts
+through the supported SDK. The extension does not duplicate those triggers. The explicit
+`outer-compact` command waits for idle, calls `ctx.compact` and awaits onComplete/onError;
+checkpoints or user messages merely saying compact are not compaction evidence.
+
+Current task memory is one replaced concise brief, stored as native session custom entries, not
+primary task status. `outer-brief` accepts JSON with exactly scalar strings goal, grant, stage,
+objective, blocker and next, plus string arrays decisions, completed, checks and evidence. Text is
+nonblank, at most 2000 characters; arrays at most 16 entries; the whole JSON at most 12000 characters.
+Empty arrays and blocker "none" explicitly represent absence. The fields carry only current
+accepted decisions and task facts; grant is a reminder, never executable authority. Main owns
+actual task/grant admission. Duplicate identical updates do not append repeated memory entries.
+
+Maintenance may include that JSON in one fenced `task-brief` block in the existing native
+contact_supervisor progress_update message. The extension observes the outgoing tool call without
+modifying or suppressing its transport, and records worker-reported memory, not delivery, acceptance
+or correctness. Invalid optional memory clears the stale brief and records an observation failure;
+the supervisor call still proceeds. Native supervisor status and original messages remain the
+feedback transport; no parallel progress ledger or universal error schema is defined.
+
+On `session_compact`, the extension uses the latest actual persisted branch compaction identity,
+not matching summary text. At the next `context` hook it inserts the then-current brief exactly once
+for that compaction, as a request-local custom message, and records the consumed identity in native
+session entries. It never replays old system/task prompts or triggers another turn. This is injection
+into the constructed provider context, not proof of provider receipt or a successful model response.
+No brief means no fabricated memory. Failed/cancelled compaction creates no injection; the native
+failure event retains its original diagnostic. Reload/resume restores only current branch memory and
+consumed identities; tree navigation follows that branch. Already-injected identities are not replayed.
+Frozen launch assets and terminal tool ceilings remain unchanged through compaction.
+
+Host-observed lifecycle, tools, last activity, current context/cache and compaction remain distinct
+from worker-reported stage/objective/artifacts/checks/blocker/next/evidence. Activity is not correctness
+or server thinking. Native supervisor/events/status carry event-driven meaningful updates; main owns
+primary durable persistence and exact stopped-owner release/bind, including new-stage handoffs.

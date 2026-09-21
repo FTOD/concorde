@@ -464,7 +464,7 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         if not {"node_modules", "__pycache__"}.intersection(path.parts)
         and path.is_file()
         and (
-            path.name != "concorde-maintenance.ts"
+            path.name not in {"concorde-maintenance.ts", "concorde-outer-lifecycle.ts"}
             or any(o.path == ".pi/agents/maintenance-worker.md" for o in outputs)
         )
     )

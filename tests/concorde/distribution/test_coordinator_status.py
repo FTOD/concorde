@@ -56,7 +56,7 @@ class CoordinatorStatusTests(unittest.TestCase):
             "release that exact existing child",
             "verify `child` is null",
             "--phase test",
-            "resume the same maintenance-worker session",
+            "resume the stage author",
             "Any release/binding failure blocks the handoff",
             "cannot substitute for status registration or child binding",
             "Never create a shadow ledger",
@@ -71,6 +71,31 @@ class CoordinatorStatusTests(unittest.TestCase):
         self.assertFalse(any("concorde-coordinator" in item.path for item in installed))
         self.assertFalse(
             any("Register before launch" in item.content.decode() for item in installed)
+        )
+
+    @verifies("scenario.distribution.stage-continuity")
+    def test_stage_reuse_fresh_handoff_and_native_steps(self):
+        prompt = self.source_prompt()
+        for text in (
+            "high-level decomposition",
+            "NOT Concorde product plan/tasks",
+            "terminal Pi workers",
+            "unfinished coherent stage",
+            "After a completed stage",
+            "durable handoff",
+            "Observe stop, release the exact owner",
+            "Independent components may run in parallel",
+            "component gates",
+            "combination barrier",
+            "may directly author or repair agent profiles",
+        ):
+            self.assertIn(text, prompt)
+        self.assertNotIn("not a LangGraph node or the maintenance author", prompt)
+        self.assertNotIn(
+            "Continue this session across ordinary stages",
+            (
+                REPOSITORY_ROOT / "prompts/outer/source/maintenance-worker.md"
+            ).read_text(),
         )
 
     @verifies("scenario.distribution.outer-roles")

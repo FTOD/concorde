@@ -569,3 +569,14 @@ See [project root is the entry process's working directory](requirements.md#req.
 - THEN the actual StateGraph invokes that service and validates State input/output synchronously or asynchronously
 - AND State cannot choose authority, a missing service refuses, and Studio inspects the same graph
 - AND native capability workflows have no mirrored or mandatory graph backend
+
+
+### scenario.harness.outer-lifecycle — Actual compaction reinjects current task memory once
+
+- GIVEN source main or maintenance with explicit lifecycle loading, a current task brief and unchanged terminal tool grants
+- WHEN Pi performs measured threshold or overflow compaction or the explicit SDK compaction command
+- THEN successful persisted compaction injects only the latest brief once at the next provider-context boundary without launching a turn
+- AND failed or cancelled compaction does not inject task memory or claim recovery
+- AND repeated equal summaries, resume and branch navigation preserve identity-based deduplication
+- AND malformed optional supervisor memory does not block native feedback or reintroduce obsolete task instructions
+- AND semantic progress remains worker-reported while host activity, context and compaction are separate observations

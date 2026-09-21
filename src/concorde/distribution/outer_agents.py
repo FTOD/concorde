@@ -27,7 +27,7 @@ def render(root: Path, framework_prefix: str = ""):
     if (root / "concorde.json").is_file():
         assets = ["concorde-observe.ts", "concorde-selection.ts", "concorde-tester.ts"]
         if not prefix:
-            assets.append("concorde-maintenance.ts")
+            assets.extend(("concorde-maintenance.ts", "concorde-outer-lifecycle.ts"))
         for asset in assets:
             path = root / "pi/extensions" / asset
             if not path.is_file() or path.is_symlink():
@@ -54,7 +54,7 @@ def render(root: Path, framework_prefix: str = ""):
                 "maintenance-worker",
                 SOURCE_ROOTS[1],
                 "read, grep, find, ls, bash, edit, write",
-                f"{assets}/concorde-maintenance.ts",
+                f"{assets}/concorde-maintenance.ts, {assets}/concorde-outer-lifecycle.ts",
             )
         )
     outputs = []
@@ -90,6 +90,21 @@ def render(root: Path, framework_prefix: str = ""):
                     "}\n"
                 ).encode(),
                 resolved.sources,
+            )
+        )
+    if not prefix:
+        outputs.append(
+            BuildOutput(
+                ".pi/extensions/concorde-outer-lifecycle.ts",
+                (
+                    "// Generated explicit source-outer lifecycle entry; no Operation catalog.\n"
+                    f'export {{ default }} from "{assets}/concorde-outer-lifecycle.ts";\n'
+                ).encode(),
+                (
+                    ("pi/extensions/concorde-outer-lifecycle.ts",)
+                    if (root / "pi/extensions/concorde-outer-lifecycle.ts").is_file()
+                    else ()
+                ),
             )
         )
     outputs.append(
