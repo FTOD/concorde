@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Concorde helps developers agree on what software should do, execute changes within explicit boundaries and check the result before delivery. It provides complete, composable Operations for those tasks, supported by specifications that explain responsibilities, design and precise behavior. Developers can also ask questions, inspect documentation and track problems without starting a code change.
+Concorde helps developers agree on what software should do, execute changes within explicit boundaries and check the result before delivery. It provides native Agents and Workflows and finite Host services for those tasks, with separately selected optional StateGraph Operations, supported by specifications that explain responsibilities, design and precise behavior. Developers can also ask questions, inspect documentation and track problems without starting a code change.
 
 ## Terminology
 
@@ -26,7 +26,7 @@ Concorde helps developers agree on what software should do, execute changes with
 | Pi integration       | The exact Pi extension entry and embedded public Operation catalog, bound to the Framework implementation and launcher that supplied them.                                                                                          |
 | Agent                | A callable native Pi role. The context-assessor is a terminal read-only role whose proposal needs independent Host acceptance.                                                                                                      |
 | Workflow             | An authored native pi-subagents composition ordering real Agent calls and finite granted Host steps; public planning uses this boundary.                                                                                            |
-| Worker               | One fresh bounded Operation execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                      |
+| Worker               | One fresh bounded Agent execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                      |
 | Task subagent        | A fresh one-layer delegate of the user-facing main session, owning one complete task in one fixed worktree without further task delegation.                                                                                         |
 | Host                 | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results.                                                                                                                        |
 | Harness              | The services that give a worker its inputs, tools, environment and limits, then check its result.                                                                                                                                   |
@@ -118,14 +118,14 @@ scenarios. A **Module owns a responsibility and its Spec**; it is not a synonym 
 Three relationships stay independent:
 
 - **Module ownership** identifies who promises behavior and owns its Spec. One Module can provide
-  several Operations, as Planning does; one composed Operation can rely on several provider Modules.
+  several capabilities, as Planning does; one workflow or Operation can rely on several provider Modules.
 - **Operation composition** identifies which Operations call others in a graph. It does not make
   a provider Module a child of the caller's Module.
 - **Context references** select knowledge supplied to a task. They neither compose Operations nor
   grant execution permission or transfer ownership.
 
 The Framework has six direct responsibility owners. [Operations](operations/module.md) keeps the
-catalog of every Operation, dispatches each admitted request to its provider and groups five
+typed inventory of capabilities and Agents, dispatches each admitted request to its provider and groups five
 provider Modules: Planning, Implementation, Review, Validation and Delivery.
 [Harness](harness/module.md) admits every request at one boundary and provides bounded model
 execution; [Spec](spec/module.md) resolves identities and complete contexts.
@@ -149,7 +149,7 @@ context references stay independent as described in Design.
 ```mermaid
 flowchart TB
     accTitle: Operations and shared execution services
-    accDescr: Harness admits every request and hands it to Operations, which dispatches it to the behavior provider that owns it. Operations bounds model execution through Harness and selects contracts through Spec. Distribution, Issues and Views support this work without creating additional executable entity kinds.
+    accDescr: Harness admits every request and hands it to Operations, which dispatches it to the behavior provider that owns it. Operations bounds model execution through Harness and selects contracts through Spec. Distribution, Issues and Views support distinct Agent, Workflow, Operation and Host-service execution kinds without changing Module ownership.
     operations["Operations"]
     harness["Harness"]
     spec["Spec"]
@@ -178,7 +178,7 @@ permission declaration.
 
 ## Compatibility and unresolved information
 
-Protocol 10/Profile 15 uses Operations and graphs consistently. Old executable names and record
+Protocol 10/Profile 15 distinguishes native Agents/Workflows, finite Host services and optional StateGraph Operations. Old executable names and record
 formats require the explicit refusal or migration described in the
 [Host boundary](harness/admission.md#wire-contracts); byte-bound evidence must be rebuilt.
 The source-maintenance record is `docs/changes/operations-graphs.md`, separate from current Spec

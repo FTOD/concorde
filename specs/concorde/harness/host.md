@@ -74,17 +74,15 @@ answer from becoming an unchecked command to run another stage. Sequential batch
 cannot proceed, so a later operation does not accidentally consume incomplete earlier work.
 Deterministic Host tools run admission, one selected service and finalization directly. The same
 guards preserve schema, configuration, workspace, persistence and cancellation behavior without
-model execution. Three Graph Specs define the retained model/Studio shapes. The
-[admission Graph](admission.md#graphs-operation-admission-graph-operation-graph) runs those entries
-and ends each with one typed result envelope, the
-[Operation node](execution-reference.md#host-operation-node-operation-node) runs one worker as a
-single step of any Graph, and the
-[Sequential work items Graph](execution-reference.md#host-sequential-work-items-graph-batch-graph)
-runs independently admitted items one at a time and stops at the first that returns a result.
+model execution. Native Agent entries prepare exact calls, and authored workflows order multiple
+calls with finite Host checkpoints. The former admission and batch Graph wrappers are retired.
+The [optional Operation](execution-reference.md#host-operation-node-operation-node) is a distinct
+explicit StateGraph boundary with a trusted native service, not a model scheduler under public entries.
 
 ## Observing a run
 
-Studio shows the same executable Graphs used by local invocations, along with stage and worker events.
+Studio shows the genuine explicitly selected StateGraph Operation. It does not mirror native
+capabilities; native status/artifacts and Host receipts are their execution observations.
 It is optional: normal CLI and Pi tool calls do not require the server. Policy preview shows the
 intended access without launching a worker. Replaying a run may execute effects again and does not
 waive current permission or lifecycle checks. Setup is described in the project Studio guide.

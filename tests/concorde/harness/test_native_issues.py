@@ -20,7 +20,7 @@ class NativeIssueTests(unittest.TestCase):
     def test_native_issue_workflow(self):
         cases = os.environ.get(
             "CONCORDE_NATIVE_ISSUE_CASES",
-            "needs-decision develop spec-repair resolved duplicate not-actionable stale-issue stale-input stale-duplicate native-failure cancel review-native-failure review-cancel budget incomplete-review final-failure exhaustion journal slot-change missing-slot call-mismatch control-extra control-large many",
+            "prose-only observe-resolved needs-decision develop spec-repair resolved duplicate not-actionable stale-issue stale-input stale-duplicate native-failure cancel review-native-failure review-cancel budget incomplete-review final-failure exhaustion journal slot-change missing-slot call-mismatch control-extra control-large many",
         ).split()
         for case in cases:
             with self.subTest(case=case):

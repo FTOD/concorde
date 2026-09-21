@@ -1,5 +1,6 @@
 /** Actual candidate Pi entry + native file-Agent discovery/executor. Only model events are scripted. */
 import assert from "node:assert/strict";
+import { nativeObservation } from "./native_observation.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,6 +11,7 @@ const [subagents, sdk, candidate, scenario = "needs-decision"] =
   process.argv.slice(2);
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "concorde-issue-public-"));
 const python = path.join(candidate, ".venv/bin/python");
+const observation = nativeObservation(path.join(root, "observation"));
 execFileSync(python, [
   "-c",
   `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.insert(0,${JSON.stringify(candidate)})
@@ -181,7 +183,12 @@ const ctx = {
     getEntries: () => [],
     getHeader: () => ({ id: session, cwd: root }),
   },
-  modelRegistry: { getAvailable: () => [] },
+  modelRegistry: {
+    getAvailable: () => [],
+    getRegisteredProviderIds: () => [],
+    getRegisteredProviderConfig: () => undefined,
+    getRegisteredNativeProvider: () => undefined,
+  },
   ui: { notify() {}, setStatus() {}, setWidget() {} },
 };
 const emit = async (name, event) => {
@@ -245,9 +252,21 @@ const call = prepared.call;
 const state = createChildSafeState();
 state.currentSessionId = session;
 let scriptedCalls = 0;
+const { createDefaultChildSessionFactory } = await load(
+  "runs/shared/child-session.ts",
+);
+const inspectionFactory = createDefaultChildSessionFactory({
+  loadPiCodingAgent: async () =>
+    observation.sdk(await jiti.import(path.join(sdk, "dist/index.js"))),
+});
 setChildSessionFactory({
   async create(launch) {
     scriptedCalls++;
+    if (["prose-only", "observe-resolved"].includes(scenario)) {
+      const inspected = await inspectionFactory.create(launch);
+      observation.refresh();
+      await inspected.dispose();
+    }
     const slot = JSON.parse(
       fs.readFileSync(
         path.join(path.dirname(launch.cwd), "descriptor.json"),
@@ -287,6 +306,20 @@ setChildSessionFactory({
     const send = (event) => {
       for (const fn of listeners) fn(event);
     };
+    observation.observeSession(
+      {
+        sessionId: "scripted-" + scriptedCalls,
+        getAllTools: () => [...childTools.values()],
+        getActiveToolNames: () => [...childTools.keys()],
+        get systemPrompt() {
+          return launch.systemPrompt ?? "";
+        },
+        subscribe(fn) {
+          listeners.add(fn);
+        },
+      },
+      { cwd: launch.cwd, origin: "scripted-factory" },
+    );
     return {
       messages,
       sessionId: "scripted-child",
@@ -298,6 +331,28 @@ setChildSessionFactory({
         return () => listeners.delete(fn);
       },
       async prompt() {
+        if (scenario === "prose-only") {
+          const message = {
+            role: "assistant",
+            content: [
+              {
+                type: "text",
+                text: "Decision: verify. Request fresh reviews.",
+              },
+            ],
+            stopReason: "stop",
+            provider: "fixture",
+            model: "model",
+            usage: { input: 1, output: 1, totalTokens: 2, cost: { total: 0 } },
+            timestamp: Date.now(),
+          };
+          messages.push(message);
+          send({ type: "agent_start" });
+          send({ type: "message_end", message });
+          send({ type: "agent_end", messages });
+          send({ type: "agent_settled" });
+          return;
+        }
         const index = JSON.parse(
           fs.readFileSync(path.join(launch.cwd, "context.json"), "utf8"),
         );
@@ -308,6 +363,7 @@ setChildSessionFactory({
           const selection = snapshot.stage_inputs[0].data;
           const action = [
             "resolved",
+            "observe-resolved",
             "final-failure",
             "incomplete-review",
             "many",
@@ -327,6 +383,7 @@ setChildSessionFactory({
                       "stale-issue",
                       "stale-input",
                       "native-failure",
+                      "missing",
                       "cancel",
                       "slot-change",
                       "missing-slot",
@@ -551,12 +608,51 @@ for (let i = 0; i < 2400; i++) {
   await new Promise((r) => setTimeout(r, 100));
 }
 fs.writeFileSync(path.join(root, "final.json"), JSON.stringify(final));
+observation.refresh();
+const observationSummary = observation.collect(prepared.descriptor, {
+  artifactRoots: [path.join(root, "native/artifacts")],
+});
+if (scenario === "observe-resolved") {
+  assert.equal(observationSummary.expectedSlots, 6);
+  const fullObservation = JSON.parse(
+    fs.readFileSync(path.join(root, "observation/observation.json"), "utf8"),
+  );
+  assert.equal(fullObservation.children.length, 6);
+  for (const child of fullObservation.children) {
+    assert(
+      child.actualSdkObserved &&
+        child.structuredRegistered &&
+        child.structuredActive &&
+        child.promptRequiresStructuredOutput,
+    );
+    assert.equal(child.outputSchemaDigest, child.registeredValueSchemaDigest);
+  }
+}
+if (scenario === "prose-only") {
+  assert.equal(scriptedCalls, 1);
+  assert.equal(observationSummary.executionsObserved, 1);
+  assert.equal(observationSummary.successfulEmissions, 0);
+  assert.equal(observationSummary.failedChildrenWithMetadata, 1);
+  const child = observationSummary.children[0];
+  assert(child.actualSdkObserved);
+  assert(child.structuredRegistered && child.structuredActive);
+  assert(child.promptRequiresStructuredOutput);
+  assert.equal(child.outputSchemaDigest, child.registeredValueSchemaDigest);
+  execFileSync(python, [
+    "-c",
+    "from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
+      JSON.stringify(path.join(root, "candidate")) +
+      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['issue_solutions'][i];assert v['attempts']==1 and not v['history'];assert not v.get('verification') and not v.get('pending_disposition') and not s.get('validated_tree');assert read_issue(r,i)[0]['status']=='open'",
+  ]);
+}
 if (
   [
     "stale-issue",
     "stale-input",
     "stale-duplicate",
     "native-failure",
+    "missing",
+    "prose-only",
     "cancel",
     "review-native-failure",
     "review-cancel",
@@ -572,16 +668,15 @@ if (
   assert.equal(final.accepted, false, JSON.stringify(final));
 else {
   assert(final.accepted, JSON.stringify(final));
-  const expected =
-    scenario === "many"
-      ? "resolved"
-      : scenario === "exhaustion"
-        ? "limit-exhausted"
-        : scenario === "final-failure"
-          ? "verification-failed"
-          : scenario === "incomplete-review"
-            ? "failed"
-            : scenario;
+  const expected = ["many", "observe-resolved"].includes(scenario)
+    ? "resolved"
+    : scenario === "exhaustion"
+      ? "limit-exhausted"
+      : scenario === "final-failure"
+        ? "verification-failed"
+        : scenario === "incomplete-review"
+          ? "failed"
+          : scenario;
   assert.equal(final.output.data.decision, expected, JSON.stringify(final));
   if (scenario === "final-failure" || scenario === "incomplete-review")
     assert.equal(final.output.data.issues[0].status, "open");
@@ -677,6 +772,7 @@ if (
 )
   assert.equal(attempts, 1);
 if (scenario === "exhaustion") assert.equal(attempts, 6);
+await inspectionFactory.dispose();
 await emit("session_shutdown", {});
 console.log(
   JSON.stringify({
@@ -685,6 +781,7 @@ console.log(
     scriptedCalls,
     realModelCalls: 0,
     accepted: final.accepted,
+    observation: path.join(root, "observation/summary.json"),
     outcome: final.output?.data.outcome,
   }),
 );

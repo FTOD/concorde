@@ -10,7 +10,7 @@ The Harness Module admits every operation request at one common boundary, then p
 | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Worker profile                                    | The instructions and maximum tools, workspace and effects available to a kind of worker; a particular job can be narrower.                                                                                                                                            |
 | Tool gate                                         | The checks applied inside the agent process before a model-requested tool runs.                                                                                                                                                                                       |
-| Worker sandbox                                    | The operating-system boundary around a worker process: the host filesystem read-only with the developer's secret locations, agent-client state and other worktrees masked, the grant and run directory writable, a private temporary directory and process namespace. |
+| Worker sandbox                                    | The historical RPC diagnostic/test operating-system boundary, not native Agent isolation: the host filesystem read-only with the developer's secret locations, agent-client state and other worktrees masked, the grant and run directory writable, a private temporary directory and process namespace. |
 | Capsule                                           | A temporary workspace containing the documents admitted for one Spec-only worker invocation.                                                                                                                                                                          |
 | [Worker](../module.md#terminology)                | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
 | [Harness](../module.md#terminology)               | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
@@ -46,20 +46,22 @@ For example, a planner can describe a change without reading source. A programme
 accepted tasks and allowed code files; a reviewer receives read-only inputs in a fresh conversation.
 The workers share accepted artifacts, not all of each other's knowledge or authority.
 
-Failures, cancellation, time limits and changed inputs stop dependent execution. Authorized code edits
-may remain after failure and require inspection. Historical RPC test utilities run inside their worker sandbox, not native Agents. Native file/network/credential policies are prompt-level. The retained tester/check services have actual enforced boundaries,
-so an authorized shell command is bounded too: it can write only the grant, cannot read the
-developer's secrets or other worktrees, and never sees the host's temporary files. **The network is
-not restricted, the masked secret locations are a fixed list, and the sandbox requires Linux with
-bubblewrap; an unavailable sandbox refuses the launch.** Configured checks use a separate read-only
-boundary of the same kind. Read [execution](execution.md) for these limits before relying on
-isolation. Policy preview shows access without running an agent.
+Failures, cancellation, time limits and changed inputs stop dependent execution. Authorized code
+edits can remain after failure. Native file/network/credential limits are prompt-level policy,
+not OS confinement; native tool/delegation ceilings are separately enforced. In particular, a native
+programmer's shell is not confined to its intended file paths by Concorde.
+
+Configured checks and tester commands use an actual OS read-only governing-filesystem boundary,
+issued writable scratch and process-tree cleanup. That boundary does not define a finer read,
+network or credential policy. Historical low-level RPC diagnostic/test workers have their own Linux
+sandbox and tool/path gate with fixed masks and a shared network; they are not native fallback paths.
+Read [execution](execution.md) before relying on any of these distinct guarantees.
 
 ## Design
 
 <a id="entity.harness.agent-model"></a><a id="entity.harness.agent-definitions"></a><a id="entity.harness.typed-values"></a>
 
-The Operation and Harness model defines a worker's task contract, effects, workspace, tools and
+Canonical native Agent profiles define each role's task contract, intended effects, workspace, tools and
 timeout. The Model execution profiles service combines the authored role and Python profile into a reproducible
 WorkerBinding, using fresh instructions supplied by [Distribution Module](../distribution/module.md). The Typed values layer validates the
 contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
@@ -75,35 +77,24 @@ A changed binding, source member or reference selection requires a fresh context
 
 <a id="entity.harness.agent-execution"></a><a id="entity.harness.pi-worker-runtime"></a><a id="entity.harness.pi"></a>
 
-Legacy Graph worker execution independently rechecks the binding and grant before asking the Pi worker runtime
-to start a fresh Pi RPC process. Its extension gates terminal worker tool calls. Workers do their admitted node work directly;
-only the LangGraph/host schedules other work. One matching submitted
-result is required, not merely a successful exit. Cancellation, time limits and invalid completion
-remain distinct. The Pi process runs inside the worker sandbox derived from the same grant, so the
-tool gate bounds what the model may ask and the sandbox bounds what the process can reach;
-[execution](execution-reference.md#execution-design) details both boundaries and what they leave open.
+Native execution projects a fresh file-Agent into invocation-owned scratch, binds public native
+preflight and returns the exact call. Authored workflows order multiple terminal calls. Finite Host
+services stage proposals and accept only independently correlated terminal results with current
+inputs. No Python provider stack waits for a model. Native intended file scope is prompt-level;
+scratch is not a lifecycle ledger or proof of exclusive reads. Historical `WorkerExecutor` and
+Pi-RPC sandbox utilities remain diagnostic/test support, never a public fallback.
 
-Public context assessment is different: the Pi entry prepares a complete frozen context, projects
-one terminal native file Agent into owned scratch, and returns its exact native call. A separate
-Host command admits the proposal only after native terminal evidence and current inputs agree.
-No Python model stack waits for Pi; no workflow wraps the single Agent. Its intended read scope is
-prompt-level, not the legacy worker sandbox. Scratch is neither a status ledger nor proof of
-exclusive reads. The [native contract](execution-reference.md#native-context-assessor) defines
-failure, cancellation, currentness and evidence behavior.
-
-Operation admission, explained in [preparing and coordinating work](host.md), uses the same request, workspace and configuration checks before dispatch selects a provider.
-Deterministic Host tools and native context-assessment commands run those services directly; remaining model-backed entries and explicit Studio
-adapters use the [admission Graph](admission.md#graphs-operation-admission-graph-operation-graph). Keeping admission in the Module that also
-binds workers means the same boundary decides which request may run, in which workspace and with
-which configuration, and later decides what each of its workers may read and write.
+Common request, workspace and configuration admission runs directly for all public capabilities.
+Its stable identity and domain checks are independent of whether a capability is a native Agent,
+Workflow or deterministic Host service.
 
 <a id="entity.harness.studio"></a><a id="entity.harness.worktree-lifecycle"></a><a id="entity.harness.langgraph"></a>
 
-LangGraph Graph-API [Host Graphs](host.md) compose deterministic steps and worker invocations.
-Studio inspects and observes those same executable graphs rather than a separate schematic model.
-Worktree lifecycle binds candidate identity, phase and progress and checks the mutation boundary.
-Only admitted typed artifacts cross stages; a model decision cannot advance lifecycle state or
-broaden another invocation's permission.
+Only explicitly selected StateGraph Operations use LangGraph. Studio inspects the same genuine
+[terminal Agent Operation](execution-reference.md#host-operation-node-operation-node), with no
+capability mirrors. Its trusted embedding supplies a native service; default inspection does not
+launch a worker. Worktree lifecycle still binds candidate identity and progress; no model response
+alone advances it or widens another invocation's authority.
 
 ### Flow overview
 
@@ -112,13 +103,10 @@ catalog. Admission fixes which request may run and where; each worker then recei
 narrow grant. A successful process exit alone is not an accepted result. The Host preserves the
 difference between a business stop, invalid output and execution failure when reporting back.
 
-For exact State channels, node inputs/outputs and routing, open the full
-[Operation admission Graph Spec](admission.md#graphs-operation-admission-graph-operation-graph).
-The [Operation node Graph Spec](execution-reference.md#host-operation-node-operation-node) defines
-one embedded worker's input/output boundary; the
-[Sequential work items Graph Spec](execution-reference.md#host-sequential-work-items-graph-batch-graph)
-defines how repeated reviews or component jobs stop at the first blocking item. Neither grants
-one item another item's context.
+The [admission contract](admission.md#operation-execution-boundary) defines request and workspace
+checks. The [optional Operation Graph Spec](execution-reference.md#host-operation-node-operation-node)
+defines the explicitly selected typed State boundary. Native workflows, not a batch Graph, order
+reviewers and domain decisions without granting one item another item's context.
 
 ```mermaid
 flowchart LR
@@ -145,19 +133,16 @@ reach the planner, task author, programmer and code reviewer read-only; its task
 task, constraints, stage artifacts and lifecycle metadata. The frozen closure is never empty and its
 identity covers every admitted byte.
 
-A worker definition binds its role Spec, one task contract, a workspace kind, tools and timeout.
-Resolution yields an `WorkerBinding` that every invocation carries and the executor reverifies.
-Permissions are compiled purely from the contract's effects and host authority, guarded by the
-isolated-worktree check before any unsafe mutation, and handed to the Pi worker runtime, whose
-extension gates every tool call of the terminal worker and whose sandbox confines the
-process to that same grant. Other model-backed control flow remains a LangGraph Graph; deterministic Host tools need no compiled
-Graph for local admission or dispatch. Failures never retry with broader
-permissions, and a settled process alone never establishes completion.
+Canonical Agent definitions bind role Specs, task contracts, intended scope, tools and limits.
+Fresh preparation and native preflight bind the actual call; independent admission checks terminal
+results. File policy and terminal tool ceilings remain distinct. Authored native workflows own
+public cognitive control flow; optional StateGraph composition is explicit. Historical RPC utilities
+retain their diagnostic sandbox contract without confining native Agents.
 
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: The Operation and Harness model defines the worker profile and contract records that Model execution profiles bind and that Worker execution runs. Model execution profiles resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same operation host as Worker execution. Operation admission binds candidate workspaces through Worktree lifecycle, validates envelopes and requests through Typed values and hands admitted requests to the Operations dispatch. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi without worker delegation.
+    accDescr: Context and role profiles prepare native terminal execution; admission and typed result checks preserve authority. Studio is a separately selected StateGraph surface. Pi worker runtime is retained historical diagnostic support, not the native backend.
     agentModel["Operation and Harness model"]
     agentDefs["Model execution profiles"]
     permissions["Permissions"]
@@ -187,13 +172,13 @@ flowchart TB
     context -->|freezes typed stage inputs and records through| typedValues
     context -->|supplies the declared reference documentation of| langgraph
     execution -->|validates typed results and schemas through| typedValues
-    execution -->|schedules worker nodes and Studio graphs with| langgraph
-    execution -->|launches each worker through| piRuntime
-    studio -->|starts or observes the same operation host as| execution
+    studio -->|inspects explicitly selected StateGraph Operations with| langgraph
+    execution -->|retains historical diagnostic launches through| piRuntime
+    studio -->|inspects the separately selected typed boundary of| execution
     admission -->|binds candidate workspaces through| worktree
     admission -->|hands admitted requests to the dispatch of| operations
     admission -->|validates envelopes and requests through| typedValues
-    piRuntime -->|runs each worker in RPC mode on| pi
+    piRuntime -->|runs historical diagnostic workers in RPC mode on| pi
 ```
 
 ## Reading by responsibility
@@ -223,8 +208,9 @@ Realized by `run_operation`, `operation_graph_nodes`, `bind_worktree` and `json_
 
 ### Worker execution
 
-Realized by `launch_worker`, the one launch sequence every model-backed stage runs through,
-`WorkerExecutor` and the Pi worker runtime; see [execution](execution.md) and [host](host.md).
+Native preparation, proposal staging and independent admission are realized by the native Host
+services and authored Pi workflows. `launch_worker`, `WorkerExecutor` and Pi-RPC are historical
+diagnostic/test support only; see [execution](execution.md) and [host](host.md).
 
 The deterministic check executor's read-only filesystem, scratch, result, unavailable-backend and
 process-lifetime cases are defined in [Harness scenarios](scenarios.md#scenario.harness.check-read-only).
@@ -262,7 +248,7 @@ This collaboration applies when freezing any context kind or checking a target, 
 
 The [Operations Module](../operations/module.md) owns the catalog of every Operation and the dispatch that routes an admitted request to its provider.
 
-Admit only registered public entries and declared composition, then dispatch each admitted request through the direct Host-tool path or its declared Graph adapter.
+Admit only registered public entries and declared composition, then dispatch finite Host services or prepare the selected native Agent/workflow.
 
 This collaboration applies when admission executes an admitted request or checks a child Operation against its parent's declared composition.
 
@@ -289,11 +275,15 @@ quiescent; receipt verification supplies no task, Protocol acceptance or lifecyc
 
 ## Unresolved information
 
+The sandbox, credential-copy and placeholder limitations below refer to retained low-level RPC
+diagnostic/test utilities, not to native Agent confinement. Native file/network/credential policy
+is cooperative; configured-check/tester isolation is the separate actual OS boundary.
+
 - Resource context carries only the Module's declared external references and each worker's
   profile tools today: no worker admits an Operation or Tool reference beyond them, so those
   contracts are not yet snapshot fields. Materializing them in the snapshot record, with their
   identities in the context digest, is pending implementation work that must not widen any grant.
-- The worker sandbox does not restrict the network, because Pi must reach its model provider.
+- The historical RPC diagnostic/test worker sandbox does not restrict the network, because Pi must reach its model provider.
   Anything the process can read, including the workspace, can therefore leave the sandbox over the
   network. Closing this needs a private network namespace in which only the credential proxy
   below is reachable; that is pending.
@@ -310,13 +300,13 @@ quiescent; receipt verification supplies no task, Protocol acceptance or lifecyc
 - A pending write entry becomes an empty placeholder file or directory in the candidate before
   the launch and is removed only if the worker left it empty; a placeholder is the price of an
   exact write boundary for a path that does not exist yet.
-- The sandbox requires Linux with a trusted system bubblewrap and refuses every worker launch
+- The sandbox requires Linux with a trusted system bubblewrap and refuses every such diagnostic worker launch
   elsewhere; there is no unconfined fallback and no backend for another platform yet.
 - A relayed consumer candidate executes only its own verified installation and managed interpreter.
   Source candidates require their own fresh private build and local environment instead; no host
   installs an ambient shim into a source checkout. Durable usage, results and logs remain only in
   primary-owned `.concorde/runs/`, with candidate source/runtime provenance. The requesting session
-  receives the result and diagnostics; Studio in primary shows relay as one node. A host interrupt
+  receives the result and diagnostics; the optional Studio surface does not mirror relay as a public capability graph. A host interrupt
   gives the launcher thirty seconds to cancel its worker before killing it. Missing or stale resumed
   installation requires explicit supported installer recovery, not silent reinstallation or fallback.
 - Checks run by `run_checks` use the configured-check executor, but the worker receives only the tail

@@ -146,8 +146,10 @@ Document declarations are likewise checked against reverse registry membership.
 
 ## Run a change
 
-Send this invocation on stdin to `scripts/run-operation.py concorde-plan` (or
-`.concorde/framework/scripts/run-operation.py` in an installed consumer project):
+The compatibility request envelope for planning is shown below. Execute planning through the Pi
+`concorde` tool: action run with the input data prepares an exact native workflow call; invoke that
+call unchanged and poll action result. Sending this envelope to the bare Python launcher cannot
+start a native workflow and refuses with `native_required`:
 
 ```json
 {
@@ -178,8 +180,9 @@ Tasks require a current plan and implementation requires accepted tasks. The cal
 component work separately; no parent develops children automatically. Direct manual candidates
 need no invented plan, but cannot bypass unfinished planned work or already-required reviews.
 
-Every callable entry is an Operation with declared State, effects, context selection, determinism
-and USES. `bound` receives one selected Module without context expansion; `none` performs
+The typed inventory distinguishes native Agents, Agent entries, Workflows and Host services.
+Only explicitly selected StateGraph Operations have graph State contracts. Canonical Agents carry
+role profiles without Python State/run aliases; capability wire adapters retain compatibility fields. `bound` receives one selected Module without context expansion; `none` performs
 deterministic host work without worker context selection. Discovery, automatic Spec authoring,
 topology proposal/application and development-loop entries are retired, not aliases. `PUBLIC`
 controls entry availability independently of these guarantees.
@@ -364,9 +367,10 @@ checkout's existing binding unchanged.
 
 ## Development
 
-[LangGraph Studio setup and usage](../scripts/development/STUDIO.md) covers all public Operation entries and
-stage events, CLI/Pi forwarding, live execution events, debugging and worktree isolation. Studio
-is optional; existing JSON stdin/stdout calls continue to work without a server.
+[LangGraph Studio setup and usage](../scripts/development/STUDIO.md) covers the genuine optional
+StateGraph Operation, typed Runtime service injection and inspection-only default export. Native
+capabilities are not forwarded through Studio. Host JSON services need no server; native cognition
+uses the prepared Pi Agent/workflow boundary.
 
 Run Python tests with `python3 scripts/development/run-tests.py`, which runs every module under
 `tests/concorde` in its own subprocess in parallel and reports per-module durations
@@ -443,3 +447,65 @@ records stable task coordination, delivery or manual merge and separate cleanup.
 including candidate executions, remain primary-only in `.concorde/runs/`. Terminal status remains
 after candidate deletion. Preview legacy migration with `migrate-status`; accept explicitly with
 `--apply` only after inspecting collisions and preserving backups. No live migration is automatic.
+
+## Source-selected installation testing and failed native observation
+
+A private source selection cannot attest a new installed path. Passing it unchanged into an
+installed health check correctly refuses; neither relax the guard nor silently clear all provenance.
+For an explicitly authorized fresh external fixture **inside `test_command` scratch**, the source-only
+recipe verifies governing selection and admitted package bytes first, separates only process-local
+source provenance/import overrides for the installer and installed children, and verifies exact
+installed output identity with its own managed interpreter:
+
+```python
+from pathlib import Path
+import os
+from tests.concorde.support.install_output_handoff import install_selected_fixture
+
+source_selection = Path(os.environ["CONCORDE_SESSION_SELECTION"])
+record, installed_env = install_selected_fixture(
+    Path(os.environ["CONCORDE_CHECK_TMPDIR"]) / "consumer", source_selection
+)
+# Parent source selection is STILL active. Only explicit installed subprocesses use installed_env.
+# Use record["installed"]["python"], ["runtime"], ["entry"] and record["destination"] exactly.
+```
+
+Run this under the selected candidate's Python with that source root on the fixture import path;
+the helper is not a consumer product or new general selection mode. The target must be fresh,
+canonical and within issued scratch. Dependency acquisition needs the normal locked wheel/npm
+inputs; offline caches must be available in the explicit host-/tmp read-only view or acquisition
+must be explicitly allowed into issued scratch. The recipe does not change global npm settings.
+`installed-output-provenance.json` binds source selection/build, recipe bytes, admitted package,
+external destination, installed entry/catalog/launcher/build, receipt/runtime and interpreter. Read
+and return this bounded record before scratch cleanup. Maintain quiescent source/output bytes.
+Native installed smoke uses the installed entry in a separate process with `installed_env`, never
+the source-private entry pretending that copied assets are an installation.
+
+For failed Issue observations, import the source-only
+`tests/concorde/harness/native_observation.mjs` from the explicitly selected source. In a driver
+already authorized to run a real native child, use its passive SDK facade with the actual native
+factory, keeping the issued native call and all launch hooks unchanged:
+
+```js
+const observation = nativeObservation(scratch + "/issue-observation");
+setChildSessionFactory(createDefaultChildSessionFactory({
+  loadPiCodingAgent: async () => observation.sdk(actualSdk),
+}));
+// Execute exactly the Host-issued native call. No retry or prose parsing.
+// In finally, while scratch/artifacts still exist, even on native failure:
+const summary = observation.collect(prepared.descriptor, {
+  artifactRoots: [actualNativeArtifactsDirectory],
+});
+console.log(JSON.stringify(summary)); // helper enforces fewer than 8000 UTF-8 bytes
+```
+
+Import the native factory from the explicitly admitted producer's `runs/shared/child-session.ts`
+through the same loader as the owning driver; use the actual SDK module, not a reconstructed hook
+runner. The artifact root is the driver's actual session/temp artifact directory, not a guessed
+metadata filename. The observer follows expected slot bindings and native status steps even if there
+are no successful emissions. It records SDK effective prompt and tools on `agent_start`, native
+metadata/transcripts, and labelled bootstrap/registration observations. SDK creation is not a model
+execution; missing facts stay null. Preserve/read raw mode-0600 details only in controlled scratch,
+return nonsecret bounded diagnostics before cleanup, and never claim raw files survived it. Do not
+serialize auth stores, provider registries or the whole launch environment. The helper grants no
+extra tools, changes no prompt and supplies no acceptance or retry authority.

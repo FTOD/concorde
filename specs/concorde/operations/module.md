@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Operations provides Concorde's executable behavior, from planning and implementing a selected task to reviewing, checking and delivering a verified candidate. It keeps the one catalog of every Operation, decides which of them developers may invoke directly, and routes each admitted request to the provider that owns it. Its children own their individual behavioral promises; this Module owns the catalog, the exposure rules and the dispatch that connect a request to them.
+Operations provides Concorde's executable behavior, from planning and implementing a selected task to reviewing, checking and delivering a verified candidate. It keeps the typed inventory of capabilities and Agents, decides which of them developers may invoke directly, and routes each admitted request to the provider that owns it. Its children own their individual behavioral promises; this Module owns the catalog, the exposure rules and the dispatch that connect a request to them.
 
 ## Terminology
 
@@ -45,14 +45,11 @@ replacement universal coordinator.
 
 <a id="entity.operations.dispatch"></a>
 
-Deterministic Host tools select the requested provider directly after common Harness admission.
-The retained [dispatch Graph](execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)
-serves model-backed entries and explicitly selected Studio execution. Its
-[target admission Graph](execution-reference.md#graphs-target-admission-graph-target-graph)
-checks explicit target/focus and saved intent; it never discovers or substitutes a Module.
-Runtime services narrow each Operation's declared permission ceiling. State carries data, not
-execution authority. For Graph execution, the same factories serve execution and inspection; direct Host-tool calls
-do not compile these adapters.
+Finite Host admission selects the requested provider and checks the explicit target, focus and
+saved intent. It never discovers or substitutes a Module. Native Agent entries and authored native
+workflows perform cognition with independently checked results. Only explicitly selected StateGraph
+Operations use the optional graph/Studio boundary; the former dispatch/target Graph wrappers are
+retired. State carries data, not execution authority.
 
 ### Flow overview
 
@@ -115,7 +112,7 @@ These entries describe the Modules the dispatch uses. Its children's agreements 
 
 The [Harness Module](../harness/module.md) admits every request before dispatch and binds each Module-bound invocation, freezing its context and launching its workers.
 
-This collaboration applies when admission executes the dispatch Graph and when target admission binds an invocation to the selected owner.
+This collaboration applies when finite admission dispatches the requested capability and when target admission binds an invocation to the selected owner.
 
 - [Operation admission](../harness/admission.md#operation-execution-boundary); dispatch only requests admission has accepted, and return each leaf's typed output unchanged for admission to finish.
 - [Complete context selection](../harness/contracts.md#contract.context.selection); supply the explicit Module and task, and stop dependent transitions on gaps or stale context.

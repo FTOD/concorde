@@ -22,7 +22,7 @@ Review independently examines whether current specifications or code support the
 
 Use `concorde-spec-review` to assess a Module's complete specification and design, or
 `concorde-code-review` to compare its authorized implementation with that contract. These are
-separate public Operations, not modes of one entry. Both require an explicit Module target and task;
+separate native Workflow capabilities, not modes of one entry. Both require an explicit Module target and task;
 optional focus selects a scenario owned by that Module without trimming its complete context.
 An existing-change request supplies the current change ID. Neither accepts a review-mode selector. A standalone review runs in the current worktree without
 creating a development change, and neither reviewer can repair files.
@@ -67,8 +67,8 @@ components without inventing an owner code review.
 The Host independently checks exact coverage, identities, immutable receipts and current inputs
 before aggregating typed results. A native successful exit or staging gate is not accepted review.
 Failed/missing reviewers leave incomplete evidence and never downgrade required review. The public
-path does not use the former batch/Graph wrapper. Issue solving temporarily retains its explicitly
-internal legacy verification path until its next migration; public failures never fall back to it.
+path does not use the former batch/Graph wrapper. Issue solving flattens fresh Issue-specific and ordinary native reviewer calls into its own bounded
+workflow. No public or Issue-internal failure falls back to legacy review/worker/batch execution.
 
 A review of yesterday's code cannot establish today's changed revision. Binding results to current
 inputs supports exact-intent reuse by composing graphs and fresh standalone review. Each reviewer
@@ -104,7 +104,7 @@ flowchart TB
 
 <a id="entity.review.harness"></a><a id="agreement.document.review.module.2"></a>
 
-Run independent fresh Spec or code reviewers with read-only grants and no author conversation, network or credentials.
+Run independent fresh native Spec or code reviewers without author conversation or shell/write/edit/delegation tools. Their file/network/credential exclusions are prompt-level policy; fixed Host checks retain their separate actual isolation.
 
 This collaboration applies before each selected review mode and target is invoked, including recorded component reviews.
 

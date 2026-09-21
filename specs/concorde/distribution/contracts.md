@@ -65,9 +65,9 @@ The resolver (`resolve_model_instructions`, `resolve_role_prompt`, `resolve_oper
 audience/layering rules, and detects unreachable or diamond-included sources; `resolve_model_instructions`
 additionally rejects an Agent Spec that carries front matter. `package_validation` attributes its
 findings to `module.distribution` and requires exactly one registered `concorde-operations` block
-across all Module documents, equal to the single code inventory of Operations, including State,
-USES, the public `EXTERNAL_NAME` as `public_name` (null for private Operations), and optional model
-execution profiles; no parallel Agent inventory is required. The retired `skill` metadata field
+across all Module documents, equal to the typed code inventory of capabilities and canonical Agents, including kind, nullable State,
+USES, the public `EXTERNAL_NAME` as `public_name` (null for private Agents), and profile. Agents have
+no Python State/run aliases; no separate `concorde.agents` metadata extension is required. The retired `skill` metadata field
 is rejected rather than aliased. Guidance membership is checked independently and must match
 each public external name exactly once. These metadata edits leave wire versions unchanged.
 
@@ -146,7 +146,7 @@ above and no `kind`. A saved old wrapper is not an admitted instruction record a
 reloaded from a fresh build, not reinterpreted by dropping or renaming its discriminator.
 There is no instruction-wrapper deserialization API. The independently serialized `WorkerBinding`
 retains all of its fields and digest meanings below; public request/result wire versions, Pi
-catalog schema 1 and build-manifest schema 1 are unchanged. Changed source/build bytes still
+catalog schema 2 includes executable kind, while build-manifest schema 1 is unchanged. Changed source/build bytes still
 invalidate bindings and dependent review evidence.
 
 `WorkerBinding` has string fields `agent`, `spec_path`, `spec_digest`, `instructions_path`,
@@ -216,8 +216,7 @@ field alias. Without an ownership receipt an old marker does not authorize delet
 may still enter an owner-concorde environment for the installer's runtime checks; that locator
 check is not schema-4 verification or permission to skip provisioning. The returned receipt runtime
 object uses `verified_operations`; installation receipt schema 2 otherwise remains unchanged.
-Pi catalog and build-manifest schema 1 remain unchanged because their existing fields retain their
-meanings. Wire contracts, Profile, providers, credentials and runtime dependency pins are unchanged.
+The Pi catalog is schema 2 with explicit capability kind; the build manifest remains schema 1. Wire contracts, Profile, providers, credentials and runtime dependency pins are unchanged.
 
 ## Private session selection
 
@@ -389,3 +388,30 @@ have no private Python model-operation run aliases. Optional StateGraph Operatio
 selected. Old schema1 session entries require rebuild/reselection; stale private selection is not
 silently upgraded. Native and compatibility rendered Agent paths contain the same canonical native
 instruction bytes. Installed LangGraph dependency health remains required even when execution is native.
+
+
+### Source-private to installed-output test handoff
+
+A source-private selection attests only its exact candidate paths. Inheriting it into a newly
+installed launcher is expected to fail even when installation bytes were generated correctly; it
+must not be relaxed to attest another path. Source-only fixture helper `install_selected_fixture`
+uses existing package admission, the supported installer and complete local installation verification
+without introducing a production selection mode.
+
+The caller supplies the still-active exact source test selection and a fresh canonical destination
+strictly within issued tester scratch. The parent verifies the source selection/build and admitted
+package identity. Only installer and installed verification/execution subprocesses use a copied
+environment separating source-private selection/binding, private data redirect and source Python
+import overrides. Other environment and binding namespaces remain unchanged; no global setting or
+parent environment is modified. Governing source selection stays active and is reverified after
+installation. The installed managed interpreter verifies its own receipt-owned package against the
+admitted source identity and observes its exact prefix. No copied assets or source/global runtime
+substitute for this installation.
+
+A bounded mode-0600 scratch record binds source selection/build, package identity, external target,
+installed entry/catalog/launcher/build digests, receipt/runtime identity and managed interpreter.
+This is installation-output provenance, not evidence of a model run or permission to write the
+source. Subsequent explicitly granted installed fixture execution uses those exact paths and the
+locally separated environment while the caller keeps source and installed bytes quiescent. A stale
+source, nonempty/aliased/out-of-scratch target or mismatched installed identity refuses. No installer
+or source-selection validation is patched. This source test recipe is not distributed to consumers.

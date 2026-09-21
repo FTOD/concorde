@@ -36,12 +36,16 @@ access is not an automatic recovery strategy.
 
 ## Know the enforcement limit
 
-The worker's tool gate enforces its tool and path policy inside the agent process, and the worker
-sandbox enforces the same grant on the process itself, so a shell command cannot write outside the
-grant or read the developer's secrets. **The sandbox does not restrict the network and masks a
-fixed list of secret locations.** Configured deterministic checks use a separate boundary of the
-same kind. [Execution](execution.md) explains these limits and supported platforms. Exact policy
-records and permission compilation interfaces are in Implementation Specs.
+Native tool/delegation ceilings are enforced, but native file/network/credential exclusions are
+prompt-level policy. A native programmer's shell is not OS-confined to the declared file grant;
+a native reviewer's lack of write/edit/shell tools does not establish exclusive reads.
+
+The retained low-level RPC diagnostic/test utilities separately enforce a tool/path gate and a
+Linux worker sandbox. Their fixed secret masks and shared network are not a universal secrets or
+network boundary, and they are never a fallback for native execution. Configured checks and tester
+commands use an actual OS read-only governing-filesystem boundary and issued writable scratch,
+without a finer read/network/credential policy. [Execution](execution.md) explains these separate
+surfaces and their failure behavior.
 
 ## Precise specifications
 

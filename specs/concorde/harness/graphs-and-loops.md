@@ -35,8 +35,9 @@ model recommendation cannot stand in for required human approval.
 
 ## Why executable graphs are inspectable
 
-Concorde declares control flow through LangGraph, so the runtime and Studio can inspect the same
-nodes and transitions. The conceptual sequence above helps explain the design; the exact executable
+Explicitly selected StateGraph Operations declare their own control flow through LangGraph, so
+execution and Studio inspect the same nodes and transitions. Public cognitive capabilities instead
+use authored native pi-subagents workflows; Studio does not mirror those workflows. The conceptual sequence above helps explain the design; the exact executable
 node names, state channels, branching and limits are maintained once in Implementation Specs.
 A matching diagram proves agreement with the compiled topology, not that every decision is correct.
 
@@ -59,9 +60,10 @@ it again. A Graph Spec answers three questions in LangGraph's own terms:
   State channel the node wrote, or the node itself names its successor. The diagram labels every
   branch with the condition that selects it.
 
-For example, the admission Graph checks a request, workspace and configuration before dispatch.
-Its conditional edges send a failed check directly to finalization. A reader can inspect that
-actual stopping behavior without mistaking the caller's broader task sequence for a built-in graph.
+For example, the optional terminal Agent Operation validates typed input, invokes its explicitly
+supplied trusted native service and validates the result. Its real graph is inspectable; the default
+Studio export refuses execution without that service. Finite admission and native capability
+workflows are not additional graph nodes hidden behind this view.
 
 ## Precise specifications
 

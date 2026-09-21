@@ -1,7 +1,7 @@
 # Operations, workers and their environment
 
-An Operation is executable behavior with a complete contract; a worker is one fresh agent
-execution used by a model-backed Operation. The [Harness Module](module.md) prepares that execution
+An Agent is a callable native Pi role; a worker is one fresh bounded role execution. Native Workflows
+order Agent calls; an Operation is a separately selected typed StateGraph boundary. The [Harness Module](module.md) prepares that execution
 and checks its result. This distinction lets a graph
 combine ordinary code and model work without treating a model's answer as permission to act.
 
@@ -34,7 +34,8 @@ may read or change. The host checks both the declared maximum permissions and th
 allowed scope before launch, then rejects a result that does not match the job.
 
 Workers are terminal nodes: they do their own admitted work, never delegate or recursively call
-Operations. LangGraph and the host own scheduling. Outer task-session delegation limits do not
+capabilities. Authored native workflows own their model ordering; optional StateGraphs own only
+their explicitly selected composition. Outer task-session delegation limits do not
 become cross-runtime depth requirements for these leaves.
 
 ## Read next

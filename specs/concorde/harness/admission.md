@@ -35,15 +35,13 @@ catalog of Operations and the dispatch this admission hands each request to.
 
 ## Operation execution boundary
 
-An Operation is a State-based LangGraph node under the Operation and Harness contract supplied by
-the [Harness Module](module.md). Each
-registered entry declares its State, USES and optional model execution profile. Existing host
-adapters additionally retain versioned request/response transport contracts; model-only nodes do
-not acquire new wire envelopes. The Pi catalog exposes exactly the eleven public Operations.
-Non-public Operations have no Pi catalog or direct launcher entry. Every external request passes
-through this admission boundary. The [operation catalog](../operations/execution-reference.md#operations-operation-registry)
-names every Operation; exact wire schemas are code, exported by the build for runtime/API use,
-and this document states their promises.
+The typed inventory separates canonical native Agents, authored native Workflows, finite Host
+services and explicitly selected StateGraph Operations. Public capability modules retain versioned
+request/response wire adapters; their State-shaped compatibility records do not make public native
+execution a Graph. Canonical Agents have profiles but no private Python State/run aliases. The Pi
+catalog exposes eleven compatibility public capability names. Every external request crosses this
+admission boundary; the [typed catalog](../operations/execution-reference.md#operations-operation-registry)
+names these entries and their execution kinds. Exact wire schemas remain exported code contracts.
 
 Executable entry: `python3 scripts/run-operation.py <operation-name>`, no task command-line arguments.
 In an installed project the launcher first re-executes itself inside the managed runtime, as the
@@ -134,8 +132,9 @@ The host resolves the complete selected owned and directly referenced Specs and 
 Spec-only agents, including Spec reviewers, start in a private capsule containing only frozen input.
 Implementation workers receive the complete Module context plus the contents of its own listed implementation files. Planners and task authors already see those file names through the Module's entity declarations, but receive no file contents. Code reviewers
 use a distinct read-only implementation role with only the current listed implementation files. Every
-worker is a fresh Pi process whose tool calls are gated to its grant; no worker receives network or
-credential effects, and writes are restricted by phase. Executor outcomes must match invocation,
+native Agent is a fresh Pi session with enforced terminal tool/delegation ceilings. Intended file,
+network and credential exclusions are prompt-level policy, not OS confinement or proof of exclusive
+reads; the programmer's native shell is not confined by the historical RPC sandbox. Executor outcomes must match invocation,
 binding and context identities. No ambient conversation or predecessor transcript is admitted.
 
 No public Operation returns context manifests; context resolution is host-internal and
@@ -313,7 +312,7 @@ context forms; package/schema alignment checks verify those identities.
 | `limit_exhausted`              | `OperationExecutionError.outcome` when a worker ran past its timeout; the host maps this to the `execution_limit` result error code.                                                                                                                  |
 | `merge_conflict`               | Integration conflicts with the primary branch. Resolve and revalidate in the candidate worktree, or a new candidate if delivery already removed the source.                                                                                           |
 | `missing_change`               | A requested existing change or task authoring has no managed change in the current worktree.                                                                                                                                                          |
-| `native_required`              | Public context assessment requires its prepared native Pi Agent and independent Host acceptance; bare CLI/Studio execution has no model-worker fallback.                                                                                              |
+| `native_required`              | Public cognitive capabilities require their prepared native Pi Agent/workflow and independent Host acceptance; bare CLI/Studio execution has no model-worker fallback.                                                                                              |
 | `missing_runtime`              | The launcher's interpreter cannot import LangGraph and no verified managed runtime exists beside the installed framework to switch into; provision it with the installer, or give the source checkout its locked environment.                         |
 | `missing_plan`                 | Task authoring was requested without an authored plan.                                                                                                                                                                                                |
 | `missing_tasks`                | Implementation was requested without authored tasks.                                                                                                                                                                                                  |
@@ -455,17 +454,11 @@ a task-supplied node list or model workflow, and launches no model. `InvocationR
 trusted Host context for these State-shaped calls without importing LangGraph. Shared wire versions,
 atomic stores, current-input checks, repository locks and result distinctions are unchanged.
 
-The retained Graphs below remain executable Studio/State-node adapters and the existing model-backed
-local entry path, not evidence that normal deterministic calls traversed a Graph. Public context-solve, plan and tasks instead use finite native preparation and acceptance with a real Pi Agent;
-other model-backed public behavior retains its current backend. Bare CLI/Studio context execution
-without native transport refuses rather than falling back to a hidden worker.
-
-For model-backed local entries and explicitly selected Studio execution, the admission Graph runs
-the invocation, admitted or not, around the Operations
-[dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph).
-It follows the [Graph Spec convention](execution-reference.md#graphs-and-loops-graph-specs): its
-State, Nodes and Edges are stated in turn, and its diagram is bound to the compiled Graph by
-`%% graph:` and kept equal to it by the configured Graph Spec check.
+All public cognitive entries use finite native preparation/admission and actual native Agents or
+authored workflows, including implementation, scoped reviews and Issue solving. Bare public Python
+execution without the native transport refuses, never selects a legacy worker or Graph fallback.
+The former admission Graph below is a retained anchor only. The optional StateGraph Operation and
+its Studio inspection are separately selected through the explicit Harness API.
 
 ### Operation admission Graph (`operation_graph`) {#graphs-operation-admission-graph-operation-graph}
 

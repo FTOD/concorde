@@ -46,8 +46,11 @@
         "src/concorde/distribution/local_installation.py",
         "src/concorde/spec/project.py",
         "tests/concorde/distribution/",
+        "tests/concorde/distribution/installed_output_probe.py",
+        "tests/concorde/distribution/test_install_output_handoff.py",
         "tests/concorde/distribution/test_local_installation.py",
-        "tests/concorde/harness/test_host_tools.py"
+        "tests/concorde/harness/test_host_tools.py",
+        "tests/concorde/support/install_output_handoff.py"
       ],
       "meaning": "#entity.distribution.installation"
     },
