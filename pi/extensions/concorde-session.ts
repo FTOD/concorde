@@ -59,7 +59,7 @@ export interface SessionCatalog {
 
 interface ToolParameters {
 	operation: string;
-	action: "run" | "describe";
+	action: "run" | "describe" | "result";
 	input?: Record<string, unknown>;
 	mode?: "execute" | "describe-policy";
 }
@@ -94,9 +94,9 @@ export function sessionPrompt(catalog: SessionCatalog): string {
 	}
 	lines.push(
 		"",
-		"Exception: concorde-context-solve action run PREPARES a native context-assessor. " +
-			"Call subagent with its exact returned call object; only details.concorde_context.accepted " +
-			"after independent Host reconciliation means acceptance. Native structured output and gate success are proposals/staging only.",
+		"Context-solve/tasks action run PREPARES an exact native Agent call; plan PREPARES a named async native workflow. " +
+			"Call subagent with its exact returned call object. Direct Agent results expose details.concorde_native.accepted; plan action result exposes details.accepted " +
+			"after independent Host reconciliation means acceptance. Poll plan with action result. Native structured output and gate success are proposals/staging only.",
 	);
 	lines.push("", "Operations:");
 	for (const operation of catalog.operations) {
@@ -348,7 +348,7 @@ export function concordeSession(
 			description:
 				'Run a public Concorde Operation or describe one. Action "describe" returns the ' +
 				'Operation\'s guidance and the JSON Schema of its request. Action "run" sends `input`, ' +
-				"the request data, to the Operation and returns its typed result envelope. Context-solve instead prepares the exact native subagent call; invoke that call and inspect concorde_context.accepted. `mode` " +
+				"the request data, to the Operation and returns its typed result envelope. Context-solve/tasks prepare exact native Agent calls; plan prepares an async native workflow and exposes action result. Inspect Host accepted plus the typed business outcome, not proposals or launch receipts. `mode` " +
 				'"describe-policy" previews the context and permissions an execute run would use ' +
 				"without running an agent. A run may take a long time and blocks this turn; aborting " +
 				"it cancels the running worker. Results larger than 48 KiB are saved to a file.",
@@ -363,7 +363,7 @@ export function concordeSession(
 					},
 					action: {
 						type: "string",
-						enum: ["run", "describe"],
+						enum: ["run", "describe", "result"],
 						description: "describe the Operation, or run it with `input`.",
 					},
 					input: {
@@ -410,6 +410,17 @@ export function concordeSession(
 						},
 					};
 				}
+				if (params.action === "result") {
+					if (operation.name !== "concorde-plan")
+						throw new Error(
+							"Result polling is only for the native planning workflow",
+						);
+					const value = await prepareContext.result();
+					return {
+						content: [{ type: "text", text: JSON.stringify(value) }],
+						details: value,
+					};
+				}
 				const input = params.input;
 				if (
 					input === undefined ||
@@ -433,7 +444,13 @@ export function concordeSession(
 						data: input,
 					},
 				};
-				if (operation.name === "concorde-context-solve") {
+				if (
+					[
+						"concorde-context-solve",
+						"concorde-plan",
+						"concorde-tasks",
+					].includes(operation.name)
+				) {
 					const value = await prepareContext(envelope, ctx, signal);
 					if (value.state === "rejected")
 						throw new Error(JSON.stringify(value));

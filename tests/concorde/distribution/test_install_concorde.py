@@ -135,6 +135,12 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(".concorde/framework/pi/package-lock.json", outputs)
         for relative in (
             "generated/native/context-assessor.md",
+            "generated/native/planner.md",
+            "generated/native/task-author.md",
+            "pi/workflows/plan.js",
+            "pi/native-plan-host.mjs",
+            "pi/native-preflight.ts",
+            "pi/extensions/concorde-native-plan.ts",
             "prompts/native/context-assessor.md",
             "pi/extensions/concorde-native-context.ts",
             "pi/extensions/concorde-native-child.ts",

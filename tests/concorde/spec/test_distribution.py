@@ -185,7 +185,7 @@ helper.PACKAGE=framework
 from concorde.spec.typed_data import typed
 helper.project(root)
 from concorde.harness.admission import run_operation
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 import concorde.harness.admission as actual_host
 model=helper.ModelProcessDouble();host=OperationHost(root,framework,executor=model.executor,allow_primary_worktree=True)
 task={'target_id':'service.transfer','task':'Implement transfer'}
@@ -235,7 +235,7 @@ print(json.dumps({'result':result,'outputs':outputs,'module_source':actual_host.
 
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
         from concorde.harness.admission import run_operation
-        from concorde.harness.host import OperationHost
+        from tests.concorde.support.native_planning import OperationHost
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -1,13 +1,13 @@
 /** One prepared, foreground native context-assessor; no workflow or model scheduler. */
-import { createRequire } from "node:module";
-import * as path from "node:path";
+import { nativePreflight } from "../native-preflight.ts";
+import { nativePlan } from "./concorde-native-plan.ts";
 import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { nativeCommand, type NativeBinding } from "./concorde-native-child.ts";
 
-const AGENT = "concorde-context-assessor";
+const AGENTS = new Set(["concorde-context-assessor", "concorde-task-author"]);
 function canonical(value: any): string {
 	if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
 	if (value && typeof value === "object")
@@ -33,16 +33,22 @@ export function nativeContext(
 	},
 ) {
 	let pending: any;
+	let planning: Awaited<ReturnType<typeof nativePlan>> | undefined;
 	let preparing = false;
 	let active: { id: string; session: string; digest: string } | undefined;
-	const binding = (): NativeBinding => ({
-		argv: [options.python, options.launcher, "--native-context"],
-		descriptor: pending.descriptor,
-		digest: pending.digest,
-		root: options.root,
-	});
+	const binding = (): NativeBinding =>
+		pending.binding ?? {
+			argv: [options.python, options.launcher, "--native-context"],
+			descriptor: pending.descriptor,
+			digest: pending.digest,
+			root: options.root,
+		};
 	pi.on("tool_call", async (event, ctx) => {
-		if (event.toolName !== "subagent" || (event.input as any).agent !== AGENT)
+		if (planning?.matches(event)) return planning.before(event);
+		if (
+			event.toolName !== "subagent" ||
+			!AGENTS.has((event.input as any).agent)
+		)
 			return;
 		let reserved = false;
 		try {
@@ -70,58 +76,15 @@ export function nativeContext(
 					"Set CONCORDE_NATIVE_SUBAGENTS_ROOT to the selected native installation",
 				);
 			// Resolve the documented export, not an installed private implementation path.
-			const require = createRequire(path.join(root, "package.json"));
-			const { resolveSubagentLaunchContract } = await import(
-				require.resolve("pi-subagents/preflight")
-			);
-			const preflight = await resolveSubagentLaunchContract({
-				...pending.call,
+			const contract = await nativePreflight(root, pending.call, {
 				availableModels: ctx.modelRegistry.getAvailable(),
 				parentSessionId: ctx.sessionManager.getSessionId(),
 				parentSessionFile: ctx.sessionManager.getSessionFile(),
 			});
-			if (!preflight.ok) throw new Error(preflight.message);
-			if (
-				preflight.contract.agent.source !== "project" ||
-				preflight.contract.agent.filePath !==
-					path.join(pending.call.cwd, ".pi/agents/" + AGENT + ".md") ||
-				!preflight.contract.tools.disableAmbientExtensions ||
-				preflight.contract.tools.fanoutAuthorized
-			)
-				throw new Error(
-					"Native Agent discovery did not resolve the exact capsule role",
-				);
-			const allowed = [
-				"read",
-				"grep",
-				"find",
-				"ls",
-				"report_issue",
-				"structured_output",
-			];
-			if (
-				preflight.contract.tools.effectiveAllowlist.some(
-					(tool: string) => !allowed.includes(tool),
-				)
-			)
-				throw new Error(
-					"Native assessor launch exceeds its terminal read policy",
-				);
-			if (
-				preflight.contract.context !== "fresh" ||
-				preflight.contract.inheritProjectContext ||
-				preflight.contract.inheritGlobalContext ||
-				preflight.contract.inheritSkills ||
-				preflight.contract.skills.resolved.length ||
-				preflight.contract.intercomBridge.active
-			)
-				throw new Error(
-					"Native assessor inherited ungranted context or Skills",
-				);
 			active = {
 				id: event.toolCallId,
 				session: ctx.sessionManager.getSessionId(),
-				digest: preflight.contract.launchContractDigest,
+				digest: contract.launchContractDigest,
 			};
 		} catch (error) {
 			if (reserved && active?.id === event.toolCallId) active = undefined;
@@ -129,6 +92,7 @@ export function nativeContext(
 		}
 	});
 	pi.on("tool_result", async (event, ctx) => {
+		if (planning?.matches(event)) return planning.after(event);
 		if (
 			event.toolName !== "subagent" ||
 			!active ||
@@ -219,11 +183,16 @@ export function nativeContext(
 		}
 		return {
 			content: [{ type: "text", text: JSON.stringify(value) }],
-			details: { ...(event.details as any), concorde_context: value },
+			details: {
+				...(event.details as any),
+				concorde_context: value,
+				concorde_native: value,
+			},
 			isError: !value.accepted,
 		};
 	});
 	pi.on("session_shutdown", async () => {
+		await planning?.dispose();
 		if (pending) {
 			try {
 				await nativeCommand(binding(), "invalidate", {});
@@ -232,7 +201,7 @@ export function nativeContext(
 		pending = undefined;
 		active = undefined;
 	});
-	return async (
+	const prepare = async (
 		invocation: unknown,
 		ctx: ExtensionContext,
 		signal?: AbortSignal,
@@ -241,6 +210,13 @@ export function nativeContext(
 			throw new Error(
 				"One native context assessment is still active; finish or cancel it before preparing another",
 			);
+		if (planning) {
+			const previous = await planning.result();
+			if (previous.native_state === "running")
+				throw new Error("Native planning workflow is still running");
+			await planning.dispose();
+			planning = undefined;
+		}
 		preparing = true;
 		try {
 			if (pending) {
@@ -255,9 +231,19 @@ export function nativeContext(
 					invocation,
 					native_root: nativeRoot,
 					session_id: ctx.sessionManager.getSessionId(),
+					native_session_id:
+						ctx.sessionManager.getSessionFile() ??
+						ctx.sessionManager.getSessionId(),
 				},
 				signal,
 			);
+			if (
+				value.state === "prepared" &&
+				(invocation as any).operation_id === "concorde-plan"
+			) {
+				planning = await nativePlan(pi, value, ctx, options.verify);
+				return planning.prepared;
+			}
 			if (value.state === "prepared") {
 				pending = value;
 			}
@@ -273,4 +259,8 @@ export function nativeContext(
 			preparing = false;
 		}
 	};
+	return Object.assign(prepare, {
+		result: async () =>
+			planning ? planning.result() : { state: "not-run", accepted: false },
+	});
 }

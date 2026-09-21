@@ -81,7 +81,7 @@ def run_operation(
         data = runtime_input.get("data") if isinstance(runtime_input, dict) else None
         action = data.get("action") if isinstance(data, dict) else None
         if (
-            operation == "concorde-context-solve"
+            operation in {"concorde-context-solve", "concorde-plan", "concorde-tasks"}
             or operation in DETERMINISTIC_OPERATIONS
             or (operation == "concorde-issues" and action != "solve")
         ):
@@ -163,6 +163,8 @@ def run_host_tool(nodes):
         "validate",
         "describe_policy",
         "context_solve",
+        "plan",
+        "tasks",
     }:
         state.update(nodes["dispatch/" + route](state))
     elif route != "__end__":
@@ -324,7 +326,10 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             record_progress = False
             return
         record_progress = (
-            mutation and operation != "concorde-deliver" and host.depth == 1
+            mutation
+            and operation != "concorde-deliver"
+            and host.depth == 1
+            and not host.native_transport
         )
         if mutation and operation != "concorde-deliver":
             change = read_change(host.project_root)

@@ -16,7 +16,7 @@ from concorde.harness.change_worktree import (
     read_change,
     save_change,
 )
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 from concorde.harness.invocation import Invocation
 from concorde.harness.permissions import PermissionPolicyError
 from concorde.review.review import current, inputs

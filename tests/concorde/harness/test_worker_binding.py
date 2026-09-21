@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from concorde.harness import invocation
 from concorde.harness.invocation import Invocation
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.change_worktree import read_change
 from concorde.harness.pi_worker import WorkerExecutionError

@@ -476,7 +476,7 @@ class WireHelperBuildTests(unittest.TestCase):
                 # The fixture is this invocation's package root: a top-level model-backed
                 # operation verifies the fixture build before admitting anything else.
                 from concorde.harness.admission import run_operation
-                from concorde.harness.host import OperationHost
+                from tests.concorde.support.native_planning import OperationHost
                 from concorde.spec.typed_data import typed
 
                 def launched(launch):

@@ -9,6 +9,7 @@
     "src/agents/agent-scope.ts": "sha256:22b567ec03196e4f4007957a62ad5b2456154a471786442e24538a997090da0f",
     "src/agents/agents.ts": "sha256:4090ee9642bb70c512c081d76129088e28de35a86ecfd1fedb31974ac5aa77be",
     "src/api/preflight.ts": "sha256:33271ee74babfff8da4a511d953fd10cc21ea446144371080d4999cab6413d7d",
+    "src/api/workflow-resources.ts": "sha256:e1fe3d14ddfcd296c32dbe171be6397d7f7d282a5c084b9a47c5d12f460e0cf3",
     "src/runs/background/async-execution.ts": "sha256:b3870b8728828840345008704f9ddcaf1dfab1461e397f28924f75affb168587",
     "src/runs/background/subagent-runner.ts": "sha256:71c441e27c0eb865d4213926d1e47e09a5b48764b3b0ad173d215c6aac68937a",
     "src/runs/foreground/execution.ts": "sha256:dee6928518370d7a3bbce3cdfa5a72ae0d45100f26fa3fdadc9b0ca6a151daa5",
@@ -28,6 +29,7 @@
     "src/shared/types.ts": "sha256:6dbc55c3674053839311bf725f72d5ae2ed54ca77b9c3071beec6e992a08ade2",
     "src/workflows/host-command.ts": "sha256:74aa9dcc29ec66f92cb9b419bb8c57d154cffa2b0bdd5aef6489baae72c56c6e",
     "src/workflows/scripted-workflow.ts": "sha256:2e8556d0b5c1e5b3ed62cf72235b778194a584e0d12c750fc31979f549c545b9",
-    "src/workflows/workflow-child-summary.ts": "sha256:134a7630fdc44a47c101240dab4f4a3f8616a9cc5379916a4fea4ee95c232351"
+    "src/workflows/workflow-child-summary.ts": "sha256:134a7630fdc44a47c101240dab4f4a3f8616a9cc5379916a4fea4ee95c232351",
+    "src/workflows/workflow-resources.ts": "sha256:fc50c4fae51711bb6aebb6ff5132c273c839d5eced9ae95e779c8aff0510ee21"
   }
 }

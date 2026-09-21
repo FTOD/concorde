@@ -90,8 +90,8 @@ require Graph compilation; complete installed-runtime verification remains manda
 Build and package validation SHALL check the complete Pi catalog's descriptions, guidance, request schemas and output/source identities against the authored public Operation inventory.
 
 Eleven public entry names and seven legacy terminal worker renderings remain, plus the separately
-rendered native context-assessor instructions. Public context-solve prepares a supported native Agent
-call and verifies its result; it must not silently execute the legacy worker. Internal instructions are
+rendered native assessor, planner and task-author instructions and authored planning workflow. Public context-solve/tasks prepare supported native Agent calls; plan prepares a registered native
+workflow and exposes result polling. Their Host acceptance verifies native completion; it must not silently execute the legacy worker. Internal instructions are
 not Skills. Missing or drifted output fails checking; `build` regenerates from authored inputs.
 
 ### req.distribution.pi-only-install — Installation supports only Pi

@@ -69,6 +69,8 @@ def _prompt_roots(root: Path) -> tuple[str, ...]:
         + (
             build.WORKER_RULES,
             "prompts/native/context-assessor.md",
+            "prompts/native/planner.md",
+            "prompts/native/task-author.md",
             "prompts/protocol/principles.md",
         )
         + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS)

@@ -41,19 +41,17 @@ neither implements work nor marks a candidate ready.
 
 <a id="entity.planning.adapter"></a><a id="entity.planning.assessment"></a><a id="entity.planning.plan"></a><a id="entity.planning.tasks"></a>
 
-The [planning Graph](execution-reference.md#plan-planning-graph-plan-graph) checks local dependency declarations before
+The [native planning workflow](execution-reference.md#plan-planning-graph-plan-graph) checks local dependency declarations before
 context assessment, admits a planner only after sufficiency, and persists a nonempty revision-bound
 plan before tasks can be authored. The host then supplies reserved historical IDs and validates new
 incomplete tasks before replacing accepted state. Separate artifacts prevent planning from being
 mistaken for implementation completion or a later readiness decision.
 
-The three Operations run differently. `plan` is that Graph: its `assess_context` node runs the
-context-assessor worker, its `author_plan` node runs the planner worker, and its deterministic
-`persist_plan` node stores the plan; each worker runs as an
-[Operation node](../harness/execution-reference.md#host-operation-node-operation-node). `tasks` is
-a single node: one task-author worker followed by the host's admission of the returned list.
-`context-solve` is also a single node: the same context-assessor assessment, returned on its own
-without a plan.
+Public plan is a native two-Agent workflow: an independently accepted sufficient assessment
+admits a fresh planner, and a finite Host service persists its accepted plan. Tasks and context-solve
+are direct native Agent calls with independent Host acceptance. None of these paths compiles a
+LangGraph or launches a hidden Pi-RPC model worker. The former planning Graph is retired rather
+than retained as a parallel backend. Other capabilities keep their existing graph implementations.
 
 Each non-code worker has a fresh complete Spec context without source contents. Dependency tasks
 name declared children or used Modules; separately admitted component work, not a wider planner
@@ -67,7 +65,7 @@ task authoring is a separate Operation that consumes that current plan. This sep
 an attractive plan from disguising missing behavior or being mistaken for completed code.
 
 For the planning node inputs/outputs, State channels and exact stop conditions, open the
-[full Planning Graph Spec](execution-reference.md#plan-planning-graph-plan-graph).
+[full Native planning workflow Spec](execution-reference.md#plan-planning-graph-plan-graph).
 The [task-authoring explanation](tasks.md) covers the separate next Operation.
 
 ```mermaid

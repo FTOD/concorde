@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.change_worktree import (
     ensure_change,

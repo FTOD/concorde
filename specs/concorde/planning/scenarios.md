@@ -127,3 +127,16 @@ The independent contracts are [Assessment](assessment.md), [Plan](plan.md) and [
 - THEN the host accepts only new incomplete tasks and retains the prior list in history without weakening software acceptance
 - AND a stale Spec or plan, mismatched list digest, completed replacement or reserved-ID collision is rejected without replacing the accepted list or history
 - AND implementation, configured checks and required independent review remain separately selected responsibilities
+
+### scenario.planning.native-plan-tasks — Native plan and task authoring retain domain gates
+
+- GIVEN a managed selected Module with exact current intent and any required Spec review
+- WHEN main invokes the prepared native planning workflow and then its direct task-author call
+- THEN separate fresh assessor/planner/task-author executions retain complete scoped inputs and no implementation contents
+- AND only sufficient independently accepted assessment launches the planner
+- AND stage-only success after native failure never permits a dependent launch or persistence
+- AND valid nonempty plan/tasks persist in the candidate with true primary-owned evidence/status
+- AND empty output, duplicate/reserved task IDs, stale Spec/metadata/intent/plan or mismatched repair feedback cannot replace accepted artifacts
+- AND cancellation stops unsettled acceptance while prior accepted artifacts remain inspectable
+- AND scoped external references are delivered and rechecked without admitting unrelated references
+- AND no Graph or hidden Pi-RPC model worker runs on these public paths

@@ -70,7 +70,11 @@
       "files": [
         "pi/extensions/concorde-native-child.ts",
         "pi/extensions/concorde-native-context.ts",
+        "pi/extensions/concorde-native-plan.ts",
         "pi/extensions/concorde-session.ts",
+        "pi/native-plan-host.mjs",
+        "pi/native-preflight.ts",
+        "pi/workflows/plan.js",
         "tests/concorde/distribution/test_pi_session.py",
         "tests/concorde/support/fake_launcher.py",
         "tests/concorde/support/outer_agents_preflight.mjs",

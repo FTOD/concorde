@@ -1266,3 +1266,36 @@ The private candidate entry may use `CONCORDE_NATIVE_PROJECT_ROOT` for explicitl
 consumer data only when exact private test selection is present. Candidate entry/catalog/runtime
 remain pinned; existing sibling-worktree and maintenance-session refusals still apply. Installed
 consumer entries use their project root and their receipt-owned native instruction assets.
+
+### Native planning and task-author services
+
+The same finite descriptor/capture/admission machinery serves context-assessor, planner and task-author.
+Each descriptor binds operation, phase, role, actual project/candidate, runtime and Python, complete
+snapshot, delivered file hashes and exact launch schema/options. Planner/task-author receive only
+scoped declared external references, never project implementation contents. Task preparation and
+acceptance share the domain predicates for current plan, reserved IDs and explicit repair feedback.
+A mutated/empty/duplicate/reserved or stale result cannot overwrite accepted state.
+
+The [authored native planning workflow](../planning/execution-reference.md#plan-planning-graph-plan-graph)
+uses three fixed Host steps; these commands cannot start a model. Supported public preflight is shared
+between direct calls and finite workflow preparation. Child gates stage only. Workflow emissions
+carry actual native result identities/paths, not authority or model prose; independent status/metadata
+reconciliation requires exact expected child coverage. Each child may have a separate issued gate
+ticket, distinct from its parent workflow ticket. The native saved proposal must match captured bytes.
+The fixed Host command's code/runtime and descriptor are candidate-bound, and slot locks never span
+model execution. Parent launch binding is written atomically before the first Host step can advance.
+
+Common admission may bind/reuse a managed candidate and relay finite preparation to its verified
+local runtime. Explicit private testing instead keeps the selected source runtime against granted
+fixture data. Result binding names the actual runtime/project separately from native capsule cwd;
+there is no silent primary/global runtime fallback. Run-list/revision bookkeeping alone is not a
+semantic input change; intent, ownership, lifecycle and target state remain currentness inputs.
+
+Native transport preparation/capture/staging does not claim a finished lifecycle outcome. Accepted
+business blockers use ordinary failed-operation lifecycle handling. A failed/stopped planning workflow
+records a blocked execution outcome only while its frozen semantic candidate state still matches;
+a stale result poll never overwrites newer work.
+
+Planning Host-step stdout carries only bounded readiness/acceptance control and the prepared next
+call. Full business responses stay in the Host receipt and are retrieved through result polling;
+large model answers cannot be truncated into a successful Host-step control document.

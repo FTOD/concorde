@@ -99,7 +99,10 @@ An Agent is a callable native Pi role; deterministic Host services need no model
 The public context-assessment entry prepares a native context-assessor invocation, then independently
 admits its result. A returned model proposal or passing staging gate is not accepted completion.
 Its file scope is prompt-level policy, not OS confinement; no claim of exclusive reads follows from
-context delivery or digest checks. Other model capabilities retain their current Graph backend.
+context delivery or digest checks. Plan uses an authored native pi-subagents workflow with fresh assessor then planner and finite
+Host acceptance steps; tasks use a direct native task-author consuming a current accepted plan.
+Their read policies are likewise prompt-level. Programmer, reviews and Issue solving retain their
+current Graph backend.
 Each Graph-bound Operation declares input State, output
 State updates, effects, use conditions, execution policy and a permission ceiling. A caller can use
 it as a LangGraph node without reconstructing its context policy, permission boundaries, model
@@ -118,14 +121,14 @@ these are not separate entity kinds. Composition produces another Operation. The
 chooses which public Operations to invoke and in what order; no development or Spec-authoring
 orchestrator is supplied. Operation composition uses one explicit USES relation, distinct from Module
 ownership and the explicit references selecting context.
-Legacy Graph workers retain their execution profiles. Native context-assessor instructions, tools
-and limits instead configure its actual Pi Agent definition, projected from the same authored role.
+Legacy Graph workers retain their execution profiles. Native assessor, planner and task-author instructions, tools
+and limits instead configure actual Pi Agent definitions, projected from their authored roles.
 The same graphs are the inspectable Studio surface. Deterministic Host tools—initialization,
 configuration, validation, delivery and Issue listing/showing/reporting/reopening—use direct
 admission and dispatch in ordinary local Pi/CLI calls, without compiling a Graph. Their explicit
 Studio and State-node adapters remain supported graph executions; those views do not establish
-that a normal Host-tool call traversed a Graph. Model-backed entries other than public context-solve retain their existing
-Graph execution. Public context-solve does not use a Graph or hidden Pi-RPC worker; unsupported
+that a normal Host-tool call traversed a Graph. Model-backed entries other than public context-solve, plan and tasks retain their existing
+Graph execution. Public context-solve, plan and tasks do not use a Graph or hidden Pi-RPC worker; unsupported
 CLI/Studio execution without the native Pi boundary refuses rather than falling back. State channels carry data, not
 execution authority; runtime context and permission checks remain separate. Parent graphs define
 reducers for shared channels explicitly.

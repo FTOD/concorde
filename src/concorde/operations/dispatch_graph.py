@@ -26,7 +26,6 @@ SUBGRAPH_NODES = {
         "ready",
         "finish",
     ),
-    "plan": ("assess_context", "author_plan", "persist_plan"),
     "project": ("select_action", "configure", "propose", "apply"),
 }
 
@@ -52,12 +51,10 @@ def build_dispatch_graph(node_factory, *, operation=None):
 
     from ..harness.operation_graph import expose_stateless_subgraph
     from ..issues.graph import build_issue_graph
-    from ..planning.plan_graph import build_plan_graph
     from ..spec.project_graph import build_project_graph
     from .target_graph import build_target_graph
 
     factories = {
-        "plan": build_plan_graph,
         "project": build_project_graph,
         "issues": build_issue_graph,
         "prepare_target": build_target_graph,

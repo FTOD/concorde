@@ -14,10 +14,14 @@
         "operations/context_solve.py",
         "operations/plan.py",
         "operations/tasks.py",
+        "pi/workflows/plan.js",
         "src/concorde/planning/",
+        "tests/concorde/harness/native_planning_probe.mjs",
         "tests/concorde/harness/test_native_context_public.py",
+        "tests/concorde/harness/test_native_planning_public.py",
         "tests/concorde/operations/test_review.py",
-        "tests/concorde/operations/test_specify_loop.py"
+        "tests/concorde/operations/test_specify_loop.py",
+        "tests/concorde/support/native_planning.py"
       ],
       "meaning": "#entity.planning.adapter"
     },

@@ -10,7 +10,7 @@ from ..harness.change_worktree import bind_owner, read_change
 from ..harness.invocation import Invocation
 from ..harness.relay import relay_operation
 from ..implementation.implement import implement
-from ..planning.plan import context_solve, plan, plan_nodes
+from ..planning.plan import context_solve, plan
 from ..planning.tasks import tasks
 from ..spec.contracts import MODEL_STAGES, REVIEW_OPERATIONS
 from ..spec.project import project_nodes, project_operation
@@ -101,6 +101,11 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         return {"route": route}
 
     def describe_policy():
+        if (
+            operation in {"concorde-context-solve", "concorde-plan", "concorde-tasks"}
+            and host.native_assessment is not None
+        ):
+            return host.native_assessment(bound_run())
         if operation == "concorde-context-solve" and host.executor is None:
             if host.native_assessment is not None:
                 return host.native_assessment(bound_run())
@@ -153,8 +158,16 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         "project": project,
         "review": review,
         "describe_policy": describe_policy,
-        "plan": lambda: plan(bound_run()),
-        "tasks": lambda: tasks(bound_run()),
+        "plan": lambda: (
+            host.native_assessment(bound_run())
+            if host.native_assessment
+            else plan(bound_run())
+        ),
+        "tasks": lambda: (
+            host.native_assessment(bound_run())
+            if host.native_assessment
+            else tasks(bound_run())
+        ),
         "implement": lambda: implement(bound_run()),
         "validate": lambda: validate(bound_run(), task.get("run_checks", True)),
         "context_solve": lambda: context_solve(bound_run(), operation),
@@ -167,8 +180,6 @@ def dispatch_graph_nodes(operation, configuration, task, host):
                 subgraphs[name] = {"bind_target": bind_target}
             elif name == "project":
                 subgraphs[name] = project_nodes(operation, configuration, task, host)
-            elif name == "plan":
-                subgraphs[name] = plan_nodes(bound_run())
             elif name == "issues":
                 from ..issues.graph import issue_nodes
 

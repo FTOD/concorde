@@ -2,7 +2,6 @@
 
 import unittest
 
-from concorde.planning.plan_graph import build_plan_graph
 from concorde.harness.operation_node import OperationNode, state_schema, typed_state
 from concorde.harness.worker_profile import worker_profile
 from concorde.spec.typed_data import DATA_SCHEMAS, TypedDataError, typed
@@ -151,17 +150,10 @@ class OperationNodeTests(unittest.TestCase):
             node.graph().invoke(context["data"])
 
     @verifies("scenario.harness.agent-node", "scenario.harness.graph-inspection")
-    def test_plan_graph_exposes_its_worker_nodes_for_inspection(self):
-        graph = build_plan_graph(lambda name: lambda state: {})
-        drawing = graph.get_graph(xray=True)
-        names = set(drawing.nodes)
-        self.assertTrue(
-            any(name.endswith("author_plan:planner") for name in names), names
-        )
-        self.assertTrue(
-            any(name.endswith("assess_context:context_assessor") for name in names),
-            names,
-        )
+    def test_native_plan_has_no_shadow_graph(self):
+        from concorde.operations.graph_catalog import catalog
+
+        self.assertNotIn("plan_graph", catalog())
 
 
 if __name__ == "__main__":

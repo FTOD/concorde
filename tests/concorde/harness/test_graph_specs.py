@@ -292,7 +292,7 @@ class GraphSpecTests(unittest.TestCase):
         findings = graph_spec_findings(repository, limited)
         messages = [finding.message for finding in findings]
         self.assertTrue(
-            any("binds unknown Graph plan_graph" in message for message in messages),
+            any("binds unknown Graph issue_graph" in message for message in messages),
             messages,
         )
         self.assertFalse(any("has no Graph Spec" in message for message in messages))

@@ -183,8 +183,8 @@ use deterministic explicit target admission.
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `concorde-issues`                              | Bookkeeping runs directly in local calls; [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph) handles solve or explicit Studio execution. Solve returns development or Spec-repair work to the caller, or runs its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph). |
 | `concorde-spec-review`, `concorde-code-review` | The review leaf scopes independent invocations; sequential scope work uses the [batch Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph), not a separate repair loop.                                                                                                                                                            |
-| `concorde-plan`                                | [Planning Graph](../planning/execution-reference.md#plan-planning-graph-plan-graph).                                                                                                                                                                                                                                                                                 |
-| `concorde-tasks`, `concorde-implement`         | A single bounded worker after input admission; component work is returned to the caller.                                                                                                                                                                                                                                                                             |
+| `concorde-plan`                                | [Native planning workflow](../planning/execution-reference.md#plan-planning-graph-plan-graph).                                                                                                                                                                                                                                                                       |
+| `concorde-implement`                           | A single bounded worker after input admission; component work is returned to the caller.                                                                                                                                                                                                                                                                             |
 | `concorde-init`, `concorde-configure`          | Direct Host services; explicit [Studio project Graph](../spec/contracts.md#graphs-project-graph-project-graph).                                                                                                                                                                                                                                                      |
 | `concorde-validate`, `concorde-deliver`        | Direct Host services in local calls; deterministic dispatch leaves only in explicit Graph execution.                                                                                                                                                                                                                                                                 |
 
@@ -218,7 +218,7 @@ Provider artifacts are exported inside `output`, not as a dispatch `artifacts` c
 | `review`           | Reviews the Host-bound owner and affected peers in separate contexts.                                            | none                     | output, result         |
 | `describe_policy`  | Describes grants for the bound invocation without launching workers.                                             | none                     | output, result         |
 | `issues`           | Registered Issue subgraph using the Host-bound action and selection.                                             | route?, output?, result? | route, output?, result |
-| `plan`             | Registered planning subgraph using the bound task/Spec context and candidate.                                    | route?, output?, result? | route, output?, result |
+| `plan`             | Finite native plan preparation/admission, or refusal when no native transport is bound.                          | none                     | output, result         |
 | `tasks`            | Calls task authoring with stored plan, reserved IDs and repair feedback; admits tasks.                           | none                     | output, result         |
 | `implement`        | Checks current component work and calls only the local programmer with stored tasks and granted files.           | none                     | output, result         |
 | `validate`         | Checks the bound candidate and readiness gates.                                                                  | none                     | output, result         |
@@ -249,7 +249,7 @@ flowchart TB
     review["review<br/>in: none<br/>out: output, result"]
     describe_policy["describe_policy<br/>in: none<br/>out: output, result"]
     issues["issues<br/>in: route?, output?, result?<br/>out: route, output?, result"]
-    plan["plan<br/>in: route?, output?, result?<br/>out: route, output?, result"]
+    plan["plan<br/>in: none<br/>out: output, result"]
     tasks["tasks<br/>in: none<br/>out: output, result"]
     implement["implement<br/>in: none<br/>out: output, result"]
     validate["validate<br/>in: none<br/>out: output, result"]
@@ -332,4 +332,4 @@ Public context-solve prepares a real native context-assessor Agent and independe
 single-run result as specified by [Harness](../harness/execution-reference.md#native-context-assessor).
 It runs finite common admission directly, not the dispatch Graph. The retained dispatch node is an
 explicit State/Studio adapter which refuses absent native transport; its diagram is not a claim that
-native assessment traverses a Graph. Planning's existing internal assessment stage remains unchanged.
+native assessment traverses a Graph. Planning now uses the authored two-child native workflow; tasks use the direct native task-author.

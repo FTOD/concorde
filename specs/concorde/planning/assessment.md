@@ -47,8 +47,8 @@ accepted sufficiency. Known dependency gaps stop before a child is launched.
 
 The native assessor has fresh context and terminal tools, with an explicitly prompt-level read
 policy rather than OS confinement. Cancellation, failed execution or changed inputs prevent
-unsettled acceptance. Existing planning still uses its legacy assessment stage; this public native
-entry does not change planning orchestration or silently fall back to it.
+unsettled acceptance. Native planning reuses this same assessor role as the first child of its authored workflow;
+its deterministic acceptance must establish sufficiency before the planner starts.
 The result and admission details are in Implementation Specs.
 
 ## Precise specifications

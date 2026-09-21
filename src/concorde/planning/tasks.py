@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from ..harness.change_worktree import (
     status_path,
-    progress,
     read_change,
     save_target_state,
     target_state,
@@ -19,6 +18,10 @@ from ..spec.typed_data import (
 
 
 def tasks(run) -> dict:
+    raise SpecError("Task authoring requires its native Pi Agent", "native_required")
+
+
+def prepare_tasks(run):
     require_spec_review(run)
     if not run.work_directory:
         raise SpecError("task authoring requires a managed change", "missing_change")
@@ -71,15 +74,10 @@ def tasks(run) -> dict:
             ),
             review_value,
         )
-    if not run.host.coordinated:
-        progress(run.repository.root, phase="tasks", status="active", invalidate=True)
-    result = run.stage("concorde-tasks", inputs=inputs, defer_gap_resolution=True)
-    if result["outcome"] not in {"completed", "sufficient"}:
-        return run.response(
-            result["outcome"], result["answer"], blockers=result["blockers"]
-        )
-    if run.host.mode == "describe-policy":
-        return run.response("described")
+    return state, inputs, reserved_ids, repair, scope_repair
+
+
+def validate_tasks(run, result, reserved_ids):
     tasks = result["tasks"]
     collisions = sorted({t["id"] for t in tasks} & reserved_ids)
     if collisions:
@@ -108,6 +106,10 @@ def tasks(run) -> dict:
                 "Module tasks may target only this Module, its declared dependencies or direct submodules",
                 "permission_denied",
             )
+
+
+def persist_tasks(run, result, state, repair, scope_repair):
+    tasks = result["tasks"]
     if repair is not None:
         state.setdefault("task_history", []).append(
             {

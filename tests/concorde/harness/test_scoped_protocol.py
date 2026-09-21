@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from concorde.harness.status_store import all_status
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.context import (
     recheck_context,

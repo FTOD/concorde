@@ -25,6 +25,7 @@ Concorde helps developers agree on what software should do, execute changes with
 | Skill                | Retired standalone client instructions, retained here only as migration terminology; no Concorde Skill product or client projection is supported.                                                                                   |
 | Pi integration       | The exact Pi extension entry and embedded public Operation catalog, bound to the Framework implementation and launcher that supplied them.                                                                                          |
 | Agent                | A callable native Pi role. The context-assessor is a terminal read-only role whose proposal needs independent Host acceptance.                                                                                                      |
+| Workflow             | An authored native pi-subagents composition ordering real Agent calls and finite granted Host steps; public planning uses this boundary.                                                                                            |
 | Worker               | One fresh bounded Operation execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                      |
 | Task subagent        | A fresh one-layer delegate of the user-facing main session, owning one complete task in one fixed worktree without further task delegation.                                                                                         |
 | Host                 | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results.                                                                                                                        |
@@ -93,7 +94,8 @@ Reading a view or supplying feedback does not itself authorize changes or create
 
 **Graph-bound Operations and native Pi Agents have distinct execution boundaries.**
 Public context assessment prepares and calls a real native context-assessor Agent; finite Host
-services admit its result separately. Other model-backed capabilities retain their existing Graphs. Each Operation declares input State, output
+services admit its result separately. Native plan orders assessor and planner through an authored pi-subagents workflow; tasks use a
+direct native task-author. Programmer, reviews and Issue solving retain their existing Graphs. Each Operation declares input State, output
 State updates, effects, use conditions and execution policy. It can be called as a LangGraph node
 without its caller reconstructing context selection, permissions, model execution or result checks.
 Its implementation may be deterministic code, model execution or a compiled graph; composition

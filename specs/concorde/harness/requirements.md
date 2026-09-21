@@ -187,7 +187,7 @@ them into one generic failure.
 Remaining Graph-backed operation orchestration and supported explicit Studio adapters SHALL execute
 as LangGraph Graphs with declared transitions.
 
-Public context-solve instead uses finite Host preparation, a real native context-assessor and
+Public context-solve, plan and tasks instead use finite Host preparation, a real native context-assessor and
 independently correlated result admission. It does not compile a Graph or fall back to a hidden
 Pi-RPC worker on the native path. Its file scope is prompt-level policy, not OS confinement;
 native child-safety ceilings still apply.

@@ -81,15 +81,15 @@ The [common invocation envelope](../harness/admission.md#operation-execution-bou
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-The calling agent selects this Operation through the Pi `concorde` tool; its `run` action
-submits the typed request through the common launcher. The tool's `describe` action returns
+The calling agent selects this entry through the Pi `concorde` tool; its `run` action prepares
+the exact native call rather than claiming model completion. The tool's `describe` action returns
 the Operation guidance and request schema without executing it.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
 
-`plan` retains its Graph-backed assessment stage, sharing the same dependency-stop and result
-identity/outcome predicates as the native public [assessment](execution-reference.md). Only a sufficient result admits a
+`plan` shares dependency-stop and result identity/outcome predicates with the native public
+[assessment](execution-reference.md). Its two model invocations are ordered by the native workflow below. Only a sufficient result admits a
 fresh planner invocation. Its optional concorde-plan-artifact is an explicitly admitted
 prior plan, not a predecessor conversation. The accepted output is a nonempty plan bound to the
 selected contract revision and intent. The host stores the target plan and returns artifact references
@@ -107,49 +107,54 @@ depending on a development workflow.
 
 ### Design {#plan-design}
 
-#### Planning Graph (`plan_graph`) {#plan-planning-graph-plan-graph}
+#### Native planning workflow {#plan-planning-graph-plan-graph}
 
-**State.** `route`, `output` (the planning response), `result`; the candidate record receives the
-accepted plan, its Spec digest and intent. All three Graph channels use replacement updates.
-The admitted `run`, prior artifacts and planner result are Host/closure-held inputs, not channels:
-`author_plan` stores its result in the closure, and `persist_plan` reads that result rather than
-`output`. `output` carries a typed stop/preview response or the final plan response. `none` below
-means no Graph-channel read; `?` marks an update present only on a stop path. The admission guard
-writes `result=None` on success, or a failure envelope and `route=__end__` on exception.
+Public plan is an authored native pi-subagents workflow, not a Python Graph or a suspended
+provider stack. The Pi `concorde` tool's run action admits the request and managed candidate,
+requires current Spec review when configured, freezes the assessor and returns an exact named
+workflow call. Main invokes that call with async execution. The resource is registered against the
+actual Pi session, has one issued ticket and three exact fixed Host-command grants, and is disposed
+when its terminal result is observed or the session shuts down. Shutdown also invalidates future
+Host advancement and sends the exact owned run to the supported native stop channel; disposing a
+resource alone is not treated as revocation of an already admitted workflow. No model/task text becomes a shell
+command or resource authority. Native fanout ceilings remain unchanged.
 
-**Nodes.** Both model-backed nodes run their worker as an [Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
+The authored steps in `pi/workflows/plan.js` are:
 
-| Node             | Executes                                                                                                                                        | in   | out                    |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------- |
-| `assess_context` | Checks required Spec review and dependency declarations, then assesses the Host-bound task/Spec; chooses author_plan or writes a stop response. | none | route, output?, result |
-| `author_plan`    | Invokes the planner with Host-bound context/prior artifact; retains result outside State and chooses persistence or a stop/preview response.    | none | route, output?, result |
-| `persist_plan`   | Reads the closure-held nonempty plan, writes its artifact and candidate revision/intent, and clears dependent tasks/coordination.               | none | route, output, result  |
+1. Fixed Host binding/preflight waits for the actual asynchronous launch receipt, independently
+   checks current inputs/assets and resolves the exact capsule file Agent through public preflight.
+2. One fresh context-assessor runs natively with a plain stage-only gate. Native failure, detached,
+   paused, interrupted, missing metadata or rejected gate stops without launching the planner.
+3. Fixed Host advancement correlates native terminal status, metadata, saved proposal and gate
+   control. An accepted insufficient assessment ends with its business-blocked result. Only accepted
+   sufficiency prepares and preflights the separate planner against still-current assessed inputs.
+   If acceptance resolves an earlier gap, the finite transition uses the Host-recorded post-effect
+   workspace context, while rechecking the same assessed contracts, registry, configuration, role
+   binding and exact semantic candidate state. It does not mistake its own accepted lifecycle
+   effects for an external input change.
+4. One fresh native planner runs with its own complete Specs and declared external references.
+5. Fixed Host finalization requires exact two-child coverage and independent planner completion,
+   then re-admits inputs and persists only a nonempty valid plan through the shared domain service.
 
-**Edges.** `assess_context` and `author_plan` each write `route`, and a conditional edge follows it.
-Only a sufficient assessment continues to `author_plan`, and only a returned plan continues to
-`persist_plan`; a gap, conflict, unsupported task, failure or policy preview ends the Graph with
-the response already written. The two advancing predicates accept worker `outcome` in
-`{completed, sufficient}`; authoring also requires execution rather than describe-policy to
-select persistence. The conditional edges read `state["route"]`, not `output.outcome`.
-`persist_plan` writes `route=__end__` but has an unconditional edge to the end.
+There is no shadow planning Graph. The old `plan_graph` factory is retired. Existing State/Studio
+entry adapters refuse absent native transport rather than run a parallel legacy model backend.
+Tests of domain predicates may supply explicit staged doubles through a test-only adapter; those
+are not evidence of native dispatch.
 
-```mermaid
-flowchart TB
-    %% graph: plan_graph
-    accTitle: Planning Graph
-    accDescr: Context assessment admits planning only when the contract is sufficient; a returned plan is persisted; a gap, conflict, failure or policy preview ends the Graph.
-    __start__["start"]
-    assess_context["assess_context<br/>in: none<br/>out: route, output?, result"]
-    author_plan["author_plan<br/>in: none<br/>out: route, output?, result"]
-    persist_plan["persist_plan<br/>in: none<br/>out: route, output, result"]
-    __end__["end"]
-    __start__ --> assess_context
-    assess_context -->|route = author_plan: completed or sufficient assessment| author_plan
-    assess_context -->|route = __end__: other outcome or guard error| __end__
-    author_plan -->|route = persist_plan: accepted result in execute mode| persist_plan
-    author_plan -->|route = __end__: stop, preview or guard error| __end__
-    persist_plan --> __end__
-```
+The owning hook binds the actual workflow directory/run to the issued descriptor atomically.
+The caller polls `concorde` with operation plan and action `result`; the response separates native
+execution state from Host `accepted` and its typed business result. A launch receipt is not
+acceptance. Accepted business blockers do not imply a persisted plan. A later stopped enclosing
+workflow does not erase effects already committed after independently observed child completion.
+No automatic retry/replay follows uncertain persistence.
+
+Native finite services preserve common primary/candidate binding, assigned-candidate reuse and
+primary-owned durable run/status records. The capsule is a worker cwd, never project/status
+ownership. Candidate-input identity covers all semantic lifecycle/intent/target state; only the
+observational run list and its revision counter are excluded because each finite admission records
+its own run. Spec/metadata/registry/configuration/role/intent and delivered reference bytes are
+rechecked. Stale or failed results leave previously accepted plan/tasks intact. A new accepted plan
+retains task history and clears dependent tasks/checks/coordination as before.
 
 ### Precise specifications {#plan-precise-specifications}
 
@@ -163,14 +168,16 @@ The [common invocation envelope](../harness/admission.md#operation-execution-bou
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-The calling agent selects this Operation through the Pi `concorde` tool; its `run` action
-submits the typed request through the common launcher. The tool's `describe` action returns
+The calling agent selects this entry through the Pi `concorde` tool; its `run` action prepares
+the exact native call rather than claiming model completion. The tool's `describe` action returns
 the Operation guidance and request schema without executing it.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
 
-`tasks` requires a current managed change and accepted nonempty plan. Missing state is
+`tasks` is a direct native task-author Agent, with the same proposal/staging/independent acceptance
+boundary as context-solve and no coordinating model or Graph. Its exact call uses the Host-issued
+capsule and immutable accepted-plan inputs. `tasks` requires a current managed change and accepted nonempty plan. Missing state is
 missing_change; an absent plan is missing_plan. A fresh task author invocation receives
 concorde-plan-artifact@1 and concorde-task-identity-constraints@1, even when the reservation list
 is empty. Optional prior tasks and semantic scope/review feedback require explicit repair admission.

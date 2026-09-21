@@ -52,6 +52,7 @@ class NativeChildEvidence:
     invocation_id: str
     proposal_digest: str
     gate_command: str
+    ticket: str | None = None
 
 
 def verify_native_children(
@@ -190,7 +191,7 @@ def verify_native_children(
         # generated plain gate's stdout carries Host staging control.
         staged = staging_control(
             gate.get("stdout"),
-            ticket=ticket,
+            ticket=child.ticket or ticket,
             invocation_id=child.invocation_id,
             proposal_digest=child.proposal_digest,
         )

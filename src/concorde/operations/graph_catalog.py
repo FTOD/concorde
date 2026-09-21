@@ -25,7 +25,6 @@ def catalog() -> dict[str, Callable[[], object]]:
     from ..harness.operation_graph import build_operation_graph
     from ..harness.operation_node import OperationNode
     from ..issues.graph import build_issue_graph, build_issue_verification_graph
-    from ..planning.plan_graph import build_plan_graph
     from ..spec.project_graph import build_project_graph
     from .dispatch_graph import build_dispatch_graph
     from .target_graph import build_target_graph
@@ -34,7 +33,6 @@ def catalog() -> dict[str, Callable[[], object]]:
         "operation_graph": lambda: build_operation_graph(_stub, name="operation_graph"),
         "dispatch_graph": lambda: build_dispatch_graph(_stub),
         "target_graph": lambda: build_target_graph(_stub),
-        "plan_graph": lambda: build_plan_graph(_stub),
         "project_graph": lambda: build_project_graph(_stub),
         "issue_graph": lambda: build_issue_graph(_stub),
         "issue_verification_graph": lambda: build_issue_verification_graph(_stub),

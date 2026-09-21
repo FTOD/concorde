@@ -22,7 +22,7 @@ from concorde.harness.change_worktree import (
     git_value,
     read_change,
 )
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies

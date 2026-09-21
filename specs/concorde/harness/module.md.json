@@ -33,6 +33,7 @@
         "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/spec/test_operations_migration.py",
+        "tests/concorde/support/native_planning.py",
         "tests/concorde/support/operation_json.py"
       ],
       "meaning": "#entity.harness.agent-model"
@@ -44,6 +45,8 @@
       "files": [
         "operations/",
         "prompts/native/context-assessor.md",
+        "prompts/native/planner.md",
+        "prompts/native/task-author.md",
         "prompts/workers/common.md",
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/fixtures/build/golden/native/"

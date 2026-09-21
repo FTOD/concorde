@@ -456,7 +456,7 @@ trusted Host context for these State-shaped calls without importing LangGraph. S
 atomic stores, current-input checks, repository locks and result distinctions are unchanged.
 
 The retained Graphs below remain executable Studio/State-node adapters and the existing model-backed
-local entry path, not evidence that normal deterministic calls traversed a Graph. Public context-solve instead uses finite native preparation and acceptance with a real Pi Agent;
+local entry path, not evidence that normal deterministic calls traversed a Graph. Public context-solve, plan and tasks instead use finite native preparation and acceptance with a real Pi Agent;
 other model-backed public behavior retains its current backend. Bare CLI/Studio context execution
 without native transport refuses rather than falling back to a hidden worker.
 
