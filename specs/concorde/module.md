@@ -95,7 +95,8 @@ Reading a view or supplying feedback does not itself authorize changes or create
 **Graph-bound Operations and native Pi Agents have distinct execution boundaries.**
 Public context assessment prepares and calls a real native context-assessor Agent; finite Host
 services admit its result separately. Native plan orders assessor and planner through an authored pi-subagents workflow; tasks use a
-direct native task-author. Programmer, reviews and Issue solving retain their existing Graphs. Each Operation declares input State, output
+direct native task-author. Implement and public reviews now use native roles/workflows too; only Issue solving retains its
+existing Graph and temporary internal verification adapter. Each Operation declares input State, output
 State updates, effects, use conditions and execution policy. It can be called as a LangGraph node
 without its caller reconstructing context selection, permissions, model execution or result checks.
 Its implementation may be deterministic code, model execution or a compiled graph; composition

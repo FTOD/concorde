@@ -81,7 +81,15 @@ def run_operation(
         data = runtime_input.get("data") if isinstance(runtime_input, dict) else None
         action = data.get("action") if isinstance(data, dict) else None
         if (
-            operation in {"concorde-context-solve", "concorde-plan", "concorde-tasks"}
+            operation
+            in {
+                "concorde-context-solve",
+                "concorde-plan",
+                "concorde-tasks",
+                "concorde-implement",
+                "concorde-spec-review",
+                "concorde-code-review",
+            }
             or operation in DETERMINISTIC_OPERATIONS
             or (operation == "concorde-issues" and action != "solve")
         ):
@@ -165,6 +173,8 @@ def run_host_tool(nodes):
         "context_solve",
         "plan",
         "tasks",
+        "implement",
+        "review",
     }:
         state.update(nodes["dispatch/" + route](state))
     elif route != "__end__":

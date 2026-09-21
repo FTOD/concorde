@@ -44,8 +44,11 @@
       "kind": "program",
       "files": [
         "operations/",
+        "prompts/native/code-reviewer.md",
         "prompts/native/context-assessor.md",
         "prompts/native/planner.md",
+        "prompts/native/programmer.md",
+        "prompts/native/spec-reviewer.md",
         "prompts/native/task-author.md",
         "prompts/workers/common.md",
         "tests/concorde/fixtures/build/golden/agents/",

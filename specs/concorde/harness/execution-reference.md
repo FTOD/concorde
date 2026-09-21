@@ -1299,3 +1299,20 @@ a stale result poll never overwrites newer work.
 Planning Host-step stdout carries only bounded readiness/acceptance control and the prepared next
 call. Full business responses stay in the Host receipt and are retrieved through result polling;
 large model answers cannot be truncated into a successful Host-step control document.
+
+### Native programmer and public reviewers
+
+The same issued descriptor/proposal/stage/independent terminal admission supports programmer and
+review roles. Programmer discovery stays in an invocation capsule, but its index explicitly binds
+the actual candidate and absolute intended code paths. Broad native file/shell tools are not sandboxed
+by Concorde; file/network/credential exclusions are model policy. The fixed configured-check service
+retains its actual enforced subprocess boundary, configured deadline and cancellation behavior.
+Expected implementation changes are excluded from frozen code-content currentness checks, not from
+Spec/registry/config/intent/task/feedback/component identity checks. Partial edits survive failure.
+
+Native reviews deliver frozen code copies/scoped diffs only in code mode. Public reviews use an authored
+sequential native workflow with two fixed Host commands, not a per-item Host commit or batch Graph.
+Each proposal is admitted independently against native terminal artifacts, then full exact scope is
+reconciled before shared aggregation. Root operation identity also binds result polling. An invalid
+first child does not prevent reading the workflow's truthful failure result. The legacy review/batch
+path is reachable only from trusted nested Issue verification until that remaining migration.

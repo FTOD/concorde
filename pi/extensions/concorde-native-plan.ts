@@ -17,9 +17,15 @@ export async function nativePlan(
 	const { registerWorkflowResource } = await import(
 		require.resolve("pi-subagents/workflow-resources")
 	);
-	const helper = path.join(descriptor.package_root, "pi/native-plan-host.mjs");
+	const review = prepared.workflow_kind === "review";
+	const helper = path.join(
+		descriptor.package_root,
+		review ? "pi/native-review-host.mjs" : "pi/native-plan-host.mjs",
+	);
 	const commands: any = {};
-	for (const action of ["bind", "advance", "finalize"])
+	for (const action of review
+		? ["bind", "finalize"]
+		: ["bind", "advance", "finalize"])
 		commands[action] = [
 			process.execPath,
 			helper,
@@ -29,18 +35,42 @@ export async function nativePlan(
 		]
 			.map(quote)
 			.join(" ");
-	const expansion = {
+	let expansion: any = {
 		ticket: prepared.ticket,
 		assessor: prepared.call,
 		...commands,
 	};
+	if (review) {
+		const scope = JSON.parse(
+			fs.readFileSync(
+				path.join(descriptor.directory, "review-scope.json"),
+				"utf8",
+			),
+		);
+		expansion = {
+			ticket: prepared.ticket,
+			...commands,
+			schema: scope.slots[0].call.outputSchema,
+			members: scope.slots.map((slot: any) => {
+				const { outputSchema, ...call } = slot.call;
+				return { ticket: slot.ticket, call };
+			}),
+		};
+	}
 	const script = fs
 		.readFileSync(
-			path.join(descriptor.package_root, "pi/workflows/plan.js"),
+			path.join(
+				descriptor.package_root,
+				review ? "pi/workflows/review.js" : "pi/workflows/plan.js",
+			),
 			"utf8",
 		)
-		.replace("__CONCORDE_PLAN__", JSON.stringify(expansion));
-	const name = "concorde.plan." + prepared.ticket;
+		.replace(
+			review ? "__CONCORDE_REVIEW__" : "__CONCORDE_PLAN__",
+			JSON.stringify(expansion),
+		);
+	const name =
+		(review ? "concorde.review." : "concorde.plan.") + prepared.ticket;
 	const registration = registerWorkflowResource({
 		sessionId: ctx.sessionManager.getSessionId(),
 		definition: {
@@ -84,6 +114,7 @@ export async function nativePlan(
 					"}"
 				: JSON.stringify(value);
 	return {
+		operation: descriptor.operation,
 		prepared: {
 			...prepared,
 			call,
@@ -138,7 +169,7 @@ export async function nativePlan(
 							accepted: false,
 							native: details,
 							instruction:
-								"Use concorde plan action result; this launch receipt is not acceptance.",
+								"Use the matching concorde operation action result; this launch receipt is not acceptance.",
 						}),
 					},
 				],

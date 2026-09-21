@@ -7,7 +7,11 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { nativeCommand, type NativeBinding } from "./concorde-native-child.ts";
 
-const AGENTS = new Set(["concorde-context-assessor", "concorde-task-author"]);
+const AGENTS = new Set([
+	"concorde-context-assessor",
+	"concorde-task-author",
+	"concorde-programmer",
+]);
 function canonical(value: any): string {
 	if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
 	if (value && typeof value === "object")
@@ -239,7 +243,8 @@ export function nativeContext(
 			);
 			if (
 				value.state === "prepared" &&
-				(invocation as any).operation_id === "concorde-plan"
+				((invocation as any).operation_id === "concorde-plan" ||
+					value.workflow_kind === "review")
 			) {
 				planning = await nativePlan(pi, value, ctx, options.verify);
 				return planning.prepared;
@@ -260,7 +265,12 @@ export function nativeContext(
 		}
 	};
 	return Object.assign(prepare, {
-		result: async () =>
-			planning ? planning.result() : { state: "not-run", accepted: false },
+		result: async (operation?: string) => {
+			if (planning && operation && planning.operation !== operation)
+				throw new Error("Result belongs to another native workflow operation");
+			return planning
+				? planning.result()
+				: { state: "not-run", accepted: false };
+		},
 	});
 }

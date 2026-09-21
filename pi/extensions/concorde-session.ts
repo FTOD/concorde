@@ -94,9 +94,9 @@ export function sessionPrompt(catalog: SessionCatalog): string {
 	}
 	lines.push(
 		"",
-		"Context-solve/tasks action run PREPARES an exact native Agent call; plan PREPARES a named async native workflow. " +
+		"Context-solve/tasks/implement action run PREPARES an exact native Agent call; plan and Spec/code reviews PREPARE named async native workflows. " +
 			"Call subagent with its exact returned call object. Direct Agent results expose details.concorde_native.accepted; plan action result exposes details.accepted " +
-			"after independent Host reconciliation means acceptance. Poll plan with action result. Native structured output and gate success are proposals/staging only.",
+			"after independent Host reconciliation means acceptance. Poll the same workflow operation with action result. Native structured output and gate success are proposals/staging only.",
 	);
 	lines.push("", "Operations:");
 	for (const operation of catalog.operations) {
@@ -348,7 +348,7 @@ export function concordeSession(
 			description:
 				'Run a public Concorde Operation or describe one. Action "describe" returns the ' +
 				'Operation\'s guidance and the JSON Schema of its request. Action "run" sends `input`, ' +
-				"the request data, to the Operation and returns its typed result envelope. Context-solve/tasks prepare exact native Agent calls; plan prepares an async native workflow and exposes action result. Inspect Host accepted plus the typed business outcome, not proposals or launch receipts. `mode` " +
+				"the request data, to the Operation and returns its typed result envelope. Context-solve/tasks/implement prepare exact native Agent calls; plan and reviews prepare async native workflows and exposes action result. Inspect Host accepted plus the typed business outcome, not proposals or launch receipts. `mode` " +
 				'"describe-policy" previews the context and permissions an execute run would use ' +
 				"without running an agent. A run may take a long time and blocks this turn; aborting " +
 				"it cancels the running worker. Results larger than 48 KiB are saved to a file.",
@@ -411,11 +411,17 @@ export function concordeSession(
 					};
 				}
 				if (params.action === "result") {
-					if (operation.name !== "concorde-plan")
+					if (
+						![
+							"concorde-plan",
+							"concorde-spec-review",
+							"concorde-code-review",
+						].includes(operation.name)
+					)
 						throw new Error(
 							"Result polling is only for the native planning workflow",
 						);
-					const value = await prepareContext.result();
+					const value = await prepareContext.result(operation.name);
 					return {
 						content: [{ type: "text", text: JSON.stringify(value) }],
 						details: value,
@@ -449,6 +455,9 @@ export function concordeSession(
 						"concorde-context-solve",
 						"concorde-plan",
 						"concorde-tasks",
+						"concorde-implement",
+						"concorde-spec-review",
+						"concorde-code-review",
 					].includes(operation.name)
 				) {
 					const value = await prepareContext(envelope, ctx, signal);

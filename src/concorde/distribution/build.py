@@ -513,7 +513,14 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     outputs: list[BuildOutput] = []
     for agent in sorted(MODEL_ROOTS):
         outputs.append(render_model_instructions(root, agent))
-    for name in ("context-assessor", "planner", "task-author"):
+    for name in (
+        "context-assessor",
+        "planner",
+        "task-author",
+        "programmer",
+        "spec-reviewer",
+        "code-reviewer",
+    ):
         outputs.append(render_native_context_agent(root, name))
     outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
     outputs.extend(outer_agents.render(root, framework_prefix))
@@ -529,7 +536,14 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
             WORKER_RULES,
             *[
                 f"prompts/native/{name}.md"
-                for name in ("context-assessor", "planner", "task-author")
+                for name in (
+                    "context-assessor",
+                    "planner",
+                    "task-author",
+                    "programmer",
+                    "spec-reviewer",
+                    "code-reviewer",
+                )
             ],
         ]
         + list(outer_agents.prompt_roots(root))

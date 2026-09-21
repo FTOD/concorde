@@ -199,3 +199,34 @@ implementation of its sequencing, artifact admission, recovery and completion po
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
 host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
 that reaches this provider.
+
+## Native public review workflow
+
+Run prepares a ticket-bound native scope; main invokes its exact returned async named workflow call,
+then polls the same operation with action `result`. The resource `concorde.review.<ticket>` expands
+authored `pi/workflows/review.js`, with only two fixed Host grants: bind/preflight and aggregate
+finalize. Review count has no Concorde business cap; native configured fanout, script/artifact and
+runtime limits remain authoritative and failure means incomplete scope, never successful truncation.
+
+Scope enumeration and aggregation share the existing owner/component/consumer and evidence predicates.
+Enumeration is deterministic. Every reviewer gets a separate issued identity, complete paired Specs,
+mode/input digest, scoped diff and (code only) selected frozen implementation copies/references. The
+input index contains typed snapshot/review values. Spec review admits no implementation contents.
+Native role instructions retain representative coverage and semantic terminology checks. Findings
+reference only genuine scoped report_issue receipts and preserve advisory/blocking/incomplete versus
+no-findings distinctions.
+
+Gates stage only. The workflow emits native child identities/metadata paths; one final Host step
+requires exact expected coverage and independently reads every native terminal metadata and saved
+proposal before any accepted review persistence. It re-admits each frozen input and rechecks parent
+scope/identity/currentness, then persists/aggregates typed results through shared domain functions.
+Missing or failed children and invalid identity/mode/receipt/coverage cannot produce successful partial
+acceptance. Failure evidence remains incomplete; requirements are not downgraded. Historical artifacts
+are retained. A changed parent/scope refuses rather than overwriting newer evidence.
+
+`legacy_issue_review_scope` and its batch/worker adapter are TEMPORARY only for nested Issue verification
+with trusted issue intent; remove them in the immediately following Issue migration. Bare public
+CLI/Studio review has no native transport and refuses `native_required`. Native failure never selects
+that compatibility path. Review input identity binds both candidate role transport assets; temporary
+Issue workers use their legacy tool prelude, while native reviewers use their native prelude. This
+preserves currentness semantics without falsely advertising legacy runs as native execution.

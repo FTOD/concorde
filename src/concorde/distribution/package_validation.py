@@ -71,6 +71,9 @@ def _prompt_roots(root: Path) -> tuple[str, ...]:
             "prompts/native/context-assessor.md",
             "prompts/native/planner.md",
             "prompts/native/task-author.md",
+            "prompts/native/programmer.md",
+            "prompts/native/spec-reviewer.md",
+            "prompts/native/code-reviewer.md",
             "prompts/protocol/principles.md",
         )
         + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS)

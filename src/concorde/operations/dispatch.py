@@ -102,7 +102,13 @@ def dispatch_graph_nodes(operation, configuration, task, host):
 
     def describe_policy():
         if (
-            operation in {"concorde-context-solve", "concorde-plan", "concorde-tasks"}
+            operation
+            in {
+                "concorde-context-solve",
+                "concorde-plan",
+                "concorde-tasks",
+                "concorde-implement",
+            }
             and host.native_assessment is not None
         ):
             return host.native_assessment(bound_run())
@@ -139,7 +145,11 @@ def dispatch_graph_nodes(operation, configuration, task, host):
     def review():
         from ..review.review import review_scope
 
-        return review_scope(bound_run(), REVIEW_OPERATIONS[operation])
+        return (
+            host.native_assessment(bound_run())
+            if host.native_assessment
+            else review_scope(bound_run(), REVIEW_OPERATIONS[operation])
+        )
 
     def relay(state):
         target = host.relay_target
@@ -168,7 +178,11 @@ def dispatch_graph_nodes(operation, configuration, task, host):
             if host.native_assessment
             else tasks(bound_run())
         ),
-        "implement": lambda: implement(bound_run()),
+        "implement": lambda: (
+            host.native_assessment(bound_run())
+            if host.native_assessment
+            else implement(bound_run())
+        ),
         "validate": lambda: validate(bound_run(), task.get("run_checks", True)),
         "context_solve": lambda: context_solve(bound_run(), operation),
     }

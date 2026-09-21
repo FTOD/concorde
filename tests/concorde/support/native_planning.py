@@ -12,11 +12,47 @@ def domain_double(run):
 
     if run.host.executor is None:
         raise AssertionError("domain fixture requires an injected executor")
+    if run.operation in {"concorde-spec-review", "concorde-code-review"}:
+        from concorde.review.review import legacy_issue_review_scope
+
+        return legacy_issue_review_scope(
+            run, "spec" if run.operation == "concorde-spec-review" else "code"
+        )
     if run.host.mode == "describe-policy":
         run.stage(run.operation)
         return run.response("described")
-    require_spec_review(run)
-    if run.operation == "concorde-context-solve":
+    if run.operation not in {"concorde-spec-review", "concorde-code-review"}:
+        require_spec_review(run)
+    if run.operation == "concorde-implement":
+        from concorde.implementation.implement import (
+            prepare_implementation,
+            validate_implementation,
+            persist_implementation,
+        )
+
+        state, local, revisions, inputs, stopped = prepare_implementation(run)
+        if stopped:
+            return stopped
+        if not local:
+            return persist_implementation(
+                run,
+                {"tasks": [], "answer": "Components current"},
+                state,
+                local,
+                revisions,
+            )
+        progress(
+            run.repository.root,
+            phase="implementation",
+            status="active",
+            invalidate=True,
+        )
+        value = run.stage(
+            "concorde-implement", inputs=inputs, defer_gap_resolution=True
+        )
+        if value["outcome"] in {"completed", "sufficient"}:
+            return persist_implementation(run, value, state, local, revisions)
+    elif run.operation == "concorde-context-solve":
         value = run.stage(run.operation)
     elif run.operation == "concorde-plan":
         if not run.host.coordinated:

@@ -1,4 +1,4 @@
-"""Public standalone review through Studio's shared executable boundary."""
+"""Domain-only staged-double review regression; native public dispatch has separate tests."""
 
 import subprocess
 import tempfile
@@ -13,6 +13,12 @@ from tests.concorde.spec.support import PACKAGE, ModelProcessDouble, project
 
 class StandaloneReviewTests(unittest.TestCase):
     def setUp(self):
+        from unittest.mock import patch
+        from tests.concorde.support.native_planning import OperationHost
+
+        adapter = patch("concorde.harness.studio.OperationHost", OperationHost)
+        adapter.start()
+        self.addCleanup(adapter.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)

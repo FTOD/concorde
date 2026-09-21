@@ -133,6 +133,9 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
         )
     phase, role = REVIEW_STAGES[mode]
     prompt = load_model_instructions(run.host.package_root, role)
+    native = run.host.package_root / (
+        "generated/native/" + role.replace("_", "-") + ".md"
+    )
     if prompt.binding is None or prompt.effects is None:
         raise SpecError(
             "review requires a bound WorkerProfile with explicit effects",
@@ -162,7 +165,10 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
         "review_mode": mode,
         "revision": revision,
         "changes": changes,
-        "instructions": prompt.body,
+        "instructions": {
+            "legacy_issue": prompt.body,
+            "native": native.read_text() if native.is_file() else None,
+        },
         "role_effects": asdict(prompt.effects),
         "agent_binding_digest": prompt.binding.digest,
         "host_runtime": {
@@ -412,47 +418,54 @@ def review(run, mode: str) -> dict:
         )
         if run.host.mode == "describe-policy":
             return data
-        reviewed = typed(
-            "concorde-review-result",
-            {
-                **data,
-                "target_id": run.target.id,
-                "focus_id": run.task.get("focus_id"),
-                "revision": info["revision"],
-                "semantic_completeness": "not_proven",
-            },
-        )
         if result is None:
             raise SpecError(
                 "review completed without a worker receipt", "invalid_completion"
             )
-        reference = _persist(run, reviewed, execution=result.usage)
-        from ..issues.references import requires_contract_repair, review_blockers
-
-        blockers = review_blockers(data["issues"])
-        if data["status"] != "incomplete":
-            run.record_gaps(phase, blockers, review_input_digest=info["input_digest"])
-        run.completed.append(f"concorde-{mode}-review")
-        outcome = (
-            "failed"
-            if data["status"] == "incomplete"
-            else "spec_incomplete"
-            if requires_contract_repair(run.repository.root, blockers)
-            else "conflicting"
-            if blockers
-            else "completed"
-        )
-        return run.response(
-            outcome,
-            data["answer"],
-            blockers=blockers,
-            artifacts=[reference],
-            reviews=[reviewed],
-        )
+        return accept_review_result(run, snapshot, info, data, execution=result.usage)
     except Exception as error:
         if run.host.mode != "execute":
             raise  # A preview has no persistence authority.
         return _failed_review(run, info, result, error)
+
+
+def accept_review_result(run, snapshot, info, data, *, execution=None):
+    _validate(run, snapshot, info, data)
+    phase = info["review_mode"] + "-review"
+    mode = info["review_mode"]
+    reviewed = typed(
+        "concorde-review-result",
+        {
+            **data,
+            "target_id": run.target.id,
+            "focus_id": run.task.get("focus_id"),
+            "revision": info["revision"],
+            "semantic_completeness": "not_proven",
+        },
+    )
+    reference = _persist(run, reviewed, execution=execution)
+    from ..issues.references import requires_contract_repair, review_blockers
+
+    blockers = review_blockers(data["issues"])
+    if data["status"] != "incomplete":
+        run.record_gaps(phase, blockers, review_input_digest=info["input_digest"])
+    run.completed.append(f"concorde-{mode}-review")
+    outcome = (
+        "failed"
+        if data["status"] == "incomplete"
+        else "spec_incomplete"
+        if requires_contract_repair(run.repository.root, blockers)
+        else "conflicting"
+        if blockers
+        else "completed"
+    )
+    return run.response(
+        outcome,
+        data["answer"],
+        blockers=blockers,
+        artifacts=[reference],
+        reviews=[reviewed],
+    )
 
 
 def _failed_review(run, info, result, error):
@@ -668,7 +681,67 @@ def _code_scope_identity(run):
     )
 
 
-def review_scope(run, mode: str) -> dict:
+def review_scope(run, mode: str):
+    if run.host.native_assessment is not None:
+        return run.host.native_assessment(run)
+    if run.host.issue_intent and run.host.depth > 1:
+        # TEMPORARY: Issue solving's internal verification only; remove with its native migration.
+        return legacy_issue_review_scope(run, mode)
+    raise SpecError("Public review requires its native Pi workflow", "native_required")
+
+
+def scope_members(run, mode, *, initialize=False):
+    change = read_change(run.repository.root)
+    if initialize and change and run.host.mode == "execute":
+        intent = (
+            change
+            if change.get("target_id") == run.target.id
+            else change["targets"].get(run.target.id, {})
+        )
+        if all(
+            intent.get(k, [] if k == "constraints" else None)
+            == run.task.get(k, [] if k == "constraints" else None)
+            for k in ("task", "focus_id", "constraints")
+        ):
+            require_reviews(run, True, modes=(mode,))
+            change = read_change(run.repository.root)
+    components = (
+        _spec_scope_tasks(run, change, spec_consumers(run), include_components=True)
+        if mode == "spec"
+        else _code_scope_tasks(run, change)
+    )
+    components = dict(sorted(components.items()))
+    allowed = {
+        run.target.id,
+        *run.target.uses,
+        *components,
+        *spec_consumers(run),
+        *(t.id for t in run.repository.covering_modules(run.target)),
+        *(t.id for t in run.repository.children(run.target)),
+    }
+    members = []
+    if not components or mode == "spec" or run.target.files:
+        members.append(dict(run.task))
+    for target_id, record in components.items():
+        if target_id == run.target.id:
+            continue
+        target = run.repository.select(target_id)
+        if target_id not in allowed:
+            raise SpecError("review target outside scope", "permission_denied")
+        if mode == "code" and not target.files:
+            continue
+        members.append(
+            {
+                "target_id": target_id,
+                "task": record["task"],
+                "change_id": run.change_id,
+                "constraints": run.task.get("constraints", []),
+            }
+        )
+    return components, _code_scope_identity(run) if mode == "code" else None, members
+
+
+def legacy_issue_review_scope(run, mode: str) -> dict:
     """Review each using Module in a separate context after shared implementation changes."""
     change = read_change(run.repository.root)
     if change and run.host.mode == "execute":
@@ -785,6 +858,11 @@ def review_scope(run, mode: str) -> dict:
         name="scope_review_graph",
         item_node="review_module",
     )
+    return aggregate_scope(run, mode, components, scope_identity, outputs)
+
+
+def aggregate_scope(run, mode, components, scope_identity, outputs):
+    affected_ids = set(components) if mode == "code" else set()
     outcomes = {output["outcome"] for output in outputs}
     outcome = next(
         (

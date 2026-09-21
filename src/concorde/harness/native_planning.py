@@ -44,11 +44,11 @@ def relay_prepare(host, invocation, candidate, payload):
     return value
 
 
-def descriptor(path, expected):
+def descriptor(path, expected, *, allow_invalid=False):
     value = _record(Path(path))
     if digest(value) != expected:
         raise SpecError("planning descriptor changed", "stale_context")
-    if (Path(value["directory"]) / "invalid").exists():
+    if not allow_invalid and (Path(value["directory"]) / "invalid").exists():
         raise SpecError("planning workflow was invalidated", "invalid_completion")
     return value
 
@@ -56,7 +56,9 @@ def descriptor(path, expected):
 def workflow_service(package, action, path, expected):
     from .native_context import execute, _write
 
-    base = descriptor(path, expected)
+    base = descriptor(
+        path, expected, allow_invalid=action in {"workflow-result", "workflow-stop"}
+    )
     directory = Path(base["directory"])
     if action == "workflow-stop":
         (directory / "workflow-stopped").touch(exist_ok=True)

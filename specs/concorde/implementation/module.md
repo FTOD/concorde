@@ -32,7 +32,7 @@ tasks are complete; completion is not validation, readiness or delivery.
 
 Missing tasks reject before launch. Incomplete output cannot establish fulfillment. Authorized
 edits may remain after a failed or cancelled run, so inspect preserved candidate state and re-admit
-current artifacts rather than assuming rollback. A listed test does not grant its transitive inputs:
+current artifacts rather than assuming rollback. A listed test does not authorize its transitive inputs:
 record unavailable repository-level execution as deferred host verification, not as a pass.
 Coordination with other Modules returns their separately selectable work to the caller; no arbitrary
 scheduler or automatic child development is accepted.
@@ -70,10 +70,10 @@ independent review; changed shared files invalidate earlier consumer evidence.
 ## Relationships
 
 This view follows an admitted Implementation task to Task completion. [Spec Module](../spec/module.md) determines the selected
-Module's implementation boundary, [Harness Module](../harness/module.md) enforces the programmer's grant, and [Harness admission](../harness/admission.md) admits
+Module's implementation boundary, [Harness Module](../harness/module.md) binds the programmer's intended scope and independently admits completion, and [Harness admission](../harness/admission.md) admits
 the exact task list and retains its progress. The adapter's use of these sibling providers does not
 merge their ownership or permissions. Task completion reports fulfilled acceptance only; validation,
-review and delivery remain separate decisions of the composing Graph.
+review and delivery remain separate caller/Host decisions.
 
 ```mermaid
 flowchart TB
@@ -94,7 +94,7 @@ flowchart TB
 
 <a id="entity.implementation.harness"></a><a id="agreement.document.implementation.module.2"></a>
 
-Bind a fresh programmer to the complete selected contract and enforce writes only to that Module's granted implementation paths.
+Bind a fresh programmer to the complete selected contract and state intended writes only to that Module's listed implementation paths.
 
 This collaboration applies when launching the programmer or admitting its matching completion under the current grant.
 
@@ -102,7 +102,7 @@ Admit the current implementation task and permitted repair feedback, persist exa
 
 This collaboration applies before implementation starts and when its returned task completion or execution failure is recorded.
 
-- [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; native file/network/credential bounds remain explicit model policy; configured-check subprocess enforcement is separate.
 - [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Spec
@@ -120,3 +120,10 @@ This collaboration applies when deriving a local code grant or admitting separat
 The Implementation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
 [execution and record contracts](execution-reference.md#implementation-implementation-operation).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+The public entry prepares a real direct native programmer. Its capsule supplies file-Agent discovery,
+frozen Specs/references and the index; the index names the actual assigned candidate and absolute
+intended implementation paths. Native write/edit tools change that candidate, not scratch copies.
+Broad file and shell tools are not OS-confined by this transport. Network/credential abstention is
+model policy, not a claim of enforced denial. No delegation tools are supplied. The fixed Host
+check service retains its real enforced subprocess boundary and records actual check outcomes.

@@ -10,12 +10,15 @@ export interface NativeBinding {
 	digest: string;
 	root: string;
 	reportSchema?: Record<string, unknown>;
+	checks?: boolean;
+	checksTimeoutMs?: number;
 }
 
 export function nativeCommand(
 	binding: NativeBinding,
 	action: string,
 	value: unknown,
+	signal?: AbortSignal,
 ): Promise<any> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(
@@ -27,10 +30,16 @@ export function nativeCommand(
 			},
 		);
 		let expired = false;
-		const timer = setTimeout(() => {
-			expired = true;
-			child.kill("SIGKILL");
-		}, 30_000);
+		const timer = setTimeout(
+			() => {
+				expired = true;
+				child.kill("SIGKILL");
+			},
+			action === "checks" ? (binding.checksTimeoutMs ?? 30_000) : 30_000,
+		);
+		const abort = () => child.kill("SIGTERM");
+		signal?.addEventListener("abort", abort, { once: true });
+		if (signal?.aborted) abort();
 		let text = "";
 		child.stdout.on("data", (chunk) => {
 			text += chunk;
@@ -39,10 +48,12 @@ export function nativeCommand(
 		child.stderr.resume();
 		child.on("error", (error) => {
 			clearTimeout(timer);
+			signal?.removeEventListener("abort", abort);
 			reject(error);
 		});
 		child.on("close", (code) => {
 			clearTimeout(timer);
+			signal?.removeEventListener("abort", abort);
 			try {
 				if (expired)
 					throw new Error(
@@ -74,6 +85,21 @@ export function nativeContextChild(binding: NativeBinding) {
 				await nativeCommand(binding, "invalidate", { reason });
 			},
 		);
+		if (binding.checks)
+			pi.registerTool({
+				name: "run_checks",
+				label: "Configured checks",
+				description:
+					"Run the selected Module's Host-configured checks under the enforced check subprocess boundary; no caller command/paths.",
+				parameters: Type.Object({}),
+				async execute(_id, _params, signal) {
+					const value = await nativeCommand(binding, "checks", {}, signal);
+					return {
+						content: [{ type: "text", text: JSON.stringify(value) }],
+						details: value,
+					};
+				},
+			});
 		pi.registerTool({
 			name: "report_issue",
 			label: "Report Issue",

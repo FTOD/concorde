@@ -286,8 +286,11 @@
       "files": [
         "operations/",
         "pi/",
+        "prompts/native/code-reviewer.md",
         "prompts/native/context-assessor.md",
         "prompts/native/planner.md",
+        "prompts/native/programmer.md",
+        "prompts/native/spec-reviewer.md",
         "prompts/native/task-author.md",
         "prompts/workers/common.md",
         "scripts/development/STUDIO.md",
@@ -558,7 +561,9 @@
         "pi/extensions/concorde-session.ts",
         "pi/native-plan-host.mjs",
         "pi/native-preflight.ts",
+        "pi/native-review-host.mjs",
         "pi/workflows/plan.js",
+        "pi/workflows/review.js",
         "prompts/operation-guidance/",
         "prompts/outer/",
         "prompts/workflow-host/",
@@ -796,8 +801,11 @@
       "files": [
         "operations/implement.py",
         "src/concorde/implementation/",
+        "tests/concorde/harness/native_programmer_probe.mjs",
+        "tests/concorde/harness/test_native_implementation_review.py",
         "tests/concorde/harness/test_worker_binding.py",
-        "tests/concorde/operations/test_review.py"
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/support/native_planning.py"
       ],
       "id": "module.implementation",
       "kind": "module",
@@ -895,12 +903,16 @@
       "files": [
         "operations/code_review.py",
         "operations/spec_review.py",
+        "pi/workflows/review.js",
         "src/concorde/review/",
+        "tests/concorde/harness/native_review_probe.mjs",
+        "tests/concorde/harness/test_native_implementation_review.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",
         "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/operations/test_standalone_review.py",
-        "tests/concorde/operations/test_target_discovery.py"
+        "tests/concorde/operations/test_target_discovery.py",
+        "tests/concorde/support/native_planning.py"
       ],
       "id": "module.review",
       "kind": "module",

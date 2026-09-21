@@ -65,3 +65,13 @@ The detailed contract is [Exact tasks and bounded code effects](execution-refere
 - WHEN the parent's Spec or registration has changed, or the component request differs from the derived task or accepted constraints
 - THEN admission rejects before launching a component worker or replacing accepted target state
 - AND the caller must reconcile and replan explicitly rather than reuse stale parent artifacts
+
+### scenario.implementation.native-programmer — Native writes affect the admitted candidate
+
+- GIVEN current accepted plan/tasks, intent, feedback and component evidence
+- WHEN the prepared native programmer uses write/edit and the fixed Host check service
+- THEN actual assigned candidate files change, not capsule implementation copies
+- AND exact fulfilled tasks are accepted only after independent native completion/currentness checks
+- AND incomplete/malformed/foreign tasks, native failure/cancellation or changed plan/task/feedback/Spec inputs cannot accept completion
+- AND partial edits survive refusal; missing components/tasks stop before a model
+- AND status, checks and durable run evidence remain primary-owned with no automatic readiness/integration

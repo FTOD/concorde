@@ -202,13 +202,17 @@ class RunOperationLauncherTests(unittest.TestCase):
                 },
             },
         }
-        process = _run(["concorde-code-review"], json.dumps(invocation))
+        process = _run(
+            ["--native-context", "prepare"],
+            json.dumps({"invocation": invocation, "session_id": "policy-preview"}),
+        )
         self.assertEqual(0, process.returncode, process.stdout + process.stderr)
-        result = json.loads(process.stdout)
-        self.assertEqual("described", result["status"])
-        self.assertEqual("concorde-code-review-response", result["output"]["type_id"])
+        value = json.loads(process.stdout)
+        self.assertEqual("described", value["state"])
+        self.assertNotIn("call", value)
+        self.assertIn("module.operations", value["scope"])
         self.assertEqual(
-            "not_run", result["output"]["data"]["reviews"][0]["data"]["status"]
+            "concorde-code-review-response", value["result"]["output"]["type_id"]
         )
 
 

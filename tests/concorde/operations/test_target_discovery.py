@@ -13,6 +13,11 @@ from tests.concorde.spec.support import PACKAGE, ModelProcessDouble
 
 class ExplicitTargetTests(unittest.TestCase):
     def fixture(self, callback=None):
+        from tests.concorde.support.native_planning import OperationHost
+
+        adapter = patch("concorde.harness.studio.OperationHost", OperationHost)
+        adapter.start()
+        self.addCleanup(adapter.stop)
         fixture = lifecycle_fixtures.WorktreeLifecycleTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)

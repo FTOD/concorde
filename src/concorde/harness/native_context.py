@@ -32,6 +32,7 @@ from .context import (
     resolve_context,
     recheck_context,
     materialize_references,
+    ContextSnapshot,
 )
 from .entry import runtime_selection, validate_invocation, invocation_failure
 from .host import OperationHost
@@ -60,6 +61,9 @@ def assessment_context(run, phase="context-solve", inputs=()):
         "context-solve": "context_assessor",
         "plan": "planner",
         "tasks": "task_author",
+        "implementation": "programmer",
+        "spec-review": "spec_reviewer",
+        "code-review": "code_reviewer",
     }[phase]
     prompt = load_model_instructions(run.host.package_root, role)
     prompt = dataclasses.replace(
@@ -104,11 +108,20 @@ def _reporter(run, descriptor, snapshot):
     invocation = SimpleNamespace(
         context_json=canonical(
             typed(
-                "concorde-agent-stage-context",
+                "concorde-review-stage-context"
+                if descriptor["phase"].endswith("-review")
+                else "concorde-agent-stage-context",
                 {
                     "snapshot": typed("concorde-context-snapshot", snapshot.value),
-                    "change_id": run.change_id,
-                    "expected_artifacts": [],
+                    **(
+                        {
+                            "review": typed(
+                                "concorde-review-input", descriptor["review_input"]
+                            )
+                        }
+                        if descriptor["phase"].endswith("-review")
+                        else {"change_id": run.change_id, "expected_artifacts": []}
+                    ),
                 },
             )
         ),
@@ -146,16 +159,34 @@ def _proposal(run, descriptor, snapshot):
         )
     validate_worker_output(worker_profile(descriptor["role"]), value["result"])
     data = value["result"]["data"]
-    validate_stage_identity(data, snapshot.id)
+    if descriptor["phase"].endswith("-review"):
+        from ..review.review import _validate
+
+        _validate(run, snapshot, descriptor["review_input"], data)
+    else:
+        validate_stage_identity(data, snapshot.id)
     reporter = _reporter(run, descriptor, snapshot)
     validate_references(
         run.repository.root,
-        data["blockers"],
+        data.get("blockers", data.get("issues", [])),
         admitted=[*reporter.receipts, *reporter.admitted_receipts],
     )
-    if data["outcome"] in {"completed", "sufficient"}:
+    if data.get("outcome") in {"completed", "sufficient"}:
         if descriptor["phase"] == "plan" and not data["plan"].strip():
             raise SpecError("planning produced no usable plan", "invalid_completion")
+        if descriptor["phase"] == "implementation":
+            from ..implementation.implement import (
+                prepare_implementation,
+                validate_implementation,
+            )
+
+            validate_implementation(
+                run,
+                data,
+                prepare_implementation(
+                    run, admitted_inputs=descriptor["snapshot"]["stage_inputs"]
+                )[1],
+            )
         if descriptor["phase"] == "tasks":
             from ..planning.tasks import prepare_tasks, validate_tasks
 
@@ -172,7 +203,7 @@ def _execute(
 ):
     """Selected finite Host service. Model values cannot choose paths or actions."""
     descriptor = None
-    if action not in {"prepare", "prepare-planner"}:
+    if action not in {"prepare", "prepare-planner", "prepare-review-item"}:
         descriptor = _record(Path(descriptor_path))
         if digest(descriptor) != expected_digest:
             raise SpecError("native descriptor changed", "stale_context")
@@ -185,7 +216,14 @@ def _execute(
     else:
         envelope = payload["invocation"]
     operation = envelope["operation_id"]
-    if operation not in {OPERATION, "concorde-plan", "concorde-tasks"}:
+    if operation not in {
+        OPERATION,
+        "concorde-plan",
+        "concorde-tasks",
+        "concorde-implement",
+        "concorde-spec-review",
+        "concorde-code-review",
+    }:
         raise SpecError("not a native read-only planning entry", "unknown_operation")
     validate_invocation(envelope, operation)
     selection = runtime_selection(package_root)
@@ -193,6 +231,17 @@ def _execute(
 
     def service(run):
         nonlocal descriptor
+        if (
+            operation in {"concorde-spec-review", "concorde-code-review"}
+            and action == "prepare"
+        ):
+            from .native_reviews import prepare_scope
+
+            prepared = prepare_scope(run, payload)
+            result.update(
+                {key: value for key, value in prepared.items() if key != "output"}
+            )
+            return prepared["output"]
         phase = (
             descriptor["phase"]
             if descriptor
@@ -201,6 +250,10 @@ def _execute(
                 if action == "prepare-planner"
                 else "tasks"
                 if operation == "concorde-tasks"
+                else "implementation"
+                if operation == "concorde-implement"
+                else operation.removeprefix("concorde-")
+                if operation.endswith("-review")
                 else "context-solve"
             )
         )
@@ -209,14 +262,46 @@ def _execute(
         from .change_worktree import progress
 
         inputs = ()
-        if operation != OPERATION:
+        implementation = None
+        if phase == "implementation":
+            from ..implementation.implement import (
+                prepare_implementation,
+                persist_implementation,
+            )
+
+            implementation = prepare_implementation(
+                run,
+                admitted_inputs=descriptor["snapshot"]["stage_inputs"]
+                if descriptor
+                else None,
+            )
+            work, local, revisions, inputs, stopped = implementation
+            if stopped:
+                result.update(state="not-run", accepted=False)
+                return stopped
+            if not local and action == "prepare" and run.host.mode == "execute":
+                result.update(state="not-run", accepted=True)
+                return persist_implementation(
+                    run,
+                    {
+                        "tasks": [],
+                        "answer": "Separately completed components are current; checks/reviews remain separate.",
+                    },
+                    work,
+                    local,
+                    revisions,
+                )
+        if operation != OPERATION and not phase.endswith("-review"):
             require_spec_review(run)
             if phase == "tasks":
                 inputs = prepare_tasks(run)[1]
+            if phase in {"tasks", "implementation"}:
                 reviews = [
                     v for v in inputs if v["type_id"] == "concorde-review-result"
                 ]
-                if reviews:
+                if reviews and not any(
+                    value["type_id"] == "concorde-issue-context" for value in inputs
+                ):
                     from ..issues.references import observation_context
 
                     inputs = (
@@ -226,18 +311,44 @@ def _execute(
                         ),
                     )
             if (
-                action in {"prepare", "prepare-planner"}
+                action in {"prepare", "prepare-planner", "prepare-review-item"}
                 and run.host.mode == "execute"
                 and not run.host.coordinated
             ):
                 progress(
                     run.repository.root,
-                    phase="tasks" if phase == "tasks" else "plan",
+                    phase=phase if phase in {"tasks", "implementation"} else "plan",
                     status="active",
                     invalidate=True,
                 )
         prompt, agent, snapshot = assessment_context(run, phase, inputs)
-        if action in {"prepare", "prepare-planner"}:
+        info = None
+        if phase.endswith("-review"):
+            from ..review.review import inputs as review_inputs
+
+            info, prompt = review_inputs(run, phase.split("-")[0])
+            prompt = dataclasses.replace(
+                prompt,
+                body=(
+                    run.host.package_root
+                    / ("generated/native/" + agent.name.replace("_", "-") + ".md")
+                ).read_text(),
+            )
+            snapshot = resolve_context(
+                run.repository,
+                run.target.id,
+                phase=phase,
+                task=run.task["task"],
+                focus_id=run.task.get("focus_id"),
+                constraints=tuple(run.task.get("constraints", [])),
+                instructions=prompt.body,
+                agent=agent,
+            )
+            run.last_context = snapshot.id
+        if descriptor and phase == "implementation":
+            snapshot = ContextSnapshot(canonical(descriptor["snapshot"]))
+            run.last_context = snapshot.id
+        if action in {"prepare", "prepare-planner", "prepare-review-item"}:
             if run.host.mode == "describe-policy":
                 result.update(
                     state="described",
@@ -257,7 +368,9 @@ def _execute(
                                 else []
                             ),
                         ],
-                        "write": [],
+                        "write": list(run.repository.implementation_paths(run.target))
+                        if phase == "implementation"
+                        else [],
                         "tools": list(agent.tools),
                         "delegation": False,
                     },
@@ -282,7 +395,7 @@ def _execute(
                     "Select CONCORDE_NATIVE_SUBAGENTS_ROOT before native execution",
                     "missing_runtime",
                 )
-            if operation != OPERATION:
+            if operation != OPERATION and not phase.endswith("-review"):
                 pending = run.pending_gaps(phase, snapshot)
                 if pending:
                     result.update(state="not-run", accepted=False)
@@ -302,7 +415,44 @@ def _execute(
                 materialize_references(
                     run.repository, capsule, snapshot.value["external_references"]
                 )
-            (capsule / "context.json").write_text(snapshot.serialized + "\n")
+            if phase == "code-review":
+                materialize_documents(
+                    capsule,
+                    {
+                        item["path"]: read_file(run.repository.root, item["path"])
+                        for item in snapshot.value["implementation_artifacts"]
+                    },
+                )
+            index = snapshot.serialized + "\n"
+            if info is not None:
+                index = (
+                    canonical(
+                        {
+                            "snapshot": typed(
+                                "concorde-context-snapshot", snapshot.value
+                            ),
+                            "review": typed("concorde-review-input", info),
+                        }
+                    )
+                    + "\n"
+                )
+            if phase == "implementation":
+                index = (
+                    canonical(
+                        {
+                            **snapshot.value,
+                            "native_workspace": str(run.repository.root),
+                            "intended_write_paths": [
+                                str(run.repository.root / p)
+                                for p in run.repository.implementation_paths(run.target)
+                            ],
+                            "file_scope_enforcement": "prompt-level",
+                            "network_and_credentials": "model policy, not OS confinement",
+                        }
+                    )
+                    + "\n"
+                )
+            (capsule / "context.json").write_text(index)
             ticket = str(uuid.uuid4())
             descriptor = {
                 "schema_version": 1,
@@ -324,6 +474,11 @@ def _execute(
                 "envelope": envelope,
                 "configuration": run.configuration,
                 "snapshot": snapshot.value,
+                "index": index,
+                "review_input": info,
+                "result_type": "concorde-review-stage-result"
+                if info is not None
+                else "concorde-agent-stage-result",
                 "delivered": {
                     str(p.relative_to(capsule)): digest(p.read_bytes())
                     for p in capsule.rglob("*")
@@ -356,6 +511,13 @@ def _execute(
                         "descriptor": str(filename),
                         "root": str(run.repository.root),
                         "reportSchema": REPORT,
+                        "checks": "run_checks" in agent.tools,
+                        "checksTimeoutMs": 10000
+                        + 1000
+                        * sum(
+                            run.repository.checks[key]["timeout_seconds"]
+                            for key in run.target.checks
+                        ),
                     }
                 )
                 + ", digest: readFileSync("
@@ -368,11 +530,16 @@ def _execute(
                 + agent.name
                 + "; use only its issued invocation.",
                 "systemPrompt": prompt.body,
-                "tools": [*agent.tools, "report_issue"],
+                "tools": [
+                    *[t for t in agent.tools if phase != "code-review" or t != "bash"],
+                    "report_issue",
+                ],
                 "extensions": [str(child_extension)],
                 "allowNestedSubagents": False,
                 "maxSubagentDepth": 1,
-                "acceptanceRole": "read-only",
+                "acceptanceRole": "writer"
+                if phase == "implementation"
+                else "read-only",
                 "inheritProjectContext": False,
                 "inheritGlobalContext": False,
                 "inheritSkills": False,
@@ -409,11 +576,11 @@ def _execute(
                     "result": {
                         "type": "object",
                         "properties": {
-                            "type_id": {"const": "concorde-agent-stage-result"},
+                            "type_id": {"const": descriptor["result_type"]},
                             "schema_version": {
-                                "const": type_version("concorde-agent-stage-result")
+                                "const": type_version(descriptor["result_type"])
                             },
-                            "data": DATA_SCHEMAS["concorde-agent-stage-result"],
+                            "data": DATA_SCHEMAS[descriptor["result_type"]],
                         },
                         "required": ["type_id", "schema_version", "data"],
                         "additionalProperties": False,
@@ -484,9 +651,15 @@ def _execute(
                 raise SpecError(
                     "native Agent or capture asset changed", "stale_context"
                 )
-        recheck_context(run.repository, snapshot)
+        if info is not None and info != descriptor["review_input"]:
+            raise SpecError("review input identity changed", "stale_context")
+        recheck_context(
+            run.repository, snapshot, check_implementation=phase != "implementation"
+        )
         capsule = directory / "context"
-        if (capsule / "context.json").read_text() != snapshot.serialized + "\n":
+        if (capsule / "context.json").read_text() != descriptor.get(
+            "index", snapshot.serialized + "\n"
+        ):
             raise SpecError("native context index changed", "stale_context")
         for name, expected in descriptor.get("delivered", {}).items():
             if digest(read_file(capsule, name)) != expected:
@@ -494,6 +667,21 @@ def _execute(
         for name, raw in context_documents(run.repository, snapshot.value).items():
             if read_file(capsule, name) != raw:
                 raise SpecError("native context document changed", "stale_context")
+        if action in {"accept", "admit-review"}:
+            rows = payload.get("details", {}).get("results", [])
+            if len(rows) == 1 and (
+                rows[0].get("interrupted")
+                or rows[0].get("stopped")
+                or rows[0].get("exitCode") != 0
+            ):
+                from .worker_executor import OperationExecutionError
+
+                raise OperationExecutionError(
+                    "native worker did not complete",
+                    outcome="cancelled"
+                    if rows[0].get("interrupted") or rows[0].get("stopped")
+                    else "failed",
+                )
         if action == "invalidate":
             (directory / "invalid").touch(exist_ok=True)
             result.update(state="invalidated", accepted=False)
@@ -501,6 +689,16 @@ def _execute(
             reporter = _reporter(run, descriptor, snapshot)
             result.update(reporter(payload))
             (directory / "reports.json").write_text(canonical(reporter.receipts))
+        elif action == "checks":
+            if "run_checks" not in agent.tools:
+                raise SpecError(
+                    "this role has no configured check service", "permission_denied"
+                )
+            from .checks import check_service
+
+            result.update(
+                check_service(run.repository, run.target, descriptor["ticket"])()
+            )
         elif action == "check":
             result.update(state="prepared", accepted=False)
         elif action == "submit":
@@ -515,7 +713,7 @@ def _execute(
                 (directory / "invalid").touch(exist_ok=True)
                 raise
             result.update(state="proposed", accepted=False)
-        elif action in {"stage", "accept"}:
+        elif action in {"stage", "accept", "admit-review"}:
             proposal = _proposal(run, descriptor, snapshot)
             control = control_value(
                 {
@@ -556,6 +754,17 @@ def _execute(
                 )
                 if payload["gate_command"] != expected_gate:
                     raise SpecError("foreign native gate", "incompatible_handoff")
+                if action == "admit-review":
+                    result.update(
+                        state="admitted",
+                        accepted=False,
+                        proposal=proposal,
+                        native=metadata,
+                    )
+                    return run.response(
+                        "described",
+                        "Review proposal independently admitted for aggregate acceptance.",
+                    )
                 # Exclusive receipt reservation prevents repeated effects after uncertain failure.
                 _write(
                     directory / "terminal.json",
@@ -570,6 +779,13 @@ def _execute(
 
                         run.completed.insert(0, "concorde-context-solve")
                         output = persist_plan_result(run, data)
+                    elif phase == "implementation":
+                        from ..implementation.implement import persist_implementation
+
+                        state, local, revisions, _, _ = implementation
+                        output = persist_implementation(
+                            run, data, state, local, revisions
+                        )
                     elif phase == "tasks":
                         from ..planning.tasks import persist_tasks
 
@@ -697,7 +913,7 @@ def execute(
                 "native_session_id": prior["native_session_id"],
             },
         )
-    if action == "prepare":
+    if action in {"prepare", "prepare-review-item"}:
         return _execute(package_root, action, payload)
     # One finite command at a time per owned slot. This is not a model scheduler.
     import fcntl
@@ -720,12 +936,14 @@ def main(package_root, args):
         action = args[0]
         operation = (
             payload.get("invocation", {}).get("operation_id")
-            if action == "prepare"
+            if action in {"prepare", "prepare-review-item"}
             else _record(Path(args[1])).get("operation")
         )
         if action.startswith("workflow-"):
-            from .native_planning import workflow_service
-
+            if operation in {"concorde-spec-review", "concorde-code-review"}:
+                from .native_reviews import workflow_service
+            else:
+                from .native_planning import workflow_service
             value = workflow_service(package_root, action, *args[1:])
         else:
             value = execute(package_root, action, payload, *args[1:])

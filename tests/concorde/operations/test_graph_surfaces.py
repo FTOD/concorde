@@ -110,7 +110,7 @@ class GraphSurfaceTests(TestCase):
                                 ),
                             ),
                         ):
-                            result = review.review_scope(run, mode)
+                            result = review.legacy_issue_review_scope(run, mode)
                         records = save.call_args.args[1][field]["owner"]
                         self.assertEqual({"peer"} if remaining else set(), set(records))
                         self.assertEqual(
@@ -213,7 +213,7 @@ class GraphSurfaceTests(TestCase):
                         ),
                     ),
                 ):
-                    result = review.review_scope(run, "code")
+                    result = review.legacy_issue_review_scope(run, "code")
                 self.assertEqual("completed", result["data"]["outcome"])
                 self.assertEqual(
                     [("owner", "code"), ("peer", "code")]
@@ -317,7 +317,7 @@ class GraphSurfaceTests(TestCase):
                     ),
                 ),
             ):
-                result = review.review_scope(run, "code")
+                result = review.legacy_issue_review_scope(run, "code")
             self.assertEqual("failed", result["data"]["outcome"])
             self.assertEqual(stop + 1, len(calls))
             self.assert_path(drawings[0], visited)

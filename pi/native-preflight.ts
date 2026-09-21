@@ -34,6 +34,11 @@ export async function nativePreflight(
 		"ls",
 		"report_issue",
 		"structured_output",
+		...(call.agent === "concorde-programmer"
+			? ["edit", "write", "bash", "run_checks"]
+			: call.agent === "concorde-code-reviewer"
+				? ["run_checks"]
+				: []),
 	];
 	if (
 		preflight.contract.tools.effectiveAllowlist.some(
