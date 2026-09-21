@@ -481,31 +481,49 @@ and return this bounded record before scratch cleanup. Maintain quiescent source
 Native installed smoke uses the installed entry in a separate process with `installed_env`, never
 the source-private entry pretending that copied assets are an installation.
 
-For failed Issue observations, import the source-only
-`tests/concorde/harness/native_observation.mjs` from the explicitly selected source. In a driver
-already authorized to run a real native child, use its passive SDK facade with the actual native
-factory, keeping the issued native call and all launch hooks unchanged:
+For the next authorized live Issue diagnostic, use the checked-in source driver rather than building
+or regex-patching another JavaScript collector. First run the model-free path **inside test_command**:
 
-```js
-const observation = nativeObservation(scratch + "/issue-observation");
-setChildSessionFactory(createDefaultChildSessionFactory({
-  loadPiCodingAgent: async () => observation.sdk(actualSdk),
-}));
-// Execute exactly the Host-issued native call. No retry or prose parsing.
-// In finally, while scratch/artifacts still exist, even on native failure:
-const summary = observation.collect(prepared.descriptor, {
-  artifactRoots: [actualNativeArtifactsDirectory],
-});
-console.log(JSON.stringify(summary)); // helper enforces fewer than 8000 UTF-8 bytes
+```bash
+CONCORDE_SESSION_SELECTION="$PWD/.concorde/work/pi-first-diagnostic-selection.json" \
+  .venv/bin/python tests/concorde/harness/run_issue_diagnostic.py --selftest \
+  --selection "$PWD/.concorde/work/pi-first-diagnostic-selection.json" \
+  --sdk /explicit/pi-coding-agent/package --native /explicit/pi-subagents/package
 ```
 
-Import the native factory from the explicitly admitted producer's `runs/shared/child-session.ts`
-through the same loader as the owning driver; use the actual SDK module, not a reconstructed hook
-runner. The artifact root is the driver's actual session/temp artifact directory, not a guessed
-metadata filename. The observer follows expected slot bindings and native status steps even if there
-are no successful emissions. It records SDK effective prompt and tools on `agent_start`, native
-metadata/transcripts, and labelled bootstrap/registration observations. SDK creation is not a model
-execution; missing facts stay null. Preserve/read raw mode-0600 details only in controlled scratch,
-return nonsecret bounded diagnostics before cleanup, and never claim raw files survived it. Do not
-serialize auth stores, provider registries or the whole launch environment. The helper grants no
-extra tools, changes no prompt and supplies no acceptance or retry authority.
+Only when main authorizes the one live attempt, use the same command with `--live` instead of
+`--selftest`, plus `--model codex-lb/gpt-6-astra --auth-source /approved/auth.json
+--models-source /approved/models.json`. The model name and both credential/model-file paths are
+explicit test inputs, not defaults or permission to inspect other settings. The script preserves the
+approved mode-0600 scratch auth copy and read-only canonical model-file link, disables ambient
+resources and model retries, and drives the actual SDK/public ExtensionRunner hooks. It never prompts
+a coordinator model, runs a conditional second case or retries the Issue workflow. Source selection
+stays active. All fixture writes remain in issued scratch.
+
+This path does **not** install a child-session factory setter or infer SDK effective-start state from
+an unrelated Jiti module instance. Effective start remains unknown. It correlates issued d-0 schema,
+ticket and native launch identity with the genuine failed-child transcript, independently of success
+emissions. The parser merges assistant toolCall, native tool_start/tool_end and toolResult records by
+call ID and retains actual structured arguments, complete available error text, isError/status and
+terminal reason. Native Missing structured_output means no successful submission, not no attempts.
+
+The only final stdout is a whitelisted selected diagnostic envelope under 8000 UTF-8 bytes. Its
+bounded gzip+base64 payload contains the issued schema and selected structured calls/results, with
+SHA-256 and decoded/compressed byte counts. It never contains arbitrary transcript/read-tool output,
+authentication stores, environment or provider registries. Parent may decode it as **data**, verify the
+hash/size and persist it in primary evidence. Native source truncation/missing records are distinct
+from explicit omitted reporting; the first actual failed call is not silently replaced by counts.
+The raw scratch is ephemeral, but these selected arguments/errors survive in returned stdout.
+
+Decode without evaluating anything, for example with `base64.b64decode`, `gzip.decompress`, SHA-256
+verification against payload.sha256, and `json.loads`; enforce the declared 256-KiB decoded bound.
+The tracked `unpackDiagnostic` helper additionally bounds decompression. If a complete first failure
+cannot fit the fixed export bound, the command refuses an evidence-complete claim rather than retrying
+or silently dropping its error. Selftest exercises the actual native transcript writer and lossless
+codec before any credential read; the live path repeats this check with its issued schema before the
+first subagent call.
+
+A zero exit from the live **diagnostic command** means its selected evidence was complete enough to
+transport, not that the Issue succeeded. Check envelope.summary.result and the decoded native/attempt
+records separately. A failed business/native result may have a successful diagnostic export. No
+specific discarded error from a previous run is inferred or reconstructed.

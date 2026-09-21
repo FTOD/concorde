@@ -1,6 +1,7 @@
 /** Actual candidate Pi entry + native file-Agent discovery/executor. Only model events are scripted. */
 import assert from "node:assert/strict";
 import { nativeObservation } from "./native_observation.mjs";
+import { packDiagnostic, unpackDiagnostic } from "./structured_diagnostic.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -383,6 +384,8 @@ setChildSessionFactory({
                       "stale-issue",
                       "stale-input",
                       "native-failure",
+                      "diagnostic-attempts",
+                      "schema-correction",
                       "missing",
                       "cancel",
                       "slot-change",
@@ -456,6 +459,91 @@ setChildSessionFactory({
             data,
           },
         };
+        if (["diagnostic-attempts", "schema-correction"].includes(scenario)) {
+          const schemaInvalid = structuredClone(value);
+          delete schemaInvalid.result.data.documents;
+          const businessInvalid = structuredClone(value);
+          businessInvalid.result.data.context_id = "sha256:" + "f".repeat(64);
+          const values =
+            scenario === "diagnostic-attempts"
+              ? [schemaInvalid, businessInvalid, value]
+              : [schemaInvalid, value];
+          send({ type: "agent_start" });
+          for (let n = 0; n < values.length; n++) {
+            const id = "attempt-" + (n + 1),
+              args = { value: values[n] };
+            const assistant = {
+              role: "assistant",
+              content: [
+                {
+                  type: "toolCall",
+                  id,
+                  name: "structured_output",
+                  arguments: args,
+                },
+              ],
+              api: "fixture",
+              provider: "fixture",
+              model: "model",
+              stopReason: "toolUse",
+              timestamp: Date.now(),
+              usage: {
+                input: 1,
+                output: 1,
+                totalTokens: 2,
+                cost: { total: 0 },
+              },
+            };
+            messages.push(assistant);
+            send({ type: "message_end", message: assistant });
+            send({
+              type: "tool_execution_start",
+              toolCallId: id,
+              toolName: "structured_output",
+              args,
+            });
+            let result;
+            try {
+              result = await childTools
+                .get("structured_output")
+                .execute(id, args);
+            } catch (error) {
+              result = {
+                isError: true,
+                content: [{ type: "text", text: String(error.message) }],
+              };
+            }
+            const event = {
+              toolName: "structured_output",
+              toolCallId: id,
+              input: args,
+              content: result.content,
+              details: result.details,
+              isError: Boolean(result.isError),
+            };
+            for (const handler of childHandlers.get("tool_result") ?? [])
+              Object.assign(event, await handler(event, ctx));
+            const toolResult = {
+              role: "toolResult",
+              toolCallId: id,
+              toolName: "structured_output",
+              content: event.content,
+              isError: event.isError,
+              timestamp: Date.now(),
+            };
+            messages.push(toolResult);
+            send({ type: "message_end", message: toolResult });
+            send({
+              type: "tool_execution_end",
+              toolCallId: id,
+              toolName: "structured_output",
+              isError: event.isError,
+            });
+          }
+          send({ type: "agent_end", messages });
+          send({ type: "agent_settled" });
+          return;
+        }
         const args = { value };
         const message = {
           role: "assistant",
@@ -516,6 +604,7 @@ setChildSessionFactory({
           isError: event.isError,
           timestamp: Date.now(),
         });
+        send({ type: "message_end", message: messages.at(-1) });
         send({
           type: "tool_execution_end",
           toolCallId: "structured-1",
@@ -612,6 +701,54 @@ observation.refresh();
 const observationSummary = observation.collect(prepared.descriptor, {
   artifactRoots: [path.join(root, "native/artifacts")],
 });
+const diagnostic = JSON.parse(
+  fs.readFileSync(
+    path.join(root, "observation/child-0-structured.json"),
+    "utf8",
+  ),
+);
+const evidence = packDiagnostic(diagnostic);
+assert.deepEqual(unpackDiagnostic(evidence), diagnostic);
+fs.writeFileSync(
+  path.join(root, "durable-diagnostic.json"),
+  JSON.stringify(evidence),
+);
+if (scenario === "diagnostic-attempts") {
+  const a = diagnostic.attempts;
+  assert.equal(a.length, 3);
+  assert(a.every((x) => x.argumentsComplete && x.errorComplete && x.isError));
+  assert.match(
+    a[0].resultRecords[0].text,
+    /Structured output validation failed/,
+  );
+  assert.match(a[0].resultRecords[0].text, /documents/);
+  assert.match(a[1].resultRecords[0].text, /Concorde rejected this proposal/);
+  assert.match(a[2].resultRecords[0].text, /duplicate structured submissions/);
+  assert(!Object.hasOwn(a[0].arguments.value.result.data, "documents"));
+  assert.equal(
+    a[1].arguments.value.result.data.context_id,
+    "sha256:" + "f".repeat(64),
+  );
+  assert.notEqual(
+    a[2].arguments.value.result.data.context_id,
+    a[1].arguments.value.result.data.context_id,
+  );
+  assert.equal(final.accepted, false);
+}
+if (scenario === "diagnostic-attempts")
+  execFileSync(python, [
+    "-c",
+    "from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
+      JSON.stringify(path.join(root, "candidate")) +
+      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['issue_solutions'][i];assert v['attempts']==1 and not v['history'] and not v.get('verification') and not v.get('pending_disposition') and not s.get('validated_tree');assert read_issue(r,i)[0]['status']=='open'",
+  ]);
+if (scenario === "schema-correction") {
+  assert.equal(diagnostic.attempts.length, 2);
+  assert.equal(diagnostic.attempts[0].isError, true);
+  assert.equal(diagnostic.attempts[1].isError, false);
+  assert.equal(final.accepted, true);
+}
+if (scenario === "prose-only") assert.equal(diagnostic.attempts.length, 0);
 if (scenario === "observe-resolved") {
   assert.equal(observationSummary.expectedSlots, 6);
   const fullObservation = JSON.parse(
@@ -653,6 +790,7 @@ if (
     "native-failure",
     "missing",
     "prose-only",
+    "diagnostic-attempts",
     "cancel",
     "review-native-failure",
     "review-cancel",
@@ -668,15 +806,18 @@ if (
   assert.equal(final.accepted, false, JSON.stringify(final));
 else {
   assert(final.accepted, JSON.stringify(final));
-  const expected = ["many", "observe-resolved"].includes(scenario)
-    ? "resolved"
-    : scenario === "exhaustion"
-      ? "limit-exhausted"
-      : scenario === "final-failure"
-        ? "verification-failed"
-        : scenario === "incomplete-review"
-          ? "failed"
-          : scenario;
+  const expected =
+    scenario === "schema-correction"
+      ? "needs-decision"
+      : ["many", "observe-resolved"].includes(scenario)
+        ? "resolved"
+        : scenario === "exhaustion"
+          ? "limit-exhausted"
+          : scenario === "final-failure"
+            ? "verification-failed"
+            : scenario === "incomplete-review"
+              ? "failed"
+              : scenario;
   assert.equal(final.output.data.decision, expected, JSON.stringify(final));
   if (scenario === "final-failure" || scenario === "incomplete-review")
     assert.equal(final.output.data.issues[0].status, "open");
@@ -774,14 +915,18 @@ if (
 if (scenario === "exhaustion") assert.equal(attempts, 6);
 await inspectionFactory.dispose();
 await emit("session_shutdown", {});
-console.log(
-  JSON.stringify({
-    scenario,
-    root,
-    scriptedCalls,
-    realModelCalls: 0,
-    accepted: final.accepted,
-    observation: path.join(root, "observation/summary.json"),
-    outcome: final.output?.data.outcome,
-  }),
-);
+if (process.env.CONCORDE_DIAGNOSTIC_ENVELOPE === "1")
+  console.log(JSON.stringify(evidence));
+else
+  console.log(
+    JSON.stringify({
+      scenario,
+      root,
+      scriptedCalls,
+      realModelCalls: 0,
+      accepted: final.accepted,
+      observation: path.join(root, "observation/summary.json"),
+      durableDiagnostic: path.join(root, "durable-diagnostic.json"),
+      outcome: final.output?.data.outcome,
+    }),
+  );

@@ -31,9 +31,8 @@ It creates no invented acceptance cases to satisfy a template. Existing projects
 maintenance or topology changes, not reinitialization, to migrate their document collections.
 
 `concorde-init` makes no model call. Normal local calls directly select the deterministic proposal
-or atomic application service. The explicit Studio adapter retains the
-[project Graph](contracts.md#graphs-project-graph-project-graph), whose `select_action` node routes
-to those same services; the Graph is not required for ordinary initialization. A
+or atomic application service. The [former project Graph](contracts.md#graphs-project-graph-project-graph)
+is retired, not an alternative Studio entry. A
 describe-policy request is refused with `use_proposal`, because the proposal already is the preview.
 
 ### Protocol compatibility and initialization

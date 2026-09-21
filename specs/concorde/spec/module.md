@@ -62,8 +62,8 @@ starting draft from permission to apply it. Configuration is a separate explicit
 path silently invents product behavior. Stale or invalid proposals leave the project unchanged.
 
 Ordinary `concorde-init` and `concorde-configure` calls use deterministic Host services directly.
-The full [Project Graph Spec](contracts.md#graphs-project-graph-project-graph) defines the retained
-explicit Studio adapter's State channels, node inputs/outputs and routing.
+The [former Project Graph anchor](contracts.md#graphs-project-graph-project-graph) records a retired
+wrapper; no project-setup Studio adapter or native workflow mirror is supported.
 [Initialization](initialize.md) explains the normal proposal and acceptance interaction.
 
 ```mermaid

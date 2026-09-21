@@ -41,7 +41,7 @@ A process can fail between recording closure and saving final completion. The ho
 information to recognize its own pending write, invalidate old readiness and safely reassess on retry.
 It does not overwrite a concurrent developer edit or guess that an already-closed record completed
 this attempt. Failed work remains inspectable, and retries are bounded rather than endless.
-Exact recovery records, limits and executable Graphs are in the Module's execution reference.
+Exact recovery records, limits and the authored native workflow are in the Module's execution reference.
 
 ## Precise specifications
 

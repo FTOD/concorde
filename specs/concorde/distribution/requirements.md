@@ -60,17 +60,16 @@ A selection returns complete bytes and their provenance, not evidence of model l
 The Pi session extension SHALL offer exactly the public Operations as the operations of its
 `concorde` tool.
 
-The native context-assessor is callable only through a prepared native call; other internal stage Operations have no tool entry; the source checkout's shim additionally tells the
+All seven native Agents are callable through prepared native calls; no private Python model-operation alias or independent concorde tool entry is exposed; the source checkout's shim additionally tells the
 model to run an Operation only on the developer's explicit request.
 
 ### req.distribution.launcher-sigterm-cancels — SIGTERM cancels the launcher like Ctrl-C
 
-The launcher SHALL treat SIGTERM as a host interrupt that cancels a running worker and prints the
-result envelope before exiting.
+The launcher SHALL treat SIGTERM as a host interrupt of its admitted finite Host invocation and preserve its cancellation result envelope.
 
-A developer's client, such as the Pi session extension aborting a turn, ends a run it no longer
-wants with SIGTERM; dying mid-write would leave the worker process and the change's lifecycle
-record behind.
+The Pi session extension separately owns stopping native children/workflows through their actual
+native controls. A finite launcher is not a hidden model-worker process. Historical RPC diagnostic
+launchers retain their worker cancellation tests; neither path promises rollback of committed effects.
 
 ### req.distribution.launcher-managed-runtime — The installed launcher runs inside the managed runtime
 
@@ -89,10 +88,13 @@ require Graph compilation; complete installed-runtime verification remains manda
 
 Build and package validation SHALL check the complete Pi catalog's descriptions, guidance, request schemas and output/source identities against the authored public Operation inventory.
 
-Eleven public entry names and seven legacy terminal worker renderings remain, plus the separately
-rendered native assessor, planner and task-author instructions and authored planning workflow. Public context-solve/tasks prepare supported native Agent calls; plan prepares a registered native
-workflow and exposes result polling. Their Host acceptance verifies native completion; it must not silently execute the legacy worker. Internal instructions are
-not Skills. Missing or drifted output fails checking; `build` regenerates from authored inputs.
+Eleven public entry names and seven canonical native Agent roles remain. All seven roles have native
+instruction projections and byte-identical compatibility `generated/agents` paths. Context-solve,
+tasks and implement prepare direct native calls; plan, review and Issue solve prepare authored
+workflows. Finite Host acceptance verifies actual native completion and current inputs, without a
+legacy worker fallback. Internal instructions are not Skills. Missing/drifted output fails checking;
+build regenerates only from its authored inputs.
+
 
 ### req.distribution.pi-only-install — Installation supports only Pi
 

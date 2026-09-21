@@ -56,7 +56,10 @@ bodies in the invocation input.
 The index is the frozen snapshot; the grant names project-relative paths, Spec documents where they
 live and the installed Protocol copy under `.concorde/protocol/`, as byte-identical copies in a
 capsule or the verified files in place in a project workspace. An agent opens what its task needs, starting from the reading
-entry, and nothing outside the grant is readable. The Protocol fixes only which files are visible;
+entry, and is forbidden by its task policy to read outside that grant. For every native Agent,
+file/network/credential scope is prompt-level policy, not OS enforcement or proof of exclusive reads.
+Actual native terminal tool/delegation ceilings, historical RPC diagnostic sandbox enforcement and
+configured-check/tester OS read-only isolation are separate guarantees. The Protocol fixes the selected context;
 this index and grant is the Framework's chosen delivery. Task context stays inline: a review's
 typed changes carry diffs of the reviewed Module's own files, which add no path to the grant and
 replace no granted file. See [Spec context grant](contracts.md#context-spec-context-grant).
@@ -104,18 +107,18 @@ The configured-check executor SHALL refuse execution when its read-only boundary
 Every configured check SHALL receive a fresh host-managed writable temporary directory outside the
 project, removed after its process tree has terminated.
 
-### req.harness.worker-gate — Every tool call is gated by the compiled grant
+### req.harness.worker-gate — RPC diagnostic tool calls are gated by the compiled grant
 
-Every tool call of a legacy sandboxed Graph worker SHALL be checked against the invocation's compiled
+Every tool call of a retained low-level RPC diagnostic/test worker SHALL be checked against the invocation's compiled
 grant before it executes.
 
 The gate is a policy boundary inside the Pi process over the model's tool calls; the process itself
 is bounded by the worker sandbox ([req.harness.worker-sandbox](#req.harness.worker-sandbox)). See
 [execution](execution-reference.md#execution-tool-gate).
 
-### req.harness.worker-sandbox — Every worker process runs inside the boundary of its grant
+### req.harness.worker-sandbox — RPC diagnostic processes run inside the boundary of their grant
 
-Every legacy Graph worker launch SHALL run its Pi process inside the operating-system sandbox derived from the
+Every retained low-level RPC diagnostic/test worker launch SHALL run its Pi process inside the operating-system sandbox derived from the
 launch's grant, refusing the launch when that boundary cannot be enforced.
 
 The boundary mounts the host read-only with the developer's secret locations, agent-client state and
@@ -130,12 +133,12 @@ Every worker launch SHALL use the model, thinking level and timeout resolved for
 ### req.harness.capsule-closed — A capsule grants only its own snapshot
 
 A capsule worker SHALL be granted read access only to its own snapshot and the copies that snapshot
-indexes. For the native context-assessor this is intended read policy, not filesystem enforcement;
+indexes. For all native Agents this is intended read policy, not filesystem enforcement;
 no claim of exclusive reads follows from delivery or digest checks.
 
 ### req.harness.process-inputs-closed — Worker processes receive only closed inputs
 
-A legacy Graph worker process SHALL receive only the allowlisted environment, its host-built Pi configuration,
+A retained low-level RPC diagnostic/test worker process SHALL receive only the allowlisted environment, its host-built Pi configuration,
 its system prompt and its single typed context message.
 
 ### req.harness.execute-no-retry — No automatic retry after execution failure
@@ -146,13 +149,16 @@ No execution failure SHALL trigger an automatic retry with the same or wider per
 
 A worker that settles without exactly one valid submitted result SHALL NOT be treated as completed.
 
-### req.harness.delegation-one-level — Workers are terminal graph nodes
+### req.harness.delegation-one-level — Native workers are terminal leaves
 
 A worker SHALL NOT delegate tasks, create subagents or recursively invoke Operations.
 
 ### req.harness.worker-single-result — Only the submitted result leaves the worker
 
-Only a worker's single submitted result SHALL leave its process as Concorde data.
+Only a worker's independently admitted single submitted result SHALL become domain completion data.
+
+Native transcripts and diagnostic envelopes may record failed tool attempts without admitting them
+as results; separately admitted Issue observations remain distinct from completion.
 
 ### req.harness.typed-canonical — Canonical encoding digests identically
 
@@ -182,18 +188,15 @@ and every other linked worktree are not inputs; see
 An operation result SHALL distinguish admission, domain and execution outcomes instead of collapsing
 them into one generic failure.
 
-### req.harness.langgraph-control-flow — Orchestration executes as a LangGraph Graph
+### req.harness.langgraph-control-flow — Explicit Operation orchestration uses StateGraph
 
-Remaining Graph-backed operation orchestration and supported explicit Studio adapters SHALL execute
-as LangGraph Graphs with declared transitions.
+Explicitly selected StateGraph Operations SHALL execute their declared Graph transitions.
 
-Public context-solve, plan and tasks instead use finite Host preparation, a real native context-assessor and
-independently correlated result admission. It does not compile a Graph or fall back to a hidden
-Pi-RPC worker on the native path. Its file scope is prompt-level policy, not OS confinement;
-native child-safety ceilings still apply.
-
-Ordinary local initialization, configuration, validation, delivery and Issue bookkeeping use direct
-deterministic Host admission and dispatch, retaining the same checks without compiling a Graph.
+Public context assessment, tasks and implementation use direct native Agents; planning, review and
+Issue solving use authored native workflows with finite Host checkpoints. None selects a legacy
+Graph/Pi-RPC fallback. File scope is prompt-level policy for all native roles, not OS confinement.
+Initialization, configuration, validation, delivery and Issue bookkeeping are finite Host services.
+The optional Operation/Studio boundary is not a public capability mirror.
 
 [Graphs and feedback](graphs-and-loops.md) explains Graph execution; the term's canonical definition is linked above.
 

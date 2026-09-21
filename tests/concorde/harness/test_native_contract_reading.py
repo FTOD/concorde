@@ -72,3 +72,60 @@ class NativeContractReadingTests(unittest.TestCase):
         self.assertNotIn(
             "Pi catalog and build-manifest schema 1 remain unchanged", text
         )
+
+    @verifies(
+        "scenario.harness.native-context-public", "scenario.harness.optional-operation"
+    )
+    def test_related_precise_reading_and_scenarios_follow_the_actual_backend(self):
+        defects = {
+            "harness/requirements": [
+                "nothing outside the grant is readable",
+                "For the native context-assessor this is intended read policy",
+            ],
+            "harness/scenarios": [
+                "actual admission, operation branches",
+                "selects the operation's declared execution Graph",
+                "no worker ever runs unconfined",
+            ],
+            "review/execution-reference": [
+                "Studio also admits these public Operations directly"
+            ],
+            "review/scenarios": ["or its Studio entry"],
+            "spec/module": ["retained explicit Studio adapter"],
+            "spec/initialize": ["explicit Studio adapter retains"],
+            "distribution/module": [
+                "explicit Studio adapter uses",
+                "Except for native context preparation",
+            ],
+            "validation/module": ["Explicit Studio execution selects"],
+            "delivery/module": ["explicit Studio adapter selects"],
+            "issues/module": ["executes declared transitions with| langgraph"],
+            "issues/scenarios": ["WHEN the graph selects its response"],
+            "planning/module": [
+                "Other capabilities keep their existing graph implementations"
+            ],
+            "distribution/build": ["concatenates the shared common worker rules"],
+            "distribution/requirements": ["seven legacy terminal worker renderings"],
+        }
+        for name, phrases in defects.items():
+            with self.subTest(unit=name):
+                text = self.text("specs/concorde/" + name + ".md")
+                for phrase in phrases:
+                    self.assertNotIn(phrase, text)
+        # Actual declared topology and render inventory are checked independently of those strings.
+        from concorde.distribution.build import build
+        from concorde.operations.graph_catalog import catalog
+
+        self.assertEqual(set(catalog()), {"terminal_agent_operation"})
+        outputs = {o.path: o.content for o in build(REPOSITORY_ROOT).outputs}
+        roles = {r.replace("_", "-") for r in operations.AGENTS}
+        self.assertEqual(len(roles), 7)
+        self.assertEqual(
+            {p for p in outputs if p.startswith("generated/native/")},
+            {"generated/native/" + r + ".md" for r in roles},
+        )
+        for role in roles:
+            self.assertEqual(
+                outputs["generated/native/" + role + ".md"],
+                outputs["generated/agents/" + role + ".md"],
+            )

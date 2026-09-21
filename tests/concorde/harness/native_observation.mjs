@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { selectedDiagnostic } from "./structured_diagnostic.mjs";
 
 const digest = (value) =>
   "sha256:" +
@@ -217,6 +218,25 @@ export function nativeObservation(directory) {
           );
         }
       }
+      const transcript = meta?.value.transcriptPath;
+      const diagnostic = selectedDiagnostic({
+        workflowRunId: binding.runId,
+        key,
+        ticket: issued.ticket,
+        schema: issued.call.outputSchema,
+        expected: {
+          contextId: descriptor.snapshot.context_id,
+          role: descriptor.role,
+          phase: descriptor.phase,
+          descriptorDigest: issued.digest,
+        },
+        metadata: meta?.value ?? {
+          runId: step?.runId,
+          agent: issued.call.agent,
+        },
+        transcript: transcript ? fs.readFileSync(transcript, "utf8") : null,
+      });
+      files.push(save(`child-${index}-structured.json`, diagnostic));
       const latest =
         observed.find((s) => s.origin === "sdk") ?? observed.at(-1);
       const session = latest && (starts.get(latest) ?? latest);

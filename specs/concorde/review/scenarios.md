@@ -21,9 +21,9 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 - GIVEN an initialized project without a managed development change or preexisting Issue record
 - AND a task with an explicit Module target, optional same-owner scenario focus and no review-mode selector
-- WHEN the user invokes `concorde-spec-review` or `concorde-code-review` through the Pi `concorde` tool or its Studio entry
+- WHEN the user invokes `concorde-spec-review` or `concorde-code-review` through the Pi `concorde` tool and invokes the exact returned native workflow call
 - THEN the host validates the caller selection and a fresh reviewer receives its complete contract and, for `concorde-code-review`, only its admitted implementation files and scoped changes
-- AND the reviewer receives no write, network or credential authority
+- AND native write/edit/shell/delegation tools are absent while file/network/credential restrictions remain prompt-level policy
 - AND the host returns typed review coverage, findings, gaps and completion status, persisting the review report without creating a development change or changing project Specs or implementation
 - AND an unmanaged Git checkout uses HEAD as the scoped change baseline
 

@@ -56,10 +56,9 @@ reviews, without inventing a plan for a manual candidate. Unavailable isolation 
 This separation keeps a command's success from granting writes, proving semantics or bypassing a
 previously required review.
 
-`validate` runs as a single deterministic node that calls no model. Ordinary local calls invoke its Host service after direct target admission, without compiling a
-Graph. Explicit Studio execution selects the `validate` leaf of the
-[dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph). The caller chooses when to validate;
-no development Graph runs other stages before or after it.
+`validate` is a finite deterministic Host service after direct target admission. It calls no model
+and compiles no Graph. There is no public validate Studio leaf in the retired dispatch Graph.
+The caller chooses when to validate; no development sequence runs other stages before or after it.
 
 ## Relationships
 

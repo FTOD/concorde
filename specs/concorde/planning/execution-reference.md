@@ -136,8 +136,8 @@ The authored steps in `pi/workflows/plan.js` are:
 5. Fixed Host finalization requires exact two-child coverage and independent planner completion,
    then re-admits inputs and persists only a nonempty valid plan through the shared domain service.
 
-There is no shadow planning Graph. The old `plan_graph` factory is retired. Existing State/Studio
-entry adapters refuse absent native transport rather than run a parallel legacy model backend.
+There is no shadow planning Graph. The old `plan_graph` factory is retired. Bare public Python/Studio capability invocations refuse absent native transport; there are no
+planning State/Studio adapters or parallel legacy model backends.
 Tests of domain predicates may supply explicit staged doubles through a test-only adapter; those
 are not evidence of native dispatch.
 

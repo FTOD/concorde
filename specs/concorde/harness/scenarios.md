@@ -32,12 +32,13 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ### scenario.harness.graph-inspection — Inspect execution without acquiring authority
 
-- GIVEN the executable Graph factories and host-bound public Studio entries
-- WHEN a viewer compiles them and requests their LangGraph nodes and edges
-- THEN it sees the actual admission, operation branches and composed Graph transitions without invoking an Agent or resolving project Spec contexts
-- AND private stages gain no public entry or additional permissions
-- AND the public checkpoint contains only JSON input and output while internal host objects and callbacks remain ephemeral
-- AND replay of the public operation revalidates the input and expected workspace before any effects
+- GIVEN the explicitly selected optional Operation Graph factory and its Studio export
+- WHEN a viewer requests its LangGraph nodes, edges and schemas
+- THEN it sees the actual terminal_agent transition without invoking an Agent or resolving project contexts
+- AND no public capability, admission, batch or Issue graph mirror is exposed
+- AND State contains only declared data while trusted services remain in Runtime
+- AND execution without the explicitly supplied trusted service refuses; writable State cannot supply it
+
 
 ### scenario.harness.context-freeze — Freeze one Module's context for a bounded phase
 
@@ -72,7 +73,7 @@ rule: see [names for every phase](requirements.md#req.harness.context-file-names
 - THEN the node's input schema is exactly the top-level fields of the contract's admitted context type and its output schema exactly those of the contract's result type
 - AND the node revalidates the admitted context before the launch and the returned data against the result type after it, so the launcher can neither admit an unexpected context nor return an unexpected result
 - AND the same factory compiled without a launcher is inspectable inside the Graphs that run it and starts no process
-- BUT the Pi worker launch, its admission checks and usage recording stay in the host's launcher, outside the graph's public state
+- BUT native launch/admission remains in the explicitly supplied trusted service, outside the graph's public State
 
 ### scenario.harness.context-invalid-input — Reject an unsupported phase or a blank task
 
@@ -104,7 +105,7 @@ See [the changed-input recheck bound](requirements.md#req.harness.context-rechec
 - GIVEN a named worker registered in the Operation inventory and a current, fresh build
 - WHEN resolve_worker is called for that name
 - THEN the host returns a reproducible WorkerBinding covering spec_digest, instructions_digest, profile_digest, build_manifest_digest and timeout_seconds
-- AND worker_profile resolves that same name, its hyphenated spelling or its concorde- external name to the Operation's model execution profile
+- AND worker_profile resolves that same name, its hyphenated spelling or its concorde- external name to the canonical Agent profile
 - AND resolve_worker verifies the binding against the current build before returning it
 
 See [the profile-within-contract bound](requirements.md#req.harness.profile-within-contract).
@@ -121,7 +122,7 @@ See [the profile-within-contract bound](requirements.md#req.harness.profile-with
 - GIVEN a worker contract's EffectDeclaration, a host-supplied narrowing PolicyBinding and concrete role paths
 - WHEN compile_policy is called
 - THEN the host returns a digest-bound NormalizedPolicy whose reads, writes, network and credentials are each a subset of both the declaration and the binding
-- AND the worker executor hands exactly its read and write paths to the worker's tool gate
+- AND the historical RPC diagnostic executor hands these paths to its tool gate; native Agents instead retain intended file policy without a claim of OS/path-gate enforcement
 
 See [the declared-and-granted subset bound](requirements.md#req.harness.permission-no-widen), [write authority
 scoped to code-writing invocations](requirements.md#req.harness.permission-write-scope) and [no write authority
@@ -171,7 +172,7 @@ See [the no-wider-retry bound](requirements.md#req.harness.permission-no-retry).
 
 ### scenario.harness.execute-success — Execute a bound worker and accept its typed result
 
-- GIVEN a host-built WorkerInvocation carrying a verified WorkerBinding, frozen context, compiled policy and model selection
+- GIVEN a historical RPC diagnostic/test host-built WorkerInvocation carrying a verified WorkerBinding, frozen context, compiled policy and model selection
 - WHEN WorkerExecutor is called with it
 - THEN its preflight reverifies the binding against the current build, the instructions against the rendered worker and its indexed Protocol files, and the context and policy against the worker contract before starting any process
 - AND it launches one Pi worker with the profile's tools, the policy's grants and the contract's result schema narrowed to the profile's authored-field permissions as submit_result's parameters
@@ -190,9 +191,9 @@ settling-is-not-completion bound](requirements.md#req.harness.execute-exit-insuf
 
 ### scenario.harness.worker-contract — A worker runs only its own task contract
 
-- GIVEN the seven catalog workers and an explicitly selected Module
+- GIVEN a retained low-level RPC diagnostic using a canonical role profile and an explicitly selected Module
 - WHEN the host binds a worker and the executor admits its launch and its result
-- THEN only the common worker rules, that worker's role Spec and the Protocol rule bundle form its system prompt
+- THEN the supplied canonical role instruction bytes and explicit Protocol rules form its prompt, not an implicitly restored common-worker-rules projection
 - AND a mismatched phase, context or result type, unadmitted or missing required stage artifacts, implementation contents for a worker without implementation reads and a policy wider than the contract are rejected before a process starts
 - AND the submission tool omits unauthorized optional authored fields and constrains required unauthorized compatibility fields to their empty values, without changing authorized fields or the shared wire type
 - AND an unauthorized tool submission is rejected without ending the run, so a corrected submission can succeed within the same invocation and unchanged deadline
@@ -325,7 +326,7 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 
 ### scenario.harness.pi-worker-launch — Launch a Pi worker and admit its single result
 
-- GIVEN a consistent worker launch with a workspace, grants, tools, a system prompt, a message, a result schema and a Pi model
+- GIVEN a historical RPC diagnostic/test launch with a workspace, grants, tools, a system prompt, a message, a result schema and a Pi model
 - WHEN PiWorkerRuntime runs it
 - THEN Pi starts in RPC mode with ambient discovery disabled, the host-rendered system prompt as the complete system prompt and submit_result advertised with exactly the launch's result schema
 - AND the returned value is the details of the single successful submit_result call, with usage from Pi's session statistics
@@ -334,7 +335,7 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 
 ### scenario.harness.pi-worker-gate — Refuse tool calls outside the worker's grant
 
-- GIVEN a running Pi worker with read and write grants and a tool list
+- GIVEN a retained RPC diagnostic/test Pi worker with read and write grants and a tool list
 - WHEN its model reads, searches or writes a path outside the grants, or calls a tool it was not granted
 - THEN the Concorde worker extension refuses the call with an error result naming the policy and the file is neither read nor changed
 - AND calls inside the grants execute normally
@@ -342,7 +343,7 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 
 ### scenario.harness.worker-sandbox — Confine the worker process to its grant
 
-- GIVEN a launch with a workspace, write entries including a pending file and a pending directory, and a run directory
+- GIVEN a historical RPC diagnostic/test launch with a workspace, write entries including a pending file and a pending directory, and a run directory
 - WHEN the runtime derives the mount plan and starts the Pi process inside it
 - THEN the process can write exactly the write entries, the pending placeholders and its run directory, while the rest of the workspace and the host filesystem are read-only
 - AND the developer's masked secret locations read as empty or absent, other worktrees of the repository are absent while its shared Git directory remains readable, the host's temporary directory is invisible, and the process starts in the workspace with a private HOME and PID namespace
@@ -352,9 +353,9 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 ### scenario.harness.worker-sandbox-unavailable — An unenforceable boundary refuses the launch
 
 - GIVEN a host without a trusted bubblewrap installation, or a platform other than Linux
-- WHEN a worker launch is requested
-- THEN the runtime refuses it as `worker sandbox unavailable` before any Pi process starts
-- AND no worker ever runs unconfined
+- WHEN a historical RPC diagnostic/test launch is requested
+- THEN that runtime refuses it as `worker sandbox unavailable` before any Pi process starts
+- AND there is no unconfined fallback for that utility; this does not promise native Agent confinement
 
 ### scenario.harness.pi-worker-delegation — Terminal workers reject delegation
 
@@ -371,15 +372,16 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 
 - GIVEN an installed Pi tool names one registered public Operation
 - AND stdin carries a well-formed `concorde-operation-invocation@3` envelope in `execute` mode
-- WHEN the host admits the request
-- THEN it selects the operation's declared execution Graph and obtains every Agent invocation it needs, bound to current instructions, context and compiled authority, from the invocation host
+- WHEN the caller executes the admitted Host service or prepared native call and independent Host acceptance succeeds
+- THEN finite admission selects the declared Host service or prepares the exact native Agent/workflow call with current instructions, context and intended authority
+- AND native cognition is executed through that returned call and independently admitted, never through a public execution Graph mirror
 - AND it returns a `concorde-operation-result@3` with status `succeeded` and the operation's own typed output
 
 See [single boundary](requirements.md#req.harness.single-boundary) and [distinct outcomes](requirements.md#req.harness.distinct-outcomes).
 
 ### scenario.harness.execute-blocked-launch — Stale build or unenforceable permission blocks launch
 
-- GIVEN the recorded build manifest no longer matches its sources, or the compiled policy for the bound Agent cannot be enforced by the Pi worker extension gate
+- GIVEN the recorded build manifest no longer matches its sources, or the selected native launch fails its declared tool/context preflight
 - WHEN the host would otherwise launch an Agent for an admitted request
 - THEN it blocks the request with `stale_build` or the applicable permission error before any process starts
 - AND any existing candidate is preserved unchanged
@@ -455,10 +457,11 @@ See [project root is the entry process's working directory](requirements.md#req.
 
 ### scenario.harness.graph-bounds — Preserve domain limits across Graph composition
 
-- GIVEN a Graph whose admitted work requires more than LangGraph's default scheduling limit
-- WHEN the host executes its bounded batch or Issue-verification transitions
-- THEN the configured scheduling allowance permits the admitted sequence to reach its domain completion or limit outcome
-- AND exhausting a declared domain limit does not silently restart the Graph or widen its authority
+- GIVEN an explicitly selected composed StateGraph with a declared iteration/resource bound
+- WHEN its trusted embedding configures and executes that composition
+- THEN reaching a bound stops without silently restarting the Graph or widening authority
+- AND native Issue/review limits belong to their authored workflows, not this optional Graph or a retired batch Graph
+
 
 ### scenario.harness.operation-state — One executable identity and State boundary
 
@@ -508,7 +511,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - WHEN the host creates a candidate for an admitted Operation
 - THEN the supported installer supplies its complete local Pi entry/catalog, Framework, dependencies, interpreter and receipt before local execution
 - AND later relay verifies/reuses its package identity without reprovisioning or rewriting receipt/marker bytes
-- AND its local Pi session tool can invoke Operations directly, including programmer and read-only review under unchanged grants and other-worktree masks
+- AND its local Pi session tool prepares native programmer/reviewer calls with their intended scope and terminal tools, without claiming the historical RPC other-worktree masks apply to them
 - AND durable status/runs stay primary-owned with candidate-local runtime provenance, while source-private candidates receive no ambient installation
 
 ### scenario.harness.local-installation-failure — Installation failure retains recoverable work
@@ -543,7 +546,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - WHEN its declared Host service is invoked
 - THEN the shared schema, workspace, target, configuration and finalization checks apply without Graph compilation or model execution
 - AND a guard failure stops dependent effects while keeping the versioned failure envelope
-- AND explicit Studio/State-node adapters remain available without claiming they ran on this direct path
+- AND the separately selected terminal Agent Operation remains inspectable in Studio, not a public Host-service adapter
 
 ### scenario.harness.native-context-public — Prepared native assessment is independently admitted
 

@@ -555,8 +555,10 @@ with `stale_context` or `configuration_mismatch`.
 
 ##### Input and result {#execution-input-and-result}
 
-A worker's system prompt is the invocation's instructions: the common worker rules, the worker's
-role Spec and the Protocol rule bundle, in that order. Its only message is the canonical typed
+A historical RPC diagnostic worker's system prompt is the exact supplied invocation instruction
+bytes with its explicitly bound Protocol rules. Loading a current role projection yields the native
+prelude plus role Spec, not a restored common-worker-rules rendering; this diagnostic transport is
+not a native Agent backend or evidence of live prompt compatibility. Its only message is the canonical typed
 context: task context inline, Spec context as the index of granted files. Its output contract is its
 `submit_result` tool, whose parameters are the self-contained JSON Schema of the contract's result
 type narrowed by the verified worker profile's permitted authored fields. Optional fields the
@@ -1291,3 +1293,29 @@ has a 16-MiB bound and oversized/aliased input refuses rather than becoming succ
 The nonsecret summary is strictly below 8000 UTF-8 bytes and explicitly counts omitted child details.
 Before the tester command cleans scratch, its driver reads the details and returns the bounded
 projection needed for diagnosis. Raw paths do not imply retention after external scratch cleanup.
+
+
+### Selected structured-tool diagnosis
+
+The source-owned live diagnostic driver uses actual SDK/public extension hooks and the approved
+explicit provider bootstrap, not a cross-loader child-session setter. It performs one authorized
+Issue workflow attempt and no automatic second case or model retry. Effective-start prompt/tool facts
+remain unknown unless actually observed; absent schema observations are not schema mismatches.
+
+The diagnostic parser selects only structured_output assistant tool-call arguments, native start/end
+and toolResult records, correlated by child run and call ID to the issued ticket/schema. It preserves
+each attempted value and actual available error/result text with separate success/rejection, missing
+source and producer truncation markers. Generic Missing structured_output states no successful
+submission and cannot establish zero attempts. Schema validation can reject before native capture;
+a schema-valid but business-invalid proposal may invalidate the Host slot, so a later corrected call
+on that same slot is not permission to replace it. Fresh admission remains required by the existing
+acceptance contract. No diagnostic treats prose as a proposal or weakens required fields.
+
+Before scratch cleanup the driver emits a sanitized selected-data gzip+base64 envelope with exact
+SHA-256 and compressed/decoded sizes, below 8000 UTF-8 bytes overall and 256 KiB decoded. A reserved
+7000-byte selected envelope leaves room for bounded domain facts. No auth/environment/provider values,
+unrelated reads or arbitrary transcript bodies enter this payload. Full selected details are tried
+first; if necessary only other calls are explicitly omitted, never the first actual failed call's
+complete available arguments/error. Failure to fit that first call refuses diagnostic completeness.
+Roundtrip, bounds and actual transcript record shapes are tested before model execution. Parent may
+decode/persist the returned envelope as data; paths alone are not retained diagnostic evidence.

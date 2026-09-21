@@ -52,10 +52,9 @@ without republishing and merge recovery without repeating an accepted update. Re
 actual state rather than assuming that a missing acknowledgement means nothing happened. Consumer evidence
 and pending-entry confirmation remain currentness gates, not inferred success from a branch name.
 
-`deliver` is a deterministic Host tool that calls no model and normally runs without a Graph.
-Its explicit Studio adapter selects the `deliver` leaf of the
-[dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph).
-Both paths omit target admission because the change identity already names the candidate. No automatic task sequence or native Issue workflow invokes it.
+`deliver` is a finite deterministic Host service that calls no model and compiles no Graph.
+There is no public delivery Studio adapter or dispatch-Graph leaf. The service omits target admission
+because the change identity already names the candidate. No automatic task sequence or native Issue workflow invokes it.
 
 ## Relationships
 

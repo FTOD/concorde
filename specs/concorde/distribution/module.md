@@ -33,9 +33,10 @@ acceptance; local modifications to receipt-owned output conflict rather than bei
 adopted. Pi is the only supported installation client; retired `--integration` flags are rejected.
 
 The Pi coding agent loads a session extension whose single `concorde` tool describes or runs the
-public entries. Context-solve prepares a native context-assessor call and its result hook performs
-independent Host acceptance. Other entries send their invocation envelope to the shared internal launcher, not an alternate
-client product. Aborting a turn cancels the running Operation. In an installed project the launcher
+public entries. Context-solve, tasks and implement prepare direct native Agent calls; plan, reviews
+and Issue solving prepare authored native workflows. Finite Host commands perform preparation and
+independent acceptance; workflow results are polled separately. Non-model actions finish as Host
+services. These are not public Studio or alternate client backends. Aborting a turn cancels the running Operation. In an installed project the launcher
 uses `.concorde/.venv`, the managed runtime verified by the installer. Missing runtime dependencies
 produce a `missing_runtime` result; rerun installation to provision them. The installer distributes
 no standalone Skills and does not invoke a Skills CLI.
@@ -70,8 +71,9 @@ The Pi session extension is the projection for a developer whose client is the P
 Source build renders a private shim under `generated/session/pi/`; consumer installation places it in `.pi/extensions/` that imports the tracked extension and
 carries the catalog of public Operations: each one's description, ordinary guidance and exact request schema. The extension registers one `concorde` tool.
 Its `describe` action returns that guidance and schema; its `run` action wraps the caller's input
-in the invocation envelope, runs the shared launcher in the project root and returns
-the launcher's typed result, saving a result above 48 KiB to a file. Aborting the turn sends the
+in the invocation envelope. Host actions finish through the shared launcher; cognitive entries
+prepare exact native calls and independently accept their results, with result polling for workflows.
+Large ordinary Host output above 48 KiB is saved to a file. Aborting the turn sends the
 launcher SIGTERM, which it treats like Ctrl-C, and kills the launcher's process group after a
 grace period. A short section appended to the system prompt names the tool and the Operations, so
 Pi needs no standalone Skills. The tool grants nothing: the launcher performs every check, and
@@ -110,9 +112,8 @@ failed rebuild restored the prior environment.
 when the developer asks, `accept_protocol` to rebind the installed Protocol copy. It returns the
 applied configuration with `status: applied`. An unsupported value, an uninitialized project, a
 Protocol mismatch without `accept_protocol` or a failed write leaves the previous configuration in
-place. It is a deterministic Host tool that calls no model and normally runs without a Graph. Its
-explicit Studio adapter uses the `configure` leaf of the
-[project Graph](../spec/contracts.md#graphs-project-graph-project-graph). Both paths refuse a
+place. It is a finite deterministic Host service with no model or configure/project-Graph Studio
+adapter. It refuses a
 describe-policy preview with `use_proposal`.
 
 <a id="entity.distribution.developer-session"></a>
@@ -216,9 +217,10 @@ by code, and callers must not infer recovery from the absence of success metadat
 Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
 operation, not to this Module; installation never creates the registry or a Module stub itself.
 
-The Pi projection has known limits. Except for native context preparation, a `run` blocks the Pi turn for the whole Operation and shows no progress,
-because the launcher prints only its final envelope; streaming the host's stage events through the
-tool is pending, and aborting the turn is the only way to stop a run early. The private source entry requires the candidate's `.venv` interpreter to verify selection before
+The Pi projection distinguishes finite Host-command output from native run status. Native cognitive
+entries prepare exact calls and workflow results are polled; no public capability is synchronously
+hidden behind a Graph/RPC worker. Finite Host services return their final envelopes; these envelopes
+are not a native progress stream. The private source entry requires the candidate's `.venv` interpreter to verify selection before
 registration and each tool call; a missing environment blocks without an ambient interpreter
 fallback. A consumer entry selects the installed managed runtime interpreter. If it is missing,
 the consumer launcher may be started with ambient Python, but that does not provision or attest

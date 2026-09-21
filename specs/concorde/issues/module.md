@@ -42,7 +42,7 @@ historical material, not active Issues; no old report is silently classified or 
 
 <a id="entity.issues.runtime"></a>
 
-The Issue runtime validates report references, coordinates the solving graph and separates durable
+The Issue runtime validates report references, supports the authored native solving workflow and separates durable
 problem content from task-local blocker relations. Its file transactions are host-only and use
 exact-byte checks. Individual reports are immutable; a later observation can refine classification
 without erasing the report that a review actually considered. Report IDs are never joined by
@@ -57,6 +57,9 @@ It does not perform intake classification or implementation. Needed implementati
 which selects retained Operations and edits contracts directly. Decisions bind the selected record revision and current input identities.
 
 <a id="entity.issues.langgraph"></a>
+
+This stable historical LangGraph anchor identifies the retired Issue Graph integration; it is not
+a current execution dependency. Native workflow control is described below.
 
 `concorde-issues` runs after target admission binds the owning Module. Local listing, showing,
 reporting and reopening call deterministic Host services directly, without compiling a Graph.
@@ -82,7 +85,7 @@ Independent review retains its own authority. Resolution needs current Issue-spe
 outcomes instead need their own supported reasons. Any final readiness claim includes the
 written disposition, and never means the primary branch has changed.
 
-For State channels, node inputs/outputs, decision limits and exact disposition conditions, open
+For native calls, finite Host checkpoints, decision limits and exact disposition conditions, open
 the full [Native Issue lifecycle](execution-reference.md#lifecycle-issue-graph-issue-graph) and
 [Native verification contract](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
 
@@ -125,14 +128,12 @@ flowchart TB
     spec["Spec"]
     review["Review"]
     validation["Validation"]
-    langgraph["LangGraph"]
     runtime -->|persists observations through| store
     runtime -->|requests bounded decisions from| solver
     runtime -->|admits workers through| harness
     runtime -->|resolves attribution with| spec
     runtime -->|checks the selected problem through| review
     runtime -->|verifies final candidate bytes through| validation
-    runtime -->|executes declared transitions with| langgraph
 ```
 
 ## Collaborations

@@ -51,7 +51,8 @@ Public plan is a native two-Agent workflow: an independently accepted sufficient
 admits a fresh planner, and a finite Host service persists its accepted plan. Tasks and context-solve
 are direct native Agent calls with independent Host acceptance. None of these paths compiles a
 LangGraph or launches a hidden Pi-RPC model worker. The former planning Graph is retired rather
-than retained as a parallel backend. Other capabilities keep their existing graph implementations.
+than retained as a parallel backend. Implementation, review and Issue solving are also native Agent/workflow capabilities; non-model
+actions are finite Host services. Only the explicitly selected optional Operation uses StateGraph.
 
 Each non-code worker has a fresh complete Spec context without source contents. Dependency tasks
 name declared children or used Modules; separately admitted component work, not a wider planner
@@ -64,7 +65,7 @@ executable Graph spanning every box. Planning checks contract sufficiency before
 task authoring is a separate Operation that consumes that current plan. This separation prevents
 an attractive plan from disguising missing behavior or being mistaken for completed code.
 
-For the planning node inputs/outputs, State channels and exact stop conditions, open the
+For native planning calls, finite Host steps, artifact handoffs and exact stop conditions, open the
 [full Native planning workflow Spec](execution-reference.md#plan-planning-graph-plan-graph).
 The [task-authoring explanation](tasks.md) covers the separate next Operation.
 
@@ -88,7 +89,7 @@ flowchart LR
 ## Relationships
 
 The diagram separates Planning's reusable outputs from the providers that admit and produce them.
-[Spec Module](../spec/module.md) resolves the contract and declared participants; [Harness Module](../harness/module.md) isolates each non-code worker;
+[Spec Module](../spec/module.md) resolves the contract and declared participants; [Harness Module](../harness/module.md) supplies fresh separately scoped native non-code sessions;
 [Harness admission](../harness/admission.md) accepts and persists the returned state. Context assessment, Accepted plan and
 Acceptance tasks are successive, distinct records, not three names for completed implementation.
 A provider dependency does not make that provider a child of Planning or grant its code to a planner.

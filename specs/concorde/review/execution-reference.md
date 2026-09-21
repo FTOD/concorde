@@ -38,14 +38,15 @@ Module target_id and task, optional same-owner focus_id, constraints and current
 The host deterministically resolves that selection; no router, inferred owner or context expansion
 precedes the fresh reviewer. Their closed request schemas have no review_mode field. Each entry
 selects only its own reviewer; the retired concorde-review operation and its request/response types
-have no alias. The Pi `concorde` tool forwards the selected Operation to the common launcher;
-Studio also admits these public Operations directly. Review runs in the current worktree without creating
+have no alias. The Pi `concorde` tool prepares the exact native scope workflow through finite Host admission.
+The caller invokes its returned native call and separately polls result acceptance. Public reviews
+have no Studio entry; the optional StateGraph Operation is a distinct explicit surface. Review runs in the current worktree without creating
 a development change or requiring a preexisting Issue record. The host may persist reports and existing
 change evidence, but reviewers receive no project write authority.
 Spec review uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code review uses those
 contracts, the target's exact current registered implementation-file enumeration and scoped code
-changes. Both roles have empty write grants, no network/credentials, fresh sessions, and empty
-predecessor input. Code review does not reuse implement's writable policy.
+changes. Both native roles have fresh sessions and no predecessor conversation or write/edit/shell/delegation
+tools. File/network/credential exclusions are prompt policy, not exclusive-read or OS confinement guarantees. Code review does not reuse implement's writable policy.
 
 The host compares the candidate's current bytes, including uncommitted and untracked owned files,
 against this managed change's recorded base_commit; an unmanaged Git checkout uses its current HEAD.
@@ -99,7 +100,7 @@ The table maps review reports to the Review response's domain `outcome`. An inte
 reviewer still produces an `incomplete` review report and a `failed` Review domain outcome.
 The trusted host separately preserves the `cancelled` or `limit_exhausted` execution
 classification supplied by the [Harness Module](../harness/module.md), as defined in its
-[execution outcomes](../harness/execution-reference.md#execution-outcomes), for the enclosing Graph, persisted candidate lifecycle and final events, following the
+[execution outcomes](../harness/execution-reference.md#execution-outcomes), for the enclosing native workflow, persisted candidate lifecycle and final events, following the
 [admission boundary](../harness/admission.md#operation-execution-boundary).
 Ordinary reviewer failures remain `failed`.
 
@@ -132,7 +133,7 @@ in the reviewing Module's admitted context: a test that declares such a scenario
 exercising its steps is a defect, while a declaration naming a scenario outside that context is
 assessed by the owning Module's review and is neither a defect nor a gap for the reviewing Module.
 A Module never gains a reference to a consumer's documents merely so its reviewer can read them.
-Each reviewer resolves its model Operation's execution profile and Harness under read-only permissions.
+Each reviewer binds its canonical native Agent profile and fresh intended read-only context.
 The host records input versions, coverage, immutable Issue judgments and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
 
