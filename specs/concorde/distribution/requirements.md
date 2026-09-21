@@ -81,8 +81,9 @@ The launcher may be started with ambient `python3`, which need not carry LangGra
 managed runtime `.concorde/.venv` is the only environment the installer verified for the installed
 framework. The launcher therefore re-executes itself with that runtime's interpreter when the
 installer's verified runtime is present beside the framework, and the provisioner verifies each
-public Operation with that same interpreter. When no verified runtime exists and the starting interpreter
-cannot import LangGraph, the launcher reports `missing_runtime` instead of a bare import failure.
+public Operation with that same interpreter. An unavailable selected Graph backend reports
+`missing_runtime` instead of a bare import failure. Direct Host-tool dispatch does not itself
+require Graph compilation; complete installed-runtime verification remains mandatory.
 
 ### req.distribution.operation-guidance-fresh — Pi catalogs are complete fresh projections
 

@@ -304,7 +304,8 @@ failures are failed, with no successful output.
 
 ### Project Graph (`project_graph`) {#graphs-project-graph-project-graph}
 
-`concorde-init` and `concorde-configure` run this Graph; their behavior is owned by this Module's
+Explicit Studio adapters for `concorde-init` and `concorde-configure` run this Graph; ordinary local
+calls invoke the same deterministic services directly. Their behavior is owned by this Module's
 [initialization](initialize.md) and the [Distribution Module](../distribution/module.md).
 
 **State.** `route` (selected node name), `output` (typed initialization/configuration response),

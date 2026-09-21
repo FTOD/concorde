@@ -134,8 +134,8 @@ metadata schema 2 and runtime wire versions retain their existing meanings. Ther
 
 Every Operation, including each model-backed worker, has exactly one canonical behavioral owner.
 The owner's Specs explain what the Operation is for, what it takes and returns and when it stops;
-this table only maps each Operation to that owner and to the Graph it runs. Every public entry first
-passes the [admission](../harness/admission.md#graphs-operation-admission-graph-operation-graph) and
+this table maps each Operation to its owner and execution adapter. Model-backed local entries and
+explicit Studio execution first pass the [admission](../harness/admission.md#graphs-operation-admission-graph-operation-graph) and
 [dispatch](#graphs-operation-dispatch-graph-dispatch-graph) Graphs, and every model-backed worker
 runs as one [Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
 
@@ -144,11 +144,11 @@ runs as one [Operation node](../harness/execution-reference.md#host-operation-no
 | context-solve, plan, tasks; context-assessor, planner, task-author | [Planning](../planning/module.md)             | The [planning Graph](../planning/execution-reference.md#plan-planning-graph-plan-graph) for plan; one worker node each for context-solve and tasks                                                               |
 | implement; programmer                                              | [Implementation](../implementation/module.md) | One local programmer node after checking separately completed component work                                                                                                                                     |
 | spec-review, code-review; spec-reviewer, code-reviewer             | [Review](../review/module.md)                 | Target admission, then one reviewer node for the owner and each changed-file peer                                                                                                                                |
-| validate                                                           | [Validation](../validation/module.md)         | One deterministic node                                                                                                                                                                                           |
-| deliver                                                            | [Delivery](../delivery/module.md)             | One deterministic node                                                                                                                                                                                           |
+| validate                                                           | [Validation](../validation/module.md)         | Direct Host service; explicit Studio node                                                                                                                                                                        |
+| deliver                                                            | [Delivery](../delivery/module.md)             | Direct Host service; explicit Studio node                                                                                                                                                                        |
 | issues; issue-solver                                               | [Issues](../issues/module.md)                 | The [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph) and its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph) |
-| init                                                               | [Spec](../spec/initialize.md)                 | The [project Graph](../spec/contracts.md#graphs-project-graph-project-graph)                                                                                                                                     |
-| configure                                                          | [Distribution](../distribution/module.md)     | The project Graph                                                                                                                                                                                                |
+| init                                                               | [Spec](../spec/initialize.md)                 | Direct Host service; explicit [Studio project Graph](../spec/contracts.md#graphs-project-graph-project-graph)                                                                                                    |
+| configure                                                          | [Distribution](../distribution/module.md)     | Direct Host service; explicit Studio project Graph                                                                                                                                                               |
 
 Module ownership is distinct from node composition. `USES` is the executable composition relation;
 registry `uses` describes Module responsibility dependencies. Shared model execution support does
@@ -165,7 +165,7 @@ The Operations Module owns the exact obligations in [requirements](requirements.
 
 ### Design {#graphs-design}
 
-Operations dispatches every admitted request through two LangGraph Graphs: the dispatch Graph and
+For model-backed local entries and explicit Studio execution, Operations dispatches through two LangGraph Graphs: the dispatch Graph and
 the target admission Graph it composes. Harness runs its
 [admission Graph](../harness/admission.md#graphs-operation-admission-graph-operation-graph) around
 them. The composed Graphs a dispatch leaf runs (planning, project and Issues) are specified by their
@@ -175,17 +175,18 @@ Nodes and Edges are stated in turn, and its diagram is bound to its compiled Gra
 and kept equal to it by the configured Graph Spec check.
 
 The following index maps public entry points to their internal Graphs without duplicating their
-executable diagrams. Every entry first uses admission and dispatch; target-bound entries also
+executable diagrams. Deterministic local calls use the same admission and dispatch services without
+compiling these graphs. Every entry first uses admission and dispatch; target-bound entries also
 use deterministic explicit target admission.
 
-| Public entry                                                     | Internal flow after dispatch                                                                                                                                                                                                                                                    |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `concorde-issues`                                                | [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph); solve returns development or Spec-repair work to the caller, or runs its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph). |
-| `concorde-spec-review`, `concorde-code-review`                   | The review leaf scopes independent invocations; sequential scope work uses the [batch Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph), not a separate repair loop.                                                                       |
-| `concorde-plan`                                                  | [Planning Graph](../planning/execution-reference.md#plan-planning-graph-plan-graph).                                                                                                                                                                                            |
-| `concorde-context-solve`, `concorde-tasks`, `concorde-implement` | A single bounded worker after input admission; component work is returned to the caller.                                                                                                                                                                                        |
-| `concorde-init`, `concorde-configure`                            | [Project Graph](../spec/contracts.md#graphs-project-graph-project-graph).                                                                                                                                                                                                       |
-| `concorde-validate`, `concorde-deliver`                          | Deterministic dispatch leaves; no separate multi-node domain Graph is implied by their internal functions.                                                                                                                                                                      |
+| Public entry                                                     | Internal flow after dispatch                                                                                                                                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `concorde-issues`                                                | Bookkeeping runs directly in local calls; [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph) handles solve or explicit Studio execution. Solve returns development or Spec-repair work to the caller, or runs its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph). |
+| `concorde-spec-review`, `concorde-code-review`                   | The review leaf scopes independent invocations; sequential scope work uses the [batch Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph), not a separate repair loop.                                                                                                                                                            |
+| `concorde-plan`                                                  | [Planning Graph](../planning/execution-reference.md#plan-planning-graph-plan-graph).                                                                                                                                                                                                                                                                                 |
+| `concorde-context-solve`, `concorde-tasks`, `concorde-implement` | A single bounded worker after input admission; component work is returned to the caller.                                                                                                                                                                                                                                                                             |
+| `concorde-init`, `concorde-configure`                            | Direct Host services; explicit [Studio project Graph](../spec/contracts.md#graphs-project-graph-project-graph).                                                                                                                                                                                                                                                      |
+| `concorde-validate`, `concorde-deliver`                          | Direct Host services in local calls; deterministic dispatch leaves only in explicit Graph execution.                                                                                                                                                                                                                                                                 |
 
 Model-backed leaves use the [Operation node](../harness/execution-reference.md#host-operation-node-operation-node)
 contract. The seven private model nodes are reached only through declared composition;
@@ -227,7 +228,7 @@ Provider artifacts are exported inside `output`, not as a dispatch `artifacts` c
 the relay for a mutation admitted in the primary worktree, delivery, the project Graph, target admission for every target-bound operation; an error ends the
 Graph. `prepare_target` writes `route` again once the owner is bound and selects that operation's
 leaf, or ends the Graph when binding is blocked. Every leaf ends the Graph with its typed output.
-The Studio and CLI compile one dispatch Graph per public operation containing only the leaves that
+Studio and model-backed CLI entries compile a dispatch Graph containing only the leaves that
 operation can reach; the diagram shows the complete topology they are drawn from. Both branching
 edges read exactly `state["route"]`; edge labels below explain how the source sets that channel.
 Review dispatch takes precedence over describe-policy so the review provider describes its own

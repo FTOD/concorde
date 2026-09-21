@@ -16,6 +16,7 @@ from pathlib import Path
 from ..spec.repository import SpecError
 from ..spec.typed_data import decode
 from .native_runtime import FORMAT, NativeRuntimeBinding
+from .native_result import staging_control
 
 MAX_NATIVE_RECORD_BYTES = 16 * 1024 * 1024
 
@@ -185,11 +186,17 @@ def verify_native_children(
         ):
             raise SpecError("native child gate did not verify", "invalid_completion")
         gate = gates[0]
-        staged = gate.get("structuredOutput")
-        if not isinstance(staged, dict):
-            raise SpecError("native gate output is unavailable", "invalid_completion")
+        # Native structuredOutput belongs to the model. Only the separately
+        # generated plain gate's stdout carries Host staging control.
+        staged = staging_control(
+            gate.get("stdout"),
+            ticket=ticket,
+            invocation_id=child.invocation_id,
+            proposal_digest=child.proposal_digest,
+        )
         if (
-            gate.get("command") != child.gate_command
+            "structuredOutput" in gate
+            or gate.get("command") != child.gate_command
             or gate.get("status") != "passed"
             or type(gate.get("exitCode")) is not int
             or gate["exitCode"] != 0

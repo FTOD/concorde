@@ -109,9 +109,10 @@ failed rebuild restored the prior environment.
 when the developer asks, `accept_protocol` to rebind the installed Protocol copy. It returns the
 applied configuration with `status: applied`. An unsupported value, an uninitialized project, a
 Protocol mismatch without `accept_protocol` or a failed write leaves the previous configuration in
-place. It runs as a single deterministic node that calls no model: the `configure` leaf of the
-host's [project Graph](../spec/contracts.md#graphs-project-graph-project-graph),
-which refuses a describe-policy preview with `use_proposal`.
+place. It is a deterministic Host tool that calls no model and normally runs without a Graph. Its
+explicit Studio adapter uses the `configure` leaf of the
+[project Graph](../spec/contracts.md#graphs-project-graph-project-graph). Both paths refuse a
+describe-policy preview with `use_proposal`.
 
 <a id="entity.distribution.developer-session"></a>
 

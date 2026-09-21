@@ -48,7 +48,9 @@ and this document states their promises.
 Executable entry: `python3 scripts/run-operation.py <operation-name>`, no task command-line arguments.
 In an installed project the launcher first re-executes itself inside the managed runtime, as the
 [Distribution Module](../distribution/scenarios.md#scenario.distribution.launcher-managed-runtime)
-specifies; an interpreter without LangGraph and without that runtime is refused with `missing_runtime`.
+specifies. Selecting an unavailable Graph backend is refused with `missing_runtime`; the launcher
+does not impose that backend check on ordinary deterministic Host-tool admission. Installed
+execution still requires the complete verified local runtime, including its bundled dependencies.
 A name that is not a public Operation is refused with `unknown_operation`. stdin is exactly one JSON object
 `concorde-operation-invocation@3` with fields type_id, schema_version=3, operation_id (the public Operation's
 name), mode=execute|describe-policy, configuration and input. Maximum input is 1 MiB. Schema 2
@@ -339,9 +341,9 @@ context forms; package/schema alignment checks verify those identities.
 | `unsupported_version`          | The invocation's `schema_version` is not the one this host implements.                                                                                                                                                                                |
 | `unsupported_issue_version`    | A historical schema-1 Issue was selected for mutation; retain its evidence and explicitly create a current record for further work.                                                                                                                   |
 | `unsupported_worktree_version` | Saved worktree progress uses schema 1; archive it explicitly and establish fresh evidence rather than silently reusing renamed fields.                                                                                                                |
-| `use_proposal`                 | `describe-policy` cannot preview `init`/`configure`; use their deterministic proposal graph instead.                                                                                                                                                  |
+| `use_proposal`                 | `describe-policy` cannot preview `init`/`configure`; use their deterministic proposal service instead.                                                                                                                                                |
 | `workspace_mismatch`           | The current worktree, branch, or worktree topology does not match what the requested operation or transition requires, including an entry process whose working directory lies inside a Git worktree but not at its root.                             |
-| `local_installation_required` | A complete current local installation is unavailable or the installed Framework belongs to another project; explicitly install/update the retained worktree and retry, never use primary runtime. |
+| `local_installation_required`  | A complete current local installation is unavailable or the installed Framework belongs to another project; explicitly install/update the retained worktree and retry, never use primary runtime.                                                     |
 | `relay_failed`                 | The candidate worktree's launcher, running a mutation relayed from the primary worktree, returned no result envelope.                                                                                                                                 |
 | `execution_failed`             | The host caught an exception outside the named Spec/typed-data/build error vocabulary.                                                                                                                                                                |
 
@@ -442,9 +444,22 @@ directly; no question-answer worker is supplied. The current workspace identity 
 rechecked after a stage. Other live worktree summaries are frozen observations and grant no
 reading of those worktrees' contracts or implementation.
 
-## Admission Graph
+## Direct Host tools and optional Graph adapters
 
-The admission Graph runs every invocation, admitted or not, around the Operations
+Local `init`, `configure`, `validate`, `deliver` and Issue `list`, `show`, `report` and `reopen`
+requests execute deterministic admission and dispatch directly. `run_host_tool` calls initialization,
+request admission, workspace binding, configuration checks, explicit target binding when needed,
+one selected service and finalization. Any guard failure stops dependent work. It does not accept
+a task-supplied node list or model workflow, and launches no model. `InvocationRuntime` carries the
+trusted Host context for these State-shaped calls without importing LangGraph. Shared wire versions,
+atomic stores, current-input checks, repository locks and result distinctions are unchanged.
+
+The retained Graphs below remain executable Studio/State-node adapters and the existing model-backed
+local entry path, not evidence that normal deterministic calls traversed a Graph. Model-backed
+public behavior has not migrated to native Pi yet.
+
+For model-backed local entries and explicitly selected Studio execution, the admission Graph runs
+the invocation, admitted or not, around the Operations
 [dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph).
 It follows the [Graph Spec convention](execution-reference.md#graphs-and-loops-graph-specs): its
 State, Nodes and Edges are stated in turn, and its diagram is bound to the compiled Graph by
@@ -485,7 +500,7 @@ steps, with Studio's own initialization failure handling.
 or its guard recorded a failure envelope, the Graph goes straight to `finalize`; otherwise it
 continues to the next step. `execute` always continues to `finalize` with its Host-captured output
 and shared `result`, and `finalize` always
-ends the Graph, so every invocation, admitted or not, ends with one typed result envelope.
+ends the Graph, so every invocation of this Graph, admitted or not, ends with one typed result envelope.
 The admission predicate is exactly `state.get("result") is not None`, not the business outcome
 inside an Operation response. A blocked business outcome can therefore pass through dispatch to
 normal finalization without being mistaken for a guard exception.

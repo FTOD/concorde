@@ -2,8 +2,6 @@
 
 from typing import TypedDict
 
-from langgraph.graph import END, START, StateGraph
-
 
 class DispatchState(TypedDict, total=False):
     route: str
@@ -50,6 +48,8 @@ DISPATCH_NODES = (
 
 
 def build_dispatch_graph(node_factory, *, operation=None):
+    from langgraph.graph import END, START, StateGraph
+
     from ..harness.operation_graph import expose_stateless_subgraph
     from ..issues.graph import build_issue_graph
     from ..planning.plan_graph import build_plan_graph

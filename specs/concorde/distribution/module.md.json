@@ -47,7 +47,8 @@
         "src/concorde/spec/project.py",
         "src/concorde/spec/project_graph.py",
         "tests/concorde/distribution/",
-        "tests/concorde/distribution/test_local_installation.py"
+        "tests/concorde/distribution/test_local_installation.py",
+        "tests/concorde/harness/test_host_tools.py"
       ],
       "meaning": "#entity.distribution.installation"
     },

@@ -181,3 +181,12 @@ authority.
 A prior revision carried diagrams as external JSON sources referenced by a registry `diagrams`
 declaration. That representation and registry field are retired: every current diagram is inline
 Markdown, and Context(M) is the one-level union of owned and explicitly referenced documents.
+
+## Direct Host runtime carrier
+
+`InvocationRuntime(context: OperationRuntimeContext)` is a frozen, dependency-free carrier for
+calling a registered Host tool through its existing `run(state, runtime)` interface. It carries
+the same trusted Host and configuration outside caller-writable State, without importing LangGraph.
+Explicit Graph adapters still receive LangGraph Runtime objects; both paths validate the same typed
+request and preserve the same result envelope. This carrier does not schedule models or grant
+additional effects.

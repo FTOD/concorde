@@ -178,7 +178,6 @@ def main(argv: list[str] | None = None) -> int:
         sys.path.remove(source)
     sys.path.insert(0, source)
     import importlib
-    import importlib.util
 
     from concorde.harness.entry import invocation_failure, json_main, runtime_selection
     from concorde.spec.contracts import load_operation_inventory
@@ -201,24 +200,6 @@ def main(argv: list[str] | None = None) -> int:
         print(canonical(result))
         return 3
     operation_name = arguments[0]
-
-    if importlib.util.find_spec("langgraph") is None:
-        # No managed runtime was entered and this interpreter lacks the locked dependencies:
-        # say so before the host would surface it as an unrelated failure.
-        print(
-            canonical(
-                invocation_failure(
-                    operation_name,
-                    MissingRuntimeError(
-                        f"the launcher's interpreter {sys.executable} cannot import LangGraph: "
-                        "an installed project needs the managed runtime that "
-                        "install-concorde.py --apply provisions at .concorde/.venv, and the "
-                        "Concorde source checkout needs its locked environment"
-                    ),
-                )
-            )
-        )
-        return 3
 
     try:
         runtime_selection(package_root)

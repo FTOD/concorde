@@ -45,12 +45,14 @@ replacement universal coordinator.
 
 <a id="entity.operations.dispatch"></a>
 
-The [dispatch Graph](execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)
-selects only the requested provider after common Harness admission. Its
+Deterministic Host tools select the requested provider directly after common Harness admission.
+The retained [dispatch Graph](execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)
+serves model-backed entries and explicitly selected Studio execution. Its
 [target admission Graph](execution-reference.md#graphs-target-admission-graph-target-graph)
 checks explicit target/focus and saved intent; it never discovers or substitutes a Module.
 Runtime services narrow each Operation's declared permission ceiling. State carries data, not
-execution authority. The same graph factories serve execution and inspection.
+execution authority. For Graph execution, the same factories serve execution and inspection; direct Host-tool calls
+do not compile these adapters.
 
 ### Flow overview
 

@@ -226,6 +226,7 @@
         "src/concorde/spec/wire_shapes.py",
         "tests/__init__.py",
         "tests/concorde/__init__.py",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/operations/test_structured_results.py",
         "tests/concorde/spec/",
         "tests/concorde/spec/test_typed_data.py",
@@ -461,6 +462,7 @@
         "scripts/issues.py",
         "src/concorde/issues/",
         "src/concorde/spec/issue_shapes.py",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/harness/test_pi_worker.py",
         "tests/concorde/issues/",
         "tests/concorde/operations/test_review.py"
@@ -575,6 +577,7 @@
         "tests/concorde/distribution/test_pi_session.py",
         "tests/concorde/distribution/test_prompt_resolver.py",
         "tests/concorde/fixtures/build/golden/pi/",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/support/build_fixture.py",
         "tests/concorde/support/fake_launcher.py",
         "tests/concorde/support/managed_runtime.py",
@@ -967,6 +970,7 @@
         "operations/validate.py",
         "src/concorde/harness/checks.py",
         "src/concorde/validation/",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/operations/test_check_execution.py",
@@ -1059,6 +1063,7 @@
       "files": [
         "operations/deliver.py",
         "src/concorde/harness/worktree_delivery.py",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "id": "module.delivery",

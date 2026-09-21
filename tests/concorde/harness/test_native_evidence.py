@@ -9,6 +9,7 @@ from concorde.harness.native_evidence import NativeChildEvidence, verify_native_
 from concorde.harness.native_runtime import FORMAT, NativeRuntimeBinding
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
+from concorde.spec.typed_data import canonical
 
 
 class NativeEvidenceTests(unittest.TestCase):
@@ -69,12 +70,16 @@ class NativeEvidenceTests(unittest.TestCase):
                         "command": command,
                         "status": "passed",
                         "exitCode": 0,
-                        "structuredOutput": {
-                            "invocation_id": identifier,
-                            "proposal_digest": proposal_digest,
-                            "state": "staged",
-                            "accepted": False,
-                        },
+                        "stdout": canonical(
+                            {
+                                "schema_version": 1,
+                                "ticket": "issued-ticket",
+                                "invocation_id": identifier,
+                                "proposal_digest": proposal_digest,
+                                "state": "staged",
+                                "accepted": False,
+                            }
+                        ),
                     }
                 ],
             },
@@ -151,9 +156,10 @@ class NativeEvidenceTests(unittest.TestCase):
 
     @verifies("scenario.harness.native-terminal-evidence")
     def test_foreign_proposal_digest(self):
-        self.metadata[0]["acceptance"]["verifyRuns"][0]["structuredOutput"][
-            "proposal_digest"
-        ] = "sha256:" + "f" * 64
+        gate = self.metadata[0]["acceptance"]["verifyRuns"][0]
+        value = json.loads(gate["stdout"])
+        value["proposal_digest"] = "sha256:" + "f" * 64
+        gate["stdout"] = canonical(value)
         with self.assertRaises(SpecError):
             self.verify()
 

@@ -83,9 +83,9 @@ remain distinct. The Pi process runs inside the worker sandbox derived from the 
 tool gate bounds what the model may ask and the sandbox bounds what the process can reach;
 [execution](execution-reference.md#execution-design) details both boundaries and what they leave open.
 
-Operation admission, explained in [preparing and coordinating work](host.md), runs every request
-through the [admission Graph](admission.md#graphs-operation-admission-graph-operation-graph)
-before the Operations dispatch selects a provider. Keeping admission in the Module that also
+Operation admission, explained in [preparing and coordinating work](host.md), uses the same request, workspace and configuration checks before dispatch selects a provider.
+Deterministic Host tools run those services directly; model-backed entries and explicit Studio
+adapters use the [admission Graph](admission.md#graphs-operation-admission-graph-operation-graph). Keeping admission in the Module that also
 binds workers means the same boundary decides which request may run, in which workspace and with
 which configuration, and later decides what each of its workers may read and write.
 
@@ -142,8 +142,8 @@ Resolution yields an `WorkerBinding` that every invocation carries and the execu
 Permissions are compiled purely from the contract's effects and host authority, guarded by the
 isolated-worktree check before any unsafe mutation, and handed to the Pi worker runtime, whose
 extension gates every tool call of the terminal worker and whose sandbox confines the
-process to that same grant. Every control flow is a LangGraph
-Graph whose nodes are deterministic steps or terminal worker invocations. Failures never retry with broader
+process to that same grant. Model-backed control flow remains a LangGraph Graph; deterministic Host tools need no compiled
+Graph for local admission or dispatch. Failures never retry with broader
 permissions, and a settled process alone never establishes completion.
 
 ```mermaid
@@ -254,7 +254,7 @@ This collaboration applies when freezing any context kind or checking a target, 
 
 The [Operations Module](../operations/module.md) owns the catalog of every Operation and the dispatch that routes an admitted request to its provider.
 
-Admit only registered public entries and declared composition, then hand each admitted request to the dispatch Graph as the admission Graph's execute step.
+Admit only registered public entries and declared composition, then dispatch each admitted request through the direct Host-tool path or its declared Graph adapter.
 
 This collaboration applies when admission executes an admitted request or checks a child Operation against its parent's declared composition.
 

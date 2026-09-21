@@ -72,9 +72,11 @@ conversations or giving either reviewer the other's permissions.
 The host controls ordering and admission; a worker reasons within one job. This prevents a useful
 answer from becoming an unchecked command to run another stage. Sequential batches stop when an item
 cannot proceed, so a later operation does not accidentally consume incomplete earlier work.
-Three Graph Specs define these shapes exactly. The
-[admission Graph](admission.md#graphs-operation-admission-graph-operation-graph) runs every request
-and ends it with one typed result envelope, the
+Deterministic Host tools run admission, one selected service and finalization directly. The same
+guards preserve schema, configuration, workspace, persistence and cancellation behavior without
+model execution. Three Graph Specs define the retained model/Studio shapes. The
+[admission Graph](admission.md#graphs-operation-admission-graph-operation-graph) runs those entries
+and ends each with one typed result envelope, the
 [Operation node](execution-reference.md#host-operation-node-operation-node) runs one worker as a
 single step of any Graph, and the
 [Sequential work items Graph](execution-reference.md#host-sequential-work-items-graph-batch-graph)

@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import TypedDict
 
-from langgraph.graph import END, START, StateGraph
+END = "__end__"
 
 from ..spec.changes import apply_files
 from ..spec.repository import SpecError, SpecRepository, digest, read_file
@@ -56,6 +56,8 @@ class IssueState(TypedDict, total=False):
 
 
 def build_issue_graph(node_factory):
+    from langgraph.graph import START, StateGraph
+
     graph = StateGraph(IssueState)
     for name in NODES:
         graph.add_node(name, node_factory(name))
@@ -92,6 +94,8 @@ class VerificationState(TypedDict):
 
 
 def build_issue_verification_graph(node_factory):
+    from langgraph.graph import START, StateGraph
+
     graph = StateGraph(VerificationState)
     graph.add_node("review_item", node_factory("review_item"))
     graph.add_edge(START, "review_item")

@@ -250,13 +250,15 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 ### scenario.harness.native-result-gate — Native submission is a proposal, not completion
 
 - GIVEN a native Pi Agent with a Host-issued invocation identity and proposal location
-- WHEN it submits its bounded result and a native post-run gate validates that proposal
+- WHEN it calls native `structured_output` under its output schema and a plain post-run gate validates the captured proposal
 - THEN submission and gate success change no task-completion state, and the gate checks exact proposal bytes, schema, business identity and current inputs before returning a staged, explicitly unaccepted control value
 - AND a separate Host finalization checks independently correlated native execution evidence and current proposal inputs before trusted persistence
 - AND missing, malformed, oversized, foreign, aliased or changed proposals cannot be accepted
 - AND a duplicate accepted finalization rechecks current inputs without repeating persistence, while failed or uncertain persistence requires fresh admission or explicit provider recovery
 - AND cancellation or failed child execution revokes unsettled acceptance without promising rollback of implementation edits; cancellation after durable commit does not erase committed domain evidence
-- AND the bounded typed control result is rejected rather than truncated; proposal digests and post-run checks do not establish exclusive reads or preventative filesystem confinement
+- AND the separate Host control is one bounded, closed, versioned canonical JSON document in the plain gate's verification stdout, never the model's structuredOutput or a JSON substring from mixed text
+- AND malformed, duplicate-key, foreign, noncanonical, oversized or truncated control output stops progression without requiring assistant prose or a second acceptance report
+- AND proposal digests and post-run checks do not establish exclusive reads or preventative filesystem confinement
 
 ### scenario.harness.native-terminal-evidence — Reconcile terminal children before domain commit
 
@@ -443,8 +445,8 @@ See [project root is the entry process's working directory](requirements.md#req.
 
 ### scenario.harness.graph-execution — Execute the inspected Graph
 
-- GIVEN an admitted operation request through a local or Studio entry
-- WHEN the host executes the request
+- GIVEN an admitted model-backed local operation or explicitly selected Studio Graph entry
+- WHEN the host executes that Graph request
 - THEN the same compiled Graph definitions select its operation branch, Agent stages and feedback transitions
 - AND selected assessment, planning, scoped review and Issue verification advance through bounded Graph transitions without automatic authoring or child development
 - AND failed admission or a stopping outcome prevents dependent nodes from running
@@ -534,3 +536,11 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND no Operation, child, tool, prompt change, settings change or network telemetry is introduced by observation
 - AND native lineage and bounded main-supplied handoff/test reasons remain diagnostic facts rather than delegation or primary persistence grants
 - AND request roundtrip and outside-tools intervals are not claimed as server thinking time
+
+### scenario.harness.host-tools-direct — Deterministic admission does not compile a Graph
+
+- GIVEN a local initialization, configuration, validation, delivery or Issue bookkeeping request
+- WHEN its declared Host service is invoked
+- THEN the shared schema, workspace, target, configuration and finalization checks apply without Graph compilation or model execution
+- AND a guard failure stops dependent effects while keeping the versioned failure envelope
+- AND explicit Studio/State-node adapters remain available without claiming they ran on this direct path

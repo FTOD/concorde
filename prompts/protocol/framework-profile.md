@@ -103,7 +103,7 @@ the common Host/Harness narrow the declared ceiling to the actual task and enfor
 State cannot carry or expand execution authority. Public/internal exposure changes entry availability,
 not completeness. Modules own responsibilities and Specs, not necessarily one Operation each.
 
-Every composed Operation's control flow is a LangGraph graph built with the Graph API: a
+An explicitly graph-composed Operation's control flow is a LangGraph graph built with the Graph API: a
 `StateGraph` whose nodes and edges are declared before it is compiled. The Functional API,
 `entrypoint` and `task` from `langgraph.func`, MUST NOT be used, because it keeps control flow
 inside ordinary Python where neither a Graph Spec nor Studio can inspect it; a deterministic check
@@ -114,9 +114,14 @@ chooses which public Operations to invoke and in what order; no development or S
 orchestrator is supplied. Operation composition uses one explicit USES relation, distinct from Module
 ownership and the explicit references selecting context.
 Model instructions, tools and limits are execution configuration, not a parallel Agent identity.
-The same graphs are the inspectable Studio surface, and no operation runs control flow outside
-them. State channels carry data, not execution authority; runtime context and permission checks
-remain separate. Parent graphs define reducers for shared channels explicitly.
+The same graphs are the inspectable Studio surface. Deterministic Host tools—initialization,
+configuration, validation, delivery and Issue listing/showing/reporting/reopening—use direct
+admission and dispatch in ordinary local Pi/CLI calls, without compiling a Graph. Their explicit
+Studio and State-node adapters remain supported graph executions; those views do not establish
+that a normal Host-tool call traversed a Graph. Model-backed public entries retain their existing
+Graph execution until their native migration is implemented. State channels carry data, not
+execution authority; runtime context and permission checks remain separate. Parent graphs define
+reducers for shared channels explicitly.
 
 Agent instructions, the Pi session shim, schemas and rule assets are deterministic projections of authored
 sources. Generated output is not edited as source. Builds distribute the Module kind definition and

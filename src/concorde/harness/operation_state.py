@@ -48,6 +48,13 @@ class OperationRuntimeContext:
     launcher: Callable[[dict], dict] | None = None
 
 
+@dataclass(frozen=True)
+class InvocationRuntime:
+    """Dependency-free carrier for trusted Host-tool calls, outside task data."""
+
+    context: OperationRuntimeContext
+
+
 def run_model(profile, state: dict, runtime) -> dict:
     """Execute a model-backed Operation under its own input/output and authority contract."""
     from concorde.harness.worker_profile import (

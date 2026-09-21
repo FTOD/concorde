@@ -14,6 +14,7 @@
       "files": [
         "operations/issues.py",
         "scripts/issues.py",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/operations/test_review.py"
       ]
     },

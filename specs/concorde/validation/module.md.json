@@ -14,6 +14,7 @@
         "operations/validate.py",
         "src/concorde/harness/checks.py",
         "src/concorde/validation/",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/operations/test_check_execution.py",

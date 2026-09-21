@@ -48,6 +48,7 @@
         "src/concorde/spec/",
         "tests/__init__.py",
         "tests/concorde/__init__.py",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/operations/test_structured_results.py",
         "tests/concorde/spec/",
         "tests/concorde/support/__init__.py",

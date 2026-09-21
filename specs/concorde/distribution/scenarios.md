@@ -373,7 +373,8 @@ validation cannot certify its determinism.
 - THEN it re-executes itself with the managed runtime's interpreter before reading its invocation, so the Operation runs with the locked dependencies and the runtime check reports that runtime as its prefix
 - AND a launcher already running inside that runtime, such as the one the Pi session tool starts, is not re-executed
 - AND the source checkout, which matches neither layout, keeps the interpreter that started it
-- AND when no verified managed runtime exists and the starting interpreter cannot import LangGraph, the launcher prints a blocked envelope with `missing_runtime` naming that interpreter instead of failing inside the host
+- AND an unavailable selected Graph backend returns a blocked `missing_runtime` envelope, while direct Host-tool dispatch does not impose that Graph check
+- AND missing or unverified installed runtimes still fail local installation admission without an ambient fallback
 
 ### scenario.distribution.install-local-worktree — Full local installs from source or installed providers
 

@@ -6,18 +6,18 @@ The Spec Module records which documents belong to each Module, determines which 
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Context](../module.md#terminology) | Defined in Concorde Framework. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
-| [Document unit](values.md#terminology) | Defined in Identities and versions. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Reference](registry.md#terminology) | Defined in Registry. |
-| [Implementation binding](registry.md#terminology) | Defined in Registry. |
+| Term                                              | Meaning / definition                             |
+| ------------------------------------------------- | ------------------------------------------------ |
+| [Module](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                   |
+| [Registry](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Context](../module.md#terminology)               | Defined in Concorde Framework.                   |
+| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                   |
+| [Protocol binding](values.md#terminology)         | Defined in Identities and versions.              |
+| [Document unit](values.md#terminology)            | Defined in Identities and versions.              |
+| [Entity](../module.md#terminology)                | Defined in Concorde Framework.                   |
+| [Reference](registry.md#terminology)              | Defined in Registry.                             |
+| [Implementation binding](registry.md#terminology) | Defined in Registry.                             |
 | [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
 
@@ -61,8 +61,9 @@ of the Spec Module or an exact runtime topology. Initialization deliberately sep
 starting draft from permission to apply it. Configuration is a separate explicit request; neither
 path silently invents product behavior. Stale or invalid proposals leave the project unchanged.
 
-The full [Project Graph Spec](contracts.md#graphs-project-graph-project-graph) defines the State
-channels, node inputs/outputs and routing for `concorde-init` and `concorde-configure`.
+Ordinary `concorde-init` and `concorde-configure` calls use deterministic Host services directly.
+The full [Project Graph Spec](contracts.md#graphs-project-graph-project-graph) defines the retained
+explicit Studio adapter's State channels, node inputs/outputs and routing.
 [Initialization](initialize.md) explains the normal proposal and acceptance interaction.
 
 ```mermaid

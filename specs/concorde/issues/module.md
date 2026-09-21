@@ -58,10 +58,11 @@ which selects retained Operations and edits contracts directly. Decisions bind t
 
 <a id="entity.issues.langgraph"></a>
 
-`concorde-issues` runs after
-[target admission](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
-has bound the owning Module, as the [Issue Graph](execution-reference.md#lifecycle-issue-graph-issue-graph).
-Listing, showing, reporting and reopening are single deterministic nodes. Solving is a bounded loop
+`concorde-issues` runs after target admission binds the owning Module. Local listing, showing,
+reporting and reopening call deterministic Host services directly, without compiling a Graph.
+Solving and explicit Studio execution retain the
+[Issue Graph](execution-reference.md#lifecycle-issue-graph-issue-graph), including its
+[target admission adapter](../operations/execution-reference.md#graphs-target-admission-graph-target-graph). Solving is a bounded loop
 around the `decide` node, where one Issue solver worker chooses the next action: return needed implementation or Spec edits to the caller, or run Issue-specific reviews as the
 [Issue verification Graph](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
 Verification returns to `decide`; needed edits stop the attempt with the Issue open until the caller

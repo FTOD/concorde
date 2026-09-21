@@ -284,6 +284,10 @@ Candidate-local completion does not mean primary was changed; delivery remains s
 
 #### Issue Graph (`issue_graph`) {#lifecycle-issue-graph-issue-graph}
 
+This Graph serves solving and explicit Studio execution. Ordinary local bookkeeping calls the
+same inspection, reporting and reopening services through direct Host admission, without Graph
+compilation. The diagram describes this actual optional adapter, not those direct calls.
+
 **State.** `route`, `output` and the guarded failure `result`. Selected record bytes, decision
 count, intended behavior, solver decision and current verification are bound by the Host/closures;
 durable attempt history belongs to the candidate. All three Graph channels use replacement

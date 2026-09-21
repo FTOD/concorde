@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import { EventEmitter } from "node:events";
 import { execFileSync } from "node:child_process";
+import { modelFixture } from "./native_model_fixture.mjs";
 
 const [subagents, sdk, candidate, scenario = "success"] = process.argv.slice(2);
 const count =
@@ -43,6 +44,10 @@ process.env.CONCORDE_NATIVE_FIXTURE_CALLS = path.join(
   root,
   "background-model-calls.log",
 );
+process.env.CONCORDE_NATIVE_FIXTURE_ROOT = root;
+process.env.CONCORDE_NATIVE_FIXTURE_SCENARIO = scenario;
+process.env.CONCORDE_NATIVE_FIXTURE_SDK = sdk;
+process.env.CONCORDE_NATIVE_FIXTURE_CANDIDATE = candidate;
 process.chdir(root);
 // Faults target actual producer writes; serialization remains package-owned.
 const hostFs = createRequire(import.meta.url)("node:fs");
@@ -168,75 +173,19 @@ const agent = {
   ...(scenario === "async-child" ? { defaultAsync: true } : {}),
 };
 let modelCalls = 0;
-setChildSessionFactory({
-  async create(launch) {
-    modelCalls++;
-    const listeners = new Set();
-    const messages = [];
-    const emit = (event) => {
-      for (const listener of listeners) listener(event);
-    };
-    return {
-      messages,
-      sessionId: `child-session-${modelCalls}`,
-      modelId: "fixture/model",
-      sessionFile:
-        launch.storage.kind === "file" ? launch.storage.sessionFile : undefined,
-      subscribe(listener) {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
-      },
-      async prompt() {
-        if (scenario === "interrupted-child") {
-          const control = [...state.foregroundControls.values()].find(
-            (value) => value.workflowKey === "review-0",
-          );
-          assert(
-            control?.interrupt?.(),
-            "native interrupt control unavailable",
-          );
-        }
-        const message = {
-          role: "assistant",
-          content: [
-            { type: "text", text: "Proposal staged by deterministic fixture." },
-          ],
-          api: "fixture",
-          provider: "fixture",
-          model: "model",
-          stopReason: "stop",
-          timestamp: Date.now(),
-          usage: {
-            input: 1,
-            output: 1,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 2,
-            cost: {
-              input: 0,
-              output: 0,
-              cacheRead: 0,
-              cacheWrite: 0,
-              total: 0,
-            },
-          },
-        };
-        messages.push(message);
-        emit({ type: "agent_start" });
-        emit({ type: "message_end", message });
-        emit({ type: "agent_end", messages });
-        if (scenario === "failed-child")
-          throw new Error("fixture model failed after proposal text");
-        emit({ type: "agent_settled" });
-      },
-      async steer() {},
-      async followUp() {},
-      async abort() {},
-      async dispose() {},
-    };
-  },
-  async dispose() {},
-});
+setChildSessionFactory(
+  modelFixture({
+    onCreate() {
+      modelCalls++;
+    },
+    interrupt() {
+      const control = [...state.foregroundControls.values()].find(
+        (value) => value.workflowKey === "review-0",
+      );
+      assert(control?.interrupt?.(), "native interrupt control unavailable");
+    },
+  }),
+);
 if (scenario === "async-child")
   setChildSessionFactoryModule(
     path.join(
@@ -267,14 +216,32 @@ const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
 const gate = path.join(root, "gate.py");
 fs.writeFileSync(
   gate,
-  `import json,sys\ni=sys.argv[1]\nprint(json.dumps({"invocation_id":"invocation-"+i,"proposal_digest":"sha256:"+format(int(i),'064x'),"state":"staged","accepted":False}))\n`,
+  `import json,sys,pathlib
+sys.path.insert(0,${JSON.stringify(path.join(candidate, "src"))})
+from concorde.harness.native_result import NativeResultGate
+from concorde.spec.typed_data import canonical
+root=pathlib.Path(${JSON.stringify(root)})
+i=sys.argv[1]
+value=json.loads((root/('raw-proposal-'+i+'.json')).read_text())
+assert not (root/('invalid-proposal-'+i)).exists(), 'proposal capture invalidated'
+def validate(value):
+ if value['verdict']!='valid': raise ValueError('schema-valid but business-invalid proposal')
+def no_commit(value): raise AssertionError('a gate cannot commit')
+gate=NativeResultGate('invocation-'+i,root/('staged-proposal-'+i+'.json'),ticket='fixture-ticket',recheck=lambda:None,validate=validate,persist=no_commit,verify_execution=lambda:None)
+gate.submit('invocation-'+i,value)
+control=canonical(gate.stage('invocation-'+i))
+if ${JSON.stringify(scenario)}=='gate-mixed-output': print('not control JSON')
+if ${JSON.stringify(scenario)}=='gate-truncated-output': print('x'*14000)
+print(control)
+`,
 );
+
 const python = path.join(candidate, ".venv/bin/python");
 const gatePrefix = quote(python) + " " + quote(gate);
 const check = path.join(root, "check.py");
 fs.writeFileSync(
   check,
-  `import json,pathlib,sys,time\nsys.path.insert(0,${JSON.stringify(path.join(candidate, "src"))})\nfrom concorde.harness.native_evidence import NativeChildEvidence,verify_native_children\nfrom concorde.harness.native_runtime import admit_native_runtime\nroot=pathlib.Path(${JSON.stringify(root)})\nfor _ in range(500):\n if (root/'binding.json').is_file(): break\n time.sleep(.01)\nb=json.loads((root/'binding.json').read_text())\nchildren=tuple(NativeChildEvidence('review-'+str(i),'fixture-reviewer','invocation-'+str(i),'sha256:'+format(i,'064x'),${JSON.stringify(gatePrefix)}+' '+str(i)) for i in range(${count}))\nif ${JSON.stringify(scenario)}=='malformed-metadata':\n s=json.loads((pathlib.Path(b['asyncDir'])/'status.json').read_text())\n p=pathlib.Path(s['workflow']['emits'][0]['metadata'])\n m=json.loads(p.read_text());m['acceptance']=[];p.write_text(json.dumps(m))\nif ${JSON.stringify(scenario)}=='cancel-before-commit':\n (root/'final-barrier').write_text('before')\n time.sleep(60)\ntry:\n records=verify_native_children(pathlib.Path(b['asyncDir']),run_id=b['runId'],session_id=${JSON.stringify(nativeSessionId)},ticket='fixture-ticket',children=children,runtime=admit_native_runtime(pathlib.Path(${JSON.stringify(subagents)})))\nexcept Exception as error:\n (root/'rejected.json').write_text(json.dumps({'error':str(error)}))\n raise\nreport={'children':len(records),'nativeStatus':json.loads((pathlib.Path(b['asyncDir'])/'status.json').read_text()),'metadata':records}\n(root/'verified.json').write_text(json.dumps(report))\nif ${JSON.stringify(scenario)}=='cancel-after-commit':\n import os\n with (root/'commit.tmp').open('w') as stream:\n  stream.write(json.dumps({'domain':'committed','run_id':b['runId']}));stream.flush();os.fsync(stream.fileno())\n os.replace(root/'commit.tmp',root/'committed.json')\n descriptor=os.open(root,os.O_RDONLY);os.fsync(descriptor);os.close(descriptor)\n (root/'final-barrier').write_text('after')\n time.sleep(60)\nprint(json.dumps({'verified':len(records)}))\n`,
+  `import json,pathlib,sys,time\nsys.path.insert(0,${JSON.stringify(path.join(candidate, "src"))})\nfrom concorde.harness.native_evidence import NativeChildEvidence,verify_native_children\nfrom concorde.harness.native_runtime import admit_native_runtime\nfrom concorde.spec.repository import digest\nroot=pathlib.Path(${JSON.stringify(root)})\nfor _ in range(500):\n if (root/'binding.json').is_file(): break\n time.sleep(.01)\nb=json.loads((root/'binding.json').read_text())\nchildren=tuple(NativeChildEvidence('review-'+str(i),'fixture-reviewer','invocation-'+str(i),digest({'invocation_id':'invocation-'+str(i),'verdict':'valid'}),${JSON.stringify(gatePrefix)}+' '+str(i)) for i in range(${count}))\nif ${JSON.stringify(scenario)}=='malformed-metadata':\n s=json.loads((pathlib.Path(b['asyncDir'])/'status.json').read_text())\n p=pathlib.Path(s['workflow']['emits'][0]['metadata'])\n m=json.loads(p.read_text());m['acceptance']=[];p.write_text(json.dumps(m))\nif ${JSON.stringify(scenario)}=='cancel-before-commit':\n (root/'final-barrier').write_text('before')\n time.sleep(60)\ntry:\n records=verify_native_children(pathlib.Path(b['asyncDir']),run_id=b['runId'],session_id=${JSON.stringify(nativeSessionId)},ticket='fixture-ticket',children=children,runtime=admit_native_runtime(pathlib.Path(${JSON.stringify(subagents)})))\nexcept Exception as error:\n (root/'rejected.json').write_text(json.dumps({'error':str(error)}))\n raise\nreport={'children':len(records),'nativeStatus':json.loads((pathlib.Path(b['asyncDir'])/'status.json').read_text()),'metadata':records}\n(root/'verified.json').write_text(json.dumps(report))\nif ${JSON.stringify(scenario)}=='cancel-after-commit':\n import os\n with (root/'commit.tmp').open('w') as stream:\n  stream.write(json.dumps({'domain':'committed','run_id':b['runId']}));stream.flush();os.fsync(stream.fileno())\n os.replace(root/'commit.tmp',root/'committed.json')\n descriptor=os.open(root,os.O_RDONLY);os.fsync(descriptor);os.close(descriptor)\n (root/'final-barrier').write_text('after')\n time.sleep(60)\nprint(json.dumps({'verified':len(records)}))\n`,
 );
 const command = quote(python) + " " + quote(check);
 const bindScript = path.join(root, "bind.py");
@@ -297,9 +264,19 @@ const registration = registerWorkflowResource({
         script: `
     await runs.host("bind", { kind: "command", command: ${JSON.stringify(bindCommand)}, timeoutMs: 10000 });
     for (let i = 0; i < ${count}; i++) {
-      const child = await runs.run("review-" + i, { agent: "fixture-reviewer", task: "Fixture " + i, ...${scenario === "async-child" ? "{}" : "{ async: false }"}, extensionBindings: { "concorde-fixture/1": { token: "fixture-token" } }, context: "fresh", intercomBridge: { mode: "off" }, agentContract: { version: 1 }, gate: { command: ${JSON.stringify(gatePrefix)} + " " + i, output: "json" } });
+      const child = await runs.run("review-" + i, { agent: "fixture-reviewer", task: "Fixture " + i, ...${scenario === "async-child" ? "{}" : "{ async: false }"}, extensionBindings: { "concorde-fixture/1": { token: "fixture-token" } }, context: "fresh", intercomBridge: { mode: "off" }, agentContract: { version: 1 }, outputSchema: { type: "object", properties: { invocation_id: { const: "invocation-"+i }, verdict: { enum: ["valid","invalid"] } }, required: ["invocation_id","verdict"], additionalProperties: false }, gate: { command: ${JSON.stringify(gatePrefix)} + " " + i } });
       if (!child.ok || child.detached || child.interrupted || child.stopped || child.terminalOutcome || child.results.length !== 1 || child.results.some(row => row.exitCode !== 0 || row.metadataSaveError || row.outputSaveError || row.transcriptError || row.error)) throw new Error("native child not complete: " + JSON.stringify(child));
-      const staged = child.structuredOutput;
+      const acceptance = child.results[0].acceptance;
+      if (acceptance?.status !== "verified" || acceptance.verifyRuns.length !== 1 || acceptance.verifyRuns[0].status !== "passed") throw new Error("Host staging gate failed");
+      const raw = acceptance.verifyRuns[0].stdout;
+      if (typeof raw !== "string" || raw.length > 8000 || /[^\\x00-\\x7f]/.test(raw)) throw new Error("Missing or oversized Host control");
+      const staged = JSON.parse(raw);
+      const fields = ["accepted","invocation_id","proposal_digest","schema_version","state","ticket"];
+      if (JSON.stringify(Object.keys(staged).sort()) !== JSON.stringify(fields) || staged.schema_version !== 1 || staged.ticket !== "fixture-ticket" || staged.invocation_id !== "invocation-"+i || staged.state !== "staged" || staged.accepted !== false || !/^sha256:[0-9a-f]{64}$/.test(staged.proposal_digest)) throw new Error("Foreign Host control");
+      // All fixture control values are ASCII. Canonical matching also rejects
+      // duplicate fields and any non-document or truncated stdout.
+      if (JSON.stringify(staged, fields) !== raw.trim()) throw new Error("Noncanonical Host control");
+      if (child.structuredOutput.verdict !== "valid") throw new Error("Model proposal is not the Host control DTO");
       emit({ kind: "concorde.child-terminal", ticket: "fixture-ticket", key: child.key, runId: child.runId, invocation_id: staged.invocation_id, proposal_digest: staged.proposal_digest, metadata: child.results[0].artifactPaths.metadataPath });
     }
     return await runs.host("finalize", { kind: "command", command: ${JSON.stringify(command)}, timeoutMs: 10000 });
@@ -398,6 +375,10 @@ try {
       "metadata-write-failure",
       "status-write-failure",
       "malformed-metadata",
+      "business-invalid",
+      "duplicate-output",
+      "gate-mixed-output",
+      "gate-truncated-output",
       "interrupted-child",
     ].includes(scenario)
   ) {
@@ -406,7 +387,15 @@ try {
       !fs.existsSync(path.join(root, "verified.json")),
       "failed child became accepted",
     );
-    if (scenario === "failed-child") {
+    if (
+      [
+        "failed-child",
+        "business-invalid",
+        "gate-mixed-output",
+        "gate-truncated-output",
+        "duplicate-output",
+      ].includes(scenario)
+    ) {
       assert.equal(modelCalls, 1, "dependent child launched after failure");
       const files = fs
         .readdirSync(path.join(root, "native-tmp/artifacts"), {
@@ -420,18 +409,30 @@ try {
           "utf8",
         ),
       );
-      assert.equal(metadata.exitCode, 1);
+      assert.equal(metadata.exitCode, scenario === "failed-child" ? 1 : 0);
       assert.equal(
         metadata.acceptance.status,
-        "verified",
-        "fixture did not exercise a passing gate after native failure",
+        ["business-invalid", "duplicate-output"].includes(scenario)
+          ? "rejected"
+          : "verified",
+      );
+      if (scenario === "gate-truncated-output")
+        assert.equal(metadata.acceptance.verifyRuns[0].stdout.length, 12015);
+      if (scenario === "gate-truncated-output")
+        assert(
+          metadata.acceptance.verifyRuns[0].stdout.endsWith("\n...[truncated]"),
+        );
+      assert(
+        !("structuredOutput" in metadata.acceptance.verifyRuns[0]),
+        "a plain gate must not replace the native model proposal",
       );
     }
     console.log(
       JSON.stringify({
         root,
         scenario,
-        modelCalls,
+        scriptedForegroundSessions: modelCalls,
+        realModelCalls: 0,
         state: status.state,
         accepted: false,
       }),
@@ -443,15 +444,29 @@ try {
       fs.readFileSync(path.join(root, "verified.json"), "utf8"),
     );
     assert.equal(verified.children, count);
+    const scriptedExecutions = fs
+      .readFileSync(process.env.CONCORDE_NATIVE_FIXTURE_CALLS, "utf8")
+      .trim()
+      .split("\n").length;
+    assert.equal(scriptedExecutions, count);
+    assert(
+      verified.metadata.every(
+        (record) =>
+          record.acceptance.status === "verified" &&
+          !record.acceptance.childReport,
+      ),
+      "no second model-authored acceptance report is required",
+    );
     console.log(
       JSON.stringify({
         root,
-        modelCalls,
+        scriptedForegroundSessions: modelCalls,
+        realModelCalls: 0,
         verified: verified.children,
         stateAtVerification: verified.nativeStatus.state,
         state: status.state,
         scenario,
-        backgroundModelCalls: fs.existsSync(
+        scriptedTaskExecutions: fs.existsSync(
           process.env.CONCORDE_NATIVE_FIXTURE_CALLS,
         )
           ? fs

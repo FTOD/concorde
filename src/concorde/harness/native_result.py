@@ -10,6 +10,7 @@ completion. The caller supplies current-input checks and the domain acceptance s
 from __future__ import annotations
 
 import threading
+import re
 from pathlib import Path
 from typing import Callable
 
@@ -30,6 +31,51 @@ def control_value(value: dict) -> dict:
     return decode(encoded.decode("utf-8"))
 
 
+def staging_control(
+    text: str, *, ticket: str, invocation_id: str, proposal_digest: str
+) -> dict:
+    """One complete, bounded Host stdout document; never a model-text substring."""
+    if not isinstance(text, str) or len(text.encode("utf-8")) > MAX_CONTROL_BYTES:
+        raise SpecError(
+            "native staging control exceeds its bound", "invalid_completion"
+        )
+    try:
+        value = decode(text)
+    except ValueError as error:
+        raise SpecError(
+            "native staging control is not one JSON document", "invalid_completion"
+        ) from error
+    if (
+        not isinstance(value, dict)
+        or set(value)
+        != {
+            "schema_version",
+            "ticket",
+            "invocation_id",
+            "proposal_digest",
+            "state",
+            "accepted",
+        }
+        or type(value["schema_version"]) is not int
+        or value["schema_version"] != 1
+        or value["ticket"] != ticket
+        or value["invocation_id"] != invocation_id
+        or value["proposal_digest"] != proposal_digest
+        or not re.fullmatch(r"sha256:[0-9a-f]{64}", proposal_digest)
+        or value["state"] != "staged"
+        or value["accepted"] is not False
+    ):
+        raise SpecError(
+            "native staging control does not match its invocation",
+            "incompatible_handoff",
+        )
+    if canonical(value) != text.strip():
+        raise SpecError(
+            "native staging control is not canonical JSON", "invalid_completion"
+        )
+    return value
+
+
 class NativeResultGate:
     """One invocation's proposal, owned by its live trusted Host.
 
@@ -46,6 +92,7 @@ class NativeResultGate:
         invocation_id: str,
         proposal_path: Path,
         *,
+        ticket: str,
         recheck: Callable[[], None],
         validate: Callable[[dict], None],
         persist: Callable[[dict], dict],
@@ -55,6 +102,9 @@ class NativeResultGate:
             raise ValueError(
                 "native result gate requires a Host identity and absolute path"
             )
+        if not isinstance(ticket, str) or not ticket:
+            raise ValueError("native result gate requires a workflow ticket")
+        self.ticket = ticket
         self.invocation_id = invocation_id
         self.proposal_path = proposal_path
         self.recheck = recheck
@@ -113,15 +163,17 @@ class NativeResultGate:
         return value
 
     def stage(self, invocation_id: str) -> dict:
-        """Typed gate validation, deliberately WITHOUT domain persistence.
+        """Plain gate validation, deliberately WITHOUT domain persistence.
 
-        pi-subagents can execute a typed gate after a failed child. Gate execution
+        pi-subagents can execute a gate after a failed child. Gate execution
         is not proof of native success, even if submission previously succeeded.
         """
         with self._lock:
             self._checked_proposal(invocation_id)
             return control_value(
                 {
+                    "schema_version": 1,
+                    "ticket": self.ticket,
                     "invocation_id": self.invocation_id,
                     "proposal_digest": self._digest,
                     "accepted": False,

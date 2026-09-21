@@ -391,12 +391,26 @@ its exact bytes and digest independently of that file. Submission returns an exp
 receipt and does not advance task completion. Invalid submissions can be corrected; a successfully
 submitted proposal cannot be replaced.
 
-The native child's documented typed post-run gate calls `stage`, never the persistence callback.
+The native Agent uses `outputSchema` and its terminating `structured_output` tool. Concorde's
+`observeNativeProposal` observes the successful tool result's `input.value` through Pi's supported
+`tool_result` event and supplies that untrusted proposal to the bound Host service. Duplicate
+structured submissions invalidate the slot rather than silently replacing its first proposal.
+Native structured output remains model data; it is not a Host control result. No assistant prose
+or second model-authored acceptance report is required. The native request selects
+`agentContract: {version: 1}` and one plain gate without JSON-typed gate output.
+
+The native child's plain post-run gate calls `stage`, never the persistence callback.
 Pi-subagents may execute a gate after failed child execution and can observe cancellation after a
 gate returns. Staging therefore checks the same invocation, rejects symlinked or changed proposal
 bytes, rechecks current context/task/configuration and declared policy and validates the result
-again, but returns `state: staged` and `accepted: false`. Its control DTO is at most 8,000 UTF-8
-bytes, comfortably below the native typed-gate limit; larger values fail rather than truncate.
+again, but returns a closed canonical-JSON control document with exactly `schema_version: 1`,
+`ticket`, `invocation_id`, `proposal_digest`, `state: staged` and `accepted: false`. Its control DTO
+is at most 8,000 UTF-8 bytes, below the native verification-stdout limit; larger values fail rather
+than truncate. The workflow reads the actual plain gate's `acceptance.verifyRuns[0].stdout`, not
+`child.structuredOutput`, and checks the whole document's version, keys, identity and digest binding.
+Missing, mixed, duplicate-key, malformed, noncanonical, oversized or truncated stdout is rejected;
+there is no JSON-substring or model-prose control parser. Canonical ASCII encoding permits bounded
+validation inside the native workflow sandbox without unavailable Node or web globals.
 Full results and evidence remain Host artifacts. Native run receipts and model prose cannot
 replace these checks.
 
@@ -461,8 +475,8 @@ The inspected native artifact writers retain complete workflow steps, traces and
 serialize complete per-child metadata without an observer child-count cap. The fifty-entry retained
 foreground-run history limit does not remove those files; it is not the review inventory. Native
 fanout budgets remain real host grants (default sixty-four logical children, explicitly configurable),
-not authority for Concorde to add a thirty-two-review limit. Native output previews and typed gate
-stdout are separately bounded; complete acceptance records, not preview text, supply evidence.
+not authority for Concorde to add a thirty-two-review limit. Native output previews and verification
+stdout are separately bounded; complete acceptance records, not model text or display previews, supply evidence.
 Startup/session-start artifact housekeeping can remove old files under its configured age policy;
 normal per-child completion does not age-scan them. Missing retained evidence still blocks, and
 Concorde must archive required evidence through its existing primary authority rather than promise
@@ -964,11 +978,11 @@ thinking level and timeout.
 
 #### Control-graph substrate {#host-control-graph-substrate}
 
-Every retained operation Graph, including assessment, planning, review,
-Issue solving and the deterministic operations, is a LangGraph `StateGraph` built
+Every retained operation Graph, including assessment, planning, review, Issue solving and explicit
+Studio adapters for deterministic tools, is a LangGraph `StateGraph` built
 with the Graph API, never with the Functional API. Its nodes are deterministic steps, which make no
-model call, or worker invocations, which do. These Graphs are the Studio surface; no operation runs
-its control flow outside them. Graph structure alone proves nothing about semantics: transitions,
+model call, or worker invocations, which do. These Graphs remain the Studio surface. Ordinary local
+deterministic tools run their admission and selected Host service directly instead. Graph structure alone proves nothing about semantics: transitions,
 limits and evidence still follow G1–G4.
 
 #### Operation node (`operation_node`) {#host-operation-node-operation-node}

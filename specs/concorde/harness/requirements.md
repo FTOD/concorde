@@ -183,8 +183,11 @@ them into one generic failure.
 
 ### req.harness.langgraph-control-flow — Orchestration executes as a LangGraph Graph
 
-Every operation's orchestration SHALL execute as a LangGraph Graph of deterministic operations,
-Agent invocations and explicitly represented transitions.
+Model-backed operation orchestration and explicitly selected Studio adapters SHALL execute as
+LangGraph Graphs with declared transitions.
+
+Ordinary local initialization, configuration, validation, delivery and Issue bookkeeping use direct
+deterministic Host admission and dispatch, retaining the same checks without compiling a Graph.
 
 [Graphs and feedback](graphs-and-loops.md) explains Graph execution; the term's canonical definition is linked above.
 
