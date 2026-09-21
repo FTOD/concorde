@@ -18,7 +18,7 @@ stops a running agent nor approves a repair.
 Solve returns needed implementation or Spec repair to the calling agent with the selected target,
 intended behavior and rationale. It does not author Specs, change implementation or start planning
 or child development. The caller performs authorized Spec, paired metadata and registry edits or
-selects retained Operations explicitly, then requests fresh verification with current inputs.
+selects the supported planning/implementation capabilities explicitly, then requests fresh verification with current inputs.
 A return-to-caller result preserves the open Issue and is not completed repair or readiness.
 Solve can run Issue-specific read-only verification, resolve, identify a duplicate or reject a
 mistaken report from evidence without mandatory human approval. Unresolved product/design choices
@@ -31,3 +31,14 @@ this session receives the candidate's result and continues the change with its c
 A successful solve ends at ready with the disposition included in verification. It does not deliver,
 merge primary or claim another branch is fixed. Closed Issues remain recorded. Legacy Reflections
 are archived history, never automatically converted or used as current approval.
+
+
+## Native solve invocation
+
+List/show/report/reopen finish as finite Host calls. Solve action run prepares an exact named
+`concorde.issue.<ticket>` native workflow. Invoke its returned `call` with subagent unchanged, then
+poll concorde-issues action result. The workflow uses fresh terminal Issue decisions and flattened
+independent Issue-specific/ordinary reviewers; Host services own attempts, currentness, closure
+journal/recovery and separate final validation. There is no nested workflow, coordinator model or
+legacy Graph/RPC fallback. Accepted failed/conflicting/unsupported results are not ready candidates;
+stage-only gates and native terminal success alone never authorize disposition or delivery.

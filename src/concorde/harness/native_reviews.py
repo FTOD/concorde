@@ -1,30 +1,28 @@
 """Finite scope preparation and aggregate admission; native workflow owns reviewer order."""
 
 from __future__ import annotations
-import json
-import sys
+
 from dataclasses import replace
 from pathlib import Path
-from shlex import join
 
-from ..spec.repository import SpecError, digest
-from ..spec.typed_data import canonical, typed
 from ..review.review import (
-    scope_members,
-    inputs,
+    _failed_review,
     accept_review_result,
     aggregate_scope,
-    _failed_review,
+    inputs,
+    scope_members,
 )
+from ..spec.repository import SpecError, digest
+from ..spec.typed_data import canonical, typed
 from .context import ContextSnapshot
 from .host import OperationHost
 from .invocation import Invocation
-from .native_evidence import _record, NativeChildEvidence, verify_native_children
+from .native_evidence import NativeChildEvidence, _record, verify_native_children
 from .native_runtime import admit_native_runtime
 
 
 def prepare_scope(run, payload):
-    from .native_context import execute, _write, candidate_input_digest
+    from .native_context import _write, candidate_input_digest, execute
 
     mode = "spec" if run.operation == "concorde-spec-review" else "code"
     components, identity, members = scope_members(run, mode, initialize=True)
@@ -98,9 +96,8 @@ def _root_run(package, base, scope):
 
 
 def _current(run, scope, *, check_members=False):
-    from .native_context import candidate_input_digest
-
     from .configuration import load_configuration
+    from .native_context import candidate_input_digest
 
     if load_configuration(run.repository.root) != scope["configuration"]:
         raise SpecError("review configuration changed", "configuration_mismatch")
@@ -118,7 +115,7 @@ def _current(run, scope, *, check_members=False):
 
         for task, entry in zip(scope["members"], scope["slots"], strict=True):
             slot = _record(Path(entry["descriptor"]))
-            if digest(slot) != entry["digest"]:
+            if digest(Path(entry["descriptor"]).read_bytes()) != entry["digest"]:
                 raise SpecError("review descriptor changed", "stale_context")
             child = Invocation(
                 scope["operation"],
@@ -152,7 +149,7 @@ def _failure(run, scope, error):
 
 
 def workflow_service(package, action, path, expected):
-    from .native_context import execute, _write
+    from .native_context import _write, execute
     from .native_planning import descriptor
 
     base = descriptor(
@@ -242,9 +239,39 @@ def workflow_service(package, action, path, expected):
         children=tuple(expected_children),
         runtime=admit_native_runtime(Path(base["runtime"]["package_root"])),
     )
+    admitted = admit_scope(
+        package, scope, status, binding, ["review-" + str(i) for i in range(len(slots))]
+    )
+    # No review persistence drives model progression. Recheck all members after their
+    # individual admissions, so an earlier member cannot go stale while others are checked.
+    _current(run, scope, check_members=True)
+    _write(directory / "aggregate-terminal.json", {"state": "finalizing"})
+    output = commit_scope(run, scope, admitted)
+    from .status_store import write_run
+
+    write_run(
+        run.repository.root,
+        f".concorde/runs/{run.host.invocation_id}/native-reviews.json",
+        canonical(
+            {"scope": scope, "binding": binding, "admitted": admitted, "output": output}
+        ).encode(),
+    )
+    _write(receipt, {"state": "accepted", "accepted": True, "output": output})
+    return {
+        "state": "finished",
+        "accepted": True,
+        "outcome": output["data"]["outcome"],
+        "reviewers": len(admitted),
+    }
+
+
+def admit_scope(package, scope, status, binding, keys):
+    from .native_context import execute
+
+    slots = [_record(Path(entry["descriptor"])) for entry in scope["slots"]]
     admitted = []
     for index, (entry, slot) in enumerate(zip(scope["slots"], slots, strict=True)):
-        key = "review-" + str(index)
+        key = keys[index]
         emissions = [
             v
             for v in status["workflow"]["emits"]
@@ -277,10 +304,11 @@ def workflow_service(package, action, path, expected):
                 "review proposal was not independently admitted", "invalid_completion"
             )
         admitted.append(value)
-    # No review persistence drives model progression. Recheck all members after their
-    # individual admissions, so an earlier member cannot go stale while others are checked.
-    _current(run, scope, check_members=True)
-    _write(directory / "aggregate-terminal.json", {"state": "finalizing"})
+    return admitted
+
+
+def commit_scope(run, scope, admitted):
+    slots = [_record(Path(entry["descriptor"])) for entry in scope["slots"]]
     outputs = []
     for task, slot, value in zip(scope["members"], slots, admitted, strict=True):
         child = Invocation(
@@ -302,19 +330,4 @@ def workflow_service(package, action, path, expected):
     output = aggregate_scope(
         run, scope["mode"], scope["components"], scope["scope_identity"], outputs
     )
-    from .status_store import write_run
-
-    write_run(
-        run.repository.root,
-        f".concorde/runs/{run.host.invocation_id}/native-reviews.json",
-        canonical(
-            {"scope": scope, "binding": binding, "admitted": admitted, "output": output}
-        ).encode(),
-    )
-    _write(receipt, {"state": "accepted", "accepted": True, "output": output})
-    return {
-        "state": "finished",
-        "accepted": True,
-        "outcome": output["data"]["outcome"],
-        "reviewers": len(outputs),
-    }
+    return output

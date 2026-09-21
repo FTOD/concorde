@@ -55,7 +55,7 @@ and pending-entry confirmation remain currentness gates, not inferred success fr
 `deliver` is a deterministic Host tool that calls no model and normally runs without a Graph.
 Its explicit Studio adapter selects the `deliver` leaf of the
 [dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph).
-Both paths omit target admission because the change identity already names the candidate. No automatic task sequence or Issue Graph has an edge into it.
+Both paths omit target admission because the change identity already names the candidate. No automatic task sequence or native Issue workflow invokes it.
 
 ## Relationships
 

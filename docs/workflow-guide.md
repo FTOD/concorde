@@ -5,17 +5,12 @@
 Detailed installation, execution, delivery and maintenance reference. Shell commands assume
 the Concorde checkout root unless an installed consumer path is shown.
 
-Concorde centers on writing and maintaining **architecture-aware Specs**. Its docsite publishes
-them so developers can understand the project. **Agent observability** covers the working process:
-[LangGraph Studio](../scripts/development/STUDIO.md) exposes execution graphs and live stage and
-agent-process events, recorded usage shows what each worker launch consumed, and recorded context,
-permission policies, checks and reviews make the work and its results inspectable. Specs guide each
-worker's task, while the host limits its context and permissions to the declared scope and a
-bubblewrap sandbox bounds every worker process. Seven built-in Pi workers perform assessment, review, planning, task definition,
-implementation and Issue solving behind the public Operations that
-the Pi session tool invokes. The Issue system records classified bugs, contract
-gaps and limitations as soon as a worker reports them, without stopping its task, and solves an
-explicitly selected Issue to a verified candidate.
+Concorde centers on complete architecture-aware Specs. Native Pi Agents and authored pi-subagents
+workflows perform cognition; finite Host services retain admission, evidence, checks and lifecycle
+authority. LangGraph Operations are explicitly selected StateGraph boundaries, not mirrors or mandatory
+schedulers for native capabilities. Native file/network/credential policy is prompt-level; tester and
+configured-check subprocess isolation remains enforced. See the [current API](../scripts/development/STUDIO.md)
+and [public capability examples](../README.md#choose-an-entry-point).
 
 The explicitly selected work and delivery examples below use **Spec Protocol 10.0.0**. It defines one Module
 Spec content model and the human-readable subset of that content. Reading begins with Purpose,
@@ -60,15 +55,12 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic Pi-only build with eleven public entries from one
-inventory of eighteen Operations, including seven private model-backed nodes. Common worker rules
-(`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`) render to the
-compatible `generated/agents/<hyphenated>.md` paths. Templates and a receipt-owned Pi session shim
-under `.pi/extensions/` accompany them. Its `concorde` tool describes and runs the public Operations
-using the embedded guidance and exact versioned schemas. Internal worker instructions are not
-Skills. The installer has no client selector and rejects every retired `--integration` argument.
-It installs no standalone Skills and never invokes the Agent Skills CLI. npm remains necessary
-for Pi runtime dependencies; model providers such as OpenAI and Anthropic remain supported.
+The Pi-only installer distributes eleven compatibility public capability entries, seven native Agent
+roles and authored plan/review/Issue workflows. Canonical role Specs and `prompts/native/` preludes
+render into owned `generated/native/` assets. Main prepares with `concorde`, invokes the exact returned
+native call, and separately observes Host acceptance. Host tools run without a model. Internal wire
+spellings do not assert LangGraph execution. No standalone Skills or client-selector installation is
+supported. npm remains required for actual Pi extension dependencies.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project and commit project inputs, root guidance and the complete Protocol bundle, then invoke the
@@ -413,38 +405,16 @@ lifecycle entry points retain their separate admission/evidence checks. A freshl
 must be built once before a fresh tester can select its private Pi entry. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
-Each of the seven workers is defined under `operations/<name>/`: an authored role `spec.md` plus a
-Python `__init__.py` binding its task contract, workspace kind (`capsule` or `project`), Pi tools
-and timeout as optional execution configuration on that Operation. Each worker launches one Pi coding agent
-process (`pi --mode rpc`) for exactly one invocation. The build renders each worker's instructions
-to `generated/agents/<hyphenated>.md`, combining the common worker rules
-(`prompts/workers/common.md`) with only that worker's role Spec, traceable through the build
-manifest; `describe-policy` mode (see above) shows the bound worker, its profile and effective
-timeout for every stage it previews, alongside its read/write grants.
+Seven canonical native Agents have role Specs/profile contracts and native instruction projections.
+Their file/network/credential policy is explicitly prompt-level; tester/configured-check boundaries
+remain actually enforced. Context, plan, tasks, implementation, review and Issue decisions use native
+Agent/workflow calls, not hidden RPC workers. Gates only stage proposals. Host acceptance binds actual
+native terminal evidence and current inputs; closure remains journaled and final validation separate.
 
-The seven workers are spec-reviewer, context-assessor, planner, task-author, programmer,
-code-reviewer and issue-solver. Each task contract pairs current input/output types, admits only
-its stage artifacts and narrows the permission ceiling. Only the programmer writes granted code;
-no worker edits Specs, metadata or registry. Every phase and target has a fresh invocation and
-context identity, not the previous worker's conversation or authority. All workers are terminal
-nodes: they cannot delegate, create children or recursively invoke Operations. The LangGraph/host
-schedules each node with its own file/tool grant. Missing or legacy depth variables do not govern
-leaf launch; outer task delegation limits remain unchanged.
-
-One registry contains eighteen Operations, eleven exposed through the Pi tool. All use State
-contracts and `run(state, runtime)`. DETERMINISTIC means no supported model-call path when true,
-including transitive USES. Only init, configure, validate and deliver are true in the current
-inventory. USES is the sole composition relation, including model nodes; it does not install
-arbitrary Operation calls as worker tools.
-
-**Operation** is the canonical name for a callable or composed Framework function. Harness owns the operation invocation boundary, and
-Operations owns the Operation catalog and dispatch to each provider. Distribution owns
-`prompts/operation-guidance/` and `prompts/workflow-host/`, embeds their resolved guidance with
-exact schemas in the Pi entry, and keeps those projections current. The consumer Pi session
-loads the installed `.pi/extensions/concorde-session.ts`; source testing instead explicitly
-selects `generated/session/pi/concorde-session.ts`. Its `concorde` tool submits typed requests
-through the shared launcher. The catalog is not worker context or a grant. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
-and the [Operation registry](../specs/concorde/operations/composition.md) for definitions and mappings.
+The typed inventory preserves eleven compatibility entry names and seven Agent identities. `kind`
+distinguishes Agent entry, Workflow and Host actions; StateGraph Operations are a separate optional
+boundary with an explicitly supplied trusted native service. No native flow has a fake Studio mirror.
+See the [Operation API](../scripts/development/STUDIO.md) and [current examples](../README.md).
 
 Concorde source maintenance defaults to a new candidate and a fresh Concorde-catalog-free writer.
 The main stays in its initial worktree. The writer edits, formats, checks and commits, then stops.

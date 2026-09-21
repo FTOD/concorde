@@ -1,10 +1,7 @@
-"""Profile 15 operation registry and versioned JSON contracts.
+"""Versioned capability transport and native Agent contracts.
 
-Public operations are exposed through the Pi catalog; non-public operations require
-declared composition. Model nodes use their State contract directly; only existing host adapters
-own request/response wire envelopes. All executable identities belong to ``operations/``. Exposure, context selection, determinism and composition are derived from their
-declarations; there is no operation class taxonomy. Shared context snapshots and review
-records stay defined directly here.
+Legacy operation_* identifiers and concorde-* names remain wire compatibility spellings, not a
+claim that native capabilities execute as LangGraph. KIND declares actual executable semantics.
 """
 
 from __future__ import annotations
@@ -438,3 +435,6 @@ def schemas() -> dict:
     )
     result.update(_operation_schemas())
     return result
+
+
+EXECUTABLE_KINDS = {name: module.KIND for name, module in _MODULES.items()}

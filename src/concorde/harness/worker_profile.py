@@ -1,9 +1,7 @@
-"""Optional model execution configuration on an Operation, with no separate Agent registry.
+"""Canonical native Agent profiles and their byte-bound context/result contracts.
 
-A WorkerProfile binds instructions, task/effect constraints, workspace, tools
-and timeout for one model-backed entry in operations.OPERATIONS. resolve_worker produces a
-byte-bound WorkerBinding; persisted agent fields and error codes retain their wire spellings.
-Build imports remain lazy because Distribution derives model projections from this same inventory.
+The WorkerProfile class name is a compatibility spelling. Roles are Agents, not private model-backed
+LangGraph Operation aliases. Native transports narrow the profile to exact invocation tools/inputs.
 """
 
 from __future__ import annotations
@@ -102,7 +100,7 @@ def _sha256_json(payload: object) -> str:
 
 def worker_key(name: str) -> str:
     """Normalize an external (``concorde-code-reviewer``), hyphenated or underscored WorkerProfile name."""
-    key = name[len("concorde-") :] if name.startswith("concorde-") else name
+    key = name.removeprefix("concorde-")
     return key.replace("-", "_")
 
 
@@ -161,7 +159,7 @@ def load_worker_profiles() -> dict[str, WorkerProfile]:
     import operations
 
     result: dict[str, WorkerProfile] = {}
-    for name in operations.OPERATIONS:
+    for name in operations.AGENTS:
         profile = importlib.import_module(f"operations.{name}").PROFILE
         if profile is None:
             continue

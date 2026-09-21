@@ -3,6 +3,7 @@ name: tester
 description: Concorde tester sibling task role
 tools: read, grep, find, ls, test_command
 extensions: ../../pi/extensions/concorde-tester.ts, ../../generated/session/pi/concorde-session.ts
+acceptanceRole: read-only
 systemPromptMode: replace
 inheritProjectContext: false
 inheritGlobalContext: false

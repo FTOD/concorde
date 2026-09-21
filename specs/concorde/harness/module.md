@@ -47,7 +47,7 @@ accepted tasks and allowed code files; a reviewer receives read-only inputs in a
 The workers share accepted artifacts, not all of each other's knowledge or authority.
 
 Failures, cancellation, time limits and changed inputs stop dependent execution. Authorized code edits
-may remain after failure and require inspection. Every worker process runs inside the worker sandbox,
+may remain after failure and require inspection. Historical RPC test utilities run inside their worker sandbox, not native Agents. Native file/network/credential policies are prompt-level. The retained tester/check services have actual enforced boundaries,
 so an authorized shell command is bounded too: it can write only the grant, cannot read the
 developer's secrets or other worktrees, and never sees the host's temporary files. **The network is
 not restricted, the masked secret locations are a fixed list, and the sandbox requires Linux with

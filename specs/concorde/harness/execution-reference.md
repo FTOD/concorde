@@ -40,72 +40,34 @@ document identity and requirement/scenario anchors remain stable for existing li
 
 #### The execution model {#agents-and-harnesses-the-execution-model}
 
-**Harness = context + control flow + models + permissions and environment.**
-**Operation = input State + output State updates + execution implementation and constraints.**
-**Invocation = Operation + Module/version + admitted artifacts + actual grant + runtime settings.**
+Canonical kinds are Agent (native Pi role), Workflow (authored pi-subagents composition), Operation
+(explicit StateGraph flow) and Host service (finite non-model action). The compatibility inventory
+retains external names and transport fields, with explicit `kind` metadata; it does not schedule
+native capabilities through a Graph. Seven Agent definitions are canonical and have no parallel
+model-backed Python Operation aliases. `WorkerProfile`/`WorkerBinding` are retained contract/binding
+spellings, not another executable identity or a claim of filesystem isolation.
 
-| Term                    | Meaning                                                                                 |
-| ----------------------- | --------------------------------------------------------------------------------------- |
-| Operation               | The one executable identity, usable as a LangGraph node or composed subgraph            |
-| State contract          | Declared input channels and output updates; wire shapes are checked at runtime          |
-| Model execution profile | Instructions, task/effect contract, workspace, tools and timeout on an Operation        |
-| Worker                  | One fresh Pi RPC process executing a model-backed Operation invocation                  |
-| Harness                 | Context resolution, worker runtime, model selection, permissions and environment        |
-| Pi integration          | The candidate or installed Pi entry/catalog and its Framework runtime                   |
-| Tool                    | An interface admitted by the worker's actual tool grant, not by graph composition alone |
+#### A1. Agent instructions and profile {#agents-and-harnesses-a1-operation-instructions-and-execution-profile}
 
-A deterministic Operation makes no model call on any supported path, including its transitive
-composition. It may still read Git, files or subprocess results; determinism here does not mean
-purity. Model-backed nodes use the same Operation inventory and USES relation as other nodes.
-Sharing a graph State or knowing an Operation name grants neither context nor execution authority.
+Each Agent has its existing canonical role Spec and native prelude. Native and compatibility rendered
+Agent paths contain the same instruction bytes. Profiles bind role, task/result schemas, intended
+workspace/tools and limits. The Host verifies exact source/build/runtime identity before use. Context
+references remain independent from tool policy and executable composition.
 
-#### A1. Operation instructions and execution profile {#agents-and-harnesses-a1-operation-instructions-and-execution-profile}
+#### A2. Agent and Harness {#agents-and-harnesses-a2-profile-and-harness}
 
-Each model-backed Operation MUST own instructions in `operations/<name>/spec.md` and a Python
-`PROFILE` declaration in that same package. Its instructions define responsibilities, goals,
-accepted input and feedback, expected results, completion conditions, and behavior on missing
-information, failure or required human decisions. These remain six sections after its
-`# concorde-<name>` title. Common worker rules precede them in the build; Protocol rules follow
-in the actual system prompt. Instructions are not project Spec context or permission grants.
+Native execution uses fresh file-Agent projections, explicit extensions, no inherited context/Skills
+and terminal tool ceilings. File/network/credential exclusions are prompt-level model policy. Model
+output is a proposal; gates stage only; Host acceptance independently checks native terminal evidence,
+current contracts/intent and domain predicates. Configured-check/tester isolation remains enforced.
 
-`PROFILE` MUST have the same identity as its Operation and bind its task contract, workspace,
-tools and timeout. There is no independent Agent inventory or `AGENTS` call relation.
-A `WorkerBinding` records exact instruction, profile and build digests for one
-model Operation. Stale or inconsistent bindings MUST prevent execution. The serialized `agent`
-field, `concorde-agent-stage-*` types and `generated/agents/` paths are retained compatibility
-spellings, not a second executable model.
+#### A3. Optional StateGraph composition {#agents-and-harnesses-a3-state-and-composition}
 
-#### A2. Profile and Harness {#agents-and-harnesses-a2-profile-and-harness}
-
-A model profile selects a `capsule` workspace for Spec-only work or a `project` workspace for
-implementation access. It declares Pi tools and maximum effects. The host adds `submit_result`. `edit` and `write` require a write
-effect; implementation reads require the project workspace. The host compiles each concrete grant
-as a subset of both those effects and its invocation authority.
-
-Project configuration selects model, thinking and timeout, with per-worker overrides.
-These settings are not authority. Pi starts with ambient sessions, context files, Skills, prompt
-templates, themes and discovered extensions disabled. Only the host-issued configuration and
-explicitly admitted tools are loaded. The shared [execution runtime](execution-reference.md) independently
-validates the model profile, input, instruction bytes and permissions before launching a process.
-
-#### A3. State and composition {#agents-and-harnesses-a3-state-and-composition}
-
-Every Operation MUST expose a State contract and `run(state, runtime)`. LangGraph nodes read
-only their admitted channels and return State updates. `OperationNode` supplies the common
-compiled-node adapter; a compiled graph may be embedded as another node. Different parent/child
-schemas require explicit channel mapping. Concurrent writers require explicit reducers on the
-owning graph; no automatic merge or broad parent-State grant is inferred.
-
-The host supplies launchers, configuration and authority through trusted `Runtime.context`, never
-through caller-writable State. Model nodes validate their context and output against the task
-contract as well as its wire schema. Existing public host adapters preserve the complete versioned
-result envelope in a `result` output channel, including errors and blocked outcomes.
-
-Operations MUST declare direct composition through `USES`, including model nodes. The host
-rejects undeclared calls. A worker's granted tools are separate from the host's composition graph:
-being present in `USES` does not install an Operation as a Pi tool. Dependencies must not widen
-context, effects or write authority. Graph nodes, edges and stopping rules are the executable
-control-graph definition; metadata does not repeat their order or branching.
+The explicitly selected Operation boundary declares typed input/output State and trusted Runtime.
+It calls an authorized native Agent service supplied by the embedding, not a default model runner.
+Parent StateGraphs can compose it with explicit mapping/reducers. Native workflow branches/loops stay
+in authored pi-subagents code; deterministic Python services do not suspend business stacks across
+model calls. USES metadata records collaborators without equating Module ownership or references.
 
 #### A4. Invocation constraints and evidence {#agents-and-harnesses-a4-invocation-constraints-and-evidence}
 
@@ -564,6 +526,11 @@ profile.
 
 #### Worker execution {#execution-worker-execution}
 
+**Historical low-level RPC/sandbox fixture contract only.** This section describes retained test/diagnostic
+utilities, not a selectable native capability backend. It does not promise native Agent confinement.
+Current native execution and actual tester/check enforcement are specified separately below.
+
+
 `WorkerExecutor` runs one host-built `WorkerInvocation` as one Pi worker and returns a
 `WorkerOutcome`, or raises `OperationExecutionError`. The local companion contract **Agent runtime
 value and collaborator contracts** defines these records, the invocation builder and the preflight;
@@ -629,6 +596,11 @@ secrets are masked by the sandbox's fixed list, and the credentials the process 
 readable inside it.
 
 #### Pi worker runtime {#execution-pi-worker-runtime}
+
+**Historical low-level RPC/sandbox fixture contract only.** This section describes retained test/diagnostic
+utilities, not a selectable native capability backend. It does not promise native Agent confinement.
+Current native execution and actual tester/check enforcement are specified separately below.
+
 
 A Pi worker is one Pi coding agent process run in RPC mode for one bounded task. Pi calls the
 worker's model through its own providers and executes its built-in tools; for legacy workers LangGraph stays the
@@ -823,6 +795,11 @@ initial command runs, and a background process holding them open cannot prevent 
 
 ##### Launch {#execution-launch}
 
+**Historical low-level RPC/sandbox fixture contract only.** This section describes retained test/diagnostic
+utilities, not a selectable native capability backend. It does not promise native Agent confinement.
+Current native execution and actual tester/check enforcement are specified separately below.
+
+
 Each launch gets a private run directory under system `/tmp`, outside any worktree even when
 ambient TMPDIR points into a project; it is removed afterwards. Its `agent/` directory is
 Pi's configuration directory for the process (`PI_CODING_AGENT_DIR`): Concorde's own settings
@@ -854,6 +831,11 @@ against its own typed contract. Usage comes from Pi's session statistics: input,
 output tokens, cost, assistant turns and the host-measured wall time.
 
 ##### Tool gate {#execution-tool-gate}
+
+**Historical low-level RPC/sandbox fixture contract only.** This section describes retained test/diagnostic
+utilities, not a selectable native capability backend. It does not promise native Agent confinement.
+Current native execution and actual tester/check enforcement are specified separately below.
+
 
 The Concorde worker extension gates every tool call before it executes: a tool outside the
 granted list is refused; `read`, `grep`, `find` and `ls` must target a path whose canonical form,
@@ -894,6 +876,11 @@ callback fails; the host runs the configured checks under its own read-only exec
 
 ##### Worker sandbox {#execution-worker-sandbox}
 
+**Historical low-level RPC/sandbox fixture contract only.** This section describes retained test/diagnostic
+utilities, not a selectable native capability backend. It does not promise native Agent confinement.
+Current native execution and actual tester/check enforcement are specified separately below.
+
+
 `worker_sandbox` derives one `MountPlan` from the launch and runs the Pi command inside bubblewrap
 (`plan_mounts`, `create_placeholders`, `bubblewrap_argv`, `remove_untouched_placeholders` and
 `unavailable_reason`); `WORKER_SANDBOX_POLICY`, `worker-mounts-v1`, names these rules and the policy
@@ -926,32 +913,29 @@ These companions are part of the same complete Module specification, not separat
 
 ## Invocation host {#host-invocation-host}
 
-This document defines how the Harness binds and runs one worker invocation, the LangGraph substrate
-every control flow uses, and the optional Studio view. Value records are defined in
-[runtime values](runtime-values.md).
+The Harness binds native terminal Agents, authored native Workflows and finite Host services.
+The optional StateGraph Operation boundary is distinct; native capability control flow does not
+use LangGraph. Value records are defined in [runtime values](runtime-values.md).
 
-#### Studio execution view {#host-studio-execution-view}
+#### Optional Studio execution view {#host-studio-execution-view}
 
-The Studio adapter starts or observes the same OperationHost used by CLI and Pi tool invocations, with
-the same worker executor. Its generated LangGraph configuration exposes one Graph per public Operation. Studio
-expands the same admission, dispatch and composed Graph instances used by local calls, including
-explicit target admission, planning, review and Issue-solving branches. Non-public Operations
-remain callable through declared composition. Batch Graphs are also inspectable from
-their executable factories; their runtime instances depend on host admission. Studio receives an
-invocation wrapper containing the existing schema-3 invocation and an optional expected_workspace
-assertion. Project and package roots remain host-bound; the assertion does not select another
-workspace.
-
-The final state exposes the unchanged operation result envelope, admitted policy descriptions and
-stage and worker events (`agent_started`, `agent_finished`, `agent_failed` naming the operation,
-stage, worker and invocation). Pausing or replaying a run does not waive permissions, checks or the
-worktree lifecycle, and replay may execute effects again. Ordinary local CLI and Pi tool calls do not
-require a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
-This execution view participates in Developer view and feedback through the same admission.
+Studio exposes only `terminal-agent-operation`, the same genuine typed StateGraph compiled by
+`OperationNode`. A trusted embedding supplies its native launch/admission service through Runtime;
+State cannot supply authority and missing service refuses. The default export is inspectable but
+cannot invoke a hidden model runner. Sync and async execution validate the same input/output types.
+There are no public-capability graph mirrors, callback-serialized continuations or automatic Studio
+redirects. See scripts/development/STUDIO.md. Historical admission/worker Graph fixtures under tests
+are not installed runtime entries.
 
 ### Design {#host-design}
 
 #### Invocation binding {#host-invocation-binding}
+
+Native preparation freezes the canonical Agent instructions, exact task/context, declared tool and
+stage policy, invocation-owned file-Agent discovery and native preflight. Proposal gates only stage;
+independent Host acceptance correlates terminal artifacts and rechecks current inputs. The public
+entry launches no legacy worker executor. The details below describe the retained low-level RPC
+sandbox diagnostic/test utilities, not native Agent confinement or public dispatch.
 
 The host obtains an invocation's inputs in a fixed order: select the worker whose contract names the
 stage; load its rendered instructions and resolve its `WorkerBinding` against the build (see
@@ -978,93 +962,58 @@ thinking level and timeout.
 
 #### Control-graph substrate {#host-control-graph-substrate}
 
-Every retained operation Graph, including legacy planning assessment, planning, review, Issue solving and explicit
-Studio adapters for deterministic tools, is a LangGraph `StateGraph` built
-with the Graph API, never with the Functional API. Its nodes are deterministic steps, which make no
-model call, or worker invocations, which do. These Graphs remain the Studio surface. Ordinary local
-deterministic tools run their admission and selected Host service directly instead. Graph structure alone proves nothing about semantics: transitions,
+Only explicitly selected StateGraph Operations use the Graph API and Studio surface. Native business
+capabilities are not mirrored by admission/dispatch/batch/Issue graphs; those runtime wrappers are
+retired. Finite Host services and native workflows remain their actual execution paths. Graph structure alone proves nothing about semantics: transitions,
 limits and evidence still follow G1–G4.
 
-#### Operation node (`operation_node`) {#host-operation-node-operation-node}
+#### Terminal Agent Operation {#host-operation-node-operation-node}
 
-Every registered Operation exposes `run(state, runtime)` and a State contract. `OperationNode`
-compiles that same implementation for embedding as a LangGraph subgraph, whether its implementation
-uses a model or the host's deterministic/composed Graph. Input schemas admit only the Operation's
-channels; output schemas expose only its declared update. Hosts, launchers and configuration live
-in trusted `Runtime.context`, not State. Host-backed adapters preserve their full success or failure
-envelope in the `result` output channel. Model nodes return their task-result fields. The catalog
-compiles the planner as its representative; the node name is the Operation's identity.
+This explicit optional Operation is a genuine StateGraph boundary, not a mirror of native business
+workflows. A trusted embedding selects an Agent and supplies its authorized native launch/admission
+service through Runtime. No default model runner or old Pi-RPC fallback exists. Studio can inspect
+this same graph; execution without a supplied service refuses. Native capability calls do not use it.
 
-**State.** The contract's context fields in (for a stage context: `snapshot`, `change_id`,
-`expected_artifacts`) and the contract's result fields out (`context_id`, `outcome`, `answer`,
-`blockers`, `documents`, `plan`, `tasks`, `issue_decision`). These channels use replacement updates;
-there is no implicit merge reducer. The diagram shows the planner contract, not the unrelated
-request/output fields of every other Operation.
+**State.** For the context-assessor Agent shown here, input channels are snapshot, change_id and
+expected_artifacts; output channels are context_id, outcome, answer, blockers, documents, plan,
+tasks and issue_decision. Channels use replacement updates. Runtime carries authority separately.
 
 **Nodes.**
 
-| Node      | Executes                                                                                                                | in                                      | out                                                                           |
-| --------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
-| `planner` | One Pi worker under the host launcher, which validates the input/result contract and records usage outside Graph State. | snapshot, change_id, expected_artifacts | context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision |
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `terminal_agent` | Validates typed input, calls the trusted native Agent service, validates typed result. | snapshot, change_id, expected_artifacts | context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision |
 
-**Edges.** None branch: the Graph runs its one node from `__start__` to `__end__`. What runs next is
-decided by the enclosing Graph that embeds the Operation as one of its nodes.
+**Edges.** The one admitted State transition proceeds from start through the terminal Agent service
+to end. The caller owns optional larger StateGraph composition and reducers, not a hidden scheduler.
 
 ```mermaid
 flowchart TB
-    %% graph: operation_node
-    accTitle: Operation node
-    accDescr: One worker invocation: the admitted typed context enters, the launcher runs the Pi worker, and the validated typed result leaves.
+    %% graph: terminal_agent_operation
+    accTitle: Explicit terminal Agent Operation
+    accDescr: A typed StateGraph transition invokes an explicitly supplied trusted native Agent service and validates its returned State.
     __start__["start"]
-    planner["planner<br/>in: snapshot, change_id, expected_artifacts<br/>out: context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision"]
+    terminal_agent["terminal_agent<br/>in: snapshot, change_id, expected_artifacts<br/>out: context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision"]
     __end__["end"]
-    __start__ --> planner
-    planner --> __end__
+    __start__ --> terminal_agent
+    terminal_agent --> __end__
 ```
 
 #### Sequential work items Graph (`batch_graph`) {#host-sequential-work-items-graph-batch-graph}
 
-Independently admitted review items run one at a time through this Graph; the item node is named
-per use (`review_module`; the catalog compiles it as `execute_item`). The factory itself does not
-author Specs, develop components or choose participants.
+This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
+the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
+is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
 
-**State.** `index` (the next item), `output` (the first non-None item result, which stops the
-Graph), `stop`. `index` is an integer and `stop` a boolean; `output` admits the caller's item
-result or None. All use replacement updates. Invocation starts with `index=0, output=None`.
-The finite item tuple and the callable are held by the Host closure, not in State.
-
-**Nodes.**
-
-| Node           | Executes                                                                                                    | in    | out                 |
-| -------------- | ----------------------------------------------------------------------------------------------------------- | ----- | ------------------- |
-| `select_item`  | Deterministic: compares index to the length of the Host-bound item tuple.                                   | index | stop                |
-| `execute_item` | Calls the Host-bound operation on items[index], increments index and sets stop when its result is not None. | index | output, index, stop |
-
-**Edges.** Both nodes route on `stop` through conditional edges: `select_item` ends the Graph when no
-item remains and runs `execute_item` otherwise, and `execute_item` ends it when the item returned a
-result and returns to `select_item` when it returned None. Exhaustion is `index >= len(items)`;
-an item stop is `output is not None` (even a falsey dictionary is a stop). Exceptions propagate
-to the enclosing caller; they are not an unshown `result` channel or another batch transition.
-
-```mermaid
-flowchart TB
-    %% graph: batch_graph
-    accTitle: Sequential work items Graph
-    accDescr: Items are selected and executed one at a time until none remain or an item returns a stopping result.
-    __start__["start"]
-    select_item["select_item<br/>in: index<br/>out: stop"]
-    execute_item["execute_item<br/>in: index<br/>out: output, index, stop"]
-    __end__["end"]
-    __start__ --> select_item
-    select_item -->|stop = false: index below item count| execute_item
-    select_item -->|stop = true: items exhausted| __end__
-    execute_item -->|stop = false: output is None| select_item
-    execute_item -->|stop = true: output is not None| __end__
-```
 
 ## Permissions {#permissions-permissions}
 
 #### Required worker authority boundary {#permissions-required-worker-authority-boundary}
+
+**Historical low-level RPC/sandbox fixture contract only.** This section describes retained test/diagnostic
+utilities, not a selectable native capability backend. It does not promise native Agent confinement.
+Current native execution and actual tester/check enforcement are specified separately below.
+
 
 The local companion contract **Agents and Harnesses** defines A4 for this Module. Effective authority
 MUST be a subset of the worker contract's effects and the host's invocation grant, including tool
@@ -1082,6 +1031,11 @@ worker's contract before launch and rejects a policy that is wider, that grants 
 without a write effect, or that grants network or credential effects to any worker.
 
 #### Enforcement {#permissions-enforcement}
+
+**Historical low-level RPC/sandbox fixture contract only.** This section describes retained test/diagnostic
+utilities, not a selectable native capability backend. It does not promise native Agent confinement.
+Current native execution and actual tester/check enforcement are specified separately below.
+
 
 The compiled policy becomes the Concorde worker extension's policy for the invocation. The extension
 gates every tool call inside the terminal worker's Pi process: a tool outside

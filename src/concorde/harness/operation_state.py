@@ -55,25 +55,6 @@ class InvocationRuntime:
     context: OperationRuntimeContext
 
 
-def run_model(profile, state: dict, runtime) -> dict:
-    """Execute a model-backed Operation under its own input/output and authority contract."""
-    from concorde.harness.worker_profile import (
-        validate_worker_input,
-        validate_worker_output,
-    )
-
-    from ..spec.typed_data import typed
-
-    context = runtime.context
-    if not isinstance(context, OperationRuntimeContext) or context.launcher is None:
-        raise RuntimeError(f"Operation {profile.name} was compiled for inspection only")
-    value = typed(profile.contract.context, dict(state))
-    validate_worker_input(profile, value, phase=profile.contract.phase)
-    result = typed(profile.contract.result, context.launcher(value))
-    validate_worker_output(profile, result)
-    return result["data"]
-
-
 def run_host(name: str, state: dict, runtime) -> ResultState:
     """Adapt State to the existing public wire boundary without losing failure evidence."""
     from ..spec.typed_data import typed

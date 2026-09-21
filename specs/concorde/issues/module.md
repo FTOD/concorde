@@ -60,16 +60,18 @@ which selects retained Operations and edits contracts directly. Decisions bind t
 
 `concorde-issues` runs after target admission binds the owning Module. Local listing, showing,
 reporting and reopening call deterministic Host services directly, without compiling a Graph.
-Solving and explicit Studio execution retain the
-[Issue Graph](execution-reference.md#lifecycle-issue-graph-issue-graph), including its
+Solving selects the authored
+[Native Issue lifecycle](execution-reference.md#lifecycle-issue-graph-issue-graph), including its
 [target admission adapter](../operations/execution-reference.md#graphs-target-admission-graph-target-graph). Solving is a bounded loop
-around the `decide` node, where one Issue solver worker chooses the next action: return needed implementation or Spec edits to the caller, or run Issue-specific reviews as the
-[Issue verification Graph](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
+around fresh native decisions, where one terminal Issue solver chooses the next action: return needed implementation or Spec edits to the caller, or run Issue-specific reviews as the
+[Native verification contract](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
 Verification returns to `decide`; needed edits stop the attempt with the Issue open until the caller
 returns with current inputs. A supported disposition closes the Issue only after its evidence checks.
-LangGraph compiles the declared `issue_graph` nodes and routes before execution. The host retains
-attempt counts before model calls, current intended behavior and evidence in candidate bookkeeping.
-No autonomous nested repair escapes the selected goal or the declared iteration limit.
+The authored native Issue workflow owns bounded decision/verification branches. Finite Host services
+persist attempts before launch, correlate actual native terminal evidence and maintain the exact
+closure journal. Independent Issue-specific and ordinary review calls are flattened into this same
+workflow; no Python graph/thread or extra coordinating model schedules them. Final validation is a
+separate deterministic step, and failed checks restore the Issue through the journal.
 
 ### Flow overview
 
@@ -81,8 +83,8 @@ outcomes instead need their own supported reasons. Any final readiness claim inc
 written disposition, and never means the primary branch has changed.
 
 For State channels, node inputs/outputs, decision limits and exact disposition conditions, open
-the full [Issue Graph Spec](execution-reference.md#lifecycle-issue-graph-issue-graph) and
-[Issue verification Graph Spec](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
+the full [Native Issue lifecycle](execution-reference.md#lifecycle-issue-graph-issue-graph) and
+[Native verification contract](execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph).
 
 ```mermaid
 flowchart TB

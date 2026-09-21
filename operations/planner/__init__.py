@@ -1,7 +1,6 @@
 """Plan contract-level work for one Module from its complete Spec."""
 
 from concorde.harness.effects import EffectDeclaration
-from concorde.harness.operation_state import StateContract, run_model
 from concorde.harness.worker_profile import Contract, WorkerProfile
 
 from .. import external_name
@@ -27,8 +26,4 @@ CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
-STATE = StateContract(PROFILE.contract.context, PROFILE.contract.result)
-
-
-def run(state, runtime):
-    return run_model(PROFILE, state, runtime)
+KIND = "agent"

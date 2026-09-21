@@ -378,3 +378,14 @@ carry ownership hashes. Locally owned preserved entries remain in `outputs`, nev
 migration under the old ownership/conflict rules; local verification requires current package
 provenance and never infers it from an old version label. No wire, Pi catalog, build-manifest,
 Protocol or managed-marker schema changes accompany these additive receipt fields.
+
+
+## Typed executable catalog compatibility
+
+Pi catalog schema2 adds an explicit kind for each compatibility public entry: host, agent-entry or
+workflow. Eleven concorde-* names and operation_id/request/response wire spellings remain deliberate
+compatibility names, not LangGraph identity. Seven canonical Agents are separately inventoried and
+have no private Python model-operation run aliases. Optional StateGraph Operations are separately
+selected. Old schema1 session entries require rebuild/reselection; stale private selection is not
+silently upgraded. Native and compatibility rendered Agent paths contain the same canonical native
+instruction bytes. Installed LangGraph dependency health remains required even when execution is native.

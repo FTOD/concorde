@@ -111,7 +111,9 @@ class OperationNodeTests(unittest.TestCase):
                     set(union.__annotations__),
                 )
                 drawing = node.graph().get_graph()
-                self.assertEqual({"__start__", name, "__end__"}, set(drawing.nodes))
+                self.assertEqual(
+                    {"__start__", "terminal_agent", "__end__"}, set(drawing.nodes)
+                )
         self.assertEqual(
             {"snapshot", "change_id", "expected_artifacts"},
             set(typed_state("concorde-agent-stage-context").__annotations__),

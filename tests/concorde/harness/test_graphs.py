@@ -8,9 +8,9 @@ from unittest.mock import patch
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 
-from concorde.harness.batch_graph import run_batch_graph
 from concorde.spec.verification import verifies
 from tests.concorde.harness import test_studio as studio_fixtures
+from tests.concorde.support.legacy_graphs.batch_graph import run_batch_graph
 
 invocation = studio_fixtures.invocation
 
@@ -142,8 +142,10 @@ class GraphTests(TestCase):
             observer=observe,
         )
         value = invocation()
-        with patch("concorde.harness.operation_graph.build_operation_graph") as build:
-            build.return_value.invoke.side_effect = RuntimeError("scheduler failed")
+        with patch(
+            "concorde.harness.admission.run_host_tool",
+            side_effect=RuntimeError("scheduler failed"),
+        ):
             result = run_operation(
                 value["operation_id"], None, value["input"], host_context=host
             )
@@ -185,7 +187,7 @@ class GraphTests(TestCase):
             data = read_file(root, path)
             return (
                 data + b"\n# revised scheduling\n"
-                if path == "src/concorde/harness/batch_graph.py"
+                if path == "src/concorde/harness/native_reviews.py"
                 else data
             )
 
@@ -196,7 +198,7 @@ class GraphTests(TestCase):
 
     @verifies("scenario.harness.graph-inspection")
     def test_batch_inspection_matches_executed_nodes_and_stop_edges(self):
-        from concorde.harness import batch_graph
+        from tests.concorde.support.legacy_graphs import batch_graph
 
         build = batch_graph.build_batch_graph
         for item_node in ("review_module", "coordinate_component"):

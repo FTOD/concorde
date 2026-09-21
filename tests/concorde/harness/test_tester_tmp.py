@@ -16,7 +16,7 @@ import unittest
 import uuid
 from pathlib import Path
 
-from concorde.harness.check_executor import execute_check, CheckSandboxError
+from concorde.harness.check_executor import CheckSandboxError, execute_check
 from concorde.harness.pi_rpc import _records, run_prompt
 from concorde.spec.verification import verifies
 from tests.concorde.distribution import test_pi_session as session_fixtures
@@ -30,6 +30,7 @@ class PrivateTemporaryBoundaryTests(unittest.TestCase):
     def test_bridge_policy_is_not_a_task_parameter(self):
         import io
         from unittest.mock import patch
+
         from concorde.distribution import outer_check
         from concorde.harness.check_executor import CheckResult
 
@@ -238,7 +239,7 @@ for key in ('PYTHONPATH','PYTHONHOME'):
 with ScriptedWorkerProvider([{'submit':True}]) as provider:
     provider_config(provider)
     envelope = {'type_id':'concorde-operation-invocation','schema_version':3,'operation_id':'concorde-context-solve','mode':'execute','configuration':None,'input':typed('concorde-context-solve-request',{'target_id':'service.transfer','task':'Assess the fixture contract'})}
-    completed = subprocess.run([str(local.python),str(local.launcher),'concorde-context-solve'],input=json.dumps(envelope),cwd=consumer,env=environment,capture_output=True,text=True,timeout=80)
+    completed = subprocess.run([str(local.python),str(repo/'tests/concorde/support/installed_legacy_driver.py'),'concorde-context-solve'],input=json.dumps(envelope),cwd=consumer,env=environment,capture_output=True,text=True,timeout=80)
     if old_boundary:
         assert completed.returncode != 0, completed.stdout
         assert 'Read-only file system' in completed.stdout and '/tmp/concorde-pi-worker-' in completed.stdout, completed.stdout

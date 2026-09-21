@@ -224,9 +224,6 @@ Missing or failed children and invalid identity/mode/receipt/coverage cannot pro
 acceptance. Failure evidence remains incomplete; requirements are not downgraded. Historical artifacts
 are retained. A changed parent/scope refuses rather than overwriting newer evidence.
 
-`legacy_issue_review_scope` and its batch/worker adapter are TEMPORARY only for nested Issue verification
-with trusted issue intent; remove them in the immediately following Issue migration. Bare public
-CLI/Studio review has no native transport and refuses `native_required`. Native failure never selects
-that compatibility path. Review input identity binds both candidate role transport assets; temporary
-Issue workers use their legacy tool prelude, while native reviewers use their native prelude. This
-preserves currentness semantics without falsely advertising legacy runs as native execution.
+The temporary Issue-only legacy reviewer/batch path is removed. Issue verification reuses finite
+native scope preparation/admission and flattens fresh reviewer calls into its own authored workflow.
+Public and internal native failures never fall back to old RPC/Graph execution.

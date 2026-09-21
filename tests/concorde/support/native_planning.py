@@ -1,33 +1,77 @@
 """Domain-only adapter for existing injected stage doubles; NOT native integration evidence."""
 
 from concorde.harness.host import OperationHost as RealHost
-from concorde.spec.repository import SpecError
 
 
 def domain_double(run):
-    from concorde.planning.plan import persist_plan_result
-    from concorde.planning.tasks import prepare_tasks, validate_tasks, persist_tasks
-    from concorde.review.review import require_spec_review
-    from concorde.harness.change_worktree import progress
+    from types import MethodType
 
-    if run.host.executor is None:
+    from concorde.harness.change_worktree import progress
+    from concorde.planning.plan import persist_plan_result
+    from concorde.planning.tasks import persist_tasks, prepare_tasks, validate_tasks
+    from concorde.review.review import require_spec_review
+    from tests.concorde.support.legacy_stage import stage
+
+    run.stage = MethodType(stage, run)
+    if run.host.executor is None and run.host.mode != "describe-policy":
         raise AssertionError("domain fixture requires an injected executor")
     if run.operation in {"concorde-spec-review", "concorde-code-review"}:
-        from concorde.review.review import legacy_issue_review_scope
+        from tests.concorde.support.legacy_review import legacy_issue_review_scope
 
         return legacy_issue_review_scope(
             run, "spec" if run.operation == "concorde-spec-review" else "code"
         )
+    if run.operation == "concorde-issues":
+        from dataclasses import replace
+
+        from concorde.harness.invocation import Invocation
+        from concorde.issues.solve import IssueSolve
+        from tests.concorde.support.legacy_review import legacy_issue_review_scope
+
+        domain = IssueSolve(run)
+        prepared = domain.prepare({})
+        if prepared["route"] == "finish":
+            return domain.finish({})["output"]
+        while True:
+            selected = domain.prepare_decision()
+            if "selection" not in selected:
+                return domain.finish({})["output"]
+            result = run.stage("concorde-issues", inputs=(selected["selection"],))
+            route = domain.accept_decision(result)["route"]
+            if route == "finish":
+                return domain.finish({})["output"]
+            if route == "close":
+                domain.close({})
+                return domain.ready({})["output"]
+            requests = domain.verification_requests()
+            before = domain.current_inputs()
+            outputs = []
+            for mode, task in requests:
+                child = Invocation(
+                    "concorde-" + mode + "-review",
+                    run.configuration,
+                    task,
+                    replace(run.host, coordinated=True, native_assessment=None),
+                )
+                outputs.append(legacy_issue_review_scope(child, mode))
+                if outputs[-1]["data"]["outcome"] != "completed":
+                    break
+            route = domain.accept_verification(outputs, before)["route"]
+            if route == "finish":
+                return domain.finish({})["output"]
     if run.host.mode == "describe-policy":
         run.stage(run.operation)
         return run.response("described")
-    if run.operation not in {"concorde-spec-review", "concorde-code-review"}:
+    if run.operation not in {
+        "concorde-spec-review",
+        "concorde-code-review",
+        "concorde-context-solve",
+    }:
         require_spec_review(run)
     if run.operation == "concorde-implement":
         from concorde.implementation.implement import (
-            prepare_implementation,
-            validate_implementation,
             persist_implementation,
+            prepare_implementation,
         )
 
         state, local, revisions, inputs, stopped = prepare_implementation(run)
@@ -93,7 +137,11 @@ def domain_double(run):
     )
 
 
-def OperationHost(*args, **kwargs):
-    if kwargs.get("executor") is not None and "native_assessment" not in kwargs:
-        kwargs["native_assessment"] = domain_double
-    return RealHost(*args, **kwargs)
+class OperationHost(RealHost):
+    def __init__(self, *args, **kwargs):
+        if (
+            kwargs.get("executor") is not None
+            or kwargs.get("mode") == "describe-policy"
+        ) and "native_assessment" not in kwargs:
+            kwargs["native_assessment"] = domain_double
+        super().__init__(*args, **kwargs)

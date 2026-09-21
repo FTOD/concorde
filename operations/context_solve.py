@@ -5,6 +5,7 @@ from concorde.spec import contract_shapes as shapes
 
 from . import external_name
 
+KIND = "agent-entry"
 PUBLIC = True
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False

@@ -134,8 +134,8 @@ This collaboration applies when target admission checks a caller-selected owner 
 
 <a id="entity.operations.issues"></a><a id="agreement.document.operations.module.3"></a>
 
-The [Issues Module](../issues/module.md) owns Issue management and solving, which the `issues` leaf runs as its own Graph.
+The [Issues Module](../issues/module.md) owns Issue management and solving, whose solve action uses its authored native workflow; other actions are finite Host services.
 
 This collaboration applies when an admitted `concorde-issues` request reaches dispatch.
 
-- [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph); run the selected Issue's Graph with the bound invocation and return its typed response without resolving the Issue itself.
+- [Native Issue lifecycle](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph); prepare the selected Issue workflow and admit its typed response without moving domain decisions into dispatch.

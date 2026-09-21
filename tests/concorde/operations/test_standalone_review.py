@@ -5,18 +5,21 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.harness.studio import build_studio_graph
 from concorde.spec.verification import verifies
 from tests.concorde.harness.test_studio import invocation
 from tests.concorde.spec.support import PACKAGE, ModelProcessDouble, project
+from tests.concorde.support.legacy_graphs.studio import build_studio_graph
 
 
 class StandaloneReviewTests(unittest.TestCase):
     def setUp(self):
         from unittest.mock import patch
+
         from tests.concorde.support.native_planning import OperationHost
 
-        adapter = patch("concorde.harness.studio.OperationHost", OperationHost)
+        adapter = patch(
+            "tests.concorde.support.legacy_graphs.studio.OperationHost", OperationHost
+        )
         adapter.start()
         self.addCleanup(adapter.stop)
         self.temp = tempfile.TemporaryDirectory()

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import canonical
-from .native_evidence import _record, NativeChildEvidence, verify_native_children
+from .native_evidence import NativeChildEvidence, _record, verify_native_children
 from .native_runtime import admit_native_runtime
 
 
@@ -46,7 +46,7 @@ def relay_prepare(host, invocation, candidate, payload):
 
 def descriptor(path, expected, *, allow_invalid=False):
     value = _record(Path(path))
-    if digest(value) != expected:
+    if digest(Path(path).read_bytes()) != expected:
         raise SpecError("planning descriptor changed", "stale_context")
     if not allow_invalid and (Path(value["directory"]) / "invalid").exists():
         raise SpecError("planning workflow was invalidated", "invalid_completion")
@@ -54,7 +54,7 @@ def descriptor(path, expected, *, allow_invalid=False):
 
 
 def workflow_service(package, action, path, expected):
-    from .native_context import execute, _write
+    from .native_context import _write, execute
 
     base = descriptor(
         path, expected, allow_invalid=action in {"workflow-result", "workflow-stop"}
@@ -77,7 +77,7 @@ def workflow_service(package, action, path, expected):
         if status.get("state") in {"failed", "stopped"} and not receipt.exists():
             # Record terminal failure only while this invocation still owns the same
             # semantic candidate inputs; an old status poll cannot invalidate newer work.
-            from .change_worktree import repository_lock, progress
+            from .change_worktree import progress, repository_lock
             from .native_context import candidate_input_digest
 
             latest = base

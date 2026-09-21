@@ -179,7 +179,7 @@ class DistributionTests(unittest.TestCase):
                 driver = root / "driver.py"
                 driver.write_text("""import importlib.util,json,sys
 from pathlib import Path
-root=Path.cwd();framework=root/'.concorde/framework';sys.path.insert(0,str(framework/'src'))
+root=Path.cwd();framework=root/'.concorde/framework';sys.path.insert(0,str(framework/'src'));sys.path.append(str(Path(sys.argv[1]).parents[3]))
 spec=importlib.util.spec_from_file_location('model_process_fixture',sys.argv[1]);helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 helper.PACKAGE=framework
 from concorde.spec.typed_data import typed

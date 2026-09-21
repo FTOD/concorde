@@ -719,8 +719,8 @@ lists both source members of every included unit with document identity, owner, 
 inclusion reasons and the reading entry; reading and metadata members themselves are granted read-only at their project-relative paths, copied
 byte-for-byte into a capsule when the phase has no project workspace. No Spec document body is
 embedded in an invocation's input, so an invocation pays only for the documents its task opens;
-the agent opens the granted files with its own tools, starting from the reading entry, and nothing
-outside the grant is readable. Its
+the agent opens the granted files with its own tools, starting from the reading entry, and must not read outside the grant. Native file scope is prompt policy, not OS confinement or proof
+of exclusive reads. Actual isolated tester/check subprocess boundaries are separate. Its
 **implementation context** is the Protocol-defined set of files bound by the Module's entities:
 their exact entries plus every regular file below their directory prefixes, excluding directories
 named `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, directories and files whose names
@@ -750,9 +750,9 @@ project-Spec collection and, for planners and task authors, its declared externa
 They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Pi integration are not context:
-instructions belong to a model-backed Operation's execution profile, and the Pi session tool exposes public
-Operations for the developer's own agent runtime. Legacy Graph workers receive common worker rules, role instructions and the Protocol bundle.
-The native context-assessor receives native terminal rules and the same role specification, and
+instructions belong to the canonical native Agent role, and the Pi session tool exposes compatibility
+capability entries for the developer's own agent runtime. All native roles receive their terminal rules
+and role specification, and
 reads the complete Protocol documents listed with their digests in its frozen context index.
 
 Context identities cover ownership, explicit references, inclusion reasons and document bytes,
@@ -791,44 +791,33 @@ invocation within that authority belongs to the Harness Module's Specs, not to t
 and task grant; the directory name creates no blanket host-only prohibition. Truthful evidence,
 concurrency safety and bounded worker phase permissions remain mandatory.
 
-An Agent is a callable native Pi role; deterministic Host services need no model or Graph.
-The public context-assessment entry prepares a native context-assessor invocation, then independently
-admits its result. A returned model proposal or passing staging gate is not accepted completion.
-Its file scope is prompt-level policy, not OS confinement; no claim of exclusive reads follows from
-context delivery or digest checks. Plan uses an authored native pi-subagents workflow with fresh assessor then planner and finite
-Host acceptance steps; tasks use a direct native task-author consuming a current accepted plan.
-Their read policies are likewise prompt-level. Implement uses a direct native programmer writing the actual candidate under explicit prompt-level
-file policy. Public Spec/code review uses fresh native reviewer scopes and finite Host aggregation.
-Issue solving alone retains its current Graph backend and temporary internal legacy verification.
-Each Graph-bound Operation declares input State, output
-State updates, effects, use conditions, execution policy and a permission ceiling. A caller can use
-it as a LangGraph node without reconstructing its context policy, permission boundaries, model
-execution or result checks. Completeness still relies on trusted Runtime, Host and Harness services;
-the common Host/Harness narrow the declared ceiling to the actual task and enforce the grant.
-State cannot carry or expand execution authority. Public/internal exposure changes entry availability,
-not completeness. Modules own responsibilities and Specs, not necessarily one Operation each.
+An **Agent** is a callable native Pi role. A **Workflow** is an authored native pi-subagents
+composition. An **Operation** is an explicitly selected LangGraph StateGraph flow. Finite non-model
+actions are **Host tools/services**. Module ownership, context references and composition remain
+independent of these executable kinds. Compatibility `concorde-*` names, `operation_id` fields and
+the `operations/` package name do not make every capability a LangGraph Operation.
 
-An explicitly graph-composed Operation's control flow is a LangGraph graph built with the Graph API: a
-`StateGraph` whose nodes and edges are declared before it is compiled. The Functional API,
-`entrypoint` and `task` from `langgraph.func`, MUST NOT be used, because it keeps control flow
-inside ordinary Python where neither a Graph Spec nor Studio can inspect it; a deterministic check
-refuses it. Every executable node is an Operation with declared input State and output State
-updates. Its implementation may be deterministic code, a model invocation or a compiled subgraph;
-these are not separate entity kinds. Composition produces another Operation. The outer agent
-chooses which public Operations to invoke and in what order; no development or Spec-authoring
-orchestrator is supplied. Operation composition uses one explicit USES relation, distinct from Module
-ownership and the explicit references selecting context.
-Legacy Graph workers retain their execution profiles. Native assessor, planner and task-author instructions, tools
-and limits instead configure actual Pi Agent definitions, projected from their authored roles.
-The same graphs are the inspectable Studio surface. Deterministic Host tools—initialization,
-configuration, validation, delivery and Issue listing/showing/reporting/reopening—use direct
-admission and dispatch in ordinary local Pi/CLI calls, without compiling a Graph. Their explicit
-Studio and State-node adapters remain supported graph executions; those views do not establish
-that a normal Host-tool call traversed a Graph. Model-backed entries other than public context-solve, plan, tasks, implement and reviews retain their existing
-Graph execution. Public context-solve, plan, tasks, implement and reviews do not use a Graph or hidden Pi-RPC worker; unsupported
-CLI/Studio execution without the native Pi boundary refuses rather than falling back. State channels carry data, not
-execution authority; runtime context and permission checks remain separate. Parent graphs define
-reducers for shared channels explicitly.
+Context assessment, tasks and implementation use direct native Agents. Plan, independent review
+scopes and bounded Issue solving use authored native workflows. Deterministic admission, configured
+checks, lifecycle, Issue bookkeeping/disposition and validation remain Host services. No public
+native path compiles a mandatory Graph or launches a hidden old Pi-RPC worker. All seven native
+roles are terminal, fresh and explicitly scoped, without recursive task delegation or an extra
+coordinating model. Native capacity and tool ceilings remain authoritative.
+
+Model proposals and successful stage-only gates are not domain completion. Host acceptance follows
+independent native terminal-artifact correlation and exact current-input/business checks. Expected
+implementation edits do not invalidate immutable contract/task identity; failed/cancelled work keeps
+partial edits and historical receipts. Native file/network/credential exclusions are prompt-level
+policy, not OS confinement or proof of exclusive reads. Actual tester/check subprocess isolation
+remains enforced and distinct. Primary status/runs, single-writer lifecycle and explicit integration/
+cleanup authorization remain unchanged.
+
+LangGraph stays available for genuine explicitly selected StateGraph Operations and Studio inspection.
+`OperationNode` supplies a typed State transition with a trusted native launch/admission service in
+Runtime; missing service refuses rather than selecting a model backend. State cannot carry or expand
+authority. Parent graphs own reducers and mapping. No fake Graph mirror represents native workflows.
+The Graph API is used, never hidden `langgraph.func` task/entrypoint scheduling. Installed LangGraph
+health remains verified; optional execution is not permission to delete untested dependencies.
 
 Agent instructions, the Pi session shim, schemas and rule assets are deterministic projections of authored
 sources. Generated output is not edited as source. Builds distribute the Module kind definition and
@@ -878,8 +867,8 @@ old readiness never becomes fresh validation implicitly.
 The user-facing main session understands needs and coordinates. It may delegate complete tasks
 to at most one layer of fresh task subagents; a task child may run a series of public Operations
 and continue one change to delivery, but never delegates tasks or moves worktrees. Bounded
-legacy Operation workers are terminal Pi agents scheduled by the LangGraph host, not task subagents.
-The migrated context-assessor is a fresh native Pi leaf with no delegation tools; its Host-issued
+native domain Agents are terminal pi-subagents roles, distinct from author/tester task delegation.
+Every native terminal role is a fresh Pi leaf with no delegation tools; its Host-issued
 preparation and independent acceptance remain separate from the native model execution. Native
 Pi child-safety ceilings apply; insufficient native launch capacity refuses rather than bypassing
 a ceiling.

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from dataclasses import replace
+from pathlib import Path
 
 from ..harness.change_worktree import bind_owner, read_change
 from ..harness.invocation import Invocation
@@ -52,8 +52,8 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         )
         change = read_change(host.project_root)
         if change and change.get("target_id") not in {None, task["target_id"]}:
-            from ..implementation.implement import component_intent
             from ..harness.revisions import target_revision
+            from ..implementation.implement import component_intent
 
             repository = SpecRepository(host.project_root, host.package_root)
             admitted = False
@@ -163,9 +163,26 @@ def dispatch_graph_nodes(operation, configuration, task, host):
             sys.stderr.flush()
         return {"relayed": envelope}
 
+    def native_issue():
+        if host.native_assessment:
+            return host.native_assessment(bound_run())
+        if task.get("_issue_closed"):
+            from ..issues.store import read_issue
+
+            value = bound_run().response(
+                "completed", "Issue is already disposed; no work replayed."
+            )
+            value["data"].update(
+                issues=[read_issue(host.project_root, task["issue_id"])[0]],
+                decision="already-closed",
+            )
+            return value
+        raise SpecError("Issue solving requires its native workflow", "native_required")
+
     entries = {
         "deliver": deliver,
         "project": project,
+        "native_issue": native_issue,
         "review": review,
         "describe_policy": describe_policy,
         "plan": lambda: (

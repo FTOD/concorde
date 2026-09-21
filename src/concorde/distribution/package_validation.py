@@ -23,13 +23,13 @@ from ..spec.frontmatter import FrontMatterError, parse_document
 from ..spec.model import Finding
 from . import build
 from .build import BuildError, check_build, verify_fresh
-from .prompt_resolver import GUIDANCE_ROOT
 from .prompt_resolver import (
+    GUIDANCE_ROOT,
     PromptResolverError,
     find_unreachable_prompts,
     resolve_model_instructions,
-    resolve_role_prompt,
     resolve_operation_guidance,
+    resolve_role_prompt,
 )
 
 _SUBJECT = "module.distribution"
@@ -74,6 +74,7 @@ def _prompt_roots(root: Path) -> tuple[str, ...]:
             "prompts/native/programmer.md",
             "prompts/native/spec-reviewer.md",
             "prompts/native/code-reviewer.md",
+            "prompts/native/issue-solver.md",
             "prompts/protocol/principles.md",
         )
         + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS)
@@ -297,8 +298,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                 "PROFILE",
                 "USES",
                 "EXTERNAL_NAME",
-                "STATE",
-                "run",
+                *(("STATE", "run") if getattr(module, "KIND", None) != "agent" else ()),
             )
             if not hasattr(module, attribute)
         ]
@@ -321,8 +321,10 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
             or not isinstance(module.USES, tuple)
             or not all(isinstance(used, str) for used in module.USES)
             or not isinstance(module.EXTERNAL_NAME, str)
-            or not isinstance(module.STATE, StateContract)
-            or not callable(module.run)
+            or getattr(module, "KIND", None) != "agent"
+            and (
+                not isinstance(module.STATE, StateContract) or not callable(module.run)
+            )
         ):
             findings.append(
                 _finding(
@@ -340,7 +342,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                     "CONCORDE-OPERATION-CONSTANTS-001",
                     source,
                     f"operation {name!r} retains a removed CLASS or AGENTS declaration.",
-                    "Use one Operation inventory and one USES composition relation.",
+                    "Use the typed executable inventory and declared USES relationships.",
                 )
             )
         if module.CONTEXT_SELECTION not in {"bound", "none"}:
@@ -362,9 +364,14 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                     "Name only operations listed in operations.OPERATIONS.",
                 )
             )
-        if module.PROFILE is not None and (
-            module.STATE.input_type != module.PROFILE.contract.context
-            or module.STATE.output_type != module.PROFILE.contract.result
+        if (
+            module.PROFILE is not None
+            and hasattr(module, "STATE")
+            and (
+                getattr(module, "KIND", None) == "agent"
+                or module.STATE.input_type != module.PROFILE.contract.context
+                or module.STATE.output_type != module.PROFILE.contract.result
+            )
         ):
             findings.append(
                 _finding(
@@ -384,7 +391,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                 )
             )
         known_types = schemas()
-        if (
+        if getattr(module, "KIND", None) != "agent" and (
             not isinstance(module.STATE.input_type, str)
             or module.STATE.input_type not in known_types
             or module.STATE.output_type is not None
@@ -722,7 +729,7 @@ def _validate_contracts(root: Path) -> list[Finding]:
 
 
 _SPEC_TYPE_TOKEN = re.compile(r"concorde-[a-z][a-z0-9-]*@[0-9]+")
-_ERROR_TABLE_ROW = re.compile(r"^\|\s*`([a-z][a-z0-9_]*)`\s*\|", re.M)
+_ERROR_TABLE_ROW = re.compile(r"^\|\s*`([a-z][a-z0-9_]*)`\s*\|", re.MULTILINE)
 _CODE_SHAPE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 # The wire envelope types are validated ad hoc (never through contracts.schemas()/exported_types(),
@@ -821,6 +828,7 @@ def _operation_code_inventory(root: Path) -> dict | None:
         profile = getattr(module, "PROFILE", None)
         state = getattr(module, "STATE", None)
         result[name.replace("_", "-")] = {
+            "kind": getattr(module, "KIND", None),
             "public": module.PUBLIC,
             "context_selection": getattr(module, "CONTEXT_SELECTION", None),
             "deterministic": getattr(module, "DETERMINISTIC", None),
@@ -864,6 +872,7 @@ def _validate_spec_operations_block(
         entries = None
     fields = {
         "id",
+        "kind",
         "public",
         "context_selection",
         "deterministic",
@@ -880,7 +889,8 @@ def _validate_spec_operations_block(
         or type(item["deterministic"]) is not bool
         or item["context_selection"] not in ("bound", "none")
         or not isinstance(item["uses"], list)
-        or not isinstance(item["state"], dict)
+        or item["state"] is not None
+        and not isinstance(item["state"], dict)
         or item["profile"] is not None
         and not isinstance(item["profile"], dict)
         for item in entries

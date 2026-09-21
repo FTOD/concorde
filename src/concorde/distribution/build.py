@@ -178,19 +178,12 @@ def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
 
 
 def render_model_instructions(project_root: Path, agent: str) -> BuildOutput:
-    """One worker's instructions: the common worker rules, then its own role Spec.
-
-    Only authored terminal worker instructions are projected."""
-    try:
-        rules = resolve_role_prompt(project_root, WORKER_RULES)
-        role = resolve_model_instructions(project_root, MODEL_ROOTS[agent])
-    except PromptResolverError as error:
-        raise BuildError(f"agent {agent}: {error.rule_id}: {error}") from error
-    content = (rules.body.rstrip("\n") + "\n\n" + role.body).encode("utf-8")
+    """Compatibility output path for the SAME canonical native Agent bytes, not a legacy backend."""
+    native = render_native_context_agent(project_root, agent)
     return BuildOutput(
         path=f"generated/agents/{agent}.md",
-        content=content,
-        sources=tuple(sorted({*rules.sources, *role.sources})),
+        content=native.content,
+        sources=native.sources,
     )
 
 
@@ -258,6 +251,16 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
         operations.append(
             {
                 "name": name,
+                "kind": {
+                    "concorde-init": "host",
+                    "concorde-configure": "host",
+                    "concorde-validate": "host",
+                    "concorde-deliver": "host",
+                    "concorde-plan": "workflow",
+                    "concorde-spec-review": "workflow",
+                    "concorde-code-review": "workflow",
+                    "concorde-issues": "workflow",
+                }.get(name, "agent-entry"),
                 "description": str(metadata["description"]),
                 "guidance": guidance,
                 "request_version": version,
@@ -267,7 +270,7 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
         sources.update(resolved.sources)
         sources.add(OPERATION_GUIDANCE[name])
     catalog = {
-        "schema_version": 1,
+        "schema_version": 2,
         "launcher": f"{prefix}/scripts/run-operation.py"
         if prefix
         else "scripts/run-operation.py",
@@ -299,23 +302,18 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
 
 
 def render_langgraph(project_root: Path) -> BuildOutput:
-    """Studio graph list derived from the public Operation inventory."""
-
-    graphs = {
-        name: f"./scripts/development/studio.py:{name.replace('-', '_')}"
-        for name in PUBLIC_OPERATIONS
-    }
     payload = {
         "$schema": "https://langgra.ph/schema.json",
         "dependencies": ["."],
-        "graphs": graphs,
         "env": {"LANGSMITH_TRACING": "false"},
+        "graphs": {
+            "terminal-agent-operation": "./src/concorde/harness/studio.py:terminal_agent_operation"
+        },
     }
-    content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
     return BuildOutput(
         path="generated/langgraph.json",
-        content=content,
-        sources=tuple(sorted(OPERATION_GUIDANCE.values())),
+        content=(json.dumps(payload, sort_keys=True, indent=2) + "\n").encode(),
+        sources=("operations/__init__.py",),
     )
 
 
@@ -520,6 +518,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
         "programmer",
         "spec-reviewer",
         "code-reviewer",
+        "issue-solver",
     ):
         outputs.append(render_native_context_agent(root, name))
     outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
@@ -543,6 +542,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
                     "programmer",
                     "spec-reviewer",
                     "code-reviewer",
+                    "issue-solver",
                 )
             ],
         ]

@@ -146,7 +146,7 @@ runs as one [Operation node](../harness/execution-reference.md#host-operation-no
 | spec-review, code-review; spec-reviewer, code-reviewer             | [Review](../review/module.md)                 | Target admission, then one reviewer node for the owner and each changed-file peer                                                                                                                                |
 | validate                                                           | [Validation](../validation/module.md)         | Direct Host service; explicit Studio node                                                                                                                                                                        |
 | deliver                                                            | [Delivery](../delivery/module.md)             | Direct Host service; explicit Studio node                                                                                                                                                                        |
-| issues; issue-solver                                               | [Issues](../issues/module.md)                 | The [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph) and its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph) |
+| issues; issue-solver                                               | [Issues](../issues/module.md)                 | The bounded native Issue workflow and flattened independent verification calls |
 | init                                                               | [Spec](../spec/initialize.md)                 | Direct Host service; explicit [Studio project Graph](../spec/contracts.md#graphs-project-graph-project-graph)                                                                                                    |
 | configure                                                          | [Distribution](../distribution/module.md)     | Direct Host service; explicit Studio project Graph                                                                                                                                                               |
 
@@ -174,19 +174,18 @@ owning Modules. Each Graph Spec follows the
 Nodes and Edges are stated in turn, and its diagram is bound to its compiled Graph by `%% graph:`
 and kept equal to it by the configured Graph Spec check.
 
-The following index maps public entry points to their internal Graphs without duplicating their
-executable diagrams. Deterministic local calls use the same admission and dispatch services without
-compiling these graphs. Every entry first uses admission and dispatch; target-bound entries also
-use deterministic explicit target admission.
+Public compatibility entries retain their request/response names without implying Graph execution:
 
-| Public entry                                   | Internal flow after dispatch                                                                                                                                                                                                                                                                                                                                         |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `concorde-issues`                              | Bookkeeping runs directly in local calls; [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph) handles solve or explicit Studio execution. Solve returns development or Spec-repair work to the caller, or runs its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph). |
-| `concorde-spec-review`, `concorde-code-review` | Public reviews use native scope workflows. Temporary internal Issue verification alone uses the [batch Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph), not a separate repair loop.                                                                                                                                           |
-| `concorde-plan`                                | [Native planning workflow](../planning/execution-reference.md#plan-planning-graph-plan-graph).                                                                                                                                                                                                                                                                       |
-| `concorde-implement`                           | A single bounded worker after input admission; component work is returned to the caller.                                                                                                                                                                                                                                                                             |
-| `concorde-init`, `concorde-configure`          | Direct Host services; explicit [Studio project Graph](../spec/contracts.md#graphs-project-graph-project-graph).                                                                                                                                                                                                                                                      |
-| `concorde-validate`, `concorde-deliver`        | Direct Host services in local calls; deterministic dispatch leaves only in explicit Graph execution.                                                                                                                                                                                                                                                                 |
+| Public entry | Backend after finite admission |
+| --- | --- |
+| `concorde-issues` | Finite bookkeeping or bounded native decide/verify/decide/close/validate workflow. |
+| `concorde-spec-review`, `concorde-code-review` | Authored native scope workflow with independently admitted terminal reviewers. |
+| `concorde-plan` | Native assessor then planner workflow; Host persistence. |
+| `concorde-context-solve`, `concorde-tasks`, `concorde-implement` | A fresh native terminal Agent; independent Host acceptance. |
+| `concorde-init`, `concorde-configure`, `concorde-validate`, `concorde-deliver` | Finite deterministic Host services. |
+
+Optional StateGraph Operations and Studio are explicit separate selections, not backends implicitly
+chosen by these entries.
 
 Model-backed leaves use the [Operation node](../harness/execution-reference.md#host-operation-node-operation-node)
 contract. The seven private model nodes are reached only through declared composition;
@@ -195,123 +194,17 @@ operation/subgraph factories, rather than defining another business workflow.
 
 #### Operation dispatch Graph (`dispatch_graph`) {#graphs-operation-dispatch-graph-dispatch-graph}
 
-**State.** `route` (the leaf or subgraph selected for the admitted operation), `output` (the
-operation's typed response), `relayed` (the complete result envelope a candidate worktree's
-launcher returned for a relayed mutation, which the admission Graph adopts as its own result),
-`result` (guard failure or None). These channels use replacement updates. Operation, request,
-configuration, bound invocation and relay target are Host-held, not dispatch State. `none` below
-means a node reads only those Host inputs. `?` means a conditional channel or update. Guards
-write `result` on every guarded step and set `route=__end__` on errors. For registered subgraphs,
-`in`/`out` list channels crossing the parent boundary; their own Graph Specs give node-level
-reads/writes. Child-only counters, decisions and artifact reducers do not become parent channels.
-Provider artifacts are exported inside `output`, not as a dispatch `artifacts` channel.
+This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
+the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
+is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
 
-**Nodes.** Each leaf below is the entry of one retained Operation.
-
-| Node               | Executes                                                                                                         | in                       | out                    |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------ | ---------------------- |
-| `select_operation` | Selects from the Host-bound operation/action, giving relay precedence when a candidate relay target exists.      | none                     | route, result          |
-| `relay`            | Calls the candidate's launcher with the Host-bound invocation and adopts its full envelope.                      | none                     | relayed, result        |
-| `prepare_target`   | Registered target subgraph: checks explicit owner, stores the bound invocation in the Host and selects the leaf. | route?, output?, result? | route, output?, result |
-| `deliver`          | Deterministic delivery under the repository lock, using Host-bound change/worktrees.                             | none                     | output, result         |
-| `project`          | Registered project subgraph using the Host-bound initialization/configuration request.                           | route?, output?, result? | route, output?, result |
-| `review`           | Reviews the Host-bound owner and affected peers in separate contexts.                                            | none                     | output, result         |
-| `describe_policy`  | Describes grants for the bound invocation without launching workers.                                             | none                     | output, result         |
-| `issues`           | Registered Issue subgraph using the Host-bound action and selection.                                             | route?, output?, result? | route, output?, result |
-| `plan`             | Finite native plan preparation/admission, or refusal when no native transport is bound.                          | none                     | output, result         |
-| `tasks`            | Calls task authoring with stored plan, reserved IDs and repair feedback; admits tasks.                           | none                     | output, result         |
-| `implement`        | Finite native programmer preparation/acceptance; absent native transport is refused.                             | none                     | output, result         |
-| `validate`         | Checks the bound candidate and readiness gates.                                                                  | none                     | output, result         |
-| `context_solve`    | Native context admission when explicitly bound; otherwise refuses missing native transport.                      | none                     | output, result         |
-
-**Edges.** `select_operation` writes `route`, and a conditional edge follows it to one entry leaf:
-the relay for a mutation admitted in the primary worktree, delivery, the project Graph, target admission for every target-bound operation; an error ends the
-Graph. `prepare_target` writes `route` again once the owner is bound and selects that operation's
-leaf, or ends the Graph when binding is blocked. Every leaf ends the Graph with its typed output.
-Studio and model-backed CLI entries compile a dispatch Graph containing only the leaves that
-operation can reach; the diagram shows the complete topology they are drawn from. Both branching
-edges read exactly `state["route"]`; edge labels below explain how the source sets that channel.
-Review dispatch takes precedence over describe-policy so the review provider describes its own
-policy. A target-binding business stop writes `output` and `route=__end__`; a guard failure writes
-`result` and the same route. Leaf completion itself is not proof of a successful business outcome.
-
-```mermaid
-flowchart TB
-    %% graph: dispatch_graph
-    accTitle: Operation dispatch Graph
-    accDescr: The admitted operation selects one entry leaf, or target admission first and then one bound leaf; every leaf ends the Graph with its typed output.
-    __start__["start"]
-    select_operation["select_operation<br/>in: none<br/>out: route, result"]
-    relay["relay<br/>in: none<br/>out: relayed, result"]
-    prepare_target["prepare_target<br/>in: route?, output?, result?<br/>out: route, output?, result"]
-    deliver["deliver<br/>in: none<br/>out: output, result"]
-    project["project<br/>in: route?, output?, result?<br/>out: route, output?, result"]
-    review["review<br/>in: none<br/>out: output, result"]
-    describe_policy["describe_policy<br/>in: none<br/>out: output, result"]
-    issues["issues<br/>in: route?, output?, result?<br/>out: route, output?, result"]
-    plan["plan<br/>in: none<br/>out: output, result"]
-    tasks["tasks<br/>in: none<br/>out: output, result"]
-    implement["implement<br/>in: none<br/>out: output, result"]
-    validate["validate<br/>in: none<br/>out: output, result"]
-    context_solve["context_solve<br/>in: none<br/>out: output, result"]
-    __end__["end"]
-    __start__ --> select_operation
-    select_operation -->|mutation admitted in the primary worktree| relay
-    select_operation -->|concorde-deliver| deliver
-    select_operation -->|concorde-init or concorde-configure| project
-    select_operation -->|target-bound operation| prepare_target
-    select_operation -->|error| __end__
-    prepare_target -->|concorde-spec-review or concorde-code-review| review
-    prepare_target -->|describe-policy mode, non-review operation| describe_policy
-    prepare_target -->|concorde-issues| issues
-    prepare_target -->|concorde-plan| plan
-    prepare_target -->|concorde-tasks| tasks
-    prepare_target -->|concorde-implement| implement
-    prepare_target -->|concorde-validate| validate
-    prepare_target -->|concorde-context-solve| context_solve
-    prepare_target -->|blocked or error| __end__
-    relay --> __end__
-    deliver --> __end__
-    project --> __end__
-    review --> __end__
-    describe_policy --> __end__
-    issues --> __end__
-    plan --> __end__
-    tasks --> __end__
-    implement --> __end__
-    validate --> __end__
-    context_solve --> __end__
-```
 
 #### Target admission Graph (`target_graph`) {#graphs-target-admission-graph-target-graph}
 
-**State.** `route`, `output` and `result`, all replacement updates. The explicit target, task,
-configuration and candidate are Host inputs, not model-selected state. No discovery counters,
-routes or decisions exist.
+This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
+the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
+is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
 
-**Nodes.**
-
-| Node          | Executes                                                                                                               | in   | out           |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------- | ---- | ------------- |
-| `bind_target` | Resolves the caller's target and focus, verifies candidate intent, binds the invocation and selects its declared leaf. | none | route, result |
-
-**Edges.** Start binds the explicit target, then ends this child Graph. The dispatch parent reads
-its selected route. Unknown targets, foreign focus and incompatible intent fail without a fallback.
-A separately selected component request must match tasks from a current accepted parent plan: the
-parent Spec/registration revision, derived task and constraints are rechecked before its owner
-exception is admitted. A stale parent declaration grants no component execution.
-
-```mermaid
-flowchart TB
-    %% graph: target_graph
-    accTitle: Explicit target admission
-    accDescr: Resolve and bind only the caller-selected Module before returning its provider route.
-    __start__["start"]
-    bind_target["bind_target<br/>in: none<br/>out: route, result"]
-    __end__["end"]
-    __start__ --> bind_target
-    bind_target --> __end__
-```
 
 ## Context selection participation
 

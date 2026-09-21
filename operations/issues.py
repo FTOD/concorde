@@ -6,6 +6,7 @@ from concorde.spec.issue_shapes import ISSUE_ID, LEGACY_RECORD, RECORD, REPORT
 
 from . import external_name
 
+KIND = "workflow"
 PUBLIC = True
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False

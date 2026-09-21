@@ -10,8 +10,6 @@ from unittest.mock import Mock, patch
 from langgraph.checkpoint.memory import InMemorySaver
 
 from concorde.harness.admission import run_operation
-from tests.concorde.support.native_planning import OperationHost
-from concorde.harness.studio import build_studio_graph
 from concorde.spec.contracts import INTERNAL_OPERATIONS, PUBLIC_OPERATIONS
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
@@ -24,6 +22,8 @@ from tests.concorde.spec.support import (
     ModelProcessDouble,
     project,
 )
+from tests.concorde.support.legacy_graphs.studio import build_studio_graph
+from tests.concorde.support.native_planning import OperationHost
 
 EXPECTED_PUBLIC = (
     "concorde-context-solve",
@@ -110,7 +110,7 @@ class StudioTests(unittest.TestCase):
     ):
         manifest = json.loads((PACKAGE / "generated/langgraph.json").read_text())
         assert_public_inventory(self, PUBLIC_OPERATIONS)
-        assert_public_inventory(self, manifest["graphs"])
+        self.assertEqual({"terminal-agent-operation"}, set(manifest["graphs"]))
         for operation in EXPECTED_PUBLIC:
             with self.subTest(operation=operation):
                 value = invocation(operation, data={"unrecognized": True})
@@ -292,7 +292,7 @@ class StudioTests(unittest.TestCase):
             {"invocation": invocation("concorde-plan")},
             {"invocation": {**invocation(), "input": "x" * (1024 * 1024)}},
         ]
-        with patch("concorde.harness.studio.OperationHost") as host:
+        with patch("tests.concorde.support.legacy_graphs.studio.OperationHost") as host:
             for value in cases:
                 with self.subTest(value=str(value)[:160]):
                     actual = graph.invoke(value)

@@ -173,3 +173,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 - WHEN the host attempts to admit or persist it
 - THEN it does not acknowledge successful recording of that invalid operation
 - AND existing valid observations remain available without widening file authority
+
+
+### scenario.issues.native-solve — Native decisions cannot bypass trusted closure
+
+- GIVEN one current selected Issue in its managed candidate
+- WHEN the authored native workflow makes bounded decisions and flattened fresh verification calls
+- THEN each attempt is persisted before model launch and only independently correlated native results advance
+- AND develop/spec-repair/needs-decision return to the caller without automatic edits or integration
+- AND current resolved/duplicate/not-actionable dispositions use the exact write-ahead journal and separate final validation
+- AND failed final checks restore the Issue, interruption preserves recovery evidence, and stale/failed/cancelled work cannot replay closure
+- AND more than thirty-two dynamically prepared reviewers use preflighted exclusive slots and bounded closed Host controls without per-reviewer Host grants

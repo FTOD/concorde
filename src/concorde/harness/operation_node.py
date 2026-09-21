@@ -1,111 +1,142 @@
-"""One State-based node interface for code, model and composed graph Operations.
+"""Explicit optional StateGraph Operation boundary around a trusted native Agent service.
 
-The registry owns identity. Worker profiles are optional execution configuration, not another
-kind of executable entity. Wire envelopes are adapted only at the host/process boundaries.
+This is not a mirror/scheduler for Concorde native workflows. Callers supply the already-authorized
+native launch/admission callable in Runtime context. No default model runner, RPC or ambient fallback.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib import import_module
+from inspect import isawaitable
 from typing import Any, TypedDict
 
+from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
-from langgraph.runtime import Runtime
+from langgraph.runtime import get_runtime
 
 from ..spec.typed_data import DATA_SCHEMAS, typed, validate_typed
 from .operation_state import OperationRuntimeContext
+from .worker_profile import (
+    validate_worker_input,
+    validate_worker_output,
+    worker_profile,
+)
 
 
 def typed_state(type_id: str, *, name: str | None = None) -> type:
-    """Declare exactly the admitted channels; runtime validation checks required values."""
-    fields = dict.fromkeys(DATA_SCHEMAS[type_id]["properties"], Any)
-    return TypedDict(name or type_id.replace("-", "_"), fields, total=False)  # type: ignore[misc]
+    return TypedDict(
+        name or type_id.replace("-", "_"),
+        dict.fromkeys(DATA_SCHEMAS[type_id]["properties"], Any),
+        total=False,
+    )
 
 
 def state_schema(input_type: str, result_type: str | None, *, name: str) -> type:
-    fields: dict[str, Any] = dict.fromkeys(DATA_SCHEMAS[input_type]["properties"], Any)
-    if result_type:
-        fields.update(dict.fromkeys(DATA_SCHEMAS[result_type]["properties"], Any))
-    else:
-        fields["result"] = dict
-    return TypedDict(name, fields, total=False)  # type: ignore[misc]
+    fields = dict.fromkeys(DATA_SCHEMAS[input_type]["properties"], Any)
+    fields.update(
+        dict.fromkeys(DATA_SCHEMAS[result_type]["properties"], Any)
+        if result_type
+        else {"result": dict}
+    )
+    return TypedDict(name, fields, total=False)
 
 
 @dataclass(frozen=True)
 class OperationNode:
-    """Resolve a registered Operation and expose its State schemas and compiled node."""
+    """A genuine callable typed StateGraph Operation, selected explicitly by its embedding host."""
 
     name: str
 
     def __post_init__(self):
-        name = self.name.removeprefix("concorde-").replace("-", "_")
-        from operations import OPERATIONS
-
-        if name not in OPERATIONS:
-            raise ValueError(f"unknown operation: {self.name!r}")
-        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "name", worker_profile(self.name).name)
 
     @property
     def definition(self):
-        return import_module(f"operations.{self.name}")
+        from importlib import import_module
+
+        return import_module("operations." + self.name)
 
     @property
-    def input_type(self) -> str:
-        return self.definition.STATE.input_type
+    def input_type(self):
+        return worker_profile(self.name).contract.context
 
     @property
-    def result_type(self) -> str | None:
-        return self.definition.STATE.output_type
+    def result_type(self):
+        return worker_profile(self.name).contract.result
 
     @property
-    def input_schema(self) -> type:
-        return self.definition.STATE.input_schema
+    def input_schema(self):
+        return typed_state(self.input_type)
 
     @property
-    def output_schema(self) -> type:
-        return self.definition.STATE.output_schema
+    def output_schema(self):
+        return typed_state(self.result_type)
 
     def graph(self, launcher=None):
-        """Compile for direct embedding as a LangGraph subgraph.
+        profile = worker_profile(self.name)
 
-        Each invocation supplies trusted OperationRuntimeContext through Runtime, not through State.
-        ``launcher`` is a compatibility seam for the host's already-admitted worker invocation.
-        No reducer is implicit: these channels have one writer; parent graphs own merge policy.
-        """
-        module = self.definition
-        input_type, result_type = self.input_type, self.result_type
-
-        def invoke(state, runtime: Runtime[OperationRuntimeContext]):
+        def prepare(state, runtime):
             data = {
-                key: value
-                for key, value in dict(state).items()
-                if key in DATA_SCHEMAS[input_type]["properties"]
+                k: v
+                for k, v in state.items()
+                if k in DATA_SCHEMAS[self.input_type]["properties"]
             }
-            typed(input_type, data)
-            if launcher is not None:
-                runtime = Runtime(context=OperationRuntimeContext(launcher=launcher))
-            update = module.run(data, runtime)
-            if result_type:
-                return validate_typed(typed(result_type, update), result_type)["data"]
-            if not isinstance(update, dict) or set(update) != {"result"}:
-                raise ValueError(
-                    "a host Operation must return exactly its result channel"
+            value = typed(self.input_type, data)
+            validate_worker_input(profile, value, phase=profile.contract.phase)
+            context = runtime.context if runtime else None
+            selected = launcher or (
+                context.launcher
+                if isinstance(context, OperationRuntimeContext)
+                else None
+            )
+            if selected is None:
+                raise RuntimeError(
+                    "Operation is inspection only until a trusted native Agent service is supplied"
                 )
-            return update
+            return value, selected
+
+        def finish(value):
+            # Accept typed result or its data only at this explicit embedding boundary.
+            result = (
+                value
+                if isinstance(value, dict) and value.get("type_id")
+                else typed(self.result_type, value)
+            )
+            validate_worker_output(profile, result)
+            return validate_typed(result, self.result_type)["data"]
+
+        def invoke(state):
+            runtime = get_runtime()
+            value, selected = prepare(state, runtime)
+            result = selected(value)
+            if isawaitable(result):
+                raise RuntimeError(
+                    "Use ainvoke for an asynchronous native Agent service"
+                )
+            return finish(result)
+
+        async def ainvoke(state):
+            runtime = get_runtime()
+            value, selected = prepare(state, runtime)
+            result = selected(value)
+            if isawaitable(result):
+                result = await result
+            return finish(result)
 
         graph = StateGraph(
-            state_schema(input_type, result_type, name=self.name),
+            state_schema(
+                self.input_type, self.result_type, name="TerminalAgentOperation"
+            ),
             input_schema=self.input_schema,
             output_schema=self.output_schema,
             context_schema=OperationRuntimeContext,
         )
-        graph.add_node(self.name, invoke)
-        graph.add_edge(START, self.name)
-        graph.add_edge(self.name, END)
-        return graph.compile(name=self.name, checkpointer=False)
+        graph.add_node("terminal_agent", RunnableLambda(invoke, afunc=ainvoke))
+        graph.add_edge(START, "terminal_agent")
+        graph.add_edge("terminal_agent", END)
+        return graph.compile(name="terminal_agent_operation", checkpointer=False)
 
-    def invoke(self, context: dict, launcher) -> dict:
-        """Adapt an existing admitted worker wire value to the same State-based node."""
-        value = validate_typed(context, self.input_type)
-        return self.graph(launcher).invoke(value["data"])
+    def invoke(self, context, launcher):
+        return self.graph(launcher).invoke(
+            validate_typed(context, self.input_type)["data"]
+        )

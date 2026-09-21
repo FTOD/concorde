@@ -445,13 +445,13 @@ See [project root is the entry process's working directory](requirements.md#req.
 
 ### scenario.harness.graph-execution — Execute the inspected Graph
 
-- GIVEN an admitted model-backed local operation or explicitly selected Studio Graph entry
+- GIVEN an explicitly selected typed StateGraph Operation with a trusted native launch/admission service
 - WHEN the host executes that Graph request
-- THEN the same compiled Graph definitions select its operation branch, Agent stages and feedback transitions
-- AND selected assessment, planning, scoped review and Issue verification advance through bounded Graph transitions without automatic authoring or child development
+- THEN the same compiled StateGraph definition inspected in Studio invokes its typed terminal Agent boundary
+- AND native assessment, planning, scoped review and Issue verification remain authored native control flow, not mirrored Graph transitions
 - AND failed admission or a stopping outcome prevents dependent nodes from running
 - AND existing task identity, context isolation, review requirements and delivery authorization remain enforced
-- AND a change to the Graph that schedules scoped reviews invalidates their recorded input identity
+- AND a change to the native services that admit scoped reviews invalidates their recorded input identity
 
 ### scenario.harness.graph-bounds — Preserve domain limits across Graph composition
 
@@ -557,3 +557,12 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND global same-name Agents cannot replace the project-only capsule Agent
 - AND changed Agent/extension assets or a missing capsule reject before model launch
 - AND accepted evidence uses the existing primary-owned run archive, not scratch as a parallel ledger
+
+
+### scenario.harness.optional-operation — StateGraph execution is explicitly supplied
+
+- GIVEN an explicitly selected OperationNode and its typed Agent contract
+- WHEN a trusted embedding supplies a native launch/admission service in Runtime
+- THEN the actual StateGraph invokes that service and validates State input/output synchronously or asynchronously
+- AND State cannot choose authority, a missing service refuses, and Studio inspects the same graph
+- AND native capability workflows have no mirrored or mandatory graph backend

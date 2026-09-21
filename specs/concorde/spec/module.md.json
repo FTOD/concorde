@@ -75,21 +75,28 @@
       "id": "entity.spec.file-transactions",
       "title": "File transactions",
       "kind": "shared program",
-      "files": ["src/concorde/spec/changes.py"],
+      "files": [
+        "src/concorde/spec/changes.py"
+      ],
       "meaning": "#entity.spec.file-transactions"
     },
     {
       "id": "entity.spec.protocol-text",
       "title": "Protocol text",
       "kind": "authored standard",
-      "files": ["protocol/"],
+      "files": [
+        "protocol/"
+      ],
       "meaning": "#entity.spec.protocol-text"
     },
     {
       "id": "entity.spec.protocol-assets",
       "title": "Protocol assets",
       "kind": "program",
-      "files": ["prompts/protocol/", "protocol/manifest.json"],
+      "files": [
+        "prompts/protocol/",
+        "protocol/manifest.json"
+      ],
       "meaning": "#entity.spec.protocol-assets"
     }
   ],

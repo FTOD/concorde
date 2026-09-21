@@ -28,9 +28,9 @@ from .change_worktree import progress, read_change, resume_owner, workspace_iden
 from .configuration import load_configuration
 from .host import OperationHost, resolve_child_operation
 from .relay import bind_worktree, verify_local_execution
+from .timing import timed, traced_operation
 from .worker_executor import OperationExecutionError
 from .worker_profile import ContractError
-from .timing import timed, traced_operation
 
 
 def invoke_operation(
@@ -78,38 +78,7 @@ def run_operation(
         operation, configuration, runtime_input, host_context=host_context
     )
     try:
-        data = runtime_input.get("data") if isinstance(runtime_input, dict) else None
-        action = data.get("action") if isinstance(data, dict) else None
-        if (
-            operation
-            in {
-                "concorde-context-solve",
-                "concorde-plan",
-                "concorde-tasks",
-                "concorde-implement",
-                "concorde-spec-review",
-                "concorde-code-review",
-            }
-            or operation in DETERMINISTIC_OPERATIONS
-            or (operation == "concorde-issues" and action != "solve")
-        ):
-            return run_host_tool(nodes)
-        try:
-            from .operation_graph import (
-                OPERATION_RECURSION_LIMIT,
-                build_operation_graph,
-            )
-        except ModuleNotFoundError as error:
-            if error.name == "langgraph" or (error.name or "").startswith("langgraph."):
-                raise SpecError(
-                    "the selected Graph backend requires the configured LangGraph runtime",
-                    "missing_runtime",
-                ) from error
-            raise
-
-        return build_operation_graph(nodes.__getitem__, name=operation).invoke(
-            {}, {"recursion_limit": OPERATION_RECURSION_LIMIT}
-        )["result"]
+        return run_host_tool(nodes)
     except KeyboardInterrupt:
         # A host interrupt (Ctrl-C, or SIGTERM from the developer's client) that arrives outside
         # a worker launch ends the Graph the way a cancelled worker does: the cancellation is
@@ -123,13 +92,8 @@ def run_operation(
 
 
 def _is_graph_command(value):
-    # Graph commands remain supported only when an explicit graph actually
-    # returns one. Deterministic tool admission imports no LangGraph runtime.
-    if value is None or isinstance(value, dict):
-        return False
-    from langgraph.types import Command
-
-    return isinstance(value, Command)
+    # Compatibility callers exchange finite dictionaries, never executable graph commands.
+    return False
 
 
 def run_host_tool(nodes):
@@ -158,7 +122,9 @@ def run_host_tool(nodes):
     if route == "issues":
         state.update(nodes["dispatch/issues/select_operation"](state))
         route = state["route"]
-        if route in {"inspect", "report", "reopen"}:
+        if route == "prepare":
+            state.update(nodes["dispatch/native_issue"](state))
+        elif route in {"inspect", "report", "reopen"}:
             state.update(nodes["dispatch/issues/" + route](state))
         elif route != "__end__":
             raise SpecError(

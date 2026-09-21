@@ -8,34 +8,50 @@ import { EventEmitter } from "node:events";
 import { execFileSync } from "node:child_process";
 const [subagents, sdk, candidate, scenario = "sufficient"] =
   process.argv.slice(2);
-const root = fs.mkdtempSync(path.join(os.tmpdir(), "concorde-context-public-"));
-const python = path.join(candidate, ".venv/bin/python");
+const root =
+  process.env.CONCORDE_NATIVE_PROBE_PROJECT ??
+  fs.mkdtempSync(path.join(os.tmpdir(), "concorde-context-public-"));
+const python =
+  process.env.CONCORDE_NATIVE_PROBE_PYTHON ??
+  path.join(candidate, ".venv/bin/python");
+const fixtureSource = process.env.CONCORDE_NATIVE_FIXTURE_SOURCE ?? candidate;
 execFileSync(python, [
   "-c",
-  `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.insert(0,${JSON.stringify(candidate)})
+  `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.append(${JSON.stringify(fixtureSource)})
 from pathlib import Path
-from tests.concorde.spec.support import project
-project(Path(${JSON.stringify(root)}))`,
+from tests.concorde.spec import support
+support.PACKAGE=Path(${JSON.stringify(candidate)})
+project=support.project
+if not (Path(${JSON.stringify(root)})/".concorde/specs.json").exists(): project(Path(${JSON.stringify(root)}))`,
 ]);
 process.env.PI_CODING_AGENT_DIR = path.join(root, "operator-agent");
 process.env.PI_SUBAGENTS_TEMP_ROOT = path.join(root, "native");
 process.env.PI_SUBAGENTS_LLM_INTENT_ARBITER = "0";
 process.env.PI_SUBAGENTS_PI_CODING_AGENT_PACKAGE_ROOT = sdk;
 process.env.CONCORDE_NATIVE_SUBAGENTS_ROOT = subagents;
-process.env.CONCORDE_NATIVE_PROJECT_ROOT = root;
-process.env.CONCORDE_SESSION_SELECTION = path.join(
-  candidate,
-  ".concorde/work/pi-first-context-selection.json",
-);
+if (!process.env.CONCORDE_NATIVE_PROBE_PROJECT) {
+  process.env.CONCORDE_NATIVE_PROJECT_ROOT = root;
+  process.env.CONCORDE_SESSION_SELECTION = path.join(
+    candidate,
+    ".concorde/work/pi-first-context-selection.json",
+  );
+} else {
+  delete process.env.CONCORDE_NATIVE_PROJECT_ROOT;
+  delete process.env.CONCORDE_SESSION_SELECTION;
+}
 // Guard every real Python command, including native gates. No Graph import or hidden worker.
 const guard = path.join(root, "guard");
-fs.mkdirSync(guard);
+fs.mkdirSync(guard, { recursive: true });
 fs.writeFileSync(
   path.join(guard, "sitecustomize.py"),
-  `import builtins
+  `import builtins,sys
+if ${process.env.CONCORDE_NATIVE_PROBE_PROJECT ? "True" : "False"}:
+ from langgraph.graph import StateGraph
+ def no_graph(*a,**k): raise AssertionError('Native installed path compiled a Graph')
+ StateGraph.compile=no_graph
 original=builtins.__import__
 def guarded(name,*args,**kwargs):
- if name=='langgraph' or name.startswith('langgraph.'): raise AssertionError('Native path imported LangGraph')
+ if ${process.env.CONCORDE_NATIVE_PROBE_PROJECT ? "False" : "True"} and '--runtime-check' not in sys.argv and (name=='langgraph' or name.startswith('langgraph.')): raise AssertionError('Native path imported LangGraph')
  return original(name,*args,**kwargs)
 builtins.__import__=guarded
 from concorde.harness.worker_executor import WorkerExecutor
@@ -108,7 +124,9 @@ const emit = async (name, event) => {
   return event;
 };
 const entry = await jiti.import(
-  path.join(candidate, "generated/session/pi/concorde-session.ts"),
+  process.env.CONCORDE_NATIVE_PROBE_PROJECT
+    ? path.join(root, ".pi/extensions/concorde-session.ts")
+    : path.join(candidate, "generated/session/pi/concorde-session.ts"),
 );
 entry.default(pi);
 await emit("session_start", {});

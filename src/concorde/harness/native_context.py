@@ -20,28 +20,28 @@ from types import SimpleNamespace
 from ..distribution.build import load_model_instructions
 from ..issues.references import validate_references
 from ..issues.reporting import reporter_for_invocation
+from ..spec.issue_shapes import REPORT
 from ..spec.repository import SpecError, digest, read_file
 from ..spec.typed_data import DATA_SCHEMAS, canonical, decode, typed
 from ..spec.wire_shapes import type_version
-from ..spec.issue_shapes import REPORT
 from .admission import run_operation
 from .change_worktree import read_change, workspace_context
 from .context import (
+    ContextSnapshot,
     context_documents,
     materialize_documents,
-    resolve_context,
-    recheck_context,
     materialize_references,
-    ContextSnapshot,
+    recheck_context,
+    resolve_context,
 )
-from .entry import runtime_selection, validate_invocation, invocation_failure
+from .entry import invocation_failure, runtime_selection, validate_invocation
 from .host import OperationHost
 from .invocation import validate_stage_identity
 from .model_selection import worker_selection
 from .native_evidence import _record, verify_native_single
 from .native_result import MAX_PROPOSAL_BYTES, control_value
 from .native_runtime import admit_native_runtime
-from .worker_profile import worker_profile, validate_worker_output
+from .worker_profile import validate_worker_output, worker_profile
 
 OPERATION = "concorde-context-solve"
 AGENT = "concorde-context-assessor"
@@ -62,6 +62,7 @@ def assessment_context(run, phase="context-solve", inputs=()):
         "plan": "planner",
         "tasks": "task_author",
         "implementation": "programmer",
+        "issue-solve": "issue_solver",
         "spec-review": "spec_reviewer",
         "code-review": "code_reviewer",
     }[phase]
@@ -203,9 +204,14 @@ def _execute(
 ):
     """Selected finite Host service. Model values cannot choose paths or actions."""
     descriptor = None
-    if action not in {"prepare", "prepare-planner", "prepare-review-item"}:
+    if action not in {
+        "prepare",
+        "prepare-planner",
+        "prepare-review-item",
+        "prepare-issue-item",
+    }:
         descriptor = _record(Path(descriptor_path))
-        if digest(descriptor) != expected_digest:
+        if digest(Path(descriptor_path).read_bytes()) != expected_digest:
             raise SpecError("native descriptor changed", "stale_context")
         if Path(descriptor["directory"]) / "descriptor.json" != Path(descriptor_path):
             raise SpecError("foreign native descriptor", "incompatible_handoff")
@@ -223,6 +229,7 @@ def _execute(
         "concorde-implement",
         "concorde-spec-review",
         "concorde-code-review",
+        "concorde-issues",
     }:
         raise SpecError("not a native read-only planning entry", "unknown_operation")
     validate_invocation(envelope, operation)
@@ -231,6 +238,14 @@ def _execute(
 
     def service(run):
         nonlocal descriptor
+        if operation == "concorde-issues" and action == "prepare":
+            from .native_issues import prepare_root
+
+            prepared = prepare_root(run, payload)
+            result.update(
+                {key: value for key, value in prepared.items() if key != "output"}
+            )
+            return prepared["output"]
         if (
             operation in {"concorde-spec-review", "concorde-code-review"}
             and action == "prepare"
@@ -254,19 +269,27 @@ def _execute(
                 if operation == "concorde-implement"
                 else operation.removeprefix("concorde-")
                 if operation.endswith("-review")
+                else "issue-solve"
+                if operation == "concorde-issues"
                 else "context-solve"
             )
         )
-        from ..review.review import require_spec_review
         from ..planning.tasks import prepare_tasks
+        from ..review.review import require_spec_review
         from .change_worktree import progress
 
-        inputs = ()
+        inputs = (
+            tuple([payload["issue_selection"]])
+            if phase == "issue-solve" and not descriptor
+            else tuple(descriptor["snapshot"]["stage_inputs"])
+            if phase == "issue-solve"
+            else ()
+        )
         implementation = None
         if phase == "implementation":
             from ..implementation.implement import (
-                prepare_implementation,
                 persist_implementation,
+                prepare_implementation,
             )
 
             implementation = prepare_implementation(
@@ -291,7 +314,9 @@ def _execute(
                     local,
                     revisions,
                 )
-        if operation != OPERATION and not phase.endswith("-review"):
+        if operation not in {OPERATION, "concorde-issues"} and not phase.endswith(
+            "-review"
+        ):
             require_spec_review(run)
             if phase == "tasks":
                 inputs = prepare_tasks(run)[1]
@@ -311,7 +336,13 @@ def _execute(
                         ),
                     )
             if (
-                action in {"prepare", "prepare-planner", "prepare-review-item"}
+                action
+                in {
+                    "prepare",
+                    "prepare-planner",
+                    "prepare-review-item",
+                    "prepare-issue-item",
+                }
                 and run.host.mode == "execute"
                 and not run.host.coordinated
             ):
@@ -348,7 +379,12 @@ def _execute(
         if descriptor and phase == "implementation":
             snapshot = ContextSnapshot(canonical(descriptor["snapshot"]))
             run.last_context = snapshot.id
-        if action in {"prepare", "prepare-planner", "prepare-review-item"}:
+        if action in {
+            "prepare",
+            "prepare-planner",
+            "prepare-review-item",
+            "prepare-issue-item",
+        }:
             if run.host.mode == "describe-policy":
                 result.update(
                     state="described",
@@ -395,7 +431,9 @@ def _execute(
                     "Select CONCORDE_NATIVE_SUBAGENTS_ROOT before native execution",
                     "missing_runtime",
                 )
-            if operation != OPERATION and not phase.endswith("-review"):
+            if operation not in {OPERATION, "concorde-issues"} and not phase.endswith(
+                "-review"
+            ):
                 pending = run.pending_gaps(phase, snapshot)
                 if pending:
                     result.update(state="not-run", accepted=False)
@@ -405,7 +443,14 @@ def _execute(
                         blockers=pending,
                     )
             runtime = admit_native_runtime(Path(payload["native_root"]))
-            directory = Path(tempfile.mkdtemp(prefix="concorde-native-context-"))
+            directory = (
+                Path(payload["slot_directory"])
+                if payload.get("slot_directory")
+                and action in {"prepare-issue-item", "prepare-review-item"}
+                else Path(tempfile.mkdtemp(prefix="concorde-native-context-"))
+            )
+            if not directory.exists():
+                directory.mkdir(parents=True)
             capsule = directory / "context"
             capsule.mkdir()
             materialize_documents(
@@ -453,9 +498,14 @@ def _execute(
                     + "\n"
                 )
             (capsule / "context.json").write_text(index)
-            ticket = str(uuid.uuid4())
+            ticket = (
+                payload.get("slot_ticket")
+                if payload.get("slot_directory")
+                else str(uuid.uuid4())
+            )
             descriptor = {
                 "schema_version": 1,
+                "gate_command": payload.get("gate_command"),
                 "operation": operation,
                 "worker_operation": "concorde-context-solve"
                 if phase == "context-solve"
@@ -603,11 +653,19 @@ def _execute(
                 "agentContract": {"version": 1},
                 "outputSchema": schema,
             }
-            descriptor["launch"] = call.copy()
+            if payload.get("slot_directory") and payload.get("native_call"):
+                call = dict(payload["native_call"])
+                if call["agent"] != descriptor["agent"] or call["cwd"] != str(capsule):
+                    raise SpecError(
+                        "foreign native Issue call layout", "incompatible_handoff"
+                    )
+            descriptor["launch"] = {k: v for k, v in call.items() if k != "gate"}
             _write(filename, descriptor)
             identity = digest(descriptor)
             (directory / "descriptor.digest").write_text(identity)
-            command = shlex.join([*argv, "stage", str(filename), identity])
+            command = descriptor.get("gate_command") or shlex.join(
+                [*argv, "stage", str(filename), identity]
+            )
             call["gate"] = {"command": command}
             result.update(
                 state="prepared",
@@ -667,6 +725,15 @@ def _execute(
         for name, raw in context_documents(run.repository, snapshot.value).items():
             if read_file(capsule, name) != raw:
                 raise SpecError("native context document changed", "stale_context")
+        if phase == "issue-solve":
+            from ..issues.store import read_issue
+
+            selected = descriptor["snapshot"]["stage_inputs"][0]["data"]
+            if (
+                read_issue(run.repository.root, selected["issue_id"])[1]
+                != selected["revision"]
+            ):
+                raise SpecError("Issue changed during native decision", "stale_issue")
         if action in {"accept", "admit-review"}:
             rows = payload.get("details", {}).get("results", [])
             if len(rows) == 1 and (
@@ -742,7 +809,7 @@ def _execute(
                     gate_command=payload["gate_command"],
                     runtime=runtime,
                 )
-                expected_gate = shlex.join(
+                expected_gate = descriptor.get("gate_command") or shlex.join(
                     [
                         sys.executable,
                         str(package_root / "scripts/run-operation.py"),
@@ -869,7 +936,7 @@ def execute(
         prior = _record(Path(descriptor_path))
         terminal = _record(Path(prior["directory"]) / "terminal.json")
         if (
-            digest(prior) != expected_digest
+            digest(Path(descriptor_path).read_bytes()) != expected_digest
             or prior["operation"] != "concorde-plan"
             or prior["phase"] != "context-solve"
             or terminal.get("outcome") != "sufficient"
@@ -913,13 +980,13 @@ def execute(
                 "native_session_id": prior["native_session_id"],
             },
         )
-    if action in {"prepare", "prepare-review-item"}:
+    if action in {"prepare", "prepare-review-item", "prepare-issue-item"}:
         return _execute(package_root, action, payload)
     # One finite command at a time per owned slot. This is not a model scheduler.
     import fcntl
 
     descriptor = _record(Path(descriptor_path))
-    if digest(descriptor) != expected_digest:
+    if digest(Path(descriptor_path).read_bytes()) != expected_digest:
         raise SpecError("native descriptor changed", "stale_context")
     with (Path(descriptor["directory"]) / "command.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -936,18 +1003,24 @@ def main(package_root, args):
         action = args[0]
         operation = (
             payload.get("invocation", {}).get("operation_id")
-            if action in {"prepare", "prepare-review-item"}
+            if action in {"prepare", "prepare-review-item", "prepare-issue-item"}
             else _record(Path(args[1])).get("operation")
         )
-        if action.startswith("workflow-"):
-            if operation in {"concorde-spec-review", "concorde-code-review"}:
+        if action == "issue-gate":
+            from .native_issues import stage_slot
+
+            value = stage_slot(package_root, *args[1:])
+        elif action.startswith("workflow-"):
+            if operation == "concorde-issues":
+                from .native_issues import workflow_service
+            elif operation in {"concorde-spec-review", "concorde-code-review"}:
                 from .native_reviews import workflow_service
             else:
                 from .native_planning import workflow_service
             value = workflow_service(package_root, action, *args[1:])
         else:
             value = execute(package_root, action, payload, *args[1:])
-        if action == "stage" and value.get("state") == "staged":
+        if action in {"stage", "issue-gate"} and value.get("state") == "staged":
             value.pop("result")
         print(canonical(value))
         return 3 if value.get("state") == "rejected" else 0

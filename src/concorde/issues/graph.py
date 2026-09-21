@@ -1,29 +1,23 @@
-"""Issue management and bounded solving through the ordinary development providers."""
+"""Finite Issue bookkeeping, selection and journal predicates; native solve is separate."""
 
 from __future__ import annotations
 
-import os
-from dataclasses import replace
 from pathlib import Path
-from typing import TypedDict
-
-END = "__end__"
 
 from ..spec.changes import apply_files
 from ..spec.repository import SpecError, SpecRepository, digest, read_file
-from ..spec.typed_data import checked_path, typed
+from ..spec.typed_data import checked_path
 from .store import (
     MAX_RECORD_BYTES,
     dispose_issue,
-    disposition_record,
     issue_path,
     list_issues,
     parse,
     read_issue,
-    render,
-    restore_issue,
     validate_report,
 )
+
+END = "__end__"
 
 MAX_DECISIONS = 6
 DECISION_ROUTES = {
@@ -47,64 +41,6 @@ NODES = (
     "ready",
     "finish",
 )
-
-
-class IssueState(TypedDict, total=False):
-    route: str
-    output: dict
-    result: dict | None
-
-
-def build_issue_graph(node_factory):
-    from langgraph.graph import START, StateGraph
-
-    graph = StateGraph(IssueState)
-    for name in NODES:
-        graph.add_node(name, node_factory(name))
-    graph.add_edge(START, "select_operation")
-    graph.add_conditional_edges(
-        "select_operation",
-        lambda state: state["route"],
-        ["inspect", "report", "reopen", "prepare", END],
-    )
-    for name in ("inspect", "report", "reopen", "ready", "finish"):
-        graph.add_edge(name, END)
-    graph.add_conditional_edges(
-        "prepare", lambda state: state["route"], ["decide", "finish", END]
-    )
-    graph.add_conditional_edges(
-        "decide",
-        lambda state: state["route"],
-        ["verify", "close", "finish", END],
-    )
-    for name in ("verify",):
-        graph.add_conditional_edges(
-            name, lambda state: state["route"], ["decide", "finish", END]
-        )
-    graph.add_conditional_edges(
-        "close", lambda state: END if state.get("result") else "ready", ["ready", END]
-    )
-    return graph.compile(name="issue_graph", checkpointer=False)
-
-
-class VerificationState(TypedDict):
-    index: int
-    stop: bool
-    output: dict | None
-
-
-def build_issue_verification_graph(node_factory):
-    from langgraph.graph import START, StateGraph
-
-    graph = StateGraph(VerificationState)
-    graph.add_node("review_item", node_factory("review_item"))
-    graph.add_edge(START, "review_item")
-    graph.add_conditional_edges(
-        "review_item",
-        lambda state: END if state["stop"] else "review_item",
-        [END, "review_item"],
-    )
-    return graph.compile(name="issue_verification_graph", checkpointer=False)
 
 
 def pending_disposition(change: dict | None, identifier: str) -> dict | None:
@@ -268,22 +204,9 @@ def copy_selection(source: Path, destination: Path, task: dict) -> None:
 
 
 def issue_nodes(run):
-    from ..harness.admission import invoke_operation
-    from ..harness.change_worktree import progress, read_change, save_change
-    from ..harness.revisions import implementation_digest, target_revision
-    from .references import review_blockers
-
+    """Finite bookkeeping only. Solve preparation is a separate native service."""
     root, task = run.repository.root, run.task
     identifier = task.get("issue_id", "")
-    selected: dict = {}
-    solution: dict = {}
-    decision: dict = {}
-    original = b""
-    feedback = verification = ""
-    final_outcome, final_answer, final_decision = "completed", "", None
-    closed_revision = ""
-    child_output: dict = {}
-    duplicate_versions = {}
 
     def response(
         outcome="completed", answer="", disposition=None, records=(), **kwargs
@@ -291,38 +214,6 @@ def issue_nodes(run):
         result = run.response(outcome, answer, **kwargs)
         result["data"].update(issues=list(records), decision=disposition)
         return result
-
-    def save():
-        state = read_change(root, required=True)
-        state.setdefault("issue_solutions", {})[identifier] = solution
-        state["validated_tree"] = None
-        save_change(root, state)
-        # The journal rename must be durable before publishing a closing Issue file.
-        descriptor = os.open(
-            checked_path(root, ".concorde"), os.O_RDONLY | os.O_DIRECTORY
-        )
-        try:
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
-
-    def current_inputs():
-        repository = SpecRepository(root, run.host.package_root)
-        target = repository.select(run.target.id)
-        return digest(
-            {
-                "spec": target_revision(repository, target),
-                "code": implementation_digest(repository, target),
-            }
-        )
-
-    def stop(outcome, answer, reason):
-        nonlocal final_outcome, final_answer, final_decision
-        final_outcome, final_answer, final_decision = outcome, answer, reason
-        if solution:
-            solution.update(status=reason, answer=answer)
-            save()
-        return {"route": "finish"}
 
     def select_operation(state):
         return {
@@ -413,390 +304,9 @@ def issue_nodes(run):
             )
         }
 
-    def prepare(state):
-        nonlocal selected, original, solution
-        selected, revision = read_issue(root, identifier)
-        if revision != task["expected_revision"]:
-            raise SpecError("Issue changed before solving", "stale_issue")
-        change = read_change(root)
-        journal = pending_disposition(change, identifier)
-        if journal is not None:
-            if change is None:
-                raise SpecError(
-                    "pending disposition lost its owning change",
-                    "invalid_worktree_state",
-                )
-            solution = change["issue_solutions"][identifier]
-            # Invalidate any ready receipt BEFORE undoing bytes, including after a lost final ack.
-            progress(root, phase="issue-recovery", status="active", invalidate=True)
-            restore_issue(
-                root, identifier, journal["before"].encode(), journal["after_digest"]
-            )
-            selected, revision = read_issue(root, identifier)
-            solution.pop("pending_disposition")
-            solution.update(status="active", verified_inputs=None)
-            solution.pop("verification", None)
-            save()
-        elif selected["status"] == "closed":
-            return stop(
-                "completed",
-                "Issue is already disposed in this branch; no work was replayed.",
-                "already-closed",
-            )
-        original = read_file(root, issue_path(identifier))
-        change = read_change(root, required=True)
-        solution = change.setdefault("issue_solutions", {}).get(identifier) or {}
-        if solution and solution["revision"] != revision:
-            raise SpecError(
-                "Issue changed since this solve attempt; start a fresh selected change",
-                "stale_issue",
-            )
-        inputs = current_inputs()
-        if not solution:
-            solution = {
-                "revision": revision,
-                "attempts": 0,
-                "inputs": inputs,
-                "intent": None,
-                "verified_inputs": None,
-                "status": "active",
-                "history": [],
-            }
-        elif solution["inputs"] != inputs:
-            solution.update(
-                attempts=0, inputs=inputs, verified_inputs=None, status="active"
-            )
-        if task.get("note") and task["note"] != solution.get("clarification"):
-            solution.update(
-                clarification=task["note"],
-                attempts=0,
-                verified_inputs=None,
-                status="active",
-            )
-        progress(root, phase="issue-solve", status="active", invalidate=True)
-        save()
-        return {"route": "decide"}
-
-    def decide(state):
-        nonlocal decision, feedback, verification, duplicate_versions
-        if solution["attempts"] >= MAX_DECISIONS:
-            return stop(
-                "conflicting",
-                "Issue solving reached its bounded decision limit; progress is retained.",
-                "limit-exhausted",
-            )
-        if read_issue(root, identifier)[1] != solution["revision"]:
-            raise SpecError("Issue changed during solving", "stale_issue")
-        latest = selected["reports"][-1]["report"]
-        candidates = []
-        duplicate_versions = {}
-        for row in list_issues(root, target_id=run.target.id, status="open"):
-            if (
-                row["id"] != identifier
-                and row["title"] == latest["title"]
-                and row["type"] == latest["type"]
-            ):
-                candidate, revision = read_issue(root, row["id"])
-                candidates.append(
-                    {
-                        "issue_id": row["id"],
-                        "revision": revision,
-                        "problem": candidate["reports"][-1]["report"]["description"],
-                    }
-                )
-                duplicate_versions[row["id"]] = revision
-                if len(candidates) == 5:
-                    break
-        selection = typed(
-            "concorde-issue-selection",
-            {
-                "issue_id": identifier,
-                "revision": solution["revision"],
-                "problem": latest["description"] + "\nImpact: " + latest["impact"],
-                "type": latest["type"],
-                "feedback": (
-                    ("Developer clarification: " + solution["clarification"] + "\n")
-                    if solution.get("clarification")
-                    else ""
-                )
-                + feedback,
-                "verification": verification,
-                "duplicates": candidates,
-            },
-        )
-        # Persist the attempt before launching: a cancelled worker cannot create an unbounded retry.
-        solution["attempts"] += 1
-        save()
-        run.repository = SpecRepository(root, run.host.package_root)
-        run.target = run.repository.select(run.target.id)
-        result = run.stage("concorde-issues", inputs=(selection,))
-        if result["outcome"] not in {"completed", "sufficient"}:
-            return stop(result["outcome"], result["answer"], "blocked")
-        decision = result.get("issue_decision") or {}
-        if not decision:
-            raise SpecError("Issue solver returned no decision", "invalid_completion")
-        solution["history"].append(
-            {
-                "context_id": result["context_id"],
-                "decision": decision,
-                "inputs": current_inputs(),
-            }
-        )
-        save()
-        action = decision["action"]
-        if action in {"develop", "spec-repair"}:
-            solution["verified_inputs"] = None
-            save()
-            return stop(
-                "unsupported",
-                "Calling agent action required for "
-                + run.target.id
-                + ": "
-                + decision["intent"]
-                + "\n"
-                + decision["rationale"]
-                + "\nEdit the necessary Specs, paired metadata and registry directly, "
-                "or select the retained planning/implementation Operations explicitly. "
-                "Retry solving only with current inputs; no repair was executed.",
-                action,
-            )
-        if action == "needs-decision":
-            return stop("conflicting", decision["rationale"], "needs-decision")
-        if action == "resolved" and solution["verified_inputs"] != current_inputs():
-            feedback = "Resolution requires fresh Issue-specific verification, not a workaround or a single non-reproduction."
-            return {"route": "verify"}
-        return {"route": DECISION_ROUTES[action]}
-
-    def child(operation, payload, *, coordinated=True):
-        child_host = replace(
-            run.host,
-            coordinated=coordinated,
-            issue_intent=solution["intent"],
-        )
-        return invoke_operation(
-            run.operation,
-            operation,
-            run.configuration,
-            typed(operation + "-request", payload),
-            child_host,
-        )
-
-    def base_task():
-        return {
-            "target_id": run.target.id,
-            "task": task["task"],
-            "constraints": task.get("constraints", []),
-            "change_id": run.change_id,
-            **({"focus_id": task["focus_id"]} if task.get("focus_id") else {}),
-        }
-
-    def verify(state):
-        nonlocal feedback, verification, child_output
-        before = current_inputs()
-        modes = ("spec", "code") if run.target.files else ("spec",)
-        from ..review.review import require_reviews
-
-        require_reviews(run, True, modes=modes)
-        evidence = []
-        items = [(mode, True) for mode in modes] + [(mode, False) for mode in modes]
-
-        def review_one(item):
-            nonlocal child_output, feedback
-            mode, specific = item
-            verification_task = (
-                "Verify that this Issue is resolved, not merely worked around. Reported problem: "
-                + selected["reports"][-1]["report"]["description"]
-                + "\nAdmitted goal: "
-                + task["task"]
-            )
-            payload = {
-                **base_task(),
-                "task": verification_task if specific else task["task"],
-            }
-            result = child(f"concorde-{mode}-review", payload)
-            child_output = result.get("output") or {}
-            if result["status"] != "succeeded":
-                if result["status"] == "failed" or result.get("errors"):
-                    return stop(
-                        "failed",
-                        "Issue-specific verification failed to complete.",
-                        "failed",
-                    )
-                feedback = "Issue-specific verification still reports blocking Issues; repair the affected contract or code."
-                solution["verified_inputs"] = None
-                save()
-                return {"route": "decide"}
-            for reviewed in child_output["data"]["reviews"]:
-                if review_blockers(reviewed["data"]["issues"]) or reviewed["data"][
-                    "status"
-                ] not in {"no_findings", "findings"}:
-                    raise SpecError("incomplete Issue verification", "review_required")
-                evidence.append(reviewed["data"]["input_digest"])
-            return None
-
-        def review_item(state):
-            output = review_one(items[state["index"]])
-            index = state["index"] + 1
-            return {
-                "index": index,
-                "output": output,
-                "stop": output is not None or index == len(items),
-            }
-
-        checked = build_issue_verification_graph(lambda name: review_item).invoke(
-            {"index": 0, "stop": False, "output": None},
-            {"recursion_limit": len(items) + 2},
-        )
-        if checked["output"] is not None:
-            return checked["output"]
-        if before != current_inputs():
-            raise SpecError("Issue verification inputs changed", "stale_evidence")
-        solution["verified_inputs"] = before
-        solution["verification"] = evidence
-        verification = (
-            "Independent Issue-specific verification completed for the current Spec and code: "
-            + ", ".join(evidence)
-        )
-        feedback = "Verification completed; decide the Issue's disposition from its contract and current evidence."
-        save()
-        return {"route": "decide"}
-
-    def close(state):
-        nonlocal closed_revision
-        if digest(original) != solution["revision"]:
-            raise SpecError(
-                "Issue before-image changed during selection", "stale_issue"
-            )
-        reason = decision["action"]
-        if reason == "resolved" and solution["verified_inputs"] != current_inputs():
-            raise SpecError("resolution verification is stale", "stale_evidence")
-        duplicate = decision["duplicate_of"]
-        if reason == "duplicate":
-            if (
-                duplicate not in duplicate_versions
-                or read_issue(root, duplicate)[1] != duplicate_versions[duplicate]
-            ):
-                raise SpecError(
-                    "duplicate decision does not match an admitted current Issue",
-                    "stale_issue",
-                )
-        elif duplicate is not None:
-            raise SpecError(
-                "only duplicate disposition may name another Issue",
-                "invalid_completion",
-            )
-        evidence = [
-            solution["history"][-1]["context_id"],
-            *solution.get("verification", []),
-        ]
-        prepared = disposition_record(
-            selected,
-            reason=reason,
-            note=decision["rationale"],
-            evidence=evidence,
-            actor="concorde-issue-solver",
-            duplicate_of=duplicate,
-        )
-        after = render(prepared)
-        if len(after.encode()) > MAX_RECORD_BYTES:
-            raise SpecError(
-                "Issue disposition exceeds the admitted record size", "invalid_issue"
-            )
-        solution["pending_disposition"] = {
-            "schema_version": 1,
-            "change_id": run.change_id,
-            "issue_id": identifier,
-            "before": original.decode(),
-            "before_digest": solution["revision"],
-            "after": after,
-            "after_digest": digest(after.encode()),
-        }
-        solution["status"] = "closing"
-        save()  # Durable write-ahead evidence, including the exact timestamp, precedes the mutation.
-        closed_revision = dispose_issue(
-            root,
-            identifier,
-            solution["revision"],
-            reason=reason,
-            note=decision["rationale"],
-            actor="concorde-issue-solver",
-            duplicate_of=duplicate,
-            duplicate_revision=duplicate_versions.get(duplicate),
-            evidence=evidence,
-            created_at=prepared["dispositions"][-1]["created_at"],
-        )
-        if closed_revision != solution["pending_disposition"]["after_digest"]:
-            raise SpecError(
-                "Issue disposition differs from its recovery journal", "stale_issue"
-            )
-        solution["status"] = "verifying-candidate"
-        save()
-        return {}
-
-    def ready(state):
-        nonlocal final_outcome, final_answer, final_decision
-        # Include the disposition bytes in the final checks/readiness identity, never edit after ready.
-        result = child("concorde-validate", base_task(), coordinated=False)
-        if (
-            result["status"] != "succeeded"
-            or result["output"]["data"]["outcome"] != "ready"
-        ):
-            progress(root, status="blocked", invalidate=True)
-            restore_issue(root, identifier, original, closed_revision)
-            solution.pop("pending_disposition")
-            solution["status"] = "verification-failed"
-            save()
-            return {
-                "output": response(
-                    "failed",
-                    "Final candidate verification failed; the Issue remains open.",
-                    "verification-failed",
-                    [read_issue(root, identifier)[0]],
-                )
-            }
-        # Host-local solution bookkeeping is excluded from the deliverable tree.
-        change = read_change(root, required=True)
-        solution.update(
-            status="completed",
-            disposition=decision["action"],
-            closed_revision=closed_revision,
-        )
-        solution.pop("pending_disposition")
-        change["issue_solutions"][identifier] = solution
-        save_change(root, change)
-        return {
-            "output": response(
-                "ready",
-                "Issue disposed and candidate verified. Delivery remains a separate explicit request.",
-                decision["action"],
-                [read_issue(root, identifier)[0]],
-                checks=result["output"]["data"]["checks"],
-            )
-        }
-
-    def finish(state):
-        records = [read_issue(root, identifier)[0]] if identifier else []
-        return {
-            "output": response(
-                final_outcome,
-                final_answer,
-                final_decision,
-                records,
-                blockers=child_output["data"].get("blockers", [])
-                if child_output
-                else [],
-            )
-        }
-
     return {
         "select_operation": select_operation,
         "inspect": inspect,
         "report": report,
         "reopen": reopen,
-        "prepare": prepare,
-        "decide": decide,
-        "verify": verify,
-        "close": close,
-        "ready": ready,
-        "finish": finish,
     }

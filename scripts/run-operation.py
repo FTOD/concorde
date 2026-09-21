@@ -124,7 +124,12 @@ def _runtime_check(operation_name: str, operation: str, module) -> int:
         raise UnknownOperationError(
             f"operation module {operation!r} has no registered JSON data boundary"
         )
-    import langgraph.graph as graph_api
+    try:
+        import langgraph.graph as graph_api
+    except ImportError as error:
+        raise MissingRuntimeError(
+            f"installed runtime requires LangGraph for full-runtime health in {sys.executable}"
+        ) from error
 
     for name in ("END", "START", "StateGraph"):
         if not hasattr(graph_api, name):
@@ -235,7 +240,11 @@ def main(argv: list[str] | None = None) -> int:
         return 3
 
     if runtime_check:
-        return _runtime_check(operation_name, operation, module)
+        try:
+            return _runtime_check(operation_name, operation, module)
+        except (UnknownOperationError, MissingRuntimeError, ImportError) as error:
+            print(canonical(invocation_failure(operation_name, error)))
+            return 3
 
     # json_main expects a bare invocation on stdin with no positional arguments; the Operation
     # name (this launcher's own argument) has already been consumed and verified above.

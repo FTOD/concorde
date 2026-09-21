@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.operations.graph_catalog import catalog, topology
 from concorde.harness.graph_specs import (
     GraphSpec,
     Reading,
@@ -17,6 +16,7 @@ from concorde.harness.graph_specs import (
     link_problems,
     part_problems,
 )
+from concorde.operations.graph_catalog import catalog, topology
 from concorde.spec.repository import SpecRepository
 from concorde.spec.validation import flowchart_model
 from concorde.spec.verification import verifies
@@ -96,7 +96,18 @@ class GraphSpecTests(unittest.TestCase):
 
     @verifies("scenario.harness.graph-specs")
     def test_comparison_reports_missing_nodes_edges_conditions_and_state(self):
-        compiled = topology(catalog()["batch_graph"]())
+        compiled = topology(
+            (
+                lambda: __import__(
+                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    fromlist=["build_batch_graph"],
+                ).build_batch_graph(
+                    lambda name: lambda state: {},
+                    name="batch_graph",
+                    item_node="execute_item",
+                )
+            )()
+        )
         self.assertEqual([], compare(spec(DIAGRAM), compiled))
         extra_node = (
             DIAGRAM + '    phantom["phantom<br/>in: nothing<br/>out: nothing"]\n'
@@ -161,7 +172,18 @@ class GraphSpecTests(unittest.TestCase):
 
     @verifies("scenario.harness.graph-specs")
     def test_parts_require_state_nodes_and_edges_in_order(self):
-        compiled = topology(catalog()["batch_graph"]())
+        compiled = topology(
+            (
+                lambda: __import__(
+                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    fromlist=["build_batch_graph"],
+                ).build_batch_graph(
+                    lambda name: lambda state: {},
+                    name="batch_graph",
+                    item_node="execute_item",
+                )
+            )()
+        )
 
         def problems(*parts: str, role: str = "implementation") -> list[str]:
             return part_problems(section(*parts, role=role), compiled)
@@ -197,7 +219,18 @@ class GraphSpecTests(unittest.TestCase):
 
     @verifies("scenario.harness.graph-specs")
     def test_nodes_table_names_every_compiled_node_with_its_diagram_state(self):
-        compiled = topology(catalog()["batch_graph"]())
+        compiled = topology(
+            (
+                lambda: __import__(
+                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    fromlist=["build_batch_graph"],
+                ).build_batch_graph(
+                    lambda name: lambda state: {},
+                    name="batch_graph",
+                    item_node="execute_item",
+                )
+            )()
+        )
 
         def problems(nodes: str) -> list[str]:
             return part_problems(section(STATE, nodes, EDGES), compiled)
@@ -288,14 +321,30 @@ class GraphSpecTests(unittest.TestCase):
     @verifies("scenario.harness.graph-specs")
     def test_unknown_duplicate_and_missing_bindings_are_findings(self):
         repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
-        limited = {"batch_graph": catalog()["batch_graph"]}
+        limited = {
+            "batch_graph": (
+                lambda: __import__(
+                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    fromlist=["build_batch_graph"],
+                ).build_batch_graph(
+                    lambda name: lambda state: {},
+                    name="batch_graph",
+                    item_node="execute_item",
+                )
+            )
+        }
         findings = graph_spec_findings(repository, limited)
         messages = [finding.message for finding in findings]
         self.assertTrue(
-            any("binds unknown Graph issue_graph" in message for message in messages),
+            any(
+                "binds unknown Graph terminal_agent_operation" in message
+                for message in messages
+            ),
             messages,
         )
-        self.assertFalse(any("has no Graph Spec" in message for message in messages))
+        self.assertTrue(
+            any("batch_graph has no Graph Spec" in message for message in messages)
+        )
         none = graph_spec_findings(
             repository, {**limited, "phantom_graph": limited["batch_graph"]}
         )
@@ -329,7 +378,11 @@ class GraphSpecTests(unittest.TestCase):
                 (
                     "CONCORDE-GRAPH-004",
                     "compiled Graph batch_graph is a Pregel, not a StateGraph of the Graph API",
-                )
+                ),
+                (
+                    "CONCORDE-GRAPH-001",
+                    "compiled Graph batch_graph has no Graph Spec diagram",
+                ),
             ],
             [(finding.rule_id, finding.message) for finding in findings],
         )
