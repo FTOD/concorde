@@ -6,8 +6,7 @@ import { createRequire } from "node:module";
 import { nativeObservation } from "./native_observation.mjs";
 import {
   selectedDiagnostic,
-  packDiagnostic,
-  unpackDiagnostic,
+  exportDiagnostic,
   sanitize,
 } from "./structured_diagnostic.mjs";
 
@@ -87,11 +86,11 @@ function preflight(schema = { type: "object" }, ticket = "selftest") {
     metadata: { runId: "selftest", exitCode: 1 },
     transcript: fs.readFileSync(file, "utf8"),
   });
-  const e = packDiagnostic(d);
-  assert.deepEqual(unpackDiagnostic(e), d);
+  const bytes = JSON.stringify(d);
+  assert.deepEqual(JSON.parse(bytes), d);
   assert(d.attempts[0].errorComplete);
   assert.equal(d.attempts[0].arguments.value.missingRequired, true);
-  assert(Buffer.byteLength(JSON.stringify(e)) < 8000);
+  assert(Buffer.byteLength(bytes) < 2 * 1024 * 1024);
 }
 preflight();
 if (!process.argv.includes("--live")) {
@@ -280,7 +279,7 @@ try {
   } while (Date.now() < deadline);
   assert(result.native_state !== "running", "outer diagnostic deadline");
 } catch (error) {
-  summary.driverError = sanitize(String(error.message ?? error)).slice(0, 400);
+  summary.driverError = sanitize(String(error.stack ?? error));
 } finally {
   try {
     if (prepared?.descriptor && artifactRoot) {
@@ -288,13 +287,7 @@ try {
         artifactRoots: [artifactRoot],
       });
       const d = json(path.join(S, "issue-observation/child-0-structured.json"));
-      const envelope = packDiagnostic(d);
-      assert.deepEqual(unpackDiagnostic(envelope), d);
-      fs.writeFileSync(
-        path.join(S, "diagnostic-envelope.json"),
-        JSON.stringify(envelope),
-        { mode: 0o600 },
-      );
+      summary.report = exportDiagnostic(d);
       summary.diagnosticComplete =
         d.sourceRecords === "present" &&
         !d.transcriptTruncated &&
@@ -307,10 +300,7 @@ try {
         );
     }
   } catch (error) {
-    summary.observationError = sanitize(String(error.message ?? error)).slice(
-      0,
-      400,
-    );
+    summary.observationError = sanitize(String(error.stack ?? error));
   }
   if (session) {
     try {

@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { executeWithSdkValidation } from "./native_sdk_validation.mjs";
 import { nativeObservation } from "./native_observation.mjs";
-import { packDiagnostic, unpackDiagnostic } from "./structured_diagnostic.mjs";
+import { exportDiagnostic } from "./structured_diagnostic.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -737,12 +737,10 @@ const diagnostic = JSON.parse(
     "utf8",
   ),
 );
-const evidence = packDiagnostic(diagnostic);
-assert.deepEqual(unpackDiagnostic(evidence), diagnostic);
-fs.writeFileSync(
-  path.join(root, "durable-diagnostic.json"),
-  JSON.stringify(evidence),
-);
+const evidence =
+  process.env.CONCORDE_DIAGNOSTIC_REPORT === "1"
+    ? exportDiagnostic(diagnostic)
+    : null;
 if (scenario === "diagnostic-attempts") {
   const a = diagnostic.attempts;
   assert.equal(a.length, 3);
@@ -958,7 +956,7 @@ if (
 if (scenario === "exhaustion") assert.equal(attempts, 6);
 await inspectionFactory.dispose();
 await emit("session_shutdown", {});
-if (process.env.CONCORDE_DIAGNOSTIC_ENVELOPE === "1")
+if (process.env.CONCORDE_DIAGNOSTIC_REPORT === "1")
   console.log(JSON.stringify(evidence));
 else
   console.log(
@@ -969,7 +967,7 @@ else
       realModelCalls: 0,
       accepted: final.accepted,
       observation: path.join(root, "observation/summary.json"),
-      durableDiagnostic: path.join(root, "durable-diagnostic.json"),
+      diagnostic: path.join(root, "observation/child-0-structured.json"),
       outcome: final.output?.data.outcome,
     }),
   );

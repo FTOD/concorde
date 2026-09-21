@@ -160,7 +160,12 @@ external fixtures and the trusted tester-only scratch-backed private `/tmp` prof
 isolation fails closed. Real host `/tmp` inputs use the explicit read-only `CONCORDE_TEST_HOST_TMP`
 view, except governing/runtime locations preserved at their canonical names. This permits normal
 nested terminal preparation without staging runtime assets or making host `/tmp` writable.
-The command schema remains only command/timeout; the model cannot select mounts or weaken this policy.
+The command schema admits command/timeout and explicit relative report names, never mounts or
+export destinations. The [Host evidence handoff](../harness/execution-reference.md#execution-tester-evidence)
+preserves selected nonsecret reports and bounded output in canonical primary run evidence before
+scratch cleanup, with digest/completeness/truncation facts and compact references. A failed export
+or scratch path alone is not retained evidence. This narrow service grants no tester status writes
+or arbitrary primary writes; it does not weaken the read-only execution policy.
 Explicit extension lists disable ambient
 catalogs without granting additional tools. Effective discovery/preflight remains host-owned.
 

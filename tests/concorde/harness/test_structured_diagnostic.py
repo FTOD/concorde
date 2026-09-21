@@ -1,14 +1,14 @@
 """Preserve complete selected structured errors as data, including after real scratch cleanup."""
 
-import base64
-import gzip
 import hashlib
 import json
 import os
 import shlex
 import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -52,6 +52,9 @@ console.log('Selected arguments/errors roundtrip; secret sources excluded; sourc
         "scenario.harness.native-context-public", "scenario.harness.native-result-gate"
     )
     def test_real_structured_tool_errors_survive_os_scratch_cleanup(self):
+        temporary = tempfile.TemporaryDirectory(prefix="concorde-diagnostic-governing-")
+        self.addCleanup(temporary.cleanup)
+        governing = Path(temporary.name)
         for case in ("diagnostic-attempts", "schema-correction", "prose-only"):
             with self.subTest(case=case):
                 command = shlex.join(
@@ -74,12 +77,18 @@ console.log('Selected arguments/errors roundtrip; secret sources excluded; sourc
                         REPOSITORY_ROOT
                         / ".concorde/work/pi-first-diagnostic-selection.json"
                     ),
-                    "CONCORDE_DIAGNOSTIC_ENVELOPE": "1",
+                    "CONCORDE_DIAGNOSTIC_REPORT": "1",
                 }
                 result = subprocess.run(
                     [sys.executable, "-m", "concorde.distribution.outer_check"],
-                    input=json.dumps({"command": command, "timeout": 120}),
-                    cwd=REPOSITORY_ROOT,
+                    input=json.dumps(
+                        {
+                            "command": command,
+                            "timeout": 120,
+                            "reports": ["structured-tool.json"],
+                        }
+                    ),
+                    cwd=governing,
                     env=environment,
                     capture_output=True,
                     text=True,
@@ -87,16 +96,23 @@ console.log('Selected arguments/errors roundtrip; secret sources excluded; sourc
                     check=False,
                 )
                 self.assertEqual(result.returncode, 0, result.stderr[-3000:])
-                check = json.loads(result.stdout)
+                check = json.loads(result.stdout.splitlines()[-1])
                 self.assertEqual(check["returncode"], 0, check)
-                # outer_check has already removed its scratch. Only stdout data survives.
-                self.assertLess(len(check["stdout"].encode()), 8000)
-                e = json.loads(check["stdout"])
-                raw = gzip.decompress(base64.b64decode(e["payload"]["data"]))
-                self.assertEqual(len(raw), e["payload"]["decodedBytes"])
-                self.assertEqual(
-                    "sha256:" + hashlib.sha256(raw).hexdigest(), e["payload"]["sha256"]
+                self.assertTrue(check["evidence"]["complete"], check)
+                manifest = json.loads(
+                    Path(check["evidence"]["manifest"]["path"]).read_text()
                 )
+                [report] = [
+                    r
+                    for r in manifest["artifacts"]
+                    if r["name"] == "reports/structured-tool.json"
+                ]
+                raw = Path(report["artifact"]["path"]).read_bytes()
+                self.assertEqual(
+                    "sha256:" + hashlib.sha256(raw).hexdigest(),
+                    report["artifact"]["digest"],
+                )
+                # The report, not a payload squeezed into stdout, survives cleanup.
                 d = json.loads(raw)
                 a = d["attempts"]
                 if case == "diagnostic-attempts":
@@ -134,12 +150,12 @@ console.log('Selected arguments/errors roundtrip; secret sources excluded; sourc
                     json.dumps(
                         {
                             "case": case,
-                            "envelopeBytes": len(check["stdout"].encode()),
+                            "reportBytes": len(raw),
                             "attempts": len(a),
-                            "payloadSha256": e["payload"]["sha256"],
+                            "reportSha256": report["artifact"]["digest"],
                             "afterScratchCleanup": True,
                             "realModels": 0,
-                            "evidence": e,
+                            "evidence": check["evidence"]["manifest"],
                         }
                     )
                 )

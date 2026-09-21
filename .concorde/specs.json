@@ -679,6 +679,10 @@
         },
         {
           "kind": "document",
+          "id": "document.harness.execution-reference"
+        },
+        {
+          "kind": "document",
           "id": "document.views.pipeline"
         },
         {

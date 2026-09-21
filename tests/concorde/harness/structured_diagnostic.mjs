@@ -1,5 +1,7 @@
 /** Selected structured-tool evidence only: no auth/env/provider registries or unrelated reads. */
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { gzipSync, gunzipSync } from "node:zlib";
 
 const hash = (bytes) =>
@@ -219,7 +221,7 @@ export function selectedDiagnostic({
     ...parsed,
   });
 }
-export function packDiagnostic(diagnostic) {
+function checkedDiagnostic(diagnostic) {
   const fields = new Set([
     "schema_version",
     "workflowRunId",
@@ -241,7 +243,37 @@ export function packDiagnostic(diagnostic) {
     throw new Error(
       "only selected structured-tool diagnostic fields may be exported",
     );
-  const full = sanitize(diagnostic);
+  return sanitize(diagnostic);
+}
+
+/** Only selected sanitized data, never a scratch directory or raw transcript archive. */
+export function exportDiagnostic(diagnostic, name = "structured-tool.json") {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,120}$/.test(name))
+    throw new Error("report name must be a simple file name");
+  const scratch = process.env.CONCORDE_CHECK_TMPDIR;
+  const reports = process.env.CONCORDE_CHECK_REPORT_DIR;
+  if (
+    !scratch ||
+    !reports ||
+    path.resolve(reports) !== path.join(fs.realpathSync(scratch), "reports") ||
+    fs.realpathSync(reports) !== reports
+  )
+    throw new Error("issued canonical report directory required");
+  const bytes = Buffer.from(JSON.stringify(checkedDiagnostic(diagnostic)));
+  if (bytes.length > 2 * 1024 * 1024)
+    throw new Error(
+      "selected diagnostic exceeds 2 MiB report bound; no completeness claimed",
+    );
+  fs.writeFileSync(path.join(reports, name), bytes, {
+    mode: 0o600,
+    flag: "wx",
+  });
+  return { name, digest: hash(bytes), bytes: bytes.length };
+}
+
+// Historical codec retained for reading old diagnostic envelopes, not new driver transport.
+export function packDiagnostic(diagnostic) {
+  const full = checkedDiagnostic(diagnostic);
   const encode = (data) => {
     const bytes = Buffer.from(JSON.stringify(data));
     if (bytes.length > 256 * 1024)
