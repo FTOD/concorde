@@ -313,6 +313,7 @@ context forms; package/schema alignment checks verify those identities.
 | `limit_exhausted`              | `OperationExecutionError.outcome` when a worker ran past its timeout; the host maps this to the `execution_limit` result error code.                                                                                                                  |
 | `merge_conflict`               | Integration conflicts with the primary branch. Resolve and revalidate in the candidate worktree, or a new candidate if delivery already removed the source.                                                                                           |
 | `missing_change`               | A requested existing change or task authoring has no managed change in the current worktree.                                                                                                                                                          |
+| `native_required`              | Public context assessment requires its prepared native Pi Agent and independent Host acceptance; bare CLI/Studio execution has no model-worker fallback.                                                                                              |
 | `missing_runtime`              | The launcher's interpreter cannot import LangGraph and no verified managed runtime exists beside the installed framework to switch into; provision it with the installer, or give the source checkout its locked environment.                         |
 | `missing_plan`                 | Task authoring was requested without an authored plan.                                                                                                                                                                                                |
 | `missing_tasks`                | Implementation was requested without authored tasks.                                                                                                                                                                                                  |
@@ -455,8 +456,9 @@ trusted Host context for these State-shaped calls without importing LangGraph. S
 atomic stores, current-input checks, repository locks and result distinctions are unchanged.
 
 The retained Graphs below remain executable Studio/State-node adapters and the existing model-backed
-local entry path, not evidence that normal deterministic calls traversed a Graph. Model-backed
-public behavior has not migrated to native Pi yet.
+local entry path, not evidence that normal deterministic calls traversed a Graph. Public context-solve instead uses finite native preparation and acceptance with a real Pi Agent;
+other model-backed public behavior retains its current backend. Bare CLI/Studio context execution
+without native transport refuses rather than falling back to a hidden worker.
 
 For model-backed local entries and explicitly selected Studio execution, the admission Graph runs
 the invocation, admitted or not, around the Operations

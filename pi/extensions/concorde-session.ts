@@ -29,6 +29,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolSpan } from "./concorde-observe.ts";
+import { nativeContext } from "./concorde-native-context.ts";
 import { selectionPath as explicitSelectionPath } from "./concorde-selection.ts";
 
 export interface SessionOperation {
@@ -91,6 +92,12 @@ export function sessionPrompt(catalog: SessionCatalog): string {
 				"A tester may use isolated deterministic fixture drivers with that exact runtime against explicitly granted disposable data, never against governing source.",
 		);
 	}
+	lines.push(
+		"",
+		"Exception: concorde-context-solve action run PREPARES a native context-assessor. " +
+			"Call subagent with its exact returned call object; only details.concorde_context.accepted " +
+			"after independent Host reconciliation means acceptance. Native structured output and gate success are proposals/staging only.",
+	);
 	lines.push("", "Operations:");
 	for (const operation of catalog.operations) {
 		lines.push(`- ${operation.name}: ${operation.description}`);
@@ -299,6 +306,37 @@ export function concordeSession(
 	);
 	const names = catalog.operations.map((item) => item.name);
 	return function extension(pi: ExtensionAPI): void {
+		const fixtureRoot = process.env.CONCORDE_NATIVE_PROJECT_ROOT;
+		if (fixtureRoot && !(catalog.explicit_request_only && selectionPath))
+			throw new Error(
+				"Native fixture data requires exact private candidate selection",
+			);
+		const projectRoot = fixtureRoot ? path.resolve(fixtureRoot) : root;
+		const prepareContext = nativeContext(pi, {
+			root: projectRoot,
+			python: interpreter(root, catalog, Boolean(selectionPath)),
+			launcher: path.resolve(root, catalog.launcher),
+			verify: verifySelection,
+			prepare: async (value, signal) => {
+				const run = await runLauncher(
+					[
+						interpreter(root, catalog, Boolean(selectionPath)),
+						path.resolve(root, catalog.launcher),
+						"--native-context",
+						"prepare",
+					],
+					projectRoot,
+					value,
+					signal,
+					selectionPath,
+				);
+				if (run.aborted)
+					throw new Error(
+						"Native context preparation cancelled; no child accepted",
+					);
+				return JSON.parse(run.stdout);
+			},
+		});
 		pi.on("before_agent_start", async (event) => ({
 			systemPrompt:
 				event.systemPrompt.trimEnd() + "\n\n" + sessionPrompt(catalog),
@@ -310,7 +348,7 @@ export function concordeSession(
 			description:
 				'Run a public Concorde Operation or describe one. Action "describe" returns the ' +
 				'Operation\'s guidance and the JSON Schema of its request. Action "run" sends `input`, ' +
-				"the request data, to the Operation and returns its typed result envelope; `mode` " +
+				"the request data, to the Operation and returns its typed result envelope. Context-solve instead prepares the exact native subagent call; invoke that call and inspect concorde_context.accepted. `mode` " +
 				'"describe-policy" previews the context and permissions an execute run would use ' +
 				"without running an agent. A run may take a long time and blocks this turn; aborting " +
 				"it cancels the running worker. Results larger than 48 KiB are saved to a file.",
@@ -347,6 +385,8 @@ export function concordeSession(
 				_toolCallId,
 				params,
 				signal,
+				_onUpdate,
+				ctx,
 			): Promise<AgentToolResult<Record<string, unknown>>> {
 				const finishSelection = toolSpan(pi, "pi.tool_selection");
 				try {
@@ -393,6 +433,15 @@ export function concordeSession(
 						data: input,
 					},
 				};
+				if (operation.name === "concorde-context-solve") {
+					const value = await prepareContext(envelope, ctx, signal);
+					if (value.state === "rejected")
+						throw new Error(JSON.stringify(value));
+					return {
+						content: [{ type: "text", text: JSON.stringify(value) }],
+						details: value,
+					};
+				}
 				const argv = [
 					interpreter(root, catalog, Boolean(selectionPath)),
 					path.resolve(root, catalog.launcher),

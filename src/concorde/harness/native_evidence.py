@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..spec.repository import SpecError
+from ..spec.repository import SpecError, digest
 from ..spec.typed_data import decode
 from .native_runtime import FORMAT, NativeRuntimeBinding
 from .native_result import staging_control
@@ -210,3 +210,106 @@ def verify_native_children(
             )
         records.append(metadata)
     return tuple(records)
+
+
+def verify_native_single(
+    correlation, *, agent, session_id, ticket, proposal_digest, gate_command, runtime
+):
+    """Foreground native tool_result plus independently read native metadata.
+
+    The loaded Pi extension supplies correlation from its exact tool_call/result
+    pair, not from model args. Foreground artifacts omit parent session ownership;
+    that ownership comes from the live Pi event context, never a invented field.
+    No workflow status, history projection or returned proposal proves completion.
+    """
+    if not isinstance(runtime, NativeRuntimeBinding) or runtime.format != FORMAT:
+        raise SpecError("unsupported native producer", "unsupported_version")
+    details = correlation.get("details", {})
+    rows = details.get("results")
+    if (
+        correlation.get("isError")
+        or correlation.get("session_id") != session_id
+        or not correlation.get("tool_call_id")
+        or details.get("mode") != "single"
+        or not details.get("runId")
+        or not isinstance(rows, list)
+        or len(rows) != 1
+    ):
+        raise SpecError(
+            "native single result is foreign or incomplete", "execution_failed"
+        )
+    row = rows[0]
+    if (
+        not isinstance(row, dict)
+        or row.get("agent") != agent
+        or type(row.get("exitCode")) is not int
+        or row["exitCode"] != 0
+        or any(
+            row.get(key)
+            for key in (
+                "error",
+                "detached",
+                "interrupted",
+                "stopped",
+                "terminalOutcome",
+                "timedOut",
+                "metadataSaveError",
+                "outputSaveError",
+                "transcriptError",
+            )
+        )
+    ):
+        raise SpecError("native assessment did not complete", "execution_failed")
+    launch = correlation.get("launch_contract_digest")
+    if not launch or row.get("launchContractDigest") != launch:
+        raise SpecError(
+            "native preflight differs from execution", "incompatible_handoff"
+        )
+    native_proposal = _record(Path(row.get("structuredOutputPath", "")))
+    if (
+        digest(native_proposal) != proposal_digest
+        or native_proposal.get("invocation_id") != ticket
+    ):
+        raise SpecError(
+            "native structured proposal differs from captured proposal",
+            "incompatible_handoff",
+        )
+    metadata = _record(Path(row.get("artifactPaths", {}).get("metadataPath", "")))
+    if any(key in metadata for key in ("schema_version", "lifecycleArtifactVersion")):
+        raise SpecError("expected versionless native metadata", "unsupported_version")
+    if (
+        metadata.get("runId") != details["runId"]
+        or metadata.get("agent") != agent
+        or metadata.get("launchContractDigest") != launch
+        or type(metadata.get("exitCode")) is not int
+        or metadata["exitCode"] != 0
+        or metadata.get("error")
+        or metadata.get("transcriptError")
+        or metadata.get("processSignal")
+    ):
+        raise SpecError("native terminal metadata disagrees", "execution_failed")
+    acceptance = metadata.get("acceptance", {})
+    gates = acceptance.get("verifyRuns")
+    if (
+        acceptance.get("status") != "verified"
+        or not isinstance(gates, list)
+        or len(gates) != 1
+        or not isinstance(gates[0], dict)
+    ):
+        raise SpecError("native staging gate is missing", "invalid_completion")
+    gate = gates[0]
+    if (
+        gate.get("command") != gate_command
+        or gate.get("status") != "passed"
+        or type(gate.get("exitCode")) is not int
+        or gate["exitCode"] != 0
+        or "structuredOutput" in gate
+    ):
+        raise SpecError("native gate is foreign or failed", "invalid_completion")
+    staging_control(
+        gate.get("stdout"),
+        ticket=ticket,
+        invocation_id=ticket,
+        proposal_digest=proposal_digest,
+    )
+    return metadata

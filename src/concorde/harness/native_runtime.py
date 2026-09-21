@@ -13,7 +13,7 @@ from pathlib import Path
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import decode
 
-FORMAT = "pi-subagents-0.69.0-versionless-workflow-v1"
+FORMAT = "pi-subagents-0.69.0-versionless-v1"
 CONTRACT = Path(__file__).resolve().parents[3] / "pi/native-runtime-contract.json"
 
 

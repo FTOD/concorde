@@ -60,7 +60,7 @@ A selection returns complete bytes and their provenance, not evidence of model l
 The Pi session extension SHALL offer exactly the public Operations as the operations of its
 `concorde` tool.
 
-Internal stage Operations have no tool entry; the source checkout's shim additionally tells the
+The native context-assessor is callable only through a prepared native call; other internal stage Operations have no tool entry; the source checkout's shim additionally tells the
 model to run an Operation only on the developer's explicit request.
 
 ### req.distribution.launcher-sigterm-cancels — SIGTERM cancels the launcher like Ctrl-C
@@ -89,7 +89,9 @@ require Graph compilation; complete installed-runtime verification remains manda
 
 Build and package validation SHALL check the complete Pi catalog's descriptions, guidance, request schemas and output/source identities against the authored public Operation inventory.
 
-Eleven public Operations and seven terminal worker renderings remain. Internal instructions are
+Eleven public entry names and seven legacy terminal worker renderings remain, plus the separately
+rendered native context-assessor instructions. Public context-solve prepares a supported native Agent
+call and verifies its result; it must not silently execute the legacy worker. Internal instructions are
 not Skills. Missing or drifted output fails checking; `build` regenerates from authored inputs.
 
 ### req.distribution.pi-only-install — Installation supports only Pi

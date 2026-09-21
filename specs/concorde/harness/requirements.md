@@ -106,7 +106,7 @@ project, removed after its process tree has terminated.
 
 ### req.harness.worker-gate — Every tool call is gated by the compiled grant
 
-Every tool call of a terminal worker SHALL be checked against the invocation's compiled
+Every tool call of a legacy sandboxed Graph worker SHALL be checked against the invocation's compiled
 grant before it executes.
 
 The gate is a policy boundary inside the Pi process over the model's tool calls; the process itself
@@ -115,7 +115,7 @@ is bounded by the worker sandbox ([req.harness.worker-sandbox](#req.harness.work
 
 ### req.harness.worker-sandbox — Every worker process runs inside the boundary of its grant
 
-Every worker launch SHALL run its Pi process inside the operating-system sandbox derived from the
+Every legacy Graph worker launch SHALL run its Pi process inside the operating-system sandbox derived from the
 launch's grant, refusing the launch when that boundary cannot be enforced.
 
 The boundary mounts the host read-only with the developer's secret locations, agent-client state and
@@ -130,11 +130,12 @@ Every worker launch SHALL use the model, thinking level and timeout resolved for
 ### req.harness.capsule-closed — A capsule grants only its own snapshot
 
 A capsule worker SHALL be granted read access only to its own snapshot and the copies that snapshot
-indexes.
+indexes. For the native context-assessor this is intended read policy, not filesystem enforcement;
+no claim of exclusive reads follows from delivery or digest checks.
 
 ### req.harness.process-inputs-closed — Worker processes receive only closed inputs
 
-A worker process SHALL receive only the allowlisted environment, its host-built Pi configuration,
+A legacy Graph worker process SHALL receive only the allowlisted environment, its host-built Pi configuration,
 its system prompt and its single typed context message.
 
 ### req.harness.execute-no-retry — No automatic retry after execution failure
@@ -183,8 +184,13 @@ them into one generic failure.
 
 ### req.harness.langgraph-control-flow — Orchestration executes as a LangGraph Graph
 
-Model-backed operation orchestration and explicitly selected Studio adapters SHALL execute as
-LangGraph Graphs with declared transitions.
+Remaining Graph-backed operation orchestration and supported explicit Studio adapters SHALL execute
+as LangGraph Graphs with declared transitions.
+
+Public context-solve instead uses finite Host preparation, a real native context-assessor and
+independently correlated result admission. It does not compile a Graph or fall back to a hidden
+Pi-RPC worker on the native path. Its file scope is prompt-level policy, not OS confinement;
+native child-safety ceilings still apply.
 
 Ordinary local initialization, configuration, validation, delivery and Issue bookkeeping use direct
 deterministic Host admission and dispatch, retaining the same checks without compiling a Graph.

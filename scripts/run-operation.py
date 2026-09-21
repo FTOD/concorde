@@ -179,6 +179,11 @@ def main(argv: list[str] | None = None) -> int:
     sys.path.insert(0, source)
     import importlib
 
+    if arguments[:1] == ["--native-context"]:
+        from concorde.harness.native_context import main as native_context_main
+
+        return native_context_main(package_root, arguments[1:])
+
     from concorde.harness.entry import invocation_failure, json_main, runtime_selection
     from concorde.spec.contracts import load_operation_inventory
     from concorde.spec.typed_data import canonical

@@ -215,6 +215,77 @@ class Invocation:
         # No reviewer ran again. Retain the actual observation's provenance.
         return blockers
 
+    def assessment_dependencies(self, snapshot, operation="concorde-context-solve"):
+        """Shared deterministic context-assessment stops, before any model launch."""
+        participant_findings = module_dependency_findings(
+            self.repository, self.target.id
+        )
+        if participant_findings:
+            self.completed.append(operation)
+            conflicts = [
+                finding
+                for finding in participant_findings
+                if not finding.message.startswith("missing local dependency promises:")
+            ]
+            if conflicts:
+                return {
+                    "context_id": snapshot.id,
+                    "outcome": "conflicting",
+                    "answer": "Module dependency promises conflicts with its registered topology: "
+                    + "; ".join(finding.message for finding in conflicts),
+                    "blockers": [],
+                    "documents": [],
+                    "plan": "",
+                    "tasks": [],
+                }
+            from ..issues.store import report_issue
+
+            blockers = []
+            for finding in participant_findings:
+                receipt = report_issue(
+                    self.repository.root,
+                    {
+                        "report_key": digest(
+                            [self.target.id, finding.rule_id, finding.message]
+                        ),
+                        "type": "gap",
+                        "subtype": "missing-contract",
+                        "title": "Missing dependency promise",
+                        "description": finding.message,
+                        "impact": "Context assessment cannot admit planning.",
+                        "basis": finding.remediation,
+                        "owner_target_id": self.target.id,
+                        "evidence": [],
+                    },
+                    {
+                        "invocation_id": self.host.invocation_id,
+                        "agent": "host",
+                        "operation": operation,
+                        "phase": "context-solve",
+                        "target_id": self.target.id,
+                        "context_id": snapshot.id,
+                        "change_id": self.change_id,
+                        "head": None,
+                    },
+                )
+                blockers.append(
+                    {
+                        **receipt,
+                        "blocked_step": "Assess context sufficiency before Module planning",
+                    }
+                )
+            self.record_gaps("context-solve", blockers)
+            return {
+                "context_id": snapshot.id,
+                "outcome": "spec_incomplete",
+                "answer": "Module dependency promises is incomplete or inconsistent.",
+                "blockers": blockers,
+                "documents": [],
+                "plan": "",
+                "tasks": [],
+            }
+        return None
+
     def stage(
         self,
         operation: str,
@@ -277,89 +348,12 @@ class Invocation:
                 "unsupported_target",
             )
         if self.host.mode != "describe-policy" and phase == "context-solve":
-            participant_findings = module_dependency_findings(
-                self.repository, self.target.id
-            )
-            if participant_findings:
-                self.completed.append(operation)
-                conflicts = [
-                    finding
-                    for finding in participant_findings
-                    if not finding.message.startswith(
-                        "missing local dependency promises:"
-                    )
-                ]
-                if conflicts:
-                    return {
-                        "context_id": snapshot.id,
-                        "outcome": "conflicting",
-                        "answer": "Module dependency promises conflicts with its registered topology: "
-                        + "; ".join(finding.message for finding in conflicts),
-                        "blockers": [],
-                        "documents": [],
-                        "plan": "",
-                        "tasks": [],
-                    }
-                from ..issues.store import report_issue
-
-                blockers = []
-                for finding in participant_findings:
-                    receipt = report_issue(
-                        self.repository.root,
-                        {
-                            "report_key": digest(
-                                [self.target.id, finding.rule_id, finding.message]
-                            ),
-                            "type": "gap",
-                            "subtype": "missing-contract",
-                            "title": "Missing dependency promise",
-                            "description": finding.message,
-                            "impact": "Context assessment cannot admit planning.",
-                            "basis": finding.remediation,
-                            "owner_target_id": self.target.id,
-                            "evidence": [],
-                        },
-                        {
-                            "invocation_id": self.host.invocation_id,
-                            "agent": "host",
-                            "operation": operation,
-                            "phase": phase,
-                            "target_id": self.target.id,
-                            "context_id": snapshot.id,
-                            "change_id": self.change_id,
-                            "head": None,
-                        },
-                    )
-                    blockers.append(
-                        {
-                            **receipt,
-                            "blocked_step": "Assess context sufficiency before Module planning",
-                        }
-                    )
-                self.record_gaps(phase, blockers)
-                return {
-                    "context_id": snapshot.id,
-                    "outcome": "spec_incomplete",
-                    "answer": "Module dependency promises is incomplete or inconsistent.",
-                    "blockers": blockers,
-                    "documents": [],
-                    "plan": "",
-                    "tasks": [],
-                }
+            blocked = self.assessment_dependencies(snapshot, operation)
+            if blocked is not None:
+                return blocked
 
         def validate(data: dict) -> None:
-            if data["context_id"] != snapshot.id:
-                raise SpecError(
-                    "agent returned a different context identity",
-                    "incompatible_handoff",
-                )
-            if (data["outcome"] == "spec_incomplete" and not data["blockers"]) or (
-                data["outcome"] in {"completed", "sufficient"} and data["blockers"]
-            ):
-                raise SpecError(
-                    "stage outcome does not match its task blockers",
-                    "invalid_completion",
-                )
+            validate_stage_identity(data, snapshot.id)
 
         project_workspace = agent.workspace == "project"
         data = launch_worker(
@@ -447,3 +441,17 @@ class Invocation:
                 "change intent differs from the authored plan; replan explicitly",
                 "incompatible_handoff",
             )
+
+
+def validate_stage_identity(data: dict, context_id: str) -> None:
+    """Shared identity/outcome predicates for legacy stages and native assessment."""
+    if data["context_id"] != context_id:
+        raise SpecError(
+            "agent returned a different context identity", "incompatible_handoff"
+        )
+    if (data["outcome"] == "spec_incomplete" and not data["blockers"]) or (
+        data["outcome"] in {"completed", "sufficient"} and data["blockers"]
+    ):
+        raise SpecError(
+            "stage outcome does not match its task blockers", "invalid_completion"
+        )

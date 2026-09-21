@@ -47,7 +47,7 @@ class BuildGoldenTests(unittest.TestCase):
         expected = {
             path.removeprefix("generated/")
             for path in self.by_path
-            if path.startswith("generated/agents/")
+            if path.startswith(("generated/agents/", "generated/native/"))
         }
         expected.add("pi/concorde-session.ts")
         actual = {
@@ -60,7 +60,7 @@ class BuildGoldenTests(unittest.TestCase):
     @verifies("scenario.distribution.build-render")
     def test_agent_bodies_match_golden_bytes_exactly(self):
         for path, output in self.by_path.items():
-            if path.startswith("generated/agents/"):
+            if path.startswith(("generated/agents/", "generated/native/")):
                 with self.subTest(path=path):
                     golden = (GOLDEN / path.removeprefix("generated/")).read_bytes()
                     self.assertEqual(output.content, golden)

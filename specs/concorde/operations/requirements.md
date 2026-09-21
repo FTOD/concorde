@@ -22,7 +22,9 @@ A non-public Operation SHALL have no public Pi catalog or direct launcher entry.
 ### req.operations.stage-in-process-only — Non-public operations require declared composition
 
 A non-public Operation SHALL be reachable only in-process from an operation that declares it in its
-composition.
+composition. The native context-assessor is a separately callable Pi role projected from its
+shared role Spec, not a direct invocation of the non-public Python Operation. Its prepared
+invocation and result admission retain the declared context boundary.
 
 ### req.operations.stage-no-reselect — Bound operations preserve their context
 

@@ -15,6 +15,7 @@
         "operations/plan.py",
         "operations/tasks.py",
         "src/concorde/planning/",
+        "tests/concorde/harness/test_native_context_public.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_specify_loop.py"
       ],

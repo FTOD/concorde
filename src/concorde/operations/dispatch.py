@@ -101,6 +101,16 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         return {"route": route}
 
     def describe_policy():
+        if operation == "concorde-context-solve" and host.executor is None:
+            if host.native_assessment is not None:
+                return host.native_assessment(bound_run())
+            from ..harness.native_context import assessment_context
+
+            assessment_context(bound_run())
+            return bound_run().response(
+                "described",
+                "Native context-assessor: prompt-level read-only policy; no model launched. Use the Pi preparation boundary for the exact context index and native call.",
+            )
         if operation == "concorde-issues" and (
             task["action"] != "solve" or task.get("_issue_closed")
         ):

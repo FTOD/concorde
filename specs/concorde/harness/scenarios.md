@@ -544,3 +544,16 @@ See [project root is the entry process's working directory](requirements.md#req.
 - THEN the shared schema, workspace, target, configuration and finalization checks apply without Graph compilation or model execution
 - AND a guard failure stops dependent effects while keeping the versioned failure envelope
 - AND explicit Studio/State-node adapters remain available without claiming they ran on this direct path
+
+### scenario.harness.native-context-public — Prepared native assessment is independently admitted
+
+- GIVEN the exact candidate Pi entry and a selected Module with complete current context
+- WHEN context-solve prepares and main invokes its exact native file-Agent call
+- THEN public preflight and the real native executor select the same capsule Agent, fresh context and terminal tools
+- AND no LangGraph or hidden Pi-RPC worker executes on this path
+- AND sufficient and business-blocked assessments remain distinguishable from a staged proposal
+- AND known dependency gaps and describe-policy launch no child
+- AND malformed/business-invalid, foreign or duplicate proposals, native failure despite a passing gate, cancellation and changed inputs cannot accept completion
+- AND global same-name Agents cannot replace the project-only capsule Agent
+- AND changed Agent/extension assets or a missing capsule reject before model launch
+- AND accepted evidence uses the existing primary-owned run archive, not scratch as a parallel ledger

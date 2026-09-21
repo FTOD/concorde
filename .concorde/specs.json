@@ -286,6 +286,7 @@
       "files": [
         "operations/",
         "pi/",
+        "prompts/native/context-assessor.md",
         "prompts/workers/common.md",
         "scripts/development/STUDIO.md",
         "scripts/development/analyze-timing.py",
@@ -318,6 +319,7 @@
         "src/concorde/spec/wire_shapes.py",
         "tests/concorde/distribution/test_outer_agents.py",
         "tests/concorde/fixtures/build/golden/agents/",
+        "tests/concorde/fixtures/build/golden/native/",
         "tests/concorde/harness/",
         "tests/concorde/harness/test_boundaries.py",
         "tests/concorde/harness/test_change_worktree.py",
@@ -547,6 +549,8 @@
         "concorde.json",
         "operations/__init__.py",
         "operations/configure.py",
+        "pi/extensions/concorde-native-child.ts",
+        "pi/extensions/concorde-native-context.ts",
         "pi/extensions/concorde-session.ts",
         "prompts/operation-guidance/",
         "prompts/outer/",
@@ -690,6 +694,7 @@
         "operations/plan.py",
         "operations/tasks.py",
         "src/concorde/planning/",
+        "tests/concorde/harness/test_native_context_public.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_specify_loop.py"
       ],

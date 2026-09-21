@@ -80,8 +80,10 @@ def run_operation(
     try:
         data = runtime_input.get("data") if isinstance(runtime_input, dict) else None
         action = data.get("action") if isinstance(data, dict) else None
-        if operation in DETERMINISTIC_OPERATIONS or (
-            operation == "concorde-issues" and action != "solve"
+        if (
+            operation == "concorde-context-solve"
+            or operation in DETERMINISTIC_OPERATIONS
+            or (operation == "concorde-issues" and action != "solve")
         ):
             return run_host_tool(nodes)
         try:
@@ -154,7 +156,14 @@ def run_host_tool(nodes):
             raise SpecError(
                 "model workflow cannot execute as a Host tool", "invalid_input"
             )
-    elif route in {"relay", "deliver", "project", "validate", "describe_policy"}:
+    elif route in {
+        "relay",
+        "deliver",
+        "project",
+        "validate",
+        "describe_policy",
+        "context_solve",
+    }:
         state.update(nodes["dispatch/" + route](state))
     elif route != "__end__":
         raise SpecError("not a deterministic Host tool", "invalid_input")

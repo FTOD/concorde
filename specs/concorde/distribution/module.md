@@ -33,7 +33,8 @@ acceptance; local modifications to receipt-owned output conflict rather than bei
 adopted. Pi is the only supported installation client; retired `--integration` flags are rejected.
 
 The Pi coding agent loads a session extension whose single `concorde` tool describes or runs the
-public Operations. Its invocation envelope reaches the shared internal launcher, not an alternate
+public entries. Context-solve prepares a native context-assessor call and its result hook performs
+independent Host acceptance. Other entries send their invocation envelope to the shared internal launcher, not an alternate
 client product. Aborting a turn cancels the running Operation. In an installed project the launcher
 uses `.concorde/.venv`, the managed runtime verified by the installer. Missing runtime dependencies
 produce a `missing_runtime` result; rerun installation to provision them. The installer distributes
@@ -215,7 +216,7 @@ by code, and callers must not infer recovery from the absence of success metadat
 Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
 operation, not to this Module; installation never creates the registry or a Module stub itself.
 
-The Pi projection has known limits. A `run` blocks the Pi turn for the whole Operation and shows no progress,
+The Pi projection has known limits. Except for native context preparation, a `run` blocks the Pi turn for the whole Operation and shows no progress,
 because the launcher prints only its final envelope; streaming the host's stage events through the
 tool is pending, and aborting the turn is the only way to stop a run early. The private source entry requires the candidate's `.venv` interpreter to verify selection before
 registration and each tool call; a missing environment blocks without an ambient interpreter
@@ -233,3 +234,10 @@ Runtime admission, initialization, installation inventory and package Spec/wire 
 
 The Distribution Module owns the exact obligations and interface details in [requirements](requirements.md).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+Native context-assessment instructions are built from a canonical native prelude and the existing
+context-assessor role Spec. The invocation capsule contains only a deterministic execution projection;
+it is not another authored Agent registry. The supported native package is selected explicitly in the
+Pi process, separately from the candidate Python/runtime selection. Source-private testing may select
+a disposable data root while retaining exact candidate code and entry provenance; a sibling source
+worktree is never a permitted redirection. No global Pi setting is changed by this mechanism.

@@ -75,7 +75,7 @@ A changed binding, source member or reference selection requires a fresh context
 
 <a id="entity.harness.agent-execution"></a><a id="entity.harness.pi-worker-runtime"></a><a id="entity.harness.pi"></a>
 
-Worker execution independently rechecks the binding and grant before asking the Pi worker runtime
+Legacy Graph worker execution independently rechecks the binding and grant before asking the Pi worker runtime
 to start a fresh Pi RPC process. Its extension gates terminal worker tool calls. Workers do their admitted node work directly;
 only the LangGraph/host schedules other work. One matching submitted
 result is required, not merely a successful exit. Cancellation, time limits and invalid completion
@@ -83,8 +83,16 @@ remain distinct. The Pi process runs inside the worker sandbox derived from the 
 tool gate bounds what the model may ask and the sandbox bounds what the process can reach;
 [execution](execution-reference.md#execution-design) details both boundaries and what they leave open.
 
+Public context assessment is different: the Pi entry prepares a complete frozen context, projects
+one terminal native file Agent into owned scratch, and returns its exact native call. A separate
+Host command admits the proposal only after native terminal evidence and current inputs agree.
+No Python model stack waits for Pi; no workflow wraps the single Agent. Its intended read scope is
+prompt-level, not the legacy worker sandbox. Scratch is neither a status ledger nor proof of
+exclusive reads. The [native contract](execution-reference.md#native-context-assessor) defines
+failure, cancellation, currentness and evidence behavior.
+
 Operation admission, explained in [preparing and coordinating work](host.md), uses the same request, workspace and configuration checks before dispatch selects a provider.
-Deterministic Host tools run those services directly; model-backed entries and explicit Studio
+Deterministic Host tools and native context-assessment commands run those services directly; remaining model-backed entries and explicit Studio
 adapters use the [admission Graph](admission.md#graphs-operation-admission-graph-operation-graph). Keeping admission in the Module that also
 binds workers means the same boundary decides which request may run, in which workspace and with
 which configuration, and later decides what each of its workers may read and write.
@@ -142,7 +150,7 @@ Resolution yields an `WorkerBinding` that every invocation carries and the execu
 Permissions are compiled purely from the contract's effects and host authority, guarded by the
 isolated-worktree check before any unsafe mutation, and handed to the Pi worker runtime, whose
 extension gates every tool call of the terminal worker and whose sandbox confines the
-process to that same grant. Model-backed control flow remains a LangGraph Graph; deterministic Host tools need no compiled
+process to that same grant. Other model-backed control flow remains a LangGraph Graph; deterministic Host tools need no compiled
 Graph for local admission or dispatch. Failures never retry with broader
 permissions, and a settled process alone never establishes completion.
 

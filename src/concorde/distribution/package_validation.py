@@ -66,7 +66,11 @@ def _prompt_roots(root: Path) -> tuple[str, ...]:
         build.outer_agents.prompt_roots(root)
         + tuple(build.OPERATION_GUIDANCE.values())
         + tuple(build.MODEL_ROOTS.values())
-        + (build.WORKER_RULES, "prompts/protocol/principles.md")
+        + (
+            build.WORKER_RULES,
+            "prompts/native/context-assessor.md",
+            "prompts/protocol/principles.md",
+        )
         + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS)
     )
 

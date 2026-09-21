@@ -445,7 +445,7 @@ migrated to native workflows. Their integration must also bind provisional withi
 handoffs explicitly and recheck admission before every dependent model launch; staged values
 cannot masquerade as ordinary accepted plans, tasks or readiness evidence.
 
-The artifact adapter admits `pi-subagents-0.69.0-versionless-workflow-v1` only through a trusted
+The artifact adapter admits `pi-subagents-0.69.0-versionless-v1` only through a trusted
 `NativeRuntimeBinding`. `admit_native_runtime` checks the explicit package root, package identity
 and the reviewed serialization/control-source digests in `pi/native-runtime-contract.json`.
 Missing or changed sources, other package revisions and unsupported adapter contracts fail without
@@ -631,7 +631,7 @@ readable inside it.
 #### Pi worker runtime {#execution-pi-worker-runtime}
 
 A Pi worker is one Pi coding agent process run in RPC mode for one bounded task. Pi calls the
-worker's model through its own providers and executes its built-in tools; LangGraph stays the
+worker's model through its own providers and executes its built-in tools; for legacy workers LangGraph stays the
 orchestration around it. `PiWorkerRuntime` launches one `WorkerLaunch` and returns a
 `WorkerResult` or raises `WorkerExecutionError`:
 
@@ -978,7 +978,7 @@ thinking level and timeout.
 
 #### Control-graph substrate {#host-control-graph-substrate}
 
-Every retained operation Graph, including assessment, planning, review, Issue solving and explicit
+Every retained operation Graph, including legacy planning assessment, planning, review, Issue solving and explicit
 Studio adapters for deterministic tools, is a LangGraph `StateGraph` built
 with the Graph API, never with the Functional API. Its nodes are deterministic steps, which make no
 model call, or worker invocations, which do. These Graphs remain the Studio surface. Ordinary local
@@ -1199,3 +1199,70 @@ success, ignores scalar leaves, and creates no read authority beyond the caller'
 
 The Harness Module owns the exact obligations and interface details in [contracts](contracts.md).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+## Native context-assessor {#native-context-assessor}
+
+Public `concorde-context-solve` uses finite Host commands and one real foreground native Agent,
+not a StateGraph, Pi-RPC worker or single-step fake workflow. `concorde` action `run` prepares;
+the caller passes the returned `call` object unchanged to native `subagent`. `describe-policy`
+returns the intended prompt-level read policy without a capsule or child. Known local dependency
+conflicts/gaps return `state: not-run` before native runtime admission or any model invocation.
+
+Preparation reuses ordinary request/workspace/configuration/target admission, context resolution
+and dependency predicates. It freezes exact snapshot, registry bytes, configuration, change/intent,
+role/build binding, selected native producer and parent session identity. The bounded JSON descriptor
+and owned temporary capsule outlive launch, staging and final reconciliation; no Python callback,
+thread, Graph or provider stack is suspended across that interval. They are not authoritative
+status/runs storage. Reporting uses the existing scoped report-only Issue service, preserving
+observations even if assessment later fails; receipt validation and gap effects are shared.
+
+The capsule's `.pi/agents/concorde-context-assessor.md` is deterministically projected from
+`generated/native/context-assessor.md` and trusted launch settings. Task/model text is not executable
+front matter. Agent/capture/settings bytes and launch schema/options are bound before model launch.
+The capsule explicitly selects nearest project-root discovery; the native call selects project-only
+Agent scope and the exact capsule cwd. Public preflight must discover that exact Agent file, with
+fresh context, no inherited project/global context or Skills, no ambient extensions or delegation,
+and only read/grep/find/ls, scoped Issue reporting and native structured output tools. File scope is
+prompt-level policy, not filesystem isolation. Capsules and digest checks do not prove exclusive reads.
+Public preflight cannot see runtime-event Agents in the admitted producer; no private registry
+injection is used. Missing/changed capsule, Agent, capture or current inputs is a rejection, never
+regeneration or fallback under the same issued identity.
+
+The Host selects the installed native package with `CONCORDE_NATIVE_SUBAGENTS_ROOT`, checks the
+reviewed producer/source contract and uses the public `pi-subagents/preflight` export. The supported
+single launch is foreground (`async: false`), with one native `outputSchema` and a plain staging gate.
+The prepared result is `state: prepared`, `accepted: false`; the model submits exactly an issued
+`invocation_id` and typed `result`. Capture validates shape, role outcomes, identity, artifact
+prohibitions and genuine admitted Issue receipts. Duplicate or foreign submissions invalidate the
+slot. A 1 MiB proposal bound and per-slot finite-command lock apply; no model work is scheduled by
+that lock. The native gate emits only the closed versioned staging control described above. Finite capture,
+report, check and acceptance subprocesses have a thirty-second command deadline; an uncertain
+acknowledgement requires inspection of retained evidence, not blind replay. Terminal correlation
+transports native identity/status/path fields only, not model prose, transcripts or another proposal copy.
+
+The Pi `tool_call` hook binds one exact prepared request and preflight launch digest to its actual
+tool-call ID and live parent session. The matching `tool_result` hook, not model text, carries the
+native single-run identity and metadata path to `verify_native_single`. Foreground debug metadata
+is versionless and lacks parent session identity; session ownership comes from the correlated live
+Pi events, not an invented metadata field. The verifier independently reads the native metadata,
+requires the independently saved native structured proposal to match the captured proposal,
+requires one successful non-detached/non-interrupted result with no publication errors, matches run,
+Agent and preflight launch digest, and validates the exact plain gate command and staged digest.
+It does not read workflow status or rely on trimmed display history.
+
+Final acceptance re-admits the original request and rechecks exact inputs and delivered context
+bytes, then performs the existing outcome/gap effects. An exclusive terminal reservation prevents
+replaying effects after uncertain persistence; recovery requires fresh admission, not blind retry.
+The Host archives the descriptor, proposal, correlated evidence and native metadata under the
+ordinary accepted run's `native-context.json`; scratch is not a second lifecycle ledger. A model
+proposal is not accepted completion. `details.concorde_context.accepted: true` marks admission,
+while its typed result distinguishes sufficient success from accepted business blockers. Native
+failure despite a passing gate, cancellation, stale input or missing evidence cannot accept an
+unsettled result. Cancellation after committed effects does not undo historical receipts/evidence.
+Bare public CLI/Studio execution without this transport reports `native_required`; it never falls
+back to legacy execution. Explicit injected legacy executors remain regression-test adapters only.
+
+The private candidate entry may use `CONCORDE_NATIVE_PROJECT_ROOT` for explicitly granted disposable
+consumer data only when exact private test selection is present. Candidate entry/catalog/runtime
+remain pinned; existing sibling-worktree and maintenance-session refusals still apply. Installed
+consumer entries use their project root and their receipt-owned native instruction assets.

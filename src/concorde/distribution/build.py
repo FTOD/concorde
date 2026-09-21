@@ -106,6 +106,7 @@ PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 # may write its own files there (for example diagram renders under `generated/architecture/`),
 # and check_build must never judge locations it does not own.
 GENERATED_OWNED_DIRS: tuple[str, ...] = (
+    "generated/native",
     "generated/agents",
     "generated/protocol",
     "generated/docs",
@@ -189,6 +190,24 @@ def render_model_instructions(project_root: Path, agent: str) -> BuildOutput:
     return BuildOutput(
         path=f"generated/agents/{agent}.md",
         content=content,
+        sources=tuple(sorted({*rules.sources, *role.sources})),
+    )
+
+
+def render_native_context_agent(project_root: Path) -> BuildOutput:
+    """Native transport instructions, never the legacy sandbox/Graph worker prelude."""
+    try:
+        rules = resolve_role_prompt(project_root, "prompts/native/context-assessor.md")
+        role = resolve_model_instructions(
+            project_root, "operations/context_assessor/spec.md"
+        )
+    except PromptResolverError as error:
+        raise BuildError(
+            f"native context-assessor: {error.rule_id}: {error}"
+        ) from error
+    return BuildOutput(
+        path="generated/native/context-assessor.md",
+        content=(rules.body.rstrip() + "\n\n" + role.body).encode(),
         sources=tuple(sorted({*rules.sources, *role.sources})),
     )
 
@@ -492,6 +511,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     outputs: list[BuildOutput] = []
     for agent in sorted(MODEL_ROOTS):
         outputs.append(render_model_instructions(root, agent))
+    outputs.append(render_native_context_agent(root))
     outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
     outputs.extend(outer_agents.render(root, framework_prefix))
     outputs.append(render_langgraph(root))
@@ -502,7 +522,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
 
     roots = (
         list(MODEL_ROOTS.values())
-        + [WORKER_RULES]
+        + [WORKER_RULES, "prompts/native/context-assessor.md"]
         + list(outer_agents.prompt_roots(root))
         + list(OPERATION_GUIDANCE.values())
         + ["prompts/protocol/principles.md"]

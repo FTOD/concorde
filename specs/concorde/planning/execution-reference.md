@@ -32,8 +32,12 @@ and transitions are retained here as the single detailed contract.
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
 This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-The calling agent selects this Operation through the Pi `concorde` tool; its `run` action
-submits the typed request through the common launcher. The tool's `describe` action returns
+The calling agent selects context assessment through the Pi `concorde` tool. Its `run` action
+performs finite preparation and returns the exact native `subagent` call, not a completed assessment.
+The result hook accepts only independently correlated successful single-run metadata and current
+Host predicates; `details.concorde_context.accepted` distinguishes acceptance from proposal/staging.
+The [native boundary](../harness/execution-reference.md#native-context-assessor) defines transport.
+Bare CLI/Studio execution without this Pi boundary reports `native_required`, never Pi-RPC fallback. The tool's `describe` action returns
 the Operation guidance and request schema without executing it.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
@@ -84,7 +88,8 @@ A caller supplies the selected Module, task, constraints, focus and current cand
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
 
-`plan` first obtains the separate [assessment](execution-reference.md). Only a sufficient result admits a
+`plan` retains its Graph-backed assessment stage, sharing the same dependency-stop and result
+identity/outcome predicates as the native public [assessment](execution-reference.md). Only a sufficient result admits a
 fresh planner invocation. Its optional concorde-plan-artifact is an explicitly admitted
 prior plan, not a predecessor conversation. The accepted output is a nonempty plan bound to the
 selected contract revision and intent. The host stores the target plan and returns artifact references
