@@ -131,8 +131,10 @@ The Spec Protocol defines which files a Module-bound reader may see and leaves t
 tool. The Framework chooses a context index and grant, so an invocation pays only for the documents
 its task opens, and every launch delivers the Spec context this way. The snapshot is
 the index, written to `context.json`; the `spec-context` role path list names that file together
-with every path in `spec_resolution.sources` and `protocol`, and the compiled policy grants
-exactly those paths read-only. Every grant is a project-relative path: Spec documents where they
+with every path in `spec_resolution.sources` and `protocol`. The intended grant names
+exactly those paths read-only. Native Agents have prompt-level file/network/credential policy,
+not OS/path-gate confinement or proof of exclusive reads. The historical RPC diagnostic policy
+compiler/tool gate and the actual configured-check/tester read-only OS boundary are separate. Every grant is a project-relative path: Spec documents where they
 live and the installed Protocol copy under `.concorde/protocol/`. In a capsule the host copies every
 granted file to that path, byte-identical to the digest the index records, before launch; in a
 project workspace the files are granted in place after the host verifies that their current bytes

@@ -86,11 +86,12 @@ class ResolveAgentBuildTests(unittest.TestCase):
                     binding.instructions_digest,
                     "sha256:" + hashlib.sha256(rendered.read_bytes()).hexdigest(),
                 )
-                # One rendered view: the common worker rules, then this worker's own role Spec.
+                # One rendered view: native terminal rules, then the canonical Agent role Spec.
                 text = rendered.read_text(encoding="utf-8")
                 self.assertIn(f"# concorde-{hyphenated}", text)
                 self.assertLess(
-                    text.index("submit_result"), text.index(f"# concorde-{hyphenated}")
+                    text.index("structured_output"),
+                    text.index(f"# concorde-{hyphenated}"),
                 )
                 self.assertEqual(binding.timeout_seconds, agent.timeout_seconds)
                 self.assertEqual(

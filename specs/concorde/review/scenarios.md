@@ -21,9 +21,9 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 - GIVEN an initialized project without a managed development change or preexisting Issue record
 - AND a task with an explicit Module target, optional same-owner scenario focus and no review-mode selector
-- WHEN the user invokes `concorde-spec-review` or `concorde-code-review` through the Pi `concorde` tool or its Studio entry
+- WHEN the user invokes `concorde-spec-review` or `concorde-code-review` through the Pi `concorde` tool and invokes the exact returned native workflow call
 - THEN the host validates the caller selection and a fresh reviewer receives its complete contract and, for `concorde-code-review`, only its admitted implementation files and scoped changes
-- AND the reviewer receives no write, network or credential authority
+- AND native write/edit/shell/delegation tools are absent while file/network/credential restrictions remain prompt-level policy
 - AND the host returns typed review coverage, findings, gaps and completion status, persisting the review report without creating a development change or changing project Specs or implementation
 - AND an unmanaged Git checkout uses HEAD as the scoped change baseline
 
@@ -64,3 +64,13 @@ The detailed contract is [Independent current review](execution-reference.md#rev
 - AND the parent aggregates only typed reports without starting component development or receiving component code
 - AND readiness checks the exact current component review scope, coverage, intent and artifact bytes without requiring a fictional local code review
 - AND changed inputs, corrupt reports or unrelated intent invalidate reuse while fresh review does not fabricate implementation completion
+
+### scenario.review.native-scope — Fresh native scopes reconcile complete typed evidence
+
+- GIVEN a deterministically selected owner/component/shared-consumer scope
+- WHEN its authored native workflow runs fresh scoped reviewers and fixed Host aggregation
+- THEN clean/advisory/blocking/incomplete results preserve their distinct meaning and genuine immutable receipts
+- AND wrong context/mode/receipt/coverage, stale inputs or missing/failed reviewers cannot accept a partial scope
+- AND shared consumers retain separate complete contexts and code-free parents aggregate applicable components
+- AND a scope of more than thirty-two reviewers uses the same two Host grants without a new business cap
+- AND required review and primary-authoritative evidence remain intact without a public Graph/RPC fallback

@@ -10,21 +10,28 @@
       "id": "entity.views.publication-docsite",
       "title": "Publication docsite",
       "kind": "program",
-      "files": ["docsite/"],
+      "files": [
+        "docsite/"
+      ],
       "meaning": "#entity.views.publication-docsite"
     },
     {
       "id": "entity.views.publication-scaffold",
       "title": "Publication scaffold",
       "kind": "program",
-      "files": ["src/concorde/views/", "tests/concorde/views/"],
+      "files": [
+        "src/concorde/views/",
+        "tests/concorde/views/"
+      ],
       "meaning": "#entity.views.publication-scaffold"
     },
     {
       "id": "entity.views.file-transactions",
       "title": "File transactions",
       "kind": "shared program",
-      "files": ["src/concorde/spec/changes.py"],
+      "files": [
+        "src/concorde/spec/changes.py"
+      ],
       "meaning": "#entity.views.file-transactions"
     },
     {

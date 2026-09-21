@@ -22,7 +22,7 @@ Review independently examines whether current specifications or code support the
 
 Use `concorde-spec-review` to assess a Module's complete specification and design, or
 `concorde-code-review` to compare its authorized implementation with that contract. These are
-separate public Operations, not modes of one entry. Both require an explicit Module target and task;
+separate native Workflow capabilities, not modes of one entry. Both require an explicit Module target and task;
 optional focus selects a scenario owned by that Module without trimming its complete context.
 An existing-change request supplies the current change ID. Neither accepts a review-mode selector. A standalone review runs in the current worktree without
 creating a development change, and neither reviewer can repair files.
@@ -56,18 +56,19 @@ then launches a fresh Spec or code reviewer under a read-only grant. Result admi
 identity, coverage, locations and gap/finding consistency before retaining a typed report. Peer
 reviews run separately and aggregate only results, not provider code or private conversation.
 
-Each public review Operation selects its own model-backed worker: `spec-reviewer` or `code-reviewer`.
-Each worker runs as one
-[Operation node](../harness/execution-reference.md#host-operation-node-operation-node) with its own
-read-only grant. Neither public entry has a separate Graph of its own. The common
-[target admission Graph](../operations/execution-reference.md#graphs-target-admission-graph-target-graph)
-deterministically validates the caller's selected Module and focus before admitting the reviewer.
-The
-[dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph)'s
-`review` leaf then reviews the owner, followed by each affected Module one at a time through the
-[Sequential work items Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph);
-the first review that does not complete stops the rest. A code review skips an affected Module that
-lists no implementation files.
+Public review prepares a named native workflow. The Host deterministically enumerates the owner,
+explicit components and affected consumers, then projects a separate fresh reviewer for each admitted
+Module. The authored workflow runs those reviewers sequentially; each sees only its own complete
+context and scoped changes. A fixed Host preflight step and one aggregate finalization step avoid
+per-item command grants and do not impose a new review-count cap. Native capacity/deadline limits
+still apply and cannot turn partial coverage into success. Code-free parents aggregate applicable
+components without inventing an owner code review.
+
+The Host independently checks exact coverage, identities, immutable receipts and current inputs
+before aggregating typed results. A native successful exit or staging gate is not accepted review.
+Failed/missing reviewers leave incomplete evidence and never downgrade required review. The public
+path does not use the former batch/Graph wrapper. Issue solving flattens fresh Issue-specific and ordinary native reviewer calls into its own bounded
+workflow. No public or Issue-internal failure falls back to legacy review/worker/batch execution.
 
 A review of yesterday's code cannot establish today's changed revision. Binding results to current
 inputs supports exact-intent reuse by composing graphs and fresh standalone review. Each reviewer
@@ -80,7 +81,7 @@ its wire representation does not authorize a repair or override lifecycle gates.
 
 This view covers selection, review admission and the resulting evidence, not a repair workflow.
 The calling agent selects the Module; [Spec Module](../spec/module.md) supplies current scope
-and finding ownership; [Harness Module](../harness/module.md) isolates the reviewer with read-only access. [Harness admission](../harness/admission.md) accepts
+and finding ownership; [Harness Module](../harness/module.md) delivers the reviewer's intended read-only context. [Harness admission](../harness/admission.md) accepts
 and stores the Review result against the frozen Review input. None of these dependency edges gives
 the reviewer write authority, and the result does not itself advance delivery or repair files.
 
@@ -103,7 +104,7 @@ flowchart TB
 
 <a id="entity.review.harness"></a><a id="agreement.document.review.module.2"></a>
 
-Run independent fresh Spec or code reviewers with read-only grants and no author conversation, network or credentials.
+Run independent fresh native Spec or code reviewers without author conversation or shell/write/edit/delegation tools. Their file/network/credential exclusions are prompt-level policy; fixed Host checks retain their separate actual isolation.
 
 This collaboration applies before each selected review mode and target is invoked, including recorded component reviews.
 
@@ -129,3 +130,7 @@ This collaboration applies when freezing a review scope, attributing findings or
 The Review Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
 [execution and record contracts](execution-reference.md#review-independent-review-operation).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+Native reviewer file scope is prompt-level policy, not OS confinement or proof of exclusive reads.
+Reviewers have read tools and, for code review, the fixed Host check service; no native shell/write/
+edit/delegation tools are supplied. Their conversation never inherits programmer reasoning.

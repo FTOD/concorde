@@ -38,14 +38,15 @@ Module target_id and task, optional same-owner focus_id, constraints and current
 The host deterministically resolves that selection; no router, inferred owner or context expansion
 precedes the fresh reviewer. Their closed request schemas have no review_mode field. Each entry
 selects only its own reviewer; the retired concorde-review operation and its request/response types
-have no alias. The Pi `concorde` tool forwards the selected Operation to the common launcher;
-Studio also admits these public Operations directly. Review runs in the current worktree without creating
+have no alias. The Pi `concorde` tool prepares the exact native scope workflow through finite Host admission.
+The caller invokes its returned native call and separately polls result acceptance. Public reviews
+have no Studio entry; the optional StateGraph Operation is a distinct explicit surface. Review runs in the current worktree without creating
 a development change or requiring a preexisting Issue record. The host may persist reports and existing
 change evidence, but reviewers receive no project write authority.
 Spec review uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code review uses those
 contracts, the target's exact current registered implementation-file enumeration and scoped code
-changes. Both roles have empty write grants, no network/credentials, fresh sessions, and empty
-predecessor input. Code review does not reuse implement's writable policy.
+changes. Both native roles have fresh sessions and no predecessor conversation or write/edit/shell/delegation
+tools. File/network/credential exclusions are prompt policy, not exclusive-read or OS confinement guarantees. Code review does not reuse implement's writable policy.
 
 The host compares the candidate's current bytes, including uncommitted and untracked owned files,
 against this managed change's recorded base_commit; an unmanaged Git checkout uses its current HEAD.
@@ -99,7 +100,7 @@ The table maps review reports to the Review response's domain `outcome`. An inte
 reviewer still produces an `incomplete` review report and a `failed` Review domain outcome.
 The trusted host separately preserves the `cancelled` or `limit_exhausted` execution
 classification supplied by the [Harness Module](../harness/module.md), as defined in its
-[execution outcomes](../harness/execution-reference.md#execution-outcomes), for the enclosing Graph, persisted candidate lifecycle and final events, following the
+[execution outcomes](../harness/execution-reference.md#execution-outcomes), for the enclosing native workflow, persisted candidate lifecycle and final events, following the
 [admission boundary](../harness/admission.md#operation-execution-boundary).
 Ordinary reviewer failures remain `failed`.
 
@@ -132,7 +133,7 @@ in the reviewing Module's admitted context: a test that declares such a scenario
 exercising its steps is a defect, while a declaration naming a scenario outside that context is
 assessed by the owning Module's review and is neither a defect nor a gap for the reviewing Module.
 A Module never gains a reference to a consumer's documents merely so its reviewer can read them.
-Each reviewer resolves its model Operation's execution profile and Harness under read-only permissions.
+Each reviewer binds its canonical native Agent profile and fresh intended read-only context.
 The host records input versions, coverage, immutable Issue judgments and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
 
@@ -199,3 +200,31 @@ implementation of its sequencing, artifact admission, recovery and completion po
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
 host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
 that reaches this provider.
+
+## Native public review workflow
+
+Run prepares a ticket-bound native scope; main invokes its exact returned async named workflow call,
+then polls the same operation with action `result`. The resource `concorde.review.<ticket>` expands
+authored `pi/workflows/review.js`, with only two fixed Host grants: bind/preflight and aggregate
+finalize. Review count has no Concorde business cap; native configured fanout, script/artifact and
+runtime limits remain authoritative and failure means incomplete scope, never successful truncation.
+
+Scope enumeration and aggregation share the existing owner/component/consumer and evidence predicates.
+Enumeration is deterministic. Every reviewer gets a separate issued identity, complete paired Specs,
+mode/input digest, scoped diff and (code only) selected frozen implementation copies/references. The
+input index contains typed snapshot/review values. Spec review admits no implementation contents.
+Native role instructions retain representative coverage and semantic terminology checks. Findings
+reference only genuine scoped report_issue receipts and preserve advisory/blocking/incomplete versus
+no-findings distinctions.
+
+Gates stage only. The workflow emits native child identities/metadata paths; one final Host step
+requires exact expected coverage and independently reads every native terminal metadata and saved
+proposal before any accepted review persistence. It re-admits each frozen input and rechecks parent
+scope/identity/currentness, then persists/aggregates typed results through shared domain functions.
+Missing or failed children and invalid identity/mode/receipt/coverage cannot produce successful partial
+acceptance. Failure evidence remains incomplete; requirements are not downgraded. Historical artifacts
+are retained. A changed parent/scope refuses rather than overwriting newer evidence.
+
+The temporary Issue-only legacy reviewer/batch path is removed. Issue verification reuses finite
+native scope preparation/admission and flattens fresh reviewer calls into its own authored workflow.
+Public and internal native failures never fall back to old RPC/Graph execution.

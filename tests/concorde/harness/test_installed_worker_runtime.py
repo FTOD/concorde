@@ -1,4 +1,4 @@
-"""Ignored consumer installation -> real relay -> sandboxed Pi RPC, with no live model.
+"""Installed low-level diagnostic driver -> admitted relay -> sandboxed Pi RPC, with no live model.
 
 The installer, managed interpreter, host-created candidate, worker profiles, tool extension,
 TypeBox and bubblewrap all run for real. Only the loopback model's responses are scripted.
@@ -16,7 +16,6 @@ import unittest
 from pathlib import Path
 
 from concorde.distribution.local_installation import verify_installation
-from concorde.harness.pi_rpc import run_prompt
 from concorde.harness.pi_worker import (
     PiWorkerRuntime,
     WorkerExecutionError,
@@ -188,46 +187,32 @@ class InstalledWorkerRuntimeTests(unittest.TestCase):
                     }
                 )
             )
-            provider.turns.insert(
-                0,
-                {
-                    "tool": "concorde",
-                    "arguments": {
-                        "operation": operation,
-                        "action": "run",
-                        "input": self.task,
-                    },
-                },
-            )
-            provider.turns.append({"text": "Completed scripted tool invocation."})
-            run = run_prompt(
+            value = {
+                "type_id": "concorde-operation-invocation",
+                "schema_version": 3,
+                "operation_id": operation,
+                "mode": "execute",
+                "configuration": None,
+                "input": typed(operation + "-request", self.task),
+            }
+            completed = subprocess.run(
                 [
-                    installed_pi(),
-                    "--mode",
-                    "rpc",
-                    "--no-session",
-                    "--no-context-files",
-                    "--no-skills",
-                    "--no-prompt-templates",
-                    "--no-themes",
-                    "--no-extensions",
-                    "-e",
-                    str(root / ".pi/extensions/concorde-session.ts"),
-                    "--no-approve",
-                    "--offline",
-                    "--tools",
-                    "concorde",
-                    "--model",
-                    "fake/fake-model",
+                    str(root / ".concorde/.venv/bin/python"),
+                    str(
+                        REPOSITORY_ROOT
+                        / "tests/concorde/support/installed_legacy_driver.py"
+                    ),
+                    operation,
                 ],
-                cwd=str(root),
+                input=json.dumps(value),
+                cwd=root,
                 env=self.environment,
-                message="Run the explicitly requested fixture Operation.",
+                capture_output=True,
+                text=True,
                 timeout=240,
             )
-        [tool] = run.results_of("concorde")
-        text = tool["result"]["content"][0]["text"]
-        result = json.JSONDecoder().raw_decode(text)[0]
+        self.assertIn(completed.returncode, {0, 3}, completed.stderr)
+        result = json.loads(completed.stdout)
         # Register cleanup even on a failed relayed launch. This is only our disposable
         # fixture candidate, never a maintenance worktree or retained acceptance evidence.
         workspace = result.get("workspace") or {}
@@ -239,8 +224,8 @@ class InstalledWorkerRuntimeTests(unittest.TestCase):
             self.candidate = Path(workspace["path"])
             self.addCleanup(self.remove_fixture_candidate)
         self.assertEqual(expected, result["status"], result)
-        self.assertEqual(expected != "succeeded", bool(tool.get("isError")), text)
-        self.assertTrue(provider.requests, "no real Pi provider request")
+        if turns:
+            self.assertTrue(provider.requests, "no real Pi provider request")
         return result, [
             request
             for request in provider.requests

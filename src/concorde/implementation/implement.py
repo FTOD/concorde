@@ -1,13 +1,8 @@
-"""Implementation of an accepted task list, or coordination of participating components."""
+"""Finite implementation admission and persistence; Pi owns programmer execution."""
 
 from __future__ import annotations
 
-from ..harness.change_worktree import (
-    progress,
-    read_change,
-    save_target_state,
-    target_state,
-)
+from ..harness.change_worktree import read_change, save_target_state, target_state
 from ..harness.revisions import (
     implementation_digest,
     target_revision,
@@ -15,7 +10,7 @@ from ..harness.revisions import (
 )
 from ..review.review import repair_feedback, require_spec_review
 from ..spec.repository import SpecError
-from ..spec.typed_data import typed
+from ..spec.typed_data import typed, canonical
 from ..spec.validation import validate_repository
 
 
@@ -26,13 +21,26 @@ def component_intent(tasks: list[dict]) -> str:
 
 
 def implement(run) -> dict:
+    raise SpecError(
+        "Implementation requires its native Pi programmer", "native_required"
+    )
+
+
+def prepare_implementation(run, *, admitted_inputs=None):
+    """Current domain selection; admitted feedback survives expected code edits only."""
     require_spec_review(run)
     pending = run.pending_gaps("implementation")
     if pending:
-        return run.response(
-            "spec_incomplete",
-            "Resolve the prerequisite task gaps before implementation.",
-            blockers=pending,
+        return (
+            None,
+            (),
+            {},
+            (),
+            run.response(
+                "spec_incomplete",
+                "Resolve prerequisite task gaps before implementation.",
+                blockers=pending,
+            ),
         )
     if not run.work_directory:
         raise SpecError(
@@ -43,12 +51,54 @@ def implement(run) -> dict:
     run.check_state(state)
     if not state["tasks"]:
         raise SpecError("implementation requires tasks", "missing_tasks")
-    if state.get("coordination") or any(
-        task["target_id"] != run.target.id for task in state["tasks"]
-    ):
-        return implement_scope(run, state)
+    allowed = {
+        run.target.id,
+        *run.target.uses,
+        *(child.id for child in run.repository.children(run.target)),
+    }
+    grouped = {}
+    for task in state["tasks"]:
+        if task["target_id"] not in allowed:
+            raise SpecError(
+                "component is not a declared dependency or child", "permission_denied"
+            )
+        grouped.setdefault(task["target_id"], []).append(task)
+    local = grouped.pop(run.target.id, [])
+    needed, revisions = [], {}
+    change = read_change(run.repository.root, required=True)
+    for target_id, tasks in grouped.items():
+        component = run.repository.select(target_id)
+        child = change["targets"].get(target_id, {})
+        if (
+            child.get("task") != component_intent(tasks)
+            or child.get("constraints", []) != run.task.get("constraints", [])
+            or child.get("spec_digest") != target_revision(run.repository, component)
+            or not child.get("tasks")
+            or any(not t["complete"] for t in child["tasks"])
+            or child.get("implementation_digest")
+            != implementation_digest(run.repository, component)
+        ):
+            needed.append({"target_id": target_id, "task": component_intent(tasks)})
+        else:
+            revisions[target_id] = {
+                "spec": target_revision(run.repository, component),
+                "implementation": implementation_digest(run.repository, component),
+            }
+    if needed:
+        return (
+            state,
+            local,
+            revisions,
+            (),
+            run.response(
+                "unsupported",
+                "Complete separately selected component work, then retry: "
+                + canonical(needed),
+            ),
+        )
     if (
-        validate_repository(
+        admitted_inputs is None
+        and validate_repository(
             run.repository.root, package_root=run.host.package_root
         ).status
         != "success"
@@ -57,35 +107,31 @@ def implement(run) -> dict:
             "reconcile all shared contracts before implementation",
             "incompatible_contracts",
         )
-    if not run.host.coordinated:
-        progress(
-            run.repository.root,
-            phase="implementation",
-            status="active",
-            invalidate=True,
+    if local and not run.target.files:
+        raise SpecError(
+            "implementation requires listed implementation files", "unsupported_target"
         )
     inputs = (
-        typed(
-            "concorde-implementation-task",
-            {"plan": state["plan"], "tasks": state["tasks"]},
-        ),
+        typed("concorde-implementation-task", {"plan": state["plan"], "tasks": local}),
     )
-    repair_review = state.get("repair_review")
-    if repair_review:
-        inputs = (*inputs, repair_feedback(run, repair_review))
-    result = run.stage("concorde-implement", inputs=inputs, defer_gap_resolution=True)
-    if result["outcome"] not in {"completed", "sufficient"}:
-        return run.response(
-            result["outcome"], result["answer"], blockers=result["blockers"]
-        )
-    if run.host.mode == "describe-policy":
-        return run.response("described")
-    returned = result["tasks"]
-    expected = [{**task, "complete": True} for task in state["tasks"]]
-    if returned != expected:
+    repair = state.get("repair_review")
+    if repair:
+        if admitted_inputs is None:
+            inputs = (*inputs, repair_feedback(run, repair))
+        else:
+            # The descriptor binds the exact accepted target state/reference. Re-evaluating
+            # feedback against intentionally changed code would falsely make repair stale.
+            from ..spec.typed_data import verify_artifacts
+
+            verify_artifacts(run.repository.root, repair)
+            inputs = tuple(admitted_inputs)
+    return state, local, revisions, inputs, None
+
+
+def validate_implementation(run, data, local):
+    if data["tasks"] != [{**task, "complete": True} for task in local]:
         raise SpecError(
-            "implementation must report every exact task complete",
-            "incomplete_tasks",
+            "implementation must report every exact task complete", "incomplete_tasks"
         )
     missing = unconfirmed_files(run.repository, run.target)
     if missing:
@@ -94,109 +140,17 @@ def implement(run) -> dict:
             + ", ".join(missing),
             "incomplete_tasks",
         )
-    state["tasks"] = returned
+
+
+def persist_implementation(run, data, state, local, revisions):
+    validate_implementation(run, data, local)
+    state["tasks"] = [{**task, "complete": True} for task in state["tasks"]]
     state["implementation_digest"] = implementation_digest(run.repository, run.target)
     state["checks"] = []
     state.pop("repair_review", None)
+    if revisions or state.get("coordination"):
+        state["component_revisions"] = revisions
     state.update(phase="implementation", status="completed")
     save_target_state(run.repository.root, state)
     run.record_gaps("implementation", [])
-    return run.response(answer=result["answer"])
-
-
-def implement_scope(run, state: dict) -> dict:
-    """Return separately selected component work; never author Specs or run child workflows."""
-    grouped = {}
-    allowed = {
-        run.target.id,
-        *run.target.uses,
-        *(child.id for child in run.repository.children(run.target)),
-    }
-    for task in state["tasks"]:
-        if task["target_id"] not in allowed:
-            raise SpecError(
-                "component is not a declared dependency or child", "permission_denied"
-            )
-        grouped.setdefault(task["target_id"], []).append(task)
-    local_tasks = grouped.pop(run.target.id, [])
-    needed = []
-    revisions = {}
-    for target_id, tasks in grouped.items():
-        component = run.repository.select(target_id)
-        intent = component_intent(tasks)
-        child = read_change(run.repository.root, required=True)["targets"].get(
-            target_id, {}
-        )
-        if (
-            child.get("task") != intent
-            or child.get("constraints", []) != run.task.get("constraints", [])
-            or child.get("spec_digest") != target_revision(run.repository, component)
-            or not child.get("tasks")
-            or any(not item["complete"] for item in child["tasks"])
-            or child.get("implementation_digest")
-            != implementation_digest(run.repository, component)
-        ):
-            needed.append({"target_id": target_id, "task": intent})
-        else:
-            revisions[target_id] = {
-                "spec": target_revision(run.repository, component),
-                "implementation": implementation_digest(run.repository, component),
-            }
-    if needed:
-        from ..spec.typed_data import canonical
-
-        return run.response(
-            "unsupported",
-            "The calling agent must select and complete component work independently, "
-            "including any needed Spec/metadata/registry edits and checks, then retry: "
-            + canonical(needed),
-        )
-    if (
-        validate_repository(
-            run.repository.root, package_root=run.host.package_root
-        ).status
-        != "success"
-    ):
-        return run.response(
-            "conflicting",
-            "The calling agent must reconcile participating Specs, paired metadata and registry before implementation.",
-        )
-    repair = state.get("repair_review")
-    feedback = (repair_feedback(run, repair),) if repair else ()
-    if local_tasks:
-        result = run.stage(
-            "concorde-implement",
-            inputs=(
-                typed(
-                    "concorde-implementation-task",
-                    {"plan": state["plan"], "tasks": local_tasks},
-                ),
-                *feedback,
-            ),
-            defer_gap_resolution=True,
-        )
-        if result["outcome"] not in {"completed", "sufficient"}:
-            return run.response(
-                result["outcome"], result["answer"], blockers=result["blockers"]
-            )
-        if result["tasks"] != [{**task, "complete": True} for task in local_tasks]:
-            raise SpecError(
-                "local implementation must complete every exact task",
-                "incomplete_tasks",
-            )
-        if unconfirmed_files(run.repository, run.target):
-            raise SpecError("listed implementation is missing", "incomplete_tasks")
-    state.pop("repair_review", None)
-    state["component_revisions"] = revisions
-    state["tasks"] = [{**task, "complete": True} for task in state["tasks"]]
-    state.update(
-        implementation_digest=implementation_digest(run.repository, run.target),
-        checks=[],
-        phase="implementation",
-        status="completed",
-    )
-    save_target_state(run.repository.root, state)
-    run.record_gaps("implementation", [])
-    return run.response(
-        answer="Local and separately completed component tasks are current; checks and reviews remain separate."
-    )
+    return run.response(answer=data["answer"])

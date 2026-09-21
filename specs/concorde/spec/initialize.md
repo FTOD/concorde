@@ -4,17 +4,17 @@ This document defines `concorde-init`'s propose/apply behavior. [module](module.
 
 ## Terminology
 
-| Term | Meaning / definition |
-| --- | --- |
-| Initialization | Creating the project's own configuration, registry and first honest specification after the Framework is installed. |
-| Initial proposal | The exact new files offered for inspection before initialization is applied. |
-| [Module](../module.md#terminology) | Defined in Concorde Framework. |
-| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
-| [Document role](values.md#terminology) | Defined in Identities and versions. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |
+| Term                                                        | Meaning / definition                                                                                                |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Initialization                                              | Creating the project's own configuration, registry and first honest specification after the Framework is installed. |
+| Initial proposal                                            | The exact new files offered for inspection before initialization is applied.                                        |
+| [Module](../module.md#terminology)                          | Defined in Concorde Framework.                                                                                      |
+| [Spec](../module.md#terminology)                            | Defined in Concorde Framework.                                                                                      |
+| [Registry](../module.md#terminology)                        | Defined in Concorde Framework.                                                                                      |
+| [Protocol binding](values.md#terminology)                   | Defined in Identities and versions.                                                                                 |
+| [Document role](values.md#terminology)                      | Defined in Identities and versions.                                                                                 |
+| [Worker](../module.md#terminology)                          | Defined in Concorde Framework.                                                                                      |
+| [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde.                                                                        |
 
 ## Propose, inspect and apply
 
@@ -30,10 +30,9 @@ requirements, scenarios and interface contracts belong in registered implementat
 It creates no invented acceptance cases to satisfy a template. Existing projects use explicit
 maintenance or topology changes, not reinitialization, to migrate their document collections.
 
-`concorde-init` makes no model call. It runs as the host's
-[project Graph](contracts.md#graphs-project-graph-project-graph): a
-deterministic `select_action` node sends `propose` to the node that builds the proposal and `apply`
-to the node that applies an unchanged proposal atomically. Each is a single deterministic node. A
+`concorde-init` makes no model call. Normal local calls directly select the deterministic proposal
+or atomic application service. The [former project Graph](contracts.md#graphs-project-graph-project-graph)
+is retired, not an alternative Studio entry. A
 describe-policy request is refused with `use_proposal`, because the proposal already is the preview.
 
 ### Protocol compatibility and initialization

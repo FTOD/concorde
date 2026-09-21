@@ -1,4 +1,4 @@
-"""Project initialization and configuration as deterministic project Graph nodes."""
+"""Deterministic project services, also reusable by explicit Studio Graph adapters."""
 
 from __future__ import annotations
 
@@ -8,15 +8,13 @@ from .typed_data import OPERATION_CONTRACTS, canonical, decode, typed
 
 
 def project_operation(operation, configuration, task, host):
-    from .project_graph import build_project_graph
-
-    return build_project_graph(
-        project_nodes(operation, configuration, task, host).__getitem__
-    ).invoke({})["output"]
+    services = project_nodes(operation, configuration, task, host)
+    action = services["select_action"]({})["route"]
+    return services[action]({})["output"]
 
 
 def project_nodes(operation, configuration, task, host):
-    from langgraph.graph import END
+    END = "__end__"
 
     from .initialize import apply_project_proposal, project_proposal
 

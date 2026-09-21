@@ -17,7 +17,7 @@ from concorde.harness.configuration import (
     load_configuration,
     propose_configuration,
 )  # noqa: E402
-from concorde.harness.host import OperationHost  # noqa: E402
+from tests.concorde.support.native_planning import OperationHost  # noqa: E402
 from concorde.harness.admission import run_operation  # noqa: E402
 from concorde.distribution.project_defaults import (
     PROTOCOL_MANIFEST_PATH,

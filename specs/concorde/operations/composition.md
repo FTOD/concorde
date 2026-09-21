@@ -1,6 +1,8 @@
 # Choosing and composing operations
 
-An Operation is the common executable unit for ordinary code, model work and composed graphs.
+The typed inventory distinguishes native Agents, native Workflows, finite Host tools and optional
+StateGraph Operations. The compatibility `operations/` path and `operation_id` spellings are not
+claims that every entry runs a Graph.
 This lets the host check how operations fit together without inventing a separate ownership model
 for every worker or library function.
 
@@ -21,8 +23,7 @@ for every worker or library function.
 ## Public entry or internal operation
 
 Developers invoke public Operations through the Pi tool or common launcher. The outer
-agent selects the target and orders calls; private model nodes remain available only to their
-declared composing Operation. Knowing an internal name is not permission to invoke it directly.
+agent selects the target and orders calls; prepared native Agents/workflows remain bound to their exact Host-issued invocation. Knowing an internal name is not permission to invoke it directly.
 
 For example, Planning returns a current plan and tasks, while Implementation fulfills accepted
 tasks under its bounded grant. The caller chooses their order without acquiring either provider's
@@ -38,7 +39,7 @@ workspace. The host checks declared composition as well as each invocation's act
 Some operations make no model calls; others do, directly or through composition. This distinction
 helps explain execution, but does not imply that filesystem or external effects are pure or repeatable.
 The exact inventory, State channels, adapters and compatibility rules are in Implementation Specs;
-the associated metadata remains the single machine-checked operation inventory.
+the associated metadata remains the single machine-checked typed executable inventory.
 
 ## Precise specifications
 

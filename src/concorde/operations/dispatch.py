@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from dataclasses import replace
+from pathlib import Path
 
 from ..harness.change_worktree import bind_owner, read_change
 from ..harness.invocation import Invocation
 from ..harness.relay import relay_operation
 from ..implementation.implement import implement
-from ..planning.plan import context_solve, plan, plan_nodes
+from ..planning.plan import context_solve, plan
 from ..planning.tasks import tasks
 from ..spec.contracts import MODEL_STAGES, REVIEW_OPERATIONS
 from ..spec.project import project_nodes, project_operation
@@ -52,8 +52,8 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         )
         change = read_change(host.project_root)
         if change and change.get("target_id") not in {None, task["target_id"]}:
-            from ..implementation.implement import component_intent
             from ..harness.revisions import target_revision
+            from ..implementation.implement import component_intent
 
             repository = SpecRepository(host.project_root, host.package_root)
             admitted = False
@@ -101,6 +101,27 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         return {"route": route}
 
     def describe_policy():
+        if (
+            operation
+            in {
+                "concorde-context-solve",
+                "concorde-plan",
+                "concorde-tasks",
+                "concorde-implement",
+            }
+            and host.native_assessment is not None
+        ):
+            return host.native_assessment(bound_run())
+        if operation == "concorde-context-solve" and host.executor is None:
+            if host.native_assessment is not None:
+                return host.native_assessment(bound_run())
+            from ..harness.native_context import assessment_context
+
+            assessment_context(bound_run())
+            return bound_run().response(
+                "described",
+                "Native context-assessor: prompt-level read-only policy; no model launched. Use the Pi preparation boundary for the exact context index and native call.",
+            )
         if operation == "concorde-issues" and (
             task["action"] != "solve" or task.get("_issue_closed")
         ):
@@ -124,7 +145,11 @@ def dispatch_graph_nodes(operation, configuration, task, host):
     def review():
         from ..review.review import review_scope
 
-        return review_scope(bound_run(), REVIEW_OPERATIONS[operation])
+        return (
+            host.native_assessment(bound_run())
+            if host.native_assessment
+            else review_scope(bound_run(), REVIEW_OPERATIONS[operation])
+        )
 
     def relay(state):
         target = host.relay_target
@@ -138,14 +163,43 @@ def dispatch_graph_nodes(operation, configuration, task, host):
             sys.stderr.flush()
         return {"relayed": envelope}
 
+    def native_issue():
+        if host.native_assessment:
+            return host.native_assessment(bound_run())
+        if task.get("_issue_closed"):
+            from ..issues.store import read_issue
+
+            value = bound_run().response(
+                "completed", "Issue is already disposed; no work replayed."
+            )
+            value["data"].update(
+                issues=[read_issue(host.project_root, task["issue_id"])[0]],
+                decision="already-closed",
+            )
+            return value
+        raise SpecError("Issue solving requires its native workflow", "native_required")
+
     entries = {
         "deliver": deliver,
         "project": project,
+        "native_issue": native_issue,
         "review": review,
         "describe_policy": describe_policy,
-        "plan": lambda: plan(bound_run()),
-        "tasks": lambda: tasks(bound_run()),
-        "implement": lambda: implement(bound_run()),
+        "plan": lambda: (
+            host.native_assessment(bound_run())
+            if host.native_assessment
+            else plan(bound_run())
+        ),
+        "tasks": lambda: (
+            host.native_assessment(bound_run())
+            if host.native_assessment
+            else tasks(bound_run())
+        ),
+        "implement": lambda: (
+            host.native_assessment(bound_run())
+            if host.native_assessment
+            else implement(bound_run())
+        ),
         "validate": lambda: validate(bound_run(), task.get("run_checks", True)),
         "context_solve": lambda: context_solve(bound_run(), operation),
     }
@@ -157,8 +211,6 @@ def dispatch_graph_nodes(operation, configuration, task, host):
                 subgraphs[name] = {"bind_target": bind_target}
             elif name == "project":
                 subgraphs[name] = project_nodes(operation, configuration, task, host)
-            elif name == "plan":
-                subgraphs[name] = plan_nodes(bound_run())
             elif name == "issues":
                 from ..issues.graph import issue_nodes
 

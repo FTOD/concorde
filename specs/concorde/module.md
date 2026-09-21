@@ -2,40 +2,42 @@
 
 ## Purpose
 
-Concorde helps developers agree on what software should do, execute changes within explicit boundaries and check the result before delivery. It provides complete, composable Operations for those tasks, supported by specifications that explain responsibilities, design and precise behavior. Developers can also ask questions, inspect documentation and track problems without starting a code change.
+Concorde helps developers agree on what software should do, execute changes within explicit boundaries and check the result before delivery. It provides native Agents and Workflows and finite Host services for those tasks, with separately selected optional StateGraph Operations, supported by specifications that explain responsibilities, design and precise behavior. Developers can also ask questions, inspect documentation and track problems without starting a code change.
 
 ## Terminology
 
-| Term                 | Meaning / definition                                                                                                                                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Module               | One cohesive software responsibility, such as planning a change or publishing documentation. It need not be a separate package.                                                                                                       |
-| Spec                 | The agreed description of a Module's intended behavior and design, used to guide work and judge its result.                                                                                                                           |
-| Module Specs         | The explanation-first part of a Module's Spec: purpose, concepts, correct use, design and collaborations.                                                                                                                             |
-| Implementation Specs | The same Module's precise requirements, acceptance situations and technical contracts. They are specifications, not source code.                                                                                                      |
-| Entity               | A named participant, concept or record that matters to a Module's behavior or design. Its role is explained where it participates.                                                                                                    |
-| Requirement          | A precise obligation applying across a Module, defined once with a stable identity.                                                                                                                                                   |
-| Scenario             | A concrete situation with preconditions, an action and an expected outcome, used as a basis for verification.                                                                                                                         |
-| Registry             | The explicit record of Modules, document owners, relationships and implementation-file bindings.                                                                                                                                      |
-| Context              | The information explicitly made available for one task. Knowing that another document exists does not make it available.                                                                                                              |
-| Grant                | Permission to use particular tools or read/write particular files for one invocation; information and permission are separate.                                                                                                        |
-| Snapshot             | A record of exactly which inputs a task received, so later changes can be detected.                                                                                                                                                   |
-| Evidence             | A recorded check or review result tied to the inputs it examined, not a permanent guarantee about future revisions.                                                                                                                   |
-| State                | The declared data channels an Operation accepts and updates when invoked as a graph node. State carries task information and results, never execution authority.                                                                      |
-| Operation            | Concorde's only executable entity: a complete callable with an input State, output State updates, effects, use conditions and execution policy. It can run as a LangGraph node using deterministic code, a model or a compiled graph. |
-| Skill                | Retired standalone client instructions, retained here only as migration terminology; no Concorde Skill product or client projection is supported.                                                                                     |
-| Pi integration       | The exact Pi extension entry and embedded public Operation catalog, bound to the Framework implementation and launcher that supplied them.                                                                                            |
-| Worker               | One fresh bounded Operation execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                        |
-| Task subagent        | A fresh one-layer delegate of the user-facing main session, owning one complete task in one fixed worktree without further task delegation.                                                                                           |
-| Host                 | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results.                                                                                                                          |
-| Harness              | The services that give a worker its inputs, tools, environment and limits, then check its result.                                                                                                                                     |
-| Graph                | LangGraph's declared nodes, edges and State channels for executing and composing Operations. A compiled graph can implement another Operation; a loop is a feedback path, not another executable kind.                                |
-| Candidate            | An isolated proposed project change together with its progress and verification records. It is not yet an update to the primary branch.                                                                                               |
-| Worktree             | A separate working directory of a Git repository, used here to keep candidate changes apart from primary work.                                                                                                                        |
-| Ready                | The candidate has met the required current checks and reviews; it has not thereby been delivered or merged.                                                                                                                           |
-| Delivery             | A separately requested operation that publishes a verified candidate and normally removes its source worktree; merging primary needs separate authorization.                                                                          |
-| Issue                | A durable record of an observed bug, missing/conflicting promise or limitation. Recording it does not itself stop work or authorize repair.                                                                                           |
-| Blocker              | A task's recorded dependency on a problem that prevents a particular next step. Releasing it does not automatically close the Issue.                                                                                                  |
-| Contract             | A precise agreement about inputs, effects, results, failures or constraints that callers and implementations rely on.                                                                                                                 |
+| Term                 | Meaning / definition                                                                                                                                                                                                                |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Module               | One cohesive software responsibility, such as planning a change or publishing documentation. It need not be a separate package.                                                                                                     |
+| Spec                 | The agreed description of a Module's intended behavior and design, used to guide work and judge its result.                                                                                                                         |
+| Module Specs         | The explanation-first part of a Module's Spec: purpose, concepts, correct use, design and collaborations.                                                                                                                           |
+| Implementation Specs | The same Module's precise requirements, acceptance situations and technical contracts. They are specifications, not source code.                                                                                                    |
+| Entity               | A named participant, concept or record that matters to a Module's behavior or design. Its role is explained where it participates.                                                                                                  |
+| Requirement          | A precise obligation applying across a Module, defined once with a stable identity.                                                                                                                                                 |
+| Scenario             | A concrete situation with preconditions, an action and an expected outcome, used as a basis for verification.                                                                                                                       |
+| Registry             | The explicit record of Modules, document owners, relationships and implementation-file bindings.                                                                                                                                    |
+| Context              | The information explicitly made available for one task. Knowing that another document exists does not make it available.                                                                                                            |
+| Grant                | Permission to use particular tools or read/write particular files for one invocation; information and permission are separate.                                                                                                      |
+| Snapshot             | A record of exactly which inputs a task received, so later changes can be detected.                                                                                                                                                 |
+| Evidence             | A recorded check or review result tied to the inputs it examined, not a permanent guarantee about future revisions.                                                                                                                 |
+| State                | The declared data channels an Operation accepts and updates when invoked as a graph node. State carries task information and results, never execution authority.                                                                    |
+| Operation            | A graph-bound executable entity: a complete callable with an input State, output State updates, effects, use conditions and execution policy. It can run as a LangGraph node using deterministic code, a model or a compiled graph. |
+| Skill                | Retired standalone client instructions, retained here only as migration terminology; no Concorde Skill product or client projection is supported.                                                                                   |
+| Pi integration       | The exact Pi extension entry and embedded public Operation catalog, bound to the Framework implementation and launcher that supplied them.                                                                                          |
+| Agent                | A callable native Pi role. The context-assessor is a terminal read-only role whose proposal needs independent Host acceptance.                                                                                                      |
+| Workflow             | An authored native pi-subagents composition ordering real Agent calls and finite granted Host steps; public planning uses this boundary.                                                                                            |
+| Worker               | One fresh bounded Agent execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                      |
+| Task subagent        | A fresh one-layer delegate of the user-facing main session, owning one complete task in one fixed worktree without further task delegation.                                                                                         |
+| Host                 | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results.                                                                                                                        |
+| Harness              | The services that give a worker its inputs, tools, environment and limits, then check its result.                                                                                                                                   |
+| Graph                | LangGraph's declared nodes, edges and State channels for executing and composing Operations. A compiled graph can implement another Operation; a loop is a feedback path, not another executable kind.                              |
+| Candidate            | An isolated proposed project change together with its progress and verification records. It is not yet an update to the primary branch.                                                                                             |
+| Worktree             | A separate working directory of a Git repository, used here to keep candidate changes apart from primary work.                                                                                                                      |
+| Ready                | The candidate has met the required current checks and reviews; it has not thereby been delivered or merged.                                                                                                                         |
+| Delivery             | A separately requested operation that publishes a verified candidate and normally removes its source worktree; merging primary needs separate authorization.                                                                        |
+| Issue                | A durable record of an observed bug, missing/conflicting promise or limitation. Recording it does not itself stop work or authorize repair.                                                                                         |
+| Blocker              | A task's recorded dependency on a problem that prevents a particular next step. Releasing it does not automatically close the Issue.                                                                                                |
+| Contract             | A precise agreement about inputs, effects, results, failures or constraints that callers and implementations rely on.                                                                                                               |
 
 A term explains a concept. It does not declare that a Module owns a file, depends on another
 Module or can read another worker's context; the registry records those facts separately, and
@@ -90,7 +92,11 @@ Reading a view or supplying feedback does not itself authorize changes or create
 
 ## Design
 
-**Operation is Concorde's only executable entity.** Each Operation declares input State, output
+**Graph-bound Operations and native Pi Agents have distinct execution boundaries.**
+Public context assessment prepares and calls a real native context-assessor Agent; finite Host
+services admit its result separately. Native plan orders assessor and planner through an authored pi-subagents workflow; tasks use a
+direct native task-author. Implement and public reviews now use native roles/workflows too; Issue solving also uses its bounded native workflow. Optional StateGraph Operations are a separately
+selected execution boundary, not mirrors of these capabilities. Each Operation declares input State, output
 State updates, effects, use conditions and execution policy. It can be called as a LangGraph node
 without its caller reconstructing context selection, permissions, model execution or result checks.
 Its implementation may be deterministic code, model execution or a compiled graph; composition
@@ -112,14 +118,14 @@ scenarios. A **Module owns a responsibility and its Spec**; it is not a synonym 
 Three relationships stay independent:
 
 - **Module ownership** identifies who promises behavior and owns its Spec. One Module can provide
-  several Operations, as Planning does; one composed Operation can rely on several provider Modules.
+  several capabilities, as Planning does; one workflow or Operation can rely on several provider Modules.
 - **Operation composition** identifies which Operations call others in a graph. It does not make
   a provider Module a child of the caller's Module.
 - **Context references** select knowledge supplied to a task. They neither compose Operations nor
   grant execution permission or transfer ownership.
 
 The Framework has six direct responsibility owners. [Operations](operations/module.md) keeps the
-catalog of every Operation, dispatches each admitted request to its provider and groups five
+typed inventory of capabilities and Agents, dispatches each admitted request to its provider and groups five
 provider Modules: Planning, Implementation, Review, Validation and Delivery.
 [Harness](harness/module.md) admits every request at one boundary and provides bounded model
 execution; [Spec](spec/module.md) resolves identities and complete contexts.
@@ -143,7 +149,7 @@ context references stay independent as described in Design.
 ```mermaid
 flowchart TB
     accTitle: Operations and shared execution services
-    accDescr: Harness admits every request and hands it to Operations, which dispatches it to the behavior provider that owns it. Operations bounds model execution through Harness and selects contracts through Spec. Distribution, Issues and Views support this work without creating additional executable entity kinds.
+    accDescr: Harness admits every request and hands it to Operations, which dispatches it to the behavior provider that owns it. Operations bounds model execution through Harness and selects contracts through Spec. Distribution, Issues and Views support distinct Agent, Workflow, Operation and Host-service execution kinds without changing Module ownership.
     operations["Operations"]
     harness["Harness"]
     spec["Spec"]
@@ -172,7 +178,7 @@ permission declaration.
 
 ## Compatibility and unresolved information
 
-Protocol 10/Profile 15 uses Operations and graphs consistently. Old executable names and record
+Protocol 10/Profile 15 distinguishes native Agents/Workflows, finite Host services and optional StateGraph Operations. Old executable names and record
 formats require the explicit refusal or migration described in the
 [Host boundary](harness/admission.md#wire-contracts); byte-bound evidence must be rebuilt.
 The source-maintenance record is `docs/changes/operations-graphs.md`, separate from current Spec

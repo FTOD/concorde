@@ -1,8 +1,7 @@
-"""Opt-in real WorkerProfile Server checks: CONCORDE_TEST_STUDIO=1 with uv's studio group.
+"""Opt-in actual Studio API for the genuine optional Operation, not capability graph mirrors.
 
-Only temporary consumer fixtures run operations. No source/primary-worktree state is changed.
-Model responses are deterministic; WorkerExecutor admission and compiled policy checks remain real.
-These server tests do not substitute for the separate real Pi tool-gate tests.
+CONCORDE_TEST_STUDIO=1 uses the locked studio dependency group. A separate trusted service fixture
+returns typed data; it is not native/model evidence. No provider, Agent or author task is launched.
 """
 
 import json
@@ -14,16 +13,12 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from concorde.harness.change_worktree import read_change
 from concorde.spec.verification import verifies
-from tests.concorde.harness.test_studio import (
-    assert_public_inventory,
-    invocation,
-    stable,
-)
-from tests.concorde.spec.support import PACKAGE, project
+from tests.concorde.harness.test_operation_node import _stage_context
+from tests.concorde.spec.support import PACKAGE
 
 
 @unittest.skipUnless(
@@ -32,66 +27,33 @@ from tests.concorde.spec.support import PACKAGE, project
 class StudioServerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temp = tempfile.TemporaryDirectory(prefix="concorde-studio-test-")
+        cls.temp = tempfile.TemporaryDirectory(prefix="concorde-studio-operation-")
         cls.addClassCleanup(cls.temp.cleanup)
         directory = Path(cls.temp.name)
-        cls.root = directory / "consumer"
-        cls.root.mkdir()
-        project(cls.root)
-        from tests.concorde.harness.test_worktree_lifecycle import (
-            WorktreeLifecycleTests,
-        )
-
-        cls.change_fixture = WorktreeLifecycleTests()
-        cls.change_fixture.setUp()
-        cls.addClassCleanup(cls.change_fixture.doCleanups)
-        cls.spec_fixture = WorktreeLifecycleTests()
-        cls.spec_fixture.setUp()
-        cls.addClassCleanup(cls.spec_fixture.doCleanups)
-        cls.review_mode = directory / "review-mode.txt"
-        cls.review_mode.write_text("success")
-        source = directory / "graphs.py"
-        source.write_text(
-            "from pathlib import Path\n"
-            "import json\n"
-            "from concorde.spec.contracts import PUBLIC_OPERATIONS\n"
-            "from concorde.harness.studio import build_studio_graph\n"
-            "from tests.concorde.spec.support import ModelProcessDouble\n"
-            f"review_mode = Path({str(cls.review_mode)!r})\n"
-            "def review_response(stage, snapshot, data, cwd):\n"
-            "    if stage != 'spec-review':\n"
-            "        return\n"
-            "    mode = review_mode.read_text()\n"
-            "    if mode == 'failed':\n"
-            "        raise RuntimeError('controlled reviewer failure')\n"
-            "    if mode == 'incomplete':\n"
-            "        data.update(status='incomplete', representative_tasks=[], answer='Coverage incomplete.')\n"
-            "    if mode == 'blocking':\n"
-            "        gap = dict(question='Which limit applies?', blocked_step='Review limit admission', needed_contract='Limit admission')\n"
-            "        data.update(status='findings', blockers=[gap], issues=[dict(id='limit', severity='blocking',\n"
-            "            target_id=snapshot['target_id'], document='specs/transfer/module.md', contract=gap['needed_contract'],\n"
-            "            location=dict(path='specs/transfer/module.md', line=1), problem='Limit is unspecified.',\n"
-            "            affected_task=gap['blocked_step'])])\n"
-            "double = ModelProcessDouble(review_response)\n"
-            "def executor(launch, *, checks=None, report_issue=None):\n"
-            "    value = json.loads(launch.context_json)['data']\n"
-            "    snapshot = value.get('snapshot', {}).get('data', value)\n"
-            "    if snapshot.get('task') == 'Trigger executor failure':\n"
-            "        raise RuntimeError('fixture executor failure')\n"
-            "    return double.executor(launch, checks=checks, report_issue=report_issue)\n"
-            "for op in PUBLIC_OPERATIONS:\n"
-            f"    roots = {{**dict.fromkeys(('concorde-plan', 'concorde-tasks', 'concorde-implement', 'concorde-validate'), {str(cls.change_fixture.change)!r}), 'concorde-spec-review': {str(cls.spec_fixture.change)!r}}}\n"
-            f"    root = Path(roots.get(op, {str(cls.root)!r}))\n"
-            "    globals()[op.replace('-', '_')] = build_studio_graph(op, root, "
-            f"Path({str(PACKAGE)!r}), executor=executor)\n"
-        )
-        manifest = json.loads((PACKAGE / "generated/langgraph.json").read_text())
-        manifest["graphs"] = {
-            op: f"{source}:{op.replace('-', '_')}" for op in manifest["graphs"]
+        fixture = directory / "trusted_service.py"
+        fixture.write_text("""from concorde.harness.studio import build_studio_graph
+from concorde.spec.typed_data import typed
+async def trusted_service(context):
+    return typed('concorde-agent-stage-result',dict(context_id=context['data']['snapshot']['data']['context_id'],outcome='completed',answer='Explicit trusted service fixture; not model evidence',blockers=[],documents=[],plan='Typed fixture plan',tasks=[]))
+operation=build_studio_graph('planner',launcher=trusted_service)
+""")
+        source_config = PACKAGE / "generated/langgraph.json"
+        config = json.loads(source_config.read_text())
+        assert set(config["graphs"]) == {"terminal-agent-operation"}, config
+        cls.assert_config = config
+        # The CLI resolves graph and dependency paths from the selected package cwd.
+        config["dependencies"] = [
+            str((PACKAGE / p).resolve()) for p in config["dependencies"]
+        ]
+        config["graphs"] = {
+            key: str((PACKAGE / value.split(":")[0]).resolve())
+            + ":"
+            + value.split(":")[1]
+            for key, value in config["graphs"].items()
         }
-        manifest["dependencies"] = [str(PACKAGE)]
-        config = directory / "langgraph.json"
-        config.write_text(json.dumps(manifest))
+        config["graphs"]["fixture-agent-operation"] = str(fixture) + ":operation"
+        file = directory / "langgraph.json"
+        file.write_text(json.dumps(config))
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
             port = sock.getsockname()[1]
@@ -100,468 +62,110 @@ class StudioServerTests(unittest.TestCase):
         cls.addClassCleanup(cls.log.close)
         environment = {
             **os.environ,
-            "PYTHONPATH": os.pathsep.join([str(PACKAGE / "src"), str(PACKAGE)]),
             "LANGSMITH_TRACING": "false",
             "LANGGRAPH_CLI_NO_ANALYTICS": "1",
         }
-        environment.pop("CONCORDE_STUDIO_URL", None)
+        for key in ("PYTHONPATH", "CONCORDE_STUDIO_URL", "CONCORDE_SESSION_SELECTION"):
+            environment.pop(key, None)
         cls.server = subprocess.Popen(
             [
                 sys.executable,
                 "-m",
                 "langgraph_cli",
                 "dev",
-                "--no-browser",
-                "--no-reload",
+                "--config",
+                str(file),
                 "--host",
                 "127.0.0.1",
                 "--port",
                 str(port),
-                "--config",
-                str(config),
-                "--n-jobs-per-worker",
-                "1",
+                "--no-browser",
+                "--no-reload",
             ],
             cwd=directory,
             env=environment,
             stdout=cls.log,
-            stderr=cls.log,
+            stderr=subprocess.STDOUT,
         )
-        cls.addClassCleanup(cls.stop_server)
-        deadline = time.monotonic() + 45
+        cls.addClassCleanup(cls.stop)
+        deadline = time.monotonic() + 60
         while time.monotonic() < deadline:
             try:
                 cls.request("/ok")
                 return
-            except Exception:
+            except (OSError, ValueError):
                 if cls.server.poll() is not None:
                     break
                 time.sleep(0.2)
-        cls.log.flush()
         cls.log.seek(0)
-        raise AssertionError("Studio failed to start:\n" + cls.log.read()[-12000:])
+        raise AssertionError(cls.log.read())
 
     @classmethod
-    def stop_server(cls):
-        cls.server.terminate()
+    def stop(cls):
+        if cls.server.poll() is None:
+            cls.server.terminate()
+            try:
+                cls.server.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                cls.server.kill()
+                cls.server.wait()
+
+    @classmethod
+    def request(cls, path, body=None):
+        request = Request(
+            cls.base + path,
+            data=json.dumps(body).encode() if body is not None else None,
+            headers={"Content-Type": "application/json"},
+        )
         try:
-            cls.server.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            cls.server.kill()
-            cls.server.wait(timeout=10)
+            with urlopen(request, timeout=30) as response:
+                return json.load(response)
+        except HTTPError as error:
+            raise AssertionError(error.read().decode()) from error
 
-    @classmethod
-    def request(cls, path, payload=None):
-        data = json.dumps(payload).encode() if payload is not None else None
-        with urlopen(  # noqa: S310 - base is this test's loopback HTTP server
-            Request(
-                cls.base + path, data=data, headers={"Content-Type": "application/json"}
-            ),
-            timeout=20,
-        ) as response:
-            return json.load(response)
-
-    def run_graph(self, value, **extra):
+    def run_graph(self, name, data):
         thread = self.request("/threads", {})["thread_id"]
-        state = self.request(
-            f"/threads/{thread}/runs/wait",
-            {
-                "assistant_id": value["operation_id"],
-                "input": {"invocation": value, **extra},
-            },
+        run = self.request(
+            f"/threads/{thread}/runs", {"assistant_id": name, "input": data}
         )
-        self.assertNotIn("__error__", state, state)
-        return thread, state
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            run = self.request(f"/threads/{thread}/runs/{run['run_id']}")
+            if run["status"] not in {"pending", "running"}:
+                break
+            time.sleep(0.1)
+        return run, self.request(f"/threads/{thread}/state")
 
-    def cli(self, value, forwarded=True):
-        argv = [
-            sys.executable,
-            str(PACKAGE / "scripts/run-operation.py"),
-            value["operation_id"],
-        ]
-        env = {**os.environ}
-        env.pop("CONCORDE_STUDIO_URL", None)
-        if forwarded:
-            env["CONCORDE_STUDIO_URL"] = self.base
-        return subprocess.run(
-            argv,
-            input=json.dumps(value),
-            text=True,
-            capture_output=True,
-            cwd=self.root,
-            env=env,
-            timeout=30,
-        )
-
-    # Inventory, schemas and admission rejection do not establish successful execution.
-    @verifies("scenario.harness.graph-inspection")
-    def test_all_public_registered_assistants_have_schemas_and_execute_validation(self):
-        assistants = self.request("/assistants/search", {"limit": 100})
-        assert_public_inventory(
-            self, [assistant["graph_id"] for assistant in assistants]
-        )
+    @verifies(
+        "scenario.harness.optional-operation", "scenario.harness.graph-inspection"
+    )
+    def test_default_export_is_real_inspectable_and_has_no_implicit_service(self):
+        graph = self.request("/assistants/terminal-agent-operation/graph?xray=1")
         self.assertEqual(
-            len(assistants),
-            len({assistant["assistant_id"] for assistant in assistants}),
+            {node["id"] for node in graph["nodes"]},
+            {"__start__", "terminal_agent", "__end__"},
         )
-        for assistant in assistants:
-            operation = assistant["graph_id"]
-            with self.subTest(operation=operation):
-                schema = self.request(
-                    f"/assistants/{assistant['assistant_id']}/schemas"
-                )
-                self.assertIn("invocation", schema["input_schema"]["properties"])
-                _, state = self.run_graph(
-                    invocation(operation, data={"invalid_field": True})
-                )
-                self.assertEqual("blocked", state["result"]["status"], state)
+        assistant = self.request(
+            "/assistants/search", {"graph_id": "terminal-agent-operation"}
+        )[0]
+        schemas = self.request("/assistants/" + assistant["assistant_id"] + "/schemas")
+        self.assertIn("input_schema", schemas)
+        context = _stage_context()["data"]
+        context["snapshot"]["data"]["phase"] = "context-solve"
+        run, state = self.run_graph("terminal-agent-operation", context)
+        self.assertEqual(run["status"], "error", run)
+        self.log.flush()
+        self.log.seek(0)
+        self.assertIn("inspection only", self.log.read())
 
-    @verifies("scenario.harness.graph-inspection")
-    def test_graph_topology_expands_over_the_real_viewer_api(self):
-        assistants = self.request("/assistants/search", {"limit": 100})
-        for assistant in assistants:
-            operation = assistant["graph_id"]
-            with self.subTest(operation=operation):
-                drawing = self.request(
-                    f"/assistants/{assistant['assistant_id']}/graph?xray=true"
-                )
-                nodes = {node["id"] for node in drawing["nodes"]}
-                self.assertIn(operation + ":admit_request", nodes)
-                self.assertIn(operation + ":execute:select_operation", nodes)
-                self.assertFalse(
-                    any("discover" in node or "specify_loop" in node for node in nodes)
-                )
-                if operation == "concorde-plan":
-                    self.assertTrue(
-                        any(node.endswith(":author_plan:planner") for node in nodes)
-                    )
-
-    @verifies("scenario.harness.execute-operation")
-    def test_direct_execution_and_cli_skill_launcher_json_parity(self):
-        value = invocation()
-        _, direct = self.run_graph(value)
-        self.assertEqual("succeeded", direct["result"]["status"], direct)
-        self.assertEqual(
-            value["operation_id"] + "-response", direct["result"]["output"]["type_id"]
-        )
-        for forwarded in (False, True):
-            with self.subTest(forwarded=forwarded):
-                result = self.cli(value, forwarded)
-                self.assertEqual(0, result.returncode, result.stderr + result.stdout)
-                self.assertEqual(
-                    stable(direct["result"]), stable(json.loads(result.stdout))
-                )
-                if forwarded:
-                    self.assertIn("Concorde Studio thread:", result.stderr)
-                    thread = result.stderr.split("Concorde Studio thread: ")[1].split()[
-                        0
-                    ]
-                    saved = self.request(f"/threads/{thread}/state")["values"]
-                    self.assertEqual(json.loads(result.stdout), saved["result"])
-
-    def test_live_custom_stream_contains_process_stages_and_persisted_result(self):
-        value = invocation(
-            "concorde-context-solve",
-            data={"target_id": "service.transfer", "task": "Explain transfer"},
-        )
-        thread = self.request("/threads", {})["thread_id"]
-        payload = {
-            "assistant_id": value["operation_id"],
-            "input": {"invocation": value},
-            "stream_mode": ["custom", "updates"],
-        }
-        with urlopen(  # noqa: S310 - base is this test's loopback HTTP server
-            Request(
-                self.base + f"/threads/{thread}/runs/stream",
-                data=json.dumps(payload).encode(),
-                headers={"Content-Type": "application/json"},
-            ),
-            timeout=30,
-        ) as response:
-            stream = response.read().decode()
-        self.assertIn("event: custom", stream)
-        self.assertIn('"agent_started"', stream)
-        state = self.request(f"/threads/{thread}/state")["values"]
-        self.assertEqual("succeeded", state["result"]["status"], state)
-        self.assertEqual(
-            ["context-solve"],
-            [e["stage"] for e in state["events"] if e["event"] == "agent_finished"],
-        )
-        self.assertEqual("operation_finished", state["events"][-1]["event"])
-
-    def test_describe_policy_stderr_and_error_exit_compatibility(self):
-        value = invocation("concorde-context-solve", "describe-policy")
-        result = self.cli(value)
-        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
-        self.assertEqual("described", json.loads(result.stdout)["status"])
-        policies = [
-            json.loads(line)
-            for line in result.stderr.splitlines()
-            if line.startswith('{"policies"')
-        ]
-        self.assertTrue(policies[0]["policies"])
-        value["input"]["data"]["unknown"] = True
-        local = self.cli(value, forwarded=False)
-        remote = self.cli(value)
-        self.assertEqual(3, remote.returncode)
-        self.assertEqual(
-            stable(json.loads(local.stdout)), stable(json.loads(remote.stdout))
-        )
-
-    def test_wrong_workspace_is_blocked_before_any_operation_event(self):
-        _, state = self.run_graph(
-            invocation(),
-            expected_workspace={
-                "project_root": str(PACKAGE),
-                "package_root": str(PACKAGE),
-            },
-        )
-        self.assertEqual("workspace_mismatch", state["result"]["errors"][0]["code"])
-        self.assertEqual([], state["events"])
-        # Same CLI entry, but its cwd belongs to another workspace.
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(PACKAGE / "scripts/run-operation.py"),
-                "concorde-issues",
-            ],
-            input=json.dumps(invocation()),
-            text=True,
-            capture_output=True,
-            cwd=PACKAGE,
-            env={**os.environ, "CONCORDE_STUDIO_URL": self.base},
-            timeout=30,
-        )
-        self.assertEqual(3, result.returncode)
-        self.assertEqual(
-            "workspace_mismatch", json.loads(result.stdout)["errors"][0]["code"]
-        )
-
-    @verifies("scenario.harness.graph-execution")
-    def test_explicit_work_executes_mutations_and_checkpoints_only_inside_fixture_worktree(
+    @verifies("scenario.harness.optional-operation")
+    def test_explicit_async_service_executes_typed_state_and_rejects_invalid_input(
         self,
     ):
-        primary_transfer = self.change_fixture.primary / "app/transfer.py"
-        primary_before = primary_transfer.read_bytes()
-        for operation in (
-            "concorde-plan",
-            "concorde-tasks",
-            "concorde-implement",
-            "concorde-validate",
-        ):
-            thread, state = self.run_graph(
-                invocation(operation, data=self.change_fixture.task)
-            )
-            self.assertEqual("succeeded", state["result"]["status"], state)
-            saved = self.request(f"/threads/{thread}/state")["values"]
-            self.assertEqual(state["result"], saved["result"])
-        self.assertEqual("ready", state["result"]["output"]["data"]["outcome"])
-        saved = self.request(f"/threads/{thread}/state")["values"]
-        self.assertEqual(state["result"], saved["result"])
-        self.assertIn(
-            "return balance - amount",
-            (self.change_fixture.change / "app/transfer.py").read_text(),
+        run, state = self.run_graph("fixture-agent-operation", _stage_context()["data"])
+        self.assertEqual(run["status"], "success", run)
+        self.assertEqual(state["values"]["plan"], "Typed fixture plan")
+        run, state = self.run_graph(
+            "fixture-agent-operation", {"snapshot": {"foreign": True}}
         )
-        self.assertEqual(primary_before, primary_transfer.read_bytes())
-
-    @verifies("scenario.harness.graph-inspection")
-    def test_standalone_review_finishes_spec_only_in_its_own_fixture(self):
-        fixture = self.spec_fixture
-        from concorde.harness.change_worktree import ensure_change, bind_owner
-
-        ensure_change(fixture.change, task=fixture.task)
-        bind_owner(fixture.change, fixture.task)
-
-        def tracked_bytes(root):
-            paths = (
-                subprocess.run(
-                    ["git", "ls-files", "-z"], cwd=root, capture_output=True, check=True
-                )
-                .stdout.decode()
-                .split("\0")
-            )
-            return {path: (root / path).read_bytes() for path in paths if path}
-
-        primary_before = tracked_bytes(fixture.primary)
-        other_primary_before = tracked_bytes(self.change_fixture.primary)
-        other_candidate_before = tracked_bytes(self.change_fixture.change)
-        other_lifecycle_before = read_change(self.change_fixture.change)
-        implementation_before = (fixture.change / "app/transfer.py").read_bytes()
-        thread, state = self.run_graph(
-            invocation("concorde-spec-review", data=fixture.task)
-        )
-        self.assertEqual("succeeded", state["result"]["status"], state)
-        self.assertEqual("concorde-operation-result", state["result"]["type_id"])
-        self.assertEqual(3, state["result"]["schema_version"])
-        self.assertEqual("concorde-spec-review", state["result"]["operation_id"])
-        self.assertEqual(
-            "concorde-spec-review-response", state["result"]["output"]["type_id"]
-        )
-        self.assertEqual(3, state["result"]["output"]["schema_version"])
-        self.assertEqual("completed", state["result"]["output"]["data"]["outcome"])
-        stages = [e["stage"] for e in state["events"] if e["event"] == "agent_finished"]
-        self.assertEqual(["spec-review"], stages)
-        started = [e for e in state["events"] if e["event"] == "agent_started"]
-        self.assertEqual(1, len({e["invocation_id"] for e in started}))
-        self.assertEqual(
-            [(e["stage"], e["invocation_id"]) for e in started],
-            [
-                (e["stage"], e["invocation_id"])
-                for e in state["events"]
-                if e["event"] == "agent_finished"
-            ],
-        )
-        self.assertEqual([], state["result"]["output"]["data"]["checks"])
-        self.assertFalse(
-            any(
-                e.get("stage")
-                in {
-                    "plan",
-                    "tasks",
-                    "implement",
-                    "implementation",
-                    "validate",
-                    "code-review",
-                    "ready",
-                }
-                for e in state["events"]
-            )
-        )
-        change = read_change(fixture.change, required=True)
-        self.assertNotEqual("ready", change["status"])
-        self.assertFalse(
-            change["targets"].get(fixture.task["target_id"], {}).get("plan")
-        )
-        self.assertEqual(
-            {"spec": True}, change["review_requirements"][fixture.task["target_id"]]
-        )
-        self.assertEqual(
-            implementation_before, (fixture.change / "app/transfer.py").read_bytes()
-        )
-        self.assertEqual(primary_before, tracked_bytes(fixture.primary))
-        self.assertEqual(
-            other_primary_before, tracked_bytes(self.change_fixture.primary)
-        )
-        self.assertEqual(
-            other_candidate_before, tracked_bytes(self.change_fixture.change)
-        )
-        self.assertEqual(
-            other_lifecycle_before,
-            read_change(self.change_fixture.change),
-        )
-        saved = self.request(f"/threads/{thread}/state")["values"]
-        self.assertEqual(state["result"], saved["result"])
-        self.assertEqual({"invocation", "result", "policies", "events"}, set(saved))
-        self.assertEqual(saved, json.loads(json.dumps(saved, allow_nan=False)))
-        history = self.request(f"/threads/{thread}/history", {"limit": 100})
-        self.assertTrue(history)
-        for checkpoint in history:
-            values = checkpoint["values"]
-            self.assertLessEqual(
-                set(values),
-                {"invocation", "expected_workspace", "result", "policies", "events"},
-            )
-            self.assertEqual(values, json.loads(json.dumps(values, allow_nan=False)))
-
-            def check_private_keys(value):
-                if isinstance(value, dict):
-                    self.assertFalse(
-                        {
-                            "session",
-                            "snapshot",
-                            "context_json",
-                            "input_json",
-                            "resolve_context",
-                            "node_factory",
-                        }
-                        & value.keys()
-                    )
-                    for child in value.values():
-                        check_private_keys(child)
-                elif isinstance(value, list):
-                    for child in value:
-                        check_private_keys(child)
-
-            check_private_keys(values)
-
-        # Change real fixture bytes so a previously accepted review cannot be reused.
-        # The server remains real; only its model response is controlled by this seam.
-        document = fixture.change / "specs/transfer/module.md"
-        original = document.read_text()
-        try:
-            for mode in ("failed", "incomplete", "blocking"):
-                with self.subTest(review=mode):
-                    document.write_text(
-                        original + "\nReview fixture revision: " + mode + "\n"
-                    )
-                    self.review_mode.write_text(mode)
-                    request = {
-                        **fixture.task,
-                        "change_id": change["change_id"],
-                    }
-                    _, stopped = self.run_graph(
-                        invocation("concorde-spec-review", data=request)
-                    )
-                    self.assertNotEqual(
-                        "succeeded", stopped["result"]["status"], stopped
-                    )
-                    self.assertTrue(
-                        any(
-                            e.get("stage") == "spec-review"
-                            and e["event"] == "agent_started"
-                            for e in stopped["events"]
-                        )
-                    )
-                    self.assertFalse(
-                        any(
-                            e.get("stage")
-                            in {
-                                "plan",
-                                "tasks",
-                                "implementation",
-                                "validate",
-                                "code-review",
-                                "ready",
-                            }
-                            for e in stopped["events"]
-                        )
-                    )
-                    current = read_change(fixture.change, required=True)
-                    self.assertTrue(
-                        current["review_requirements"][fixture.task["target_id"]][
-                            "spec"
-                        ]
-                    )
-                    self.assertNotEqual("ready", current["status"])
-                    self.assertEqual(primary_before, tracked_bytes(fixture.primary))
-                    self.assertEqual(
-                        implementation_before,
-                        (fixture.change / "app/transfer.py").read_bytes(),
-                    )
-        finally:
-            self.review_mode.write_text("success")
-
-    def test_executor_failure_survives_forwarding_with_events_and_exit_three(self):
-        value = invocation(
-            "concorde-context-solve",
-            data={"target_id": "service.transfer", "task": "Trigger executor failure"},
-        )
-        _, state = self.run_graph(value)
-        self.assertEqual("failed", state["result"]["status"], state)
-        self.assertTrue(
-            any(event["event"] == "agent_failed" for event in state["events"])
-        )
-        self.assertEqual("operation_finished", state["events"][-1]["event"])
-        result = self.cli(value)
-        self.assertEqual(3, result.returncode)
-        self.assertEqual(stable(state["result"]), stable(json.loads(result.stdout)))
-
-    def test_invalid_envelope_resets_a_previously_successful_thread(self):
-        thread, _ = self.run_graph(invocation())
-        state = self.request(
-            f"/threads/{thread}/runs/wait",
-            {"assistant_id": "concorde-issues", "input": {"invocation": {}}},
-        )
-        self.assertEqual("invalid_input", state["result"]["errors"][0]["code"])
-        self.assertIsNone(state["result"]["output"])
-        self.assertEqual([], state["events"])
+        self.assertEqual(run["status"], "error", run)

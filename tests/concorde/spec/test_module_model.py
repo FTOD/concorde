@@ -1097,7 +1097,7 @@ class ModuleImplementationTests(unittest.TestCase):
     def test_shared_code_review_preserves_separate_module_contexts_and_peer_findings(
         self,
     ):
-        from concorde.harness.host import OperationHost
+        from tests.concorde.support.native_planning import OperationHost
         from concorde.review.review import review_scope
         from tests.concorde.spec.support import ModelProcessDouble
 
@@ -1161,7 +1161,7 @@ class ModuleImplementationTests(unittest.TestCase):
         import subprocess
 
         from concorde.harness.change_worktree import ensure_change
-        from concorde.harness.host import OperationHost
+        from tests.concorde.support.native_planning import OperationHost
         from concorde.review.review import code_review_peers, review_scope
         from tests.concorde.spec.support import ModelProcessDouble
 
@@ -1319,7 +1319,7 @@ class ModuleImplementationTests(unittest.TestCase):
 
     def test_code_writer_cannot_author_spec_documents(self):
         from concorde.harness.admission import run_operation
-        from concorde.harness.host import OperationHost
+        from tests.concorde.support.native_planning import OperationHost
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble, project
 
@@ -1368,7 +1368,7 @@ class ModuleImplementationTests(unittest.TestCase):
     @verifies("scenario.spec.directory-entry")
     def test_a_code_writer_may_create_a_file_below_a_listed_directory(self):
         from concorde.harness.admission import run_operation
-        from concorde.harness.host import OperationHost
+        from tests.concorde.support.native_planning import OperationHost
         from concorde.spec.typed_data import typed
         from tests.concorde.spec.support import ModelProcessDouble, project
 

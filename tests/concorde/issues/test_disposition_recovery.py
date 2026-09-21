@@ -7,7 +7,8 @@ import unittest
 from unittest.mock import patch
 
 from concorde.harness import change_worktree
-from concorde.issues import graph, store
+from concorde.issues import solve as graph
+from concorde.issues import store
 from concorde.spec.repository import digest
 from concorde.spec.verification import verifies
 
@@ -51,7 +52,7 @@ class DispositionRecoveryTests(unittest.TestCase):
                 raise OSError("injected checkpoint failure: " + status)
             return original(root, state, **kwargs)
 
-        return patch.object(change_worktree, "save_change", side_effect=save)
+        return patch.object(graph, "save_change", side_effect=save)
 
     def assert_recovered(self, result):
         self.assertEqual("succeeded", result["status"], result)

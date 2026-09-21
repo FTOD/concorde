@@ -26,3 +26,11 @@ Do not claim this compares against another branch or a merge base. Report the re
 coverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do
 not authorize repairs. describe-policy previews grants without launching agents or persisting
 review results. A separate review intent cannot replace another task's required lifecycle review.
+
+## Native execution
+
+Run prepares an exact named async native review workflow. Invoke returned `call` unchanged, then
+poll this same operation with action `result`. Only full independently admitted scope can be accepted;
+native success/staging alone is not accepted review. Each reviewer has fresh separate context.
+The workflow uses two fixed Host steps regardless of reviewer count; native budgets remain enforced.
+No public Graph/Pi-RPC fallback or automatic downstream readiness/integration occurs.

@@ -284,130 +284,58 @@ Candidate-local completion does not mean primary was changed; delivery remains s
 
 #### Issue Graph (`issue_graph`) {#lifecycle-issue-graph-issue-graph}
 
-**State.** `route`, `output` and the guarded failure `result`. Selected record bytes, decision
-count, intended behavior, solver decision and current verification are bound by the Host/closures;
-durable attempt history belongs to the candidate. All three Graph channels use replacement
-updates. No node reads an incoming Graph channel directly: `none` below means Host-bound inputs,
-not an empty task. Edges read `route`/`result` after each update. In admitted execution every
-node's guard resets `result` to None on success, or records a failure and `route=__end__` on
-exception. `close` has an empty normal update: the disposition and write-ahead journal are file
-effects, not a `disposition` State channel.
+This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
+the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
+is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
 
-**Nodes.**
-
-| Node               | Executes                                                                                                                     | in   | out            |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ---- | -------------- |
-| `select_operation` | Selects the Host-bound action.                                                                                               | none | route, result  |
-| `inspect`          | Looks up the Host-bound selection in branch-local records.                                                                   | none | output, result |
-| `report`           | Records the Host-bound report under its scoped grant.                                                                        | none | output, result |
-| `reopen`           | Reopens the selected revision with the developer's note.                                                                     | none | output, result |
-| `prepare`          | Reads selected bytes, recovers a pending disposition and binds durable attempts/current inputs.                              | none | route, result  |
-| `decide`           | Invokes a fresh Issue solver with the Host-held problem, Spec and evidence; records decision/history outside State.          | none | route, result  |
-| `verify`           | Calls the verification Graph below with Issue-specific and lifecycle review intents; records current evidence outside State. | none | route, result  |
-| `close`            | Uses Host-held decision/evidence to write the recovery journal and disposition after stale checks.                           | none | result         |
-| `ready`            | Validates the candidate including disposition bytes; restores the Issue if validation fails, otherwise records completion.   | none | output, result |
-| `finish`           | Builds the stopped/already-completed response from Host-held reason, Issue records and any child blockers.                   | none | output, result |
-
-**Edges.** `select_operation`, `prepare`, `decide` and `verify` write `route`, and a
-conditional edge follows it. The requested action selects inspection, reporting, reopening or
-solving. While solving, `decide` selects verification, supported disposition in `close`, or
-`finish` to return needed development, Spec repair, a human decision or an exhausted decision limit.
-Only verification returns to `decide` for another bounded judgment. After `close`, an edge reads
-`result`: an accepted disposition proceeds to `ready`, while guard failure ends the Graph.
-
-`decide` checks the durable attempt count against six before launching and increments it before
-the worker starts. A non-successful worker outcome, `develop`, `spec-repair` or `needs-decision`
-chooses `finish`. `resolved` selects `verify` instead of `close` unless
-`verified_inputs == current_inputs()`. `duplicate` and `not-actionable` select `close`, whose own
-stale/duplicate checks can still fail. Verification returns blockers as feedback to `decide`,
-while execution errors stop. The close edge tests result truthiness; failed final validation is
-a business `output` from `ready`, not a retry edge. No edge delivers the candidate.
-
-```mermaid
-flowchart TB
-    %% graph: issue_graph
-    accTitle: Bounded Issue solving
-    accDescr: Explicit operations select read-only inspection, reporting, reopening or bounded solving. Decisions compose ordinary providers, disposition precedes final validation, and no edge delivers the candidate.
-    __start__["start"]
-    select_operation["select_operation<br/>in: none<br/>out: route, result"]
-    inspect["inspect<br/>in: none<br/>out: output, result"]
-    report["report<br/>in: none<br/>out: output, result"]
-    reopen["reopen<br/>in: none<br/>out: output, result"]
-    prepare["prepare<br/>in: none<br/>out: route, result"]
-    decide["decide<br/>in: none<br/>out: route, result"]
-    verify["verify<br/>in: none<br/>out: route, result"]
-    close["close<br/>in: none<br/>out: result"]
-    ready["ready<br/>in: none<br/>out: output, result"]
-    finish["finish<br/>in: none<br/>out: output, result"]
-    __end__["end"]
-    __start__ --> select_operation
-    select_operation -->|list or show| inspect
-    select_operation -->|report| report
-    select_operation -->|reopen| reopen
-    select_operation -->|solve| prepare
-    inspect --> __end__
-    report --> __end__
-    reopen --> __end__
-    prepare -->|open| decide
-    prepare -->|already disposed| finish
-    decide -->|verify, or resolved without current verification| verify
-    decide -->|verified resolved, duplicate or not-actionable| close
-    decide -->|needed implementation/Spec edits, worker stop, needs-decision or limit| finish
-    verify -->|verification result| decide
-    verify -->|execution failed| finish
-    close -->|result falsey: disposition accepted| ready
-    close -->|result truthy: guard error| __end__
-    select_operation -->|error| __end__
-    prepare -->|error| __end__
-    decide -->|error| __end__
-    verify -->|error| __end__
-    ready --> __end__
-    finish --> __end__
-```
 
 #### Issue verification Graph (`issue_verification_graph`) {#lifecycle-issue-verification-graph-issue-verification-graph}
 
-Verification uses a bounded review list: Issue-specific Spec/code questions first, then the ordinary
-candidate review intents required for final readiness. Code-free Modules need only Spec review.
-The distinction preserves both targeted verification and the ordinary source/consumer freshness
-gates; a private targeted review cannot replace another task's required review. Each item is a
-separate [Review Module](../review/module.md) operation invocation, and a blocked or failed item prevents dependent items.
+This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
+the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
+is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
 
-**State.** `index` (the next review), `stop` and `output` (the result that stopped the sequence).
-All channels use replacement updates: integer `index`, boolean `stop`, and `output` containing
-an outer Issue-node route update or None. The Host owns the finite list, review input bindings
-and collected evidence. Initial State is `index=0, stop=false, output=None`; a code-owning Module
-has four items (specific Spec, specific code, ordinary Spec, ordinary code), otherwise two Spec
-items. This helper has no local guard/result channel; exceptions reach the enclosing `verify`
-node's guard.
-
-**Nodes.**
-
-| Node          | Executes                                                                                                                                       | in    | out                 |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------------------- |
-| `review_item` | Reviews Host-held items[index], collects evidence outside State, increments index and sets stop on a returned route update or list exhaustion. | index | index, stop, output |
-
-**Edges.** After each review a conditional edge reads `stop`: while reviews remain and none has
-blocked or failed, `review_item` runs again on the next item; otherwise the Graph ends. The exact
-update is `stop = output is not None or next_index == len(items)`. On a blocking review, output
-is `{route: decide}`; on execution failure it is `{route: finish}`. The enclosing `verify` node
-returns that update to the Issue Graph. Successful completion leaves output None and lets the
-Host bind verification to the unchanged input digest before returning to `decide`.
-
-```mermaid
-flowchart TB
-    %% graph: issue_verification_graph
-    accTitle: Issue verification sequence
-    accDescr: One review runs per transition. Failure stops the sequence and completion advances until every admitted review is covered.
-    __start__["start"]
-    review_item["review_item<br/>in: index<br/>out: index, stop, output"]
-    __end__["end"]
-    __start__ --> review_item
-    review_item -->|stop = false: more items and output is None| review_item
-    review_item -->|stop = true: exhausted or output is not None| __end__
-```
 
 ### Precise specifications {#lifecycle-precise-specifications}
 
 The Issues Module owns the exact obligations and interface details in [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+
+## Native bounded solving
+
+Public solve prepares a session-bound `concorde.issue.<ticket>` native workflow. The authored workflow
+owns at most six decision iterations. Each iteration has three fixed Host steps, below the native
+32-grant ceiling: prepare decision (persisting attempt first), admit decision/prepare verification,
+and admit verification. Host steps never launch models. Develop/spec-repair/needs-decision return to
+main without automatic changes. Verify/resolved require fresh Issue-specific and ordinary Spec/code
+scope reviews; those terminal calls are flattened into the same native workflow, never nested scripts.
+Only actual successful native execution plus independent current evidence can authorize disposition.
+
+Dynamic review scope uses root-owned deterministic slots and the single `issueCall` constructor for
+Host preflight and authored workflow calls. Host-issued root/iteration/group/member identity determines
+canonical paths, role and fixed gate-lookup command. Exclusive bindings hold exact descriptors/calls,
+context/input and preflight digests; guessed names/counts are not authority. Preparation and preflight
+finish before a small closed canonical versioned counts/route DTO permits model launch. That DTO is
+bounded to2048ASCII bytes, below the native4KiB stdout preview; mixed/truncated/oversized output refuses.
+There is no new review-count limit or per-reviewer Host grant. Actual native budgets remain limits.
+
+Issue revision, duplicate identities and Spec/code inputs are rechecked at each finite transition.
+The primary solution record remains authoritative; scratch carries only JSON for the live invocation.
+Model callbacks/stacks are not serialized. The exact original Issue bytes reconstruct the before-image,
+including JSON ordering, so disposition bytes must match the write-ahead journal exactly. The existing
+journal is persisted before close, final deterministic validation runs after close, and failure restores
+the original Issue. Interrupted/uncertain closure keeps the journal for explicit safe recovery; cancellation
+or missing acknowledgement never erases a durable disposition. Delivery/integration remain separate.
+
+The legacy Issue Graph, verification Graph and legacy reviewer/batch execution path are retired.
+`IssueSolve` supplies shared finite predicates/journal services; no public native failure selects an old
+RPC/Graph backend. Optional StateGraph Operations are a separate explicit interface.
+
+
+Issue decision and verification reviewer slots share Harness's self-contained native proposal
+schema with direct native roles. The native `value` wrapper must retain valid reference roots;
+SDK argument validation precedes tool execution and independent Host proposal/currentness gates.
+A valid bounded decision explicitly supplies context_id, outcome, answer, blockers, documents,
+plan and tasks plus its closed issue_decision. Empty plan is a string, while documents/tasks are
+arrays; omitted fields and additional decision keys are rejected, not synthesized by the Host.

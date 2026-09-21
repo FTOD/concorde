@@ -13,7 +13,12 @@
       "meaning": "#entity.issues.runtime",
       "files": [
         "operations/issues.py",
+        "pi/workflows/issues.js",
         "scripts/issues.py",
+        "src/concorde/issues/solve.py",
+        "tests/concorde/harness/native_issue_probe.mjs",
+        "tests/concorde/harness/test_host_tools.py",
+        "tests/concorde/harness/test_native_issues.py",
         "tests/concorde/operations/test_review.py"
       ]
     },
@@ -22,7 +27,9 @@
       "title": "Issue solver",
       "kind": "agent",
       "meaning": "#entity.issues.solver",
-      "files": ["operations/issue_solver/"]
+      "files": [
+        "operations/issue_solver/"
+      ]
     },
     {
       "id": "entity.issues.langgraph",

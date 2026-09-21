@@ -35,20 +35,20 @@ catalog of Operations and the dispatch this admission hands each request to.
 
 ## Operation execution boundary
 
-An Operation is a State-based LangGraph node under the Operation and Harness contract supplied by
-the [Harness Module](module.md). Each
-registered entry declares its State, USES and optional model execution profile. Existing host
-adapters additionally retain versioned request/response transport contracts; model-only nodes do
-not acquire new wire envelopes. The Pi catalog exposes exactly the eleven public Operations.
-Non-public Operations have no Pi catalog or direct launcher entry. Every external request passes
-through this admission boundary. The [operation catalog](../operations/execution-reference.md#operations-operation-registry)
-names every Operation; exact wire schemas are code, exported by the build for runtime/API use,
-and this document states their promises.
+The typed inventory separates canonical native Agents, authored native Workflows, finite Host
+services and explicitly selected StateGraph Operations. Public capability modules retain versioned
+request/response wire adapters; their State-shaped compatibility records do not make public native
+execution a Graph. Canonical Agents have profiles but no private Python State/run aliases. The Pi
+catalog exposes eleven compatibility public capability names. Every external request crosses this
+admission boundary; the [typed catalog](../operations/execution-reference.md#operations-operation-registry)
+names these entries and their execution kinds. Exact wire schemas remain exported code contracts.
 
 Executable entry: `python3 scripts/run-operation.py <operation-name>`, no task command-line arguments.
 In an installed project the launcher first re-executes itself inside the managed runtime, as the
 [Distribution Module](../distribution/scenarios.md#scenario.distribution.launcher-managed-runtime)
-specifies; an interpreter without LangGraph and without that runtime is refused with `missing_runtime`.
+specifies. Selecting an unavailable Graph backend is refused with `missing_runtime`; the launcher
+does not impose that backend check on ordinary deterministic Host-tool admission. Installed
+execution still requires the complete verified local runtime, including its bundled dependencies.
 A name that is not a public Operation is refused with `unknown_operation`. stdin is exactly one JSON object
 `concorde-operation-invocation@3` with fields type_id, schema_version=3, operation_id (the public Operation's
 name), mode=execute|describe-policy, configuration and input. Maximum input is 1 MiB. Schema 2
@@ -132,8 +132,9 @@ The host resolves the complete selected owned and directly referenced Specs and 
 Spec-only agents, including Spec reviewers, start in a private capsule containing only frozen input.
 Implementation workers receive the complete Module context plus the contents of its own listed implementation files. Planners and task authors already see those file names through the Module's entity declarations, but receive no file contents. Code reviewers
 use a distinct read-only implementation role with only the current listed implementation files. Every
-worker is a fresh Pi process whose tool calls are gated to its grant; no worker receives network or
-credential effects, and writes are restricted by phase. Executor outcomes must match invocation,
+native Agent is a fresh Pi session with enforced terminal tool/delegation ceilings. Intended file,
+network and credential exclusions are prompt-level policy, not OS confinement or proof of exclusive
+reads; the programmer's native shell is not confined by the historical RPC sandbox. Executor outcomes must match invocation,
 binding and context identities. No ambient conversation or predecessor transcript is admitted.
 
 No public Operation returns context manifests; context resolution is host-internal and
@@ -311,6 +312,7 @@ context forms; package/schema alignment checks verify those identities.
 | `limit_exhausted`              | `OperationExecutionError.outcome` when a worker ran past its timeout; the host maps this to the `execution_limit` result error code.                                                                                                                  |
 | `merge_conflict`               | Integration conflicts with the primary branch. Resolve and revalidate in the candidate worktree, or a new candidate if delivery already removed the source.                                                                                           |
 | `missing_change`               | A requested existing change or task authoring has no managed change in the current worktree.                                                                                                                                                          |
+| `native_required`              | Public cognitive capabilities require their prepared native Pi Agent/workflow and independent Host acceptance; bare CLI/Studio execution has no model-worker fallback.                                                                                              |
 | `missing_runtime`              | The launcher's interpreter cannot import LangGraph and no verified managed runtime exists beside the installed framework to switch into; provision it with the installer, or give the source checkout its locked environment.                         |
 | `missing_plan`                 | Task authoring was requested without an authored plan.                                                                                                                                                                                                |
 | `missing_tasks`                | Implementation was requested without authored tasks.                                                                                                                                                                                                  |
@@ -339,9 +341,9 @@ context forms; package/schema alignment checks verify those identities.
 | `unsupported_version`          | The invocation's `schema_version` is not the one this host implements.                                                                                                                                                                                |
 | `unsupported_issue_version`    | A historical schema-1 Issue was selected for mutation; retain its evidence and explicitly create a current record for further work.                                                                                                                   |
 | `unsupported_worktree_version` | Saved worktree progress uses schema 1; archive it explicitly and establish fresh evidence rather than silently reusing renamed fields.                                                                                                                |
-| `use_proposal`                 | `describe-policy` cannot preview `init`/`configure`; use their deterministic proposal graph instead.                                                                                                                                                  |
+| `use_proposal`                 | `describe-policy` cannot preview `init`/`configure`; use their deterministic proposal service instead.                                                                                                                                                |
 | `workspace_mismatch`           | The current worktree, branch, or worktree topology does not match what the requested operation or transition requires, including an entry process whose working directory lies inside a Git worktree but not at its root.                             |
-| `local_installation_required` | A complete current local installation is unavailable or the installed Framework belongs to another project; explicitly install/update the retained worktree and retry, never use primary runtime. |
+| `local_installation_required`  | A complete current local installation is unavailable or the installed Framework belongs to another project; explicitly install/update the retained worktree and retry, never use primary runtime.                                                     |
 | `relay_failed`                 | The candidate worktree's launcher, running a mutation relayed from the primary worktree, returned no result envelope.                                                                                                                                 |
 | `execution_failed`             | The host caught an exception outside the named Spec/typed-data/build error vocabulary.                                                                                                                                                                |
 
@@ -442,79 +444,28 @@ directly; no question-answer worker is supplied. The current workspace identity 
 rechecked after a stage. Other live worktree summaries are frozen observations and grant no
 reading of those worktrees' contracts or implementation.
 
-## Admission Graph
+## Direct Host tools and optional Graph adapters
 
-The admission Graph runs every invocation, admitted or not, around the Operations
-[dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph).
-It follows the [Graph Spec convention](execution-reference.md#graphs-and-loops-graph-specs): its
-State, Nodes and Edges are stated in turn, and its diagram is bound to the compiled Graph by
-`%% graph:` and kept equal to it by the configured Graph Spec check.
+Local `init`, `configure`, `validate`, `deliver` and Issue `list`, `show`, `report` and `reopen`
+requests execute deterministic admission and dispatch directly. `run_host_tool` calls initialization,
+request admission, workspace binding, configuration checks, explicit target binding when needed,
+one selected service and finalization. Any guard failure stops dependent work. It does not accept
+a task-supplied node list or model workflow, and launches no model. `InvocationRuntime` carries the
+trusted Host context for these State-shaped calls without importing LangGraph. Shared wire versions,
+atomic stores, current-input checks, repository locks and result distinctions are unchanged.
+
+All public cognitive entries use finite native preparation/admission and actual native Agents or
+authored workflows, including implementation, scoped reviews and Issue solving. Bare public Python
+execution without the native transport refuses, never selects a legacy worker or Graph fallback.
+The former admission Graph below is a retained anchor only. The optional StateGraph Operation and
+its Studio inspection are separately selected through the explicit Harness API.
 
 ### Operation admission Graph (`operation_graph`) {#graphs-operation-admission-graph-operation-graph}
 
-**State.** `invocation` (the admitted `concorde-operation-invocation@3`), `result` (the
-`concorde-operation-result@3` envelope, filled by `finalize` or by a guard that caught an
-error), `policies` and `events` (the host's policy descriptions and observed events, Studio only),
-`expected_workspace` (the optional Studio root-identity assertion). All channels use replacement
-updates. Local execution starts with empty State; the request, configuration, task, workspace,
-relay target, lifecycle and in-progress response envelope live in the trusted Host closure.
-Studio supplies `invocation` and optionally `expected_workspace`; initialization validates them
-and builds that same Host session. Policies/events are copied out on finalization, not appended
-by a Graph reducer.
+This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
+the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
+is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
 
-The dispatch child has `route`, `output`, `relayed` and `result`, but only `result` intersects this
-parent's schema. Its typed `output` or relay envelope is captured by the trusted dispatch adapter
-into the Host-held response; `finalize` publishes that envelope as `result`. There is deliberately
-no parent `output` channel. The table names channel reads/updates; `?` denotes a conditional or
-Studio-only channel use, and `none` denotes Host-bound inputs rather than Graph-channel reads.
-
-**Nodes.** Admission and dispatch steps run under the Host guard: an error records the typed
-failure envelope in `result`; success clears it to None. Initialization/finalization are boundary
-steps, with Studio's own initialization failure handling.
-
-| Node                  | Executes                                                                                                                                                                               | in                               | out                        |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | -------------------------- |
-| `initialize`          | Deterministic: clears result; Studio also checks invocation/workspace and creates a fresh Host session, or clears policies/events on rejection. Local Host setup precedes Graph entry. | invocation?, expected_workspace? | result, policies?, events? |
-| `admit_request`       | Validates Host-bound operation, mode, configuration and request; rejects stale builds where required; retains admitted task/configuration outside State.                               | none                             | result                     |
-| `bind_workspace`      | Binds the Host's workspace; a mutating primary request prepares a candidate and Host relay target.                                                                                     | none                             | result                     |
-| `check_configuration` | Compares Host configuration to initialized settings and binds its snapshot.                                                                                                            | none                             | result                     |
-| `execute`             | Registered dispatch subgraph; only result crosses this parent State boundary, while the Host captures typed output/relay data.                                                         | result                           | result                     |
-| `finalize`            | Publishes the Host-held envelope and lifecycle outcome; Studio copies observed policies/events, or preserves initialization failure if no session exists.                              | result?                          | result, policies?, events? |
-
-**Edges.** Each admission step is followed by a conditional edge that reads `result`: when the step
-or its guard recorded a failure envelope, the Graph goes straight to `finalize`; otherwise it
-continues to the next step. `execute` always continues to `finalize` with its Host-captured output
-and shared `result`, and `finalize` always
-ends the Graph, so every invocation, admitted or not, ends with one typed result envelope.
-The admission predicate is exactly `state.get("result") is not None`, not the business outcome
-inside an Operation response. A blocked business outcome can therefore pass through dispatch to
-normal finalization without being mistaken for a guard exception.
-
-```mermaid
-flowchart TB
-    %% graph: operation_graph
-    accTitle: Operation admission Graph
-    accDescr: Every invocation is initialized, admitted, bound to a workspace and checked against the initialized configuration before the dispatch subgraph executes; any error routes to finalize, which always writes the typed result envelope.
-    __start__["start"]
-    initialize["initialize<br/>in: invocation?, expected_workspace?<br/>out: result, policies?, events?"]
-    admit_request["admit_request<br/>in: none<br/>out: result"]
-    bind_workspace["bind_workspace<br/>in: none<br/>out: result"]
-    check_configuration["check_configuration<br/>in: none<br/>out: result"]
-    execute["execute<br/>in: result<br/>out: result"]
-    finalize["finalize<br/>in: result?<br/>out: result, policies?, events?"]
-    __end__["end"]
-    __start__ --> initialize
-    initialize -->|result is None| admit_request
-    initialize -->|result is not None| finalize
-    admit_request -->|result is None| bind_workspace
-    admit_request -->|result is not None| finalize
-    bind_workspace -->|result is None| check_configuration
-    bind_workspace -->|result is not None| finalize
-    check_configuration -->|result is None| execute
-    check_configuration -->|result is not None| finalize
-    execute --> finalize
-    finalize --> __end__
-```
 
 ## Design
 
@@ -523,10 +474,9 @@ flowchart TB
 The [execution reference](execution-reference.md) defines the Agent model (A1–A5) and the Graph
 and Loop model (G1–G4) that admission composes. The Harness resolves worker definitions, their
 `spec.md` sources, profiles into a reproducible `WorkerBinding` that every
-worker invocation carries, and its executor verifies that binding before any process starts. This
-Module MUST enforce declared Graph transitions with attributed feedback and
-explicit caller decisions, and every operation Graph is a LangGraph graph whose nodes are
-deterministic steps or worker invocations. The policy `role` and `agent` fields are the bound
+worker invocation carries, and its executor verifies that binding before any process starts. This Module enforces finite capability admission and actual domain transitions with attributed
+feedback and explicit caller decisions. Native model control flow belongs to authored workflows;
+only explicitly selected Operations are StateGraphs. The policy `role` and `agent` fields are the bound
 worker's external name.
 
 ### Required collaborator interfaces

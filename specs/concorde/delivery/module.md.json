@@ -13,6 +13,7 @@
       "files": [
         "operations/deliver.py",
         "src/concorde/harness/worktree_delivery.py",
+        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "meaning": "#entity.delivery.adapter"

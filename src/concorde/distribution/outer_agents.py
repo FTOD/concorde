@@ -17,7 +17,7 @@ def prompt_roots(root: Path) -> tuple[str, ...]:
 
 
 def render(root: Path, framework_prefix: str = ""):
-    from .build import BuildOutput, BuildError
+    from .build import BuildError, BuildOutput
 
     if not (root / TESTER).is_file():
         if (root / "concorde.json").exists() or (root / "prompts/outer").exists():
@@ -63,7 +63,8 @@ def render(root: Path, framework_prefix: str = ""):
         body = (
             f"---\nname: {name}\ndescription: Concorde {name} sibling task role\n"
             f"tools: {tools}\nextensions: {extensions}\n"
-            "systemPromptMode: replace\ninheritProjectContext: false\n"
+            + ("acceptanceRole: read-only\n" if name == "tester" else "")
+            + "systemPromptMode: replace\ninheritProjectContext: false\n"
             "inheritGlobalContext: false\ninheritSkills: false\ndefaultContext: fresh\n"
             "excludeTools: subagent\nasync: true\ncompletionGuard: false\n---\n"
             "<!-- Generated from canonical prompts/outer sources; do not edit. -->\n\n"

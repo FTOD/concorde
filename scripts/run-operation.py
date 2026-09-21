@@ -124,7 +124,12 @@ def _runtime_check(operation_name: str, operation: str, module) -> int:
         raise UnknownOperationError(
             f"operation module {operation!r} has no registered JSON data boundary"
         )
-    import langgraph.graph as graph_api
+    try:
+        import langgraph.graph as graph_api
+    except ImportError as error:
+        raise MissingRuntimeError(
+            f"installed runtime requires LangGraph for full-runtime health in {sys.executable}"
+        ) from error
 
     for name in ("END", "START", "StateGraph"):
         if not hasattr(graph_api, name):
@@ -178,7 +183,11 @@ def main(argv: list[str] | None = None) -> int:
         sys.path.remove(source)
     sys.path.insert(0, source)
     import importlib
-    import importlib.util
+
+    if arguments[:1] == ["--native-context"]:
+        from concorde.harness.native_context import main as native_context_main
+
+        return native_context_main(package_root, arguments[1:])
 
     from concorde.harness.entry import invocation_failure, json_main, runtime_selection
     from concorde.spec.contracts import load_operation_inventory
@@ -201,24 +210,6 @@ def main(argv: list[str] | None = None) -> int:
         print(canonical(result))
         return 3
     operation_name = arguments[0]
-
-    if importlib.util.find_spec("langgraph") is None:
-        # No managed runtime was entered and this interpreter lacks the locked dependencies:
-        # say so before the host would surface it as an unrelated failure.
-        print(
-            canonical(
-                invocation_failure(
-                    operation_name,
-                    MissingRuntimeError(
-                        f"the launcher's interpreter {sys.executable} cannot import LangGraph: "
-                        "an installed project needs the managed runtime that "
-                        "install-concorde.py --apply provisions at .concorde/.venv, and the "
-                        "Concorde source checkout needs its locked environment"
-                    ),
-                )
-            )
-        )
-        return 3
 
     try:
         runtime_selection(package_root)
@@ -249,7 +240,11 @@ def main(argv: list[str] | None = None) -> int:
         return 3
 
     if runtime_check:
-        return _runtime_check(operation_name, operation, module)
+        try:
+            return _runtime_check(operation_name, operation, module)
+        except (UnknownOperationError, MissingRuntimeError, ImportError) as error:
+            print(canonical(invocation_failure(operation_name, error)))
+            return 3
 
     # json_main expects a bare invocation on stdin with no positional arguments; the Operation
     # name (this launcher's own argument) has already been consumed and verified above.

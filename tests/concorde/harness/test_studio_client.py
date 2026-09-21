@@ -15,7 +15,7 @@ from uuid import uuid4
 from concorde.harness.entry import json_main
 from concorde.harness.studio_client import _NoRedirect, run_in_studio
 from concorde.spec.contracts import load_operation_inventory
-from concorde.spec.repository import SpecError, SpecRepository
+from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
 from tests.concorde.harness.test_studio import invocation
 from tests.concorde.spec.support import PACKAGE
@@ -99,12 +99,10 @@ class StudioClientTests(unittest.TestCase):
             module = importlib.import_module(f"{inventory.__name__}.issues")
             code = json_main(PACKAGE, "concorde-issues", runner=module.run)
         local.assert_not_called()
-        self.assertEqual(2, len(calls))
+        self.assertEqual([], calls)
         self.assertEqual(3, code)
         result = json.loads(stdout.getvalue())
-        self.assertEqual("studio_transport_failed", result["errors"][0]["code"])
-        self.assertIn(self.thread, stderr.getvalue())
-        self.assertIn("may still be active", result["errors"][0]["message"])
+        self.assertEqual("native_required", result["errors"][0]["code"])
 
     def test_polling_and_policies_preserve_the_server_result(self):
         state = {"result": self.result, "policies": [{"phase": "ask"}], "events": []}
@@ -195,71 +193,14 @@ class StudioClientTests(unittest.TestCase):
                     )
                 self.assertEqual("incompatible_handoff", error.exception.code)
 
-    # Transport responses are doubles; the submitted request also enters the real Graph.
     @verifies("scenario.harness.graph-inspection")
-    def test_documented_harness_target_is_admitted_and_forwarded_unchanged(self):
-        from concorde.harness.entry import validate_invocation
-
-        target = SpecRepository(PACKAGE, PACKAGE).select("module.harness")
-        guide = (PACKAGE / "scripts/development/STUDIO.md").read_text()
-        value = json.loads(guide.split("<<'JSON'\n", 1)[1].split("\nJSON", 1)[0])
-        self.assertEqual(
-            {"target_id": target.id, "task": "Explain Concorde's Harness"},
-            value["input"]["data"],
-        )
-        validate_invocation(value, "concorde-context-solve")
-        result = {
-            **self.result,
-            "operation_id": "concorde-context-solve",
-            "mode": "describe-policy",
-            "status": "described",
-        }
-        opener, calls = self.opener(
-            iter(
-                [
-                    {"thread_id": self.thread},
-                    {"run_id": self.run_id, "status": "success"},
-                    {"values": {"result": result, "policies": [], "events": []}},
-                ]
-            )
-        )
-        with (
-            patch("concorde.harness.studio_client.build_opener", return_value=opener),
-            contextlib.redirect_stderr(io.StringIO()),
-        ):
-            actual = run_in_studio("http://localhost:2024", value, PACKAGE, PACKAGE)
-        self.assertEqual(result, actual["result"])
-        submitted = json.loads(calls[1].data)["input"]
-        self.assertEqual(value, submitted["invocation"])
-        self.assertEqual(
-            {"project_root": str(PACKAGE), "package_root": str(PACKAGE)},
-            submitted["expected_workspace"],
-        )
+    def test_documented_optional_operation_is_the_real_inspectable_graph(self):
         from concorde.harness.studio import build_studio_graph
 
-        executor = Mock(
-            side_effect=AssertionError(
-                "policy preview must not launch an WorkerProfile"
-            )
+        guide = (PACKAGE / "scripts/development/STUDIO.md").read_text()
+        self.assertIn('OperationNode("context_assessor").graph()', guide)
+        self.assertIn("terminal-agent-operation", guide)
+        graph = build_studio_graph()
+        self.assertEqual(
+            set(graph.get_graph().nodes), {"__start__", "terminal_agent", "__end__"}
         )
-        graph = build_studio_graph(
-            "concorde-context-solve", PACKAGE, PACKAGE, executor=executor
-        )
-        preview = graph.invoke(submitted)
-        self.assertEqual("described", preview["result"]["status"], preview)
-        self.assertTrue(preview["policies"])
-        for field in ("project_root", "package_root"):
-            wrong = {
-                **submitted,
-                "expected_workspace": {
-                    **submitted["expected_workspace"],
-                    field: "/another-workspace",
-                },
-            }
-            rejected = graph.invoke(cast(Any, wrong))
-            self.assertEqual(
-                "workspace_mismatch", rejected["result"]["errors"][0]["code"]
-            )
-            self.assertEqual([], rejected["events"])
-            self.assertEqual([], rejected["policies"])
-        executor.assert_not_called()

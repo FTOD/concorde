@@ -31,7 +31,8 @@ and transitions are retained here as the single detailed contract.
 and exact digests; a valid shape alone does not establish currentness or authority.
 This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
 The calling agent selects this Operation through the Pi `concorde` tool; its `run` action
-submits the typed request through the common launcher. The tool's `describe` action returns
+prepares an exact direct native programmer call through finite Host admission. Main invokes the
+returned call unchanged, then inspects independent Host acceptance attached to the native result. The tool's `describe` action returns
 the Operation guidance and request schema without executing it.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
@@ -40,9 +41,9 @@ file names are visible and implementation contents remain excluded from non-code
 `implement` requires current authored tasks and their accepted plan in a
 concorde-implementation-task@1. Missing tasks are missing_tasks; stale artifacts or mismatched
 intent stop admission. A fresh programmer receives the complete selected
-Spec and contents of the files its own entities bind. Only those implementation paths are writable;
+Spec and contents of the files its own entities bind. Only those implementation paths are intended writable;
 registered Specs, registry, entity declarations and configuration are not. Network and credentials
-remain disabled. Optional concorde-review-result@2 is admitted only after the host verifies the
+are prohibited by model policy, not OS confinement of native broad tools. Optional concorde-review-result@2 is admitted only after the host verifies the
 current explicitly selected review feedback; structural validity does not authorize repair.
 
 The worker returns every exact admitted task with unchanged identity and acceptance, marked complete
@@ -93,3 +94,27 @@ implementation of its sequencing, artifact admission, recovery and completion po
 can execute. [Harness admission](../harness/admission.md) realizes the common entry and invocation
 host, and [Operations](../operations/execution-reference.md#graphs-dispatch-graphs) the dispatch
 that reaches this provider.
+
+## Native implementation boundary
+
+Public implement has no Graph/Pi-RPC fallback. Shared finite preparation validates current plan/tasks,
+intent, required Spec review, exact selected feedback and separately completed component revisions
+before any native launch. Missing components return selectable work without launching a programmer.
+A code-free parent with current separately completed components can finish deterministically.
+
+The actual code workspace is `native_workspace` in the frozen index; `intended_write_paths` are
+absolute candidate file/directory roots. The capsule cwd is only discovery/context delivery. No
+implementation copies are used as the destination of writes. Specs, metadata, registry, configuration,
+other worktrees, governing integration and unrelated paths remain excluded by explicit model policy.
+The native Agent is terminal; file bounds and network/credential abstention are not OS restrictions.
+`run_checks` accepts no command/path arguments, uses the existing Host configured-check service and
+its enforced read-only subprocess boundary, and honors configured check timeouts/cancellation.
+
+Expected implementation content/new-file changes do not invalidate the frozen input identity:
+acceptance validates against the issued snapshot and rechecks its immutable contracts/listing entries,
+registry/configuration, exact plan/tasks/intent/feedback and component evidence, while allowing the
+selected implementation bytes/file membership to change. Explicit feedback is checked before launch;
+its expected code repair does not make that frozen feedback spuriously stale afterward. Newly changed
+feedback records, contracts or task state still reject. Returned task IDs/targets/descriptions/
+acceptance must be exact, complete and materialized. Native failure/cancellation or invalid output
+leaves partial edits but never accepts completion or triggers review/readiness/delivery/integration.

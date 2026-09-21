@@ -11,7 +11,7 @@ from concorde.harness.context import (
     recheck_context,
     resolve_context,
 )
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 from concorde.harness.revisions import target_revision
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed

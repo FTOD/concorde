@@ -45,9 +45,12 @@
         "src/concorde/distribution/installation.py",
         "src/concorde/distribution/local_installation.py",
         "src/concorde/spec/project.py",
-        "src/concorde/spec/project_graph.py",
         "tests/concorde/distribution/",
-        "tests/concorde/distribution/test_local_installation.py"
+        "tests/concorde/distribution/installed_output_probe.py",
+        "tests/concorde/distribution/test_install_output_handoff.py",
+        "tests/concorde/distribution/test_local_installation.py",
+        "tests/concorde/harness/test_host_tools.py",
+        "tests/concorde/support/install_output_handoff.py"
       ],
       "meaning": "#entity.distribution.installation"
     },
@@ -67,12 +70,24 @@
       "title": "Pi session extension",
       "kind": "program",
       "files": [
+        "pi/extensions/concorde-native-child.ts",
+        "pi/extensions/concorde-native-context.ts",
+        "pi/extensions/concorde-native-plan.ts",
         "pi/extensions/concorde-session.ts",
+        "pi/issue-call.d.mts",
+        "pi/issue-call.mjs",
+        "pi/native-issue-host.mjs",
+        "pi/native-plan-host.mjs",
+        "pi/native-preflight.ts",
+        "pi/native-review-host.mjs",
+        "pi/workflows/issues.js",
+        "pi/workflows/plan.js",
+        "pi/workflows/review.js",
         "tests/concorde/distribution/test_pi_session.py",
         "tests/concorde/support/fake_launcher.py",
-        "tests/concorde/support/pi_session_harness.mts",
         "tests/concorde/support/outer_agents_preflight.mjs",
-        "tests/concorde/support/outer_observer_harness.mts"
+        "tests/concorde/support/outer_observer_harness.mts",
+        "tests/concorde/support/pi_session_harness.mts"
       ],
       "meaning": "#entity.distribution.pi-session-extension"
     },

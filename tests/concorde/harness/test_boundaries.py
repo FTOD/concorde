@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from concorde.harness.invocation import Invocation
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.context import resolve_context
 from concorde.spec.changes import apply_files, file_change

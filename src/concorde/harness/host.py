@@ -34,6 +34,9 @@ class OperationHost:
     package_root: Path
     mode: str = "execute"
     executor: Any = None
+    # Finite native context preparation/acceptance only; never a suspended model callback.
+    native_assessment: Any = None
+    native_transport: bool = False
     allow_primary_worktree: bool = False
     outer_sandbox: str | None = None
     # A mutation admitted in the primary worktree runs in a host-created candidate worktree.

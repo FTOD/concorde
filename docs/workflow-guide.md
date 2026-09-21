@@ -5,17 +5,12 @@
 Detailed installation, execution, delivery and maintenance reference. Shell commands assume
 the Concorde checkout root unless an installed consumer path is shown.
 
-Concorde centers on writing and maintaining **architecture-aware Specs**. Its docsite publishes
-them so developers can understand the project. **Agent observability** covers the working process:
-[LangGraph Studio](../scripts/development/STUDIO.md) exposes execution graphs and live stage and
-agent-process events, recorded usage shows what each worker launch consumed, and recorded context,
-permission policies, checks and reviews make the work and its results inspectable. Specs guide each
-worker's task, while the host limits its context and permissions to the declared scope and a
-bubblewrap sandbox bounds every worker process. Seven built-in Pi workers perform assessment, review, planning, task definition,
-implementation and Issue solving behind the public Operations that
-the Pi session tool invokes. The Issue system records classified bugs, contract
-gaps and limitations as soon as a worker reports them, without stopping its task, and solves an
-explicitly selected Issue to a verified candidate.
+Concorde centers on complete architecture-aware Specs. Native Pi Agents and authored pi-subagents
+workflows perform cognition; finite Host services retain admission, evidence, checks and lifecycle
+authority. LangGraph Operations are explicitly selected StateGraph boundaries, not mirrors or mandatory
+schedulers for native capabilities. Native file/network/credential policy is prompt-level; tester and
+configured-check subprocess isolation remains enforced. See the [current API](../scripts/development/STUDIO.md)
+and [public capability examples](../README.md#choose-an-entry-point).
 
 The explicitly selected work and delivery examples below use **Spec Protocol 10.0.0**. It defines one Module
 Spec content model and the human-readable subset of that content. Reading begins with Purpose,
@@ -60,15 +55,12 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic Pi-only build with eleven public entries from one
-inventory of eighteen Operations, including seven private model-backed nodes. Common worker rules
-(`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`) render to the
-compatible `generated/agents/<hyphenated>.md` paths. Templates and a receipt-owned Pi session shim
-under `.pi/extensions/` accompany them. Its `concorde` tool describes and runs the public Operations
-using the embedded guidance and exact versioned schemas. Internal worker instructions are not
-Skills. The installer has no client selector and rejects every retired `--integration` argument.
-It installs no standalone Skills and never invokes the Agent Skills CLI. npm remains necessary
-for Pi runtime dependencies; model providers such as OpenAI and Anthropic remain supported.
+The Pi-only installer distributes eleven compatibility public capability entries, seven native Agent
+roles and authored plan/review/Issue workflows. Canonical role Specs and `prompts/native/` preludes
+render into owned `generated/native/` assets. Main prepares with `concorde`, invokes the exact returned
+native call, and separately observes Host acceptance. Host tools run without a model. Internal wire
+spellings do not assert LangGraph execution. No standalone Skills or client-selector installation is
+supported. npm remains required for actual Pi extension dependencies.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project and commit project inputs, root guidance and the complete Protocol bundle, then invoke the
@@ -154,8 +146,10 @@ Document declarations are likewise checked against reverse registry membership.
 
 ## Run a change
 
-Send this invocation on stdin to `scripts/run-operation.py concorde-plan` (or
-`.concorde/framework/scripts/run-operation.py` in an installed consumer project):
+The compatibility request envelope for planning is shown below. Execute planning through the Pi
+`concorde` tool: action run with the input data prepares an exact native workflow call; invoke that
+call unchanged and poll action result. Sending this envelope to the bare Python launcher cannot
+start a native workflow and refuses with `native_required`:
 
 ```json
 {
@@ -186,8 +180,9 @@ Tasks require a current plan and implementation requires accepted tasks. The cal
 component work separately; no parent develops children automatically. Direct manual candidates
 need no invented plan, but cannot bypass unfinished planned work or already-required reviews.
 
-Every callable entry is an Operation with declared State, effects, context selection, determinism
-and USES. `bound` receives one selected Module without context expansion; `none` performs
+The typed inventory distinguishes native Agents, Agent entries, Workflows and Host services.
+Only explicitly selected StateGraph Operations have graph State contracts. Canonical Agents carry
+role profiles without Python State/run aliases; capability wire adapters retain compatibility fields. `bound` receives one selected Module without context expansion; `none` performs
 deterministic host work without worker context selection. Discovery, automatic Spec authoring,
 topology proposal/application and development-loop entries are retired, not aliases. `PUBLIC`
 controls entry availability independently of these guarantees.
@@ -372,9 +367,10 @@ checkout's existing binding unchanged.
 
 ## Development
 
-[LangGraph Studio setup and usage](../scripts/development/STUDIO.md) covers all public Operation entries and
-stage events, CLI/Pi forwarding, live execution events, debugging and worktree isolation. Studio
-is optional; existing JSON stdin/stdout calls continue to work without a server.
+[LangGraph Studio setup and usage](../scripts/development/STUDIO.md) covers the genuine optional
+StateGraph Operation, typed Runtime service injection and inspection-only default export. Native
+capabilities are not forwarded through Studio. Host JSON services need no server; native cognition
+uses the prepared Pi Agent/workflow boundary.
 
 Run Python tests with `python3 scripts/development/run-tests.py`, which runs every module under
 `tests/concorde` in its own subprocess in parallel and reports per-module durations
@@ -413,38 +409,16 @@ lifecycle entry points retain their separate admission/evidence checks. A freshl
 must be built once before a fresh tester can select its private Pi entry. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
-Each of the seven workers is defined under `operations/<name>/`: an authored role `spec.md` plus a
-Python `__init__.py` binding its task contract, workspace kind (`capsule` or `project`), Pi tools
-and timeout as optional execution configuration on that Operation. Each worker launches one Pi coding agent
-process (`pi --mode rpc`) for exactly one invocation. The build renders each worker's instructions
-to `generated/agents/<hyphenated>.md`, combining the common worker rules
-(`prompts/workers/common.md`) with only that worker's role Spec, traceable through the build
-manifest; `describe-policy` mode (see above) shows the bound worker, its profile and effective
-timeout for every stage it previews, alongside its read/write grants.
+Seven canonical native Agents have role Specs/profile contracts and native instruction projections.
+Their file/network/credential policy is explicitly prompt-level; tester/configured-check boundaries
+remain actually enforced. Context, plan, tasks, implementation, review and Issue decisions use native
+Agent/workflow calls, not hidden RPC workers. Gates only stage proposals. Host acceptance binds actual
+native terminal evidence and current inputs; closure remains journaled and final validation separate.
 
-The seven workers are spec-reviewer, context-assessor, planner, task-author, programmer,
-code-reviewer and issue-solver. Each task contract pairs current input/output types, admits only
-its stage artifacts and narrows the permission ceiling. Only the programmer writes granted code;
-no worker edits Specs, metadata or registry. Every phase and target has a fresh invocation and
-context identity, not the previous worker's conversation or authority. All workers are terminal
-nodes: they cannot delegate, create children or recursively invoke Operations. The LangGraph/host
-schedules each node with its own file/tool grant. Missing or legacy depth variables do not govern
-leaf launch; outer task delegation limits remain unchanged.
-
-One registry contains eighteen Operations, eleven exposed through the Pi tool. All use State
-contracts and `run(state, runtime)`. DETERMINISTIC means no supported model-call path when true,
-including transitive USES. Only init, configure, validate and deliver are true in the current
-inventory. USES is the sole composition relation, including model nodes; it does not install
-arbitrary Operation calls as worker tools.
-
-**Operation** is the canonical name for a callable or composed Framework function. Harness owns the operation invocation boundary, and
-Operations owns the Operation catalog and dispatch to each provider. Distribution owns
-`prompts/operation-guidance/` and `prompts/workflow-host/`, embeds their resolved guidance with
-exact schemas in the Pi entry, and keeps those projections current. The consumer Pi session
-loads the installed `.pi/extensions/concorde-session.ts`; source testing instead explicitly
-selects `generated/session/pi/concorde-session.ts`. Its `concorde` tool submits typed requests
-through the shared launcher. The catalog is not worker context or a grant. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
-and the [Operation registry](../specs/concorde/operations/composition.md) for definitions and mappings.
+The typed inventory preserves eleven compatibility entry names and seven Agent identities. `kind`
+distinguishes Agent entry, Workflow and Host actions; StateGraph Operations are a separate optional
+boundary with an explicitly supplied trusted native service. No native flow has a fake Studio mirror.
+See the [Operation API](../scripts/development/STUDIO.md) and [current examples](../README.md).
 
 Concorde source maintenance defaults to a new candidate and a fresh Concorde-catalog-free writer.
 The main stays in its initial worktree. The writer edits, formats, checks and commits, then stops.
@@ -473,3 +447,83 @@ records stable task coordination, delivery or manual merge and separate cleanup.
 including candidate executions, remain primary-only in `.concorde/runs/`. Terminal status remains
 after candidate deletion. Preview legacy migration with `migrate-status`; accept explicitly with
 `--apply` only after inspecting collisions and preserving backups. No live migration is automatic.
+
+## Source-selected installation testing and failed native observation
+
+A private source selection cannot attest a new installed path. Passing it unchanged into an
+installed health check correctly refuses; neither relax the guard nor silently clear all provenance.
+For an explicitly authorized fresh external fixture **inside `test_command` scratch**, the source-only
+recipe verifies governing selection and admitted package bytes first, separates only process-local
+source provenance/import overrides for the installer and installed children, and verifies exact
+installed output identity with its own managed interpreter:
+
+```python
+from pathlib import Path
+import os
+from tests.concorde.support.install_output_handoff import install_selected_fixture
+
+source_selection = Path(os.environ["CONCORDE_SESSION_SELECTION"])
+record, installed_env = install_selected_fixture(
+    Path(os.environ["CONCORDE_CHECK_TMPDIR"]) / "consumer", source_selection
+)
+# Parent source selection is STILL active. Only explicit installed subprocesses use installed_env.
+# Use record["installed"]["python"], ["runtime"], ["entry"] and record["destination"] exactly.
+```
+
+Run this under the selected candidate's Python with that source root on the fixture import path;
+the helper is not a consumer product or new general selection mode. The target must be fresh,
+canonical and within issued scratch. Dependency acquisition needs the normal locked wheel/npm
+inputs; offline caches must be available in the explicit host-/tmp read-only view or acquisition
+must be explicitly allowed into issued scratch. The recipe does not change global npm settings.
+`installed-output-provenance.json` binds source selection/build, recipe bytes, admitted package,
+external destination, installed entry/catalog/launcher/build, receipt/runtime and interpreter. Read
+and return this bounded record before scratch cleanup. Maintain quiescent source/output bytes.
+Native installed smoke uses the installed entry in a separate process with `installed_env`, never
+the source-private entry pretending that copied assets are an installation.
+
+For the next authorized live Issue diagnostic, use the checked-in source driver rather than building
+or regex-patching another JavaScript collector. First run the model-free path **inside test_command**:
+
+```bash
+CONCORDE_SESSION_SELECTION="$PWD/.concorde/work/pi-first-diagnostic-selection.json" \
+  .venv/bin/python tests/concorde/harness/run_issue_diagnostic.py --selftest \
+  --selection "$PWD/.concorde/work/pi-first-diagnostic-selection.json" \
+  --sdk /explicit/pi-coding-agent/package --native /explicit/pi-subagents/package
+```
+
+Only when main authorizes the one live attempt, use the same command with `--live` instead of
+`--selftest`, plus `--model codex-lb/gpt-6-astra --auth-source /approved/auth.json
+--models-source /approved/models.json`. The model name and both credential/model-file paths are
+explicit test inputs, not defaults or permission to inspect other settings. The script preserves the
+approved mode-0600 scratch auth copy and read-only canonical model-file link, disables ambient
+resources and model retries, and drives the actual SDK/public ExtensionRunner hooks. It never prompts
+a coordinator model, runs a conditional second case or retries the Issue workflow. Source selection
+stays active. All fixture writes remain in issued scratch.
+
+This path does **not** install a child-session factory setter or infer SDK effective-start state from
+an unrelated Jiti module instance. Effective start remains unknown. It correlates issued d-0 schema,
+ticket and native launch identity with the genuine failed-child transcript, independently of success
+emissions. The parser merges assistant toolCall, native tool_start/tool_end and toolResult records by
+call ID and retains actual structured arguments, complete available error text, isError/status and
+terminal reason. Native Missing structured_output means no successful submission, not no attempts.
+
+The only final stdout is a whitelisted selected diagnostic envelope under 8000 UTF-8 bytes. Its
+bounded gzip+base64 payload contains the issued schema and selected structured calls/results, with
+SHA-256 and decoded/compressed byte counts. It never contains arbitrary transcript/read-tool output,
+authentication stores, environment or provider registries. Parent may decode it as **data**, verify the
+hash/size and persist it in primary evidence. Native source truncation/missing records are distinct
+from explicit omitted reporting; the first actual failed call is not silently replaced by counts.
+The raw scratch is ephemeral, but these selected arguments/errors survive in returned stdout.
+
+Decode without evaluating anything, for example with `base64.b64decode`, `gzip.decompress`, SHA-256
+verification against payload.sha256, and `json.loads`; enforce the declared 256-KiB decoded bound.
+The tracked `unpackDiagnostic` helper additionally bounds decompression. If a complete first failure
+cannot fit the fixed export bound, the command refuses an evidence-complete claim rather than retrying
+or silently dropping its error. Selftest exercises the actual native transcript writer and lossless
+codec before any credential read; the live path repeats this check with its issued schema before the
+first subagent call.
+
+A zero exit from the live **diagnostic command** means its selected evidence was complete enough to
+transport, not that the Issue succeeded. Check envelope.summary.result and the decoded native/attempt
+records separately. A failed business/native result may have a successful diagnostic export. No
+specific discarded error from a previous run is inferred or reconstructed.

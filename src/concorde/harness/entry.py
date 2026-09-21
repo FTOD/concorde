@@ -153,14 +153,10 @@ def json_main(package_root: Path, operation: str, runner) -> int:
                 "workspace_mismatch",
             )
         if os.environ.get("CONCORDE_STUDIO_URL"):
-            from .studio_client import run_in_studio
-
-            state = run_in_studio(
-                os.environ["CONCORDE_STUDIO_URL"], value, Path.cwd(), package_root
+            raise SpecError(
+                "Native capabilities do not redirect to Studio; select the explicit StateGraph Operation API",
+                "native_required",
             )
-            result = state["result"]
-            if state.get("policies"):
-                print(canonical({"policies": state["policies"]}), file=sys.stderr)
         else:
             selection = runtime_selection(package_root)
             from .status_store import primary_root

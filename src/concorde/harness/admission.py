@@ -1,8 +1,8 @@
 """Admission of every operation invocation: the operation Graph's trusted node bindings.
 
 Every request is initialized, admitted against its registered contract, bound to its
-workspace and checked against the initialized configuration before the Operations dispatch
-Graph runs; every outcome, admitted or not, ends in one typed result envelope.
+workspace and checked against the initialized configuration before direct Host-tool dispatch
+or the selected Graph runs; every outcome, admitted or not, ends in one typed result envelope.
 """
 
 from __future__ import annotations
@@ -28,9 +28,9 @@ from .change_worktree import progress, read_change, resume_owner, workspace_iden
 from .configuration import load_configuration
 from .host import OperationHost, resolve_child_operation
 from .relay import bind_worktree, verify_local_execution
+from .timing import timed, traced_operation
 from .worker_executor import OperationExecutionError
 from .worker_profile import ContractError
-from .timing import timed, traced_operation
 
 
 def invoke_operation(
@@ -55,14 +55,12 @@ def invoke_operation(
 
 def run_host_node(runner, host, configuration, payload, operation):
     """The wire boundary adapts to State; trusted execution context never enters State."""
-    from langgraph.runtime import Runtime
-
-    from .operation_state import OperationRuntimeContext
+    from .operation_state import InvocationRuntime, OperationRuntimeContext
 
     validate_typed(payload, f"{operation}-request")
     return runner(
         payload["data"],
-        Runtime(
+        InvocationRuntime(
             context=OperationRuntimeContext(host=host, configuration=configuration)
         ),
     )["result"]
@@ -76,15 +74,11 @@ def run_operation(
     *,
     host_context: OperationHost,
 ) -> dict:
-    from .operation_graph import OPERATION_RECURSION_LIMIT, build_operation_graph
-
     nodes = operation_graph_nodes(
         operation, configuration, runtime_input, host_context=host_context
     )
     try:
-        return build_operation_graph(nodes.__getitem__, name=operation).invoke(
-            {}, {"recursion_limit": OPERATION_RECURSION_LIMIT}
-        )["result"]
+        return run_host_tool(nodes)
     except KeyboardInterrupt:
         # A host interrupt (Ctrl-C, or SIGTERM from the developer's client) that arrives outside
         # a worker launch ends the Graph the way a cancelled worker does: the cancellation is
@@ -97,6 +91,63 @@ def run_operation(
         return finish_failed_operation_graph(nodes, error)["result"]
 
 
+def _is_graph_command(value):
+    # Compatibility callers exchange finite dictionaries, never executable graph commands.
+    return False
+
+
+def run_host_tool(nodes):
+    """Finite deterministic admission/dispatch, not model orchestration.
+
+    Providers retain schema, worktree, configuration, evidence and finalization
+    checks. No model callback or arbitrary node sequence is admitted here.
+    """
+    state = {}
+    for name in (
+        "initialize",
+        "admit_request",
+        "bind_workspace",
+        "check_configuration",
+    ):
+        state.update(nodes[name](state))
+        if state.get("result") is not None:
+            return nodes["finalize"](state)["result"]
+    state.update(nodes["dispatch/select_operation"](state))
+    if state.get("result") is not None:
+        return nodes["finalize"](state)["result"]
+    route = state["route"]
+    if route == "prepare_target":
+        state.update(nodes["dispatch/prepare_target/bind_target"](state))
+        route = state["route"]
+    if route == "issues":
+        state.update(nodes["dispatch/issues/select_operation"](state))
+        route = state["route"]
+        if route == "prepare":
+            state.update(nodes["dispatch/native_issue"](state))
+        elif route in {"inspect", "report", "reopen"}:
+            state.update(nodes["dispatch/issues/" + route](state))
+        elif route != "__end__":
+            raise SpecError(
+                "model workflow cannot execute as a Host tool", "invalid_input"
+            )
+    elif route in {
+        "relay",
+        "deliver",
+        "project",
+        "validate",
+        "describe_policy",
+        "context_solve",
+        "plan",
+        "tasks",
+        "implement",
+        "review",
+    }:
+        state.update(nodes["dispatch/" + route](state))
+    elif route != "__end__":
+        raise SpecError("not a deterministic Host tool", "invalid_input")
+    return nodes["finalize"](state)["result"]
+
+
 def finish_failed_operation_graph(nodes, error):
     """A scheduler failure still uses the host's error envelope and final lifecycle evidence."""
     nodes["fail"]({"error": error})
@@ -105,8 +156,7 @@ def finish_failed_operation_graph(nodes, error):
 
 def operation_graph_nodes(operation, configuration, runtime_input, *, host_context):
     """Fresh trusted node bindings; neither host authority nor callbacks enter the public input."""
-    from langgraph.graph import END
-    from langgraph.types import Command
+    END = "__end__"
 
     # A depth-1 (top-level) invocation never inherits a lifecycle status a prior invocation on
     # this same host object left behind; nested calls still share the one dict by reference so a
@@ -252,7 +302,10 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             record_progress = False
             return
         record_progress = (
-            mutation and operation != "concorde-deliver" and host.depth == 1
+            mutation
+            and operation != "concorde-deliver"
+            and host.depth == 1
+            and not host.native_transport
         )
         if mutation and operation != "concorde-deliver":
             change = read_change(host.project_root)
@@ -320,7 +373,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         if dispatch_nodes is None:
             dispatch_nodes = dispatch_graph_nodes(operation, configuration, task, host)
         updates = dispatch_nodes[name](state)
-        payload = (updates.update or {}) if isinstance(updates, Command) else updates
+        payload = (updates.update or {}) if _is_graph_command(updates) else updates
         if isinstance(payload.get("relayed"), dict):
             # The candidate's launcher produced the complete envelope; adopt it as this
             # invocation's result rather than deriving a second status from its output.
@@ -386,7 +439,9 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                         {"code": "execution_failed", "field": "", "message": str(error)}
                     ],
                 )
-            if isinstance(updates, Command):
+            if _is_graph_command(updates):
+                from langgraph.types import Command
+
                 # A node that selects its own transition keeps it unless the guard recorded an
                 # error, which ends the Graph with the typed failure envelope in state.
                 if result["errors"]:

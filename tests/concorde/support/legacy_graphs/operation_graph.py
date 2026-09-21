@@ -29,7 +29,7 @@ def build_operation_graph(
     output_schema=None,
     context_schema=None,
 ):
-    from ..operations.dispatch_graph import build_dispatch_graph
+    from tests.concorde.support.legacy_graphs.dispatch_graph import build_dispatch_graph
 
     graph = StateGraph(
         OperationGraphState,

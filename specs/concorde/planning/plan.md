@@ -34,7 +34,7 @@ problem even if its text still looks plausible. The host rechecks its inputs bef
 invalid or stale output leaves the previous accepted plan intact but does not make it current.
 The planner uses Spec information and admitted reference material, not implementation contents.
 
-The exact planning Graph and artifact contract are maintained in Implementation Specs; the explanation
+The exact native planning workflow and artifact contract are maintained in Implementation Specs; the explanation
 here is the normal reasoning path, not a second execution graph.
 
 ## Precise specifications

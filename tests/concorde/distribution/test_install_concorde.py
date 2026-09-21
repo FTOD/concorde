@@ -133,6 +133,27 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(".concorde/framework/scripts/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
         self.assertIn(".concorde/framework/pi/package-lock.json", outputs)
+        for relative in (
+            "generated/native/context-assessor.md",
+            "generated/native/planner.md",
+            "generated/native/task-author.md",
+            "generated/native/programmer.md",
+            "generated/native/spec-reviewer.md",
+            "generated/native/code-reviewer.md",
+            "pi/workflows/review.js",
+            "pi/native-review-host.mjs",
+            "pi/workflows/plan.js",
+            "pi/native-plan-host.mjs",
+            "pi/native-preflight.ts",
+            "pi/extensions/concorde-native-plan.ts",
+            "prompts/native/context-assessor.md",
+            "pi/extensions/concorde-native-context.ts",
+            "pi/extensions/concorde-native-child.ts",
+            "src/concorde/harness/native_context.py",
+        ):
+            self.assertIn(".concorde/framework/" + relative, outputs)
+        self.assertNotIn(".pi/agents/concorde-context-assessor.md", outputs)
+
         self.assertFalse(
             any(path.startswith(".concorde/framework/viewer/") for path in outputs)
         )

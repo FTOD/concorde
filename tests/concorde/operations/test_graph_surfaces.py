@@ -97,7 +97,14 @@ class GraphSurfaceTests(TestCase):
                                 "spec_consumers",
                                 return_value={"peer"} if remaining else set(),
                             ),
-                            patch.object(review, "review", side_effect=reviewed),
+                            patch.object(
+                                __import__(
+                                    "tests.concorde.support.legacy_review",
+                                    fromlist=["review"],
+                                ),
+                                "review",
+                                side_effect=reviewed,
+                            ),
                             patch.object(
                                 review,
                                 "code_review_peers",
@@ -110,7 +117,10 @@ class GraphSurfaceTests(TestCase):
                                 ),
                             ),
                         ):
-                            result = review.review_scope(run, mode)
+                            result = __import__(
+                                "tests.concorde.support.legacy_review",
+                                fromlist=["legacy_issue_review_scope"],
+                            ).legacy_issue_review_scope(run, mode)
                         records = save.call_args.args[1][field]["owner"]
                         self.assertEqual({"peer"} if remaining else set(), set(records))
                         self.assertEqual(
@@ -205,7 +215,13 @@ class GraphSurfaceTests(TestCase):
                 with (
                     patch.object(review, "read_change", return_value=state),
                     patch.object(review, "spec_consumers", return_value=set()),
-                    patch.object(review, "review", side_effect=reviewed),
+                    patch.object(
+                        __import__(
+                            "tests.concorde.support.legacy_review", fromlist=["review"]
+                        ),
+                        "review",
+                        side_effect=reviewed,
+                    ),
                     patch(
                         "concorde.review.review.Invocation",
                         side_effect=lambda *args, peer=peer: SimpleNamespace(
@@ -213,7 +229,10 @@ class GraphSurfaceTests(TestCase):
                         ),
                     ),
                 ):
-                    result = review.review_scope(run, "code")
+                    result = __import__(
+                        "tests.concorde.support.legacy_review",
+                        fromlist=["legacy_issue_review_scope"],
+                    ).legacy_issue_review_scope(run, "code")
                 self.assertEqual("completed", result["data"]["outcome"])
                 self.assertEqual(
                     [("owner", "code"), ("peer", "code")]
@@ -256,7 +275,7 @@ class GraphSurfaceTests(TestCase):
         "scenario.harness.graph-inspection",
     )
     def test_scoped_review_stops_after_first_unsuccessful_result(self):
-        from concorde.harness import batch_graph
+        from tests.concorde.support.legacy_graphs import batch_graph
 
         for stop in (0, 37):
             target = SimpleNamespace(id="owner", uses=(), files=("code.py",))
@@ -307,7 +326,13 @@ class GraphSurfaceTests(TestCase):
                 patch.object(review, "read_change", return_value=None),
                 patch.object(review, "spec_consumers", return_value=set()),
                 patch.object(review, "code_review_peers", return_value=tuple(peers)),
-                patch.object(review, "review", side_effect=reviewed),
+                patch.object(
+                    __import__(
+                        "tests.concorde.support.legacy_review", fromlist=["review"]
+                    ),
+                    "review",
+                    side_effect=reviewed,
+                ),
                 patch("concorde.review.review.Invocation", side_effect=child),
                 patch.object(
                     batch_graph,
@@ -317,7 +342,10 @@ class GraphSurfaceTests(TestCase):
                     ),
                 ),
             ):
-                result = review.review_scope(run, "code")
+                result = __import__(
+                    "tests.concorde.support.legacy_review",
+                    fromlist=["legacy_issue_review_scope"],
+                ).legacy_issue_review_scope(run, "code")
             self.assertEqual("failed", result["data"]["outcome"])
             self.assertEqual(stop + 1, len(calls))
             self.assert_path(drawings[0], visited)

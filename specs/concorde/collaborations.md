@@ -47,7 +47,9 @@ This collaboration applies when any entry must identify a Module, resolve its do
 
 <a id="entity.concorde.harness"></a><a id="agreement.document.concorde.module.2"></a>
 
-The [Harness Module](harness/module.md) admits every operation request at one typed boundary and configures and runs every Agent invocation: freezes its context kinds, binds its Agent and Harness definition, compiles its effective permissions, launches its Pi worker and coordinates it through LangGraph control flow.
+The [Harness Module](harness/module.md) admits every operation request at one typed boundary and configures and runs every Agent invocation: freezes its context kinds, binds its Agent and Harness definition, binds its intended file policy and actual terminal tools, prepares native execution and independently
+admits results. Native workflows own model control flow; optional StateGraph Operations are selected
+explicitly rather than inserted under every capability.
 
 This collaboration applies when an entry needs an Agent to reason or act.
 
@@ -95,4 +97,4 @@ This collaboration applies when a developer wants to read Specs.
 
 <a id="entity.concorde.operations"></a><a id="operations-collaboration"></a>
 
-The [Operations Module](operations/module.md) keeps the catalog of every Operation, dispatches each admitted request to its provider and groups the responsibilities that provide reusable and composed Operations. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [complete Operation contract](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
+The [Operations Module](operations/module.md) keeps the typed inventory of capabilities and canonical Agents, dispatches each admitted request to its provider and groups the responsibilities that provide reusable and composed Operations. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [complete Operation contract](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.

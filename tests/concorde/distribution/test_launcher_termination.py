@@ -16,9 +16,9 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.harness import admission, operation_graph  # noqa: E402
-from concorde.harness.host import OperationHost  # noqa: E402
-from concorde.spec.verification import verifies  # noqa: E402
+from concorde.harness import admission
+from concorde.harness.host import OperationHost
+from concorde.spec.verification import verifies
 
 LAUNCHER = REPOSITORY_ROOT / "scripts/run-operation.py"
 
@@ -43,7 +43,9 @@ def _wait_until_idle(process: subprocess.Popen, timeout: float = 60) -> None:
     raise AssertionError("the launcher never settled")
 
 
-@unittest.skipUnless(sys.platform.startswith("linux"), "reads /proc to wait for the launcher")
+@unittest.skipUnless(
+    sys.platform.startswith("linux"), "reads /proc to wait for the launcher"
+)
 class LauncherTerminationTests(unittest.TestCase):
     @verifies("scenario.distribution.launcher-terminated")
     def test_sigterm_while_waiting_for_the_invocation_prints_a_cancelled_envelope(self):
@@ -76,23 +78,23 @@ class LauncherTerminationTests(unittest.TestCase):
             def invoke(self, *_args, **_kwargs):
                 raise KeyboardInterrupt
 
-        host = OperationHost(
-            REPOSITORY_ROOT, REPOSITORY_ROOT, mode="describe-policy"
-        )
+        host = OperationHost(REPOSITORY_ROOT, REPOSITORY_ROOT, mode="describe-policy")
         runtime_input = {
             "type_id": "concorde-validate-request",
             "schema_version": 1,
             "data": {"target_id": "module.distribution", "task": "check"},
         }
         with mock.patch.object(
-            operation_graph, "build_operation_graph", lambda *a, **k: Interrupted()
+            admission, "run_host_tool", side_effect=KeyboardInterrupt
         ):
             result = admission.run_operation(
                 "concorde-validate", None, runtime_input, host_context=host
             )
         self.assertEqual("failed", result["status"], result)
         self.assertEqual("execution_cancelled", result["errors"][0]["code"], result)
-        self.assertEqual("operation cancelled by the host", result["errors"][0]["message"])
+        self.assertEqual(
+            "operation cancelled by the host", result["errors"][0]["message"]
+        )
 
 
 if __name__ == "__main__":

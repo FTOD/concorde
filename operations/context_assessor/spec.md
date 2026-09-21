@@ -21,12 +21,16 @@ proceed on a false sufficiency.
 The input is one `concorde-agent-stage-context` for phase `context-solve`: the Module's
 `concorde-context-snapshot` with its `spec_resolution`, declared `implementation_entries` and
 `implementation_files`, the task and the phase. A re-assessment after a Spec repair arrives as a
-fresh worker with a fresh snapshot.
+fresh worker with a fresh snapshot. The native public transport delivers that snapshot through
+`context.json` beside its admitted documents, with a Host-issued invocation identity; the legacy
+planning stage retains its typed context envelope. Neither delivery admits additional context.
 
 ## Expected results
 
 Submit a `concorde-agent-stage-result` whose `outcome` is `sufficient`, `spec_incomplete`,
-`unsupported` or `conflicting`, with no document replacements, plan or tasks.
+`unsupported` or `conflicting`, with no document replacements, plan or tasks. Native execution wraps this typed result and the
+issued invocation identity in `structured_output`; it remains a proposal until separate Host
+acceptance, not a worker claim of durable success.
 
 ## Completion conditions
 

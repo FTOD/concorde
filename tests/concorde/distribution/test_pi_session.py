@@ -16,19 +16,23 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.distribution.build import (  # noqa: E402
+from concorde.distribution.build import (
     PI_SESSION_EXTENSION,
-    PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
-    PI_SESSION_SHIM as INSTALLED_PI_SESSION_SHIM,
     build,
     write_build,
 )
-from concorde.harness.pi_rpc import PiRpcError, run_prompt  # noqa: E402
-from concorde.spec.contracts import PUBLIC_OPERATIONS  # noqa: E402
-from concorde.spec.typed_data import json_schema  # noqa: E402
-from concorde.spec.verification import verifies  # noqa: E402
-from tests.concorde.harness.test_pi_worker import installed_pi  # noqa: E402
-from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider  # noqa: E402
+from concorde.distribution.build import (
+    PI_SESSION_SHIM as INSTALLED_PI_SESSION_SHIM,
+)
+from concorde.distribution.build import (
+    PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
+)
+from concorde.harness.pi_rpc import PiRpcError, run_prompt
+from concorde.spec.contracts import PUBLIC_OPERATIONS
+from concorde.spec.typed_data import json_schema
+from concorde.spec.verification import verifies
+from tests.concorde.harness.test_pi_worker import installed_pi
+from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden/pi/concorde-session.ts"
 HARNESS = REPOSITORY_ROOT / "tests/concorde/support/pi_session_harness.mts"
@@ -36,7 +40,7 @@ FAKE_LAUNCHER = "tests/concorde/support/fake_launcher.py"
 EXTENSION = REPOSITORY_ROOT / PI_SESSION_EXTENSION
 TYPEBOX = REPOSITORY_ROOT / "pi/node_modules/typebox/package.json"
 CATALOG_PATTERN = re.compile(
-    r"const CATALOG: SessionCatalog = (\{.*?\n\});\n\nexport default", re.S
+    r"const CATALOG: SessionCatalog = (\{.*?\n\});\n\nexport default", re.DOTALL
 )
 RUN = {
     "operation": "concorde-validate",
@@ -91,7 +95,7 @@ class ShimRenderingTests(unittest.TestCase):
         self.assertIn('from "../../../pi/extensions/concorde-session.ts"', text)
         self.assertIn('new URL("../../../", import.meta.url)', text)
         catalog = shim_catalog(content)
-        self.assertEqual(1, catalog["schema_version"])
+        self.assertEqual(2, catalog["schema_version"])
         self.assertTrue(catalog["explicit_request_only"])
         self.assertEqual("scripts/run-operation.py", catalog["launcher"])
         self.assertEqual(
@@ -176,7 +180,7 @@ class SessionToolTests(unittest.TestCase):
     @staticmethod
     def catalog(**changes) -> dict:
         catalog = {
-            "schema_version": 1,
+            "schema_version": 2,
             "launcher": FAKE_LAUNCHER,
             "interpreters": [sys.executable],
             "explicit_request_only": True,
@@ -243,7 +247,7 @@ class SessionToolTests(unittest.TestCase):
             parameters["properties"]["operation"]["enum"],
         )
         self.assertEqual(
-            ["run", "describe"], parameters["properties"]["action"]["enum"]
+            ["run", "describe", "result"], parameters["properties"]["action"]["enum"]
         )
         self.assertEqual(["operation", "action"], parameters["required"])
         installed = self.drive([], explicit_request_only=False)
@@ -304,7 +308,7 @@ class SessionToolTests(unittest.TestCase):
                 {
                     "params": {
                         **RUN,
-                        "operation": "concorde-plan",
+                        "operation": "concorde-validate",
                         "mode": "describe-policy",
                     }
                 },
@@ -379,8 +383,8 @@ class RealPiSessionTests(unittest.TestCase):
         # Host infrastructure is explicit and local to this disposable fixture, not installed globally.
         (self.project / ".venv").symlink_to(Path(sys.prefix), target_is_directory=True)
         from concorde.distribution.session_selection import (
-            select_session,
             save_selection,
+            select_session,
         )
 
         self.selection_path = self.project / ".concorde/work/pi-selection.json"

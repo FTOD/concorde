@@ -33,20 +33,22 @@ Authorized edits already made by a failed programmer can remain and need inspect
 
 ## Important security limits
 
-The worker tool gate checks tools and paths inside the agent process; the worker sandbox around
-that process bounds everything else it does, including a shell command it was granted. Inside the
-sandbox the host filesystem is read-only, the developer's credential locations, agent-client state
-and every other worktree of the repository are masked, only the grant and the run directory are
-writable, and the temporary directory and process namespace are private. **The network is shared,
-because the process contacts its model provider with the developer's credentials, which it can read
-inside its run directory; the masks are a fixed list.** Both boundaries require Linux with a working
-system bubblewrap/namespace setup; an unavailable sandbox refuses the launch rather than running the
-worker unconfined. Treat these limits as deployment constraints, not as implementation details a
-user can safely ignore.
+Native Agents run through pi-subagents with fresh context and enforced terminal tool/delegation
+ceilings. Their intended file, network and credential restrictions are prompt-level policy, not
+OS confinement or proof of exclusive reads. In particular, the native programmer's shell is not
+confined to its intended write paths by Concorde. Read-only reviewers have no shell/write/edit tools;
+that tool ceiling does not prove which files their read tools examined.
 
-Configured checks use the same kind of boundary as a read-only project mount with separate temporary
-storage. A check that needs to write a project cache must use the issued temporary area instead; an
-unavailable boundary blocks the check rather than falling back to unrestricted execution.
+The retained low-level Pi-RPC diagnostic/test utilities have a different boundary: their worker
+extension checks tool/path policy and their Linux bubblewrap sandbox restricts process writes and
+masks a fixed list of secret locations and other worktrees. Those utilities refuse unavailable
+isolation and are not a selectable fallback for native capability failures. Their network remains
+shared and provider credentials inside their run directory remain readable.
+
+Configured checks and the tester command tool have an actual OS read-only governing-filesystem
+boundary with separate temporary storage and process-tree cleanup. They refuse unavailable isolation;
+they define no finer read, network or credential policy. A check needing a writable cache uses its
+issued scratch, not the project. These guarantees must not be transferred to the native Agent itself.
 
 ## Why inputs and results are checked twice
 

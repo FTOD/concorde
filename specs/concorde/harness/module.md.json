@@ -26,13 +26,21 @@
         "scripts/development/analyze-timing.py",
         "scripts/development/check-graph-specs.py",
         "src/concorde/harness/",
+        "tests/concorde/distribution/test_install_output_handoff.py",
         "tests/concorde/harness/",
+        "tests/concorde/harness/native_observation.mjs",
+        "tests/concorde/harness/test_optional_operation.py",
         "tests/concorde/operations/test_operation_modules.py",
         "tests/concorde/operations/test_orchestration_removal.py",
         "tests/concorde/operations/test_run_operation.py",
         "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/spec/test_operations_migration.py",
+        "tests/concorde/support/installed_legacy_driver.py",
+        "tests/concorde/support/legacy_graphs/",
+        "tests/concorde/support/legacy_review.py",
+        "tests/concorde/support/legacy_stage.py",
+        "tests/concorde/support/native_planning.py",
         "tests/concorde/support/operation_json.py"
       ],
       "meaning": "#entity.harness.agent-model"
@@ -43,8 +51,16 @@
       "kind": "program",
       "files": [
         "operations/",
+        "prompts/native/code-reviewer.md",
+        "prompts/native/context-assessor.md",
+        "prompts/native/issue-solver.md",
+        "prompts/native/planner.md",
+        "prompts/native/programmer.md",
+        "prompts/native/spec-reviewer.md",
+        "prompts/native/task-author.md",
         "prompts/workers/common.md",
-        "tests/concorde/fixtures/build/golden/agents/"
+        "tests/concorde/fixtures/build/golden/agents/",
+        "tests/concorde/fixtures/build/golden/native/"
       ],
       "meaning": "#entity.harness.agent-definitions"
     },

@@ -34,46 +34,35 @@ detailed contract.
 
 ## Operation registry {#operations-operation-registry}
 
-An **Operation** is an executable entity that can be used as a LangGraph node. It declares its
-input State, output State updates, effects and usage conditions. Its implementation can be
-ordinary deterministic code, a model invocation or a compiled LangGraph subgraph. These are
-implementation choices, not separate entity kinds. A Graph is a graph that composes Operations;
-a compiled Graph can itself be used as an Operation node.
+An **Agent** is a callable native Pi role, a **Workflow** an authored pi-subagents composition,
+an **Operation** an explicitly selected StateGraph flow, and a **Host service** a finite non-model
+action. Module ownership, context inclusion and these executable kinds remain independent.
+`operations/` and the eleven public `concorde-*` request/response names are compatibility spellings,
+not a mandate to execute every capability as a LangGraph node.
 
-**Operation** is the canonical executable identity. The parallel **Agent** executable registry is retired. A worker is a runtime process executing a
-model-backed Operation, not another definition of what the Operation does. A model execution
-profile records instructions, tools, context/effect limits and timeout on that Operation.
-Lowercase _operation_ still describes an ordinary action such as a filesystem or Git operation.
-A helper function need not be registered merely because Python permits calling it from a node.
+The typed inventory declares seven `AGENTS`, public `CAPABILITIES`, `WORKFLOWS`, `HOST_TOOLS` and
+the separately selected `STATE_OPERATIONS`. The canonical Agent definitions carry `PROFILE` and
+`KIND="agent"`; they have no `STATE`/`run` model-operation aliases. Public capability modules retain
+the finite Python request/response adapter, `STATE` and `run` for wire compatibility. Those adapters
+do not schedule cognition: the Pi entry prepares real native calls or authored workflows.
 
 #### State and runtime boundaries {#operations-state-and-runtime-boundaries}
 
-Each entry under `operations/` declares `STATE` and `run(state, runtime)`. The State contract
-provides LangGraph input and output schemas. Model nodes consume the admitted task-context fields
-and return validated result fields. Existing host-backed graph adapters consume request-data
-fields and return a `result` channel containing the complete operation envelope, preserving
-blocked, failed, cancelled and successful outcomes rather than flattening them into success data.
-`REQUEST` and `RESPONSE` remain the versioned transport schemas of those existing host adapters;
-they are not a second executable interface for model nodes.
+Only an explicitly selected StateGraph Operation exposes typed graph input/output channels and
+trusted Runtime services. Its native launch/admission callable is supplied by the embedding; missing
+service refuses. State cannot inject that callable or widen authority. A node projects declared
+inputs and returns only its output update; the parent owns channel mapping and reducers. Optional
+Graph composition is not a mirror of native workflow branches or a fallback for native failure.
 
-A node receives only its declared input channels and returns only its output update, never a copy
-of the entire parent State. Each graph declares reducers when parallel writers need to merge a
-shared channel. Compatible compiled graphs can be embedded directly; incompatible channels require
-an explicit adapter. Parent State membership is not permission to read files or implementation
-contents. Frozen contexts and the executor's independent permission checks still apply.
-
-Hosts, model launchers and project configuration are trusted `Runtime.context`, not writable State
-channels or task-controlled callable objects. Model State validation checks both the wire shape and
-the profile's phase, admitted artifacts, outcome and populated result fields. The worker executor
-also rechecks its byte-bound instructions and effective authority before launching a process.
-
-The existing `agent` record fields, `concorde-agent-stage-*` wire identities, generated instruction
-paths under `generated/agents/`, stable Spec anchors and historical event names are compatibility
-spellings. They identify the executing model Operation and do not recreate an Agent registry.
+Native Agents instead receive the Host-frozen task/context and native `outputSchema`. Their
+`structured_output` is a proposal; stage gates are unaccepted; independent Host correlation and
+currentness/business checks precede persistence. Tool ceilings and prompt-level file policy are
+distinct. Compatibility `WorkerProfile`, `WorkerBinding`, wire identities and generated/agents paths
+retain their contract/binding meaning without retiring the canonical Agent inventory.
 
 #### Current host adapter {#operations-current-host-adapter}
 
-Each public Operation has exactly one public name in the Pi catalog and launcher entry
+Each public capability has exactly one public name in the Pi catalog and launcher entry
 `scripts/run-operation.py <public-name>`. Non-public Operations have neither a catalog entry nor
 a direct launcher entry. [Distribution Module](../distribution/module.md) owns the ordinary
 Operation guidance sources and Pi projection; [Harness](../harness/admission.md) owns shared
@@ -93,62 +82,48 @@ worker's task context or another executable kind.
 | tasks                    | true   | bound             | false         | task-author                                      | Derive acceptance tasks from the accepted plan                       |
 | implement                | true   | bound             | false         | programmer                                       | Fulfil local tasks after caller-selected component work              |
 
-The seven model-backed entries named in this table are themselves private, bound Operations
-with `DETERMINISTIC=false` and no composed `USES`. Their detailed task State contracts, tools and
-effects are defined in [model execution profiles](../harness/execution-reference.md). A bound
-model node consumes one host-frozen complete Module context without independently selecting more
-Modules. Target selection belongs to the outer caller, not a model router.
+The seven roles used by these capabilities are canonical terminal native Agents with bound context,
+`DETERMINISTIC=false`, `PROFILE`, and no composed `USES`. They are callable only with prepared native
+invocations, not through private Python model-operation launch aliases. The outer caller selects the
+Module; no role routes itself to another context.
 
 #### Operation properties {#operations-operation-properties}
 
-Every Operation declares:
+Inventory entries declare `KIND`, `PUBLIC`, `CONTEXT_SELECTION`, `DETERMINISTIC`, `USES`, `PROFILE`
+and `EXTERNAL_NAME`. `KIND` distinguishes `agent`, `agent-entry`, `workflow` and `host` in the
+compatibility inventory. `PUBLIC` controls the eleven catalog/launcher names. `bound` means a
+caller-selected context; `none` means Host work without model context. Determinism covers all
+supported paths and transitive collaborators, not filesystem purity. `USES` records declared
+collaborators, grants no file authority, has no duplicate or unknown entries and no definition cycle.
 
-- **PUBLIC**: a boolean; true requires exactly one Pi catalog name and launcher entry.
-- **CONTEXT_SELECTION**: `bound` or `none`. Bound consumes a caller-selected context frozen by the host;
-  none performs host work without model context.
-- **DETERMINISTIC**: a boolean; true means no supported path calls a model, including transitive
-  `USES`. It does not promise purity, reproducible filesystem observations or absence of effects.
-- **USES**: the directly composed Operation identities. It is the sole composition relation,
-  including calls to model nodes. It grants no additional context or write authority.
-- **STATE**: the input and output State contract. Runtime schema and effect validation remain
-  necessary even when LangGraph accepts the Python type declaration.
-- **PROFILE**: optional model execution configuration, or `None`; it has the same identity as its
-  Operation and never registers a second executable entity.
+Agent entries have a profile and no `STATE`/`run`; the public Python wire adapters retain those
+fields. Separately selected StateGraph Operations declare actual typed graph channels. Native
+branches/loops belong in authored pi-subagents workflows; optional graph ordering/reducers belong
+in StateGraph. A per-entry `AGENTS` or obsolete `CLASS` declaration is not supported; the package's
+canonical `AGENTS` inventory is supported and required.
 
-`AGENTS` and `CLASS` declarations are rejected. `USES` must name registered entries, be duplicate
-free and have no definition cycle in this adapter. Bounded runtime loops and per-target recursive
-execution remain graph control flow, not cyclic definition dependencies. Actual ordering, branches,
-loops and reducers live in LangGraph, not a duplicate metadata graph. Undeclared composition fails
-with `undeclared_operation`; host composition never grants a worker another callable tool.
-
-The single `concorde.operations` metadata inventory records exposure, context selection,
-determinism, `public_name`, direct uses, State type identities and optional profile workspace/tools.
-`public_name` equals the public Operation's `EXTERNAL_NAME`, and is null for private Operations.
-Validation compares it with code and independently checks exact guidance membership. The retired
-`skill` key is rejected, not accepted as an alias. This is an explicit project metadata migration;
-metadata schema 2 and runtime wire versions retain their existing meanings. There is no independent `concorde.agents` inventory.
+The `concorde.operations` paired metadata records kind, exposure, context selection, determinism,
+public name, direct uses, nullable State and profile. It matches code exactly; private Agent entries
+have null State and public name. This single typed metadata inventory includes Agents; a separate
+`concorde.agents` extension is not used. The retired `skill` key remains rejected. Catalog schema 2
+is distinct from metadata schema 2 and the versioned request/result wire envelopes.
 
 ### Design {#operations-design}
 
 #### Behavioral ownership and composition limits {#operations-behavioral-ownership-and-composition-limits}
 
-Every Operation, including each model-backed worker, has exactly one canonical behavioral owner.
-The owner's Specs explain what the Operation is for, what it takes and returns and when it stops;
-this table only maps each Operation to that owner and to the Graph it runs. Every public entry first
-passes the [admission](../harness/admission.md#graphs-operation-admission-graph-operation-graph) and
-[dispatch](#graphs-operation-dispatch-graph-dispatch-graph) Graphs, and every model-backed worker
-runs as one [Operation node](../harness/execution-reference.md#host-operation-node-operation-node).
+Every capability and Agent has one canonical behavioral owner. Native preparation and finite
+request dispatch use common admission; no admission/dispatch Graph executes under these public
+paths. Optional StateGraph Operations are explicitly selected through Harness's Operation API.
 
-| Operation or action                                                | Canonical behavioral owner                    | Runs as                                                                                                                                                                                                          |
-| ------------------------------------------------------------------ | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| context-solve, plan, tasks; context-assessor, planner, task-author | [Planning](../planning/module.md)             | The [planning Graph](../planning/execution-reference.md#plan-planning-graph-plan-graph) for plan; one worker node each for context-solve and tasks                                                               |
-| implement; programmer                                              | [Implementation](../implementation/module.md) | One local programmer node after checking separately completed component work                                                                                                                                     |
-| spec-review, code-review; spec-reviewer, code-reviewer             | [Review](../review/module.md)                 | Target admission, then one reviewer node for the owner and each changed-file peer                                                                                                                                |
-| validate                                                           | [Validation](../validation/module.md)         | One deterministic node                                                                                                                                                                                           |
-| deliver                                                            | [Delivery](../delivery/module.md)             | One deterministic node                                                                                                                                                                                           |
-| issues; issue-solver                                               | [Issues](../issues/module.md)                 | The [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph) and its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph) |
-| init                                                               | [Spec](../spec/initialize.md)                 | The [project Graph](../spec/contracts.md#graphs-project-graph-project-graph)                                                                                                                                     |
-| configure                                                          | [Distribution](../distribution/module.md)     | The project Graph                                                                                                                                                                                                |
+| Capability or role | Canonical behavioral owner | Execution |
+| --- | --- | --- |
+| context-solve, plan, tasks; assessor, planner, task-author | [Planning](../planning/module.md) | Direct native assessor/task-author or authored assessor-then-planner workflow |
+| implement; programmer | [Implementation](../implementation/module.md) | Direct native programmer after finite admission |
+| spec-review, code-review; reviewers | [Review](../review/module.md) | Authored native scope workflow |
+| issues; issue-solver | [Issues](../issues/module.md) | Finite bookkeeping or bounded native decision/verification workflow |
+| validate, deliver | [Validation](../validation/module.md), [Delivery](../delivery/module.md) | Finite Host services |
+| init, configure | [Spec](../spec/initialize.md), [Distribution](../distribution/module.md) | Finite Host services |
 
 Module ownership is distinct from node composition. `USES` is the executable composition relation;
 registry `uses` describes Module responsibility dependencies. Shared model execution support does
@@ -165,152 +140,39 @@ The Operations Module owns the exact obligations in [requirements](requirements.
 
 ### Design {#graphs-design}
 
-Operations dispatches every admitted request through two LangGraph Graphs: the dispatch Graph and
-the target admission Graph it composes. Harness runs its
-[admission Graph](../harness/admission.md#graphs-operation-admission-graph-operation-graph) around
-them. The composed Graphs a dispatch leaf runs (planning, project and Issues) are specified by their
-owning Modules. Each Graph Spec follows the
-[Graph Spec convention](../harness/execution-reference.md#graphs-and-loops-graph-specs): its State,
-Nodes and Edges are stated in turn, and its diagram is bound to its compiled Graph by `%% graph:`
-and kept equal to it by the configured Graph Spec check.
+Dispatch and target admission are finite Host services. The old Graph anchors below remain
+addressable migration records, not current executable wrappers. Native workflows define their
+actual model-call order; only separately selected StateGraphs have executable Graph Specs.
 
-The following index maps public entry points to their internal Graphs without duplicating their
-executable diagrams. Every entry first uses admission and dispatch; target-bound entries also
-use deterministic explicit target admission.
+Public compatibility entries retain their request/response names without implying Graph execution:
 
-| Public entry                                                     | Internal flow after dispatch                                                                                                                                                                                                                                                    |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `concorde-issues`                                                | [Issue Graph](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph); solve returns development or Spec-repair work to the caller, or runs its [verification Graph](../issues/execution-reference.md#lifecycle-issue-verification-graph-issue-verification-graph). |
-| `concorde-spec-review`, `concorde-code-review`                   | The review leaf scopes independent invocations; sequential scope work uses the [batch Graph](../harness/execution-reference.md#host-sequential-work-items-graph-batch-graph), not a separate repair loop.                                                                       |
-| `concorde-plan`                                                  | [Planning Graph](../planning/execution-reference.md#plan-planning-graph-plan-graph).                                                                                                                                                                                            |
-| `concorde-context-solve`, `concorde-tasks`, `concorde-implement` | A single bounded worker after input admission; component work is returned to the caller.                                                                                                                                                                                        |
-| `concorde-init`, `concorde-configure`                            | [Project Graph](../spec/contracts.md#graphs-project-graph-project-graph).                                                                                                                                                                                                       |
-| `concorde-validate`, `concorde-deliver`                          | Deterministic dispatch leaves; no separate multi-node domain Graph is implied by their internal functions.                                                                                                                                                                      |
+| Public entry | Backend after finite admission |
+| --- | --- |
+| `concorde-issues` | Finite bookkeeping or bounded native decide/verify/decide/close/validate workflow. |
+| `concorde-spec-review`, `concorde-code-review` | Authored native scope workflow with independently admitted terminal reviewers. |
+| `concorde-plan` | Native assessor then planner workflow; Host persistence. |
+| `concorde-context-solve`, `concorde-tasks`, `concorde-implement` | A fresh native terminal Agent; independent Host acceptance. |
+| `concorde-init`, `concorde-configure`, `concorde-validate`, `concorde-deliver` | Finite deterministic Host services. |
 
-Model-backed leaves use the [Operation node](../harness/execution-reference.md#host-operation-node-operation-node)
-contract. The seven private model nodes are reached only through declared composition;
-appearing in the union dispatch diagram does not expose a public entry. Studio wraps a public entry with invocation validation and displays these same
-operation/subgraph factories, rather than defining another business workflow.
+Optional StateGraph Operations and Studio are explicit separate selections, not backends implicitly
+chosen by these entries.
+
+Native leaves use the canonical Agent profile and prepared native boundary. Studio displays the
+separately selected genuine Operation graph, not public capability or workflow mirrors.
 
 #### Operation dispatch Graph (`dispatch_graph`) {#graphs-operation-dispatch-graph-dispatch-graph}
 
-**State.** `route` (the leaf or subgraph selected for the admitted operation), `output` (the
-operation's typed response), `relayed` (the complete result envelope a candidate worktree's
-launcher returned for a relayed mutation, which the admission Graph adopts as its own result),
-`result` (guard failure or None). These channels use replacement updates. Operation, request,
-configuration, bound invocation and relay target are Host-held, not dispatch State. `none` below
-means a node reads only those Host inputs. `?` means a conditional channel or update. Guards
-write `result` on every guarded step and set `route=__end__` on errors. For registered subgraphs,
-`in`/`out` list channels crossing the parent boundary; their own Graph Specs give node-level
-reads/writes. Child-only counters, decisions and artifact reducers do not become parent channels.
-Provider artifacts are exported inside `output`, not as a dispatch `artifacts` channel.
+This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
+the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
+is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
 
-**Nodes.** Each leaf below is the entry of one retained Operation.
-
-| Node               | Executes                                                                                                         | in                       | out                    |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------ | ---------------------- |
-| `select_operation` | Selects from the Host-bound operation/action, giving relay precedence when a candidate relay target exists.      | none                     | route, result          |
-| `relay`            | Calls the candidate's launcher with the Host-bound invocation and adopts its full envelope.                      | none                     | relayed, result        |
-| `prepare_target`   | Registered target subgraph: checks explicit owner, stores the bound invocation in the Host and selects the leaf. | route?, output?, result? | route, output?, result |
-| `deliver`          | Deterministic delivery under the repository lock, using Host-bound change/worktrees.                             | none                     | output, result         |
-| `project`          | Registered project subgraph using the Host-bound initialization/configuration request.                           | route?, output?, result? | route, output?, result |
-| `review`           | Reviews the Host-bound owner and affected peers in separate contexts.                                            | none                     | output, result         |
-| `describe_policy`  | Describes grants for the bound invocation without launching workers.                                             | none                     | output, result         |
-| `issues`           | Registered Issue subgraph using the Host-bound action and selection.                                             | route?, output?, result? | route, output?, result |
-| `plan`             | Registered planning subgraph using the bound task/Spec context and candidate.                                    | route?, output?, result? | route, output?, result |
-| `tasks`            | Calls task authoring with stored plan, reserved IDs and repair feedback; admits tasks.                           | none                     | output, result         |
-| `implement`        | Checks current component work and calls only the local programmer with stored tasks and granted files.           | none                     | output, result         |
-| `validate`         | Checks the bound candidate and readiness gates.                                                                  | none                     | output, result         |
-| `context_solve`    | Calls the context assessor for the bound task and complete Spec.                                                 | none                     | output, result         |
-
-**Edges.** `select_operation` writes `route`, and a conditional edge follows it to one entry leaf:
-the relay for a mutation admitted in the primary worktree, delivery, the project Graph, target admission for every target-bound operation; an error ends the
-Graph. `prepare_target` writes `route` again once the owner is bound and selects that operation's
-leaf, or ends the Graph when binding is blocked. Every leaf ends the Graph with its typed output.
-The Studio and CLI compile one dispatch Graph per public operation containing only the leaves that
-operation can reach; the diagram shows the complete topology they are drawn from. Both branching
-edges read exactly `state["route"]`; edge labels below explain how the source sets that channel.
-Review dispatch takes precedence over describe-policy so the review provider describes its own
-policy. A target-binding business stop writes `output` and `route=__end__`; a guard failure writes
-`result` and the same route. Leaf completion itself is not proof of a successful business outcome.
-
-```mermaid
-flowchart TB
-    %% graph: dispatch_graph
-    accTitle: Operation dispatch Graph
-    accDescr: The admitted operation selects one entry leaf, or target admission first and then one bound leaf; every leaf ends the Graph with its typed output.
-    __start__["start"]
-    select_operation["select_operation<br/>in: none<br/>out: route, result"]
-    relay["relay<br/>in: none<br/>out: relayed, result"]
-    prepare_target["prepare_target<br/>in: route?, output?, result?<br/>out: route, output?, result"]
-    deliver["deliver<br/>in: none<br/>out: output, result"]
-    project["project<br/>in: route?, output?, result?<br/>out: route, output?, result"]
-    review["review<br/>in: none<br/>out: output, result"]
-    describe_policy["describe_policy<br/>in: none<br/>out: output, result"]
-    issues["issues<br/>in: route?, output?, result?<br/>out: route, output?, result"]
-    plan["plan<br/>in: route?, output?, result?<br/>out: route, output?, result"]
-    tasks["tasks<br/>in: none<br/>out: output, result"]
-    implement["implement<br/>in: none<br/>out: output, result"]
-    validate["validate<br/>in: none<br/>out: output, result"]
-    context_solve["context_solve<br/>in: none<br/>out: output, result"]
-    __end__["end"]
-    __start__ --> select_operation
-    select_operation -->|mutation admitted in the primary worktree| relay
-    select_operation -->|concorde-deliver| deliver
-    select_operation -->|concorde-init or concorde-configure| project
-    select_operation -->|target-bound operation| prepare_target
-    select_operation -->|error| __end__
-    prepare_target -->|concorde-spec-review or concorde-code-review| review
-    prepare_target -->|describe-policy mode, non-review operation| describe_policy
-    prepare_target -->|concorde-issues| issues
-    prepare_target -->|concorde-plan| plan
-    prepare_target -->|concorde-tasks| tasks
-    prepare_target -->|concorde-implement| implement
-    prepare_target -->|concorde-validate| validate
-    prepare_target -->|concorde-context-solve| context_solve
-    prepare_target -->|blocked or error| __end__
-    relay --> __end__
-    deliver --> __end__
-    project --> __end__
-    review --> __end__
-    describe_policy --> __end__
-    issues --> __end__
-    plan --> __end__
-    tasks --> __end__
-    implement --> __end__
-    validate --> __end__
-    context_solve --> __end__
-```
 
 #### Target admission Graph (`target_graph`) {#graphs-target-admission-graph-target-graph}
 
-**State.** `route`, `output` and `result`, all replacement updates. The explicit target, task,
-configuration and candidate are Host inputs, not model-selected state. No discovery counters,
-routes or decisions exist.
+This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
+the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
+is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
 
-**Nodes.**
-
-| Node          | Executes                                                                                                               | in   | out           |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------- | ---- | ------------- |
-| `bind_target` | Resolves the caller's target and focus, verifies candidate intent, binds the invocation and selects its declared leaf. | none | route, result |
-
-**Edges.** Start binds the explicit target, then ends this child Graph. The dispatch parent reads
-its selected route. Unknown targets, foreign focus and incompatible intent fail without a fallback.
-A separately selected component request must match tasks from a current accepted parent plan: the
-parent Spec/registration revision, derived task and constraints are rechecked before its owner
-exception is admitted. A stale parent declaration grants no component execution.
-
-```mermaid
-flowchart TB
-    %% graph: target_graph
-    accTitle: Explicit target admission
-    accDescr: Resolve and bind only the caller-selected Module before returning its provider route.
-    __start__["start"]
-    bind_target["bind_target<br/>in: none<br/>out: route, result"]
-    __end__["end"]
-    __start__ --> bind_target
-    bind_target --> __end__
-```
 
 ## Context selection participation
 
@@ -324,3 +186,10 @@ planning, authoring or review for the selected Module.
 **Relied-upon guarantee.** [Selection](../harness/contracts.md#contract.context.selection) determines the complete admitted contract and its original owners.
 
 **Local obligation.** Supply the explicit Module and task; stop dependent transitions on gaps or stale context, and never treat included provider definitions as writable local Specs.
+
+### Public context-assessment backend
+
+Public context-solve prepares a real native context-assessor Agent and independently admits its
+single-run result as specified by [Harness](../harness/execution-reference.md#native-context-assessor).
+It runs finite common admission directly, not the dispatch Graph. Bare public Python execution refuses absent native transport; no dispatch or Studio Graph fallback
+is selected. Planning now uses the authored two-child native workflow; tasks use the direct native task-author.

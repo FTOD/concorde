@@ -15,3 +15,15 @@ Requires the managed change and current accepted plan for the same intent. Retur
 The calling agent chooses whether and when to invoke other Operations. Report invalid or stale
 inputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews
 the grant without launching a worker. Execution retains bounded context and authority.
+
+## Native invocation
+
+Run prepares a direct native task-author call from the exact current accepted plan. Invoke the
+returned native `subagent` call unchanged. Inspect `details.concorde_native.accepted` and its typed
+result, not native structured output or gate success alone. Reserved IDs and explicit scope/review
+repair feedback remain Host-checked; failed/stale/empty/colliding results preserve prior tasks.
+
+File scope is prompt-level policy. Only complete Specs and admitted references are supplied; no project
+implementation contents, delegation, write or shell grants are added. Native runtime selection uses
+`CONCORDE_NATIVE_SUBAGENTS_ROOT`. The assigned candidate is reused; primary requests bind a managed
+candidate while status and durable evidence remain primary-owned.

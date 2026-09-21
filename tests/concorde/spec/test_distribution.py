@@ -179,13 +179,13 @@ class DistributionTests(unittest.TestCase):
                 driver = root / "driver.py"
                 driver.write_text("""import importlib.util,json,sys
 from pathlib import Path
-root=Path.cwd();framework=root/'.concorde/framework';sys.path.insert(0,str(framework/'src'))
+root=Path.cwd();framework=root/'.concorde/framework';sys.path.insert(0,str(framework/'src'));sys.path.append(str(Path(sys.argv[1]).parents[3]))
 spec=importlib.util.spec_from_file_location('model_process_fixture',sys.argv[1]);helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 helper.PACKAGE=framework
 from concorde.spec.typed_data import typed
 helper.project(root)
 from concorde.harness.admission import run_operation
-from concorde.harness.host import OperationHost
+from tests.concorde.support.native_planning import OperationHost
 import concorde.harness.admission as actual_host
 model=helper.ModelProcessDouble();host=OperationHost(root,framework,executor=model.executor,allow_primary_worktree=True)
 task={'target_id':'service.transfer','task':'Implement transfer'}
@@ -235,7 +235,7 @@ print(json.dumps({'result':result,'outputs':outputs,'module_source':actual_host.
 
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
         from concorde.harness.admission import run_operation
-        from concorde.harness.host import OperationHost
+        from tests.concorde.support.native_planning import OperationHost
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

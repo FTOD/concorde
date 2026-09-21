@@ -16,13 +16,11 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution.build import (
-    MODEL_ROOTS,
-    PUBLIC_OPERATIONS,
-    OPERATION_GUIDANCE,
-    PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
-    PI_SESSION_SHIM as INSTALLED_PI_SESSION_SHIM,
     LEGACY_OPERATION_NAMES,
     LEGACY_PROJECTION_ROOTS,
+    MODEL_ROOTS,
+    OPERATION_GUIDANCE,
+    PUBLIC_OPERATIONS,
     BuildError,
     ModelInstructions,
     build,
@@ -30,6 +28,12 @@ from concorde.distribution.build import (
     load_model_instructions,
     verify_fresh,
     write_build,
+)
+from concorde.distribution.build import (
+    PI_SESSION_SHIM as INSTALLED_PI_SESSION_SHIM,
+)
+from concorde.distribution.build import (
+    PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
 )
 from concorde.spec.verification import verifies  # noqa: E402
 
@@ -47,7 +51,7 @@ class BuildGoldenTests(unittest.TestCase):
         expected = {
             path.removeprefix("generated/")
             for path in self.by_path
-            if path.startswith("generated/agents/")
+            if path.startswith(("generated/agents/", "generated/native/"))
         }
         expected.add("pi/concorde-session.ts")
         actual = {
@@ -60,7 +64,7 @@ class BuildGoldenTests(unittest.TestCase):
     @verifies("scenario.distribution.build-render")
     def test_agent_bodies_match_golden_bytes_exactly(self):
         for path, output in self.by_path.items():
-            if path.startswith("generated/agents/"):
+            if path.startswith(("generated/agents/", "generated/native/")):
                 with self.subTest(path=path):
                     golden = (GOLDEN / path.removeprefix("generated/")).read_bytes()
                     self.assertEqual(output.content, golden)
@@ -88,12 +92,12 @@ class BuildGoldenTests(unittest.TestCase):
     def test_langgraph_config_names_one_graph_per_operation(self):
 
         payload = json.loads(self.by_path["generated/langgraph.json"].content)
-        self.assertEqual(set(payload["graphs"]), set(PUBLIC_OPERATIONS))
-        for name in PUBLIC_OPERATIONS:
-            self.assertEqual(
-                payload["graphs"][name],
-                f"./scripts/development/studio.py:{name.replace('-', '_')}",
-            )
+        self.assertEqual(
+            payload["graphs"],
+            {
+                "terminal-agent-operation": "./src/concorde/harness/studio.py:terminal_agent_operation"
+            },
+        )
 
     def test_manifest_has_sorted_keys_and_trailing_newline(self):
         manifest = self.result.manifest.decode("utf-8")
@@ -164,7 +168,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         current, _ = check_build(self.root)
         self.assertTrue(current)
 
-        edited = self.root / "prompts/workflow-host/gap-reporting.md"
+        edited = self.root / "prompts/native/context-assessor.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "One more sentence.\n",
             encoding="utf-8",
@@ -275,7 +279,7 @@ class BuildFreshnessTests(unittest.TestCase):
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_after_editing_a_recorded_source(self):
         write_build(self.root)
-        edited = self.root / "prompts/workflow-host/gap-reporting.md"
+        edited = self.root / "prompts/native/context-assessor.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "Changed.\n", encoding="utf-8"
         )
@@ -302,7 +306,7 @@ class BuildFreshnessTests(unittest.TestCase):
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_when_a_recorded_source_is_gone(self):
         write_build(self.root)
-        (self.root / "prompts/workflow-host/gap-reporting.md").unlink()
+        (self.root / "prompts/native/context-assessor.md").unlink()
         with self.assertRaises(BuildError) as failure:
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
@@ -476,8 +480,8 @@ class WireHelperBuildTests(unittest.TestCase):
                 # The fixture is this invocation's package root: a top-level model-backed
                 # operation verifies the fixture build before admitting anything else.
                 from concorde.harness.admission import run_operation
-                from concorde.harness.host import OperationHost
                 from concorde.spec.typed_data import typed
+                from tests.concorde.support.native_planning import OperationHost
 
                 def launched(launch):
                     raise AssertionError("an WorkerProfile launched on a stale build")

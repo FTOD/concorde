@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import importlib
-import sys
 import unittest
-from types import ModuleType
 from unittest.mock import patch
 
 from langgraph.graph import END, START, StateGraph
@@ -50,25 +48,22 @@ class OperationModuleContractTests(unittest.TestCase):
         self.assertEqual(
             7, sum(isinstance(m.PROFILE, WorkerProfile) for m in modules.values())
         )
-        self.assertFalse(hasattr(operations, "AGENTS"))
+        self.assertEqual(7, len(operations.AGENTS))
         for name, module in modules.items():
             self.assertEqual(module.EXTERNAL_NAME, operations.external_name(name))
-            self.assertFalse(hasattr(module, "AGENTS"))
-            self.assertFalse(hasattr(module, "CLASS"))
-            self.assertIsInstance(module.STATE, StateContract)
-            self.assertTrue(callable(module.run))
+            self.assertIn(module.KIND, {"agent", "agent-entry", "workflow", "host"})
             if module.PROFILE:
-                self.assertEqual(name, module.PROFILE.name)
+                self.assertEqual(module.KIND, "agent")
+                self.assertFalse(hasattr(module, "run"))
+                self.assertFalse(hasattr(module, "STATE"))
+                node = OperationNode(name)
                 self.assertEqual(
-                    module.STATE.input_type, module.PROFILE.contract.context
+                    {"__start__", "terminal_agent", "__end__"},
+                    set(node.graph().get_graph().nodes),
                 )
-                self.assertEqual(
-                    module.STATE.output_type, module.PROFILE.contract.result
-                )
-            node = OperationNode(name)
-            self.assertEqual(
-                {"__start__", name, "__end__"}, set(node.graph().get_graph().nodes)
-            )
+            else:
+                self.assertIsInstance(module.STATE, StateContract)
+                self.assertTrue(callable(module.run))
 
     def test_properties_and_transport_contracts_are_independent(self):
         exported = schemas()
@@ -202,41 +197,18 @@ class OperationModuleContractTests(unittest.TestCase):
             node.graph().invoke(data)  # State cannot supply the trusted launcher.
 
     @verifies("scenario.harness.operation-state")
-    def test_deterministic_state_only_node_uses_the_same_adapter(self):
-        module = ModuleType("operations.normalize_plan")
-        module.__dict__["STATE"] = StateContract(
-            "concorde-plan-artifact", "concorde-plan-artifact"
-        )
-        module.__dict__["run"] = lambda state, runtime: {"plan": state["plan"].upper()}
-        with (
-            patch.object(
-                operations, "OPERATIONS", (*operations.OPERATIONS, "normalize_plan")
-            ),
-            patch.dict(sys.modules, {module.__name__: module}),
-        ):
-            node = OperationNode("normalize_plan")
-            self.assertEqual({"plan": "READY"}, node.graph().invoke({"plan": "ready"}))
-            module.__dict__["run"] = lambda state, runtime: {
-                "plan": "ready",
-                "undeclared": True,
-            }
-            with self.assertRaises(TypedDataError):
-                node.graph().invoke({"plan": "ready"})
+    def test_arbitrary_compatibility_names_do_not_register_operations(self):
+        from concorde.distribution.build import BuildError
+
+        with self.assertRaises(BuildError):
+            OperationNode("normalize_plan")
 
     @verifies("scenario.harness.operation-state")
-    def test_module_run_is_directly_a_langgraph_node(self):
-        from tests.concorde.harness.test_operation_node import _stage_context
-
+    def test_agent_has_no_retired_model_operation_alias(self):
         planner = _modules()["planner"]
-        graph = StateGraph(
-            planner.STATE.input_schema, context_schema=OperationRuntimeContext
-        )
-        graph.add_node("planner", planner.run, input_schema=planner.STATE.input_schema)
-        graph.add_edge(START, "planner")
-        graph.add_edge("planner", END)
-        # Without trusted runtime authority the node fails before any process/model call.
-        with self.assertRaises(RuntimeError):
-            graph.compile().invoke(_stage_context()["data"])
+        self.assertEqual(planner.KIND, "agent")
+        self.assertFalse(hasattr(planner, "run"))
+        self.assertFalse(hasattr(planner, "STATE"))
 
     @verifies("scenario.harness.operation-result-state")
     def test_host_state_node_preserves_failure_envelope_and_runtime_context(self):
@@ -254,12 +226,9 @@ class OperationModuleContractTests(unittest.TestCase):
             "concorde.harness.admission.run_operation",
             return_value=envelope,
         ) as run:
-            result = (
-                OperationNode("validate")
-                .graph()
-                .invoke(
-                    {"target_id": "module.fixture", "task": "Check"}, context=context
-                )
+            result = validate.run(
+                {"target_id": "module.fixture", "task": "Check"},
+                Runtime(context=context),
             )
         self.assertEqual({"result": envelope}, result)
         self.assertEqual("concorde-validate", run.call_args.args[0])

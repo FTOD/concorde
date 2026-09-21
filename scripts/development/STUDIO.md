@@ -1,279 +1,43 @@
-# LangGraph Studio for Concorde
+# Optional StateGraph Operation and Studio
 
-Studio can start every public Concorde Operation and inspect operations submitted by the
-CLI or installed Pi `concorde` tool. Both paths execute the same `OperationHost`, typed request
-validation, configuration binding, worker permission checks and worktree lifecycle as local calls.
-Studio is optional; ordinary CLI and Pi tool calls need no Agent Server. Private source-maintenance
-Pi selections cannot redirect execution to Studio.
+Native Agents/workflows and finite Host tools are the default execution architecture. Studio does not
+mirror their business control flow and native calls never redirect through a Studio URL.
 
-## Start a server in this source worktree
-
-Use Python 3.11 or newer and run these commands from the intended Concorde checkout. When working
-through an agent, follow `AGENTS.md`: the main session coordinates from its initial worktree;
-a task child stays in its assigned candidate and never delegates tasks or creates/moves worktrees.
-Source maintenance uses a fresh Concorde-catalog-free writer and a separate fresh sibling tester
-with only the exact candidate-built Pi entry, embedded catalog and runtime. Studio is not an
-alternative maintenance authority, fresh tester or source-primary mutation exception.
-
-```bash
-uv sync --locked --group studio
-python3 scripts/concorde.py build
-uv run --locked --group studio langgraph dev --config generated/langgraph.json --host 127.0.0.1 --port 2024 --n-jobs-per-worker 1 --no-browser
-```
-
-Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
-`generated/langgraph.json` (build output; run the build before starting Studio) registers all eleven
-Graphs, one per public Operation, derived from the authored inventory. The seven non-public model
-Operations run through declared compositions and remain visible in worker events; non-public operations have no
-executable entry, and Studio does not restore one. API health
-is available at <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
-The separate `concorde-spec-review` and `concorde-code-review` assistants each accept `task` plus
-required explicit `target_id` and optional local `focus_id`, with no review_mode selector. They run standalone read-only
-reviews without creating a development change. Spec review includes terminology semantic consistency.
-The local dev API works without model credentials for deterministic operations and policy previews.
-The hosted Studio UI requires a LangSmith account; follow the official
-[Studio setup](https://docs.langchain.com/oss/python/langgraph/studio) for its authentication setup.
-Actual worker execution still requires Pi and the project's configured model credentials.
-
-`generated/langgraph.json` disables LangSmith tracing by default. Local thread/checkpoint files are
-stored in ignored `.langgraph_api/`. The dev server is intended for local use. Keep it on loopback
-and use one job per worker for this filesystem workspace; do not submit concurrent mutations from
-additional servers or local CLIs against the same worktree.
-
-The entry module binds project and package roots to **the checkout containing that module**,
-independently of request input. Start a separate server on a different port for another worktree.
-Starting this config from another directory does not retarget it. This source-checkout launcher is
-not installed into consumer projects; see the consumer setup below.
-
-## Start and debug an Operation in Studio
-
-Select `concorde-context-solve`, create a new thread, and enter this complete input in Graph mode:
-
-```json
-{
-    "invocation": {
-        "type_id": "concorde-operation-invocation",
-        "schema_version": 3,
-        "operation_id": "concorde-context-solve",
-        "mode": "describe-policy",
-        "configuration": null,
-        "input": {
-            "type_id": "concorde-context-solve-request",
-            "schema_version": 1,
-            "data": {
-                "task": "Explain Concorde's Harness",
-                "target_id": "module.harness"
-            }
-        }
-    }
-}
-```
-
-This previews the admitted policies without starting an agent. Switch `mode` to `execute` to run it.
-For another operation, select its assistant and change both `operation_id` and the inner request
-`type_id`; use that operation's existing request data contract. Null configuration loads the
-project's initialized settings. A supplied configuration must match those settings. The invocation
-has the same six fields and 1 MiB size limit as CLI stdin. Optional `expected_workspace` alongside
-`invocation` asserts exact absolute `project_root` and `package_root` identities; it never selects them.
-
-The public Graph has a `validate_invocation` node followed by the named operation subgraph. Expand
-that subgraph to inspect admission, workspace/configuration binding and the operation's real dispatch
-branches. Explicit target admission, planning, review and Issue-solving Graphs are composed below it;
-`get_graph(xray=True)` exposes the same definitions. Use Studio interrupt-before on the public operation
-node to inspect the invocation before executing it. Replay rechecks the envelope and workspace assertion.
-Internal host Graphs deliberately disable checkpoints: host objects live in per-run runtime context,
-while node updates and public checkpoints contain JSON. Internal nodes are inspectable, but internal
-checkpoint resume is not supported; pause or replay at the public operation boundary. Inspect `result`, `policies` and
-`events` in the final state. `result` is the unchanged `concorde-operation-result` schema 3 envelope.
-Input or workspace rejection clears previous output and returns a blocked result without execution.
-Always submit a complete invocation for a new run; LangGraph merges partial input into thread state.
-Use a new thread for an independent request. Hosts, permission descriptions and event lists are fresh
-for each invocation, including repeated complete invocations on the same thread.
-
-For Python breakpoints, the CLI supports a debugger port:
-
-```bash
-uv run --locked --group studio --with debugpy langgraph dev --config generated/langgraph.json --host 127.0.0.1 --port 2024 --n-jobs-per-worker 1 --debug-port 5678 --wait-for-client --no-reload --no-browser
-```
-
-Attach your Python debugger to localhost:5678. See the official
-[CLI reference](https://docs.langchain.com/langsmith/cli) for debug and server options. Replaying an
-operation checkpoint executes the operation again: filesystem writes, external checks and worker
-processes are not rolled back by LangGraph. Inspect the existing worktree state before replaying a
-mutation. A paused/interrupted Agent Server run is not an authorization to bypass Concorde checks.
-
-## Monitor CLI and installed Pi tool calls
-
-For ordinary CLI or installed consumer Pi calls, start the server for that exact project/package.
-In the shell or agent environment that launches operations, set:
-
-```bash
-export CONCORDE_STUDIO_URL=http://127.0.0.1:2024
-```
-
-Keep using the same JSON invocation on stdin, without the Studio `invocation` wrapper:
-
-```bash
-python3 scripts/run-operation.py concorde-context-solve <<'JSON'
-{"type_id":"concorde-operation-invocation","schema_version":3,"operation_id":"concorde-context-solve","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-context-solve-request","schema_version":1,"data":{"task":"Explain Concorde's Harness","target_id":"module.harness"}}}
-JSON
-```
-
-The installed Pi `concorde` tool uses this same launcher. Call `action: "describe"` with the selected
-`operation` first to obtain its guidance and exact request schema, then `action: "run"` with request
-data in `input`; Pi supplies the versioned invocation envelope. For example, a policy preview uses
-`operation: "concorde-context-solve"`, `action: "run"`, `mode: "describe-policy"` and
-`input: {"target_id": "service.transfer", "task": "Explain transfer"}` in a consumer that
-registers `service.transfer`; choose that consumer's actual registered target. There is no standalone Skill to install or load.
-Set the variable in the installed Pi process's environment before launch. This forwards newly
-submitted execution to the server; it neither attaches to already-running processes nor imports history.
-Do not set this variable for a private candidate selection: both Pi and launcher refuse that redirect.
-
-Each call creates a Studio thread and prints its thread ID, server URL and run ID to **stderr**.
-Open that thread in Studio while the command waits. Policy descriptions remain on stderr. **stdout
-contains exactly the original JSON operation result**, with exit code 0 for `succeeded`/`described`
-and 3 for `blocked`/`failed`. Unset `CONCORDE_STUDIO_URL` to use ordinary local execution.
-
-The client sends both caller roots; a server belonging to another project, package checkout or
-linked worktree returns `workspace_mismatch` before running any operation. Only loopback HTTP URLs
-are accepted; redirects and environment HTTP proxies are disabled. Environment variables do not
-grant primary-worktree or outer-sandbox authorization. Server-side agent subprocesses retain the
-original environment allowlist and native enforcement; they do not inherit this transport switch.
-
-## Events, results and failures
-
-Custom stream events are emitted live and retained as JSON in final `events`:
-
-| Event                                             | Meaning                                                                                                                                                                                                             |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `operation_started`, `operation_finished`         | Top-level and nested host operation invocation, with invocation ID, depth and final status                                                                                                                          |
-| `agent_started`, `agent_finished`, `agent_failed` | Agent executor handoff with operation, stage, role and invocation ID; the same launch's `agent`, `harness` and `agent_binding_digest` identity is available in the run's persisted `policies` (policy descriptions) |
-
-Use API streaming with `stream_mode: ["custom", "updates"]` to receive these events while a run is
-active. Studio can inspect persisted `events` and `policies` on completion. Agent events describe
-process handoffs, not token-level traces, internal tool calls or proof that a completion passed
-admission. The final operation result reports completion/admission failures. Ordinary host graph
-nodes encapsulate their stages; events do not create independently replayable phase
-checkpoints. Abrupt server/process termination may leave only the events already streamed.
-
-A successful Agent Server run can contain a Concorde `blocked` or `failed` result: inspect
-`result.status`, `result.errors` and, when present, `result.output.data.outcome`. Malformed envelopes,
-configuration mismatch, unsupported permissions and cross-worktree requests retain structured
-Concorde error results. Server infrastructure failures/interruption instead produce
-`studio_run_failed`; network and HTTP failures produce `studio_transport_failed` on the CLI.
-
-The client never retries run creation and never falls back to local execution. If it loses the
-connection or is interrupted, the server-side run may still be active. Inspect the printed thread
-before submitting again. An interrupted Studio run can be inspected/resumed from Studio, but the
-original CLI exits with code 3; resuming it does not retroactively deliver a new CLI result.
-
-Change ownership, delivery authorization and native completion receipts continue to apply. A `concorde-deliver` server session may belong to either the selected source or destination
-worktree; unrelated third-worktree and nested delivery remain rejected. Default delivery creates
-`concorde/delivered/<change_id>` and removes the source unless `keep_worktree:true` is explicitly
-requested. End the source session after removal. Only an explicitly user-authorized separate
-`merge_primary:true` request from the sole primary writer updates the primary branch, under the
-repository lock and with current integration checks. The Studio client still checks
-its caller against the server's bound workspace; third-worktree forwarding cannot impersonate a
-participating session. A consumer primary-worktree mutation prepares a candidate worktree and relays the
-request to that candidate's own launcher in a subprocess; the server run returns the candidate's
-result, and the candidate's own worker events are not part of this server's run. Run each server
-with its own checkout's authority.
-
-## Private candidate Pi testing is separate
-
-After the catalog-free writer has built, verified, committed and stopped writing, the coordinator
-selects the exact candidate artifacts for a separate fresh sibling tester:
-
-```bash
-.venv/bin/python scripts/concorde.py select-session --mode test \
-  --pi-entry "$PWD/generated/session/pi/concorde-session.ts" \
-  --runtime "$PWD/scripts/run-operation.py" \
-  --output "$PWD/.concorde/work/pi-selection.json"
-.venv/bin/python scripts/concorde.py select-session \
-  --verify "$PWD/.concorde/work/pi-selection.json"
-```
-
-Run those commands from the assigned candidate. The host supplies the saved absolute path as
-`CONCORDE_SESSION_SELECTION`, a separate host-owned `PI_CODING_AGENT_DIR`, and only the returned
-exact `-e` entry with the returned `--no-session --no-context-files --no-skills
---no-prompt-templates --no-themes --no-extensions` flags. It starts a new, non-forked session in
-that candidate, retaining the actual task/file/tool grant. Do not copy ambient client settings or
-install this entry in discovery paths. The catalog is embedded in the entry, not a separate Skill
-file. The candidate `.venv` is required; missing, stale or out-of-candidate provenance blocks
-without primary/global fallback. Rebuilds require new selection and a new tester, never reload of
-the tester's governing integration. Leave `CONCORDE_STUDIO_URL` unset.
-
-Selection attests bytes, not extension loading, tool use or model execution; the host must reject
-extension-load errors and record actual execution separately. Source Operations still require an
-explicit user request by name, and neither Studio nor Pi grants workers Spec-writing or recursive
-delegation authority. Consumer installation remains independent of this private selection.
-
-## Consumer project setup
-
-The runtime adapter and standard-library client are included with Concorde's Python sources, but
-the optional server dependencies and source-development config are not part of the managed consumer
-runtime. To use Studio in an installed consumer project, install `langgraph-cli[inmem]` in a separate
-server environment and author a project-local entry module such as `studio.py`:
+The genuine optional boundary is `concorde.harness.operation_node.OperationNode`. It compiles a typed
+StateGraph with a `terminal_agent` State transition. A trusted caller selects an Agent profile and
+supplies its native launch/admission callable; the graph validates typed input/output and never falls
+back to a hidden model runner. Runtime authority is not caller-writable State. Parent StateGraphs
+can embed it and declare their own reducers. Main/task-Agent callers may select this boundary when
+state-centric composition is useful, without recursive task delegation or changing terminal grants.
 
 ```python
-from pathlib import Path
-import sys
+from concorde.harness.operation_node import OperationNode
+from concorde.harness.operation_state import OperationRuntimeContext
 
-PROJECT = Path(__file__).resolve().parent
-PACKAGE = PROJECT / ".concorde/framework"
-sys.path.insert(0, str(PACKAGE / "src"))
-from concorde.spec.contracts import PUBLIC_OPERATIONS
-from concorde.harness.studio import build_studio_graph
-
-for operation in PUBLIC_OPERATIONS:
-    globals()[operation.replace("-", "_")] = build_studio_graph(operation, PROJECT, PACKAGE)
+operation = OperationNode("context_assessor").graph()
+# admitted_context is the Host-prepared typed Agent context; native_service is a trusted
+# callable that invokes the real native Agent and returns its independently admitted typed result.
+result = await operation.ainvoke(
+    admitted_context["data"],
+    context=OperationRuntimeContext(launcher=native_service),
+)
 ```
 
-Register those variables in that project's `langgraph.json` (for example,
-`"concorde-context-solve": "./studio.py:concorde_context_solve"`) and start the server from that project with the
-same loopback/single-job options. Its CLI must run from the same project root with the colocated
-`.concorde/framework` package. Server roots are trusted startup code, never user input. An updated
-installed framework is required; a source server cannot substitute for a consumer server.
+The synchronous `.invoke(context, native_service)` helper is available for synchronous services.
+Missing Runtime service refuses; state fields cannot inject one. This API is not a native workflow
+scheduler and does not suspend a Python business provider waiting for Pi.
 
-## Verification
-
-From the source checkout:
-
-```bash
+```sh
 uv sync --locked --group studio
-PYTHONPATH=src .venv/bin/python -m unittest tests.concorde.harness.test_studio tests.concorde.harness.test_studio_client
-CONCORDE_TEST_STUDIO=1 PYTHONPATH=src .venv/bin/python -m unittest tests.concorde.harness.test_studio_server
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p 'test_*.py'
+python3 scripts/concorde.py build
+uv run --locked --group studio langgraph dev --config generated/langgraph.json \
+  --host 127.0.0.1 --port 2024 --n-jobs-per-worker 1 --no-browser
 ```
 
-The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-eleven assistants, operation admission, direct execution, SSE events, common-launcher forwarding, JSON/exit compatibility
-and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
-model process responses through the real executor/admission pipeline; it does not require online
-model calls or mutate this checkout's primary-worktree registry.
-Standalone review tests retain failed, incomplete and blocking outcomes without treating them as
-success. These are real server runs with model process doubles, not evidence of model review quality.
-The forwarding-example test parses the JSON above, exercises describe-policy through the bound Studio
-Graph, and rejects either mismatched root.
-
-### Bounded inspection surfaces
-
-`src/concorde/harness/studio.py:build_studio_graph` attaches the executable
-`build_operation_graph` instance at the public operation node through
-`expose_stateless_subgraph`; `get_graph(xray=True)` expands that instance without executing it.
-The operation name and project/package roots are startup bindings. Request input cannot select
-another workspace. Operations supplies dispatch and explicit target admission; the retained providers supply their
-local planning, review and Issue-verification scheduling. The caller chooses broader task order.
-
-`src/concorde/harness/batch_graph.py:build_batch_graph` is a separately inspectable sequential
-batch surface. Its host-selected `name` and `item_node` identify a variant; both the next-item and
-stop branches are visible. `run_batch_graph` uses this same factory, with an immutable item tuple
-and a host callback held outside checkpoint state. Inspection does not call that callback.
-The batch factory alone does not establish the Review caller's participant selection.
-Those call sites remain subject to their owning Module's implementation grant.
-
-For scoped review, the local batch factory exposes selection, item execution, continuation and early
-stop. The host supplies the item sequence, callback and variant name; inspecting a `review_module`
-variant verifies that batch topology, not the caller's participant choice. There is no discovery or
-component-development batch to inspect. No omitted Harness topology is established
-merely by an opaque imported callback, and these inspection APIs grant no access to its source.
+Select `terminal-agent-operation` in Studio. The default server export is inspection-only until a
+trusted embedding supplies a service; do not submit credentials or executable callbacks in State.
+Installed LangGraph health remains verified. Optional execution is not a claim that dependencies
+may be deleted. Source maintenance remains catalog-free authoring, with exact private candidate
+selection only for authorized sibling testing. No global configuration, worktree movement, primary
+integration or cleanup authority is granted by Studio. Historical screenshots of retired business
+Graphs are not current invocation examples.

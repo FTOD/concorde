@@ -187,7 +187,7 @@ that need persistent source or dependency changes must prepare them in the imple
 
 - GIVEN current Operation guidance, worker instruction, operation and Protocol sources
 - WHEN build runs without a client selector
-- THEN it renders seven terminal worker bodies, one Pi catalog containing exactly eleven public descriptions, guidance and versioned schemas, Studio configuration, Protocol assets and runtime schemas
+- THEN it renders seven canonical native Agent bodies and their byte-identical compatibility paths, one Pi catalog containing exactly eleven public descriptions, guidance and versioned schemas, Studio configuration, Protocol assets and runtime schemas
 - AND repeated renders are byte-identical and perform no network or process I/O
 - BUT retired integration arguments and Skill publishing commands are rejected, not reinterpreted
 
@@ -338,7 +338,7 @@ validation cannot certify its determinism.
 
 - GIVEN a running `scripts/run-operation.py`
 - WHEN the process receives SIGTERM
-- THEN it takes the Ctrl-C path: a running worker's Pi process is killed and its outcome is cancelled, a Graph interrupted outside a worker launch ends with the `execution_cancelled` error and the change's recorded status, and the result envelope is printed before exit
+- THEN it takes the Ctrl-C path: a running worker's Pi process is killed and its outcome is cancelled, a finite Host invocation interrupted outside a worker launch ends with the `execution_cancelled` error and the change's recorded status, and the result envelope is printed before exit
 - AND SIGTERM while the launcher is still waiting for its invocation prints the pre-host failure envelope with `execution_cancelled`
 
 ## Managed runtime
@@ -373,7 +373,8 @@ validation cannot certify its determinism.
 - THEN it re-executes itself with the managed runtime's interpreter before reading its invocation, so the Operation runs with the locked dependencies and the runtime check reports that runtime as its prefix
 - AND a launcher already running inside that runtime, such as the one the Pi session tool starts, is not re-executed
 - AND the source checkout, which matches neither layout, keeps the interpreter that started it
-- AND when no verified managed runtime exists and the starting interpreter cannot import LangGraph, the launcher prints a blocked envelope with `missing_runtime` naming that interpreter instead of failing inside the host
+- AND an unavailable selected Graph backend returns a blocked `missing_runtime` envelope, while direct Host-tool dispatch does not impose that Graph check
+- AND missing or unverified installed runtimes still fail local installation admission without an ambient fallback
 
 ### scenario.distribution.install-local-worktree — Full local installs from source or installed providers
 

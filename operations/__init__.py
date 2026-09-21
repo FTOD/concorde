@@ -1,10 +1,7 @@
-"""The single inventory of executable LangGraph Operations.
+"""Typed executable inventory. Directory/wire spellings `operations` are compatibility names.
 
-Every entry declares PUBLIC, CONTEXT_SELECTION, DETERMINISTIC, USES, STATE and
-run(state, runtime). PROFILE is optional model execution configuration, not a second identity.
-An Operation may implement a deterministic node, a model node or a composed graph. All
-composition names entries in this inventory; no separate AGENTS registry or call relation exists.
-Public Pi tool/wire adapters are separate from the State interface and preserve existing envelopes.
+Agents are native Pi roles, Workflows are authored pi-subagents compositions, Host tools are finite
+deterministic services. LangGraph Operations are separately and explicitly selected StateGraph flows.
 """
 
 from __future__ import annotations
@@ -33,3 +30,18 @@ OPERATIONS = (
 
 def external_name(module_name: str) -> str:
     return "concorde-" + module_name.replace("_", "-")
+
+
+AGENTS = (
+    "spec_reviewer",
+    "context_assessor",
+    "planner",
+    "task_author",
+    "programmer",
+    "code_reviewer",
+    "issue_solver",
+)
+CAPABILITIES = tuple(name for name in OPERATIONS if name not in AGENTS)
+WORKFLOWS = ("plan", "spec_review", "code_review", "issues")
+HOST_TOOLS = ("init", "configure", "validate", "deliver")
+STATE_OPERATIONS = ("terminal_agent_operation",)

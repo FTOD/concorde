@@ -65,23 +65,22 @@ updates preserve the existing binding until explicitly accepted.
 
 ### Projection identity
 
-Agent builds publish seven independent worker projections and no separate common one. Each
-rendered `generated/agents/<name>.md` concatenates the shared common worker rules
-(`prompts/workers/common.md`) and that worker's own role Spec source; the manifest records both
-sources. Package
-validation compares the unified `concorde.operations` metadata with every executable declaration:
-exposure, context selection, determinism, USES, State and optional workspace/tools.
+Build renders seven canonical native Agent roles from `prompts/native/<name>.md` plus each role's
+Spec. Identical instruction bytes appear under `generated/native/` and compatibility
+`generated/agents/`; the latter is not a separate legacy/common-worker-rules backend. The manifest
+records those actual inputs. Typed inventory validation compares kind, exposure, context selection,
+determinism, USES, nullable State and profile fields; canonical Agents have no State/run aliases.
 
 Agent instruction file membership must equal the declared worker inventory. Agent Python bindings,
 role Spec bodies and available operation/wire sources are recorded build
-inputs; changing them makes verify_fresh reject the old build even when the shared common
-instruction body is unchanged.
+inputs; changing them makes verify_fresh reject the old build even when another Agent's native prelude is unchanged.
 
 ### Projection test fixtures
 
 The explicit fixture command `PYTHONPATH=src .venv/bin/python -m tests.concorde.support.build_fixture`
 refreshes the tracked projection goldens from this checkout's pure build renderer. It records exactly
-seven worker bodies and one Pi shim embedding eleven public Operations. It does not copy ambient
+seven native bodies and their seven byte-identical compatibility projections, plus one Pi shim
+embedding eleven public capabilities. It does not copy ambient
 client assets or build another worktree. It retires only exact historical fixture members after
 rejecting symlinks and unknown content. Golden comparisons remain byte-exact.
 

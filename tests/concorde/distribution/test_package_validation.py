@@ -32,6 +32,7 @@ from operations import planner
 from . import external_name
 from concorde.harness.operation_state import StateContract
 
+KIND = "operation"
 PUBLIC = False
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
@@ -189,7 +190,7 @@ class PromptRuleTests(unittest.TestCase):
         )
 
     def test_name_lint_catches_an_unknown_concorde_token(self) -> None:
-        edited = self.root / "prompts/workflow-host/gap-reporting.md"
+        edited = self.root / "prompts/native/context-assessor.md"
         edited.write_text(
             edited.read_text(encoding="utf-8")
             + "\nSee concorde-not-a-real-identity.\n",
@@ -779,7 +780,7 @@ class BuildOutputRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_stale_source_is_reported(self) -> None:
         write_build(self.root)
-        edited = self.root / "prompts/workflow-host/gap-reporting.md"
+        edited = self.root / "prompts/native/context-assessor.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8"
         )
@@ -889,7 +890,7 @@ def _document(root: Path, relative: str, document_id: str, body: str) -> None:
                             base = expected.get(
                                 entry.get("id"), next(iter(expected.values()), {})
                             )
-                            for field in ("uses", "state", "profile"):
+                            for field in ("kind", "uses", "state", "profile"):
                                 entry.setdefault(field, base.get(field))
             except ValueError:
                 value = match.group(

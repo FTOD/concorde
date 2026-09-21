@@ -3,16 +3,23 @@
 import unittest
 from unittest.mock import patch
 
-from concorde.harness.studio import build_studio_graph
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from tests.concorde.harness import test_worktree_lifecycle as lifecycle_fixtures
 from tests.concorde.harness.test_studio import invocation
 from tests.concorde.spec.support import PACKAGE, ModelProcessDouble
+from tests.concorde.support.legacy_graphs.studio import build_studio_graph
 
 
 class ExplicitTargetTests(unittest.TestCase):
     def fixture(self, callback=None):
+        from tests.concorde.support.native_planning import OperationHost
+
+        adapter = patch(
+            "tests.concorde.support.legacy_graphs.studio.OperationHost", OperationHost
+        )
+        adapter.start()
+        self.addCleanup(adapter.stop)
         fixture = lifecycle_fixtures.WorktreeLifecycleTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
@@ -114,7 +121,7 @@ class ExplicitTargetTests(unittest.TestCase):
         fixture = ReviewTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
-        from concorde.harness.change_worktree import ensure_change, bind_owner
+        from concorde.harness.change_worktree import bind_owner, ensure_change
 
         ensure_change(fixture.root, task=fixture.task, allow_primary=True)
         bind_owner(fixture.root, fixture.task)
@@ -124,7 +131,7 @@ class ExplicitTargetTests(unittest.TestCase):
         self.assertIsNotNone(review.current(run, "spec"))
         read = review.read_file
         for source in (
-            "src/concorde/operations/target_graph.py",
+            "src/concorde/harness/native_reviews.py",
             "src/concorde/operations/dispatch_graph.py",
         ):
 

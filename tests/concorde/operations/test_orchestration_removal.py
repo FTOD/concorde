@@ -89,11 +89,11 @@ class OrchestrationRemovalTests(unittest.TestCase):
                 }
             )
         )
-        target = graphs["target_graph"]().get_graph()
-        self.assertEqual(set(target.nodes), {"__start__", "bind_target", "__end__"})
-        issues = graphs["issue_graph"]().get_graph()
-        self.assertNotIn("develop", issues.nodes)
-        self.assertNotIn("repair_spec", issues.nodes)
+        self.assertEqual(set(graphs), {"terminal_agent_operation"})
+        self.assertEqual(
+            set(graphs["terminal_agent_operation"]().get_graph().nodes),
+            {"__start__", "terminal_agent", "__end__"},
+        )
         for module in operation_modules().values():
             self.assertTrue(
                 set(module.USES).isdisjoint(

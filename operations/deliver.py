@@ -6,6 +6,7 @@ from concorde.spec import contract_shapes as shapes
 
 from . import external_name
 
+KIND = "host"
 PUBLIC = True
 CONTEXT_SELECTION = "none"
 DETERMINISTIC = True

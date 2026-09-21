@@ -21,8 +21,10 @@ A non-public Operation SHALL have no public Pi catalog or direct launcher entry.
 
 ### req.operations.stage-in-process-only — Non-public operations require declared composition
 
-A non-public Operation SHALL be reachable only in-process from an operation that declares it in its
-composition.
+A non-public inventory entry SHALL be reached only through its declared composition and admitted execution boundary.
+
+Canonical Agents use prepared native Pi invocations, not private Python model-operation aliases.
+Their proposal and result admission preserve the declared context boundary.
 
 ### req.operations.stage-no-reselect — Bound operations preserve their context
 
