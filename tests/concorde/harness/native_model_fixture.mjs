@@ -1,5 +1,6 @@
 /** Script only model task events; execute the actual native structured-output tool. */
 import assert from "node:assert/strict";
+import { executeWithSdkValidation } from "./native_sdk_validation.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -160,7 +161,12 @@ export function modelFixture({
             toolName: "structured_output",
             args,
           });
-          const result = await output.execute("structured-1", args);
+          const result = await executeWithSdkValidation(
+            process.env.CONCORDE_NATIVE_FIXTURE_SDK,
+            output,
+            "structured-1",
+            args,
+          );
           assert.equal(result.terminate, true);
           const event = {
             toolName: "structured_output",
@@ -180,7 +186,9 @@ export function modelFixture({
               toolName: "structured_output",
               args: duplicateArgs,
             });
-            const duplicateResult = await output.execute(
+            const duplicateResult = await executeWithSdkValidation(
+              process.env.CONCORDE_NATIVE_FIXTURE_SDK,
+              output,
               "structured-2",
               duplicateArgs,
             );

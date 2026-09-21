@@ -1,5 +1,6 @@
 /** Actual candidate Pi entry + native file-Agent discovery/executor. Only model events are scripted. */
 import assert from "node:assert/strict";
+import { executeWithSdkValidation } from "./native_sdk_validation.mjs";
 import { nativeObservation } from "./native_observation.mjs";
 import { packDiagnostic, unpackDiagnostic } from "./structured_diagnostic.mjs";
 import fs from "node:fs";
@@ -386,6 +387,8 @@ setChildSessionFactory({
                       "native-failure",
                       "diagnostic-attempts",
                       "schema-correction",
+                      "retained-invalid-1",
+                      "retained-invalid-2",
                       "missing",
                       "cancel",
                       "slot-change",
@@ -459,15 +462,36 @@ setChildSessionFactory({
             data,
           },
         };
-        if (["diagnostic-attempts", "schema-correction"].includes(scenario)) {
+        if (
+          [
+            "diagnostic-attempts",
+            "schema-correction",
+            "retained-invalid-1",
+            "retained-invalid-2",
+          ].includes(scenario)
+        ) {
           const schemaInvalid = structuredClone(value);
           delete schemaInvalid.result.data.documents;
           const businessInvalid = structuredClone(value);
           businessInvalid.result.data.context_id = "sha256:" + "f".repeat(64);
-          const values =
-            scenario === "diagnostic-attempts"
+          const values = scenario.startsWith("retained-invalid-")
+            ? [
+                JSON.parse(
+                  fs.readFileSync(
+                    new URL(
+                      "./fixtures/issue-sdk-rejections.json",
+                      import.meta.url,
+                    ),
+                    "utf8",
+                  ),
+                ).invalid_arguments[Number(scenario.at(-1)) - 1].value,
+              ]
+            : scenario === "diagnostic-attempts"
               ? [schemaInvalid, businessInvalid, value]
               : [schemaInvalid, value];
+          // Rebind only this test's issued ticket. The preserved model result.data is not repaired.
+          if (scenario.startsWith("retained-invalid-"))
+            values[0].invocation_id = slot.ticket;
           send({ type: "agent_start" });
           for (let n = 0; n < values.length; n++) {
             const id = "attempt-" + (n + 1),
@@ -504,9 +528,12 @@ setChildSessionFactory({
             });
             let result;
             try {
-              result = await childTools
-                .get("structured_output")
-                .execute(id, args);
+              result = await executeWithSdkValidation(
+                sdk,
+                childTools.get("structured_output"),
+                id,
+                args,
+              );
             } catch (error) {
               result = {
                 isError: true,
@@ -584,9 +611,12 @@ setChildSessionFactory({
           toolName: "structured_output",
           args,
         });
-        const result = await childTools
-          .get("structured_output")
-          .execute("structured-1", args);
+        const result = await executeWithSdkValidation(
+          sdk,
+          childTools.get("structured_output"),
+          "structured-1",
+          args,
+        );
         const event = {
           toolName: "structured_output",
           input: args,
@@ -719,7 +749,7 @@ if (scenario === "diagnostic-attempts") {
   assert(a.every((x) => x.argumentsComplete && x.errorComplete && x.isError));
   assert.match(
     a[0].resultRecords[0].text,
-    /Structured output validation failed/,
+    /Validation failed for tool "structured_output"/,
   );
   assert.match(a[0].resultRecords[0].text, /documents/);
   assert.match(a[1].resultRecords[0].text, /Concorde rejected this proposal/);
@@ -735,13 +765,24 @@ if (scenario === "diagnostic-attempts") {
   );
   assert.equal(final.accepted, false);
 }
-if (scenario === "diagnostic-attempts")
+if (
+  scenario === "diagnostic-attempts" ||
+  scenario.startsWith("retained-invalid-")
+)
   execFileSync(python, [
     "-c",
     "from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
       JSON.stringify(path.join(root, "candidate")) +
       ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['issue_solutions'][i];assert v['attempts']==1 and not v['history'] and not v.get('verification') and not v.get('pending_disposition') and not s.get('validated_tree');assert read_issue(r,i)[0]['status']=='open'",
   ]);
+if (scenario.startsWith("retained-invalid-")) {
+  assert.equal(diagnostic.attempts.length, 1);
+  const attempt = diagnostic.attempts[0];
+  assert(attempt.isError && attempt.errorComplete);
+  assert.match(attempt.resultRecords[0].text, /context_id.*outcome/);
+  assert(!attempt.resultRecords[0].text.includes("schema is false"));
+  assert.equal(final.accepted, false);
+}
 if (scenario === "schema-correction") {
   assert.equal(diagnostic.attempts.length, 2);
   assert.equal(diagnostic.attempts[0].isError, true);
@@ -791,6 +832,8 @@ if (
     "missing",
     "prose-only",
     "diagnostic-attempts",
+    "retained-invalid-1",
+    "retained-invalid-2",
     "cancel",
     "review-native-failure",
     "review-cancel",

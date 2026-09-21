@@ -331,3 +331,11 @@ or missing acknowledgement never erases a durable disposition. Delivery/integrat
 The legacy Issue Graph, verification Graph and legacy reviewer/batch execution path are retired.
 `IssueSolve` supplies shared finite predicates/journal services; no public native failure selects an old
 RPC/Graph backend. Optional StateGraph Operations are a separate explicit interface.
+
+
+Issue decision and verification reviewer slots share Harness's self-contained native proposal
+schema with direct native roles. The native `value` wrapper must retain valid reference roots;
+SDK argument validation precedes tool execution and independent Host proposal/currentness gates.
+A valid bounded decision explicitly supplies context_id, outcome, answer, blockers, documents,
+plan and tasks plus its closed issue_decision. Empty plan is a string, while documents/tasks are
+arrays; omitted fields and additional decision keys are rejected, not synthesized by the Host.

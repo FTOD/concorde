@@ -1,5 +1,6 @@
 /** Actual candidate Pi entry + native file-Agent discovery/executor. Only model events are scripted. */
 import assert from "node:assert/strict";
+import { executeWithSdkValidation } from "./native_sdk_validation.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -387,9 +388,12 @@ setChildSessionFactory({
           toolName: "structured_output",
           args,
         });
-        const result = await childTools
-          .get("structured_output")
-          .execute("structured-1", args);
+        const result = await executeWithSdkValidation(
+          sdk,
+          childTools.get("structured_output"),
+          "structured-1",
+          args,
+        );
         const event = {
           toolName: "structured_output",
           input: args,

@@ -263,7 +263,7 @@ class TerminologyReferenceTests(unittest.TestCase):
             "admitted [Spec Module]", self.pages[PREFIX + "planning/scenarios.md"]
         )
         self.assertIn(
-            "execution profile and Harness under read-only permissions",
+            "canonical native Agent profile and fresh intended read-only context",
             self.pages[PREFIX + "review/execution-reference.md"],
         )
         self.assertIn(

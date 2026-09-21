@@ -15,7 +15,7 @@ from pathlib import Path
 from ..issues.graph import MAX_DECISIONS
 from ..issues.solve import IssueSolve
 from ..spec.repository import SpecError, digest
-from ..spec.typed_data import canonical, json_schema, typed
+from ..spec.typed_data import canonical, typed
 from .host import OperationHost
 from .invocation import Invocation
 from .native_evidence import NativeChildEvidence, _record, verify_native_children
@@ -58,20 +58,8 @@ def _run(package, root):
     )
 
 
-def _schema(kind):
-    return {
-        "type": "object",
-        "properties": {
-            "invocation_id": {"type": "string"},
-            "result": json_schema(kind),
-        },
-        "required": ["invocation_id", "result"],
-        "additionalProperties": False,
-    }
-
-
 def prepare_root(run, payload):
-    from .native_context import _write
+    from .native_context import _write, native_output_schema
 
     if run.host.mode == "describe-policy":
         return {
@@ -108,8 +96,8 @@ def prepare_root(run, payload):
         "session_id": payload["session_id"],
         "native_session_id": payload.get("native_session_id", payload["session_id"]),
         "runtime": dataclasses.asdict(runtime),
-        "stageSchema": _schema("concorde-agent-stage-result"),
-        "reviewSchema": _schema("concorde-review-stage-result"),
+        "stageSchema": native_output_schema("concorde-agent-stage-result"),
+        "reviewSchema": native_output_schema("concorde-review-stage-result"),
     }
     path = directory / "descriptor.json"
     _write(path, root)

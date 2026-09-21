@@ -1319,3 +1319,23 @@ first; if necessary only other calls are explicitly omitted, never the first act
 complete available arguments/error. Failure to fit that first call refuses diagnostic completeness.
 Roundtrip, bounds and actual transcript record shapes are tested before model execution. Parent may
 decode/persist the returned envelope as data; paths alone are not retained diagnostic evidence.
+
+
+### Native result schema composition and SDK admission
+
+Direct native calls and Issue decision/review slots use the same self-contained proposal schema:
+`invocation_id` plus a closed typed `result` containing `type_id`, `schema_version` and `data`.
+The current stage/review payload definitions are reference-free and embedded directly under data;
+placing a separately rooted `json_schema` document under result without rebasing its local refs is
+not supported. Each result type's required fields (including stage context_id/outcome/compatibility fields), their types and closed objects
+remain intact. Issue call construction only fixes the exact invocation ticket; the native producer
+then wraps this entire schema in its `value` tool argument. Every reference must resolve from the
+actual final document root, including after that wrapping.
+
+SDK tool-argument validation occurs before the native tool executes. A probe that calls only
+`structured_output.execute` bypasses that boundary and cannot establish SDK schema compatibility.
+Scripted native fixtures cross the selected SDK's public argument validator before the real native
+tool, proposal hook and Host gate. Host business/currentness checks remain independent: an otherwise
+schema-valid foreign context still rejects without completion. SDK validation errors are not proof
+that a model never attempted a tool call, and correcting schema composition does not repair missing,
+wrong-typed or extra fields in a model's value.

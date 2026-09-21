@@ -47,6 +47,42 @@ OPERATION = "concorde-context-solve"
 AGENT = "concorde-context-assessor"
 
 
+def native_output_schema(result_type: str, ticket: str | None = None) -> dict:
+    """Self-contained native proposal schema shared by direct and Issue workflow slots.
+
+    The two native result payload schemas are reference-free. Embed the payload itself,
+    not json_schema's separately rooted TypedValue document underneath ``result``.
+    The producer may then safely wrap this entire document underneath ``value``.
+    """
+    if result_type not in {
+        "concorde-agent-stage-result",
+        "concorde-review-stage-result",
+    }:
+        raise ValueError("unsupported native result type")
+    from copy import deepcopy
+
+    return {
+        "type": "object",
+        "properties": {
+            "invocation_id": {"const": ticket}
+            if ticket is not None
+            else {"type": "string"},
+            "result": {
+                "type": "object",
+                "properties": {
+                    "type_id": {"const": result_type},
+                    "schema_version": {"const": type_version(result_type)},
+                    "data": deepcopy(DATA_SCHEMAS[result_type]),
+                },
+                "required": ["type_id", "schema_version", "data"],
+                "additionalProperties": False,
+            },
+        },
+        "required": ["invocation_id", "result"],
+        "additionalProperties": False,
+    }
+
+
 def candidate_input_digest(root):
     value = read_change(root)
     return digest(
@@ -619,26 +655,7 @@ def _execute(
                 str(path.relative_to(directory)): digest(path.read_bytes())
                 for path in (agent_file, child_extension, settings)
             }
-            schema = {
-                "type": "object",
-                "properties": {
-                    "invocation_id": {"const": ticket},
-                    "result": {
-                        "type": "object",
-                        "properties": {
-                            "type_id": {"const": descriptor["result_type"]},
-                            "schema_version": {
-                                "const": type_version(descriptor["result_type"])
-                            },
-                            "data": DATA_SCHEMAS[descriptor["result_type"]],
-                        },
-                        "required": ["type_id", "schema_version", "data"],
-                        "additionalProperties": False,
-                    },
-                },
-                "required": ["invocation_id", "result"],
-                "additionalProperties": False,
-            }
+            schema = native_output_schema(descriptor["result_type"], ticket)
             call = {
                 "agent": descriptor["agent"],
                 "task": "Assess context.json for invocation_id " + ticket,
