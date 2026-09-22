@@ -87,6 +87,7 @@ def select_session(
     # New source members must not smuggle a link into the pure current render either.
     for directory in (
         "src/concorde",
+        "agents",
         "operations",
         "prompts",
         "protocol",

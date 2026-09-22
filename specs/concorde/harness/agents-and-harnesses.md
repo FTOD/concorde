@@ -41,8 +41,8 @@ become cross-runtime depth requirements for these leaves.
 ## Read next
 
 [Execution](execution.md) explains the worker lifecycle and its actual security limits.
-[Permissions](permissions.md) explains how access is narrowed. Exact profiles, task-result types
-and terminal-worker rules are in the Module's execution reference, not prerequisites for this introduction.
+[Permissions](permissions.md) explains how access is narrowed. Canonical role definitions are in [Agents](../agents/module.md); task-result types
+and terminal-worker mechanisms are in Harness's execution reference, not prerequisites for this introduction.
 
 ## Precise specifications
 

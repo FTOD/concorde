@@ -39,12 +39,12 @@ The detailed contract is [Independent current review](execution-reference.md#rev
 - AND coverage identifies checked term/source pairs or explicitly states that no imported restatements exist
 - AND missing, ambiguous or unassessed comparisons are reported as gaps or incomplete coverage, never silently counted as consistent
 
-### scenario.review.separate-entries — Review authority follows the selected Operation
+### scenario.review.separate-entries — Review authority follows the selected capability
 
 - GIVEN an initialized project and a standalone review task
-- WHEN a caller selects a public review Operation
+- WHEN a caller selects a public review capability
 - THEN `concorde-spec-review` selects only the Spec reviewer and `concorde-code-review` selects only the code reviewer
-- AND a request containing review_mode is rejected rather than changing that Operation's authority
+- AND a request containing review_mode is rejected rather than changing that capability's authority
 - AND the retired `concorde-review` entry is rejected without an alias or implicit migration
 
 ### scenario.review.consumer-currentness — Owner and consumer evidence stay independently current

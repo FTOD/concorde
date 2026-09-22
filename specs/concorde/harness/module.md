@@ -61,8 +61,8 @@ Read [execution](execution.md) before relying on any of these distinct guarantee
 
 <a id="entity.harness.agent-model"></a><a id="entity.harness.agent-definitions"></a><a id="entity.harness.typed-values"></a>
 
-Canonical native Agent profiles define each role's task contract, intended effects, workspace, tools and
-timeout. The Model execution profiles service combines the authored role and Python profile into a reproducible
+Agents owns canonical native role definitions and their task contracts, intended effects, workspace,
+tools and timeout. Harness owns their execution and binding mechanisms. The Model execution profiles service combines the authored role and Python profile into a reproducible
 WorkerBinding, using fresh instructions supplied by [Distribution Module](../distribution/module.md). The Typed values layer validates the
 contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
 instruction identity separate from the project knowledge a worker may read.
@@ -192,7 +192,7 @@ acceptance cases belong to the Harness Module's [requirements](requirements.md) 
 Realized by `resolve_context` and its recheck; see
 [context](context.md).
 
-### Operation profile and Harness binding
+### Domain role profile and Harness binding
 
 Realized by `worker_profile` and `resolve_worker`; see [Agents and Harnesses](agents-and-harnesses.md)
 and [runtime values](runtime-values.md).
@@ -246,14 +246,14 @@ This collaboration applies when freezing any context kind or checking a target, 
 
 <a id="entity.harness.operations"></a><a id="agreement.document.harness.module.3"></a>
 
-The [Operations Module](../operations/module.md) owns the catalog of every Operation and the dispatch that routes an admitted request to its provider.
+The [Operations Module](../operations/module.md) owns explicit StateGraph composition and the compatibility capability inventory and dispatch that route an admitted request to its business provider. Canonical Agent definitions remain owned by [Agents](../agents/module.md).
 
 Admit only registered public entries and declared composition, then dispatch finite Host services or prepare the selected native Agent/workflow.
 
-This collaboration applies when admission executes an admitted request or checks a child Operation against its parent's declared composition.
+This collaboration applies when admission executes an admitted capability request or checks a collaborator against its caller's declared composition.
 
-- [Operation catalog](../operations/execution-reference.md#operations-operation-registry); refuse unknown and non-public entries with `unknown_operation` and undeclared composition with `undeclared_operation`, never routing by name outside the catalog.
-- [Dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph); adopt its typed output, or a relayed candidate's complete envelope, as the invocation's result.
+- [Capability inventory and composition](../operations/execution-reference.md#operations-operation-registry); refuse unknown and non-public entries with `unknown_operation` and undeclared composition with `undeclared_operation`, never routing by name outside the catalog.
+- [Finite dispatch and native preparation](../operations/execution-reference.md#operations-behavioral-ownership-and-composition-limits); adopt the admitted Host service's typed output or independently accepted native result, or a relayed candidate's complete envelope, as the invocation's result. Preparation alone is not completion; no dispatch Graph runs under these public capabilities.
 
 ### Distribution
 
@@ -319,3 +319,12 @@ Referenced definitions remain read-only and do not enter local entity/file grant
 
 The Harness Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+### Agents
+
+<a id="entity.harness.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

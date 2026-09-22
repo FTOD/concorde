@@ -412,6 +412,33 @@ class NativeLocalInstallationTests(unittest.TestCase):
                 ):
                     verify_installation(target)
                 bridge.unlink()
+                role_probe = subprocess.run(
+                    [
+                        str(local.python),
+                        "-I",
+                        "-c",
+                        "import sys,json; sys.path[:0]=sys.argv[1:]; "
+                        "import agents; from concorde.harness.worker_profile import load_worker_profiles; "
+                        "print(json.dumps({'roles':agents.AGENTS,'outer':agents.OUTER_AGENTS,"
+                        "'domain':list(load_worker_profiles()),'source':agents.__file__}))",
+                        str(local.framework),
+                        str(local.framework / "src"),
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    cwd=target,
+                )
+                discovered = json.loads(role_probe.stdout)
+                self.assertEqual(8, len(discovered["roles"]))
+                self.assertEqual(["tester"], discovered["outer"])
+                self.assertEqual(7, len(discovered["domain"]))
+                self.assertNotIn("main", discovered["roles"])
+                self.assertNotIn("maintenance-worker", discovered["roles"])
+                self.assertTrue(
+                    Path(discovered["source"]).is_relative_to(local.framework)
+                )
+                self.assertFalse((local.framework / "agents/source").exists())
                 shim = local.pi_entry.read_text()
                 self.assertIn(
                     "../../.concorde/framework/pi/extensions/concorde-session.ts", shim

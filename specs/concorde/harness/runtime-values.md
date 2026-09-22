@@ -78,7 +78,7 @@ WorkerBinding(agent: str, spec_path: str, spec_digest: str, instructions_path: s
 ```
 
 All are frozen records. `name` is the catalog key (for example `code_reviewer`); its external name is
-`concorde-code-reviewer`. `validate_worker_profile(agent)` requires `operations/<name>/spec.md`, a known workspace,
+`concorde-code-reviewer`. `validate_worker_profile(agent)` requires `agents/<name>/spec.md`, a known workspace,
 a context type paired with its result type, required inputs among admitted inputs, known result
 fields, writes that are also reads, no network or credential effects, implementation reads only in a
 project workspace, distinct known tools

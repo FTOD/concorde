@@ -39,6 +39,7 @@ INSTALL_SCHEMA = 2
 # Only its client selection/delegation metadata is retired; never adopt CLI-owned files.
 SUPPORTED_RECEIPT_SCHEMAS = {1, INSTALL_SCHEMA}
 PACKAGE_ROOTS = [
+    "agents",
     "operations",
     "docsite",
     "pi",
@@ -222,6 +223,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
     for directory in (
+        "agents",
         "operations",
         "pi",
         "prompts",
@@ -232,7 +234,9 @@ def _package_files(package: Package) -> dict[str, bytes]:
         for path in sorted(source_root.rglob("*")):
             relative = path.relative_to(package.root).as_posix()
             parts = PurePosixPath(relative).parts
-            if relative.startswith("prompts/outer/source/") or relative in {
+            if relative.startswith(
+                ("prompts/outer/source/", "agents/source/")
+            ) or relative in {
                 "pi/extensions/concorde-maintenance.ts",
                 "pi/extensions/concorde-outer-lifecycle.ts",
             }:

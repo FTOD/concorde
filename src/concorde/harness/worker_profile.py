@@ -112,9 +112,9 @@ def external_worker_name(name: str) -> str:
 def validate_worker_profile(agent: WorkerProfile) -> None:
     """Reject a profile whose contract, workspace or tools are inconsistent."""
     contract = agent.contract
-    if agent.spec != f"operations/{agent.name}/spec.md":
+    if agent.spec != f"agents/{agent.name}/spec.md":
         raise _invalid(
-            f"agent {agent.name!r} must declare spec operations/{agent.name}/spec.md"
+            f"agent {agent.name!r} must declare spec agents/{agent.name}/spec.md"
         )
     if agent.workspace not in WORKSPACES:
         raise _invalid(
@@ -153,20 +153,18 @@ def validate_worker_profile(agent: WorkerProfile) -> None:
 
 
 def load_worker_profiles() -> dict[str, WorkerProfile]:
-    """Derive optional worker execution profiles from the single Operation inventory."""
+    """Load domain profiles from the canonical Agents inventory."""
     import importlib
 
-    import operations
+    import agents
 
     result: dict[str, WorkerProfile] = {}
-    for name in operations.AGENTS:
-        profile = importlib.import_module(f"operations.{name}").PROFILE
+    for name in agents.DOMAIN_AGENTS:
+        profile = importlib.import_module(f"agents.{name}").PROFILE
         if profile is None:
             continue
         if not isinstance(profile, WorkerProfile) or profile.name != name:
-            raise _invalid(
-                f"operations.{name} does not declare PROFILE with name={name!r}"
-            )
+            raise _invalid(f"agents.{name} does not declare PROFILE with name={name!r}")
         result[name] = profile
     return result
 

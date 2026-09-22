@@ -17,6 +17,7 @@
     "venv": ".concorde/.venv"
   },
   "package_roots": [
+    "agents",
     "operations",
     "docsite",
     "pi",

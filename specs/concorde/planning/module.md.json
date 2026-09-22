@@ -56,6 +56,13 @@
       "title": "Acceptance tasks",
       "kind": "record",
       "meaning": "#entity.planning.tasks"
+    },
+    {
+      "id": "entity.planning.agents",
+      "title": "Agents",
+      "kind": "used module",
+      "target_id": "module.agents",
+      "meaning": "#entity.planning.agents"
     }
   ],
   "dependencies": [
@@ -66,6 +73,10 @@
     {
       "target_id": "module.spec",
       "meaning": "#agreement.document.planning.module.3"
+    },
+    {
+      "target_id": "module.agents",
+      "meaning": "#entity.planning.agents"
     }
   ],
   "bindings": []

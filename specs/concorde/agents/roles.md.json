@@ -1,0 +1,78 @@
+{
+  "schema_version": 2,
+  "document": {
+    "id": "document.agents.roles",
+    "owner": "module.agents",
+    "role": "implementation"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": [],
+  "extensions": {
+    "concorde.agents": [
+      {
+        "id": "code-reviewer",
+        "family": "domain",
+        "scope": "distributed",
+        "registration": "invocation",
+        "source": "agents/code_reviewer/spec.md"
+      },
+      {
+        "id": "context-assessor",
+        "family": "domain",
+        "scope": "distributed",
+        "registration": "invocation",
+        "source": "agents/context_assessor/spec.md"
+      },
+      {
+        "id": "issue-solver",
+        "family": "domain",
+        "scope": "distributed",
+        "registration": "invocation",
+        "source": "agents/issue_solver/spec.md"
+      },
+      {
+        "id": "maintenance-worker",
+        "family": "outer",
+        "scope": "source-only",
+        "registration": "project",
+        "source": "prompts/outer/source/maintenance-worker.md"
+      },
+      {
+        "id": "planner",
+        "family": "domain",
+        "scope": "distributed",
+        "registration": "invocation",
+        "source": "agents/planner/spec.md"
+      },
+      {
+        "id": "programmer",
+        "family": "domain",
+        "scope": "distributed",
+        "registration": "invocation",
+        "source": "agents/programmer/spec.md"
+      },
+      {
+        "id": "spec-reviewer",
+        "family": "domain",
+        "scope": "distributed",
+        "registration": "invocation",
+        "source": "agents/spec_reviewer/spec.md"
+      },
+      {
+        "id": "task-author",
+        "family": "domain",
+        "scope": "distributed",
+        "registration": "invocation",
+        "source": "agents/task_author/spec.md"
+      },
+      {
+        "id": "tester",
+        "family": "outer",
+        "scope": "distributed",
+        "registration": "project",
+        "source": "prompts/outer/tester.md"
+      }
+    ]
+  }
+}

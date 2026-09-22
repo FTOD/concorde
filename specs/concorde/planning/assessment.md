@@ -39,7 +39,7 @@ its original revision is unknown or its execution failed; it never claims the ol
 Its observation and Issue remain in history,
 and required independent review still needs fresh evidence; assessment never stands in for review.
 
-Assessment is available as the explicit-target `concorde-context-solve` Operation through
+Assessment is available as the explicit-target `concorde-context-solve` Agent capability through
 the Pi `concorde` tool. Its run prepares the selected context and returns an exact native
 context-assessor call. Invoke that call without overrides, then inspect the Host acceptance
 attached to its result. The native model proposal and staging gate do not themselves establish

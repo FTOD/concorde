@@ -1,6 +1,6 @@
 ---
 name: concorde-issues
-description: "Inspect, report, reopen or assess branch-local Issues; return needed repairs to the caller or verify current work without automatic delivery."
+description: "Host bookkeeping or native solve workflow: inspect, report, reopen or assess branch-local Issues; return needed repairs to the caller or verify current work without automatic delivery."
 operation: issues
 ---
 
@@ -31,7 +31,6 @@ this session receives the candidate's result and continues the change with its c
 A successful solve ends at ready with the disposition included in verification. It does not deliver,
 merge primary or claim another branch is fixed. Closed Issues remain recorded. Legacy Reflections
 are archived history, never automatically converted or used as current approval.
-
 
 ## Native solve invocation
 

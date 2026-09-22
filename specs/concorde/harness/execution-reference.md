@@ -42,13 +42,13 @@ anchors remain addressable without implying that retired execution paths are cur
 Canonical kinds are Agent (native Pi role), Workflow (authored pi-subagents composition), Operation
 (explicit StateGraph flow) and Host service (finite non-model action). The compatibility inventory
 retains external names and transport fields, with explicit `kind` metadata; it does not schedule
-native capabilities through a Graph. Seven Agent definitions are canonical and have no parallel
+native capabilities through a Graph. Seven domain Agent definitions are canonical and have no parallel
 model-backed Python Operation aliases. `WorkerProfile`/`WorkerBinding` are retained contract/binding
 spellings, not another executable identity or a claim of filesystem isolation.
 
 #### A1. Agent instructions and profile {#agents-and-harnesses-a1-operation-instructions-and-execution-profile}
 
-Each Agent has its existing canonical role Spec and native prelude. Native and compatibility rendered
+Each domain Agent has its Agents-owned canonical role Spec and native prelude. Native and compatibility rendered
 Agent paths contain the same instruction bytes. Profiles bind role, task/result schemas, intended
 workspace/tools and limits. The Host verifies exact source/build/runtime identity before use. Context
 references remain independent from tool policy and executable composition.
@@ -99,25 +99,14 @@ File/tool grants, independent result admission, cancellation and deadlines remai
 
 The build combines each canonical native prelude with its Agent role Spec. It renders identical
 instruction bytes to `generated/native/<name>.md` and compatibility `generated/agents/<name>.md`.
-Protocol sources are supplied through the frozen context index. The [typed inventory](../operations/execution-reference.md#operations-operation-registry)
-records the seven canonical Agent profiles separately from public capability adapters and optional
-StateGraph Operations; Agent entries have no State/run model aliases.
+Protocol sources are supplied through the frozen context index. The [Agents inventory](../agents/roles.md)
+records the seven domain roles and the separate outer family. Compatibility adapters and optional
+StateGraph Operations do not define these roles; Agent entries have no State/run model aliases.
 
 #### Task contracts {#agents-and-harnesses-task-contracts}
 
-Each worker fulfils exactly one task contract. The table uses these typed pairs: **stage** =
-`concorde-agent-stage-context` / `concorde-agent-stage-result`, **review** =
-`concorde-review-stage-context` / `concorde-review-stage-result`.
-
-| Worker           | Pair and phase/action | Admitted stage artifacts                                                                                                                                               | Result and authority                                                                                |
-| ---------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| spec-reviewer    | review; spec-review   | none                                                                                                                                                                   | Independent Spec findings; no author artifacts or writes                                            |
-| context-assessor | stage; context-solve  | none                                                                                                                                                                   | Sufficient, incomplete, unsupported or conflicting assessment; no authored artifacts                |
-| planner          | stage; plan           | optional concorde-plan-artifact                                                                                                                                        | Plan only; external references readable; no source contents or writes                               |
-| task-author      | stage; tasks          | required concorde-plan-artifact and concorde-task-identity-constraints; optional concorde-implementation-task, concorde-review-result and concorde-task-scope-feedback | Implementation acceptance tasks with new IDs outside the reserved set; no source contents or writes |
-| programmer       | stage; implementation | required concorde-implementation-task; optional concorde-review-result                                                                                                 | Fulfilled tasks only; may write the selected Module's listed implementation paths                   |
-| code-reviewer    | review; code-review   | none                                                                                                                                                                   | Independent code findings; authorized code read-only                                                |
-| issue-solver     | stage; issue-solve    | required concorde-issue-selection                                                                                                                                      | Bounded next action or disposition; Spec-only, no project writes                                    |
+The canonical [domain task-profile bindings](../agents/roles.md#domain-task-profile-bindings)
+are owned by Agents. Harness validates those profiles without authoring a second role catalog.
 
 The host selects the worker before freezing its context and compiling its permissions, and the
 executor checks that selection again before any process starts. A context of the wrong type or
@@ -322,7 +311,7 @@ is not in an implementation-role document, lacks or reorders its State, Nodes an
 has a Nodes table that does not name exactly the compiled nodes with the `in` and `out` state of
 their diagram labels, or has a heading without an explicit anchor or without a link to it from a
 module-role document of the same owner. It also enforces the Graph API rule: a catalog Graph
-that is not a compiled `StateGraph`, and any Python file under `src/`, `scripts/` or `operations/` that imports
+that is not a compiled `StateGraph`, and any Python file under `src/`, `scripts/`, `agents/` or `operations/` that imports
 `langgraph.func`, found by parsing the file rather than running it, are errors. A diagram that
 passes proves the Spec and the executed topology agree; it proves nothing about whether the
 routing conditions are right, which the scenarios and tests of the owning Module cover. The Relationships diagram of a Module's

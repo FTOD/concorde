@@ -14,7 +14,7 @@ fully substituted text. It performs no network or process I/O beyond reading fil
 
 Operation guidance sources (``prompts/operation-guidance/<name>.md``) are a distinct front-matter shape (``name``,
 ``description``, ``operation``) with no ``audience`` field; they are always implicit ``ambient``
-roots and can never be included. WorkerProfile Specs (``operations/<name>/spec.md``) are a third distinct shape: no front matter at all,
+roots and can never be included. WorkerProfile Specs (``agents/<name>/spec.md``) are a third distinct shape: no front matter at all,
 and always an implicit ``worker`` root -- an WorkerProfile Spec carries its own ``# concorde-<name>``
 heading and behavioral contract directly, not role/audience metadata. Every other prompt lives
 under ``prompts/`` and must declare its own ``audience``. Independent standard chapters under
@@ -38,7 +38,7 @@ PROTOCOL_TEXT_ROOT = "protocol/"
 PROMPTS_ROOT = "prompts/"
 GUIDANCE_ROOT = "prompts/operation-guidance/"
 SPECS_ROOT = "specs/"
-OPERATIONS_ROOT = "operations/"
+AGENTS_ROOT = "agents/"
 
 # Path-shaped tokens only: ordinary mentions, emails and decorators stay literal.
 _DIRECTIVE_LINE = re.compile(r"^@(?P<target>[^\s@`\"'()<>]+)(?:[ \t]+.*)?$")
@@ -192,7 +192,7 @@ def _check_scope(target: str, including: str) -> None:
             "CONCORDE-PROMPT-SCOPE-001",
             f"{including}: cannot include a Spec document: {target}",
         )
-    if including.startswith(OPERATIONS_ROOT) and not target.startswith(PROMPTS_ROOT):
+    if including.startswith(AGENTS_ROOT) and not target.startswith(PROMPTS_ROOT):
         raise PromptResolverError(
             "CONCORDE-PROMPT-SCOPE-001",
             f"{including}: an WorkerProfile Spec may include only prompts/ files: {target}",
@@ -378,7 +378,7 @@ def resolve_operation_guidance(
 def resolve_model_instructions(
     project_root: str | Path, relative_path: str
 ) -> ResolvedPrompt:
-    """Resolve one WorkerProfile Spec (``operations/<name>/spec.md``): an implicit ``worker`` root with no
+    """Resolve one WorkerProfile Spec (``agents/<name>/spec.md``): an implicit ``worker`` root with no
     front matter (workflow/agents-and-harnesses.md A1). Unlike a role root or an operation guidance source, an
     WorkerProfile Spec carries its own ``# concorde-<name>`` heading and behavioral contract directly, so
     there is no ``audience``/``name``/``description``/``operation`` metadata to parse -- only a
@@ -427,7 +427,7 @@ def find_unreachable_prompts(
     for candidate in roots:
         if candidate.startswith(GUIDANCE_ROOT):
             resolved = resolve_operation_guidance(root, candidate)
-        elif candidate.startswith(OPERATIONS_ROOT):
+        elif candidate.startswith(AGENTS_ROOT):
             resolved = resolve_model_instructions(root, candidate)
         else:
             resolved = resolve_role_prompt(root, candidate)

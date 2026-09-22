@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Distribution prepares the Framework assets that developers install and run: worker instructions, Pi Operation guidance and managed runtime dependencies. It builds from authored sources and installs only the outputs it owns. It does not decide or silently rewrite a consumer project’s business specification.
+Distribution prepares the Framework assets that developers install and run: Agent instructions, Pi capability guidance and managed runtime dependencies. It builds from authored sources and installs only the outputs it owns. It does not decide or silently rewrite a consumer project’s business specification.
 
 ## Terminology
 
@@ -26,7 +26,7 @@ Use Distribution to build this checkout, install or update Concorde in a consume
 an initialized project's worker configuration, or provision the pinned runtime. Run
 `python3 scripts/concorde.py build` after authored instruction or contract changes; use
 `build --check` to check freshness without writing. Builds stay with their source worktree. A
-public Operation's guidance is authored under `prompts/operation-guidance/` and embedded in the
+public capability's guidance is authored under `prompts/operation-guidance/` and embedded in the
 Pi shim. No standalone Skill publishing command or client selector is supported.
 Installation previews owned changes by default and applies them only with explicit
 acceptance; local modifications to receipt-owned output conflict rather than being silently
@@ -36,7 +36,7 @@ The Pi coding agent loads a session extension whose single `concorde` tool descr
 public entries. Context-solve, tasks and implement prepare direct native Agent calls; plan, reviews
 and Issue solving prepare authored native workflows. Finite Host commands perform preparation and
 independent acceptance; workflow results are polled separately. Non-model actions finish as Host
-services. These are not public Studio or alternate client backends. Aborting a turn cancels the running Operation. In an installed project the launcher
+services. These are not public Studio or alternate client backends. Aborting a turn cancels the active finite invocation or native run through its own controls. In an installed project the launcher
 uses `.concorde/.venv`, the managed runtime verified by the installer. Missing runtime dependencies
 produce a `missing_runtime` result; rerun installation to provision them. The installer distributes
 no standalone Skills and does not invoke a Skills CLI.
@@ -53,7 +53,7 @@ means a failed rebuild must not be assumed to have recovered the prior environme
 
 <a id="entity.distribution.build"></a><a id="entity.distribution.build-command"></a><a id="entity.distribution.authored-sources"></a><a id="entity.distribution.skill-sources"></a><a id="entity.distribution.build-manifest"></a><a id="entity.distribution.package-inventory"></a><a id="entity.distribution.developer-runtime"></a>
 
-The Build command resolves Authored sources, including Operation guidance sources, into
+The Build command resolves Authored sources, including Capability guidance sources, into
 terminal worker instructions, a private Pi catalog, runtime schemas and Protocol assets. Build
 manifest binds exact inputs and outputs, while Package inventory determines distributable assets.
 The external Developer runtime loads the explicitly selected Pi entry; descriptions, guidance and
@@ -61,7 +61,7 @@ schemas remain useful through its `concorde` tool, not as standalone Skills. The
 worker context or an execution grant. [Build realization](build.md#design) explains source
 accounting and freshness checks. Installation owns consumer deployment separately.
 Templates travel with their owners: the Protocol holds the canonical Module and Scenario starters,
-while the planner and task-author Operation packages hold their plan and task starters. There is
+while the planner and task-author Agent packages hold their plan and task starters. There is
 no separate root template product or forwarding copy; this layout changes no worker context or
 runtime injection. See the [template ownership scenario](scenarios.md#scenario.distribution.template-ownership).
 
@@ -69,15 +69,15 @@ runtime injection. See the [template ownership scenario](scenarios.md#scenario.d
 
 The Pi session extension is the projection for a developer whose client is the Pi coding agent.
 Source build renders a private shim under `generated/session/pi/`; consumer installation places it in `.pi/extensions/` that imports the tracked extension and
-carries the catalog of public Operations: each one's description, ordinary guidance and exact request schema. The extension registers one `concorde` tool.
+carries the catalog of public capabilities: each one's description, ordinary guidance and exact request schema. The extension registers one `concorde` tool.
 Its `describe` action returns that guidance and schema; its `run` action wraps the caller's input
 in the invocation envelope. Host actions finish through the shared launcher; cognitive entries
 prepare exact native calls and independently accept their results, with result polling for workflows.
 Large ordinary Host output above 48 KiB is saved to a file. Aborting the turn sends the
 launcher SIGTERM, which it treats like Ctrl-C, and kills the launcher's process group after a
-grace period. A short section appended to the system prompt names the tool and the Operations, so
+grace period. A short section appended to the system prompt names the tool and the capabilities, so
 Pi needs no standalone Skills. The tool grants nothing: the launcher performs every check, and
-the source checkout's shim tells the model to run an Operation only on the developer's explicit
+the source checkout's shim tells the model to invoke a capability only on the developer's explicit
 request. Existing external CLI-owned Skills require explicit manual retirement; the installer
 never erases those unowned assets.
 
@@ -118,15 +118,12 @@ describe-policy preview with `use_proposal`.
 
 <a id="entity.distribution.developer-session"></a>
 
-The Developer agent session coordinates from its initial worktree. Source maintenance and tests
-use sibling project-discovered maintenance-worker and tester roles in the assigned candidate with
-inherited catalogs disabled. The author continues within a coherent unfinished stage; completed stages with changed goals/context
-may use a fresh author after durable handoff and exact ownership transfer. Main owns high-level
-decomposition, authorized profile/tool/workflow repairs and combination gates; it selects none,
-targeted or full independent testing and a fresh tester when needed. Checked role projections and
-passive observation are separate from private Operation catalogs; see [outer roles](build.md#outer-task-roles-and-observation).
+The Developer agent session is external main, not another registered role. [Agents](../agents/module.md)
+owns source-maintenance/tester behavior and continuation. Distribution supplies checked project
+role projections and passive observation separately from private capability catalogs; see
+[registration](build.md#outer-task-roles-and-observation).
 The source writer builds with that candidate's own code; primary never renders candidate outputs.
-For consumer Operations, host-created candidate relays keep the requesting session stationary;
+For consumer capabilities, host-created candidate relays keep the requesting session stationary;
 simple authorized consumer work may also stay directly in primary.
 
 ## Relationships
@@ -140,16 +137,17 @@ neither substitutes for the other. The developer agent session is the same actor
 checkout and in an installed consumer project: it works in the worktree whose build supplied its
 projections and lets the host run candidate work elsewhere.
 
-Operation guidance sources are authored and owned here. Build embeds their descriptions and
+Capability guidance sources are authored and owned here. The `prompts/operation-guidance/` path
+and `operation` front matter remain compatibility identifiers, not StateGraph claims. Build embeds their descriptions and
 resolved text with versioned request schemas in the Pi session extension's shim. Installation
 places that receipt-owned shim in the target. The Developer runtime calls its `concorde` tool,
 which uses the shared launcher. This creates no worker grant and transfers no executable
-Operation behavior to Distribution.
+business behavior to Distribution.
 
 ```mermaid
 flowchart TB
     accTitle: Distribution entities and relationships
-    accDescr: Build renders authored worker instructions and Operation guidance into runtime assets and a private Pi catalog. Installation deploys the receipt-owned Pi entry and provisions a verified managed runtime without installing standalone Skills.
+    accDescr: Build renders authored worker instructions and capability guidance into runtime assets and a private Pi catalog. Installation deploys the receipt-owned Pi entry and provisions a verified managed runtime without installing standalone Skills.
     authored["Authored sources"]
     build["Build"]
     buildCmd["Build command"]
@@ -166,7 +164,7 @@ flowchart TB
     verifiedRuntime["Verified managed runtime"]
     session["Developer agent session"]
     spec["Spec"]
-    guidanceSources["Operation guidance sources"]
+    guidanceSources["Capability guidance sources"]
     piSession["Pi session extension"]
     developerRuntime["Developer runtime"]
     guidanceSources -->|are rendered by| build
@@ -245,3 +243,12 @@ it is not another authored Agent registry. The supported native package is selec
 Pi process, separately from the candidate Python/runtime selection. Source-private testing may select
 a disposable data root while retaining exact candidate code and entry provenance; a sibling source
 worktree is never a permitted redirection. No global Pi setting is changed by this mechanism.
+
+### Agents
+
+<a id="entity.distribution.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

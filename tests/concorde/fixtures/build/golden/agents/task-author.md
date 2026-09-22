@@ -63,7 +63,7 @@ unrelated completed work.
 
 A good task list turns the accepted plan into acceptance tasks a programmer can fulfil and verify
 purely from their stated acceptance, with every Module task routed to a component the local
-`concorde-dependencies` declarations actually identify.
+paired metadata `dependencies` declarations and their readable meanings actually identify.
 
 ## Accepted input and feedback
 

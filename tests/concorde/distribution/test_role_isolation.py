@@ -238,7 +238,15 @@ class EffectiveRolePromptTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
         self.source = self.root / "source"
-        for directory in ("prompts", "protocol", "operations", "src", "pi", "scripts"):
+        for directory in (
+            "agents",
+            "prompts",
+            "protocol",
+            "operations",
+            "src",
+            "pi",
+            "scripts",
+        ):
             shutil.copytree(
                 REPOSITORY_ROOT / directory,
                 self.source / directory,

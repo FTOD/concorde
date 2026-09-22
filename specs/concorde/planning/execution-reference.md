@@ -219,7 +219,7 @@ These companions are part of the same complete Module specification, not separat
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+This Module is a child of Operations; its consumers, including Agents, need not be its structural siblings. Its behavior is realized in
 its own package `src/concorde/planning/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
 does not itself create an Agent grant or configurable arbitrary graph; public exposure is explicit in the catalog. Host admission, phase
 artifacts and permissions remain mandatory. A new graph requires declared composition and an

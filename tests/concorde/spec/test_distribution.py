@@ -43,7 +43,9 @@ class DistributionTests(unittest.TestCase):
         repo = SpecRepository(PACKAGE)
         report = validate_repository(PACKAGE)
         self.assertEqual("success", report.status, [f.message for f in report.findings])
-        self.assertEqual(12, len(repo.targets))
+        self.assertEqual(13, len(repo.targets))
+        self.assertEqual("module.concorde", repo.select("module.agents").parent)
+        self.assertEqual("module.concorde", repo.select("module.operations").parent)
         self.assertTrue(all(t.kind == "module" for t in repo.targets.values()))
         self.assertEqual("module.concorde", repo.select("module.views").parent)
         self.assertIn(

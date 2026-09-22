@@ -1,8 +1,8 @@
 # Operation catalog and dispatch contracts
 
 These are the precise implementation agreements and executable Graph specifications owned by the
-[Operations Module](module.md): the catalog of every Operation, the ownership of each Operation's
-behavior and the dispatch that routes an admitted request to its provider. Explanatory topics
+[Operations Module](module.md): explicit StateGraph composition, the compatibility capability
+inventory and the dispatch that routes an admitted request to its business provider. Explanatory topics
 introduce their purposes; exact identities, limits and transitions are retained here as the single
 detailed contract.
 
@@ -40,9 +40,9 @@ action. Module ownership, context inclusion and these executable kinds remain in
 `operations/` and the eleven public `concorde-*` request/response names are compatibility spellings,
 not a mandate to execute every capability as a LangGraph node.
 
-The typed inventory declares seven `AGENTS`, public `CAPABILITIES`, `WORKFLOWS`, `HOST_TOOLS` and
-the separately selected `STATE_OPERATIONS`. The canonical Agent definitions carry `PROFILE` and
-`KIND="agent"`; they have no `STATE`/`run` model-operation aliases. Public capability modules retain
+Agents owns the [canonical Agent definitions](../agents/roles.md), which carry `PROFILE` and
+`KIND="agent"` with no `STATE`/`run` model-operation aliases. This Module inventories public
+`CAPABILITIES`, `WORKFLOWS`, `HOST_TOOLS` and separately selected `STATE_OPERATIONS`. Public capability modules retain
 the finite Python request/response adapter, `STATE` and `run` for wire compatibility. Those adapters
 do not schedule cognition: the Pi entry prepares real native calls or authored workflows.
 
@@ -65,11 +65,11 @@ retain their contract/binding meaning without retiring the canonical Agent inven
 Each public capability has exactly one public name in the Pi catalog and launcher entry
 `scripts/run-operation.py <public-name>`. Non-public Operations have neither a catalog entry nor
 a direct launcher entry. [Distribution Module](../distribution/module.md) owns the ordinary
-Operation guidance sources and Pi projection; [Harness](../harness/admission.md) owns shared
-admission and this Module owns dispatch. Guidance describes use of the Operation, not the
-worker's task context or another executable kind.
+capability guidance sources and Pi projection; [Harness](../harness/admission.md) owns shared
+admission and this Module owns dispatch. Guidance describes use of the capability and its actual kind, not the
+worker's task context.
 
-| Operation                | Public | Context selection | Deterministic | Uses                                             | Behavior                                                             |
+| Compatibility capability | Public | Context selection | Deterministic | Uses                                             | Behavior                                                             |
 | ------------------------ | ------ | ----------------- | ------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
 | issues                   | true   | bound             | false         | issue-solver, spec-review, code-review, validate | Inspect, report, reopen or solve a selected Issue without delivery   |
 | init                     | true   | none              | true          | —                                                | Propose and apply explicit initialization                            |
@@ -82,46 +82,43 @@ worker's task context or another executable kind.
 | tasks                    | true   | bound             | false         | task-author                                      | Derive acceptance tasks from the accepted plan                       |
 | implement                | true   | bound             | false         | programmer                                       | Fulfil local tasks after caller-selected component work              |
 
-The seven roles used by these capabilities are canonical terminal native Agents with bound context,
-`DETERMINISTIC=false`, `PROFILE`, and no composed `USES`. They are callable only with prepared native
-invocations, not through private Python model-operation launch aliases. The outer caller selects the
-Module; no role routes itself to another context.
+The roles used by these adapters are defined once in [Agents](../agents/roles.md). Adapter `USES`
+references those definitions; it does not own another role inventory or grant another context.
 
 #### Operation properties {#operations-operation-properties}
 
 Inventory entries declare `KIND`, `PUBLIC`, `CONTEXT_SELECTION`, `DETERMINISTIC`, `USES`, `PROFILE`
-and `EXTERNAL_NAME`. `KIND` distinguishes `agent`, `agent-entry`, `workflow` and `host` in the
-compatibility inventory. `PUBLIC` controls the eleven catalog/launcher names. `bound` means a
+and `EXTERNAL_NAME`. `KIND` distinguishes `agent-entry`, `workflow` and `host` in the
+compatibility adapter inventory; roles themselves belong to Agents. `PUBLIC` controls the eleven catalog/launcher names. `bound` means a
 caller-selected context; `none` means Host work without model context. Determinism covers all
 supported paths and transitive collaborators, not filesystem purity. `USES` records declared
 collaborators, grants no file authority, has no duplicate or unknown entries and no definition cycle.
 
-Agent entries have a profile and no `STATE`/`run`; the public Python wire adapters retain those
-fields. Separately selected StateGraph Operations declare actual typed graph channels. Native
+Domain Agent definitions have a profile and no `STATE`/`run`; public `agent-entry` adapters have
+no role profile and retain `STATE`/`run` only for finite wire compatibility. Separately selected StateGraph Operations declare actual typed graph channels. Native
 branches/loops belong in authored pi-subagents workflows; optional graph ordering/reducers belong
-in StateGraph. A per-entry `AGENTS` or obsolete `CLASS` declaration is not supported; the package's
-canonical `AGENTS` inventory is supported and required.
+in StateGraph. A per-adapter `AGENTS` or obsolete `CLASS` declaration is not supported. The
+canonical role inventory is `agents.AGENTS`, not a second Operations catalog.
 
 The `concorde.operations` paired metadata records kind, exposure, context selection, determinism,
-public name, direct uses, nullable State and profile. It matches code exactly; private Agent entries
-have null State and public name. This single typed metadata inventory includes Agents; a separate
-`concorde.agents` extension is not used. The retired `skill` key remains rejected. Catalog schema 2
+public name, direct uses, nullable State and profile. It matches compatibility adapter code exactly and excludes roles. The Agents-owned
+`concorde.agents` metadata checks role family, distribution and registration independently. The retired `skill` key remains rejected. Catalog schema 2
 is distinct from metadata schema 2 and the versioned request/result wire envelopes.
 
 ### Design {#operations-design}
 
 #### Behavioral ownership and composition limits {#operations-behavioral-ownership-and-composition-limits}
 
-Every capability and Agent has one canonical behavioral owner. Native preparation and finite
+Every capability has one canonical business owner; every role has one canonical definition in Agents. Native preparation and finite
 request dispatch use common admission; no admission/dispatch Graph executes under these public
 paths. Optional StateGraph Operations are explicitly selected through Harness's Operation API.
 
 | Capability or role | Canonical behavioral owner | Execution |
 | --- | --- | --- |
-| context-solve, plan, tasks; assessor, planner, task-author | [Planning](../planning/module.md) | Direct native assessor/task-author or authored assessor-then-planner workflow |
-| implement; programmer | [Implementation](../implementation/module.md) | Direct native programmer after finite admission |
-| spec-review, code-review; reviewers | [Review](../review/module.md) | Authored native scope workflow |
-| issues; issue-solver | [Issues](../issues/module.md) | Finite bookkeeping or bounded native decision/verification workflow |
+| context-solve, plan, tasks | [Planning](../planning/module.md) | Direct native assessor/task-author or authored assessor-then-planner workflow |
+| implement | [Implementation](../implementation/module.md) | Direct native programmer after finite admission |
+| spec-review, code-review | [Review](../review/module.md) | Authored native scope workflow |
+| issues | [Issues](../issues/module.md) | Finite bookkeeping or bounded native decision/verification workflow |
 | validate, deliver | [Validation](../validation/module.md), [Delivery](../delivery/module.md) | Finite Host services |
 | init, configure | [Spec](../spec/initialize.md), [Distribution](../distribution/module.md) | Finite Host services |
 

@@ -229,8 +229,10 @@ ownership, structural validation and affected-consumer invalidation still apply.
 expands its selection or proposes Spec replacements. Changed ownership or references require
 reconciling old and candidate affected contexts and obtaining fresh selected evidence.
 
-Context solving invokes the context-assessor Operation in a separate fresh worker, selected by the
-`concorde-context-solve` operation or as `concorde-plan`'s preliminary sufficiency check. It returns
+Context solving invokes the native [context-assessor Agent](../agents/roles.md#context-assessor)
+in a fresh terminal invocation, selected through the `concorde-context-solve` capability or as
+`concorde-plan`'s preliminary sufficiency check in its native workflow. Independent Host acceptance
+checks the result; a model proposal or staging gate alone is not accepted sufficiency. It returns
 sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
 is reported once as an Issue; a dependent step references its receipt and names blocked_step. It cannot fetch missing context. Known missing
 runtime fields fail admission; semantic incompleteness is task-specific, never universally proven.

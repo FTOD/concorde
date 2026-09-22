@@ -35,7 +35,7 @@ from concorde.spec.verification import verifies  # noqa: E402
 
 
 def _package(root: Path) -> None:
-    for directory in ("prompts", "protocol", "operations"):
+    for directory in ("agents", "prompts", "protocol", "operations"):
         shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
 
 
@@ -72,7 +72,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
                 agent = worker_profile(name)
                 binding = resolve_worker(self.root, name)
                 self.assertEqual(binding.agent, name)
-                self.assertEqual(binding.spec_path, f"operations/{name}/spec.md")
+                self.assertEqual(binding.spec_path, f"agents/{name}/spec.md")
                 self.assertEqual(
                     binding.spec_digest, manifest["sources"][binding.spec_path]
                 )
@@ -117,7 +117,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
     @verifies("scenario.harness.agent-bind")
     def test_changed_role_instructions_stale_the_build(self):
         before = resolve_worker(self.root, "programmer")
-        role = self.root / "operations/programmer/spec.md"
+        role = self.root / "agents/programmer/spec.md"
         role.write_text(role.read_text() + "\nUse precise evidence.\n")
         with self.assertRaises(BuildError) as failure:
             resolve_worker(self.root, "programmer")

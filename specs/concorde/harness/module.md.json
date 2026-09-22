@@ -49,20 +49,10 @@
       "id": "entity.harness.agent-definitions",
       "title": "Model execution profiles",
       "kind": "program",
+      "meaning": "#entity.harness.agent-definitions",
       "files": [
-        "operations/",
-        "prompts/native/code-reviewer.md",
-        "prompts/native/context-assessor.md",
-        "prompts/native/issue-solver.md",
-        "prompts/native/planner.md",
-        "prompts/native/programmer.md",
-        "prompts/native/spec-reviewer.md",
-        "prompts/native/task-author.md",
-        "prompts/workers/common.md",
-        "tests/concorde/fixtures/build/golden/agents/",
-        "tests/concorde/fixtures/build/golden/native/"
-      ],
-      "meaning": "#entity.harness.agent-definitions"
+        "src/concorde/harness/worker_profile.py"
+      ]
     },
     {
       "id": "entity.harness.permissions",
@@ -183,6 +173,13 @@
       "kind": "used module",
       "target_id": "module.operations",
       "meaning": "#entity.harness.operations"
+    },
+    {
+      "id": "entity.harness.agents",
+      "title": "Agents",
+      "kind": "used module",
+      "target_id": "module.agents",
+      "meaning": "#entity.harness.agents"
     }
   ],
   "dependencies": [
@@ -197,6 +194,10 @@
     {
       "target_id": "module.operations",
       "meaning": "#agreement.document.harness.module.3"
+    },
+    {
+      "target_id": "module.agents",
+      "meaning": "#entity.harness.agents"
     }
   ],
   "bindings": []

@@ -203,8 +203,8 @@ class NativeInstallerTests(unittest.TestCase):
             for relative in (
                 "protocol/templates/module.md",
                 "protocol/templates/scenario.md",
-                "operations/planner/plan-template.md",
-                "operations/task_author/tasks-template.md",
+                "agents/planner/plan-template.md",
+                "agents/task_author/tasks-template.md",
             ):
                 self.assertEqual(
                     (framework / relative).read_bytes(),

@@ -35,6 +35,7 @@ class CreateWorktreeBuildsTests(unittest.TestCase):
             self.root / "pi",
             ignore=shutil.ignore_patterns("node_modules", "__pycache__"),
         )
+        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
         _git(self.root, "init", "-q", "-b", "main")
         _git(self.root, "add", "-A")

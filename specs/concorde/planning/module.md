@@ -62,12 +62,12 @@ grant, supplies their implementations. Existing host repair admission remains an
 
 This conceptual view shows the artifacts a caller obtains before implementation, not a single
 executable Graph spanning every box. Planning checks contract sufficiency before accepting a plan;
-task authoring is a separate Operation that consumes that current plan. This separation prevents
+task authoring is a separate native Agent capability that consumes that current plan. This separation prevents
 an attractive plan from disguising missing behavior or being mistaken for completed code.
 
 For native planning calls, finite Host steps, artifact handoffs and exact stop conditions, open the
 [full Native planning workflow Spec](execution-reference.md#plan-planning-graph-plan-graph).
-The [task-authoring explanation](tasks.md) covers the separate next Operation.
+The [task-authoring explanation](tasks.md) covers the separate next capability.
 
 ```mermaid
 flowchart LR
@@ -97,11 +97,11 @@ A provider dependency does not make that provider a child of Planning or grant i
 ```mermaid
 flowchart TB
     accTitle: Planning entities and dependencies
-    accDescr: Planning uses the host to save current plans and tasks, Harness to isolate assessors and authors, and Spec to resolve contracts and participants. Assessment, plans and tasks remain distinct outputs.
+    accDescr: Planning uses the host to save current plans and tasks, Harness to bind fresh separately scoped assessors and authors, and Spec to resolve contracts and participants. Assessment, plans and tasks remain distinct outputs.
     e0["Planning adapter"]
     e2["Harness"]
     e3["Spec"]
-    e0 -->|binds isolated assessors and authors, and admits requests and saves plans and tasks through| e2
+    e0 -->|binds fresh separately scoped assessors and authors, and admits requests and saves plans and tasks through| e2
     e0 -->|resolves planning contracts and participants through| e3
     domain_assessment["Context assessment"]
     e0 -->|records task sufficiency in| domain_assessment
@@ -115,7 +115,7 @@ flowchart TB
 
 <a id="entity.planning.harness"></a><a id="agreement.document.planning.module.2"></a>
 
-Freeze Spec-only inputs and run separate isolated context assessors, planners and task authors without implementation contents or project writes.
+Freeze Spec-only inputs and run fresh context assessors, planners and task authors with terminal tools and no implementation-content or project-write grant. Native file/network/credential exclusions remain prompt policy, not OS confinement.
 
 This collaboration applies before invoking the context assessor, planner or task author, including admitted repair task authoring.
 
@@ -140,3 +140,12 @@ This collaboration applies when selecting planning inputs, checking local depend
 
 The Planning Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+### Agents
+
+<a id="entity.planning.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

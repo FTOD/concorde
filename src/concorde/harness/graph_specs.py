@@ -55,7 +55,7 @@ PARTS = ("State", "Nodes", "Edges")
 NODES_HEADER = ("Node", "Executes", "in", "out")
 BOUNDARY = {"__start__", "__end__"}
 FUNCTIONAL_API = "langgraph.func"
-SOURCE_ROOTS = ("src", "scripts", "operations")
+SOURCE_ROOTS = ("src", "scripts", "operations", "agents")
 EXCLUDED_DIRS = {"node_modules", "__pycache__", ".venv", "build", "dist"}
 
 

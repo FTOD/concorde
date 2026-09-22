@@ -28,7 +28,7 @@ def external_name(name):
 """
 
 VALID_ALPHA = """from concorde.spec import contract_shapes as shapes
-from operations import planner
+from agents import planner
 from . import external_name
 from concorde.harness.operation_state import StateContract
 
@@ -70,7 +70,7 @@ def _guidance(root: Path, *, operation: str = "alpha") -> None:
     )
 
 
-VALID_AGENT_INIT = """OPERATIONS = ("alpha",)
+VALID_AGENT_INIT = """DOMAIN_AGENTS = ("alpha",)
 
 
 def external_name(name):
@@ -82,7 +82,7 @@ from concorde.harness.effects import EffectDeclaration
 
 PROFILE = WorkerProfile(
     name="alpha",
-    spec="operations/alpha/spec.md",
+    spec="agents/alpha/spec.md",
     workspace="capsule",
     contract=Contract(
         phase="plan",
@@ -133,7 +133,9 @@ def _agents_package(
     spec_source: str = VALID_AGENT_ALPHA_SPEC,
     children: dict[str, str] | None = None,
 ) -> None:
-    package = root / "operations"
+    _operations_package(root, init_source="OPERATIONS = ()", alpha_source="")
+    (root / "operations/alpha.py").unlink()
+    package = root / "agents"
     package.mkdir(parents=True, exist_ok=True)
     (package / "__init__.py").write_text(init_source, encoding="utf-8")
     alpha = package / "alpha"
@@ -156,6 +158,7 @@ class PromptRuleTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
+        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
 
     def test_clean_prompts_tree_has_no_findings(self) -> None:
@@ -202,7 +205,7 @@ class PromptRuleTests(unittest.TestCase):
         )
 
     def test_name_lint_catches_an_unknown_token_in_an_agent_spec(self) -> None:
-        edited = self.root / "operations/planner/spec.md"
+        edited = self.root / "agents/planner/spec.md"
         edited.write_text(
             edited.read_text(encoding="utf-8")
             + "\nSee concorde-not-a-real-identity.\n",
@@ -575,7 +578,7 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_inventory_mismatch_is_reported(self) -> None:
         init = VALID_AGENT_INIT.replace(
-            'OPERATIONS = ("alpha",)', 'OPERATIONS = ("alpha", "missing")'
+            'DOMAIN_AGENTS = ("alpha",)', 'DOMAIN_AGENTS = ("alpha", "missing")'
         )
         _agents_package(self.root, init_source=init)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -586,10 +589,10 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_duplicate_agent_name_is_reported(self) -> None:
         init = VALID_AGENT_INIT.replace(
-            'OPERATIONS = ("alpha",)', 'OPERATIONS = ("alpha", "alpha")'
+            'DOMAIN_AGENTS = ("alpha",)', 'DOMAIN_AGENTS = ("alpha", "alpha")'
         )
         _agents_package(self.root, init_source=init)
-        findings = package_validation._validate_operation_modules(self.root)
+        findings = package_validation._validate_worker_profiles(self.root)
         self.assertTrue(
             any(f.rule_id == "CONCORDE-OPERATION-INVENTORY-001" for f in findings),
             findings,
@@ -597,7 +600,7 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_missing_spec_is_reported(self) -> None:
         _agents_package(self.root)
-        (self.root / "operations/alpha/spec.md").unlink()
+        (self.root / "agents/alpha/spec.md").unlink()
         findings = package_validation._validate_worker_profiles(self.root)
         self.assertTrue(
             any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings
@@ -605,7 +608,7 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_wrong_spec_path_is_reported(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'spec="operations/alpha/spec.md",', 'spec="operations/alpha/wrong.md",'
+            'spec="agents/alpha/spec.md",', 'spec="agents/alpha/wrong.md",'
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -768,6 +771,7 @@ class BuildOutputRuleTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
+        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
 
     @verifies("scenario.distribution.build-check")

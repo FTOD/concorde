@@ -25,7 +25,7 @@ Implementation fulfills accepted tasks by changing the code that its worker is a
 ## Usage
 
 The calling agent invokes `concorde-implement` with a current accepted plan and nonempty task
-list for one selected Module. This is a public explicitly target-bound Operation.
+list for one selected Module. This is a public explicitly target-bound native Agent capability.
 The programmer receives the complete Module Spec and the implementation paths its own entities
 bind, and must return every admitted task with unchanged identity and acceptance. Only fulfilled
 tasks are complete; completion is not validation, readiness or delivery.
@@ -55,7 +55,7 @@ fictional rollback guarantee.
 [Caller-selected component work](execution-reference.md#implementation-component-coordination-and-current-adapter-limit)
 keeps local tasks separate from component obligations. When participating work is missing or stale,
 implementation returns its exact target and intended task to the calling agent. The agent selects
-component Operations and performs any contract edits; there is no automatic authoring, development
+component capabilities and performs any contract edits; there is no automatic authoring, development
 or stabilization workflow. On retry, the host checks every component's current intent and completed
 revision before one bounded local programmer runs. This prevents a component label from granting
 another Module's code or turning an old completion into fresh evidence.
@@ -127,3 +127,12 @@ intended implementation paths. Native write/edit tools change that candidate, no
 Broad file and shell tools are not OS-confined by this transport. Network/credential abstention is
 model policy, not a claim of enforced denial. No delegation tools are supplied. The fixed Host
 check service retains its real enforced subprocess boundary and records actual check outcomes.
+
+### Agents
+
+<a id="entity.implementation.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

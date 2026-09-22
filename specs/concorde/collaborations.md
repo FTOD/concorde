@@ -29,7 +29,7 @@ meaning and links to the included providers.
 
 ## Local collaboration agreements
 
-These entries describe the six children registered for this Module from the Framework's own perspective. Each child's complete contract is its own registered collection; these promises are only what the composition relies on.
+These entries describe the seven children registered for this Module from the Framework's own perspective. Each child's complete contract is its own registered collection; these promises are only what the composition relies on.
 
 ### Spec
 
@@ -74,7 +74,7 @@ This collaboration applies when a developer works with recorded feedback.
 
 <a id="entity.concorde.distribution"></a><a id="agreement.document.concorde.module.5"></a>
 
-The [Distribution Module](distribution/module.md) owns Operation guidance and Pi integration sources, builds authored projections, installs and configures owned integrations, provisions the managed runtime and keeps a source checkout's own projections bound to the worktree that built them.
+The [Distribution Module](distribution/module.md) owns public capability guidance and Pi integration sources, builds authored projections, installs and configures owned integrations, provisions the managed runtime and keeps a source checkout's own projections bound to the worktree that built them.
 
 This collaboration applies when a project adopts, updates or configures the Framework, or when built assets must be current.
 
@@ -97,4 +97,13 @@ This collaboration applies when a developer wants to read Specs.
 
 <a id="entity.concorde.operations"></a><a id="operations-collaboration"></a>
 
-The [Operations Module](operations/module.md) keeps the typed inventory of capabilities and canonical Agents, dispatches each admitted request to its provider and groups the responsibilities that provide reusable and composed Operations. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [complete Operation contract](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
+The [Operations Module](operations/module.md) owns explicit StateGraph composition and the compatibility capability-adapter inventory/dispatch, while Agents owns callable roles and business providers retain their domain contracts. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [composition and compatibility dispatch boundary](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
+
+### Agents
+
+<a id="entity.concorde.agents"></a>
+
+[Agents](agents/module.md) owns all nine callable Pi role definitions, distinguishing domain and
+outer task families. The Framework relies on that single inventory when selecting a role, preserves
+source-only scope and independent Host acceptance, and refuses missing or stale definitions rather
+than inventing another role. Main remains the external user Pi session with coordinator support.

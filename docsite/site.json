@@ -4,13 +4,13 @@
   "projectName": "concorde",
   "repository": "https://github.com/FTOD/concorde",
   "schema_version": 1,
-  "tagline": "Architecture-aware Specs and coding agents that work strictly within them.",
+  "tagline": "Architecture-aware Specs, explicit Agent grants and independently checked results.",
   "title": "Concorde Framework",
   "url": "https://ftod.github.io",
   "homepage": {
-    "eyebrow": "Specs \u00b7 Scoped context \u00b7 Sandboxed workers",
+    "eyebrow": "Specs · Pi Agents · Independent evidence",
     "title": "Specify the architecture. Guide your agents.",
-    "description": "Concorde keeps your project's Specs at the center of AI-assisted development. Your agent reads and selects contracts, answers questions and edits Specs, metadata and registry directly within its grant. Explicit retained Operations run fresh bounded Pi workers and deterministic checks. Evidence binds to current inputs; direct edits never supply successful review or completion.",
+    "description": "Concorde keeps your project's Specs at the center of AI-assisted development. Your agent reads and selects contracts, answers questions and edits Specs, metadata and registry directly within its grant. Native Pi Agents and Workflows contribute proposals to finite Host acceptance; optional StateGraph Operations are selected separately. Evidence binds to current inputs; direct edits never supply successful review or completion.",
     "features": {
       "title": "Context and permission, managed around the Spec.",
       "items": [
@@ -19,24 +19,24 @@
           "description": "Module Specs explain purpose, terminology, correct use, design and relationships for a reader who does not know the code. Implementation Specs hold the precise requirements, scenarios and contracts. Paired metadata binds entities to the files that realize them, and tests declare the scenarios they verify."
         },
         {
-          "title": "Give each worker one Module's context.",
+          "title": "Give each domain worker one Module's context.",
           "description": "A worker receives its Module's own documents and explicit references, one level deep, the vendored documentation of the libraries that Module declares, and its task. Only code-writing and code-review phases read source contents. A missing promise becomes a reported Spec gap, never a guess from code."
         },
         {
-          "title": "Enforce permissions outside the model.",
-          "description": "Each model step is a fresh Pi process inside a bubblewrap sandbox derived from its grant: the host filesystem read-only, secrets and other worktrees masked, only the write grant writable. Only the programmer writes code, and only its Module's listed files. The network stays shared; an unavailable sandbox refuses the launch."
+          "title": "Distinguish grants from enforced isolation.",
+          "description": "Domain Agents have fresh context and terminal tool ceilings. Native file, network and credential restrictions are prompt policy, not OS confinement. Only programmer receives a code-write grant. Configured checks and tester commands separately enforce read-only governing files with writable external scratch; unavailable isolation refuses execution."
         },
         {
-          "title": "Compose Operations as LangGraph graphs.",
-          "description": "An Operation is Concorde's one executable concept: declared input State, output updates, effects and execution policy, implemented by code, a model or a compiled graph. Every graph's Graph Spec is checked against the compiled topology, and each is read, with its Graph Spec, in the owning Module's Specs and opens in LangGraph Studio."
+          "title": "Choose Agents, Workflows or optional Operations.",
+          "description": "An Agent is a callable Pi role, a Workflow is native pi-subagents composition, an Operation is an explicitly selected StateGraph flow, and a Host service is finite deterministic work. Agents defines nine roles as a peer of Operations. Main is the external user Pi session, not a tenth Agent. Genuine Graph Specs remain with their owners."
         },
         {
           "title": "Develop in candidate worktrees.",
-          "description": "In consumer projects, a mutating Operation requested from primary runs in a host-created candidate from the committed base; your session stays in place. Source maintenance instead uses a fresh catalog-free writer and a separate fresh sibling tester with exact candidate Pi entry, embedded catalog and runtime provenance. Evidence binds current inputs; delivery and primary merging remain separate requests."
+          "description": "In consumer projects, a mutating capability requested from primary normally runs in a host-created candidate from the committed base; your session stays in place. Source maintenance uses a fresh catalog-free writer, then main selects independent testing and, when selected, a fresh sibling tester with exact candidate Pi entry, embedded catalog and runtime provenance. Evidence binds current inputs; delivery and primary merging remain separate requests."
         },
         {
           "title": "Track problems as Issues.",
-          "description": "Workers record attributed bugs, contract gaps and limitations as Git-versioned Issues. concorde-issues lists, shows, reports, reopens or assesses one selected Issue. Repairs return to the calling agent for direct edits or explicit Operation selection; verification never fabricates completion."
+          "description": "Workers record attributed bugs, contract gaps and limitations as Git-versioned Issues. concorde-issues lists, shows, reports, reopens or assesses one selected Issue. Repairs return to the calling agent for authorized edits or explicit capability selection; verification never fabricates completion."
         }
       ]
     },
@@ -64,17 +64,20 @@
     },
     "quickstart": {
       "title": "Start with an explicit project contract.",
-      "description": "Clone and build Concorde, then preview the installation into your Git project. You need Linux with bubblewrap, Python 3.11+, Node.js 18+ with npm and the Pi coding agent logged in, because every worker runs as a sandboxed Pi process. Pi is the only supported client. Its concorde tool describes and runs public Operations; initialize the project with concorde-init after installation.",
+      "description": "Clone and build Concorde, then preview the installation into your Git project. Use Python 3.11+, Node.js 22.6+ with npm and the Pi coding agent with the supported native pi-subagents producer. Linux with bubblewrap is required for enforced check/tester execution, not a claim of native Agent confinement. Pi is the only supported client. Its concorde tool describes and prepares native capabilities or runs finite Host services; initialize the project with concorde-init after installation.",
       "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\n\n# Replace the path with your Git project.\npython3 scripts/install-concorde.py \\\n  --target /absolute/path/to/project --preview\n\n# Review the preview, then rerun with --apply."
     },
     "reference": {
-      "title": "Operations and executable entry points",
-      "description": "The checked inventory contains 18 Operations: eleven public host adapters and seven private model-backed workers. Init, configure, validate and deliver make no model calls. The calling agent selects explicit entries and order; no removed workflow has an alias.",
+      "title": "Agents and public capabilities",
+      "description": "Eleven public capability adapters retain their concorde-* names. Agents owns seven domain roles and two outer task roles; consumer packages contain eight definitions, excluding source-only maintenance-worker, and statically register only generic tester. Main remains external. Init, configure, validate and deliver make no model calls; no removed workflow has an alias.",
       "tables": [
         {
-          "title": "Public Operations",
+          "title": "Public capabilities",
           "description": "Public entries pass common admission. Targeted entries require an explicit Module target. describe-policy previews applicable worker grants without execution; initialization instead uses its deterministic proposal preview.",
-          "columns": ["Operation", "Result and boundary"],
+          "columns": [
+            "Capability",
+            "Result and boundary"
+          ],
           "rows": [
             [
               "concorde-context-solve",
@@ -123,9 +126,12 @@
           ]
         },
         {
-          "title": "Model-backed Operations",
-          "description": "These Operations have model execution profiles; they are not a second executable inventory. Each run is a fresh Pi process in a bubblewrap sandbox with host-issued context, tools and limits. Workers are terminal nodes: they cannot delegate or recursively call Operations. The LangGraph host schedules each with its own file and tool grant.",
-          "columns": ["Operations", "Responsibility and authority"],
+          "title": "Callable Pi roles",
+          "description": "The Agents Module owns the canonical contracts. Domain roles receive invocation-owned projections; outer task roles receive explicit task/worktree grants rather than domain stage schemas. No role delegates tasks. Registration is discovery, not authority or execution evidence.",
+          "columns": [
+            "Agents",
+            "Responsibility and authority"
+          ],
           "rows": [
             [
               "spec-reviewer, context-assessor",
@@ -142,21 +148,36 @@
             [
               "issue-solver",
               "Choose bounded work or an evidence-grounded disposition for one explicitly selected Issue."
+            ],
+            [
+              "maintenance-worker",
+              "Source-only author of verified candidate work under main's frozen grant; self-checks are not independent acceptance."
+            ],
+            [
+              "tester",
+              "Fresh source/consumer independent tester with read-only governing artifacts, enforced commands and retained evidence; never repairs or delegates."
             ]
           ]
         },
         {
           "title": "Shared execution services",
           "description": "The Operations hierarchy groups behavior providers, including composed providers. Supporting Modules own their separate contracts; using them neither transfers ownership nor expands context references.",
-          "columns": ["Module", "Responsibility"],
+          "columns": [
+            "Module",
+            "Responsibility"
+          ],
           "rows": [
             [
               "Operations",
-              "Keep the catalog of every Operation, enforce public exposure and declared composition, and dispatch each admitted request to its provider."
+              "Own explicit StateGraph composition and compatibility capability adapters/dispatch, not the Agent definitions."
+            ],
+            [
+              "Agents",
+              "Define all nine callable roles and their interaction, family and distribution scope; main remains an external session."
             ],
             [
               "Harness",
-              "Admit every request at one boundary, run primary-worktree mutations in candidate worktrees, prepare bounded worker context, run each Pi worker and configured check in a sandbox, validate results and record usage."
+              "Admit requests and native calls, freeze context, enforce terminal tool ceilings and independently accept results. Configured checks/tester commands have separate OS isolation; native file policy is not a sandbox."
             ],
             [
               "Spec",
@@ -179,15 +200,18 @@
         {
           "title": "Launchers and supporting tools",
           "description": "Source-checkout commands are shown below. Installed projects use the corresponding scripts under .concorde/framework/. Direct CLI validation is distinct from lifecycle readiness evidence.",
-          "columns": ["Entry point", "Use"],
+          "columns": [
+            "Entry point",
+            "Use"
+          ],
           "rows": [
             [
               "python3 scripts/run-operation.py <operation> < invocation.json",
-              "Submit a typed request to one of the eleven public Operations, in execute or describe-policy mode."
+              "Submit a typed compatibility request. Cognitive capabilities require prepared native Pi transport; bare CLI execution refuses without it."
             ],
             [
               "concorde tool in a Pi session",
-              "Describe or run the same eleven public Operations from the Pi coding agent."
+              "Describe the eleven public capabilities, prepare exact native calls/workflows, or run finite Host services."
             ],
             [
               "python3 scripts/concorde.py <command>",
@@ -195,7 +219,7 @@
             ],
             [
               "LangGraph Studio",
-              "Run and observe the same admitted public graphs as the common launcher and Pi tool."
+              "Inspect the optional terminal Agent StateGraph; execution needs a trusted native launch/admission service, with no public capability mirrors."
             ],
             [
               "python3 scripts/install-concorde.py",
@@ -218,6 +242,10 @@
       ]
     },
     "links": [
+      {
+        "label": "Agents",
+        "to": "/specs/concorde/agents/module"
+      },
       {
         "label": "Spec Protocol",
         "to": "/protocol"

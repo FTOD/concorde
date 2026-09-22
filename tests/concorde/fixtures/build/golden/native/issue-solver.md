@@ -42,7 +42,7 @@ change project files, reclassify the report or invent product requirements.
 Return one `issue_decision` choosing the next bounded action:
 
 - `develop`: return intended implementation work to the calling agent, which selects and orders
-  retained Operations explicitly. No automatic development workflow runs.
+  retained capabilities explicitly. No automatic development workflow runs.
 - `spec-repair`: return the missing/conflicting promise and needed owner-local Spec, paired metadata
   or registry changes to the calling agent. No author worker runs and no Spec is changed here.
 - `verify`: ask fresh read-only reviewers to verify this specific problem against current inputs.
@@ -85,8 +85,8 @@ concrete Issues through `report_issue`; that does not authorize repairing unrela
 
 ## Completion conditions
 
-One invocation completes when it returns its next action or a reasoned disposition. The enclosing
-graph owns execution, evidence checks, bounded repetition and candidate readiness. It never delivers
+One invocation completes when it returns its next action or a reasoned disposition. The enclosing native
+workflow owns execution, evidence checks, bounded repetition and candidate readiness. It never delivers
 or merges automatically, and closing an Issue in a candidate says nothing about another branch.
 
 ## Missing information, failure and human decisions

@@ -4,16 +4,18 @@ import json
 from pathlib import Path
 
 from .prompt_resolver import resolve_role_prompt
+from agents import OUTER_PROFILES
 
-TESTER = "prompts/outer/tester.md"
-SOURCE_ROOTS = (
-    "prompts/outer/source/main.md",
-    "prompts/outer/source/maintenance-worker.md",
-)
+TESTER = next(p.prompt for p in OUTER_PROFILES if p.name == "tester")
+COORDINATOR = "prompts/outer/source/main.md"
 
 
 def prompt_roots(root: Path) -> tuple[str, ...]:
-    return tuple(p for p in (TESTER, *SOURCE_ROOTS) if (root / p).is_file())
+    return tuple(
+        p
+        for p in (*[role.prompt for role in OUTER_PROFILES], COORDINATOR)
+        if (root / p).is_file()
+    )
 
 
 def render(root: Path, framework_prefix: str = ""):
@@ -40,30 +42,24 @@ def render(root: Path, framework_prefix: str = ""):
         if prefix
         else "../../generated/session/pi/concorde-session.ts"
     )
-    roles = [
-        (
-            "tester",
-            TESTER,
-            "read, grep, find, ls, test_command",
-            f"{assets}/concorde-tester.ts, {entry}",
-        )
-    ]
-    if not prefix:
-        roles.append(
-            (
-                "maintenance-worker",
-                SOURCE_ROOTS[1],
-                "read, grep, find, ls, bash, edit, write",
-                f"{assets}/concorde-maintenance.ts, {assets}/concorde-outer-lifecycle.ts",
-            )
-        )
     outputs = []
-    for name, source, tools, extensions in roles:
+    for profile in sorted(OUTER_PROFILES, key=lambda p: p.name, reverse=True):
+        if prefix and profile.source_only:
+            continue
+        name, source = profile.name, profile.prompt
+        tools = ", ".join(profile.tools)
+        extensions = ", ".join(f"{assets}/{ext}" for ext in profile.extensions)
+        if name == "tester":
+            extensions += f", {entry}"
         resolved = resolve_role_prompt(root, source)
         body = (
             f"---\nname: {name}\ndescription: Concorde {name} sibling task role\n"
             f"tools: {tools}\nextensions: {extensions}\n"
-            + ("acceptanceRole: read-only\n" if name == "tester" else "")
+            + (
+                f"acceptanceRole: {profile.acceptance_role}\n"
+                if profile.acceptance_role
+                else ""
+            )
             + "systemPromptMode: replace\ninheritProjectContext: false\n"
             "inheritGlobalContext: false\ninheritSkills: false\ndefaultContext: fresh\n"
             "excludeTools: subagent\nasync: true\ncompletionGuard: false\n---\n"
@@ -74,7 +70,7 @@ def render(root: Path, framework_prefix: str = ""):
             BuildOutput(f".pi/agents/{name}.md", body.encode(), resolved.sources)
         )
     if not prefix:
-        resolved = resolve_role_prompt(root, SOURCE_ROOTS[0])
+        resolved = resolve_role_prompt(root, COORDINATOR)
         outputs.append(
             BuildOutput(
                 ".pi/extensions/concorde-coordinator.ts",

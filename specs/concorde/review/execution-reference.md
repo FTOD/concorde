@@ -33,7 +33,7 @@ and transitions are retained here as the single detailed contract.
 [typed handoffs](../harness/admission.md#stage-handoffs) and
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-`concorde-spec-review` and `concorde-code-review` are separate public Operations requiring an explicit
+`concorde-spec-review` and `concorde-code-review` are separate public native Workflow capabilities requiring an explicit
 Module target_id and task, optional same-owner focus_id, constraints and current-worktree change_id.
 The host deterministically resolves that selection; no router, inferred owner or context expansion
 precedes the fresh reviewer. Their closed request schemas have no review_mode field. Each entry
@@ -58,7 +58,7 @@ even when a focus or patch names only a small portion.
 
 Private `concorde-review-stage-context@4` contains a full context snapshot and a
 `concorde-review-input@1` with review_mode, input_digest, revision and changes. review_mode remains
-an internal evidence discriminator fixed by the selected Operation, never a public request selector.
+an internal evidence discriminator fixed by the selected capability, never a public request selector.
 Each change is
 `{path, patch}`; binary changes carry only digest markers. The revision has spec_digest,
 nullable implementation_digest, nullable baseline and nullable head. spec_digest binds the selected
@@ -192,7 +192,7 @@ without clearing review requirements or inventing successful evidence.
 
 ## Realization and reuse limits
 
-This Module and its consumers are siblings under Concorde Framework. Its behavior is realized in
+This Module is a child of Operations; its consumers, including Agents, need not be its structural siblings. Its behavior is realized in
 its own package `src/concorde/review/`, bound by its adapter entity together with its `operations/` declaration; this Spec boundary
 does not itself create an Agent grant or configurable arbitrary graph; public exposure is explicit in the catalog. Host admission, phase
 artifacts and permissions remain mandatory. A new graph requires declared composition and an

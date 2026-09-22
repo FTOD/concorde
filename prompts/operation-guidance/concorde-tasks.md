@@ -1,6 +1,6 @@
 ---
 name: concorde-tasks
-description: "Operation: derive implementation acceptance tasks from the current accepted plan."
+description: "Agent entry: call the task-author to derive implementation acceptance tasks from the current accepted plan."
 operation: tasks
 ---
 
@@ -12,7 +12,7 @@ operation: tasks
 
 Requires the managed change and current accepted plan for the same intent. Returns new incomplete tasks, preserving prior task identities in history. Optional repair_task_scope binds the exact incomplete task-list digest; optional repair_review names a current blocking code-review ArtifactRef for this same intent. Neither field bypasses currentness or review gates.
 
-The calling agent chooses whether and when to invoke other Operations. Report invalid or stale
+The calling agent chooses whether and when to invoke other capabilities. Report invalid or stale
 inputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews
 the grant without launching a worker. Execution retains bounded context and authority.
 

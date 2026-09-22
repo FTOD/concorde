@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import agents
 import unittest
 from unittest.mock import patch
 
@@ -33,6 +34,8 @@ def _modules():
     return {
         name: importlib.import_module(f"operations.{name}")
         for name in operations.OPERATIONS
+    } | {
+        name: importlib.import_module(f"agents.{name}") for name in agents.DOMAIN_AGENTS
     }
 
 
@@ -48,7 +51,7 @@ class OperationModuleContractTests(unittest.TestCase):
         self.assertEqual(
             7, sum(isinstance(m.PROFILE, WorkerProfile) for m in modules.values())
         )
-        self.assertEqual(7, len(operations.AGENTS))
+        self.assertEqual(7, len(agents.DOMAIN_AGENTS))
         for name, module in modules.items():
             self.assertEqual(module.EXTERNAL_NAME, operations.external_name(name))
             self.assertIn(module.KIND, {"agent", "agent-entry", "workflow", "host"})

@@ -1,6 +1,6 @@
 ---
 name: concorde-validate
-description: "Operation: run deterministic Spec and configured code checks and record readiness for the current candidate."
+description: "Host service: run deterministic Spec and configured code checks and record readiness for the current candidate."
 operation: validate
 ---
 

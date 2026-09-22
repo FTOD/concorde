@@ -163,6 +163,44 @@ it("publishes every Module as two reading paths and retains Views topics", async
   );
 });
 
+// verifies: scenario.views.reading-collections
+it("publishes Agents navigation, all nine role anchors and outer collaboration", async () => {
+  const entry = await readFile(
+    resolve(output, "specs/concorde/agents/module.html"),
+    "utf8",
+  );
+  const roles = await readFile(
+    resolve(output, "specs/concorde/agents/roles.html"),
+    "utf8",
+  );
+  const outer = await readFile(
+    resolve(output, "specs/concorde/agents/outer.html"),
+    "utf8",
+  );
+  for (const page of ["roles", "outer"]) {
+    expect(entry).toContain(`href="/concorde/specs/concorde/agents/${page}"`);
+  }
+  for (const role of [
+    "context-assessor",
+    "planner",
+    "task-author",
+    "programmer",
+    "spec-reviewer",
+    "code-reviewer",
+    "issue-solver",
+    "maintenance-worker",
+    "tester",
+  ]) {
+    expect(roles).toContain(`id="${role}"`);
+  }
+  expect(roles).toContain('href="/concorde/specs/concorde/agents/module"');
+  expect(roles).toContain("document.agents.roles");
+  expect(outer).toContain('id="coordination-and-validation"');
+  expect(outer).toContain(
+    'href="/concorde/specs/concorde/agents/scenarios#scenario.distribution.outer-roles"',
+  );
+});
+
 // verifies: scenario.views.operation-graphs-in-owner-specs
 it("publishes each Operation Graph only inside its owning Module Specs", async () => {
   await expect(access(resolve(output, "agent-graphs.html"))).rejects.toThrow();
@@ -170,26 +208,26 @@ it("publishes each Operation Graph only inside its owning Module Specs", async (
   expect(home).not.toContain("agent-graphs");
   expect(home).not.toContain("Agent Graphs");
   const entry = await readFile(
-    resolve(output, "specs/concorde/planning/module.html"),
+    resolve(output, "specs/concorde/harness/module.html"),
     "utf8",
   );
   expect(entry).toContain(
-    'href="/concorde/specs/concorde/planning/execution-reference#plan-planning-graph-plan-graph"',
+    'href="/concorde/specs/concorde/harness/execution-reference#host-operation-node-operation-node"',
   );
   const graphSpec = await readFile(
-    resolve(output, "specs/concorde/planning/execution-reference.html"),
+    resolve(output, "specs/concorde/harness/execution-reference.html"),
     "utf8",
   );
-  expect(graphSpec).toContain('id="plan-planning-graph-plan-graph"');
+  expect(graphSpec).toContain('id="host-operation-node-operation-node"');
   const section = graphSpec.slice(
-    graphSpec.indexOf('id="plan-planning-graph-plan-graph"'),
+    graphSpec.indexOf('id="host-operation-node-operation-node"'),
   );
   const parts = ["State.", "Nodes.", "Edges."].map((part) =>
     section.indexOf(`<strong>${part}</strong>`),
   );
   expect(parts.every((index) => index > 0)).toBe(true);
   expect(parts).toEqual([...parts].sort((a, b) => a - b));
-  expect(section).toContain("<code>assess_context</code>");
+  expect(section).toContain("<code>terminal_agent</code>");
 });
 // verifies: scenario.views.protocol-docs-tab
 it("publishes the independent standard with chapter navigation and no Spec wrapper", async () => {
@@ -230,14 +268,14 @@ it("publishes the independent standard with chapter navigation and no Spec wrapp
 it("publishes the configured introduction at the root while preserving direct Spec navigation", async () => {
   const home = await readFile(resolve(output, "index.html"), "utf8");
   expect(home).toContain("Specify the architecture. Guide your agents.");
-  expect(home).toContain("Enforce permissions outside the model.");
+  expect(home).toContain("Distinguish grants from enforced isolation.");
   expect(home).toContain('id="get-started"');
   expect(home).toContain('id="reference-title"');
   expect(home.indexOf('id="reference-title"')).toBeGreaterThan(
     home.indexOf('id="get-started"'),
   );
-  expect(home).toContain("Model-backed Operations");
-  expect(home).toContain("Public Operations");
+  expect(home).toContain("Callable Pi roles");
+  expect(home).toContain("Public capabilities");
   expect(home).toContain("Shared execution services");
   expect(home).toContain("Launchers and supporting tools");
   expect(home).toContain("concorde-issues");
@@ -259,7 +297,9 @@ it("publishes the configured introduction at the root while preserving direct Sp
   ]) {
     expect(home).toContain(retained);
   }
-  expect(home).toContain("18 Operations");
+  expect(home).not.toContain("18 Operations");
+  expect(home).toContain("Eleven public capability adapters");
+  expect(home).toContain('href="/concorde/specs/concorde/agents/module"');
   expect(home).toContain("concorde-spec-review");
   expect(home).toContain("concorde-code-review");
   expect(home).not.toContain("concorde-review");

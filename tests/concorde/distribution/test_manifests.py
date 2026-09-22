@@ -58,15 +58,15 @@ class ManifestContractTests(unittest.TestCase):
         for relative in (
             "protocol/templates/module.md",
             "protocol/templates/scenario.md",
-            "operations/planner/plan-template.md",
-            "operations/task_author/tasks-template.md",
+            "agents/planner/plan-template.md",
+            "agents/task_author/tasks-template.md",
         ):
             self.assertTrue((REPOSITORY_ROOT / relative).is_file(), relative)
         for owner, template in (
             ("planner", "plan-template.md"),
             ("task_author", "tasks-template.md"),
         ):
-            readme = (REPOSITORY_ROOT / "operations" / owner / "README.md").read_text()
+            readme = (REPOSITORY_ROOT / "agents" / owner / "README.md").read_text()
             self.assertIn(f"]({template})", readme)
 
     def test_runtime_reads_version_from_the_single_manifest(self):
@@ -106,7 +106,7 @@ class ManifestContractTests(unittest.TestCase):
                 len(operations.OPERATIONS),
                 len(PUBLIC_OPERATIONS),
             ),
-            (7, 18, 11),
+            (7, 11, 11),
         )
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),

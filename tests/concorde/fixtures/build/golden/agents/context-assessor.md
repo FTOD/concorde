@@ -34,7 +34,7 @@ Host independently checks native completion and current inputs before acceptance
 Decide whether the exact task can be carried out from the selected Module's complete Spec context.
 Referenced documents do not admit any referencing Module's other documents. Distinguish sufficient
 information, missing information, a known prohibition and contradictory obligations. For a Module
-task, use only its local `concorde-dependencies` declarations to identify component IDs, roles,
+task, use only its owned paired metadata's `dependencies` declarations and their readable meanings to identify component IDs, roles,
 selection conditions and relied-upon promises; registry relationships are not your context. Entity
 declarations may name the files and directories that realize the Module; their contents are never
 part of this assessment. Do not search for missing information.
@@ -51,8 +51,8 @@ The input is one `concorde-agent-stage-context` for phase `context-solve`: the M
 `concorde-context-snapshot` with its `spec_resolution`, declared `implementation_entries` and
 `implementation_files`, the task and the phase. A re-assessment after a Spec repair arrives as a
 fresh worker with a fresh snapshot. The native public transport delivers that snapshot through
-`context.json` beside its admitted documents, with a Host-issued invocation identity; the legacy
-planning stage retains its typed context envelope. Neither delivery admits additional context.
+`context.json` beside its admitted documents, with a Host-issued invocation identity; the typed stage
+envelope retains its compatibility identity. Neither delivery admits additional context.
 
 ## Expected results
 

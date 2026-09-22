@@ -56,7 +56,10 @@ class OperationNode:
     def definition(self):
         from importlib import import_module
 
-        return import_module("operations." + self.name)
+        from agents import DOMAIN_AGENTS
+
+        namespace = "agents" if self.name in DOMAIN_AGENTS else "operations"
+        return import_module(namespace + "." + self.name)
 
     @property
     def input_type(self):

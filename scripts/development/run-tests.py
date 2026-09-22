@@ -363,6 +363,7 @@ def fingerprint(python: str, modules: list[str]) -> dict:
         "src/",
         "scripts/",
         "tests/",
+        "agents/",
         "operations/",
         "prompts/",
         "protocol/",

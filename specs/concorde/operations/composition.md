@@ -1,9 +1,9 @@
-# Choosing and composing operations
+# Choosing capabilities and composing Operations
 
 The typed inventory distinguishes native Agents, native Workflows, finite Host tools and optional
 StateGraph Operations. The compatibility `operations/` path and `operation_id` spellings are not
 claims that every entry runs a Graph.
-This lets the host check how operations fit together without inventing a separate ownership model
+This lets the host check how admitted collaborators fit together without inventing a separate ownership model
 for every worker or library function.
 
 ## Terminology
@@ -20,9 +20,9 @@ for every worker or library function.
 | [Module](../module.md#terminology)          | Defined in Concorde Framework. |
 | [Grant](../module.md#terminology)           | Defined in Concorde Framework. |
 
-## Public entry or internal operation
+## Public entry or internal composition
 
-Developers invoke public Operations through the Pi tool or common launcher. The outer
+Developers invoke public capabilities through the Pi tool; finite Host adapters use the common launcher. The outer
 agent selects the target and orders calls; prepared native Agents/workflows remain bound to their exact Host-issued invocation. Knowing an internal name is not permission to invoke it directly.
 
 For example, Planning returns a current plan and tasks, while Implementation fulfills accepted
@@ -36,10 +36,12 @@ Operations exchange declared inputs and results. Trusted host objects and permis
 caller-writable task data: otherwise a forged result could select more powerful tools or a different
 workspace. The host checks declared composition as well as each invocation's actual permission grant.
 
-Some operations make no model calls; others do, directly or through composition. This distinction
+Host services make no model calls; Agent entries and Workflows use native roles. Explicit
+StateGraph Operations may call a trusted native service supplied by their embedding. This distinction
 helps explain execution, but does not imply that filesystem or external effects are pure or repeatable.
 The exact inventory, State channels, adapters and compatibility rules are in Implementation Specs;
-the associated metadata remains the single machine-checked typed executable inventory.
+the associated metadata checks the compatibility adapter inventory; [Agents](../agents/roles.md)
+owns the separate role inventory.
 
 ## Precise specifications
 

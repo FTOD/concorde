@@ -46,6 +46,13 @@
       "title": "Task completion",
       "kind": "record",
       "meaning": "#entity.implementation.completion"
+    },
+    {
+      "id": "entity.implementation.agents",
+      "title": "Agents",
+      "kind": "used module",
+      "target_id": "module.agents",
+      "meaning": "#entity.implementation.agents"
     }
   ],
   "dependencies": [
@@ -56,6 +63,10 @@
     {
       "target_id": "module.spec",
       "meaning": "#agreement.document.implementation.module.3"
+    },
+    {
+      "target_id": "module.agents",
+      "meaning": "#entity.implementation.agents"
     }
   ],
   "bindings": []
