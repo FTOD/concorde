@@ -1,30 +1,31 @@
 # Agents requirements
 
-These obligations concern role identity and interaction; business acceptance remains with each domain owner.
+These obligations concern Agent identity and interaction; business acceptance remains with each domain owner.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Domain role](module.md#terminology) | Defined in Agents. |
-| [Outer task role](module.md#terminology) | Defined in Agents. |
+| [Agent](../module.md#terminology) | Defined in Concorde Framework. |
+| [Domain Agent](module.md#terminology) | Defined in Agents. |
+| [Task subagent](../module.md#terminology) | Defined in Concorde Framework. |
 
-### req.agents.single-definition — One role authority
+### req.agents.single-definition — One Agent authority
 
-Every callable Pi role SHALL have one canonical Agents-owned definition consumed by discovery, rendering and admission.
+Every callable Pi Agent SHALL have one canonical Agents-owned definition consumed by discovery, rendering and admission.
 
 ### req.agents.family-boundary — Family-specific grants
 
-An outer task role SHALL NOT acquire a domain stage schema or implicit single-Module authority merely by being an Agent.
+A Task subagent SHALL NOT acquire a domain stage schema or implicit single-Module authority merely by being an Agent.
 
-### req.agents.terminal — No role delegation
+### req.agents.terminal — No Agent delegation
 
-Every defined role SHALL remain terminal with respect to task delegation under its actual tool and file grant.
+Every defined Agent SHALL remain terminal with respect to task delegation under its actual tool and file grant.
 
 ### req.agents.proposal-boundary — Evidence is not self-acceptance
 
-A role SHALL distinguish its progress and proposed completion from independently accepted domain or testing evidence.
+An Agent SHALL distinguish its progress and proposed completion from independently accepted domain or testing evidence.
 
 ### req.agents.frozen-continuation — Frozen grant continuity
 
-Continuation SHALL preserve the active role's frozen launch grant until an explicitly authorized stopped-owner handoff.
+Continuation SHALL preserve the active Agent's frozen launch grant until an explicitly authorized stopped-owner handoff.

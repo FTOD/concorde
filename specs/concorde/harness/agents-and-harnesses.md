@@ -1,6 +1,6 @@
 # Operations, workers and their environment
 
-An Agent is a callable native Pi role; a worker is one fresh bounded role execution. Native Workflows
+An Agent is a callable native Pi agent with one canonical Concorde definition; a worker is one fresh bounded Agent execution. Native Workflows
 order Agent calls; an Operation is a separately selected typed StateGraph boundary. The [Harness Module](module.md) prepares that execution
 and checks its result. This distinction lets a graph
 combine ordinary code and model work without treating a model's answer as permission to act.
@@ -35,13 +35,13 @@ allowed scope before launch, then rejects a result that does not match the job.
 
 Workers are terminal nodes: they do their own admitted work, never delegate or recursively call
 capabilities. Authored native workflows own their model ordering; optional StateGraphs own only
-their explicitly selected composition. Outer task-session delegation limits do not
+their explicitly selected composition. The user session's Task subagent delegation limits do not
 become cross-runtime depth requirements for these leaves.
 
 ## Read next
 
 [Execution](execution.md) explains the worker lifecycle and its actual security limits.
-[Permissions](permissions.md) explains how access is narrowed. Canonical role definitions are in [Agents](../agents/module.md); task-result types
+[Permissions](permissions.md) explains how access is narrowed. Canonical Agent definitions are in [Agents](../agents/module.md); task-result types
 and terminal-worker mechanisms are in Harness's execution reference, not prerequisites for this introduction.
 
 ## Precise specifications

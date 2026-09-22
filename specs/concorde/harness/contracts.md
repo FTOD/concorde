@@ -211,7 +211,7 @@ profile, including P10 candidate worktrees. The resolver verifies the build is
 fresh, then admits the Protocol copy the installer placed under `.concorde/protocol/`, the manifest
 the configuration binds and its rendered assets, cross-checked against the installed package's
 manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves
-outer user sessions only. An installation update refreshes the copy but leaves the binding
+user sessions only. An installation update refreshes the copy but leaves the binding
 unchanged, and resolution rejects `protocol_mismatch` until the developer explicitly accepts the
 installed version through `concorde-configure` with `accept_protocol`. Changed bindings require new contexts.
 Stage inputs must be versioned plan, implementation-task, task-identity-constraints,
@@ -223,13 +223,13 @@ The review host adds a separately typed, target-scoped changes/revision input; o
 cannot smuggle patches or arbitrary artifacts into a Spec worker.
 Membership, configuration, Protocol or admitted bytes changing after resolution invalidates reuse.
 
-The outer agent selects and reads Specs directly, answers questions and edits paired reading,
+The calling session, the user session or its Task subagent, selects and reads Specs directly, answers questions and edits paired reading,
 metadata and registry within its task authority. Complete one-level context resolution, sole
 ownership, structural validation and affected-consumer invalidation still apply. A worker never
 expands its selection or proposes Spec replacements. Changed ownership or references require
 reconciling old and candidate affected contexts and obtaining fresh selected evidence.
 
-Context solving invokes the native [context-assessor Agent](../agents/roles.md#context-assessor)
+Context solving invokes the native [context-assessor Agent](../agents/contracts.md#context-assessor)
 in a fresh terminal invocation, selected through the `concorde-context-solve` capability or as
 `concorde-plan`'s preliminary sufficiency check in its native workflow. Independent Host acceptance
 checks the result; a model proposal or staging gate alone is not accepted sufficiency. It returns

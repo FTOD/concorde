@@ -136,8 +136,8 @@
         "tests/concorde/harness/test_worker_sandbox.py",
         "tests/concorde/support/fake_openai_provider.py",
         "tests/concorde/support/fake_pi_rpc.py",
-        "tests/concorde/support/outer_observer_harness.mts",
-        "tests/concorde/distribution/test_outer_agents.py"
+        "tests/concorde/support/session_observer_harness.mts",
+        "tests/concorde/distribution/test_task_subagents.py"
       ],
       "meaning": "#entity.harness.pi-worker-runtime"
     },

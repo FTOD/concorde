@@ -19,8 +19,8 @@ from concorde.distribution import installation
 from concorde.spec.verification import verifies
 
 
-class OuterAgentsTests(unittest.TestCase):
-    @verifies("scenario.distribution.outer-roles")
+class TaskSubagentsTests(unittest.TestCase):
+    @verifies("scenario.distribution.task-subagents")
     def test_projection_membership_and_installed_prompt_separation(self):
         source = {o.path: o for o in build(REPOSITORY_ROOT).outputs}
         installed = {
@@ -31,22 +31,22 @@ class OuterAgentsTests(unittest.TestCase):
         }
         self.assertIn(".pi/agents/maintenance-worker.md", source)
         self.assertIn(".pi/extensions/concorde-coordinator.ts", source)
-        self.assertIn(".pi/extensions/concorde-outer-lifecycle.ts", source)
-        self.assertNotIn(".pi/extensions/concorde-outer-lifecycle.ts", installed)
+        self.assertIn(".pi/extensions/concorde-brief-lifecycle.ts", source)
+        self.assertNotIn(".pi/extensions/concorde-brief-lifecycle.ts", installed)
         self.assertIn(
-            "sourceMainLifecycle as default",
-            source[".pi/extensions/concorde-outer-lifecycle.ts"].content.decode(),
+            "userSessionLifecycle as default",
+            source[".pi/extensions/concorde-brief-lifecycle.ts"].content.decode(),
         )
         self.assertNotIn(
-            "sourceMainLifecycle",
+            "userSessionLifecycle",
             source[".pi/agents/maintenance-worker.md"].content.decode(),
         )
         self.assertIn(
-            "concorde-outer-lifecycle.ts",
+            "concorde-brief-lifecycle.ts",
             source[".pi/agents/maintenance-worker.md"].content.decode(),
         )
         self.assertNotIn(
-            "concorde-outer-lifecycle", source[".pi/agents/tester.md"].content.decode()
+            "concorde-brief-lifecycle", source[".pi/agents/tester.md"].content.decode()
         )
         self.assertNotIn(".pi/APPEND_SYSTEM.md", source)
         self.assertNotIn(".pi/extensions/concorde-session.ts", source)
@@ -65,9 +65,10 @@ class OuterAgentsTests(unittest.TestCase):
         self.assertIn(".pi/agents/tester.md", outputs)
         self.assertFalse(
             any(
-                "prompts/outer/source/" in p
+                "prompts/task-subagent/source/" in p
+                or "prompts/user-session/" in p
                 or p.endswith(
-                    ("concorde-maintenance.ts", "concorde-outer-lifecycle.ts")
+                    ("concorde-maintenance.ts", "concorde-brief-lifecycle.ts")
                 )
                 for p in outputs
             )
@@ -75,12 +76,12 @@ class OuterAgentsTests(unittest.TestCase):
         self.assertIn(".concorde/framework/pi/extensions/concorde-observe.ts", outputs)
         self.assertIn(".concorde/framework/pi/extensions/concorde-tester.ts", outputs)
         self.assertIn(
-            ".concorde/framework/src/concorde/distribution/outer_check.py", outputs
+            ".concorde/framework/src/concorde/distribution/tester_check.py", outputs
         )
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_missing_source_and_modified_projection_fail_closed(self):
-        from concorde.distribution.outer_agents import render
+        from concorde.distribution.task_subagents import render
         from tests.concorde.support.build_fixture import build_package_copy
 
         with tempfile.TemporaryDirectory() as directory:
@@ -98,7 +99,7 @@ class OuterAgentsTests(unittest.TestCase):
                 write_build(root)
             self.assertEqual(path.read_text(), "local edit")
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_installer_collision_is_not_adopted(self):
         package = installation.Package(
             REPOSITORY_ROOT, json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
@@ -113,7 +114,7 @@ class OuterAgentsTests(unittest.TestCase):
             self.assertEqual(action["action"], "conflict")
             self.assertEqual(path.read_text(), "user-owned tester")
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_actual_project_discovery_and_effective_tools(self):
         subagents = Path(
             os.environ.get(
@@ -123,7 +124,9 @@ class OuterAgentsTests(unittest.TestCase):
         )
         pi = shutil.which("pi")
         if not subagents.is_dir() or not pi:
-            self.skipTest("outer pi-subagents and Pi are host prerequisites")
+            self.skipTest(
+                "pi-subagents and Pi in the user session are host prerequisites"
+            )
         # Official npm layout, no dependency or settings mutation.
         pi_root = next(
             p
@@ -138,7 +141,7 @@ class OuterAgentsTests(unittest.TestCase):
                     "node",
                     str(
                         REPOSITORY_ROOT
-                        / "tests/concorde/support/outer_agents_preflight.mjs"
+                        / "tests/concorde/support/task_subagents_preflight.mjs"
                     ),
                     str(subagents),
                     str(pi_root),
@@ -194,7 +197,7 @@ class OuterAgentsTests(unittest.TestCase):
                     "node",
                     str(
                         REPOSITORY_ROOT
-                        / "tests/concorde/support/outer_agents_preflight.mjs"
+                        / "tests/concorde/support/task_subagents_preflight.mjs"
                     ),
                     str(subagents),
                     str(pi_root),
@@ -224,7 +227,9 @@ class OuterAgentsTests(unittest.TestCase):
                 )
             )
 
-    @verifies("scenario.harness.outer-observation", "scenario.distribution.outer-roles")
+    @verifies(
+        "scenario.harness.session-observation", "scenario.distribution.task-subagents"
+    )
     def test_native_hook_observation_and_readonly_commands(self):
         if not shutil.which("node"):
             self.skipTest("Node is required for Pi extensions")
@@ -235,7 +240,7 @@ class OuterAgentsTests(unittest.TestCase):
                     "--experimental-strip-types",
                     str(
                         REPOSITORY_ROOT
-                        / "tests/concorde/support/outer_observer_harness.mts"
+                        / "tests/concorde/support/session_observer_harness.mts"
                     ),
                     str(REPOSITORY_ROOT),
                     directory,
@@ -247,7 +252,9 @@ class OuterAgentsTests(unittest.TestCase):
             self.assertTrue(json.loads(result.stdout)["readonly"])
             self.assertFalse((Path(directory) / "governing-canary").exists())
 
-    @verifies("scenario.harness.outer-lifecycle", "scenario.distribution.outer-roles")
+    @verifies(
+        "scenario.harness.brief-lifecycle", "scenario.distribution.task-subagents"
+    )
     def test_actual_sdk_compaction_and_current_brief(self):
         from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
 
@@ -270,7 +277,7 @@ class OuterAgentsTests(unittest.TestCase):
                     "node",
                     str(
                         REPOSITORY_ROOT
-                        / "tests/concorde/distribution/outer_lifecycle_fixture.mjs"
+                        / "tests/concorde/distribution/brief_lifecycle_fixture.mjs"
                     ),
                     str(sdk),
                     str(REPOSITORY_ROOT),
@@ -295,7 +302,9 @@ class OuterAgentsTests(unittest.TestCase):
                 self.assertNotIn("OBSOLETE-GOAL", serialized)
             print(result.stdout)
 
-    @verifies("scenario.harness.outer-lifecycle", "scenario.distribution.outer-roles")
+    @verifies(
+        "scenario.harness.brief-lifecycle", "scenario.distribution.task-subagents"
+    )
     def test_source_main_sdk_brief_tool_and_latest_compacted_memory(self):
         pi = shutil.which("pi")
         if not pi:
@@ -313,7 +322,7 @@ class OuterAgentsTests(unittest.TestCase):
                     "node",
                     str(
                         REPOSITORY_ROOT
-                        / "tests/concorde/distribution/main_brief_fixture.mjs"
+                        / "tests/concorde/distribution/user_session_brief_fixture.mjs"
                     ),
                     str(sdk),
                     str(REPOSITORY_ROOT),

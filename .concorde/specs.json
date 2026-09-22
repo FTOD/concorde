@@ -353,7 +353,7 @@
         "src/concorde/spec/typed_data.py",
         "src/concorde/spec/wire_shapes.py",
         "tests/concorde/distribution/test_install_output_handoff.py",
-        "tests/concorde/distribution/test_outer_agents.py",
+        "tests/concorde/distribution/test_task_subagents.py",
         "tests/concorde/harness/",
         "tests/concorde/harness/native_observation.mjs",
         "tests/concorde/harness/test_boundaries.py",
@@ -389,7 +389,7 @@
         "tests/concorde/support/legacy_stage.py",
         "tests/concorde/support/native_planning.py",
         "tests/concorde/support/operation_json.py",
-        "tests/concorde/support/outer_observer_harness.mts"
+        "tests/concorde/support/session_observer_harness.mts"
       ],
       "id": "module.harness",
       "kind": "module",
@@ -660,9 +660,9 @@
         "tests/concorde/support/fake_launcher.py",
         "tests/concorde/support/install_output_handoff.py",
         "tests/concorde/support/managed_runtime.py",
-        "tests/concorde/support/outer_agents_preflight.mjs",
-        "tests/concorde/support/outer_observer_harness.mts",
         "tests/concorde/support/pi_session_harness.mts",
+        "tests/concorde/support/session_observer_harness.mts",
+        "tests/concorde/support/task_subagents_preflight.mjs",
         "uv.lock"
       ],
       "id": "module.distribution",
@@ -770,7 +770,7 @@
         },
         {
           "kind": "document",
-          "id": "document.agents.outer"
+          "id": "document.agents.task-subagents"
         },
         {
           "kind": "document",
@@ -1198,7 +1198,7 @@
         },
         {
           "kind": "document",
-          "id": "document.agents.outer"
+          "id": "document.agents.task-subagents"
         },
         {
           "kind": "document",
@@ -1303,7 +1303,7 @@
         },
         {
           "kind": "document",
-          "id": "document.agents.outer"
+          "id": "document.agents.task-subagents"
         },
         {
           "kind": "document",
@@ -1432,8 +1432,8 @@
       "title": "Agents",
       "documents": [
         "specs/concorde/agents/module.md",
-        "specs/concorde/agents/roles.md",
-        "specs/concorde/agents/outer.md",
+        "specs/concorde/agents/contracts.md",
+        "specs/concorde/agents/task-subagents.md",
         "specs/concorde/agents/requirements.md",
         "specs/concorde/agents/scenarios.md"
       ],
@@ -1505,16 +1505,17 @@
         "prompts/native/programmer.md",
         "prompts/native/spec-reviewer.md",
         "prompts/native/task-author.md",
-        "prompts/outer/",
+        "prompts/task-subagent/",
+        "prompts/user-session/",
         "prompts/workers/common.md",
         "prompts/workflow-host/review-scope-and-result.md",
         "tests/concorde/agents/",
         "tests/concorde/distribution/test_coordinator_status.py",
         "tests/concorde/distribution/test_local_installation.py",
-        "tests/concorde/distribution/test_main_todos.py",
-        "tests/concorde/distribution/test_outer_agents.py",
         "tests/concorde/distribution/test_pi_session.py",
         "tests/concorde/distribution/test_role_isolation.py",
+        "tests/concorde/distribution/test_task_subagents.py",
+        "tests/concorde/distribution/test_user_session_todos.py",
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/fixtures/build/golden/native/"
       ],

@@ -13,7 +13,7 @@ configured-check subprocess isolation remains enforced. See the [current API](..
 and [public capability examples](../README.md#choose-an-entry-point).
 
 A Module is a responsibility, not an executable kind. The [Agents Module](../specs/concorde/agents/module.md)
-is the entry for callable Pi roles and their interaction contracts; [Operations](../specs/concorde/operations/module.md)
+is the entry for callable Pi Agents and their interaction contracts; [Operations](../specs/concorde/operations/module.md)
 covers genuine StateGraph composition. Native workflows compose Agents without becoming Operations.
 Public `concorde-*` names and `operation_id` fields are compatibility entry identifiers, not backend claims.
 Planning, Implementation, Review and Issues retain their business artifacts and acceptance rules.
@@ -61,10 +61,10 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The Pi-only installer distributes eleven compatibility public capability entries, seven domain Agent
-roles, the consumer tester role and authored plan/review/Issue workflows. Source-only maintenance and
-coordinator instructions are not consumer assets. Canonical domain role definitions and native preludes
-render into owned `generated/native/` assets. Main prepares with `concorde`, invokes the exact returned
+The Pi-only installer distributes eleven compatibility public capability entries, seven Domain
+Agents, the consumer tester Task subagent and authored plan/review/Issue workflows. Source-only maintenance and
+coordinator instructions are not consumer assets. Canonical Domain Agent definitions and native preludes
+render into owned `generated/native/` assets. The user session prepares with `concorde`, invokes the exact returned
 native call, and separately observes Host acceptance. Host tools run without a model. Internal wire
 spellings do not assert LangGraph execution. No standalone Skills or client-selector installation is
 supported. npm remains required for actual Pi extension dependencies.
@@ -189,7 +189,7 @@ need no invented plan, but cannot bypass unfinished planned work or already-requ
 
 The typed inventory distinguishes native Agents, Agent entries, Workflows and Host services.
 Only explicitly selected StateGraph Operations have graph State contracts. Canonical Agents carry
-role profiles without Python State/run aliases; capability wire adapters retain compatibility fields. `bound` receives one selected Module without context expansion; `none` performs
+their profiles without Python State/run aliases; capability wire adapters retain compatibility fields. `bound` receives one selected Module without context expansion; `none` performs
 deterministic host work without worker context selection. Discovery, automatic Spec authoring,
 topology proposal/application and development-loop entries are retired, not aliases. `PUBLIC`
 controls entry availability independently of these guarantees.
@@ -312,7 +312,7 @@ Concorde Spec Protocol 10.0.0 defines readable Module specifications with paired
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
 the tests that verify them. Root instructions and runtime drafts refer to that rule; the Pi
 catalog does not carry another copy. The installer adds a receipt-owned `concorde-protocol` block
-to `AGENTS.md`, directing the outer Pi session to read `.concorde/protocol/principles.md`. A
+to `AGENTS.md`, directing the user session to read `.concorde/protocol/principles.md`. A
 Markdown link alone is not an automatic import. Verify active context and extension loading when
 using custom discovery settings; installation tests verify entry bytes and asset resolution, not
 a model's compliance in a live conversation.
@@ -344,7 +344,7 @@ entry unless you have written into it. It is not a full-package uninstaller.
 Remove the entry before separately removing the framework; do not delete whole user instruction files.
 
 Installing an updated package never rewrites `.concorde/config.json`. Existing projects remain bound
-to their accepted version/digest; execution rejects a mismatch with `protocol_mismatch`. The outer
+to their accepted version/digest; execution rejects a mismatch with `protocol_mismatch`. The user session
 entry points at the installed rules, but does not accept them for project execution. After reviewing and explicitly accepting new Protocol assets for the same profile, a consumer
 developer can update that binding from the project root. A project older than Profile 15 must first migrate its complete registered collection to
 reading/metadata document units and registry schema 5; changing a version or digest alone is not
@@ -395,7 +395,7 @@ that test as suspect and rerun it alone before drawing conclusions. The worker r
 the worker sandbox tests need Linux with a trusted system bubblewrap and a Pi installation on
 PATH; the sandbox tests fail rather than skip where the boundary cannot be enforced.
 
-Canonical role definitions, `prompts/` (including public capability guidance under
+Canonical Agent definitions, `prompts/` (including public capability guidance under
 `prompts/operation-guidance/`) and `pi/extensions/` produce this checkout's Agent surfaces. Never edit
 `generated/`, the private `generated/session/pi/` entry or generated worker instructions directly;
 they are untracked build output. Build never installs into ambient discovery. No standalone
@@ -410,7 +410,7 @@ python3 scripts/concorde.py validate
 ```
 
 `build` renders every worker, the private Pi entry/catalog, Protocol assets and runtime schemas
-deterministically from authored Protocol, prompt, role, capability and Pi sources; `build --check` verifies
+deterministically from authored Protocol, prompt, Agent, capability and Pi sources; `build --check` verifies
 those outputs, ordinary guidance and `protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
 executable-inventory, contract, Spec-alignment and build-output checks. Native capability preparation
 and every Agent launch require a fresh build; deterministic
@@ -418,24 +418,24 @@ lifecycle entry points retain their separate admission/evidence checks. A freshl
 must be built once before a fresh tester can select its private Pi entry. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
-[Agents](../specs/concorde/agents/module.md) covers nine explicit Pi roles: `context-assessor`, `planner`,
+[Agents](../specs/concorde/agents/module.md) covers nine explicit Pi Agents: `context-assessor`, `planner`,
 `task-author`, `programmer`, `spec-reviewer`, `code-reviewer`, `issue-solver`, `maintenance-worker` and
-`tester`. The seven domain roles have native instruction projections and Host-prepared invocation
+`tester`. The seven Domain Agents have native instruction projections and Host-prepared invocation
 capsules. Their file/network/credential policy is explicitly prompt-level; tester/configured-check
-boundaries remain actually enforced. Outer maintenance-worker/tester roles use project registration
+boundaries remain actually enforced. The maintenance-worker and tester Task subagents use project registration
 and task-specific grants, not the domain stage schema or single-Module context policy. The former is
-source-only; tester has distinct source and installed consumer instructions. Main is the external
+source-only; tester has distinct source and installed consumer instructions. The user session is the external
 caller/coordinator, not another registered Agent profile. Context, plan, tasks, implementation, review and Issue decisions use native
 Agent/workflow calls, not hidden RPC workers. Gates only stage proposals. Host acceptance binds actual
 native terminal evidence and current inputs; closure remains journaled and final validation separate.
 
-The public catalog preserves eleven compatibility entry names; it is not the inventory of Agent roles. `kind`
+The public catalog preserves eleven compatibility entry names; it is not the inventory of Agents. `kind`
 distinguishes Agent entry, Workflow and Host actions; StateGraph Operations are a separate optional
 boundary with an explicitly supplied trusted native service. No native flow has a fake Studio mirror.
 See the [Operation API](../scripts/development/STUDIO.md) and [current examples](../README.md).
 
 Concorde source maintenance defaults to a new candidate and a fresh Concorde-catalog-free writer.
-The main stays in its initial worktree. Its high-level decomposition into work packages, ownership,
+The user session stays in its initial worktree. Its high-level decomposition into work packages, ownership,
 native workflow steps and integration/testing gates is not product Concorde plan/tasks. The writer
 edits, formats, checks and commits, then stops.
 A separate fresh sibling tester receives only the exact candidate-built private Pi entry and its
@@ -507,7 +507,7 @@ CONCORDE_SESSION_SELECTION="$PWD/.concorde/work/pi-first-diagnostic-selection.js
   --sdk /explicit/pi-coding-agent/package --native /explicit/pi-subagents/package
 ```
 
-Only when main authorizes the one live attempt, use the same command with `--live` instead of
+Only when the user session authorizes the one live attempt, use the same command with `--live` instead of
 `--selftest`, plus `--model codex-lb/gpt-6-astra --auth-source /approved/auth.json
 --models-source /approved/models.json`. The model name and both credential/model-file paths are
 explicit test inputs, not defaults or permission to inspect other settings. The script preserves the

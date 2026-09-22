@@ -29,7 +29,7 @@ are not visible in the primary worktree before delivery.
 
 Readiness is established from current selected evidence, not loop history. Request concorde-deliver with the selected change_id from
 either its source worktree or the primary worktree. A third-worktree session or nested Operation call cannot initiate delivery for that pair; a
-one-layer task child in a participant may continue the change to delivery. The host verifies the exact candidate and its actual integration
+one-layer Task subagent in a participant may continue the change to delivery. The host verifies the exact candidate and its actual integration
 with the current primary commit, then creates `concorde/delivered/<change_id>` in the shared Git
 repository without checking it out. The branch is unique to this change; an existing unreceipted
 branch or a checked-out destination is rejected. Publication uses an atomic create-only ref update.
@@ -40,7 +40,7 @@ session ends after removal; further work requires a fresh session in an existing
 Local runtime status, runs and injected guidance never enter the delivered tree; tracked project configuration is separate.
 
 A separate request with merge_primary:true requires an already delivered receipt, explicit user
-authorization to merge into the primary branch, and the primary worktree's owning outer session.
+authorization to merge into the primary branch, and the primary worktree's owning user session.
 A generic delivery request does not authorize final merging. At most one agent may own writes in
 the primary worktree, including maintenance; all other development agents use linked worktrees.
 The host serializes shared lifecycle writes and complete primary merge transactions using the

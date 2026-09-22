@@ -8,12 +8,13 @@
   "entities": [
     {
       "id": "entity.agents.definitions",
-      "title": "Role definitions",
+      "title": "Agent definitions",
       "kind": "program",
       "meaning": "#entity.agents.definitions",
       "files": [
         "agents/",
-        "prompts/outer/",
+        "prompts/task-subagent/",
+        "prompts/user-session/",
         "prompts/native/code-reviewer.md",
         "prompts/native/context-assessor.md",
         "prompts/native/issue-solver.md",
@@ -25,9 +26,9 @@
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/fixtures/build/golden/native/",
         "tests/concorde/agents/",
-        "tests/concorde/distribution/test_outer_agents.py",
+        "tests/concorde/distribution/test_task_subagents.py",
         "tests/concorde/distribution/test_coordinator_status.py",
-        "tests/concorde/distribution/test_main_todos.py",
+        "tests/concorde/distribution/test_user_session_todos.py",
         "tests/concorde/distribution/test_role_isolation.py",
         "tests/concorde/distribution/test_local_installation.py",
         "tests/concorde/distribution/test_pi_session.py",
@@ -36,7 +37,7 @@
     },
     {
       "id": "entity.agents.coordinator",
-      "title": "External main session",
+      "title": "User session",
       "kind": "external actor",
       "meaning": "#entity.agents.coordinator"
     },

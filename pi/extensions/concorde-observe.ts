@@ -1,4 +1,4 @@
-/** Passive outer-session diagnostics. No tools, prompts, settings, network or authority. */
+/** Passive user-session/Task-subagent diagnostics. No tools, prompts, settings, network or authority. */
 import { createHash, randomUUID } from "node:crypto";
 import type {
 	ExtensionAPI,
@@ -27,7 +27,7 @@ const count = (n: unknown): number | null =>
 
 export function observe(
 	pi: ExtensionAPI,
-	role: "main" | "maintenance-worker" | "tester" = "main",
+	role: "user-session" | "maintenance-worker" | "tester" = "user-session",
 ) {
 	const trace = randomUUID();
 	let session: string | null = null;
@@ -131,7 +131,7 @@ export function observe(
 		const parent = ctx.sessionManager.getHeader()?.parentSession;
 		start(
 			"session",
-			"outer.session",
+			"session.lifetime",
 			{
 				reason: event.reason,
 				parent_session_digest: parent
@@ -152,7 +152,7 @@ export function observe(
 	pi.on("turn_start", (_event, ctx) => {
 		start(
 			"turn",
-			"outer.turn",
+			"session.turn",
 			context(ctx),
 			active.get("session")?.span_id ?? null,
 		);
@@ -163,10 +163,10 @@ export function observe(
 		turn = null;
 	});
 	pi.on("before_provider_request", () => {
-		start("request", "outer.request_roundtrip");
+		start("request", "session.request_roundtrip");
 	});
 	pi.on("after_provider_response", (event) => {
-		start("headers", "outer.response_headers", {
+		start("headers", "session.response_headers", {
 			http_status: count(event.status),
 		});
 		end("headers");
@@ -207,8 +207,8 @@ export function observe(
 		start(
 			`tool:${event.toolCallId}`,
 			event.toolName === "contact_supervisor"
-				? "outer.supervisor_wait"
-				: "outer.tool",
+				? "session.supervisor_wait"
+				: "session.tool",
 			{ tool: known.includes(event.toolName) ? event.toolName : "other" },
 		);
 	});
@@ -221,7 +221,7 @@ export function observe(
 	pi.on("session_before_compact", (event) => {
 		reserve = count(event.preparation.settings.reserveTokens);
 		compaction = "running";
-		start("compact", "outer.compaction", {
+		start("compact", "session.compaction", {
 			reason: event.reason,
 			tokens_before: count(event.preparation.tokensBefore),
 			reserve_tokens: reserve,
@@ -236,7 +236,7 @@ export function observe(
 		end("compact", event.aborted ? "cancelled" : "error");
 	});
 	pi.on("ui_prompt_start", () => {
-		start("wait", "outer.ui_wait");
+		start("wait", "session.ui_wait");
 	});
 	pi.on("ui_prompt_end", () => {
 		end("wait");
@@ -248,7 +248,7 @@ export function observe(
 			const key = createHash("sha256").update(id).digest("hex");
 			start(
 				`child:${key}`,
-				"outer.child_interval",
+				"session.child_interval",
 				{ child_run_digest: key },
 				active.get("session")?.span_id ?? null,
 			);
@@ -268,8 +268,8 @@ export function observe(
 				);
 		}),
 	];
-	// Main may annotate facts unavailable in native events. Closed vocabulary; no free text.
-	const dispose = pi.events.on("concorde:outer-fact:v1", (value: unknown) => {
+	// The user session may annotate facts unavailable in native events. Closed vocabulary; no free text.
+	const dispose = pi.events.on("concorde:session-fact:v1", (value: unknown) => {
 		if (!value || typeof value !== "object") return;
 		const v = value as Record<string, unknown>;
 		if (!["handoff", "test_trigger", "resume"].includes(String(v.kind))) return;
@@ -287,7 +287,7 @@ export function observe(
 		const scope = ["none", "targeted", "full"].includes(String(v.scope))
 			? v.scope
 			: null;
-		start("fact", `outer.${v.kind}`, { reason, scope });
+		start("fact", `session.${v.kind}`, { reason, scope });
 		end("fact");
 	});
 	pi.on("session_shutdown", (_event, ctx) => {

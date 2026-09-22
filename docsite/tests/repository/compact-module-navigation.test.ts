@@ -16,7 +16,7 @@ const consolidated = [
 ];
 
 // verifies: scenario.views.reading-collections
-it("makes Agents a peer of Operations with one canonical role and outer reading path", () => {
+it("makes Agents a peer of Operations with one canonical Agent contract and Task subagent reading path", () => {
   const registry = loadScopedRegistry(root);
   const reading = scopedSidebar(registry)[0].items!;
   const details = scopedSidebar(registry, "implementation")[0].items!;
@@ -24,26 +24,26 @@ it("makes Agents a peer of Operations with one canonical role and outer reading 
   expect(reading.some((item) => item.label === "Operations")).toBe(true);
   expect(agents.link).toEqual({ type: "doc", id: "concorde/agents/module" });
   expect(agents.items!.map((item) => item.id)).toEqual([
-    "concorde/agents/outer",
+    "concorde/agents/task-subagents",
   ]);
   expect(
     details
       .find((item) => item.label === "Agents")!
       .items!.map((item) => item.id),
   ).toEqual([
-    "concorde/agents/roles",
+    "concorde/agents/contracts",
     "concorde/agents/requirements",
     "concorde/agents/scenarios",
   ]);
-  const roles = registry.pages.find(
-    (page) => page.documentId === "document.agents.roles",
+  const contracts = registry.pages.find(
+    (page) => page.documentId === "document.agents.contracts",
   )!;
-  expect(roles.owner).toBe("module.agents");
+  expect(contracts.owner).toBe("module.agents");
   expect(
-    roles.includedBy.some((entry) => entry.targetId === "module.operations"),
+    contracts.includedBy.some((entry) => entry.targetId === "module.operations"),
   ).toBe(true);
   expect(
-    registry.pages.filter((page) => page.documentId === roles.documentId),
+    registry.pages.filter((page) => page.documentId === contracts.documentId),
   ).toHaveLength(1);
 });
 

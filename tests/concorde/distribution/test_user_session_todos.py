@@ -1,4 +1,4 @@
-"""Source-main TODO instruction contracts, not live model behavior or a TODO runtime."""
+"""Source user session TODO instruction contracts, not live model behavior or a TODO runtime."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-class MainTodoInstructionTests(unittest.TestCase):
+class UserSessionTodoInstructionTests(unittest.TestCase):
     def setUp(self):
         self.prompt = resolve_role_prompt(
-            REPOSITORY_ROOT, "prompts/outer/source/main.md"
+            REPOSITORY_ROOT, "prompts/user-session/source/coordinator.md"
         ).body
         # Ignore editorial line wrapping, not the words that carry the obligations.
         self.text = " ".join(self.prompt.split())
@@ -26,7 +26,7 @@ class MainTodoInstructionTests(unittest.TestCase):
             with self.subTest(clause=clause):
                 self.assertIn(clause, self.text)
 
-    @verifies("scenario.distribution.main-todo-collection")
+    @verifies("scenario.distribution.user-session-todo-collection")
     def test_consent_maturity_and_implementation_intent(self):
         self.assert_obligations(
             "always remain available to chat, answer questions, read relevant sources",
@@ -46,7 +46,7 @@ class MainTodoInstructionTests(unittest.TestCase):
             "batching needs an explicit user request",
         )
 
-    @verifies("scenario.distribution.main-todo-unsettled")
+    @verifies("scenario.distribution.user-session-todo-unsettled")
     def test_immature_choice_and_no_action_need_separate_consent(self):
         self.assert_obligations(
             "If an explicit TODO request is still underspecified, ask whether to continue "
@@ -57,7 +57,7 @@ class MainTodoInstructionTests(unittest.TestCase):
             "closing or deleting an issue in that case requires separate user confirmation",
         )
 
-    @verifies("scenario.distribution.main-todo-collection")
+    @verifies("scenario.distribution.user-session-todo-collection")
     def test_lightweight_content_deduplication_and_verified_persistence(self):
         self.assert_obligations(
             "one task per `.md` file under `.concorde/todos/`",
@@ -77,7 +77,7 @@ class MainTodoInstructionTests(unittest.TestCase):
             "stop on concurrent changes rather than overwriting another session's work",
         )
 
-    @verifies("scenario.distribution.main-todo-promotion")
+    @verifies("scenario.distribution.user-session-todo-promotion")
     def test_transfer_order_failure_and_partial_issue_safeguards(self):
         promotion = self.text.split("### Promote an issue", 1)[1]
         steps = (
@@ -108,7 +108,7 @@ class MainTodoInstructionTests(unittest.TestCase):
             "preserve the issue and explain the blocker",
         )
 
-    @verifies("scenario.distribution.main-todo-collection")
+    @verifies("scenario.distribution.user-session-todo-collection")
     def test_only_coordinator_projection_and_no_consumer_package_leakage(self):
         source = build(REPOSITORY_ROOT)
         coordinator_path = ".pi/extensions/concorde-coordinator.ts"
@@ -118,12 +118,14 @@ class MainTodoInstructionTests(unittest.TestCase):
         )
         self.assertIsNotNone(embedded)
         self.assertEqual(self.prompt, json.loads(embedded.group(1)))
-        self.assertEqual(("prompts/outer/source/main.md",), coordinator.sources)
+        self.assertEqual(
+            ("prompts/user-session/source/coordinator.md",), coordinator.sources
+        )
         markers = (
             b".concorde/todos/",
             b"Promote an issue only after its background is safe",
         )
-        # Includes terminal worker bodies and the private Operation catalog, not only child roles.
+        # Includes terminal worker bodies and the private Operation catalog, not only Task subagents.
         for output in source.outputs:
             if output.path != coordinator_path:
                 for marker in markers:

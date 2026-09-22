@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "document": {
-    "id": "document.agents.roles",
+    "id": "document.agents.contracts",
     "owner": "module.agents",
     "role": "implementation"
   },
@@ -33,10 +33,10 @@
       },
       {
         "id": "maintenance-worker",
-        "family": "outer",
+        "family": "task",
         "scope": "source-only",
         "registration": "project",
-        "source": "prompts/outer/source/maintenance-worker.md"
+        "source": "prompts/task-subagent/source/maintenance-worker.md"
       },
       {
         "id": "planner",
@@ -68,10 +68,10 @@
       },
       {
         "id": "tester",
-        "family": "outer",
+        "family": "task",
         "scope": "distributed",
         "registration": "project",
-        "source": "prompts/outer/tester.md"
+        "source": "prompts/task-subagent/tester.md"
       }
     ]
   }

@@ -7,7 +7,7 @@ The genuine optional boundary is `concorde.harness.operation_node.OperationNode`
 StateGraph with a `terminal_agent` State transition. A trusted caller selects an Agent profile and
 supplies its native launch/admission callable; the graph validates typed input/output and never falls
 back to a hidden model runner. Runtime authority is not caller-writable State. Parent StateGraphs
-can embed it and declare their own reducers. Main/task-Agent callers may select this boundary when
+can embed it and declare their own reducers. User session/Task subagent callers may select this boundary when
 state-centric composition is useful, without recursive task delegation or changing terminal grants.
 
 ```python

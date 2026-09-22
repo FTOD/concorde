@@ -66,8 +66,8 @@ audience/layering rules, and detects unreachable or diamond-included sources; `r
 additionally rejects an Agent Spec that carries front matter. `package_validation` attributes its
 findings to `module.distribution` and requires exactly one registered `concorde.operations` metadata array
 across all paired Module metadata, equal to the typed public compatibility-adapter inventory, including kind, State, USES and public
-name. A separate Agents-owned `concorde.agents` array checks all nine roles against their canonical
-definitions as specified in [Agents](../agents/roles.md). Agents have no Python State/run aliases. The retired `skill` metadata field
+name. A separate Agents-owned `concorde.agents` array checks all nine Agents against their canonical
+definitions as specified in [Agents](../agents/contracts.md). Agents have no Python State/run aliases. The retired `skill` metadata field
 is rejected rather than aliased. Guidance membership is checked independently and must match
 each public external name exactly once. These metadata edits leave wire versions unchanged.
 
@@ -132,7 +132,7 @@ explicit `sources: tuple[str, ...]`; it carries no execution grant.
 
 `ModelInstructions` is a frozen in-process record with exactly `name`, `description`,
 `source_path`, `body`, `effects: EffectDeclaration` and `binding: WorkerBinding`, all required.
-The string fields contain the external worker identity, description, authored role source path
+The string fields contain the external worker identity, description, authored Agent source path
 and complete rendered instruction text. `load_model_instructions` verifies freshness before
 resolving one worker and returns non-null effects and its complete current binding; a public
 Operation name does not acquire worker instructions merely by appearing in the Pi catalog.
@@ -258,13 +258,13 @@ mutates process environment. Direct and bound paths must agree when both occur. 
 subprocess receives the selected path through its own environment. This is an additional transport
 for the unchanged schema-2 provenance record, not a fallback or new authority. Native testing uses
 async true and fresh context; unsupported/missing binding delivery fails source entry loading.
-Role-owned observation/check extensions are separately explicit and bound by current build sources.
+Agent-owned observation/check extensions are separately explicit and bound by current build sources.
 
 The rendered shim supplies its exact entry filename as the third `concordeSession` argument.
 A private source entry refuses absent `CONCORDE_SESSION_SELECTION`; consumer installed catalogs
 remain independent of private selection. The extension verifies through the candidate CLI with a
 30-second verification deadline before registration and each tool call. Verification failure
-registers no tool at startup or fails the current call; the outer host treats a load error as a
+registers no tool at startup or fails the current call; the user session host treats a load error as a
 blocked launch. A changed saved identity cannot refresh an existing tester in place.
 
 ## Full local installation service {#local-installation-service}
@@ -417,31 +417,31 @@ source, nonempty/aliased/out-of-scratch target or mismatched installed identity 
 or source-selection validation is patched. This source test recipe is not distributed to consumers.
 
 
-## Source outer task lifecycle {#outer-task-lifecycle}
+## Source brief lifecycle {#brief-lifecycle}
 
-The explicit source-only `concorde-outer-lifecycle.ts` extension is separate from passive timing.
-It loads only for source main and maintenance roles, never tester or terminal domain Agents.
-Default/maintenance loading registers no model tool. Only the trusted generated source-main entry
-selects `sourceMainLifecycle`, which registers `update_task_brief`; task text, environment role
+The explicit source-only `concorde-brief-lifecycle.ts` extension is separate from passive timing.
+It loads only for the source user session and maintenance-worker, never tester or terminal Domain Agents.
+Default/maintenance loading registers no model tool. Only the trusted generated source user session entry
+selects `userSessionLifecycle`, which registers `update_task_brief`; task text, environment Agent
 claims and model arguments cannot select this entry. No catalog, provider, setting, scheduler,
 delegation or model-callable compaction control is added. Consumer installation excludes this asset.
 Explicit Host tool ceilings still apply; registration does not override a restrictive allowlist.
 Pi's native threshold
 check uses projected current tokens and resolved model reserve; its overflow recovery compacts
 through the supported SDK. The extension does not duplicate those triggers. The explicit
-`outer-compact` command waits for idle, calls `ctx.compact` and awaits onComplete/onError;
+`session-compact` command waits for idle, calls `ctx.compact` and awaits onComplete/onError;
 checkpoints or user messages merely saying compact are not compaction evidence.
 
 Current task memory is one replaced concise brief, stored as native session custom entries, not
-primary task status. The source-main model tool `update_task_brief` takes exactly `{brief: object}`,
+primary task status. The source user session model tool `update_task_brief` takes exactly `{brief: object}`,
 replaces that session's current brief and returns its admitted copy in `details.brief` and JSON text.
 It grants no filesystem, task/status, profile or compaction authority. Validation/persistence failures
-are tool errors, not successful updates; identical admitted updates are no-ops. The `outer-brief`
+are tool errors, not successful updates; identical admitted updates are no-ops. The `task-brief`
 slash command remains a user/Host convenience; assistant text naming it does not execute it.
 Both update routes accept exactly scalar strings goal, grant, stage, objective, blocker and next,
 plus string arrays decisions, completed, checks and evidence. Text is nonblank, at most 2000 characters; arrays at most 16 entries; the whole JSON at most 12000 characters.
 Empty arrays and blocker "none" explicitly represent absence. The fields carry only current
-accepted decisions and task facts; grant is a reminder, never executable authority. Main owns
+accepted decisions and task facts; grant is a reminder, never executable authority. The user session owns
 actual task/grant admission. Duplicate identical updates do not append repeated memory entries.
 
 Maintenance may include that JSON in one fenced `task-brief` block in the existing native
@@ -463,5 +463,5 @@ Frozen launch assets and terminal tool ceilings remain unchanged through compact
 
 Host-observed lifecycle, tools, last activity, current context/cache and compaction remain distinct
 from worker-reported stage/objective/artifacts/checks/blocker/next/evidence. Activity is not correctness
-or server thinking. Native supervisor/events/status carry event-driven meaningful updates; main owns
+or server thinking. Native supervisor/events/status carry event-driven meaningful updates; the user session owns
 primary durable persistence and exact stopped-owner release/bind, including new-stage handoffs.

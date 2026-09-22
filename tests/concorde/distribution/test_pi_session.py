@@ -618,7 +618,8 @@ class RealPiSessionTests(unittest.TestCase):
         self.assertEqual("invalid_field", envelope["errors"][0]["code"])
 
     @verifies(
-        "scenario.distribution.private-selection", "scenario.distribution.outer-roles"
+        "scenario.distribution.private-selection",
+        "scenario.distribution.task-subagents",
     )
     def test_native_child_binding_loads_exact_entry_without_global_env(self):
         run, _ = self.drive(

@@ -1,4 +1,4 @@
-"""Source-main lifecycle instructions and their existing CLI, without launching children."""
+"""Source user session lifecycle instructions and their existing CLI, without launching children."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.distribution.cli import create_parser, dispatch
-from concorde.distribution.outer_agents import render
 from concorde.distribution.prompt_resolver import resolve_role_prompt
+from concorde.distribution.task_subagents import render
 from concorde.harness.change_worktree import git
 from concorde.harness.status_store import read_status
 from concorde.spec.repository import SpecError
@@ -24,10 +24,12 @@ from concorde.spec.verification import verifies
 
 class CoordinatorStatusTests(unittest.TestCase):
     def source_prompt(self):
-        return resolve_role_prompt(REPOSITORY_ROOT, "prompts/outer/source/main.md").body
+        return resolve_role_prompt(
+            REPOSITORY_ROOT, "prompts/user-session/source/coordinator.md"
+        ).body
 
-    @verifies("scenario.distribution.outer-roles")
-    def test_canonical_lifecycle_is_rendered_only_for_source_main(self):
+    @verifies("scenario.distribution.task-subagents")
+    def test_canonical_lifecycle_is_rendered_only_for_source_user_session(self):
         prompt = self.source_prompt()
         outputs = {item.path: item for item in render(REPOSITORY_ROOT)}
         coordinator = outputs[".pi/extensions/concorde-coordinator.ts"]
@@ -37,7 +39,7 @@ class CoordinatorStatusTests(unittest.TestCase):
         self.assertIsNotNone(embedded)
         assert embedded is not None  # narrow for static checkers
         self.assertEqual(prompt, json.loads(embedded.group(1)))
-        self.assertIn("prompts/outer/source/main.md", coordinator.sources)
+        self.assertIn("prompts/user-session/source/coordinator.md", coordinator.sources)
         steps = (
             'status --register "$candidate" --task "$goal" --mode maintenance',
             "Retain the returned stable `change_id`",
@@ -95,11 +97,11 @@ class CoordinatorStatusTests(unittest.TestCase):
         self.assertNotIn(
             "Continue this session across ordinary stages",
             (
-                REPOSITORY_ROOT / "prompts/outer/source/maintenance-worker.md"
+                REPOSITORY_ROOT / "prompts/task-subagent/source/maintenance-worker.md"
             ).read_text(),
         )
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_documented_cli_registers_two_candidates_and_hands_off_exact_owner(self):
         commands = re.findall(
             r"^\.venv/bin/python scripts/concorde.py (status[^\n]*)$",
@@ -166,7 +168,7 @@ class CoordinatorStatusTests(unittest.TestCase):
             self.assertEqual(bound["child"], resumed["child"])
             self.assertEqual(states[0], read_status(primary, states[0]["change_id"]))
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_cleanup_flag_is_never_silently_ignored(self):
         with tempfile.TemporaryDirectory() as directory:
             primary = Path(directory) / "primary"

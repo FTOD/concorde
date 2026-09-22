@@ -162,8 +162,8 @@ class PiWorkerTests(unittest.TestCase):
         (ambient / "extensions/forbidden.ts").write_text(
             "throw new Error('AMBIENT-EXTENSION');"
         )
-        # Actual source-main delivery must not reach a terminal worker either.
-        from concorde.distribution.outer_agents import render
+        # Actual source user session delivery must not reach a terminal worker either.
+        from concorde.distribution.task_subagents import render
 
         coordinator = next(
             o
@@ -174,7 +174,7 @@ class PiWorkerTests(unittest.TestCase):
             coordinator.content
         )
         (ambient / "APPEND_SYSTEM.md").write_text(
-            "You are the main coordinator. AMBIENT-APPEND"
+            "You are the source user session and its coordinator. AMBIENT-APPEND"
         )
         (ambient / "skills/leak").mkdir(parents=True)
         (ambient / "skills/leak/SKILL.md").write_text("AMBIENT-SKILL-MARKER")
@@ -289,7 +289,7 @@ class PiWorkerTests(unittest.TestCase):
         self.assertEqual("SECRET\n", (self.root / "secret.md").read_text())
 
     @verifies("scenario.harness.pi-worker-delegation")
-    def test_terminal_workers_ignore_outer_depth_and_refuse_delegation(self):
+    def test_terminal_workers_ignore_host_depth_and_refuse_delegation(self):
         for depth in (
             {},
             {"PI_SUBAGENT_DEPTH": "1"},

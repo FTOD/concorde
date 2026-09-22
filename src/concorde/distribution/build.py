@@ -29,7 +29,7 @@ from ..harness.worker_profile import (
 )
 from ..spec.contracts import PUBLIC_OPERATIONS
 from ..spec.frontmatter import FrontMatterError, parse_document
-from . import outer_agents
+from . import task_subagents
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -91,7 +91,7 @@ MODEL_ROOTS: dict[str, str] = {
     agent.name.replace("_", "-"): agent.spec
     for agent in load_worker_profiles().values()
 }
-# The tier-one rules every worker follows, rendered before each worker's own role Spec.
+# The tier-one rules every worker follows, rendered before each worker's own Agent Spec.
 WORKER_RULES = "prompts/workers/common.md"
 
 OPERATION_GUIDANCE: dict[str, str] = {
@@ -271,9 +271,11 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
         sources.add(OPERATION_GUIDANCE[name])
     catalog = {
         "schema_version": 2,
-        "launcher": f"{prefix}/scripts/run-operation.py"
-        if prefix
-        else "scripts/run-operation.py",
+        "launcher": (
+            f"{prefix}/scripts/run-operation.py"
+            if prefix
+            else "scripts/run-operation.py"
+        ),
         "interpreters": _interpreters(prefix),
         "explicit_request_only": not prefix,
         "operations": operations,
@@ -470,7 +472,7 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         if not {"node_modules", "__pycache__"}.intersection(path.parts)
         and path.is_file()
         and (
-            path.name not in {"concorde-maintenance.ts", "concorde-outer-lifecycle.ts"}
+            path.name not in {"concorde-maintenance.ts", "concorde-brief-lifecycle.ts"}
             or any(o.path == ".pi/agents/maintenance-worker.md" for o in outputs)
         )
     )
@@ -528,7 +530,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     ):
         outputs.append(render_native_context_agent(root, name))
     outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
-    outputs.extend(outer_agents.render(root, framework_prefix))
+    outputs.extend(task_subagents.render(root, framework_prefix))
     outputs.append(render_langgraph(root))
     outputs.append(render_protocol_principles(root))
     for kind in PROTOCOL_KINDS:
@@ -552,7 +554,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
                 )
             ],
         ]
-        + list(outer_agents.prompt_roots(root))
+        + list(task_subagents.prompt_roots(root))
         + list(OPERATION_GUIDANCE.values())
         + ["prompts/protocol/principles.md"]
         + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS]

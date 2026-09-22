@@ -31,14 +31,14 @@ class PrivateTemporaryBoundaryTests(unittest.TestCase):
         import io
         from unittest.mock import patch
 
-        from concorde.distribution import outer_check
+        from concorde.distribution import tester_check
         from concorde.harness.check_executor import CheckResult
 
         with (
             tempfile.TemporaryDirectory() as project,
-            patch.object(outer_check.Path, "cwd", return_value=Path(project)),
+            patch.object(tester_check.Path, "cwd", return_value=Path(project)),
             patch.dict(os.environ, {}, clear=True),
-            patch.object(outer_check.signal, "signal"),
+            patch.object(tester_check.signal, "signal"),
         ):
             for field in (
                 "private_tmp",
@@ -55,21 +55,21 @@ class PrivateTemporaryBoundaryTests(unittest.TestCase):
                             json.dumps({"command": "true", "timeout": 1, field: False})
                         ),
                     ),
-                    patch.object(outer_check, "execute_check") as execute,
+                    patch.object(tester_check, "execute_check") as execute,
                 ):
                     with self.assertRaises(ValueError):
-                        outer_check.main()
+                        tester_check.main()
                     execute.assert_not_called()
             with (
                 patch("sys.stdin", io.StringIO('{"command":"true","timeout":1}')),
                 patch("sys.stdout", io.StringIO()),
                 patch.object(
-                    outer_check,
+                    tester_check,
                     "execute_check",
                     return_value=CheckResult(b"out", b"err", 0),
                 ) as execute,
             ):
-                self.assertEqual(0, outer_check.main())
+                self.assertEqual(0, tester_check.main())
                 self.assertIs(True, execute.call_args.kwargs["private_tmp"])
 
     @verifies("scenario.harness.check-scratch", "scenario.harness.check-read-only")
@@ -473,7 +473,7 @@ class RegisteredTesterTemporaryTests(unittest.TestCase):
                         select_session,
                     )
 
-                    bridge = self.project / "src/concorde/distribution/outer_check.py"
+                    bridge = self.project / "src/concorde/distribution/tester_check.py"
                     bridge.write_text(
                         bridge.read_text().replace(
                             "private_tmp=True", "private_tmp=False"

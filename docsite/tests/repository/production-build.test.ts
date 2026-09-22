@@ -164,23 +164,23 @@ it("publishes every Module as two reading paths and retains Views topics", async
 });
 
 // verifies: scenario.views.reading-collections
-it("publishes Agents navigation, all nine role anchors and outer collaboration", async () => {
+it("publishes Agents navigation, all nine Agent anchors and Task subagent collaboration", async () => {
   const entry = await readFile(
     resolve(output, "specs/concorde/agents/module.html"),
     "utf8",
   );
-  const roles = await readFile(
-    resolve(output, "specs/concorde/agents/roles.html"),
+  const contracts = await readFile(
+    resolve(output, "specs/concorde/agents/contracts.html"),
     "utf8",
   );
-  const outer = await readFile(
-    resolve(output, "specs/concorde/agents/outer.html"),
+  const taskSubagents = await readFile(
+    resolve(output, "specs/concorde/agents/task-subagents.html"),
     "utf8",
   );
-  for (const page of ["roles", "outer"]) {
+  for (const page of ["contracts", "task-subagents"]) {
     expect(entry).toContain(`href="/concorde/specs/concorde/agents/${page}"`);
   }
-  for (const role of [
+  for (const agent of [
     "context-assessor",
     "planner",
     "task-author",
@@ -191,13 +191,13 @@ it("publishes Agents navigation, all nine role anchors and outer collaboration",
     "maintenance-worker",
     "tester",
   ]) {
-    expect(roles).toContain(`id="${role}"`);
+    expect(contracts).toContain(`id="${agent}"`);
   }
-  expect(roles).toContain('href="/concorde/specs/concorde/agents/module"');
-  expect(roles).toContain("document.agents.roles");
-  expect(outer).toContain('id="coordination-and-validation"');
-  expect(outer).toContain(
-    'href="/concorde/specs/concorde/agents/scenarios#scenario.distribution.outer-roles"',
+  expect(contracts).toContain('href="/concorde/specs/concorde/agents/module"');
+  expect(contracts).toContain("document.agents.contracts");
+  expect(taskSubagents).toContain('id="coordination-and-validation"');
+  expect(taskSubagents).toContain(
+    'href="/concorde/specs/concorde/agents/scenarios#scenario.distribution.task-subagents"',
   );
 });
 
@@ -274,7 +274,7 @@ it("publishes the configured introduction at the root while preserving direct Sp
   expect(home.indexOf('id="reference-title"')).toBeGreaterThan(
     home.indexOf('id="get-started"'),
   );
-  expect(home).toContain("Callable Pi roles");
+  expect(home).toContain("Callable Pi Agents");
   expect(home).toContain("Public capabilities");
   expect(home).toContain("Shared execution services");
   expect(home).toContain("Launchers and supporting tools");

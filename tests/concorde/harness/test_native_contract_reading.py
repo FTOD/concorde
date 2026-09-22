@@ -43,7 +43,7 @@ class NativeContractReadingTests(unittest.TestCase):
         self.assertIn("canonical Agent definitions", text)
         self.assertIn("no `STATE`/`run`", text)
         metadata = json.loads(
-            (REPOSITORY_ROOT / "specs/concorde/agents/roles.md.json").read_text()
+            (REPOSITORY_ROOT / "specs/concorde/agents/contracts.md.json").read_text()
         )["extensions"]["concorde.agents"]
         roles = {x["id"].replace("-", "_") for x in metadata if x["family"] == "domain"}
         self.assertEqual(roles, set(agents.DOMAIN_AGENTS))

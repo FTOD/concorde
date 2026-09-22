@@ -76,27 +76,27 @@ await emit("session_before_compact", {
 await emit("session_compact_failed", { aborted: true });
 await emit("session_shutdown");
 assert.equal(tools.length, 0);
-assert(records.some((r) => r.name === "outer.supervisor_wait"));
+assert(records.some((r) => r.name === "session.supervisor_wait"));
 assert(
 	records.some(
-		(r) => r.name === "outer.compaction" && r.status === "cancelled",
+		(r) => r.name === "session.compaction" && r.status === "cancelled",
 	),
 );
 assert.equal(
-	records.find((r) => r.name === "outer.turn").metadata
+	records.find((r) => r.name === "session.turn").metadata
 		.current_context_estimate,
 	122000,
 );
 assert.equal(
-	records.find((r) => r.name === "outer.turn").metadata.context_capacity,
+	records.find((r) => r.name === "session.turn").metadata.context_capacity,
 	872000,
 );
 assert.equal(
-	records.find((r) => r.name === "outer.turn").metadata.reserve_tokens,
+	records.find((r) => r.name === "session.turn").metadata.reserve_tokens,
 	null,
 );
 assert.equal(
-	records.find((r) => r.name === "outer.request_roundtrip").metadata
+	records.find((r) => r.name === "session.request_roundtrip").metadata
 		.output_tokens,
 	null,
 );

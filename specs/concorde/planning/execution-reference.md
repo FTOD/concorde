@@ -112,7 +112,7 @@ depending on a development workflow.
 Public plan is an authored native pi-subagents workflow, not a Python Graph or a suspended
 provider stack. The Pi `concorde` tool's run action admits the request and managed candidate,
 requires current Spec review when configured, freezes the assessor and returns an exact named
-workflow call. Main invokes that call with async execution. The resource is registered against the
+workflow call. The calling session invokes that call with async execution. The resource is registered against the
 actual Pi session, has one issued ticket and three exact fixed Host-command grants, and is disposed
 when its terminal result is observed or the session shuts down. Shutdown also invalidates future
 Host advancement and sends the exact owned run to the supported native stop channel; disposing a

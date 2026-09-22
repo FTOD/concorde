@@ -34,7 +34,7 @@ implemented code and test obligations, and that deferral never means a test pass
 
 When `concorde-task-scope-feedback` accompanies the prior `concorde-implementation-task`, replace that
 incomplete list using new task IDs: its `implementation_boundary` reason means the old list mixed
-implementation with later host or outer-session responsibilities. Preserve the plan and software
+implementation with later host or user-session responsibilities. Preserve the plan and software
 acceptance, correct only that phase boundary, and return all replacement tasks incomplete.
 Revalidate the preserved plan against the current complete Spec; if changed meaning requires a
 different plan or contract, report `conflicting` or a precise Spec gap. For an already coordinated

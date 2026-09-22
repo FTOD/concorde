@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "document": {
-    "id": "document.agents.outer",
+    "id": "document.agents.task-subagents",
     "owner": "module.agents",
     "role": "module"
   },

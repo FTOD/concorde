@@ -101,15 +101,17 @@ class PreservedProjectTests(unittest.TestCase):
         self.assertEqual("unchanged", self.apply())
         self.assertEqual(b"only the project's own rules\n", agents.read_bytes())
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_tester_owned_update_protects_edits(self):
         self.apply()
         tester = self.target / ".pi/agents/tester.md"
         original = tester.read_bytes()
         self.assertFalse((self.target / ".pi/agents/maintenance-worker.md").exists())
-        self.assertFalse(
-            (self.target / ".concorde/framework/prompts/outer/source").exists()
-        )
+        for source_only in (
+            ".concorde/framework/prompts/task-subagent/source",
+            ".concorde/framework/prompts/user-session",
+        ):
+            self.assertFalse((self.target / source_only).exists())
         self.assertEqual("unchanged", self.apply())
         self.assertEqual(original, tester.read_bytes())
         tester.write_text("user edit")
@@ -419,7 +421,7 @@ class NativeLocalInstallationTests(unittest.TestCase):
                         "-c",
                         "import sys,json; sys.path[:0]=sys.argv[1:]; "
                         "import agents; from concorde.harness.worker_profile import load_worker_profiles; "
-                        "print(json.dumps({'roles':agents.AGENTS,'outer':agents.OUTER_AGENTS,"
+                        "print(json.dumps({'agents':agents.AGENTS,'task':agents.TASK_SUBAGENTS,"
                         "'domain':list(load_worker_profiles()),'source':agents.__file__}))",
                         str(local.framework),
                         str(local.framework / "src"),
@@ -430,11 +432,12 @@ class NativeLocalInstallationTests(unittest.TestCase):
                     cwd=target,
                 )
                 discovered = json.loads(role_probe.stdout)
-                self.assertEqual(8, len(discovered["roles"]))
-                self.assertEqual(["tester"], discovered["outer"])
+                self.assertEqual(8, len(discovered["agents"]))
+                self.assertEqual(["tester"], discovered["task"])
                 self.assertEqual(7, len(discovered["domain"]))
-                self.assertNotIn("main", discovered["roles"])
-                self.assertNotIn("maintenance-worker", discovered["roles"])
+                self.assertNotIn("main", discovered["agents"])
+                self.assertNotIn("user-session", discovered["agents"])
+                self.assertNotIn("maintenance-worker", discovered["agents"])
                 self.assertTrue(
                     Path(discovered["source"]).is_relative_to(local.framework)
                 )
@@ -478,9 +481,11 @@ class NativeLocalInstallationTests(unittest.TestCase):
                     self.assertFalse(
                         (worktree / ".pi/agents/maintenance-worker.md").exists()
                     )
-                    self.assertFalse(
-                        (worktree / ".concorde/framework/prompts/outer/source").exists()
-                    )
+                    for source_only in (
+                        ".concorde/framework/prompts/task-subagent/source",
+                        ".concorde/framework/prompts/user-session",
+                    ):
+                        self.assertFalse((worktree / source_only).exists())
                     for path, content in project_bytes.items():
                         self.assertEqual(content, (worktree / path).read_bytes())
                     validation = subprocess.run(

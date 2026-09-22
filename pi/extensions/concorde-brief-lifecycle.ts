@@ -1,4 +1,5 @@
-/** Explicit source-outer lifecycle support; never loaded by terminal domain Agents or tester.
+/** Explicit source brief lifecycle support for the user session and maintenance-worker; never
+ * loaded by terminal Domain Agents or tester.
  * Pi owns measured threshold/overflow compaction. This extension neither schedules tasks nor
  * replaces summarization. Briefs are reported task memory, never an authority or status ledger.
  */
@@ -9,8 +10,8 @@ import type {
 
 import { Type } from "typebox";
 
-const BRIEF = "concorde.outer-brief.v1";
-const INJECTED = "concorde.outer-brief-injected.v1";
+const BRIEF = "concorde.task-brief.v1";
+const INJECTED = "concorde.task-brief-injected.v1";
 const scalar = [
 	"goal",
 	"grant",
@@ -53,17 +54,17 @@ export function parseBrief(value: unknown): TaskBrief {
 	) as TaskBrief;
 }
 
-// Only the trusted source-main projection selects this entry. No role/task parameter
-// or environment claim can enable the main tool on default/maintenance loading.
-export function sourceMainLifecycle(pi: ExtensionAPI) {
+// Only the trusted source user session projection selects this entry. No Agent/task parameter
+// or environment claim can enable the user session tool on default/maintenance loading.
+export function userSessionLifecycle(pi: ExtensionAPI) {
 	registerLifecycle(pi, true);
 }
 
-export default function outerLifecycle(pi: ExtensionAPI) {
+export default function briefLifecycle(pi: ExtensionAPI) {
 	registerLifecycle(pi, false);
 }
 
-function registerLifecycle(pi: ExtensionAPI, sourceMain: boolean) {
+function registerLifecycle(pi: ExtensionAPI, userSession: boolean) {
 	let brief: TaskBrief | undefined;
 	let pending: string | undefined;
 	let injected = new Set<string>();
@@ -79,8 +80,8 @@ function registerLifecycle(pi: ExtensionAPI, sourceMain: boolean) {
 			if (entry.customType === INJECTED && typeof entry.data === "string")
 				injected.add(entry.data);
 			if (
-				entry.customType === "concorde.outer-compaction-failed.v1" ||
-				entry.customType === "concorde.outer-brief-missing.v1"
+				entry.customType === "concorde.compaction-failed.v1" ||
+				entry.customType === "concorde.task-brief-missing.v1"
 			)
 				pending = undefined;
 		}
@@ -92,7 +93,7 @@ function registerLifecycle(pi: ExtensionAPI, sourceMain: boolean) {
 		pi.appendEntry(BRIEF, next);
 		brief = next;
 	}
-	if (sourceMain) {
+	if (userSession) {
 		const text = Type.String({ minLength: 1, maxLength: 2000 });
 		pi.registerTool({
 			name: "update_task_brief",
@@ -127,11 +128,11 @@ function registerLifecycle(pi: ExtensionAPI, sourceMain: boolean) {
 	pi.on("session_start", (_event, ctx) => {
 		restore(ctx);
 		pi.events.emit("subagent:acknowledge-extension", {
-			id: "concorde-outer-lifecycle-v1",
+			id: "concorde-brief-lifecycle-v1",
 		});
 	});
 	pi.on("session_tree", (_event, ctx) => restore(ctx));
-	pi.registerCommand("outer-brief", {
+	pi.registerCommand("task-brief", {
 		description:
 			"Replace current concise task brief (JSON); no task or authority transition",
 		handler: async (args) => update(JSON.parse(args)),
@@ -156,18 +157,18 @@ function registerLifecycle(pi: ExtensionAPI, sourceMain: boolean) {
 			brief = undefined;
 			try {
 				pi.appendEntry(BRIEF, null); // Persist invalidation so resume cannot restore stale memory.
-				pi.appendEntry("concorde.outer-brief-error.v1", {
+				pi.appendEntry("concorde.task-brief-error.v1", {
 					message:
 						"Optional task brief invalid or unpersisted; current memory cleared",
 				});
 			} catch {
 				console.error(
-					"CONCORDE_OUTER_BRIEF_PERSISTENCE_FAILED; supervisor delivery unchanged",
+					"CONCORDE_TASK_BRIEF_PERSISTENCE_FAILED; supervisor delivery unchanged",
 				);
 			}
 		}
 	});
-	pi.registerCommand("outer-compact", {
+	pi.registerCommand("session-compact", {
 		description:
 			"Run actual Pi compaction; completion/failure observed through native hooks",
 		handler: async (_args, ctx) => {
@@ -186,7 +187,7 @@ function registerLifecycle(pi: ExtensionAPI, sourceMain: boolean) {
 	});
 	pi.on("session_compact_failed", (event) => {
 		pending = undefined;
-		pi.appendEntry("concorde.outer-compaction-failed.v1", {
+		pi.appendEntry("concorde.compaction-failed.v1", {
 			reason: event.reason,
 			aborted: event.aborted,
 			// Original error remains in native lifecycle evidence; do not duplicate raw diagnostics.
@@ -196,7 +197,7 @@ function registerLifecycle(pi: ExtensionAPI, sourceMain: boolean) {
 	pi.on("context", (event) => {
 		if (!pending) return;
 		if (!brief) {
-			pi.appendEntry("concorde.outer-brief-missing.v1", pending);
+			pi.appendEntry("concorde.task-brief-missing.v1", pending);
 			pending = undefined;
 			return;
 		}
