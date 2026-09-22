@@ -94,10 +94,12 @@ class HandoffPolicyTests(unittest.TestCase):
                 os.environ["CONCORDE_NATIVE_SUBAGENTS"],
                 os.environ["CONCORDE_NATIVE_PI"],
             ]
+            governing = Path(temporary) / "governing"
+            governing.mkdir()
             result = subprocess.run(
                 [sys.executable, "-m", "concorde.distribution.outer_check"],
                 input=json.dumps({"command": shlex.join(argv), "timeout": 330}),
-                cwd=REPOSITORY_ROOT,
+                cwd=governing,
                 env=environment,
                 capture_output=True,
                 text=True,
@@ -105,7 +107,7 @@ class HandoffPolicyTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr[-4000:])
-            check = json.loads(result.stdout)
+            check = json.loads(result.stdout.splitlines()[-1])
             self.assertEqual(check["returncode"], 0, check)
             self.assertFalse(check["timed_out"])
             self.assertLess(len(check["stdout"].encode()), 8000)

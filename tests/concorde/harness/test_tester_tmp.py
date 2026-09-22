@@ -35,10 +35,19 @@ class PrivateTemporaryBoundaryTests(unittest.TestCase):
         from concorde.harness.check_executor import CheckResult
 
         with (
+            tempfile.TemporaryDirectory() as project,
+            patch.object(outer_check.Path, "cwd", return_value=Path(project)),
             patch.dict(os.environ, {}, clear=True),
             patch.object(outer_check.signal, "signal"),
         ):
-            for field in ("private_tmp", "mount_sources", "host_tmp"):
+            for field in (
+                "private_tmp",
+                "mount_sources",
+                "host_tmp",
+                "export_dir",
+                "destination",
+                "evidence_root",
+            ):
                 with (
                     patch(
                         "sys.stdin",
