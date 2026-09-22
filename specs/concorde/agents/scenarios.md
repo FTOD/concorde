@@ -31,7 +31,7 @@ These scenarios specify discovery, role admission and outer collaboration withou
 - AND main chooses check/test scope and continuation, maintenance performs self-checks without independent claims, and tester returns failures without self-repair
 - AND source-main instructions require verified primary status registration before maintenance launch, reuse/reconciliation of the actual stable change identity and immediate binding of the actual launched child rather than a workflow container
 - AND those instructions require a verified stopped child and release of its exact existing ownership before a tester or resumed-author handoff, with failed registration, launch or binding stopping dependent work without claiming success or overwriting another coordinator's status
-- AND run evidence, coordinator notes and mission records cannot replace canonical status; terminal history remains while integration and separately authorized cleanup stay distinct
+- AND run evidence, coordinator notes and mission records cannot replace canonical status; terminal history remains while integration and separately authorized cleanup stay distinct, and the supported CLI applies or rejects a cleanup-only outcome rather than silently ignoring it
 - BUT rebuilding source-main instructions does not retroactively update already-running peer sessions
 
 ### scenario.distribution.main-todo-collection — Collect mature notes in source main only

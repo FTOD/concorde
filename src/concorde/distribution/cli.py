@@ -63,9 +63,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     status.add_argument("--release", action="store_true")
     status.add_argument("--manual-merge")
-    status.add_argument(
-        "--cleanup", choices=["pending", "retained", "removed"], default="pending"
-    )
+    status.add_argument("--cleanup", choices=["pending", "retained", "removed"])
 
     migration = subparsers.add_parser("migrate-status")
     migration.add_argument("--apply", action="store_true")
@@ -92,7 +90,12 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
         from ..spec.repository import SpecError
 
         if root.resolve() != primary_root(root) and any(
-            (arguments.register, arguments.child, arguments.manual_merge)
+            (
+                arguments.register,
+                arguments.child,
+                arguments.manual_merge,
+                arguments.cleanup,
+            )
         ):
             raise SpecError(
                 "status coordination requires primary", "primary_session_required"
@@ -120,14 +123,23 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                 phase=arguments.phase,
                 release=arguments.release,
             )
-        elif arguments.manual_merge and arguments.change_id:
+        elif (arguments.manual_merge or arguments.cleanup) and arguments.change_id:
+            # Without --manual-merge, --cleanup updates only the outcome of an
+            # already recorded manual merge; it is never silently ignored.
             result = record_manual_merge(
                 root,
                 arguments.change_id,
                 commit=arguments.manual_merge,
-                cleanup=arguments.cleanup,
+                cleanup=arguments.cleanup or "pending",
             )
-        elif any((arguments.child, arguments.manual_merge, arguments.release)):
+        elif any(
+            (
+                arguments.child,
+                arguments.manual_merge,
+                arguments.release,
+                arguments.cleanup,
+            )
+        ):
             raise SpecError("status update requires a change ID", "invalid_input")
         else:
             result = {"tasks": all_status(root)}

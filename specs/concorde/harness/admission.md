@@ -524,6 +524,9 @@ a replacement task or unmanaged replacement path cannot supply evidence, even wh
 exists. Branch rename within that incarnation remains supported. If the original source is absent,
 a retry may use its already recorded immutable candidate commit and reverify ancestry; it cannot invent
 that evidence after removal. A removed cleanup outcome also requires the candidate path to be absent.
+`--cleanup <outcome> --change-id <id>` without `--manual-merge` updates only the cleanup outcome of
+an already recorded manual merge, reverifying its recorded commit and candidate commit under the same
+rules; without recorded merge evidence, or without a change ID, it is rejected rather than ignored.
 
 ### Additive error diagnostics
 

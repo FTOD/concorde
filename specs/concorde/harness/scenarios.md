@@ -491,6 +491,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND a stale status or target snapshot is rejected without erasing newer blockers, validation or independent progress; a caller rereads before updating
 - AND target snapshots, including unsaved new targets, keep their construction-time change and incarnation ownership; missing or mismatched ownership is refused even when target IDs and revisions coincide, while branch rename and current no-op saves remain valid
 - AND ordinary-Git merge recording refuses a present replacement source or a different task in the same incarnation before using its HEAD or cleanliness, but can retry from already recorded candidate-commit evidence when the original source is absent
+- AND a cleanup-only update reuses and reverifies the recorded manual-merge commit; without recorded merge evidence it is rejected, never silently ignored
 
 ### scenario.harness.status-migration — Explicit safe migration and recovery
 

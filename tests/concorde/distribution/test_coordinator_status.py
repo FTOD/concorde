@@ -35,6 +35,7 @@ class CoordinatorStatusTests(unittest.TestCase):
             r"const COORDINATOR = (.+);\n", coordinator.content.decode()
         )
         self.assertIsNotNone(embedded)
+        assert embedded is not None  # narrow for static checkers
         self.assertEqual(prompt, json.loads(embedded.group(1)))
         self.assertIn("prompts/outer/source/main.md", coordinator.sources)
         steps = (
@@ -164,3 +165,45 @@ class CoordinatorStatusTests(unittest.TestCase):
             resumed = invoke(commands[2])
             self.assertEqual(bound["child"], resumed["child"])
             self.assertEqual(states[0], read_status(primary, states[0]["change_id"]))
+
+    @verifies("scenario.distribution.outer-roles")
+    def test_cleanup_flag_is_never_silently_ignored(self):
+        with tempfile.TemporaryDirectory() as directory:
+            primary = Path(directory) / "primary"
+            primary.mkdir()
+            git(primary, "init", "-q", "-b", "trunk")
+            git(primary, "config", "user.name", "Test")
+            git(primary, "config", "user.email", "test@example.invalid")
+            (primary / "file").write_text("base")
+            git(primary, "add", ".")
+            git(primary, "commit", "-qm", "base")
+            candidate = Path(directory) / "candidate"
+            git(primary, "worktree", "add", "-b", "candidate", str(candidate))
+
+            def invoke(*argv, root=primary):
+                return dispatch(
+                    create_parser().parse_args(
+                        ["--project-root", str(root), "status", *argv]
+                    )
+                ).result
+
+            state = invoke("--register", str(candidate), "--task", "work")
+            change_id = state["change_id"]
+            with self.assertRaises(SpecError) as missing_id:
+                invoke("--cleanup", "removed")
+            self.assertEqual("invalid_input", missing_id.exception.code)
+            with self.assertRaises(SpecError) as unrecorded:
+                invoke("--change-id", change_id, "--cleanup", "retained")
+            self.assertEqual("stale_evidence", unrecorded.exception.code)
+            with self.assertRaises(SpecError):  # primary-only coordination
+                invoke(
+                    "--change-id", change_id, "--cleanup", "retained", root=candidate
+                )
+            self.assertEqual(state, read_status(primary, change_id))
+            merged = invoke("--change-id", change_id, "--manual-merge", "HEAD")
+            self.assertEqual("pending", merged["cleanup"]["status"])  # default
+            git(primary, "worktree", "remove", "--force", str(candidate))
+            removed = invoke("--change-id", change_id, "--cleanup", "removed")
+            self.assertEqual(merged["manual_merge"], removed["manual_merge"])
+            self.assertEqual("removed", removed["cleanup"]["status"])
+            self.assertEqual(removed, read_status(primary, change_id))

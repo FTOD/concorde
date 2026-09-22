@@ -169,9 +169,13 @@ def write_run(root: Path, relative: str, data: bytes) -> None:
 
 
 def record_manual_merge(
-    root: Path, change_id: str, *, commit: str, cleanup: str
+    root: Path, change_id: str, *, commit: str | None, cleanup: str
 ) -> dict:
-    """Record observed ordinary-Git integration, never perform or authorize a merge."""
+    """Record observed ordinary-Git integration, never perform or authorize a merge.
+
+    ``commit=None`` updates only the cleanup outcome of an already recorded manual
+    merge, reverifying that recorded commit; it cannot invent merge evidence.
+    """
     from .change_worktree import (
         git,
         git_value,
@@ -186,6 +190,13 @@ def record_manual_merge(
         state = read_status(root, change_id)
         if state is None:
             raise SpecError("unknown task", "unknown_change")
+        if commit is None:
+            commit = (state.get("manual_merge") or {}).get("commit")
+            if not commit:
+                raise SpecError(
+                    "cleanup outcome requires a recorded or observed manual merge",
+                    "stale_evidence",
+                )
         resolved = git_value(primary, "rev-parse", "--verify", commit + "^{commit}")
         if git(
             primary, "merge-base", "--is-ancestor", resolved, "HEAD", check=False

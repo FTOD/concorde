@@ -466,6 +466,33 @@ class StatusStoreTests(unittest.TestCase):
         self.assertFalse(self.candidate.exists())
 
     @verifies("scenario.harness.primary-status")
+    def test_cleanup_only_update_reuses_recorded_merge_or_is_rejected(self):
+        state = ensure_change(self.candidate, task={"task": "work"}, mode="maintenance")
+        with self.assertRaises(SpecError) as unrecorded:
+            record_manual_merge(
+                self.primary, state["change_id"], commit=None, cleanup="retained"
+            )
+        self.assertEqual("stale_evidence", unrecorded.exception.code)
+        untouched = read_status(self.primary, state["change_id"]) or {}
+        self.assertIsNone(untouched["manual_merge"])
+        recorded = record_manual_merge(
+            self.primary, state["change_id"], commit="HEAD", cleanup="pending"
+        )
+        with self.assertRaises(SpecError):  # candidate still present
+            record_manual_merge(
+                self.primary, state["change_id"], commit=None, cleanup="removed"
+            )
+        present = read_status(self.primary, state["change_id"]) or {}
+        self.assertEqual("pending", present["cleanup"]["status"])
+        git(self.primary, "worktree", "remove", "--force", str(self.candidate))
+        updated = record_manual_merge(
+            self.primary, state["change_id"], commit=None, cleanup="removed"
+        )
+        self.assertEqual(recorded["manual_merge"], updated["manual_merge"])
+        self.assertEqual("removed", updated["cleanup"]["status"])
+        self.assertEqual(updated, read_status(self.primary, state["change_id"]))
+
+    @verifies("scenario.harness.primary-status")
     def test_manual_merge_refuses_other_task_in_same_primary_incarnation(self):
         first = ensure_change(
             self.primary, task={"task": "first"}, allow_primary=True, mode="direct"
