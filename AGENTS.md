@@ -11,7 +11,11 @@ starting maintenance. This main-only recordkeeping exception changes only TODOs 
 issue records, never implementation or Specs; it grants no child authoring authority. The canonical
 source-main prompt below defines maturity, persistence and safe issue promotion.
 
-The main session coordinates from its initial worktree. For source maintenance it creates a
+The main session owns high-level work packages, dependencies, file/contract ownership, native workflow
+steps and component/integration/testing gates, not product Concorde plan/tasks. Within task authority
+main may directly author/repair profiles, prompts, tools, workflows and coordination mechanisms in
+its own exclusively owned tree. New assets never change an active sibling's frozen launch grant.
+For candidate implementation it creates a
 candidate from a committed base, registers it in primary `.concorde/status/` before launch, then
 launches one fresh, Concorde-catalog-free maintenance child there and binds its actual child run ID.
 Main verifies the child stopped before releasing its exact ownership and handing off to a tester
@@ -22,7 +26,9 @@ Disable inherited and discovered Concorde catalogs; never fork previously loaded
 The child owns all authoring and deterministic checks, never delegates tasks, never moves
 worktrees, and stops writing before testing. Only one writer owns a worktree at a time.
 
-Keep the same maintenance-worker session across ordinary milestones and resume it after feedback.
+Reuse the stage author across ordinary milestones and feedback. A completed stage with changed
+goals/context may use a fresh author after a durable handoff and exact stop/release/bind. Independent
+components may use multiple worktrees in parallel, with main-controlled combination and verification.
 Main chooses independent testing as none, targeted or full with an explicit scope and reason.
 When selected, main launches a separate fresh sibling named tester in that candidate, explicitly
 supplied only the exact candidate-built private Pi entry, embedded catalog and runtime provenance. A test child
@@ -31,7 +37,7 @@ Neither child creates grandchildren; Operation workers are terminal nodes schedu
 
 Build does not install this checkout's Operation entry/catalog in ambient discovery.
 It does maintain checked source project `.pi/agents/maintenance-worker.md`, `.pi/agents/tester.md`,
-a source-main-only `.pi/extensions/concorde-coordinator.ts` and a separate passive observer entry. Canonical sources are `prompts/outer/` and
+a source-main-only `.pi/extensions/concorde-coordinator.ts` and a separate passive observer entry plus an explicit source-only lifecycle extension. Canonical sources are `prompts/outer/` and
 `pi/`; do not hand-edit projections. Outer pi-subagents support is a prerequisite, never a
 terminal-worker dependency. Coordinator delivery uses Pi extension discovery, not APPEND_SYSTEM:
 Pi discovers that append independently of context-file inheritance. Main alone loads the coordinator;
@@ -61,7 +67,10 @@ Never build into another worktree. Initialize vendored references with
 
 Already fully read unchanged complete Specs in valid same-session context need not be reread;
 new ownership seams and fresh readers still require complete paired context. Use compact external
-checkpoints/compaction. Resource handoff requests report observed capacity, current input/cache,
+checkpoints and actual supported compaction. The explicit lifecycle extension reinjects only the
+current concise task brief once after observed success; checkpoints and `/compact` messages alone
+are not compaction. Native supervisor updates report stage/objective/artifacts/check failures/blocker/
+next action/evidence, distinct from host activity, context and compaction observations. Resource handoff requests report observed capacity, current input/cache,
 reserve and compaction status or an actual error; missing metrics stay unknown. Cumulative tokens,
 document KB and lack of a compact tool do not prove exhaustion; main verifies the need.
 

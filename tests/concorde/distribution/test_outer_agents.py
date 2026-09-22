@@ -30,6 +30,15 @@ class OuterAgentsTests(unittest.TestCase):
         }
         self.assertIn(".pi/agents/maintenance-worker.md", source)
         self.assertIn(".pi/extensions/concorde-coordinator.ts", source)
+        self.assertIn(".pi/extensions/concorde-outer-lifecycle.ts", source)
+        self.assertNotIn(".pi/extensions/concorde-outer-lifecycle.ts", installed)
+        self.assertIn(
+            "concorde-outer-lifecycle.ts",
+            source[".pi/agents/maintenance-worker.md"].content.decode(),
+        )
+        self.assertNotIn(
+            "concorde-outer-lifecycle", source[".pi/agents/tester.md"].content.decode()
+        )
         self.assertNotIn(".pi/APPEND_SYSTEM.md", source)
         self.assertNotIn(".pi/extensions/concorde-session.ts", source)
         self.assertIn(".pi/agents/tester.md", installed)
@@ -47,7 +56,10 @@ class OuterAgentsTests(unittest.TestCase):
         self.assertIn(".pi/agents/tester.md", outputs)
         self.assertFalse(
             any(
-                "prompts/outer/source/" in p or p.endswith("concorde-maintenance.ts")
+                "prompts/outer/source/" in p
+                or p.endswith(
+                    ("concorde-maintenance.ts", "concorde-outer-lifecycle.ts")
+                )
                 for p in outputs
             )
         )
@@ -225,6 +237,54 @@ class OuterAgentsTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue(json.loads(result.stdout)["readonly"])
             self.assertFalse((Path(directory) / "governing-canary").exists())
+
+    @verifies("scenario.harness.outer-lifecycle", "scenario.distribution.outer-roles")
+    def test_actual_sdk_compaction_and_current_brief(self):
+        from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
+
+        pi = shutil.which("pi")
+        if not pi:
+            self.skipTest("Pi SDK is a host prerequisite")
+        sdk = next(
+            p
+            for p in Path(pi).resolve().parents
+            if (p / "package.json").is_file()
+            and json.loads((p / "package.json").read_text()).get("name")
+            == "@earendil-works/pi-coding-agent"
+        )
+        with (
+            tempfile.TemporaryDirectory() as scratch,
+            FakeOpenAIProvider([{"text": "fixture complete"}] * 2) as provider,
+        ):
+            result = subprocess.run(
+                [
+                    "node",
+                    str(
+                        REPOSITORY_ROOT
+                        / "tests/concorde/distribution/outer_lifecycle_fixture.mjs"
+                    ),
+                    str(sdk),
+                    str(REPOSITORY_ROOT),
+                    scratch,
+                    provider.base_url,
+                ],
+                env={
+                    **os.environ,
+                    "PI_CODING_AGENT_DIR": scratch,
+                    "PI_OFFLINE": "1",
+                    "PI_TELEMETRY": "0",
+                },
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(len(provider.requests), 2)
+            for request in provider.requests:
+                serialized = json.dumps(request)
+                self.assertEqual(serialized.count("CURRENT-GOAL"), 1)
+                self.assertNotIn("OBSOLETE-GOAL", serialized)
+            print(result.stdout)
 
     @verifies("scenario.distribution.test-timing")
     def test_runner_fingerprints_and_legacy_cli(self):

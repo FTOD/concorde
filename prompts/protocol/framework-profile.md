@@ -183,7 +183,16 @@ Ordinary consumer projects may use direct primary editing for simple authorized 
 
 Main decides task scope, worktree ownership, author continuation, checks, independent testing and
 integration authorization. One writer owns a worktree at a time and stops writing before testing.
-Ordinary milestones do not require a new author session. Main chooses none, targeted or full
+Main owns lightweight high-level decomposition into work packages, dependencies, file/contract
+ownership, independent worktrees, native workflow steps and component/integration/testing gates.
+This is not product Concorde plan/tasks and requires no mandatory planner Operation or coordinator
+LLM. Main may author profiles, prompts, tools, workflows and process repairs within task authority
+and its own exclusive tree. Native workflow steps remain terminal Pi workers with no child task
+delegation. Frozen launches do not adopt edited governance or wider grants retroactively.
+Reuse the author within an unfinished coherent stage and feedback cycle. Ordinary milestones do
+not require a new session; a completed stage with changed goals/context may use a fresh author
+after durable handoff, observed stop, exact ownership release and binding of the actual new child.
+Parallel component work stays in separate trees; combined-input integration is a distinct gate. Main chooses none, targeted or full
 independent testing with an explicit scope and reason; an author's self-tests are not independent.
 When selected, the project-discovered `tester` is a fresh sibling task role, not a LangGraph node.
 It receives only explicitly selected local Pi integration/runtime provenance and its actual grant.
@@ -200,8 +209,13 @@ Already fully read unchanged complete Specs in valid same-session context need n
 new ownership seams and fresh readers retain complete-context obligations. Resource handoffs state
 observed capacity, current input including cache, reserve and compaction status or an actual error.
 Unknown metrics stay unknown. Cumulative usage, document size and absence of a compact tool do not
-establish exhaustion. Main verifies the need after checkpoints/compaction; quality concerns are
-labelled separately. Integration requires explicit authorization; cleanup remains separate.
+establish exhaustion. Main verifies the need after supported compaction with an observed completion or error; a checkpoint
+or a message saying compact is not compaction. After success inject the CURRENT concise task brief
+once: goal/grant, accepted decisions, evidence and next step, not obsolete launch instructions.
+Host-observed lifecycle/activity/context/compaction stays distinct from worker-reported stage,
+objective, completed artifacts, checks/failures, blocker and next action/evidence. Native supervisor,
+events/status and primary authority carry meaningful updates without polling, repetitive reports,
+fake percentages or activity-as-correctness claims. Quality concerns are labelled separately. Integration requires explicit authorization; cleanup remains separate.
 
 Concorde's source repository adds its own source-only maintenance/coordinator prompts and validation
 policy. They are not installed as consumer testing instructions.

@@ -25,9 +25,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 COORDINATOR = ".pi/extensions/concorde-coordinator.ts"
 APPEND = ".pi/APPEND_SYSTEM.md"
-IDENTITY = (
-    "You are the main coordinator, not a LangGraph node or the maintenance author."
-)
+IDENTITY = "You are the main coordinator, not a LangGraph node."
 
 
 def install_fixture(target):

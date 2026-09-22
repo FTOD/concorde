@@ -463,3 +463,13 @@ model compliance with consent or maturity judgments.
 - AND discovery, queue, execution and total elapsed durations remain separate, setup remains unknown unless observed, and expensive fixture runtime spans remain nested diagnostics
 - AND legacy callers use manual reason and unspecified scope/phase without new required flags
 - AND parallel unit sums are not reported as elapsed wall time or server thinking time
+
+
+### scenario.distribution.stage-continuity — Main owns stages and integration
+
+- GIVEN authorized source maintenance with independent work packages
+- WHEN source coordination instructions are rendered
+- THEN main owns high-level decomposition, file/contract ownership, native workflow steps and component/integration/testing gates without invoking product plan/tasks
+- AND main may directly repair profiles, prompts, tool configuration and workflows within its own exclusive tree and task authority without changing active siblings' frozen grants
+- AND unfinished coherent stages reuse their author through feedback while completed stages with changed goals/context may use a fresh author after durable handoff and exact stop/release/bind
+- AND separate component worktrees do not imply combination success, automatic merge, cleanup or child task delegation

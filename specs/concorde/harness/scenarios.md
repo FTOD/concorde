@@ -578,3 +578,13 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND no-submission, schema rejection, Host refusal, capture, exit, cancellation, timeout, transport and observation failures remain distinguishable without claiming unobserved causes
 - AND diagnostics too large for display have explicit completeness and retrieval facts, with export failure reported rather than silently clipped
 - AND failure never becomes completion or permits an automatic invalid-slot retry, widened grant or credential disclosure
+
+### scenario.harness.outer-lifecycle — Actual compaction reinjects current task memory once
+
+- GIVEN source main or maintenance with explicit lifecycle loading, a current task brief and unchanged terminal tool grants
+- WHEN Pi performs measured threshold or overflow compaction or the explicit SDK compaction command
+- THEN successful persisted compaction injects only the latest brief once at the next provider-context boundary without launching a turn
+- AND failed or cancelled compaction does not inject task memory or claim recovery
+- AND repeated equal summaries, resume and branch navigation preserve identity-based deduplication
+- AND malformed optional supervisor memory does not block native feedback or reintroduce obsolete task instructions
+- AND semantic progress remains worker-reported while host activity, context and compaction are separate observations

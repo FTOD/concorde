@@ -232,10 +232,10 @@ def _package_files(package: Package) -> dict[str, bytes]:
         for path in sorted(source_root.rglob("*")):
             relative = path.relative_to(package.root).as_posix()
             parts = PurePosixPath(relative).parts
-            if (
-                relative.startswith("prompts/outer/source/")
-                or relative == "pi/extensions/concorde-maintenance.ts"
-            ):
+            if relative.startswith("prompts/outer/source/") or relative in {
+                "pi/extensions/concorde-maintenance.ts",
+                "pi/extensions/concorde-outer-lifecycle.ts",
+            }:
                 continue  # Source coordination/maintenance never ships to consumers.
             if directory == "pi" and "node_modules" in parts:
                 # A local install (`npm ci --prefix pi`) leaves node_modules below pi/. The managed
