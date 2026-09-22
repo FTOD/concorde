@@ -246,14 +246,14 @@ This collaboration applies when freezing any context kind or checking a target, 
 
 <a id="entity.harness.operations"></a><a id="agreement.document.harness.module.3"></a>
 
-The [Operations Module](../operations/module.md) owns the catalog of every Operation and the dispatch that routes an admitted request to its provider.
+The [Operations Module](../operations/module.md) owns explicit StateGraph composition and the compatibility capability inventory and dispatch that route an admitted request to its business provider. Canonical Agent definitions remain owned by [Agents](../agents/module.md).
 
 Admit only registered public entries and declared composition, then dispatch finite Host services or prepare the selected native Agent/workflow.
 
-This collaboration applies when admission executes an admitted request or checks a child Operation against its parent's declared composition.
+This collaboration applies when admission executes an admitted capability request or checks a collaborator against its caller's declared composition.
 
-- [Operation catalog](../operations/execution-reference.md#operations-operation-registry); refuse unknown and non-public entries with `unknown_operation` and undeclared composition with `undeclared_operation`, never routing by name outside the catalog.
-- [Dispatch Graph](../operations/execution-reference.md#graphs-operation-dispatch-graph-dispatch-graph); adopt its typed output, or a relayed candidate's complete envelope, as the invocation's result.
+- [Capability inventory and composition](../operations/execution-reference.md#operations-operation-registry); refuse unknown and non-public entries with `unknown_operation` and undeclared composition with `undeclared_operation`, never routing by name outside the catalog.
+- [Finite dispatch and native preparation](../operations/execution-reference.md#operations-behavioral-ownership-and-composition-limits); adopt the admitted Host service's typed output or independently accepted native result, or a relayed candidate's complete envelope, as the invocation's result. Preparation alone is not completion; no dispatch Graph runs under these public capabilities.
 
 ### Distribution
 

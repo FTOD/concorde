@@ -102,7 +102,7 @@ See [the changed-input recheck bound](requirements.md#req.harness.context-rechec
 
 ### scenario.harness.agent-bind — Bind a named worker's Spec and terminal profile
 
-- GIVEN a named worker registered in the Operation inventory and a current, fresh build
+- GIVEN a named domain Agent in the [Agents-owned role inventory](../agents/roles.md#inventory-and-compatibility) and a current, fresh build
 - WHEN resolve_worker is called for that name
 - THEN the host returns a reproducible WorkerBinding covering spec_digest, instructions_digest, profile_digest, build_manifest_digest and timeout_seconds
 - AND worker_profile resolves that same name, its hyphenated spelling or its concorde- external name to the canonical Agent profile
