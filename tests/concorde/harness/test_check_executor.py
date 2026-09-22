@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 from concorde.harness.check_executor import CheckSandboxError, execute_check
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import RUNTIME_ROOT
 
 
@@ -36,7 +37,7 @@ class CheckExecutorTests(unittest.TestCase):
             self.root,
             [sys.executable, "-c", code, *map(str, args)],
             timeout=timeout,
-            environment=os.environ,
+            environment=child_environment(),
         )
 
     @verifies("scenario.harness.check-read-only")
@@ -216,7 +217,7 @@ print(json.dumps(str(scratch)))
                     "import os; print(os.environ['CHECK_PRIVATE_VALUE'])",
                 ],
                 timeout=10,
-                environment={**os.environ, "CHECK_PRIVATE_VALUE": token},
+                environment=child_environment(CHECK_PRIVATE_VALUE=token),
             )
         self.assertEqual((0, token + "\n"), (result.returncode, result.stdout.decode()))
         self.assertNotIn(token, json.dumps(launches))
@@ -232,7 +233,7 @@ print(json.dumps(str(scratch)))
                 self.root / "missing",
                 [sys.executable, "-c", f"open({str(self.file)!r},'w').write('unsafe')"],
                 self.parent,
-                dict(os.environ),
+                child_environment(),
                 5,
             )
         self.assertTrue(caught.exception.stderr)
@@ -272,11 +273,9 @@ else:
 """
         result = subprocess.run(
             [sys.executable, "-c", code, str(self.root)],
-            env={
-                **os.environ,
-                "TMPDIR": str(self.parent),
-                "PYTHONPATH": str(RUNTIME_ROOT),
-            },
+            env=child_environment(
+                TMPDIR=str(self.parent), PYTHONPATH=str(RUNTIME_ROOT)
+            ),
             capture_output=True,
             timeout=10,
         )

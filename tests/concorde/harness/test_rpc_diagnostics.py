@@ -1,12 +1,15 @@
 """Failed RPC runs retain private diagnostics without publishing process output."""
 
+import importlib.util
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.harness import pi_rpc
 from concorde.harness.pi_rpc import (
     PiRpcCancelled,
     PiRpcError,
@@ -89,6 +92,37 @@ class RpcDiagnosticsTests(unittest.TestCase):
             assert raised.exception.run is not None
             self.assertIsNotNone(raised.exception.run.exit_code)
             self.assertNotIn("PRIVATE", str(raised.exception))
+
+    @verifies("scenario.harness.pi-rpc-client")
+    def test_process_seam_resolves_popen_when_the_prompt_runs(self):
+        # Regression guard: a test once patched subprocess.Popen while importing this module for
+        # the first time, and the definition-time default kept the mock for the whole process.
+        spec = importlib.util.spec_from_file_location(
+            "concorde.harness.pi_rpc_imported_under_patch", pi_rpc.__file__
+        )
+        fresh = importlib.util.module_from_spec(spec)
+        with (
+            patch.dict(sys.modules, {spec.name: fresh}),
+            patch("subprocess.Popen", side_effect=AssertionError("import-time Popen")),
+        ):
+            spec.loader.exec_module(fresh)
+        real = subprocess.Popen
+        started = []
+
+        def spy(*args, **kwargs):
+            started.append(args[0][0])
+            return real(*args, **kwargs)
+
+        with patch("subprocess.Popen", spy), self.assertRaises(fresh.PiRpcError):
+            fresh.run_prompt(
+                [sys.executable, "-c", "import sys; sys.stdin.readline()"],
+                cwd=str(REPOSITORY_ROOT),
+                env={"PATH": os.environ.get("PATH", "")},
+                message="PRIVATE PROMPT",
+                timeout=5,
+            )
+        self.assertEqual([sys.executable], started)
+        self.assertIsNone(PiWorkerRuntime(REPOSITORY_ROOT).popen)
 
     @verifies("scenario.harness.pi-rpc-client")
     def test_timeout_retains_bounded_stderr_and_outcome(self):

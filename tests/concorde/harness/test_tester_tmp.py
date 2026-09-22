@@ -20,8 +20,12 @@ from concorde.harness.check_executor import CheckSandboxError, execute_check
 from concorde.harness.pi_rpc import _records, run_prompt
 from concorde.spec.verification import verifies
 from tests.concorde.distribution import test_pi_session as session_fixtures
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
-from tests.concorde.support.managed_runtime import independent_runtime_environment
+from tests.concorde.support.managed_runtime import (
+    independent_runtime_environment,
+    npm_cache_in_use,
+)
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -159,7 +163,7 @@ else:
                                 str(visible),
                             ],
                             timeout=10,
-                            environment=os.environ,
+                            environment=child_environment(),
                             private_tmp=private,
                         )
                         self.assertEqual(0, result.returncode, result.stderr)
@@ -175,7 +179,7 @@ else:
                     project,
                     [sys.executable],
                     timeout=1,
-                    environment=os.environ,
+                    environment=child_environment(),
                     private_tmp="yes",
                 )
             with self.assertRaises(CheckSandboxError):
@@ -183,7 +187,7 @@ else:
                     Path("/tmp"),
                     [sys.executable],
                     timeout=1,
-                    environment=os.environ,
+                    environment=child_environment(),
                     private_tmp=True,
                 )
 
@@ -218,7 +222,14 @@ for key in ('CONCORDE_SESSION_SELECTION','PI_SUBAGENT_EXTENSION_BINDINGS','CONCO
 wheel_path = Path(wheels)
 if wheel_path.is_relative_to('/tmp'):
     wheel_path = view/wheel_path.relative_to('/tmp')
-os.environ.update(PIP_NO_INDEX='1',PIP_FIND_LINKS=str(wheel_path),PYTHONNOUSERSITE='1',NPM_CONFIG_OFFLINE='false')
+os.environ.update(PIP_NO_INDEX='1',PIP_FIND_LINKS=str(wheel_path),PYTHONNOUSERSITE='1',NPM_CONFIG_OFFLINE='true')
+# Locked acquisition stays offline and writes only the issued scratch cache: seed it from local
+# bytes (the parent's populated npm cache is readable through the host view, never written).
+npm_source = Path(os.environ['CONCORDE_TEST_NPM_CACHE'])
+if npm_source.is_relative_to('/tmp'):
+    os.environ['CONCORDE_TEST_NPM_CACHE'] = str(view/npm_source.relative_to('/tmp'))
+from tests.concorde.support.managed_runtime import seed_npm_cache
+seed_npm_cache(os.environ,repo)
 consumer = scratch/'consumer'; consumer.mkdir()
 project(consumer)
 config = json.loads((consumer/'.concorde/config.json').read_text())
@@ -348,6 +359,10 @@ class RegisteredTesterTemporaryTests(unittest.TestCase):
             # Use the normal locked npm cache read-only; acquisition/writes go to issued scratch.
             if os.environ.get("npm_config_cache"):
                 env["npm_config_cache"] = os.environ["npm_config_cache"]
+            # The Pi process runs under a private HOME, so npm's default cache is empty there:
+            # name this process's populated cache as the local source the nested offline
+            # install is seeded from (the tester bridge issues its own scratch cache).
+            env["CONCORDE_TEST_NPM_CACHE"] = str(npm_cache_in_use(os.environ))
             argv = [
                 pi,
                 "--mode",
@@ -451,7 +466,8 @@ class RegisteredTesterTemporaryTests(unittest.TestCase):
         inputs = self.root / "inputs"
         inputs.mkdir()
         environment = independent_runtime_environment(inputs, REPOSITORY_ROOT)
-        # Real locked npm acquisition writes only the issued cache/runtime, not forwarding assets.
+        # Locked npm acquisition, seeded offline, writes only the issued cache/runtime, never
+        # forwarding assets.
         script = inputs / "nested.py"
         script.write_text(NESTED)
         with tempfile.NamedTemporaryFile(dir="/tmp") as host_input:

@@ -13,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from tests.concorde.support.environment import scrub_selection
+
 SOURCE = Path(__file__).resolve().parents[3]
 
 
@@ -22,23 +24,13 @@ def sha(path: Path) -> str:
 
 def output_environment(environment: dict[str, str]) -> dict[str, str]:
     """Local copy only. These values attest the source, not a newly installed output."""
-    result = dict(environment)
-    for key in (
-        "CONCORDE_SESSION_SELECTION",
-        "CONCORDE_NATIVE_PROJECT_ROOT",
-        "PYTHONPATH",
-        "PYTHONHOME",
-    ):
+    # The shared scrub removes the selection, native project root, worker policy and the
+    # Concorde binding; an installed output must additionally run its own interpreter paths.
+    result = scrub_selection(environment)
+    for key in ("PYTHONPATH", "PYTHONHOME"):
         result.pop(key, None)
     if result.get("CONCORDE_STUDIO_URL"):
         raise ValueError("installation fixture cannot redirect to Studio")
-    if result.get("PI_SUBAGENT_EXTENSION_BINDINGS"):
-        bindings = json.loads(result["PI_SUBAGENT_EXTENSION_BINDINGS"])
-        bindings.pop("concorde/1", None)
-        if bindings:
-            result["PI_SUBAGENT_EXTENSION_BINDINGS"] = json.dumps(bindings)
-        else:
-            result.pop("PI_SUBAGENT_EXTENSION_BINDINGS")
     return result
 
 
@@ -69,6 +61,12 @@ def install_selected_fixture(target: Path, selection: Path) -> tuple[dict, dict]
         )
     admitted = admit_package(SOURCE)
     environment = output_environment(dict(os.environ))
+    if environment.get("NPM_CONFIG_OFFLINE") == "true":
+        from tests.concorde.support.managed_runtime import seed_npm_cache
+
+        # The offline install reads only the npm cache in use (issued scratch under a tester
+        # boundary); fill it from local bytes rather than the network.
+        seed_npm_cache(environment, SOURCE)
     target.mkdir(parents=True, exist_ok=True)
     # This exact source was admitted above; no installed code is treated as selected source.
     installed = subprocess.run(

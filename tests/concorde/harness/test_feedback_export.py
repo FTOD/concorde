@@ -15,6 +15,7 @@ from pathlib import Path
 from concorde.harness.native_runtime import admit_native_runtime
 from concorde.spec.verification import verifies
 from tests.concorde.harness.feedback_export_driver import nodes
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -59,20 +60,14 @@ class FeedbackExportTests(unittest.TestCase):
             subprocess.run(["git", "-C", str(primary), *args], check=True)
         scratch_parent = root / "scratch"
         scratch_parent.mkdir()
-        environment = {
-            **os.environ,
-            "CONCORDE_SESSION_SELECTION": str(
+        environment = child_environment(
+            CONCORDE_SESSION_SELECTION=str(
                 source / ".concorde/work/pi-first-context-selection.json"
             ),
-            "PYTHONPATH": os.pathsep.join((str(source / "src"), str(source))),
-            "TMPDIR": str(scratch_parent),
-        }
-        for key in (
-            "PI_SUBAGENT_EXTENSION_BINDINGS",
-            "CONCORDE_NATIVE_PROJECT_ROOT",
-            "CONCORDE_STUDIO_URL",
-        ):
-            environment.pop(key, None)
+            PYTHONPATH=os.pathsep.join((str(source / "src"), str(source))),
+            TMPDIR=str(scratch_parent),
+        )
+        environment.pop("CONCORDE_STUDIO_URL", None)
         receipts = []
         for case in ("direct", "schema", "workflow", "optional", "cancel"):
             with self.subTest(case=case):

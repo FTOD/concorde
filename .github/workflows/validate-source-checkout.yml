@@ -43,10 +43,14 @@ jobs:
       - name: Validate the Spec and package
         run: python3 scripts/concorde.py validate
 
+      - name: Install the Pi extension dependencies
+        # Populates npm's cache with the locked tarballs the offline test installs are seeded from.
+        run: npm ci --prefix pi
+
       - name: Run the full Python test suite
         env:
           PYTHONPATH: src
-        run: .venv/bin/python -m unittest discover -s tests/concorde -t . -p test_*.py
+        run: .venv/bin/python -m pytest --reason=independent --scope=full
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -104,7 +108,7 @@ jobs:
           PYTHONPATH: src
           CONCORDE_TEST_STUDIO: "1"
         run: |
-          .venv/bin/python -m unittest \
-            tests.concorde.harness.test_studio \
-            tests.concorde.harness.test_studio_client \
-            tests.concorde.harness.test_studio_server
+          .venv/bin/python -m pytest --reason=independent --scope=targeted \
+            tests/concorde/harness/test_studio.py \
+            tests/concorde/harness/test_studio_client.py \
+            tests/concorde/harness/test_studio_server.py

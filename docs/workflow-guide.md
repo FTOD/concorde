@@ -380,20 +380,37 @@ StateGraph Operation, typed Runtime service injection and inspection-only defaul
 capabilities are not forwarded through Studio. Host JSON services need no server; native cognition
 uses the prepared Pi Agent/workflow boundary.
 
-Run Python tests with `python3 scripts/development/run-tests.py`, which runs every module under
-`tests/concorde` in its own subprocess in parallel and reports per-module durations
-(`--filter <substring>` selects modules, `--sequential` runs them one at a time, `--json <path>`
-writes a summary). The plain serial command
-`python -m unittest discover -s tests/concorde -t . -p 'test_*.py'` remains valid. Run docsite
-checks with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`.
+Run Python tests with `.venv/bin/python -m pytest`, the single test entry configured in
+`pyproject.toml`: it collects every `unittest.TestCase` under `tests/concorde` and runs them on
+16 pytest-xdist worker processes by default (`-n 0` runs in-process, `-n <N>` changes the worker
+count, a file or node id selects tests, `--durations=20` lists the slowest). The local plugin
+`tests/concorde/support/pytest_timing.py`, loaded by the rootdir `conftest.py`, adds the
+evidence options `--reason=`, `--scope=`, `--phase=`, `--attempt=`, `--prior=<summary>` and
+`--json=<path>`, which writes a summary with input/test/runtime/lock/environment fingerprints,
+per-unit queue/execution intervals and the runtime spans each test wrote to its own
+`CONCORDE_DIAGNOSTIC_TIMING_DIR`. Join these values with `=`: pytest picks its rootdir from the
+bare arguments before the plugin has registered its options, so a separate value that exists as
+a path (a prior summary always does) would relocate the rootdir and drop this configuration.
+Run docsite checks with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`.
 
-Known intermittent failure: under the parallel runner,
-`tests.concorde.operations.test_review.ReviewTests.test_changed_review_instructions_reassess_without_erasing_gaps_on_failure`
+Known intermittent failure: under parallel execution,
+`tests/concorde/operations/test_review.py::ReviewTests::test_changed_review_instructions_reassess_without_erasing_gaps_on_failure`
 has failed once with `review_required` ("required spec review is missing, incomplete, blocking, or
 stale") and passed on every isolated rerun. The cause is undiagnosed; treat a single failure of
-that test as suspect and rerun it alone before drawing conclusions. The worker runtime tests and
-the worker sandbox tests need Linux with a trusted system bubblewrap and a Pi installation on
-PATH; the sandbox tests fail rather than skip where the boundary cannot be enforced.
+that test as suspect and rerun it alone (`.venv/bin/python -m pytest -n 0 <node id>`) before
+drawing conclusions. The worker runtime tests and the worker sandbox tests need Linux with a
+trusted system bubblewrap and a Pi installation on PATH; the sandbox tests fail rather than skip
+where the boundary cannot be enforced.
+
+Tests that install the Pi worker extensions run `npm ci` offline, so the suite has no online npm
+path and no test depends on which worker installs first. Before such an install,
+`tests/concorde/support/managed_runtime.seed_npm_cache` copies the tarballs locked by
+`pi/package-lock.json` into the npm cache in use (`npm_config_cache`, for example a tester's
+issued scratch) from a local populated npm cache: npm's default cache, which the bootstrap
+`npm ci --prefix pi` fills, or the cache named by `CONCORDE_TEST_NPM_CACHE`. Seeding happens
+once per cache under a file lock; the extracted `pi/node_modules` cannot serve because a locked
+install accepts only the exact tarball bytes. A tarball found nowhere locally fails the test with
+the missing input named rather than falling back to the network.
 
 Canonical Agent definitions, `prompts/` (including public capability guidance under
 `prompts/operation-guidance/`) and `pi/extensions/` produce this checkout's Agent surfaces. Never edit

@@ -4,7 +4,6 @@ import contextlib
 import importlib
 import io
 import json
-import os
 import unittest
 from pathlib import Path
 from typing import Any, cast
@@ -19,6 +18,7 @@ from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
 from tests.concorde.harness.test_studio import invocation
 from tests.concorde.spec.support import PACKAGE
+from tests.concorde.support.environment import scrubbed_process_environment
 
 
 class StudioClientTests(unittest.TestCase):
@@ -89,7 +89,7 @@ class StudioClientTests(unittest.TestCase):
         with (
             patch("concorde.harness.studio_client.build_opener", return_value=opener),
             patch("concorde.harness.admission.run_operation") as local,
-            patch.dict(os.environ, {"CONCORDE_STUDIO_URL": "http://127.0.0.1:2024"}),
+            scrubbed_process_environment(CONCORDE_STUDIO_URL="http://127.0.0.1:2024"),
             patch("sys.stdin", io.StringIO(json.dumps(self.value))),
             patch("sys.argv", ["run-operation.py"]),
             contextlib.redirect_stdout(stdout),

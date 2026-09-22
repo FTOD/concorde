@@ -5,7 +5,6 @@ docsite/build/
 docsite/.test-stdio-*/
 *.zip
 .concorde-acceptance/
-tests/concorde/.tmp/
 .docusaurus/
 .generated/
 generated/

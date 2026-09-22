@@ -35,7 +35,15 @@ from concorde.distribution.build import (
 from concorde.distribution.build import (
     PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
 )
+
+# Imported eagerly: the wire-helper test below patches ``subprocess.Popen`` while it invokes an
+# Operation, and a module first imported under that patch would keep the mock in any
+# definition-time default (``pi_rpc.run_prompt`` once did), leaking into every later test of the
+# same process.
+from concorde.harness.admission import run_operation  # noqa: E402
+from concorde.spec.typed_data import typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
+from tests.concorde.support.native_planning import OperationHost  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
 
@@ -481,10 +489,6 @@ class WireHelperBuildTests(unittest.TestCase):
             def invoke_model_backed_operation():
                 # The fixture is this invocation's package root: a top-level model-backed
                 # operation verifies the fixture build before admitting anything else.
-                from concorde.harness.admission import run_operation
-                from concorde.spec.typed_data import typed
-                from tests.concorde.support.native_planning import OperationHost
-
                 def launched(launch):
                     raise AssertionError("an WorkerProfile launched on a stale build")
 

@@ -105,7 +105,7 @@ class RepositoryCheckPreparationTests(unittest.TestCase):
                 ):
                     self.assertEqual(wrapper.main(), 0)
                 self.assertTrue(any("build" in argv for argv in calls[1:]))
-                self.assertTrue(any("unittest" in argv for argv in calls[1:]))
+                self.assertTrue(any("pytest" in argv for argv in calls[1:]))
                 self.assertTrue(
                     any("node_modules/vitest/vitest.mjs" in argv for argv in calls[1:])
                 )

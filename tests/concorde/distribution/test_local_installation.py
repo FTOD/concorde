@@ -23,6 +23,11 @@ from concorde.distribution.local_installation import (
 )
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import (
+    child_environment,
+    scrubbed_process_environment,
+)
+from tests.concorde.support.managed_runtime import seed_npm_cache
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -277,6 +282,8 @@ class NativeLocalInstallationTests(unittest.TestCase):
                 "NPM_CONFIG_OFFLINE": "true",
                 "PIP_DISABLE_PIP_VERSION_CHECK": "1",
             }
+            # Offline installs below read the npm cache in use; fill it from local bytes first.
+            seed_npm_cache(child_environment(**environment), REPOSITORY_ROOT)
             primary = root / "project"
             primary.mkdir()
 
@@ -294,7 +301,7 @@ class NativeLocalInstallationTests(unittest.TestCase):
             (primary / ".gitignore").write_text(
                 ".pi/\n.concorde/framework/\n.concorde/.venv/\n.concorde/install*\n"
             )
-            with patch.dict(os.environ, environment):
+            with scrubbed_process_environment(**environment):
                 source = admit_package(REPOSITORY_ROOT)
                 first = ensure_installation(primary, source, bootstrap=True)
                 # Deterministic fixture initialization, not an Operation or model call.
@@ -462,7 +469,7 @@ class NativeLocalInstallationTests(unittest.TestCase):
                         "json",
                     ],
                     cwd=target,
-                    env=os.environ.copy(),
+                    env=child_environment(),
                     capture_output=True,
                     text=True,
                 )

@@ -31,13 +31,13 @@
       "title": "Installation",
       "kind": "program",
       "files": [
+        "conftest.py",
         "operations/configure.py",
         "scripts/concorde.ps1",
         "scripts/concorde.py",
         "scripts/concorde.sh",
         "scripts/development/check-docsite-types.py",
         "scripts/development/init-references.py",
-        "scripts/development/run-tests.py",
         "scripts/install-concorde.py",
         "scripts/requirements.lock",
         "scripts/run-operation.py",
@@ -50,7 +50,9 @@
         "tests/concorde/distribution/test_install_output_handoff.py",
         "tests/concorde/distribution/test_local_installation.py",
         "tests/concorde/harness/test_host_tools.py",
-        "tests/concorde/support/install_output_handoff.py"
+        "tests/concorde/support/environment.py",
+        "tests/concorde/support/install_output_handoff.py",
+        "tests/concorde/support/pytest_timing.py"
       ],
       "meaning": "#entity.distribution.installation"
     },

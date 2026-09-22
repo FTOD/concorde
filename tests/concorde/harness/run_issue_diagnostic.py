@@ -12,6 +12,8 @@ from pathlib import Path
 SOURCE = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(SOURCE / "src"), str(SOURCE)]
 
+from tests.concorde.support.environment import scrub_selection  # noqa: E402
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -43,7 +45,7 @@ def main():
         mode=0o700
     )  # Fresh command/ticket; never replay a previous directory.
     environment = {
-        **os.environ,
+        **scrub_selection(os.environ),
         "C": str(SOURCE),
         "S": str(scratch),
         "SDK": str(args.sdk),
