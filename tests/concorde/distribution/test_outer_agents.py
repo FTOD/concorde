@@ -358,7 +358,7 @@ class OuterAgentsTests(unittest.TestCase):
             report = Path(directory) / "report.json"
             # A legacy caller passes no reason, scope, phase or attempt.
             result = subprocess.run(
-                [*command, "--json", str(report)],
+                [*command, f"--json={report}"],
                 cwd=REPOSITORY_ROOT,
                 capture_output=True,
                 text=True,
@@ -418,22 +418,18 @@ class OuterAgentsTests(unittest.TestCase):
             )
             self.assertIn(rpc["worker"], {"gw0", "gw1"})
             # An explicitly scoped rerun recognizes unchanged declared inputs.
+            # Values are joined with "=": an existing prior path as a separate argument would
+            # be taken for a test path while pytest decides its rootdir.
             again = Path(directory) / "again.json"
             result = subprocess.run(
                 [
                     *command,
-                    "--json",
-                    str(again),
-                    "--prior",
-                    str(report),
-                    "--reason",
-                    "failure",
-                    "--scope",
-                    "targeted",
-                    "--phase",
-                    "maintenance",
-                    "--attempt",
-                    "2",
+                    f"--json={again}",
+                    f"--prior={report}",
+                    "--reason=failure",
+                    "--scope=targeted",
+                    "--phase=maintenance",
+                    "--attempt=2",
                 ],
                 cwd=REPOSITORY_ROOT,
                 capture_output=True,

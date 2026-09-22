@@ -6,11 +6,16 @@ plugin keeps the evidence the retired subprocess runner recorded:
 
 - ``--reason``, ``--scope``, ``--phase``, ``--attempt`` and ``--prior`` declare why a run happens
   and what it repeats; legacy callers pass none of them and get ``manual``/``unspecified``;
-- ``--json PATH`` writes one summary with whitelisted input/test/runtime/lock/environment
+- ``--json=PATH`` writes one summary with whitelisted input/test/runtime/lock/environment
   fingerprints, per-unit queue/execution intervals, discovery/total intervals and layer "C" spans;
 - every process that executes tests gets its own ``CONCORDE_DIAGNOSTIC_TIMING_DIR`` and each unit
   its own subdirectory, so runtime spans written by ``concorde.harness.timing.timed`` fixtures are
   nested under the unit that produced them and the controller aggregates them from the workers.
+
+Pass values with ``=`` (``--json=PATH``, ``--prior=PATH``): pytest chooses its rootdir from the
+bare arguments before any conftest plugin has registered options, so a space-separated value
+that exists as a path (a prior summary always does) would move the rootdir there and lose this
+configuration.
 
 A unit is one collected test. Its queue interval is measured against the collection end of the
 process that ran it; clocks of different processes are never subtracted. Fixture setup stays
@@ -485,7 +490,9 @@ class ConcordeTiming:
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    group = parser.getgroup("concorde", "Concorde test evidence")
+    group = parser.getgroup(
+        "concorde", "Concorde test evidence (pass values as --option=value)"
+    )
     group.addoption(
         "--reason",
         choices=REASONS,
@@ -508,14 +515,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--prior",
         default=None,
         metavar="PATH",
-        help="JSON summary of a prior run to compare declared inputs against",
+        help="--prior=PATH: JSON summary of a prior run to compare declared inputs against",
     )
     group.addoption(
         "--json",
         dest="concorde_json",
         default=None,
         metavar="PATH",
-        help="write a JSON summary of every unit, fingerprints and spans to PATH",
+        help="--json=PATH: write a JSON summary of every unit, fingerprints and spans",
     )
 
 
