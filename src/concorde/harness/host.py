@@ -307,17 +307,25 @@ def resolve_child_operation(parent_operation: str, child_operation: str):
     """
 
     inventory = load_operation_inventory()
+    from agents import DOMAIN_AGENTS
+
+    def namespace(key):
+        return "agents" if key in DOMAIN_AGENTS else inventory.__name__
+
     parent_key, child_key = (
         _operation_key(parent_operation),
         _operation_key(child_operation),
     )
     for key, external in ((parent_key, parent_operation), (child_key, child_operation)):
-        if key not in inventory.OPERATIONS or inventory.external_name(key) != external:
+        if (
+            key not in (*inventory.OPERATIONS, *DOMAIN_AGENTS)
+            or inventory.external_name(key) != external
+        ):
             raise SpecError(f"unknown operation: {external}", "unknown_operation")
     if parent_key != child_key:
         try:
             parent_module = importlib.import_module(
-                f"{inventory.__name__}.{parent_key}"
+                f"{namespace(parent_key)}.{parent_key}"
             )
         except ImportError as error:
             raise SpecError(
@@ -329,7 +337,7 @@ def resolve_child_operation(parent_operation: str, child_operation: str):
                 "undeclared_operation",
             )
     try:
-        return importlib.import_module(f"{inventory.__name__}.{child_key}")
+        return importlib.import_module(f"{namespace(child_key)}.{child_key}")
     except ImportError as error:
         raise SpecError(
             f"unknown operation: {child_operation}", "unknown_operation"

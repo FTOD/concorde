@@ -4,7 +4,7 @@ These precise contracts belong to the [Harness Module](module.md): the boundary 
 request crosses, the typed values the host admits at that boundary and between stages, the result
 and error vocabulary, workspace binding and the admission Graph. [Preparing and coordinating
 work](host.md) explains their purpose; the [Operations Module](../operations/module.md) owns the
-catalog of Operations and the dispatch this admission hands each request to.
+compatibility capability catalog and dispatch. [Agents](../agents/module.md) owns role definitions.
 
 ## Terminology
 
@@ -330,7 +330,7 @@ context forms; package/schema alignment checks verify those identities.
 | `studio_run_failed`            | A Studio-driven operation run did not complete successfully.                                                                                                                                                                                          |
 | `studio_transport_failed`      | The Studio client could not reach or exchange messages with the Studio server.                                                                                                                                                                        |
 | `undeclared_operation`         | An operation tried to compose another operation that its own module does not declare in `USES`.                                                                                                                                                       |
-| `unknown_agent`                | The named worker has no matching `operations/<name>/` definition.                                                                                                                                                                                     |
+| `unknown_agent`                | The named worker has no matching `agents/<name>/` definition.                                                                                                                                                                                     |
 | `unknown_operation`            | The named operation is not registered, or a parent operation referenced an operation that does not exist.                                                                                                                                             |
 | `unknown_change`               | Delivery named a `change_id` with no registered live worktree or delivery receipt.                                                                                                                                                                    |
 | `unknown_target`               | The requested Spec target ID is not registered.                                                                                                                                                                                                       |

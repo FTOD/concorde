@@ -46,6 +46,13 @@
       "kind": "used module",
       "target_id": "module.issues",
       "meaning": "#entity.operations.issues"
+    },
+    {
+      "id": "entity.operations.agents",
+      "title": "Agents",
+      "kind": "used module",
+      "target_id": "module.agents",
+      "meaning": "#entity.operations.agents"
     }
   ],
   "dependencies": [
@@ -60,6 +67,10 @@
     {
       "target_id": "module.issues",
       "meaning": "#agreement.document.operations.module.3"
+    },
+    {
+      "target_id": "module.agents",
+      "meaning": "#entity.operations.agents"
     }
   ],
   "bindings": []

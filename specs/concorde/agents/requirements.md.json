@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "document": {
+    "id": "document.agents.requirements",
+    "owner": "module.agents",
+    "role": "implementation"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

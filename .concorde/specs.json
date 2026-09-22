@@ -219,6 +219,10 @@
         {
           "kind": "module",
           "id": "module.operations"
+        },
+        {
+          "kind": "module",
+          "id": "module.agents"
         }
       ],
       "title": "Concorde Framework",
@@ -314,16 +318,7 @@
         "specs/concorde/harness/execution-reference.md"
       ],
       "files": [
-        "operations/",
         "pi/",
-        "prompts/native/code-reviewer.md",
-        "prompts/native/context-assessor.md",
-        "prompts/native/issue-solver.md",
-        "prompts/native/planner.md",
-        "prompts/native/programmer.md",
-        "prompts/native/spec-reviewer.md",
-        "prompts/native/task-author.md",
-        "prompts/workers/common.md",
         "scripts/development/STUDIO.md",
         "scripts/development/analyze-timing.py",
         "scripts/development/check-graph-specs.py",
@@ -343,6 +338,7 @@
         "src/concorde/harness/studio.py",
         "src/concorde/harness/studio_client.py",
         "src/concorde/harness/worker_executor.py",
+        "src/concorde/harness/worker_profile.py",
         "src/concorde/harness/worker_sandbox.py",
         "src/concorde/harness/worktree.py",
         "src/concorde/harness/worktree_delivery.py",
@@ -354,8 +350,6 @@
         "src/concorde/spec/wire_shapes.py",
         "tests/concorde/distribution/test_install_output_handoff.py",
         "tests/concorde/distribution/test_outer_agents.py",
-        "tests/concorde/fixtures/build/golden/agents/",
-        "tests/concorde/fixtures/build/golden/native/",
         "tests/concorde/harness/",
         "tests/concorde/harness/native_observation.mjs",
         "tests/concorde/harness/test_boundaries.py",
@@ -484,13 +478,18 @@
         {
           "kind": "document",
           "id": "document.operations.execution-reference"
+        },
+        {
+          "kind": "module",
+          "id": "module.agents"
         }
       ],
       "title": "Harness",
       "uses": [
         "module.spec",
         "module.distribution",
-        "module.operations"
+        "module.operations",
+        "module.agents"
       ]
     },
     {
@@ -506,7 +505,6 @@
         "specs/concorde/issues/execution-reference.md"
       ],
       "files": [
-        "operations/issue_solver/",
         "operations/issues.py",
         "pi/workflows/issues.js",
         "scripts/issues.py",
@@ -575,6 +573,10 @@
         {
           "kind": "document",
           "id": "document.planning.assessment"
+        },
+        {
+          "kind": "module",
+          "id": "module.agents"
         }
       ],
       "title": "Issues",
@@ -582,7 +584,8 @@
         "module.harness",
         "module.spec",
         "module.review",
-        "module.validation"
+        "module.validation",
+        "module.agents"
       ]
     },
     {
@@ -614,8 +617,13 @@
         "pi/workflows/plan.js",
         "pi/workflows/review.js",
         "prompts/operation-guidance/",
-        "prompts/outer/",
-        "prompts/workflow-host/",
+        "prompts/workflow-host/candidate-worktree.md",
+        "prompts/workflow-host/gap-reporting.md",
+        "prompts/workflow-host/init-request-and-no-flags.md",
+        "prompts/workflow-host/invoke-operation-opener.md",
+        "prompts/workflow-host/lifecycle-no-cognition.md",
+        "prompts/workflow-host/target-identity-opener.md",
+        "prompts/workflow-host/task-request-fields.md",
         "pyproject.toml",
         "scripts/concorde.ps1",
         "scripts/concorde.py",
@@ -696,11 +704,16 @@
         {
           "kind": "document",
           "id": "document.issues.lifecycle"
+        },
+        {
+          "kind": "module",
+          "id": "module.agents"
         }
       ],
       "title": "Distribution",
       "uses": [
-        "module.spec"
+        "module.spec",
+        "module.agents"
       ]
     },
     {
@@ -750,6 +763,14 @@
         {
           "kind": "document",
           "id": "document.operations.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.agents.outer"
+        },
+        {
+          "kind": "document",
+          "id": "document.agents.scenarios"
         }
       ],
       "title": "Views",
@@ -852,12 +873,17 @@
         {
           "kind": "document",
           "id": "document.operations.module"
+        },
+        {
+          "kind": "module",
+          "id": "module.agents"
         }
       ],
       "title": "Planning",
       "uses": [
         "module.harness",
-        "module.spec"
+        "module.spec",
+        "module.agents"
       ]
     },
     {
@@ -956,12 +982,17 @@
         {
           "kind": "document",
           "id": "document.operations.module"
+        },
+        {
+          "kind": "module",
+          "id": "module.agents"
         }
       ],
       "title": "Implementation",
       "uses": [
         "module.harness",
-        "module.spec"
+        "module.spec",
+        "module.agents"
       ]
     },
     {
@@ -1054,12 +1085,17 @@
         {
           "kind": "document",
           "id": "document.operations.module"
+        },
+        {
+          "kind": "module",
+          "id": "module.agents"
         }
       ],
       "title": "Review",
       "uses": [
         "module.harness",
-        "module.spec"
+        "module.spec",
+        "module.agents"
       ]
     },
     {
@@ -1151,6 +1187,14 @@
         {
           "kind": "document",
           "id": "document.operations.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.agents.outer"
+        },
+        {
+          "kind": "document",
+          "id": "document.agents.scenarios"
         }
       ],
       "title": "Validation",
@@ -1244,6 +1288,14 @@
         {
           "kind": "document",
           "id": "document.operations.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.agents.outer"
+        },
+        {
+          "kind": "document",
+          "id": "document.agents.scenarios"
         }
       ],
       "title": "Delivery",
@@ -1261,7 +1313,8 @@
       "uses": [
         "module.harness",
         "module.spec",
-        "module.issues"
+        "module.issues",
+        "module.agents"
       ],
       "documents": [
         "specs/concorde/operations/module.md",
@@ -1350,8 +1403,86 @@
         {
           "kind": "document",
           "id": "document.distribution.installation"
+        },
+        {
+          "kind": "module",
+          "id": "module.agents"
         }
       ]
+    },
+    {
+      "id": "module.agents",
+      "kind": "module",
+      "title": "Agents",
+      "documents": [
+        "specs/concorde/agents/module.md",
+        "specs/concorde/agents/roles.md",
+        "specs/concorde/agents/outer.md",
+        "specs/concorde/agents/requirements.md",
+        "specs/concorde/agents/scenarios.md"
+      ],
+      "references": [
+        {
+          "kind": "module",
+          "id": "module.harness"
+        },
+        {
+          "kind": "module",
+          "id": "module.distribution"
+        },
+        {
+          "kind": "module",
+          "id": "module.planning"
+        },
+        {
+          "kind": "module",
+          "id": "module.implementation"
+        },
+        {
+          "kind": "module",
+          "id": "module.review"
+        },
+        {
+          "kind": "module",
+          "id": "module.issues"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.module"
+        }
+      ],
+      "parent": "module.concorde",
+      "uses": [
+        "module.harness",
+        "module.distribution",
+        "module.planning",
+        "module.implementation",
+        "module.review",
+        "module.issues"
+      ],
+      "files": [
+        "agents/",
+        "prompts/native/code-reviewer.md",
+        "prompts/native/context-assessor.md",
+        "prompts/native/issue-solver.md",
+        "prompts/native/planner.md",
+        "prompts/native/programmer.md",
+        "prompts/native/spec-reviewer.md",
+        "prompts/native/task-author.md",
+        "prompts/outer/",
+        "prompts/workers/common.md",
+        "prompts/workflow-host/review-scope-and-result.md",
+        "tests/concorde/agents/",
+        "tests/concorde/distribution/test_coordinator_status.py",
+        "tests/concorde/distribution/test_local_installation.py",
+        "tests/concorde/distribution/test_main_todos.py",
+        "tests/concorde/distribution/test_outer_agents.py",
+        "tests/concorde/distribution/test_pi_session.py",
+        "tests/concorde/distribution/test_role_isolation.py",
+        "tests/concorde/fixtures/build/golden/agents/",
+        "tests/concorde/fixtures/build/golden/native/"
+      ],
+      "checks": []
     }
   ]
 }

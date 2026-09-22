@@ -4,6 +4,7 @@ import importlib
 import json
 import unittest
 
+import agents
 import operations
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -42,14 +43,12 @@ class NativeContractReadingTests(unittest.TestCase):
         self.assertIn("canonical Agent definitions", text)
         self.assertIn("no `STATE`/`run`", text)
         metadata = json.loads(
-            (
-                REPOSITORY_ROOT / "specs/concorde/operations/composition.md.json"
-            ).read_text()
-        )["extensions"]["concorde.operations"]
-        roles = {x["id"].replace("-", "_") for x in metadata if x["kind"] == "agent"}
-        self.assertEqual(roles, set(operations.AGENTS))
+            (REPOSITORY_ROOT / "specs/concorde/agents/roles.md.json").read_text()
+        )["extensions"]["concorde.agents"]
+        roles = {x["id"].replace("-", "_") for x in metadata if x["family"] == "domain"}
+        self.assertEqual(roles, set(agents.DOMAIN_AGENTS))
         for role in roles:
-            module = importlib.import_module("operations." + role)
+            module = importlib.import_module("agents." + role)
             self.assertFalse(hasattr(module, "STATE"))
             self.assertFalse(hasattr(module, "run"))
 
@@ -118,7 +117,7 @@ class NativeContractReadingTests(unittest.TestCase):
 
         self.assertEqual(set(catalog()), {"terminal_agent_operation"})
         outputs = {o.path: o.content for o in build(REPOSITORY_ROOT).outputs}
-        roles = {r.replace("_", "-") for r in operations.AGENTS}
+        roles = {r.replace("_", "-") for r in agents.DOMAIN_AGENTS}
         self.assertEqual(len(roles), 7)
         self.assertEqual(
             {p for p in outputs if p.startswith("generated/native/")},

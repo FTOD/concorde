@@ -134,3 +134,12 @@ These companions are part of the same complete Module specification, not separat
 Native reviewer file scope is prompt-level policy, not OS confinement or proof of exclusive reads.
 Reviewers have read tools and, for code review, the fixed Host check service; no native shell/write/
 edit/delegation tools are supplied. Their conversation never inherits programmer reasoning.
+
+### Agents
+
+<a id="entity.review.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

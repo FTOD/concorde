@@ -61,8 +61,8 @@ Read [execution](execution.md) before relying on any of these distinct guarantee
 
 <a id="entity.harness.agent-model"></a><a id="entity.harness.agent-definitions"></a><a id="entity.harness.typed-values"></a>
 
-Canonical native Agent profiles define each role's task contract, intended effects, workspace, tools and
-timeout. The Model execution profiles service combines the authored role and Python profile into a reproducible
+Agents owns canonical native role definitions and their task contracts, intended effects, workspace,
+tools and timeout. Harness owns their execution and binding mechanisms. The Model execution profiles service combines the authored role and Python profile into a reproducible
 WorkerBinding, using fresh instructions supplied by [Distribution Module](../distribution/module.md). The Typed values layer validates the
 contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
 instruction identity separate from the project knowledge a worker may read.
@@ -192,7 +192,7 @@ acceptance cases belong to the Harness Module's [requirements](requirements.md) 
 Realized by `resolve_context` and its recheck; see
 [context](context.md).
 
-### Operation profile and Harness binding
+### Domain role profile and Harness binding
 
 Realized by `worker_profile` and `resolve_worker`; see [Agents and Harnesses](agents-and-harnesses.md)
 and [runtime values](runtime-values.md).
@@ -319,3 +319,12 @@ Referenced definitions remain read-only and do not enter local entity/file grant
 
 The Harness Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+### Agents
+
+<a id="entity.harness.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

@@ -62,12 +62,12 @@ grant, supplies their implementations. Existing host repair admission remains an
 
 This conceptual view shows the artifacts a caller obtains before implementation, not a single
 executable Graph spanning every box. Planning checks contract sufficiency before accepting a plan;
-task authoring is a separate Operation that consumes that current plan. This separation prevents
+task authoring is a separate native Agent capability that consumes that current plan. This separation prevents
 an attractive plan from disguising missing behavior or being mistaken for completed code.
 
 For native planning calls, finite Host steps, artifact handoffs and exact stop conditions, open the
 [full Native planning workflow Spec](execution-reference.md#plan-planning-graph-plan-graph).
-The [task-authoring explanation](tasks.md) covers the separate next Operation.
+The [task-authoring explanation](tasks.md) covers the separate next capability.
 
 ```mermaid
 flowchart LR
@@ -140,3 +140,12 @@ This collaboration applies when selecting planning inputs, checking local depend
 
 The Planning Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+### Agents
+
+<a id="entity.planning.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

@@ -144,6 +144,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
+        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
         shutil.copytree(
             REPOSITORY_ROOT / "src/concorde/spec",
@@ -259,6 +260,7 @@ class BuildFreshnessTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
+        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
         shutil.copytree(REPOSITORY_ROOT / "operations", self.root / "operations")
         shutil.copytree(
             REPOSITORY_ROOT / "src/concorde/spec",
@@ -291,8 +293,8 @@ class BuildFreshnessTests(unittest.TestCase):
     def test_role_and_python_contract_edits_both_invalidate_build(self):
         write_build(self.root)
         for relative in (
-            "operations/programmer/spec.md",
-            "operations/programmer/__init__.py",
+            "agents/programmer/spec.md",
+            "agents/programmer/__init__.py",
         ):
             path = self.root / relative
             before = path.read_text()
@@ -321,9 +323,9 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertTrue(prompt.body.strip())
         self.assertIsNotNone(prompt.binding)
         self.assertEqual(prompt.binding.agent, "planner")
-        self.assertEqual(prompt.binding.spec_path, "operations/planner/spec.md")
+        self.assertEqual(prompt.binding.spec_path, "agents/planner/spec.md")
 
-        edited = self.root / "operations/planner/spec.md"
+        edited = self.root / "agents/planner/spec.md"
         edited.write_text(
             edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8"
         )
@@ -459,7 +461,7 @@ class WireHelperBuildTests(unittest.TestCase):
     def test_wire_helper_change_invalidates_and_rebuilds_actual_schema_outputs(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
-            for directory in ("prompts", "protocol", "operations"):
+            for directory in ("agents", "prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(
                 REPOSITORY_ROOT / "src/concorde/spec",
@@ -573,6 +575,7 @@ class BuildErrorTests(unittest.TestCase):
             root = Path(temporary)
             shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts")
             shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol")
+            shutil.copytree(REPOSITORY_ROOT / "agents", root / "agents")
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
             main = root / "prompts/operation-guidance/concorde-context-solve.md"
             main.write_text(
@@ -585,7 +588,7 @@ class BuildErrorTests(unittest.TestCase):
     def test_broken_schema_helper_fails_the_build_with_build_error(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "operations"):
+            for directory in ("agents", "prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(
                 REPOSITORY_ROOT / "src/concorde/spec",
@@ -612,7 +615,7 @@ class BuildErrorTests(unittest.TestCase):
     ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "operations"):
+            for directory in ("agents", "prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(
                 REPOSITORY_ROOT / "src/concorde/spec",
@@ -647,7 +650,7 @@ class BuildErrorTests(unittest.TestCase):
     ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "operations"):
+            for directory in ("agents", "prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(
                 REPOSITORY_ROOT / "src/concorde/spec",

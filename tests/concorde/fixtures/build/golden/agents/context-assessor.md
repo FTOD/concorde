@@ -51,8 +51,8 @@ The input is one `concorde-agent-stage-context` for phase `context-solve`: the M
 `concorde-context-snapshot` with its `spec_resolution`, declared `implementation_entries` and
 `implementation_files`, the task and the phase. A re-assessment after a Spec repair arrives as a
 fresh worker with a fresh snapshot. The native public transport delivers that snapshot through
-`context.json` beside its admitted documents, with a Host-issued invocation identity; the legacy
-planning stage retains its typed context envelope. Neither delivery admits additional context.
+`context.json` beside its admitted documents, with a Host-issued invocation identity; the typed stage
+envelope retains its compatibility identity. Neither delivery admits additional context.
 
 ## Expected results
 

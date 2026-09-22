@@ -51,6 +51,13 @@
       "title": "Review result",
       "kind": "record",
       "meaning": "#entity.review.result"
+    },
+    {
+      "id": "entity.review.agents",
+      "title": "Agents",
+      "kind": "used module",
+      "target_id": "module.agents",
+      "meaning": "#entity.review.agents"
     }
   ],
   "dependencies": [
@@ -61,6 +68,10 @@
     {
       "target_id": "module.spec",
       "meaning": "#agreement.document.review.module.3"
+    },
+    {
+      "target_id": "module.agents",
+      "meaning": "#entity.review.agents"
     }
   ],
   "bindings": []

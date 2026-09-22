@@ -60,8 +60,13 @@
       "kind": "authored instructions",
       "files": [
         "prompts/operation-guidance/",
-        "prompts/workflow-host/",
-        "prompts/outer/"
+        "prompts/workflow-host/candidate-worktree.md",
+        "prompts/workflow-host/gap-reporting.md",
+        "prompts/workflow-host/init-request-and-no-flags.md",
+        "prompts/workflow-host/invoke-operation-opener.md",
+        "prompts/workflow-host/lifecycle-no-cognition.md",
+        "prompts/workflow-host/target-identity-opener.md",
+        "prompts/workflow-host/task-request-fields.md"
       ],
       "meaning": "#entity.distribution.skill-sources"
     },
@@ -185,12 +190,23 @@
       "title": "Developer agent session",
       "kind": "external actor",
       "meaning": "#entity.distribution.developer-session"
+    },
+    {
+      "id": "entity.distribution.agents",
+      "title": "Agents",
+      "kind": "used module",
+      "target_id": "module.agents",
+      "meaning": "#entity.distribution.agents"
     }
   ],
   "dependencies": [
     {
       "target_id": "module.spec",
       "meaning": "#agreement.document.distribution.module.1"
+    },
+    {
+      "target_id": "module.agents",
+      "meaning": "#entity.distribution.agents"
     }
   ],
   "bindings": []

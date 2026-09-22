@@ -2,14 +2,14 @@
 
 ## Purpose
 
-Operations provides Concorde's executable behavior, from planning and implementing a selected task to reviewing, checking and delivering a verified candidate. It keeps the typed inventory of capabilities and Agents, decides which of them developers may invoke directly, and routes each admitted request to the provider that owns it. Its children own their individual behavioral promises; this Module owns the catalog, the exposure rules and the dispatch that connect a request to them.
+Operations owns explicitly selected LangGraph StateGraph composition and its typed boundaries. It also maintains the compatibility public capability adapters and dispatch that connect existing request names to their business providers. These adapters are not a second semantic Operation identity: native Agent calls, native Workflows and finite Host services keep their actual execution kinds. Agents owns callable role definitions; the provider children retain their individual business promises.
 
 ## Terminology
 
 | Term                                       | Meaning / definition                                                                                |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Public operation                           | An operation developers may invoke directly through the Pi session tool or the public launcher.     |
-| Internal operation                         | An operation available only to declared composing operations, rather than a direct developer entry. |
+| Public operation                           | Compatibility term for a public capability entry, not a claim of StateGraph execution.     |
+| Internal operation                         | Compatibility term for a non-public admitted composition entry; it does not define an Agent role. |
 | [Operation](../module.md#terminology)      | Defined in Concorde Framework.                                                                      |
 | [Module](../module.md#terminology)         | Defined in Concorde Framework.                                                                      |
 | [Graph](../module.md#terminology)          | Defined in Concorde Framework.                                                                      |
@@ -21,7 +21,7 @@ Operations provides Concorde's executable behavior, from planning and implementi
 ## Usage
 
 The outer agent reads and selects complete Module context, answers questions and edits Specs,
-paired metadata and registry directly under its task authority. It chooses which retained Operation
+paired metadata and registry directly under its task authority. It chooses which retained capability
 to call and in what order. Concorde does not route the user's task, author Specs or run an end-to-end
 development workflow.
 
@@ -38,7 +38,7 @@ code grant still apply; the choice to invoke Operations manually does not bypass
 
 ## Design
 
-Operations keeps one inventory of complete executable capabilities. Its five provider children own
+Operations keeps the public compatibility-adapter inventory, separate from Agents-owned role definitions. Its five provider children own
 Planning, Implementation, Review, Validation and Delivery. Module ownership and Operation USES are
 independent of explicit context references. The outer agent owns task sequencing; there is no
 replacement universal coordinator.
@@ -136,3 +136,12 @@ The [Issues Module](../issues/module.md) owns Issue management and solving, whos
 This collaboration applies when an admitted `concorde-issues` request reaches dispatch.
 
 - [Native Issue lifecycle](../issues/execution-reference.md#lifecycle-issue-graph-issue-graph); prepare the selected Issue workflow and admit its typed response without moving domain decisions into dispatch.
+
+### Agents
+
+<a id="entity.operations.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

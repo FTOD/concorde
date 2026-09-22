@@ -39,7 +39,8 @@ workspace. The host checks declared composition as well as each invocation's act
 Some operations make no model calls; others do, directly or through composition. This distinction
 helps explain execution, but does not imply that filesystem or external effects are pure or repeatable.
 The exact inventory, State channels, adapters and compatibility rules are in Implementation Specs;
-the associated metadata remains the single machine-checked typed executable inventory.
+the associated metadata checks the compatibility adapter inventory; [Agents](../agents/roles.md)
+owns the separate role inventory.
 
 ## Precise specifications
 

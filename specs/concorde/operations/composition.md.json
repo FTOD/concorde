@@ -27,27 +27,6 @@
         "profile": null
       },
       {
-        "id": "code-reviewer",
-        "kind": "agent",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "public_name": null,
-        "uses": [],
-        "state": null,
-        "profile": {
-          "workspace": "project",
-          "tools": [
-            "bash",
-            "find",
-            "grep",
-            "ls",
-            "read",
-            "run_checks"
-          ]
-        }
-      },
-      {
         "id": "configure",
         "kind": "host",
         "public": true,
@@ -60,25 +39,6 @@
           "output": null
         },
         "profile": null
-      },
-      {
-        "id": "context-assessor",
-        "kind": "agent",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "public_name": null,
-        "uses": [],
-        "state": null,
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
-        }
       },
       {
         "id": "context-solve",
@@ -141,25 +101,6 @@
         "profile": null
       },
       {
-        "id": "issue-solver",
-        "kind": "agent",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "public_name": null,
-        "uses": [],
-        "state": null,
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
-        }
-      },
-      {
         "id": "issues",
         "kind": "workflow",
         "public": true,
@@ -196,48 +137,6 @@
         "profile": null
       },
       {
-        "id": "planner",
-        "kind": "agent",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "public_name": null,
-        "uses": [],
-        "state": null,
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
-        }
-      },
-      {
-        "id": "programmer",
-        "kind": "agent",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "public_name": null,
-        "uses": [],
-        "state": null,
-        "profile": {
-          "workspace": "project",
-          "tools": [
-            "bash",
-            "edit",
-            "find",
-            "grep",
-            "ls",
-            "read",
-            "run_checks",
-            "write"
-          ]
-        }
-      },
-      {
         "id": "spec-review",
         "kind": "workflow",
         "public": true,
@@ -252,44 +151,6 @@
           "output": null
         },
         "profile": null
-      },
-      {
-        "id": "spec-reviewer",
-        "kind": "agent",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "public_name": null,
-        "uses": [],
-        "state": null,
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
-        }
-      },
-      {
-        "id": "task-author",
-        "kind": "agent",
-        "public": false,
-        "context_selection": "bound",
-        "deterministic": false,
-        "public_name": null,
-        "uses": [],
-        "state": null,
-        "profile": {
-          "workspace": "capsule",
-          "tools": [
-            "find",
-            "grep",
-            "ls",
-            "read"
-          ]
-        }
       },
       {
         "id": "tasks",

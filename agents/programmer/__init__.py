@@ -7,7 +7,7 @@ from .. import external_name
 
 PROFILE = WorkerProfile(
     name="programmer",
-    spec="operations/programmer/spec.md",
+    spec="agents/programmer/spec.md",
     workspace="project",
     contract=Contract(
         phase="implementation",

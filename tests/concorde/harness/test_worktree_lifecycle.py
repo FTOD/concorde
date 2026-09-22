@@ -1525,6 +1525,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(fixture_report.status, "success")
         for directory in (
             "prompts",
+            "agents",
             "operations",
             "protocol",
             "scripts",

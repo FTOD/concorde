@@ -247,14 +247,15 @@ English labels, accTitle and accDescr, a nonempty subset of local entity titles 
 Explain its scope; inventory coverage is not a readability requirement or proof of completeness.
 Files are bound in entity metadata, using owned package directory prefixes and exact shared files;
 the registry listing remains their exact union. Project-owned metadata extensions
-`concorde.operations` records the single checked inventory, including State contracts, USES and
-optional model execution profiles; its
+`concorde.operations` records the checked compatibility capability-adapter inventory, including
+State contracts and USES; `concorde.agents` separately records the Agents-owned nine-role inventory,
+including family, distribution scope, registration and canonical instruction source. Their
 behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
 
 Every Operation is explained in the Specs of the Module that owns its behavior: that Module's
 reading says what the Operation is for, when to use it, what it takes and returns and when it
-stops, and whether it runs as one node (deterministic code or one model-backed worker) or as a
-Graph. Every executable Graph has one Graph Spec in its owning Module's implementation-role
+stops, and its actual StateGraph composition. Public compatibility capability adapters do not
+become Operations merely because their wire names contain operation. Every executable Graph has one Graph Spec in its owning Module's implementation-role
 documents, not its explanation-first topics. Module-role reading explains the conceptual sequence
 and its reasons, with clearly labeled conceptual diagrams when useful, and links to this exact
 Graph Spec. The Graph Spec is written with LangGraph's concepts as three parts in order, each

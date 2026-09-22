@@ -52,15 +52,15 @@ class PromptResolverRuleTests(unittest.TestCase):
         )
         _write(
             self.root,
-            "operations/example/spec.md",
+            "agents/example/spec.md",
             '# Example\n@prompts/middle.md NAME="Ada Lovelace"\nDone.\n',
         )
-        result = resolve_model_instructions(self.root, "operations/example/spec.md")
+        result = resolve_model_instructions(self.root, "agents/example/spec.md")
         self.assertEqual(
             "# Example\nHello Ada Lovelace: check carefully.\nDone.\n", result.body
         )
         self.assertEqual(
-            ("operations/example/spec.md", "prompts/leaf.md", "prompts/middle.md"),
+            ("agents/example/spec.md", "prompts/leaf.md", "prompts/middle.md"),
             result.sources,
         )
 
@@ -94,7 +94,7 @@ class PromptResolverRuleTests(unittest.TestCase):
                     )
                     body = "@prompts/leaf.md\n" if nested else directive + "\n"
                     _write(self.root, "prompts/root.md", _prompt("worker", body))
-                    _write(self.root, "operations/example/spec.md", body)
+                    _write(self.root, "agents/example/spec.md", body)
                     _write(
                         self.root,
                         "prompts/operation-guidance/example.md",
@@ -103,7 +103,7 @@ class PromptResolverRuleTests(unittest.TestCase):
                     )
                     for resolver, path in (
                         (resolve_role_prompt, "prompts/root.md"),
-                        (resolve_model_instructions, "operations/example/spec.md"),
+                        (resolve_model_instructions, "agents/example/spec.md"),
                         (
                             resolve_operation_guidance,
                             "prompts/operation-guidance/example.md",
@@ -175,9 +175,9 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     @verifies("scenario.distribution.prompt-references")
     def test_worker_spec_cannot_include_outside_prompts(self):
-        _write(self.root, "operations/example/spec.md", "@other/leaf.md\n")
+        _write(self.root, "agents/example/spec.md", "@other/leaf.md\n")
         with self.assertRaises(PromptResolverError) as failure:
-            resolve_model_instructions(self.root, "operations/example/spec.md")
+            resolve_model_instructions(self.root, "agents/example/spec.md")
         self.assertEqual("CONCORDE-PROMPT-SCOPE-001", failure.exception.rule_id)
 
     @verifies("scenario.distribution.prompt-references")

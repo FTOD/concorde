@@ -1,0 +1,113 @@
+{
+  "schema_version": 2,
+  "document": {
+    "id": "document.agents.module",
+    "owner": "module.agents",
+    "role": "module"
+  },
+  "entities": [
+    {
+      "id": "entity.agents.definitions",
+      "title": "Role definitions",
+      "kind": "program",
+      "meaning": "#entity.agents.definitions",
+      "files": [
+        "agents/",
+        "prompts/outer/",
+        "prompts/native/code-reviewer.md",
+        "prompts/native/context-assessor.md",
+        "prompts/native/issue-solver.md",
+        "prompts/native/planner.md",
+        "prompts/native/programmer.md",
+        "prompts/native/spec-reviewer.md",
+        "prompts/native/task-author.md",
+        "prompts/workers/common.md",
+        "tests/concorde/fixtures/build/golden/agents/",
+        "tests/concorde/fixtures/build/golden/native/",
+        "tests/concorde/agents/",
+        "tests/concorde/distribution/test_outer_agents.py",
+        "tests/concorde/distribution/test_coordinator_status.py",
+        "tests/concorde/distribution/test_main_todos.py",
+        "tests/concorde/distribution/test_role_isolation.py",
+        "tests/concorde/distribution/test_local_installation.py",
+        "tests/concorde/distribution/test_pi_session.py",
+        "prompts/workflow-host/review-scope-and-result.md"
+      ]
+    },
+    {
+      "id": "entity.agents.coordinator",
+      "title": "External main session",
+      "kind": "external actor",
+      "meaning": "#entity.agents.coordinator"
+    },
+    {
+      "id": "entity.agents.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.agents.harness"
+    },
+    {
+      "id": "entity.agents.distribution",
+      "title": "Distribution",
+      "kind": "used module",
+      "target_id": "module.distribution",
+      "meaning": "#entity.agents.distribution"
+    },
+    {
+      "id": "entity.agents.planning",
+      "title": "Planning",
+      "kind": "used module",
+      "target_id": "module.planning",
+      "meaning": "#entity.agents.planning"
+    },
+    {
+      "id": "entity.agents.implementation",
+      "title": "Implementation",
+      "kind": "used module",
+      "target_id": "module.implementation",
+      "meaning": "#entity.agents.implementation"
+    },
+    {
+      "id": "entity.agents.review",
+      "title": "Review",
+      "kind": "used module",
+      "target_id": "module.review",
+      "meaning": "#entity.agents.review"
+    },
+    {
+      "id": "entity.agents.issues",
+      "title": "Issues",
+      "kind": "used module",
+      "target_id": "module.issues",
+      "meaning": "#entity.agents.issues"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.harness",
+      "meaning": "#entity.agents.harness"
+    },
+    {
+      "target_id": "module.distribution",
+      "meaning": "#entity.agents.distribution"
+    },
+    {
+      "target_id": "module.planning",
+      "meaning": "#entity.agents.planning"
+    },
+    {
+      "target_id": "module.implementation",
+      "meaning": "#entity.agents.implementation"
+    },
+    {
+      "target_id": "module.review",
+      "meaning": "#entity.agents.review"
+    },
+    {
+      "target_id": "module.issues",
+      "meaning": "#entity.agents.issues"
+    }
+  ],
+  "bindings": []
+}

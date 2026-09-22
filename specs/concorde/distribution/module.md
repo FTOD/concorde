@@ -61,7 +61,7 @@ schemas remain useful through its `concorde` tool, not as standalone Skills. The
 worker context or an execution grant. [Build realization](build.md#design) explains source
 accounting and freshness checks. Installation owns consumer deployment separately.
 Templates travel with their owners: the Protocol holds the canonical Module and Scenario starters,
-while the planner and task-author Operation packages hold their plan and task starters. There is
+while the planner and task-author Agent packages hold their plan and task starters. There is
 no separate root template product or forwarding copy; this layout changes no worker context or
 runtime injection. See the [template ownership scenario](scenarios.md#scenario.distribution.template-ownership).
 
@@ -118,13 +118,10 @@ describe-policy preview with `use_proposal`.
 
 <a id="entity.distribution.developer-session"></a>
 
-The Developer agent session coordinates from its initial worktree. Source maintenance and tests
-use sibling project-discovered maintenance-worker and tester roles in the assigned candidate with
-inherited catalogs disabled. The author continues within a coherent unfinished stage; completed stages with changed goals/context
-may use a fresh author after durable handoff and exact ownership transfer. Main owns high-level
-decomposition, authorized profile/tool/workflow repairs and combination gates; it selects none,
-targeted or full independent testing and a fresh tester when needed. Checked role projections and
-passive observation are separate from private Operation catalogs; see [outer roles](build.md#outer-task-roles-and-observation).
+The Developer agent session is external main, not another registered role. [Agents](../agents/module.md)
+owns source-maintenance/tester behavior and continuation. Distribution supplies checked project
+role projections and passive observation separately from private capability catalogs; see
+[registration](build.md#outer-task-roles-and-observation).
 The source writer builds with that candidate's own code; primary never renders candidate outputs.
 For consumer Operations, host-created candidate relays keep the requesting session stationary;
 simple authorized consumer work may also stay directly in primary.
@@ -245,3 +242,12 @@ it is not another authored Agent registry. The supported native package is selec
 Pi process, separately from the candidate Python/runtime selection. Source-private testing may select
 a disposable data root while retaining exact candidate code and entry provenance; a sibling source
 worktree is never a permitted redirection. No global Pi setting is changed by this mechanism.
+
+### Agents
+
+<a id="entity.distribution.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

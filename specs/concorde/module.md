@@ -21,10 +21,10 @@ Concorde helps developers agree on what software should do, execute changes with
 | Snapshot             | A record of exactly which inputs a task received, so later changes can be detected.                                                                                                                                                 |
 | Evidence             | A recorded check or review result tied to the inputs it examined, not a permanent guarantee about future revisions.                                                                                                                 |
 | State                | The declared data channels an Operation accepts and updates when invoked as a graph node. State carries task information and results, never execution authority.                                                                    |
-| Operation            | A graph-bound executable entity: a complete callable with an input State, output State updates, effects, use conditions and execution policy. It can run as a LangGraph node using deterministic code, a model or a compiled graph. |
+| Operation            | An explicitly selected LangGraph StateGraph flow or wrapper with typed State, effects, use conditions and trusted execution policy. |
 | Skill                | Retired standalone client instructions, retained here only as migration terminology; no Concorde Skill product or client projection is supported.                                                                                   |
 | Pi integration       | The exact Pi extension entry and embedded public Operation catalog, bound to the Framework implementation and launcher that supplied them.                                                                                          |
-| Agent                | A callable native Pi role. The context-assessor is a terminal read-only role whose proposal needs independent Host acceptance.                                                                                                      |
+| Agent                | A specifically defined callable native Pi role; Agents owns the domain and outer-task role definitions.                                                                                                      |
 | Workflow             | An authored native pi-subagents composition ordering real Agent calls and finite granted Host steps; public planning uses this boundary.                                                                                            |
 | Worker               | One fresh bounded Agent execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                      |
 | Task subagent        | A fresh one-layer delegate of the user-facing main session, owning one complete task in one fixed worktree without further task delegation.                                                                                         |
@@ -55,12 +55,12 @@ a fresh sibling tester receives only explicit candidate-built Pi entry/catalog a
 provenance plus its bounded observation/check assets. These are outer project-discovered task roles,
 not LangGraph node identities. Tester cannot repair its governing artifacts; self-tests are not
 independent. Source-only coordination/maintenance prompts are not consumer assets; the generic tester
-is distributed to every full local worktree. See [role distribution and validation policy](distribution/build.md#outer-task-roles-and-observation).
+is distributed to every full local worktree. See [role contracts and continuation policy](agents/module.md).
 Ordinary Git integration needs explicit authorization and does not require Concorde delivery.
 
 The calling agent reads and selects the relevant complete Specs directly, answers questions, and
 edits reading, paired metadata and registry within its task authority. It chooses retained public
-Operations and their order; there is no automatic discovery, Spec author or development orchestrator.
+capabilities and their order; there is no automatic discovery, Spec author or development orchestrator.
 Each Module-bound entry requires an explicit target and optional local scenario focus.
 
 For example, adding retries may first require the developer to clarify which failures may be retried
@@ -73,7 +73,7 @@ separately authorized.
 
 ### Developer entry points
 
-| Intent                      | Operation and completion                                                                                                                                             |
+| Intent                      | Capability and completion                                                                                                                                             |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Assess a selected contract  | `concorde-context-solve` reports task-specific sufficiency or attributed blockers.                                                                                   |
 | Plan a change               | `concorde-plan` assesses the explicit target and records a current plan.                                                                                             |
@@ -99,10 +99,9 @@ direct native task-author. Implement and public reviews now use native roles/wor
 selected execution boundary, not mirrors of these capabilities. Each Operation declares input State, output
 State updates, effects, use conditions and execution policy. It can be called as a LangGraph node
 without its caller reconstructing context selection, permissions, model execution or result checks.
-Its implementation may be deterministic code, model execution or a compiled graph; composition
-produces another Operation. Planning, for example, first assesses the selected Spec and then writes
-a plan when sufficient. This local composition does not choose the caller's next Operation or
-automatically author contracts or develop child Modules.
+Its nodes may use deterministic code or admitted model calls. Planning, by contrast, first assesses
+the selected Spec and then writes a plan through a native workflow, not an Operation. Neither
+composition chooses the caller's next capability, automatically authors contracts or develops child Modules.
 
 Completeness does not eliminate trusted infrastructure. The common Host and Harness apply an
 Operation's declared permission ceiling to the actual task and narrow the effective grant.
@@ -124,8 +123,9 @@ Three relationships stay independent:
 - **Context references** select knowledge supplied to a task. They neither compose Operations nor
   grant execution permission or transfer ownership.
 
-The Framework has six direct responsibility owners. [Operations](operations/module.md) keeps the
-typed inventory of capabilities and Agents, dispatches each admitted request to its provider and groups five
+The Framework has seven direct responsibility owners. [Agents](agents/module.md) defines all nine
+callable roles. [Operations](operations/module.md) owns explicit StateGraph composition and the
+compatibility capability dispatch boundary, and groups five
 provider Modules: Planning, Implementation, Review, Validation and Delivery.
 [Harness](harness/module.md) admits every request at one boundary and provides bounded model
 execution; [Spec](spec/module.md) resolves identities and complete contexts.
@@ -150,12 +150,14 @@ context references stay independent as described in Design.
 flowchart TB
     accTitle: Operations and shared execution services
     accDescr: Harness admits every request and hands it to Operations, which dispatches it to the behavior provider that owns it. Operations bounds model execution through Harness and selects contracts through Spec. Distribution, Issues and Views support distinct Agent, Workflow, Operation and Host-service execution kinds without changing Module ownership.
+    agents["Agents"]
     operations["Operations"]
     harness["Harness"]
     spec["Spec"]
     distribution["Distribution"]
     issues["Issues"]
     views["Views"]
+    agents -->|supplies canonical role definitions to| harness
     harness -->|admits requests and hands them to| operations
     operations -->|bounds model execution through| harness
     operations -->|selects contracts through| spec

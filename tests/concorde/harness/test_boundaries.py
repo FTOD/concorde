@@ -224,6 +224,7 @@ class BoundaryTests(unittest.TestCase):
 
         package = self.root / "package"
         shutil.copytree(PACKAGE / "prompts", package / "prompts")
+        shutil.copytree(PACKAGE / "agents", package / "agents")
         shutil.copytree(PACKAGE / "operations", package / "operations")
         shutil.copytree(PACKAGE / "protocol", package / "protocol")
         write_build(package)

@@ -137,15 +137,26 @@ REVIEW_STAGES = {
 
 
 def operation_modules() -> dict:
-    """Load the operation declarations; schemas and WorkerProfile definitions have no registry dependency."""
+    """Compatibility wire lookup combines adapters and canonical domain roles, not ownership."""
     import importlib
 
     inventory = load_operation_inventory()
+    import agents
+
+    assert not set(inventory.OPERATIONS).intersection(agents.DOMAIN_AGENTS), (
+        "capability and Agent identities must be disjoint"
+    )
     return {
-        inventory.external_name(name): importlib.import_module(
-            f"{inventory.__name__}.{name}"
-        )
-        for name in inventory.OPERATIONS
+        **{
+            inventory.external_name(name): importlib.import_module(
+                f"{inventory.__name__}.{name}"
+            )
+            for name in inventory.OPERATIONS
+        },
+        **{
+            agents.external_name(name): importlib.import_module(f"agents.{name}")
+            for name in agents.DOMAIN_AGENTS
+        },
     }
 
 
@@ -159,9 +170,6 @@ DETERMINISTIC_OPERATIONS = frozenset(
     name for name in OPERATION_NAMES if _MODULES[name].DETERMINISTIC
 )
 COMPOSITE_OPERATIONS = tuple(name for name in OPERATION_NAMES if _MODULES[name].USES)
-assert len(OPERATION_NAMES) == len(load_operation_inventory().OPERATIONS), (
-    "operation identities must be unique"
-)
 MODEL_OPERATIONS = tuple(
     name for name in OPERATION_NAMES if _MODULES[name].PROFILE is not None
 )

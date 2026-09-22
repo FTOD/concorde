@@ -169,3 +169,12 @@ If concurrent edits prevent restoration, the host reports the conflict rather th
 
 The Issues Module owns the exact obligations and interface details in [requirements](requirements.md).
 These companions are part of the same complete Module specification, not separate topic owners.
+
+### Agents
+
+<a id="entity.issues.agents"></a>
+
+[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
+those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
+role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+acceptance and execution mechanisms remain with their existing owners.

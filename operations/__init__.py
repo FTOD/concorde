@@ -6,6 +6,7 @@ deterministic services. LangGraph Operations are separately and explicitly selec
 
 from __future__ import annotations
 
+# Compatibility adapter inventory, NOT a catalog of StateGraph Operations.
 OPERATIONS = (
     "issues",
     "init",
@@ -18,13 +19,6 @@ OPERATIONS = (
     "plan",
     "tasks",
     "implement",
-    "spec_reviewer",
-    "context_assessor",
-    "planner",
-    "task_author",
-    "programmer",
-    "code_reviewer",
-    "issue_solver",
 )
 
 
@@ -32,16 +26,7 @@ def external_name(module_name: str) -> str:
     return "concorde-" + module_name.replace("_", "-")
 
 
-AGENTS = (
-    "spec_reviewer",
-    "context_assessor",
-    "planner",
-    "task_author",
-    "programmer",
-    "code_reviewer",
-    "issue_solver",
-)
-CAPABILITIES = tuple(name for name in OPERATIONS if name not in AGENTS)
+CAPABILITIES = OPERATIONS
 WORKFLOWS = ("plan", "spec_review", "code_review", "issues")
 HOST_TOOLS = ("init", "configure", "validate", "deliver")
 STATE_OPERATIONS = ("terminal_agent_operation",)

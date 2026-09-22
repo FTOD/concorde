@@ -1,7 +1,7 @@
 """One package validator over prompts, operation modules, contracts, build outputs and Spec alignment.
 
-Validates the single ``operations/`` inventory, its model profiles, public Operation guidance and their
-registered Spec declarations. Every finding carries a stable ``CONCORDE-…`` rule id.
+Validates compatibility adapters in ``operations/``, canonical roles in ``agents/``, public
+guidance and their separately owned registered Spec declarations. Every finding carries a stable ``CONCORDE-…`` rule id.
 """
 
 from __future__ import annotations
@@ -66,15 +66,9 @@ def _prompt_roots(root: Path) -> tuple[str, ...]:
         build.outer_agents.prompt_roots(root)
         + tuple(build.OPERATION_GUIDANCE.values())
         + tuple(build.MODEL_ROOTS.values())
+        + tuple(f"prompts/native/{name}.md" for name in build.MODEL_ROOTS)
         + (
             build.WORKER_RULES,
-            "prompts/native/context-assessor.md",
-            "prompts/native/planner.md",
-            "prompts/native/task-author.md",
-            "prompts/native/programmer.md",
-            "prompts/native/spec-reviewer.md",
-            "prompts/native/code-reviewer.md",
-            "prompts/native/issue-solver.md",
             "prompts/protocol/principles.md",
         )
         + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS)
@@ -87,7 +81,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
         try:
             if relative.startswith(GUIDANCE_ROOT):
                 resolve_operation_guidance(root, relative)
-            elif relative.startswith("operations/"):
+            elif relative.startswith("agents/"):
                 resolve_model_instructions(root, relative)
             else:
                 resolve_role_prompt(root, relative)
@@ -135,10 +129,10 @@ def _validate_prompts(root: Path) -> list[Finding]:
     sources.extend(
         sorted(
             path.relative_to(root).as_posix()
-            for path in (root / "operations").rglob("spec.md")
+            for path in (root / "agents").rglob("spec.md")
             if path.is_file() and not path.is_symlink()
         )
-        if (root / "operations").is_dir()
+        if (root / "agents").is_dir()
         else []
     )
     for relative in sources:
@@ -162,7 +156,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
     return findings
 
 
-def _load_operations_package(root: Path):
+def _load_operations_package(root: Path, directory: str = "operations"):
     """Load ``<root>/operations/__init__.py`` under a fresh private module name.
 
     Root-parametrized, unlike ``contracts.load_operation_inventory()`` (which always
@@ -175,12 +169,12 @@ def _load_operations_package(root: Path):
     import uuid
     from importlib.util import module_from_spec, spec_from_file_location
 
-    init_path = root / "operations" / "__init__.py"
+    init_path = root / directory / "__init__.py"
     if init_path.is_symlink() or not init_path.is_file():
         return None
     module_name = f"_concorde_package_validation_inventory_{uuid.uuid4().hex}"
     spec = spec_from_file_location(
-        module_name, init_path, submodule_search_locations=[str(root / "operations")]
+        module_name, init_path, submodule_search_locations=[str(root / directory)]
     )
     if spec is None or spec.loader is None:
         return None
@@ -204,6 +198,15 @@ def _operation_modules(
             modules[name] = importlib.import_module(f"{inventory.__name__}.{name}")
         except Exception:  # noqa: BLE001 - reported as a finding, not a crash
             modules[name] = None
+    agents_inventory = _load_operations_package(root, "agents")
+    if agents_inventory is not None:
+        for name in agents_inventory.DOMAIN_AGENTS:
+            try:
+                modules[name] = importlib.import_module(
+                    f"{agents_inventory.__name__}.{name}"
+                )
+            except Exception:
+                modules[name] = None
     return inventory, modules
 
 
@@ -246,7 +249,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
             )
         ]
 
-    declared = set(inventory.OPERATIONS)
+    declared = set(modules)
     actual = {
         path.stem
         for path in (root / "operations").glob("*.py")
@@ -255,7 +258,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
     actual.update(
         path.parent.name for path in (root / "operations").glob("*/__init__.py")
     )
-    if len(inventory.OPERATIONS) != len(declared):
+    if len(inventory.OPERATIONS) != len(set(inventory.OPERATIONS)):
         findings.append(
             _finding(
                 "CONCORDE-OPERATION-INVENTORY-001",
@@ -264,7 +267,7 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
                 "Declare each operation exactly once.",
             )
         )
-    if declared != actual:
+    if set(inventory.OPERATIONS) != actual:
         findings.append(
             _finding(
                 "CONCORDE-OPERATION-INVENTORY-001",
@@ -547,7 +550,7 @@ def _validate_agent_profile(
             )
         )
 
-    if (root / "operations" / agent.name / "children").exists():
+    if (root / "agents" / agent.name / "children").exists():
         findings.append(
             _finding(
                 "CONCORDE-AGENT-PROFILE-001",
@@ -573,6 +576,16 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
             )
         ]
     findings: list[Finding] = []
+    roles = _load_operations_package(root, "agents")
+    if roles is not None and len(roles.DOMAIN_AGENTS) != len(set(roles.DOMAIN_AGENTS)):
+        findings.append(
+            _finding(
+                "CONCORDE-OPERATION-INVENTORY-001",
+                "agents/__init__.py",
+                "Duplicate Agent identity.",
+                "Declare each role once.",
+            )
+        )
     for name, module in modules.items():
         if module is None:
             findings.append(
@@ -587,8 +600,8 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
         agent = getattr(module, "PROFILE", None)
         if agent is None:
             continue
-        source = f"operations/{name}/__init__.py"
-        spec_source = f"operations/{name}/spec.md"
+        source = f"agents/{name}/__init__.py"
+        spec_source = f"agents/{name}/spec.md"
         if not isinstance(agent, WorkerProfile) or agent.name != name:
             findings.append(
                 _finding(
@@ -599,14 +612,14 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
                 )
             )
             continue
-        expected_spec = f"operations/{name}/spec.md"
+        expected_spec = f"agents/{name}/spec.md"
         if agent.spec != expected_spec:
             findings.append(
                 _finding(
                     "CONCORDE-AGENT-SPEC-001",
                     source,
                     f"agent {name!r} declares spec {agent.spec!r}, expected {expected_spec!r}.",
-                    "Point WorkerProfile.spec at operations/<name>/spec.md.",
+                    "Point WorkerProfile.spec at agents/<name>/spec.md.",
                 )
             )
         else:
@@ -617,7 +630,7 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
                         "CONCORDE-AGENT-SPEC-001",
                         spec_source,
                         f"agent {name!r} spec is missing: {expected_spec}.",
-                        "Author operations/<name>/spec.md.",
+                        "Author agents/<name>/spec.md.",
                     )
                 )
             else:
@@ -823,7 +836,11 @@ def _operation_code_inventory(root: Path) -> dict | None:
         return None
     result = {}
     for name, module in modules.items():
-        if module is None or not hasattr(module, "PUBLIC"):
+        if (
+            module is None
+            or getattr(module, "KIND", None) == "agent"
+            or not hasattr(module, "PUBLIC")
+        ):
             continue
         profile = getattr(module, "PROFILE", None)
         state = getattr(module, "STATE", None)
@@ -954,6 +971,100 @@ def _validate_spec_operations_block(
                 )
             )
     return findings
+
+
+def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[Finding]:
+    """Agents-owned metadata is checked against the actual role authority, not adapters."""
+    rule = "CONCORDE-SPEC-AGENTS-001"
+    inventory = _load_operations_package(root, "agents")
+    matches = _metadata_inventories(root, documents, "concorde.agents")
+    if inventory is None or len(matches) != 1:
+        return [
+            _finding(
+                rule,
+                "agents/__init__.py",
+                "Exactly one Agents inventory and paired metadata declaration are required.",
+                "Restore canonical Agents registration.",
+            )
+        ]
+    expected = []
+    for name in inventory.DOMAIN_AGENTS:
+        try:
+            module = importlib.import_module(f"{inventory.__name__}.{name}")
+            profile = module.PROFILE
+            validate_worker_profile(profile)
+        except (ImportError, AttributeError, ValueError) as error:
+            return [
+                _finding(
+                    rule,
+                    f"agents/{name}/__init__.py",
+                    str(error),
+                    "Restore the canonical domain profile.",
+                )
+            ]
+        expected.append(
+            {
+                "id": name.replace("_", "-"),
+                "family": "domain",
+                "scope": "distributed",
+                "registration": "invocation",
+                "source": profile.spec,
+            }
+        )
+    for profile in inventory.OUTER_PROFILES:
+        expected.append(
+            {
+                "id": profile.name,
+                "family": "outer",
+                "scope": "source-only" if profile.source_only else "distributed",
+                "registration": "project",
+                "source": profile.prompt,
+            }
+        )
+    path, raw = matches[0]
+    entries = json.loads(raw)
+    fields = {"id", "family", "scope", "registration", "source"}
+    if not isinstance(entries, list) or any(
+        not isinstance(e, dict)
+        or set(e) != fields
+        or not all(isinstance(v, str) for v in e.values())
+        for e in entries
+    ):
+        return [
+            _finding(
+                rule,
+                path,
+                "Malformed Agents inventory.",
+                "Use the exact role inventory fields.",
+            )
+        ]
+    if sorted(entries, key=lambda e: e.get("id", "")) != sorted(
+        expected, key=lambda e: e["id"]
+    ):
+        return [
+            _finding(
+                rule,
+                path,
+                "Agents metadata differs from canonical role definitions.",
+                "Reconcile all role identities, families, scopes and sources.",
+            )
+        ]
+    declared = set(inventory.DOMAIN_AGENTS)
+    actual = {
+        p.parent.name
+        for p in (root / "agents").glob("*/__init__.py")
+        if p.parent.name != "source"
+    }
+    if declared != actual or len(inventory.AGENTS) != len(set(inventory.AGENTS)):
+        return [
+            _finding(
+                rule,
+                "agents/__init__.py",
+                "Agent source membership or identity is inconsistent.",
+                "Declare each actual role once.",
+            )
+        ]
+    return []
 
 
 def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]:
@@ -1122,6 +1233,7 @@ def _validate_spec_alignment(root: Path) -> list[Finding]:
         ]
     findings: list[Finding] = []
     findings.extend(_validate_spec_operations_block(root, documents))
+    findings.extend(_validate_spec_agents_block(root, documents))
     findings.extend(_validate_spec_types(root, documents))
     findings.extend(_validate_spec_errors(root, documents))
     return findings

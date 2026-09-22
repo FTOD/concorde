@@ -47,6 +47,13 @@
       "kind": "submodule",
       "target_id": "module.operations",
       "meaning": "#entity.concorde.operations"
+    },
+    {
+      "id": "entity.concorde.agents",
+      "title": "Agents",
+      "kind": "submodule",
+      "target_id": "module.agents",
+      "meaning": "#entity.concorde.agents"
     }
   ],
   "dependencies": [
@@ -73,6 +80,10 @@
     {
       "target_id": "module.operations",
       "meaning": "#operations-collaboration"
+    },
+    {
+      "target_id": "module.agents",
+      "meaning": "#entity.concorde.agents"
     }
   ],
   "bindings": []

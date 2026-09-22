@@ -194,7 +194,7 @@ def render_native_context_agent(
     try:
         rules = resolve_role_prompt(project_root, f"prompts/native/{name}.md")
         role = resolve_model_instructions(
-            project_root, f"operations/{name.replace(chr(45), chr(95))}/spec.md"
+            project_root, f"agents/{name.replace(chr(45), chr(95))}/spec.md"
         )
     except PromptResolverError as error:
         raise BuildError(
@@ -451,11 +451,17 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     for output in outputs:
         all_sources.update(output.sources)
     # WorkerProfile declarations and operation wire metadata are authored build inputs too.
-    for directory in ("operations", "src/concorde"):
+    for directory in ("agents", "operations", "src/concorde"):
         all_sources.update(
             path.relative_to(project_root).as_posix()
             for path in (project_root / directory).rglob("*.py")
             if path.is_file()
+            and (
+                not path.relative_to(project_root)
+                .as_posix()
+                .startswith("agents/source/")
+                or any(o.path == ".pi/agents/maintenance-worker.md" for o in outputs)
+            )
         )
     # Pi implementation and dependency locks are transitive runtime provenance, not catalogs.
     all_sources.update(

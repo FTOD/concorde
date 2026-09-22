@@ -29,8 +29,8 @@ and transitions are retained here as the single detailed contract.
 [typed handoffs](../harness/admission.md#stage-handoffs) and
 [gap rules](../issues/execution-reference.md#review-and-gaps-attributed-issue-blockers-and-host-history) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a public, explicitly target-bound operation in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
-The calling agent selects this Operation through the Pi `concorde` tool; its `run` action
+This is a public, explicitly target-bound capability in the [current adapter inventory](../operations/execution-reference.md#operations-current-host-adapter).
+The calling agent selects this capability through the Pi `concorde` tool; its `run` action
 prepares an exact direct native programmer call through finite Host admission. Main invokes the
 returned call unchanged, then inspects independent Host acceptance attached to the native result. The tool's `describe` action returns
 the Operation guidance and request schema without executing it.
