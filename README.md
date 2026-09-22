@@ -24,7 +24,7 @@
 
 Concorde keeps a project's Specs at the center of AI-assisted development. A Spec explains what
 each Module is responsible for, how it is designed, which precise promises it makes and which files
-realize it. Each native Pi Agent receives one selected Module's complete admitted context and explicit intended
+realize it. Each bounded domain Agent receives one selected Module's complete admitted context and explicit intended
 file/tool policy. Native broad tools are not OS-confined by Concorde. A change is made in its own candidate worktree,
 checked and independently reviewed there, and delivered only when you ask.
 
@@ -32,7 +32,7 @@ You drive Concorde from the **Pi coding agent** through its `concorde` session t
 only supported client; standalone Skills and Codex/Claude client integrations are retired.
 Pi model providers, including OpenAI and Anthropic, remain supported. Model cognition runs through native pi-subagents Agents and authored workflows; deterministic actions
 are Host services. LangGraph is an optional execution boundary, not a scheduler under every call. The outer agent reads,
-answers and edits Specs directly, then chooses which Operations to call and in what order.
+answers and edits Specs directly, then chooses which capabilities to call and in what order.
 
 ## Why Concorde
 
@@ -54,7 +54,7 @@ other documents they explicitly include as context (`references`). Tests declare
 verify, so coverage is derived from the tests rather than from a list someone must maintain.
 Concorde checks all of this for consistency and tracks which Module contracts a shared file affects.
 
-### Each agent sees one Module's contract, and only what its phase needs
+### Each domain Agent sees one Module's contract, and only what its phase needs
 
 A worker bound to a Module receives four kinds of context, frozen for its invocation:
 
@@ -73,7 +73,7 @@ still matter.
 
 ### Explicit policy and actual enforcement
 
-Native Agents are fresh and terminal, without delegation tools, inherited project/global context or
+Bounded domain Agents are fresh and terminal, without delegation tools, inherited project/global context or
 Skills. Their file/network/credential exclusions are explicit **prompt-level policy**, not OS
 confinement or proof of exclusive reads. Programmer edits use the actual assigned candidate paths.
 Host-owned configured checks and tester commands retain their enforced read-only subprocess/sandbox
@@ -84,7 +84,7 @@ responsibilities; a model proposal or successful stage-only gate is never domain
 
 An **Agent** is a callable native Pi role. A **Workflow** is an authored pi-subagents composition.
 An **Operation** is an explicitly selected LangGraph StateGraph flow. Finite non-model actions are
-**Host tools/services**. These executable kinds do not change Module ownership or context references.
+**Host services**. These executable kinds do not change Module ownership or context references.
 The compatibility `concorde-*` names and `operation_id` wire fields do not make every entry a Graph.
 
 Plan, review and bounded Issue solving use authored native workflows. Context assessment, tasks and
@@ -96,6 +96,25 @@ when asynchronous. Final acceptance separately reconciles actual native artifact
 an authorized native launch/admission service through Runtime, synchronously or asynchronously. Its
 State cannot choose that authority. There is no default model runner or old RPC fallback. Studio
 inspects this exact boundary, not fake graph mirrors of native workflows.
+
+### Find the Agent role, not an execution wrapper
+
+The [Agents Module](specs/concorde/agents/module.md) is the reading entry for all nine callable Pi
+roles, including their inputs, completion, authority and continuation rules. It is a peer of
+[Operations](specs/concorde/operations/module.md), not a replacement for the business Modules.
+Planning still owns sufficiency and accepted plans/tasks; Implementation owns fulfillment and
+partial-work semantics; Review owns coverage, findings and aggregation; Issues owns dispositions.
+
+The seven domain roles are `context-assessor`, `planner`, `task-author`, `programmer`,
+`spec-reviewer`, `code-reviewer` and `issue-solver`. Their Host-prepared invocation capsules bind
+fresh terminal calls to selected context; they are not separately authored role definitions.
+The two outer task roles are `maintenance-worker` and `tester`: maintenance-worker is source-only,
+while tester has source-checkout and distributed consumer instructions with explicit local runtime
+selection. Project registration of an outer role does not impose a domain stage schema or a
+single-Module context grant on it. Both retain their actual task/tool boundaries and cannot delegate.
+
+Main is the external calling/coordinating Pi session, not a tenth Agent profile. Its high-level work
+packages, ownership and integration/testing gates are not Concorde product `plan`/`tasks` artifacts.
 
 ### Changes run in candidate worktrees and are delivered on request
 
@@ -121,11 +140,11 @@ consistency and ownership rules; they do not create review or completion evidenc
 
 A caller-selected sequence might be contract edits, Spec review, assessment/planning, tasks,
 implementation, code review and validation. This is not an executable development workflow: the
-caller chooses each Operation and explicit Module target. Dependencies remain enforced — tasks
+caller chooses each capability and explicit Module target. Dependencies remain enforced — tasks
 need a current accepted plan, implementation needs accepted tasks, and a selected review must
 actually be current and successful. Component work is selected separately, not developed by a parent.
 
-| Operation          | Worker                             | Reads                                         | May change                               |
+| Capability         | Worker                             | Reads                                         | May change                               |
 | :----------------- | :--------------------------------- | :-------------------------------------------- | :--------------------------------------- |
 | Context assessment | `context-assessor`                 | Complete selected Spec                        | Nothing; reports sufficiency or blockers |
 | Spec review        | `spec-reviewer`                    | Complete Spec context, fresh                  | Nothing; returns findings                |
@@ -170,7 +189,7 @@ python3 scripts/install-concorde.py --target /absolute/path/to/project --apply
 The installer provisions a locked managed runtime at `.concorde/.venv`, deploys the framework to
 `.concorde/framework/`, places the Protocol at `.concorde/protocol/` and adds a guidance block to
 `AGENTS.md`. It installs a receipt-owned session extension under `.pi/extensions/` whose
-`concorde` tool describes and runs the eleven public Operations. It preserves your content outside
+`concorde` tool describes and runs the eleven public capability entries. It preserves your content outside
 the entries it owns, and the launcher re-runs itself inside the managed runtime. No standalone
 Skills are installed and no Skills CLI runs.
 
@@ -208,14 +227,14 @@ python3 /explicit/project/.concorde/framework/scripts/install-concorde.py \
 ```
 
 This preserves inherited root guidance and a complete Protocol bundle without adopting ownership
-or changing the accepted binding. Installation must finish before local Operations run. System
+or changing the accepted binding. Installation must finish before local capabilities run. System
 Pi/Node may be shared, but Frameworks and managed environments are not shared or symlinked between
-worktrees. A candidate's own Pi session has all eleven public Operations through its local
+worktrees. A candidate's own Pi session has all eleven public capability entries through its local
 `.pi/extensions/concorde-session.ts`; durable status and runs still belong only to primary.
 See [installation and recovery](specs/concorde/distribution/installation.md#installing-another-worktree).
 Source maintenance remains the separate private-entry path below, with no ambient installation.
 
-**4. Read, edit and select Operations.**
+**4. Read, edit and select capabilities.**
 
 ```text
 Read the complete registered Specs and explain how requests reach storage.
@@ -223,8 +242,8 @@ Edit the selected Module's contract and paired metadata to describe this approve
 Use concorde-plan for target module.storage and task “Implement the approved retry policy”.
 ```
 
-In Pi, use the `concorde` tool for the same retained Operations. Every bounded task receives an
-explicit target; questions and Spec/registry edits are ordinary outer-agent work, not routed Operations.
+In Pi, use the `concorde` tool for these capabilities. Every bounded domain task receives an
+explicit target; questions and Spec/registry edits are ordinary outer-agent work, not routed Agent calls.
 
 ## Choose an entry point
 
@@ -316,30 +335,31 @@ or [Concorde's own root Spec](specs/concorde/module.md), which applies it to thi
 
 ### Typed executable inventory
 
-The compatibility package [`operations/`](operations/__init__.py) declares eleven public capability
-names, seven canonical native Agents and the separately selected `terminal_agent_operation` StateGraph
-boundary. Every public catalog entry has an explicit kind; Issue bookkeeping actions are deterministic
-Host services while `issues.solve` is a bounded native workflow. Roles are not duplicate private
-model-backed Operation aliases. Canonical `operations/<role>/spec.md` and native preludes render the
-owned Agent assets. No public path schedules a mandatory Graph or hidden old Pi-RPC worker.
+The public catalog retains eleven compatibility capability names, each with an explicit execution
+kind. Issue bookkeeping actions are deterministic Host services while `issues.solve` is a bounded
+native workflow. The separately selected `terminal_agent_operation` is a genuine StateGraph boundary;
+roles are not private model-backed Operation aliases. [Agents](specs/concorde/agents/module.md) owns
+canonical role definitions; Distribution renders and registers their runtime projections, and Harness
+prepares invocation context and checks results. No public path schedules a mandatory Graph or hidden
+old Pi-RPC worker.
 
 ### Launchers and tools
 
 Commands are relative to this checkout; installed projects use the same scripts under
 `.concorde/framework/`.
 
-| Entry point                                                      | Use                                                                                                    |
-| :--------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
-| `python3 scripts/run-operation.py <operation> < invocation.json` | Compatibility Host transport; native cognition is prepared/invoked through the candidate Pi entry. |
-| `python3 scripts/concorde.py build` · `validate`                 | Render workers, the Pi catalog and schemas; run the Spec, Operation, contract and build-output checks. |
-| `python3 scripts/concorde.py protocol-manifest`                  | Inspect or explicitly accept and bind a changed Protocol bundle.                                       |
-| `python3 scripts/concorde.py docsite` · `usage`                  | Scaffold a project docsite; summarize recorded worker usage per run.                                   |
-| `python3 scripts/install-concorde.py`                            | Preview or apply installation into a project.                                                          |
-| `python3 scripts/issues.py`                                      | Inspect branch-local Issues from the command line.                                                     |
-| [LangGraph Studio](scripts/development/STUDIO.md)                | Inspect/use the explicitly selected typed StateGraph Operation boundary.                                        |
-| `npm --prefix docsite run <script>`                              | `start`, `build`, `validate`, `typecheck`, `test`, `check`.                                            |
+| Entry point                                                      | Use                                                                                                         |
+| :--------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| `python3 scripts/run-operation.py <operation> < invocation.json` | Compatibility Host transport; native cognition is prepared/invoked through the candidate Pi entry.          |
+| `python3 scripts/concorde.py build` · `validate`                 | Render workers, the Pi catalog and schemas; check Specs, executable inventory, contracts and build outputs. |
+| `python3 scripts/concorde.py protocol-manifest`                  | Inspect or explicitly accept and bind a changed Protocol bundle.                                            |
+| `python3 scripts/concorde.py docsite` · `usage`                  | Scaffold a project docsite; summarize recorded worker usage per run.                                        |
+| `python3 scripts/install-concorde.py`                            | Preview or apply installation into a project.                                                               |
+| `python3 scripts/issues.py`                                      | Inspect branch-local Issues from the command line.                                                          |
+| [LangGraph Studio](scripts/development/STUDIO.md)                | Inspect/use the explicitly selected typed StateGraph Operation boundary.                                    |
+| `npm --prefix docsite run <script>`                              | `start`, `build`, `validate`, `typecheck`, `test`, `check`.                                                 |
 
-The CLI `validate` command checks the project directly; the `concorde-validate` Operation also
+The CLI `validate` command checks the project directly; the `concorde-validate` Host service also
 records readiness evidence for a candidate.
 
 ## Develop Concorde
@@ -371,7 +391,7 @@ block; selection is provenance, not evidence of extension loading, tool use or m
 The host retains the actual file/tool grant; no global fallback or Studio redirect is allowed.
 
 Never edit build output under `generated/`; change `prompts/operation-guidance/`, other authored
-`prompts/`, `operations/` or `pi/extensions/` and rebuild. There is no standalone `skills/` product
+`prompts/`, canonical role/capability sources or `pi/extensions/` and rebuild. There is no standalone `skills/` product
 or `skills` publishing command. See the
 [source-checkout policy](AGENTS.md) and [development details](docs/workflow-guide.md#development).
 

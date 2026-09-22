@@ -1,6 +1,6 @@
 ---
 name: concorde-init
-description: "Operation: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
+description: "Host service: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
 operation: init
 ---
 

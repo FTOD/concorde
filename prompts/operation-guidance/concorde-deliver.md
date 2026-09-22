@@ -1,6 +1,6 @@
 ---
 name: concorde-deliver
-description: "Operation: stage a verified change, remove its worktree, and explicitly merge from the primary session."
+description: "Host service: stage a verified change, remove its worktree, and explicitly merge from the primary session."
 operation: deliver
 ---
 

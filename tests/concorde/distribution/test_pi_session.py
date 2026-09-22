@@ -121,6 +121,38 @@ class ShimRenderingTests(unittest.TestCase):
                 self.assertNotIn("\n\n\n", operation["guidance"])
 
     @verifies("scenario.distribution.build-pi-session")
+    def test_public_descriptions_name_execution_kinds_not_generic_operations(self):
+        prefixes = {
+            "concorde-context-solve": "Agent entry:",
+            "concorde-tasks": "Agent entry:",
+            "concorde-implement": "Agent entry:",
+            "concorde-plan": "Workflow:",
+            "concorde-spec-review": "Workflow:",
+            "concorde-code-review": "Workflow:",
+            "concorde-init": "Host service:",
+            "concorde-configure": "Host service:",
+            "concorde-validate": "Host service:",
+            "concorde-deliver": "Host service:",
+            "concorde-issues": "Host bookkeeping or native solve workflow:",
+        }
+        for content in (
+            self.checkout[PI_SESSION_SHIM].content,
+            self.installed[INSTALLED_PI_SESSION_SHIM].content,
+        ):
+            catalog = shim_catalog(content)
+            self.assertEqual(set(prefixes), {o["name"] for o in catalog["operations"]})
+            for entry in catalog["operations"]:
+                with self.subTest(entry=entry["name"]):
+                    self.assertTrue(
+                        entry["description"].startswith(prefixes[entry["name"]])
+                    )
+                    self.assertNotIn("other Operations", entry["guidance"])
+                    self.assertNotIn("poll this same operation", entry["guidance"])
+                    self.assertEqual(
+                        json_schema(f"{entry['name']}-request"), entry["request_schema"]
+                    )
+
+    @verifies("scenario.distribution.build-pi-session")
     def test_installed_shim_points_below_the_framework_prefix(self):
         content = self.installed[INSTALLED_PI_SESSION_SHIM].content
         self.assertIn(
@@ -161,6 +193,34 @@ class ShimRenderingTests(unittest.TestCase):
         self.assertIn(
             "A return-to-caller result preserves the open Issue", issues["guidance"]
         )
+
+
+class CurrentGuidanceTests(unittest.TestCase):
+    def test_guides_distinguish_role_discovery_from_public_capabilities(self):
+        roles = (
+            "context-assessor",
+            "planner",
+            "task-author",
+            "programmer",
+            "spec-reviewer",
+            "code-reviewer",
+            "issue-solver",
+            "maintenance-worker",
+            "tester",
+        )
+        for path in ("README.md", "docs/workflow-guide.md"):
+            with self.subTest(path=path):
+                text = (REPOSITORY_ROOT / path).read_text()
+                # The entry is supplied by the canonical Agents component at integration.
+                self.assertIn("specs/concorde/agents/module.md", text)
+                for role in roles:
+                    self.assertIn(f"`{role}`", text)
+                self.assertIn("source-only", text)
+                self.assertIn("external", text)
+                self.assertIn("StateGraph", text)
+                self.assertNotIn("eleven public Operations", text)
+                self.assertNotIn("operations/<role>/spec.md", text)
+                self.assertNotIn("Bounded Operation workers", text)
 
 
 @unittest.skipUnless(

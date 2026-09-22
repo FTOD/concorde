@@ -1,6 +1,6 @@
 ---
 name: concorde-code-review
-description: "Operation: independently review or diagnose a Module's granted implementation against its Spec and return scoped read-only findings."
+description: "Workflow: independently review or diagnose a Module's granted implementation against its Spec and return scoped read-only findings."
 operation: code_review
 ---
 
@@ -27,7 +27,7 @@ review results. A separate review intent cannot replace another task's required 
 ## Native execution
 
 Run prepares an exact named async native review workflow. Invoke returned `call` unchanged, then
-poll this same operation with action `result`. Only full independently admitted scope can be accepted;
+poll this same capability with action `result`. Only full independently admitted scope can be accepted;
 native success/staging alone is not accepted review. Each reviewer has fresh separate context.
 The workflow uses two fixed Host steps regardless of reviewer count; native budgets remain enforced.
 No public Graph/Pi-RPC fallback or automatic downstream readiness/integration occurs.
