@@ -12,6 +12,12 @@ schedulers for native capabilities. Native file/network/credential policy is pro
 configured-check subprocess isolation remains enforced. See the [current API](../scripts/development/STUDIO.md)
 and [public capability examples](../README.md#choose-an-entry-point).
 
+A Module is a responsibility, not an executable kind. The [Agents Module](../specs/concorde/agents/module.md)
+is the entry for callable Pi roles and their interaction contracts; [Operations](../specs/concorde/operations/module.md)
+covers genuine StateGraph composition. Native workflows compose Agents without becoming Operations.
+Public `concorde-*` names and `operation_id` fields are compatibility entry identifiers, not backend claims.
+Planning, Implementation, Review and Issues retain their business artifacts and acceptance rules.
+
 The explicitly selected work and delivery examples below use **Spec Protocol 10.0.0**. It defines one Module
 Spec content model and the human-readable subset of that content. Reading begins with Purpose,
 Terminology, Usage, Design and Relationships in module-role entries, followed by explanatory topics
@@ -30,7 +36,7 @@ whole package while a shared file keeps its own entry. Every Module registers it
 complete document-unit collection and one local `module.md` reading entry. A dependency link does not
 import the provider's Spec or source.
 
-Readers, planners and task authors determine behavior from their selected Module Spec alone; its
+Bounded domain readers, planners and task authors determine behavior from their selected Module Spec alone; its
 entity declarations name the entries and the files they bind, but never their contents. Only the
 code-writing and code-review phases receive those file contents, in their declared subsets. The
 Framework maintains a reverse file-listing index and checks each listing Module separately after a
@@ -55,8 +61,9 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The Pi-only installer distributes eleven compatibility public capability entries, seven native Agent
-roles and authored plan/review/Issue workflows. Canonical role Specs and `prompts/native/` preludes
+The Pi-only installer distributes eleven compatibility public capability entries, seven domain Agent
+roles, the consumer tester role and authored plan/review/Issue workflows. Source-only maintenance and
+coordinator instructions are not consumer assets. Canonical domain role definitions and native preludes
 render into owned `generated/native/` assets. Main prepares with `concorde`, invokes the exact returned
 native call, and separately observes Host acceptance. Host tools run without a model. Internal wire
 spellings do not assert LangGraph execution. No standalone Skills or client-selector installation is
@@ -75,7 +82,7 @@ different checkout. An initialized candidate reaches the primary branch like any
 validate it, deliver it, and request the primary merge separately.
 
 A fresh Pi session in that consumer candidate can load its own `.pi/extensions/concorde-session.ts`
-and use all eleven public Operations. Normal Pi project trust applies; accept the local extension
+and use all eleven public capability entries. Normal Pi project trust applies; accept the local extension
 only after reviewing it. Each worktree has its own `.concorde/framework`, `.concorde/.venv` with
 independent Python/TypeBox dependencies, and `.concorde/install.json`. System Pi/Node may be shared,
 but no Framework or managed environment is shared, symlinked to primary or temporarily staged.
@@ -171,7 +178,7 @@ start a native workflow and refuses with `native_required`:
 
 Null configuration asks the trusted host to load initialized settings. The caller reads and
 selects complete Specs directly, answers questions and edits reading, metadata and registry under
-its task grant. Every bounded Operation receives an explicit Module target; `focus_id` is an
+its task grant. Every bounded domain invocation receives an explicit Module target; `focus_id` is an
 optional scenario of that Module, never permission to trim its context.
 
 `concorde-plan` assesses sufficiency and accepts a revision-bound plan, not a completed change.
@@ -190,14 +197,15 @@ controls entry availability independently of these guarantees.
 `concorde-spec-review` reviews the specification itself, including every imported terminology
 restatement's semantic consistency with its canonical definition. Different wording is allowed.
 `concorde-code-review` reviews or diagnoses the admitted implementation against its Spec. Each
-separate Operation accepts an explicit `target_id` and `task`, with optional local `focus_id`
+separate native review workflow accepts an explicit `target_id` and `task`, with optional local `focus_id`
 and no review_mode selector. Each binds the selected Module and starts its own fresh read-only reviewer in the current
 worktree, without requiring a development change or preexisting Issue. The host returns structured
 findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline. The former combined
-review entry is removed, not retained as an alias; callers must select one of these two Operations.
+review entry is removed, not retained as an alias; callers must select one of these two capabilities.
 
-No public Operation returns a context manifest; `describe-policy` mode previews the exact stage
-grants any operation would receive without launching an agent or mutating project state. A stable
+No public capability returns a context manifest; where supported, `describe-policy` mode previews
+its stage grants without launching an Agent or mutating project state. Initialization and
+configuration use their explicit proposal/apply contracts instead of a policy preview. A stable
 task ID names one workspace: a candidate, or primary for direct consumer work. The primary-owned
 `.concorde/status/<change_id>.json` records
 its task, phase/status, per-target plans and progress, gaps and verified revision. Auxiliary artifacts
@@ -230,7 +238,7 @@ Conflicts, failed checks or local primary edits block final merging and preserve
 branch. Receipts distinguish staging, cleanup and final merging, allowing retries without duplicate
 merges; after source removal, use the primary session to retry.
 
-Issue reporting is independent of task control. Explicit solving uses ordinary providers and
+Issue reporting is independent of task control. Explicit solving uses a native workflow with
 Issue-specific reviews; the solver can make evidence-grounded dispositions without a mandatory
 human gate, and asks only for genuinely unsettled decisions. Solving stops at ready, not delivery.
 
@@ -242,7 +250,7 @@ Configured checks run with OS-enforced read-only project access, including ignor
 `.concorde/runs`. Linux currently requires a system-installed
 [bubblewrap](https://github.com/containers/bubblewrap) with working user, mount and PID namespaces
 and libc/kernel pidfd support. Unsupported platforms or denied sandbox setup block checks with
-`check_sandbox_unavailable`; there is no unrestricted fallback. Project operation configuration
+`check_sandbox_unavailable`; there is no unrestricted fallback. Project worker configuration
 (the selected Pi worker model and thinking level) does not disable this check boundary.
 
 Checks can read inputs and write temporary output under the supplied `TMPDIR`, `XDG_CACHE_HOME`
@@ -261,8 +269,8 @@ complete contexts and current compatibility evidence, not copied definitions or 
 A file may be listed by several Modules without merging their responsibilities. No deleted author
 or topology artifact is required, and a direct edit is never fabricated review or completion evidence.
 
-[Operation registry](../specs/concorde/operations/composition.md) ·
-[Operation admission boundary](../specs/concorde/harness/admission.md)
+[Executable composition](../specs/concorde/operations/composition.md) ·
+[Capability admission boundary](../specs/concorde/harness/admission.md)
 
 ## Developer view and feedback
 
@@ -293,8 +301,8 @@ Implementation Specs tabs sharing the same Module-parent hierarchy,
 inline scoped diagrams and optional source-provenance disclosure. Reading and metadata both bind
 build identity, but machine inventories do not appear in the main reading graph. Spec Protocol uses
 an independent custom-document tab. There is no docsite Graph page, separate Operation-graph page or
-unregistered Projections group: each Operation, and the Graph Spec of an Operation that runs a Graph,
-is read in the owning Module's Specs. Source and link validation precede candidate promotion; human
+unregistered Projections group: capability behavior and each genuine StateGraph Operation's Graph Spec
+are read in their owning Modules' Specs. Agent contracts are read through the Agents Module. Source and link validation precede candidate promotion; human
 navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades
@@ -387,8 +395,8 @@ that test as suspect and rerun it alone before drawing conclusions. The worker r
 the worker sandbox tests need Linux with a trusted system bubblewrap and a Pi installation on
 PATH; the sandbox tests fail rather than skip where the boundary cannot be enforced.
 
-`prompts/` (including ordinary guidance under `prompts/operation-guidance/`), `pi/extensions/`
-and the top-level `operations/` package produce this checkout's agent surfaces. Never edit
+Canonical role definitions, `prompts/` (including public capability guidance under
+`prompts/operation-guidance/`) and `pi/extensions/` produce this checkout's Agent surfaces. Never edit
 `generated/`, the private `generated/session/pi/` entry or generated worker instructions directly;
 they are untracked build output. Build never installs into ambient discovery. No standalone
 `skills/` product, private Codex/Claude projection or independent publishing command remains.
@@ -402,26 +410,34 @@ python3 scripts/concorde.py validate
 ```
 
 `build` renders every worker, the private Pi entry/catalog, Protocol assets and runtime schemas
-deterministically from `protocol/`, `prompts/`, `pi/` and `operations/`; `build --check` verifies
+deterministically from authored Protocol, prompt, role, capability and Pi sources; `build --check` verifies
 those outputs, ordinary guidance and `protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
-operation-module, contract, Spec-alignment and build-output checks. Top-level model-backed operations and every Agent launch require a fresh build; deterministic
+executable-inventory, contract, Spec-alignment and build-output checks. Native capability preparation
+and every Agent launch require a fresh build; deterministic
 lifecycle entry points retain their separate admission/evidence checks. A freshly created worktree
 must be built once before a fresh tester can select its private Pi entry. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
-Seven canonical native Agents have role Specs/profile contracts and native instruction projections.
-Their file/network/credential policy is explicitly prompt-level; tester/configured-check boundaries
-remain actually enforced. Context, plan, tasks, implementation, review and Issue decisions use native
+[Agents](../specs/concorde/agents/module.md) covers nine explicit Pi roles: `context-assessor`, `planner`,
+`task-author`, `programmer`, `spec-reviewer`, `code-reviewer`, `issue-solver`, `maintenance-worker` and
+`tester`. The seven domain roles have native instruction projections and Host-prepared invocation
+capsules. Their file/network/credential policy is explicitly prompt-level; tester/configured-check
+boundaries remain actually enforced. Outer maintenance-worker/tester roles use project registration
+and task-specific grants, not the domain stage schema or single-Module context policy. The former is
+source-only; tester has distinct source and installed consumer instructions. Main is the external
+caller/coordinator, not another registered Agent profile. Context, plan, tasks, implementation, review and Issue decisions use native
 Agent/workflow calls, not hidden RPC workers. Gates only stage proposals. Host acceptance binds actual
 native terminal evidence and current inputs; closure remains journaled and final validation separate.
 
-The typed inventory preserves eleven compatibility entry names and seven Agent identities. `kind`
+The public catalog preserves eleven compatibility entry names; it is not the inventory of Agent roles. `kind`
 distinguishes Agent entry, Workflow and Host actions; StateGraph Operations are a separate optional
 boundary with an explicitly supplied trusted native service. No native flow has a fake Studio mirror.
 See the [Operation API](../scripts/development/STUDIO.md) and [current examples](../README.md).
 
 Concorde source maintenance defaults to a new candidate and a fresh Concorde-catalog-free writer.
-The main stays in its initial worktree. The writer edits, formats, checks and commits, then stops.
+The main stays in its initial worktree. Its high-level decomposition into work packages, ownership,
+native workflow steps and integration/testing gates is not product Concorde plan/tasks. The writer
+edits, formats, checks and commits, then stops.
 A separate fresh sibling tester receives only the exact candidate-built private Pi entry and its
 embedded catalog, with implementation/build/runtime provenance checked through `select-session`.
 Neither child inherits/discovers Concorde catalogs, forks old instructions or delegates tasks. Failed tests
@@ -440,7 +456,7 @@ reverifies. Private selection rejects Studio and linked-source-worktree redirect
 scoped disposable consumer data remains allowed. `--skill` and schema-1 selections are rejected.
 
 Consumers may delegate complete tasks one layer deep or edit simple authorized tasks directly in
-primary. Bounded Operation workers are not task delegates and never bypass actual harness limits.
+primary. Bounded domain Agents are not task delegates and never bypass actual harness limits.
 Task-authorized edits may include `.concorde` files in the owned workspace; preserve truthful
 evidence, task scope and concurrency safety. Primary-only `.concorde/status/<change_id>.json`
 records stable task coordination, delivery or manual merge and separate cleanup. Durable runs,

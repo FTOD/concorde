@@ -1,6 +1,6 @@
 ---
 name: concorde-configure
-description: "Operation: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy."
+description: "Host service: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy."
 operation: configure
 ---
 
