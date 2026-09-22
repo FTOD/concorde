@@ -19,21 +19,22 @@
     {
       "argv": [
         "{python}",
-        "scripts/development/run-tests.py",
-        "-j",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
         "4",
-        "--filter",
-        "tests.concorde.harness.test_scoped_protocol",
-        "--filter",
-        "tests.concorde.operations.test_review",
-        "--filter",
-        "tests.concorde.operations.test_check_execution",
-        "--filter",
-        "tests.concorde.harness.test_worktree_lifecycle"
+        "tests/concorde/harness/test_scoped_protocol.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_check_execution.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "id": "check.operations.runtime",
       "inputs": [
-        "scripts/development/run-tests.py",
+        "pyproject.toml",
+        "conftest.py",
+        "tests/concorde/support/pytest_timing.py",
         "agents",
         "src",
         "protocol",
@@ -60,11 +61,15 @@
       "argv": [
         "{python}",
         "-m",
-        "unittest",
-        "tests.concorde.harness.test_scoped_protocol",
-        "tests.concorde.harness.test_boundaries",
-        "tests.concorde.harness.test_worker_binding",
-        "tests.concorde.harness.test_check_executor"
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/harness/test_scoped_protocol.py",
+        "tests/concorde/harness/test_boundaries.py",
+        "tests/concorde/harness/test_worker_binding.py",
+        "tests/concorde/harness/test_check_executor.py"
       ],
       "id": "check.harness.runtime",
       "inputs": [
@@ -80,9 +85,13 @@
       "argv": [
         "{python}",
         "-m",
-        "unittest",
-        "tests.concorde.spec.test_module_model",
-        "tests.concorde.spec.test_module_architecture"
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/spec/test_module_model.py",
+        "tests/concorde/spec/test_module_architecture.py"
       ],
       "id": "check.spec.model",
       "inputs": [
@@ -605,6 +614,7 @@
       ],
       "files": [
         "concorde.json",
+        "conftest.py",
         "operations/__init__.py",
         "operations/configure.py",
         "pi/extensions/concorde-native-child.ts",
@@ -634,7 +644,6 @@
         "scripts/concorde.sh",
         "scripts/development/check-docsite-types.py",
         "scripts/development/init-references.py",
-        "scripts/development/run-tests.py",
         "scripts/install-concorde.py",
         "scripts/requirements.lock",
         "scripts/run-operation.py",
@@ -663,6 +672,7 @@
         "tests/concorde/support/outer_agents_preflight.mjs",
         "tests/concorde/support/outer_observer_harness.mts",
         "tests/concorde/support/pi_session_harness.mts",
+        "tests/concorde/support/pytest_timing.py",
         "uv.lock"
       ],
       "id": "module.distribution",

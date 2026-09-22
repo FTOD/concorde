@@ -32,6 +32,7 @@ DIRECTORIES = (
 )
 FILES = (
     "concorde.json",
+    "conftest.py",
     "pyproject.toml",
     "README.md",
     "uv.lock",
@@ -123,11 +124,15 @@ def main() -> int:
                 [
                     sys.executable,
                     "-m",
-                    "unittest",
-                    "tests.concorde.views.test_docsite_scaffold",
-                    "tests.concorde.views.test_docsite_template",
-                    "tests.concorde.views.test_scaffold_creation",
-                    "tests.concorde.views.test_repository_checks",
+                    "pytest",
+                    "-p",
+                    "no:cacheprovider",
+                    "-n",
+                    "4",
+                    "tests/concorde/views/test_docsite_scaffold.py",
+                    "tests/concorde/views/test_docsite_template.py",
+                    "tests/concorde/views/test_scaffold_creation.py",
+                    "tests/concorde/views/test_repository_checks.py",
                 ],
                 project,
             ),

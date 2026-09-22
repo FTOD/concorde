@@ -371,7 +371,7 @@ python3 scripts/development/init-references.py   # vendored references under ref
 npm ci --prefix pi                                # the Pi extensions workers load
 python3 scripts/concorde.py build --check
 python3 scripts/concorde.py validate
-python3 scripts/development/run-tests.py
+.venv/bin/python -m pytest                        # parallel by default; -n 0 runs in-process
 ```
 
 Concorde self-maintenance uses a fresh Concorde-catalog-free writer in a candidate, followed by a

@@ -234,8 +234,8 @@
               "Start, build, validate, typecheck or test the documentation site."
             ],
             [
-              "python3 scripts/development/run-tests.py",
-              "Run deterministic Python tests without starting model-backed workers."
+              ".venv/bin/python -m pytest",
+              "Run deterministic Python tests in parallel without starting model-backed workers."
             ]
           ]
         }

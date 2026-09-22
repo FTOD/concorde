@@ -101,9 +101,9 @@ def load_operation_inventory():
     """Import the repository-root ``operations`` package normally.
 
     ``tests/concorde`` holds one flat package per Module and none of them is named
-    ``operations``, so test discovery (``unittest discover -s tests/concorde``) no longer risks
-    registering an unrelated test package under the plain ``operations`` name. A plain import
-    is therefore safe here.
+    ``operations``, so test collection (``pytest`` over ``tests/concorde``, imported as the
+    ``tests.concorde.*`` packages) no longer risks registering an unrelated test package under
+    the plain ``operations`` name. A plain import is therefore safe here.
     """
 
     import sys

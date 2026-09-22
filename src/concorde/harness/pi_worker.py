@@ -26,12 +26,11 @@ import json
 import os
 import shutil
 import socketserver
-import subprocess
 import tempfile
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal, Mapping, cast
+from typing import Any, Callable, Literal, Mapping
 
 from .harness import SAFE_ENVIRONMENT
 from .pi_rpc import PiRpcCancelled, PiRpcError, PiRpcTimeout, PiRun, run_prompt
@@ -294,7 +293,8 @@ class PiWorkerRuntime:
     pi_executable: str | None = None
     environment: Mapping[str, str] | None = None
     credentials_dir: Path | None = None
-    popen: Callable[..., Any] = subprocess.Popen
+    # None resolves subprocess.Popen when a prompt runs, never at import time.
+    popen: Callable[..., Any] | None = None
 
     @timed("pi.worker_total")
     def __call__(
@@ -455,7 +455,7 @@ class PiWorkerRuntime:
                     env=env,
                     message=launch.message,
                     timeout=launch.timeout_seconds,
-                    popen=cast(Any, self.popen),
+                    popen=self.popen,
                 )
             except PiRpcTimeout as error:
                 raise WorkerExecutionError(
