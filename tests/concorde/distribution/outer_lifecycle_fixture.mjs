@@ -82,7 +82,11 @@ const { session } = await sdk.createAgentSession({
 await session.bindExtensions({ mode: "print" });
 const runner = session.extensionRunner;
 const tools = session.getActiveToolNames();
-assert(!tools.includes("subagent") && !tools.includes("concorde"));
+assert.deepEqual(
+  [...tools].sort(),
+  ["read", "grep", "find", "ls", "bash", "edit", "write"].sort(),
+);
+assert.equal(runner.getToolDefinition("update_task_brief"), undefined);
 const brief = {
   goal: "CURRENT-GOAL",
   grant: "candidate only; no delegation",

@@ -7,6 +7,8 @@ import type {
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
+import { Type } from "typebox";
+
 const BRIEF = "concorde.outer-brief.v1";
 const INJECTED = "concorde.outer-brief-injected.v1";
 const scalar = [
@@ -51,7 +53,17 @@ export function parseBrief(value: unknown): TaskBrief {
 	) as TaskBrief;
 }
 
+// Only the trusted source-main projection selects this entry. No role/task parameter
+// or environment claim can enable the main tool on default/maintenance loading.
+export function sourceMainLifecycle(pi: ExtensionAPI) {
+	registerLifecycle(pi, true);
+}
+
 export default function outerLifecycle(pi: ExtensionAPI) {
+	registerLifecycle(pi, false);
+}
+
+function registerLifecycle(pi: ExtensionAPI, sourceMain: boolean) {
 	let brief: TaskBrief | undefined;
 	let pending: string | undefined;
 	let injected = new Set<string>();
@@ -79,6 +91,38 @@ export default function outerLifecycle(pi: ExtensionAPI) {
 		if (JSON.stringify(next) === JSON.stringify(brief)) return;
 		pi.appendEntry(BRIEF, next);
 		brief = next;
+	}
+	if (sourceMain) {
+		const text = Type.String({ minLength: 1, maxLength: 2000 });
+		pi.registerTool({
+			name: "update_task_brief",
+			label: "Update current task brief",
+			description:
+				"Replace and read back bounded current session task memory. No task, filesystem, status, delegation or compaction authority.",
+			parameters: Type.Object(
+				{
+					brief: Type.Object(
+						{
+							...Object.fromEntries(scalar.map((key) => [key, text])),
+							...Object.fromEntries(
+								lists.map((key) => [key, Type.Array(text, { maxItems: 16 })]),
+							),
+						},
+						{ additionalProperties: false },
+					),
+				},
+				{ additionalProperties: false },
+			),
+			async execute(_id, params) {
+				update(params.brief);
+				// Return a copy, not mutable access to the current in-memory brief.
+				const current = parseBrief(brief);
+				return {
+					content: [{ type: "text", text: JSON.stringify(current) }],
+					details: { brief: current },
+				};
+			},
+		});
 	}
 	pi.on("session_start", (_event, ctx) => {
 		restore(ctx);

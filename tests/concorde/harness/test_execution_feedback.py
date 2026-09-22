@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -38,6 +39,51 @@ class ExecutionFeedbackTests(unittest.TestCase):
             timeout=30,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(
+        os.environ.get("CONCORDE_NATIVE_SUBAGENTS")
+        and os.environ.get("CONCORDE_NATIVE_PI"),
+        "explicit SDK/native roots required",
+    )
+    @verifies("scenario.harness.execution-feedback")
+    def test_actual_sdk_observation_failure_reaches_native_error_reporting(self):
+        from concorde.harness.native_runtime import admit_native_runtime
+        from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
+
+        root = Path(__file__).resolve().parents[3]
+        native = Path(os.environ["CONCORDE_NATIVE_SUBAGENTS"])
+        admit_native_runtime(native)
+        with (
+            tempfile.TemporaryDirectory() as scratch,
+            FakeOpenAIProvider(
+                [
+                    {"tool": "structured_output", "arguments": {"value": {}}},
+                    {
+                        "tool": "structured_output",
+                        "arguments": {"value": {"answer": "corrected"}},
+                    },
+                    {"text": "Fixture complete"},
+                ]
+            ) as provider,
+        ):
+            result = subprocess.run(
+                [
+                    "node",
+                    str(Path(__file__).with_name("observation_failure_sdk.mjs")),
+                    os.environ["CONCORDE_NATIVE_PI"],
+                    str(native),
+                    str(root),
+                    scratch,
+                    provider.base_url,
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=45,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(len(provider.requests), 3)
+            print(result.stdout)
 
     @verifies("scenario.harness.execution-feedback")
     def test_entry_preserves_exception_chain_for_every_public_kind(self):

@@ -33,6 +33,14 @@ class OuterAgentsTests(unittest.TestCase):
         self.assertIn(".pi/extensions/concorde-outer-lifecycle.ts", source)
         self.assertNotIn(".pi/extensions/concorde-outer-lifecycle.ts", installed)
         self.assertIn(
+            "sourceMainLifecycle as default",
+            source[".pi/extensions/concorde-outer-lifecycle.ts"].content.decode(),
+        )
+        self.assertNotIn(
+            "sourceMainLifecycle",
+            source[".pi/agents/maintenance-worker.md"].content.decode(),
+        )
+        self.assertIn(
             "concorde-outer-lifecycle.ts",
             source[".pi/agents/maintenance-worker.md"].content.decode(),
         )
@@ -284,6 +292,37 @@ class OuterAgentsTests(unittest.TestCase):
                 serialized = json.dumps(request)
                 self.assertEqual(serialized.count("CURRENT-GOAL"), 1)
                 self.assertNotIn("OBSOLETE-GOAL", serialized)
+            print(result.stdout)
+
+    @verifies("scenario.harness.outer-lifecycle", "scenario.distribution.outer-roles")
+    def test_source_main_sdk_brief_tool_and_latest_compacted_memory(self):
+        pi = shutil.which("pi")
+        if not pi:
+            self.skipTest("Pi SDK is a host prerequisite")
+        sdk = next(
+            p
+            for p in Path(pi).resolve().parents
+            if (p / "package.json").is_file()
+            and json.loads((p / "package.json").read_text()).get("name")
+            == "@earendil-works/pi-coding-agent"
+        )
+        with tempfile.TemporaryDirectory() as scratch:
+            result = subprocess.run(
+                [
+                    "node",
+                    str(
+                        REPOSITORY_ROOT
+                        / "tests/concorde/distribution/main_brief_fixture.mjs"
+                    ),
+                    str(sdk),
+                    str(REPOSITORY_ROOT),
+                    scratch,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=45,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             print(result.stdout)
 
     @verifies("scenario.distribution.test-timing")

@@ -420,17 +420,26 @@ or source-selection validation is patched. This source test recipe is not distri
 ## Source outer task lifecycle {#outer-task-lifecycle}
 
 The explicit source-only `concorde-outer-lifecycle.ts` extension is separate from passive timing.
-It loads only for source main and maintenance roles, never tester or terminal domain Agents, and
-registers no model tool, catalog, provider, setting, scheduler or delegation. Pi's native threshold
+It loads only for source main and maintenance roles, never tester or terminal domain Agents.
+Default/maintenance loading registers no model tool. Only the trusted generated source-main entry
+selects `sourceMainLifecycle`, which registers `update_task_brief`; task text, environment role
+claims and model arguments cannot select this entry. No catalog, provider, setting, scheduler,
+delegation or model-callable compaction control is added. Consumer installation excludes this asset.
+Explicit Host tool ceilings still apply; registration does not override a restrictive allowlist.
+Pi's native threshold
 check uses projected current tokens and resolved model reserve; its overflow recovery compacts
 through the supported SDK. The extension does not duplicate those triggers. The explicit
 `outer-compact` command waits for idle, calls `ctx.compact` and awaits onComplete/onError;
 checkpoints or user messages merely saying compact are not compaction evidence.
 
 Current task memory is one replaced concise brief, stored as native session custom entries, not
-primary task status. `outer-brief` accepts JSON with exactly scalar strings goal, grant, stage,
-objective, blocker and next, plus string arrays decisions, completed, checks and evidence. Text is
-nonblank, at most 2000 characters; arrays at most 16 entries; the whole JSON at most 12000 characters.
+primary task status. The source-main model tool `update_task_brief` takes exactly `{brief: object}`,
+replaces that session's current brief and returns its admitted copy in `details.brief` and JSON text.
+It grants no filesystem, task/status, profile or compaction authority. Validation/persistence failures
+are tool errors, not successful updates; identical admitted updates are no-ops. The `outer-brief`
+slash command remains a user/Host convenience; assistant text naming it does not execute it.
+Both update routes accept exactly scalar strings goal, grant, stage, objective, blocker and next,
+plus string arrays decisions, completed, checks and evidence. Text is nonblank, at most 2000 characters; arrays at most 16 entries; the whole JSON at most 12000 characters.
 Empty arrays and blocker "none" explicitly represent absence. The fields carry only current
 accepted decisions and task facts; grant is a reminder, never executable authority. Main owns
 actual task/grant admission. Duplicate identical updates do not append repeated memory entries.

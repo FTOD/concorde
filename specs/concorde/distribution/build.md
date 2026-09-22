@@ -218,8 +218,11 @@ source repository. The test session remains in its candidate. Consumer installat
 The separate explicit source lifecycle extension works with Pi's native measured threshold and
 overflow compaction, not a simulated checkpoint. It observes successful persisted compaction and
 injects the latest concise brief once into the next provider context without scheduling a turn.
-An explicit command can invoke the SDK's compaction and await completion/error. It never replaces
-Pi's summarizer, alters global settings or grants tools/delegation. Missing task memory is reported
+A user/Host command can invoke the SDK's compaction and await completion/error; assistant text
+naming a slash command cannot. Only the trusted source-main projection enables the bounded
+`update_task_brief` model tool to replace/read back current session memory. Default maintenance
+loading keeps its native supervisor route and unchanged tools. This never replaces Pi's summarizer,
+alters global settings, grants delegation or exposes model-side compaction control. Missing task memory is reported
 as missing rather than reconstructing obsolete launch instructions. The [outer task lifecycle contract](contracts.md#outer-task-lifecycle) defines the local
 session-memory transport and failure boundaries.
 

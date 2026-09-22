@@ -121,6 +121,76 @@ async function test() {
   assert.equal(observations[1].category, "schema-rejection");
   assert(!JSON.stringify(observations[1]).includes("private"));
 
+  // Exact independent F1 reproduction: an already-known schema cause must not
+  // disappear when observe-error persistence refuses, including repeated delivery.
+  const edge = {
+    toolName: "structured_output",
+    toolCallId: "independent-schema-attempt",
+    isError: true,
+    result: {
+      content: [
+        {
+          type: "text",
+          text: 'Validation failed for tool "structured_output": required answer missing',
+        },
+      ],
+    },
+  };
+  let retentionCalls = 0;
+  observeNativeProposal(
+    pi,
+    async () => {
+      submitted++;
+    },
+    async () => {
+      invalidations++;
+    },
+    async () => {
+      retentionCalls++;
+      throw Object.assign(
+        new Error("independent observe-error persistence denied"),
+        { code: "EACCES" },
+      );
+    },
+  );
+  for (let i = 0; i < 2; i++) {
+    await assert.rejects(handlers.get("tool_execution_end")(edge), (error) => {
+      const f = errorFeedback(error);
+      assert.equal(f.attempt, edge.toolCallId);
+      assert.equal(f.category, "schema-rejection");
+      assert.match(f.diagnostics.text, /required answer missing/);
+      assert.equal(f.diagnostics.complete, false);
+      assert.equal(f.causes[0].code, "EACCES");
+      assert.equal(f.causes[0].category, "observation");
+      assert.equal(f.causes[0].attempt, edge.toolCallId);
+      assert.match(error.message, /required answer missing/);
+      return true;
+    });
+  }
+  assert.equal(retentionCalls, 1);
+  const ordinary = await handlers.get("tool_result")({
+    ...edge,
+    input: {},
+    content: edge.result.content,
+  });
+  assert.equal(ordinary.details.concorde_failure.causes[0].code, "EACCES");
+  assert.equal(ordinary.details.concorde_failure.diagnostics.complete, false);
+  await handlers.get("tool_result")({
+    toolName: "structured_output",
+    toolCallId: "after-observation-refusal",
+    input: { value: {} },
+    isError: false,
+  });
+  assert.equal(submitted, 2); // Observation failure did not invalidate a correctable slot.
+  assert.equal(invalidations, 1);
+  observeNativeProposal(
+    pi,
+    async () => {},
+    async () => {},
+  );
+  await handlers.get("tool_execution_end")(edge); // No observer, no fabricated failure.
+  await handlers.get("tool_execution_end")(edge);
+
   for (const [row, category] of [
     [{ timedOut: true }, "timeout"],
     [{ interrupted: true }, "cancelled"],

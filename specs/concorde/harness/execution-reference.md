@@ -1423,8 +1423,14 @@ tool-execution-end notification is observed without invalidating an otherwise
 correctable slot. A Host refusal invalidates its slot and retains its first cause across subsequent
 gate/acceptance calls. Neither observing errors nor returning a reference retries an invalidated slot.
 Failed invalidation or evidence retention is an additional observation failure, not replacement of
-the original cause. Existing native result schema composition and all independent acceptance checks
-remain unchanged.
+the original cause. If an immediate SDK-error notification cannot persist observation, its combined
+sanitized record retains the original tool/schema cause and call identity plus the secondary
+observation error, with diagnostic completeness false. The SDK's supported extension-error channel
+receives that record or its bounded display/retrieval reference; native child reporting records that
+channel in its transcript. Repeated notifications re-report the cached failure without retrying
+persistence with unknown side effects. Notification hooks cannot patch an already finalized result;
+this reporting neither invalidates a correctable schema slot nor retries business effects.
+Existing native result schema composition and all independent acceptance checks remain unchanged.
 
 Direct Agents, authored plan/review/Issue workflows, finite Host command/relay adapters and optional
 sync/async StateGraph Operations propagate this feedback. Workflow failure emissions preserve child

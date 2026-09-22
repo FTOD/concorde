@@ -577,6 +577,8 @@ See [project root is the entry process's working directory](requirements.md#req.
 - THEN it preserves that cause's code, sanitized message and known attempt identity while adding its own layer context
 - AND no-submission, schema rejection, Host refusal, capture, exit, cancellation, timeout, transport and observation failures remain distinguishable without claiming unobserved causes
 - AND diagnostics too large for display have explicit completeness and retrieval facts, with export failure reported rather than silently clipped
+- AND failed immediate SDK-error observation returns the original schema cause and call identity alongside the secondary persistence error through supported SDK/native error reporting, with incomplete retention explicit
+- AND repeating that notification re-reports its cached failure without repeating persistence or invalidating an otherwise correctable schema slot
 - AND failure never becomes completion or permits an automatic invalid-slot retry, widened grant or credential disclosure
 
 ### scenario.harness.outer-lifecycle — Actual compaction reinjects current task memory once
@@ -587,4 +589,6 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND failed or cancelled compaction does not inject task memory or claim recovery
 - AND repeated equal summaries, resume and branch navigation preserve identity-based deduplication
 - AND malformed optional supervisor memory does not block native feedback or reintroduce obsolete task instructions
+- AND source main can replace/read back the current brief through its explicitly projected model tool, not by writing slash-command text; only the trusted source-main entry enables that tool
+- AND default/maintenance loading keeps its supervisor route and seven tools, while tester, domain Agents and consumers receive neither the main brief tool nor active lifecycle authority
 - AND semantic progress remains worker-reported while host activity, context and compaction are separate observations

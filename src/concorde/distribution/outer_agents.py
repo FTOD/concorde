@@ -98,7 +98,7 @@ def render(root: Path, framework_prefix: str = ""):
                 ".pi/extensions/concorde-outer-lifecycle.ts",
                 (
                     "// Generated explicit source-outer lifecycle entry; no Operation catalog.\n"
-                    f'export {{ default }} from "{assets}/concorde-outer-lifecycle.ts";\n'
+                    f'export {{ sourceMainLifecycle as default }} from "{assets}/concorde-outer-lifecycle.ts";\n'
                 ).encode(),
                 (
                     ("pi/extensions/concorde-outer-lifecycle.ts",)

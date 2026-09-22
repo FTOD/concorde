@@ -176,16 +176,19 @@ no child merges, pushes or cleans up candidates.
 Maintain a CURRENT concise task brief with goal, actual grant, accepted decisions, stage/current
 objective, completed artifacts, checks/failures, blocker/decision, next action and evidence locations.
 Replace obsolete decisions; do not replay launch text or old task instructions after compaction.
-The explicit source lifecycle extension accepts `/outer-brief <JSON>` with scalar fields goal,
-grant, stage, objective, blocker and next, plus arrays decisions, completed, checks and evidence.
+Use the source-main-only `update_task_brief` tool with a `brief` object, and check its returned
+current brief. Scalar fields are goal, grant, stage, objective, blocker and next; arrays are
+decisions, completed, checks and evidence. Writing slash-command text in an assistant message
+updates nothing. `/outer-brief <JSON>` remains a user/Host convenience, not a model tool.
 Use "none" for no blocker and [] for empty lists; no field exceeds 2000 characters, lists have at
 most 16 entries, total JSON at most 12000 characters. This is session task memory, not a second ledger.
 
 Pi's native measured threshold/overflow recovery invokes actual compaction with its resolved model
 reserve. The separate lifecycle extension observes completion/error and injects the latest brief once
 at the next provider-context boundary after success, without triggering another turn. Native
-`/outer-compact` invokes supported SDK compaction explicitly; a checkpoint or sending a message
-saying `/compact` is not proof. Verify actual completion or the original failure before claiming
+`/outer-compact` is a user/Host command for supported SDK compaction, not a model-callable tool.
+Use Pi's automatic measured threshold/overflow recovery; a checkpoint or assistant text saying
+`/compact` is not compaction. Verify actual completion or the original failure before claiming
 space recovered. If disabled/unavailable, report that concrete seam, never patch installed packages.
 Observe capacity, current input including cache, reserve and compaction outcome. Unknown metrics
 remain unknown; cumulative tokens and document KB do not establish exhaustion. Use supported
