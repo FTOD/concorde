@@ -120,7 +120,9 @@ describe-policy preview with `use_proposal`.
 
 The Developer agent session coordinates from its initial worktree. Source maintenance and tests
 use sibling project-discovered maintenance-worker and tester roles in the assigned candidate with
-inherited catalogs disabled. The author continues across ordinary milestones; main selects none,
+inherited catalogs disabled. The author continues within a coherent unfinished stage; completed stages with changed goals/context
+may use a fresh author after durable handoff and exact ownership transfer. Main owns high-level
+decomposition, authorized profile/tool/workflow repairs and combination gates; it selects none,
 targeted or full independent testing and a fresh tester when needed. Checked role projections and
 passive observation are separate from private Operation catalogs; see [outer roles](build.md#outer-task-roles-and-observation).
 The source writer builds with that candidate's own code; primary never renders candidate outputs.

@@ -193,3 +193,12 @@ Public context-solve prepares a real native context-assessor Agent and independe
 single-run result as specified by [Harness](../harness/execution-reference.md#native-context-assessor).
 It runs finite common admission directly, not the dispatch Graph. Bare public Python execution refuses absent native transport; no dispatch or Studio Graph fallback
 is selected. Planning now uses the authored two-child native workflow; tasks use the direct native task-author.
+
+### Failure propagation across executable kinds
+
+Dispatch, native workflows and explicitly selected StateGraph Operations preserve Harness's
+[causal execution feedback](../harness/execution-reference.md#execution-feedback). Each parent adds
+its operation/step context without replacing lower-level causes or treating an unaccepted proposal
+as completion. A failed child stops dependent work; its native execution outcome remains separate
+from any earlier durable domain receipt. Host refusals, invalid proposals and transport/observation
+failures return to the caller, not to an automatic retry or alternate backend.

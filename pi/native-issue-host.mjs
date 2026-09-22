@@ -1,3 +1,4 @@
+import { installHostErrors } from "./native-host-error.mjs";
 /** One fixed finite Issue step plus actual public native preflight. No model scheduling. */
 import fs from "node:fs";
 import path from "node:path";
@@ -6,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { issueCall, issueLayout } from "./issue-call.mjs";
 const [action, file, checksum] = process.argv.slice(2);
 const root = JSON.parse(fs.readFileSync(file, "utf8"));
+installHostErrors(root.directory, action, root.ticket);
 const layout = issueLayout(root, file, checksum);
 if (action === "next-0") {
   const binding = path.join(root.directory, "workflow-binding.json");

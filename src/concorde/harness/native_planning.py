@@ -9,6 +9,14 @@ from pathlib import Path
 
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import canonical
+from .execution_error import (
+    ExecutionFailure,
+    exception_feedback,
+    failure,
+    response_failure,
+    safe_text,
+    workflow_feedback,
+)
 from .native_evidence import NativeChildEvidence, _record, verify_native_children
 from .native_runtime import admit_native_runtime
 
@@ -38,9 +46,35 @@ def relay_prepare(host, invocation, candidate, payload):
     try:
         value = json.loads(process.stdout)
     except ValueError as error:
-        raise SpecError(
-            "candidate native preparation returned no envelope", "relay_failed"
+        raise ExecutionFailure(
+            failure(
+                "candidate native preparation returned no envelope",
+                code="relay_failed",
+                layer="native-relay",
+                category="transport",
+                attempt=host.invocation_id,
+                causes=[exception_feedback(error)],
+                diagnostics=canonical(
+                    {
+                        "exit_code": process.returncode,
+                        "stdout": process.stdout,
+                        "stderr": process.stderr,
+                    }
+                ),
+            )
         ) from error
+    if process.returncode != 0 and value.get("state") != "rejected":
+        raise ExecutionFailure(
+            failure(
+                "native preparation exited unsuccessfully",
+                code="relay_failed",
+                layer="native-relay",
+                category="native-exit",
+                diagnostics=canonical(
+                    {"exit_code": process.returncode, "stderr": process.stderr}
+                ),
+            )
+        )
     return value
 
 
@@ -105,7 +139,12 @@ def workflow_service(package, action, path, expected):
         return {
             **value,
             "native_state": status.get("state"),
-            "native_error": status.get("error"),
+            "native_error": safe_text(status["error"]) if status.get("error") else None,
+            "failure": workflow_feedback(base, status, binding)
+            if status.get("state") not in {"running", "complete"}
+            or status.get("error")
+            or (status.get("state") != "running" and not receipt.exists())
+            else None,
             "run_id": binding["runId"],
         }
     slots = [("assessor", base, str(path), expected)]
@@ -175,9 +214,11 @@ def workflow_service(package, action, path, expected):
         checksum,
     )
     if not value.get("accepted"):
-        raise SpecError(
-            "native planning result was rejected: " + canonical(value),
-            "invalid_completion",
+        raise response_failure(
+            "native planning result was rejected",
+            value,
+            layer="planning",
+            attempt=slot["ticket"],
         )
     if action == "workflow-advance" and value.get("outcome") == "sufficient":
         next_value = execute(package, "prepare-planner", {}, str(path), expected)

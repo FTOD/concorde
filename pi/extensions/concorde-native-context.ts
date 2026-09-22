@@ -1,3 +1,5 @@
+import { errorFeedback, failure, nativeFeedback } from "../execution-error.mjs";
+import { errorDisplay } from "../error-display.mjs";
 /** One prepared, foreground native context-assessor; no workflow or model scheduler. */
 import { nativePreflight } from "../native-preflight.ts";
 import { nativePlan } from "./concorde-native-plan.ts";
@@ -92,7 +94,15 @@ export function nativeContext(
       };
     } catch (error) {
       if (reserved && active?.id === event.toolCallId) active = undefined;
-      return { block: true, reason: String(error) };
+      return {
+        block: true,
+        reason: errorDisplay(
+          errorFeedback(error, {
+            layer: "native-preflight",
+            attempt: event.toolCallId,
+          }),
+        ),
+      };
     }
   });
   pi.on("tool_result", async (event, ctx) => {
@@ -176,17 +186,31 @@ export function nativeContext(
                   : "failed",
         accepted: false,
         result: response?.result,
-        error: String(error),
+        error: errorDisplay(errorFeedback(error)),
+        failure: failure("Direct native acceptance failed", {
+          layer: "native-parent",
+          attempt: event.toolCallId,
+          causes: [errorFeedback(error), nativeFeedback(event.details)],
+        }),
       };
       try {
         await nativeCommand(binding(), "invalidate", {});
-      } catch {}
+      } catch (error) {
+        value.failure.causes.push(
+          errorFeedback(error, { layer: "native-invalidation" }),
+        );
+      }
     } finally {
       active = undefined;
       pending = undefined;
     }
     return {
-      content: [{ type: "text", text: JSON.stringify(value) }],
+      content: [
+        {
+          type: "text",
+          text: value.accepted ? JSON.stringify(value) : errorDisplay(value),
+        },
+      ],
       details: {
         ...(event.details as any),
         concorde_context: value,
@@ -200,7 +224,12 @@ export function nativeContext(
     if (pending) {
       try {
         await nativeCommand(binding(), "invalidate", {});
-      } catch {}
+      } catch (error) {
+        pi.appendEntry(
+          "concorde.execution-failure",
+          errorFeedback(error, { layer: "native-shutdown" }),
+        );
+      }
     }
     pending = undefined;
     active = undefined;
@@ -226,7 +255,15 @@ export function nativeContext(
       if (pending) {
         try {
           await nativeCommand(binding(), "invalidate", {});
-        } catch {}
+        } catch (error) {
+          throw new Error(
+            errorDisplay(
+              errorFeedback(error, {
+                layer: "native-replacement-invalidation",
+              }),
+            ),
+          );
+        }
         pending = undefined;
       }
       const nativeRoot = process.env.CONCORDE_NATIVE_SUBAGENTS_ROOT;

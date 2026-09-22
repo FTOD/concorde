@@ -6,6 +6,7 @@ native launch/admission callable in Runtime context. No default model runner, RP
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from inspect import isawaitable
 from typing import Any, TypedDict
@@ -15,6 +16,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import get_runtime
 
 from ..spec.typed_data import DATA_SCHEMAS, typed, validate_typed
+from .execution_error import exception_feedback, failure
 from .operation_state import OperationRuntimeContext
 from .worker_profile import (
     validate_worker_input,
@@ -105,23 +107,38 @@ class OperationNode:
             validate_worker_output(profile, result)
             return validate_typed(result, self.result_type)["data"]
 
+        def annotate(error):
+            error.feedback = failure(
+                f"Operation {self.name} terminal Agent failed",
+                layer="operation",
+                causes=[exception_feedback(error, layer="native-service")],
+            )
+
         def invoke(state):
-            runtime = get_runtime()
-            value, selected = prepare(state, runtime)
-            result = selected(value)
-            if isawaitable(result):
-                raise RuntimeError(
-                    "Use ainvoke for an asynchronous native Agent service"
-                )
-            return finish(result)
+            try:
+                runtime = get_runtime()
+                value, selected = prepare(state, runtime)
+                result = selected(value)
+                if isawaitable(result):
+                    raise RuntimeError(
+                        "Use ainvoke for an asynchronous native Agent service"
+                    )
+                return finish(result)
+            except (Exception, asyncio.CancelledError, KeyboardInterrupt) as error:
+                annotate(error)
+                raise
 
         async def ainvoke(state):
-            runtime = get_runtime()
-            value, selected = prepare(state, runtime)
-            result = selected(value)
-            if isawaitable(result):
-                result = await result
-            return finish(result)
+            try:
+                runtime = get_runtime()
+                value, selected = prepare(state, runtime)
+                result = selected(value)
+                if isawaitable(result):
+                    result = await result
+                return finish(result)
+            except (Exception, asyncio.CancelledError, KeyboardInterrupt) as error:
+                annotate(error)
+                raise
 
         graph = StateGraph(
             state_schema(

@@ -26,6 +26,7 @@ from ..spec.typed_data import (
 )
 from .change_worktree import progress, read_change, resume_owner, workspace_identity
 from .configuration import load_configuration
+from .execution_error import error_entry
 from .host import OperationHost, resolve_child_operation
 from .relay import bind_worktree, verify_local_execution
 from .timing import timed, traced_operation
@@ -414,29 +415,53 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                 host.lifecycle["status"] = lifecycle_status
                 result.update(
                     status="failed",
-                    errors=[{"code": code, "field": "", "message": str(error)}],
+                    errors=[
+                        error_entry(
+                            error,
+                            code=code,
+                            layer="admission",
+                            attempt=host.invocation_id,
+                        )
+                    ],
                 )
                 if error.code:
                     host.lifecycle["status"] = "blocked"
                     result.update(
                         status="blocked",
                         errors=[
-                            {"code": error.code, "field": "", "message": str(error)}
+                            error_entry(
+                                error,
+                                code=error.code,
+                                layer="admission",
+                                attempt=host.invocation_id,
+                            )
                         ],
                     )
             except (SpecError, TypedDataError, ContractError) as error:
                 result["errors"] = [
-                    {"code": error.code, "field": error.field, "message": str(error)}
+                    error_entry(
+                        error,
+                        code=error.code,
+                        layer="admission",
+                        attempt=host.invocation_id,
+                    )
                 ]
             except BuildError as error:
                 result["errors"] = [
-                    {"code": error.code, "field": "", "message": str(error)}
+                    error_entry(
+                        error,
+                        code=error.code,
+                        layer="admission",
+                        attempt=host.invocation_id,
+                    )
                 ]
             except Exception as error:
                 result.update(
                     status="failed",
                     errors=[
-                        {"code": "execution_failed", "field": "", "message": str(error)}
+                        error_entry(
+                            error, layer="admission", attempt=host.invocation_id
+                        )
                     ],
                 )
             if _is_graph_command(updates):

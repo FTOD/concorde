@@ -15,8 +15,9 @@ from pathlib import Path
 
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import decode
-from .native_runtime import FORMAT, NativeRuntimeBinding
+from .execution_error import ExecutionFailure, failure, native_feedback
 from .native_result import staging_control
+from .native_runtime import FORMAT, NativeRuntimeBinding
 
 MAX_NATIVE_RECORD_BYTES = 16 * 1024 * 1024
 
@@ -27,8 +28,14 @@ def _record(path: Path) -> dict:
     ):
         raise SpecError("native evidence path is not canonical", "unsafe_path")
     if not path.is_file():
-        raise SpecError(
-            "native evidence is not an available regular file", "stale_evidence"
+        raise ExecutionFailure(
+            failure(
+                "native evidence is not an available regular file",
+                code="stale_evidence",
+                layer="native-evidence",
+                category="observation",
+                references=[str(path)],
+            )
         )
     try:
         with path.open("rb") as stream:
@@ -40,8 +47,17 @@ def _record(path: Path) -> dict:
             raise ValueError("native evidence is not an object")
         return value
     except (OSError, ValueError) as error:
-        raise SpecError(
-            "native evidence is missing or invalid", "stale_evidence"
+        from .execution_error import exception_feedback
+
+        raise ExecutionFailure(
+            failure(
+                "native evidence is missing or invalid",
+                code="stale_evidence",
+                layer="native-evidence",
+                category="observation",
+                references=[str(path)],
+                causes=[exception_feedback(error)],
+            )
         ) from error
 
 
@@ -96,8 +112,14 @@ def verify_native_children(
         or status.get("error")
         or status.get("terminalOutcome")
     ):
-        raise SpecError(
-            "native workflow is foreign or not successful", "incompatible_handoff"
+        raise ExecutionFailure(
+            failure(
+                "native workflow is foreign or not successful",
+                code="incompatible_handoff",
+                layer="native-evidence",
+                category="observation",
+                causes=[native_feedback(status)],
+            )
         )
     steps = status.get("steps")
     workflow = status.get("workflow")
@@ -153,8 +175,14 @@ def verify_native_children(
             or pointer.get("proposal_digest") != child.proposal_digest
             or not isinstance(pointer.get("metadata"), str)
         ):
-            raise SpecError(
-                "native child is foreign or incomplete", "invalid_completion"
+            raise ExecutionFailure(
+                failure(
+                    "native child is foreign or incomplete",
+                    code="invalid_completion",
+                    layer="native-evidence",
+                    category="observation",
+                    causes=[native_feedback(step)],
+                )
             )
         metadata = _record(Path(pointer["metadata"]))
         if any(
@@ -172,8 +200,14 @@ def verify_native_children(
             or metadata.get("error")
             or metadata.get("transcriptError")
         ):
-            raise SpecError(
-                "native child execution did not succeed", "execution_failed"
+            raise ExecutionFailure(
+                failure(
+                    "native child execution did not succeed",
+                    code="execution_failed",
+                    layer="native-evidence",
+                    category="observation",
+                    causes=[native_feedback(metadata)],
+                )
             )
         acceptance = metadata.get("acceptance")
         if not isinstance(acceptance, dict):
@@ -185,7 +219,15 @@ def verify_native_children(
             or len(gates) != 1
             or not isinstance(gates[0], dict)
         ):
-            raise SpecError("native child gate did not verify", "invalid_completion")
+            raise ExecutionFailure(
+                failure(
+                    "native child gate did not verify",
+                    code="invalid_completion",
+                    layer="native-evidence",
+                    category="observation",
+                    causes=[native_feedback(metadata)],
+                )
+            )
         gate = gates[0]
         # Native structuredOutput belongs to the model. Only the separately
         # generated plain gate's stdout carries Host staging control.
@@ -236,8 +278,14 @@ def verify_native_single(
         or not isinstance(rows, list)
         or len(rows) != 1
     ):
-        raise SpecError(
-            "native single result is foreign or incomplete", "execution_failed"
+        raise ExecutionFailure(
+            failure(
+                "native single result is foreign or incomplete",
+                code="execution_failed",
+                layer="native-evidence",
+                category="observation",
+                causes=[native_feedback(details)],
+            )
         )
     row = rows[0]
     if (
@@ -260,7 +308,15 @@ def verify_native_single(
             )
         )
     ):
-        raise SpecError("native assessment did not complete", "execution_failed")
+        raise ExecutionFailure(
+            failure(
+                "native assessment did not complete",
+                code="execution_failed",
+                layer="native-evidence",
+                category="observation",
+                causes=[native_feedback(row)],
+            )
+        )
     launch = correlation.get("launch_contract_digest")
     if not launch or row.get("launchContractDigest") != launch:
         raise SpecError(
@@ -288,7 +344,15 @@ def verify_native_single(
         or metadata.get("transcriptError")
         or metadata.get("processSignal")
     ):
-        raise SpecError("native terminal metadata disagrees", "execution_failed")
+        raise ExecutionFailure(
+            failure(
+                "native terminal metadata disagrees",
+                code="execution_failed",
+                layer="native-evidence",
+                category="observation",
+                causes=[native_feedback(metadata)],
+            )
+        )
     acceptance = metadata.get("acceptance", {})
     gates = acceptance.get("verifyRuns")
     if (
@@ -297,7 +361,15 @@ def verify_native_single(
         or len(gates) != 1
         or not isinstance(gates[0], dict)
     ):
-        raise SpecError("native staging gate is missing", "invalid_completion")
+        raise ExecutionFailure(
+            failure(
+                "native staging gate is missing",
+                code="invalid_completion",
+                layer="native-evidence",
+                category="observation",
+                causes=[native_feedback(metadata)],
+            )
+        )
     gate = gates[0]
     if (
         gate.get("command") != gate_command
@@ -306,7 +378,15 @@ def verify_native_single(
         or gate["exitCode"] != 0
         or "structuredOutput" in gate
     ):
-        raise SpecError("native gate is foreign or failed", "invalid_completion")
+        raise ExecutionFailure(
+            failure(
+                "native gate is foreign or failed",
+                code="invalid_completion",
+                layer="native-evidence",
+                category="observation",
+                causes=[native_feedback(metadata)],
+            )
+        )
     staging_control(
         gate.get("stdout"),
         ticket=ticket,

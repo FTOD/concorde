@@ -25,9 +25,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 COORDINATOR = ".pi/extensions/concorde-coordinator.ts"
 APPEND = ".pi/APPEND_SYSTEM.md"
-IDENTITY = (
-    "You are the main coordinator, not a LangGraph node or the maintenance author."
-)
+IDENTITY = "You are the main coordinator, not a LangGraph node."
 
 
 def install_fixture(target):
@@ -348,8 +346,8 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 ]
                 for extension in fields["extensions"].split(", "):
                     argv += ["-e", str((definition.parent / extension).resolve())]
-            else:
-                argv += ["--tools", "read"]
+            # Main uses normal discovery/default activation. An explicit --tools read
+            # ceiling would intentionally exclude the new model-callable brief tool.
             run = (
                 replacement_prompts(argv, project, env, session)
                 if replacements
@@ -378,6 +376,12 @@ class EffectiveRolePromptTests(unittest.TestCase):
                         role == "main" and project == self.source,
                         ".concorde/todos/" in effective,
                     )
+            for observed in provider.requests:
+                names = {t["function"]["name"] for t in observed.get("tools", [])}
+                self.assertEqual(
+                    role == "main" and project == self.source,
+                    "update_task_brief" in names,
+                )
             request = provider.requests[-1]
         system = "\n".join(
             m["content"] for m in request["messages"] if m["role"] == "system"

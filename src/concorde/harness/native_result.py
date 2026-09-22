@@ -9,13 +9,14 @@ completion. The caller supplies current-input checks and the domain acceptance s
 
 from __future__ import annotations
 
-import threading
 import re
+import threading
 from pathlib import Path
 from typing import Callable
 
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import canonical, decode
+from .execution_error import ExecutionFailure, exception_feedback, failure
 
 MAX_PROPOSAL_BYTES = 1024 * 1024
 MAX_CONTROL_BYTES = 8000
@@ -115,7 +116,7 @@ class NativeResultGate:
         self._proposal: bytes | None = None
         self._digest: str | None = None
         self._accepted: dict | None = None
-        self._failure: str | None = None
+        self._failure: dict | None = None
 
     def submit(self, invocation_id: str, value: dict) -> dict:
         """Stage one schema/business-checked proposal, without accepting completion."""
@@ -145,7 +146,15 @@ class NativeResultGate:
     def _checked_proposal(self, invocation_id: str) -> dict:
         self._identity(invocation_id)
         if self._proposal is None:
-            raise SpecError("native child submitted no result", "invalid_completion")
+            raise ExecutionFailure(
+                failure(
+                    "native child submitted no result",
+                    code="invalid_completion",
+                    layer="native-gate",
+                    category="no-submission",
+                    attempt=self.invocation_id,
+                )
+            )
         if any(
             path.is_symlink()
             for path in (self.proposal_path, *self.proposal_path.parents)
@@ -195,10 +204,16 @@ class NativeResultGate:
                 result = self.persist(value)
                 self._accepted = control_value(result)
                 return control_value(self._accepted)
-            except BaseException:
+            except BaseException as error:
                 # In particular, an uncertain persistence acknowledgement must
                 # never invoke the mutation again from a duplicate command.
-                self._failure = "native acceptance failed; fresh admission or explicit recovery required"
+                self._failure = failure(
+                    "native acceptance failed; fresh admission or explicit recovery required",
+                    code="invalid_completion",
+                    layer="native-gate",
+                    attempt=self.invocation_id,
+                    causes=[exception_feedback(error)],
+                )
                 raise
 
     @property
@@ -215,10 +230,15 @@ class NativeResultGate:
         """Cancellation/failure revokes unsettled acceptance; it does not undo edits."""
         with self._lock:
             if self._accepted is None:
-                self._failure = reason
+                self._failure = failure(
+                    reason,
+                    code="invalid_completion",
+                    layer="native-gate",
+                    attempt=self.invocation_id,
+                )
 
     def _identity(self, invocation_id: str) -> None:
         if invocation_id != self.invocation_id:
             raise SpecError("foreign native invocation", "incompatible_handoff")
         if self._failure is not None:
-            raise SpecError(self._failure, "invalid_completion")
+            raise ExecutionFailure(self._failure)

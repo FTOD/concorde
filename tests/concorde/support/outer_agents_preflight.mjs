@@ -15,7 +15,7 @@ const alias = Object.fromEntries(
 );
 const jiti = createJiti(import.meta.url, { alias });
 const { resolveSubagentLaunchContract } = await jiti.import(
-  resolve(subagents, "src/api/preflight.ts"),
+  require.resolve("pi-subagents/preflight"),
 );
 const results = [];
 for (const agent of ["maintenance-worker", "tester"]) {

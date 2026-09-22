@@ -11,8 +11,6 @@ interprets the collected tool results.
 
 from __future__ import annotations
 
-from .timing import Span, timed, observe_pi_event
-
 import json
 import queue
 import subprocess
@@ -20,6 +18,8 @@ import threading
 from dataclasses import dataclass, field
 from time import monotonic
 from typing import Any, Mapping, Sequence
+
+from .timing import Span, observe_pi_event, timed
 
 
 class PiRpcError(RuntimeError):
@@ -44,6 +44,8 @@ class PiRun:
     tool_results: list[dict[str, Any]] = field(default_factory=list)
     stats: dict[str, Any] | None = None
     stderr: str = ""
+    stderr_bytes: int | None = None
+    stderr_complete: bool = True
     exit_code: int | None = None
     wall_seconds: float = 0.0
 
@@ -99,9 +101,12 @@ def run_prompt(
     intervals = {}
     records: queue.Queue = queue.Queue()
     stderr_tail = bytearray()
+    stderr_bytes = 0
 
     def read_stderr() -> None:
+        nonlocal stderr_bytes
         while chunk := process.stderr.read(65536):
+            stderr_bytes += len(chunk)
             stderr_tail.extend(chunk)
             del stderr_tail[:-20000]
 
@@ -131,6 +136,10 @@ def run_prompt(
             except OSError:
                 pass
         run.stderr = bytes(stderr_tail).decode("utf-8", "replace")
+        run.stderr_bytes = stderr_bytes
+        run.stderr_complete = not stderr_reader.is_alive() and stderr_bytes <= len(
+            stderr_tail
+        )
         run.exit_code = process.returncode
         run.wall_seconds = monotonic() - started
         for span in intervals.values():

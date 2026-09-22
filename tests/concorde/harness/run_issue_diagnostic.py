@@ -117,30 +117,19 @@ def main():
         timeout=30,
         check=False,
     )
-    envelope_file = scratch / "diagnostic-envelope.json"
     summary_file = scratch / "summary.json"
     summary = json.loads(summary_file.read_text()) if summary_file.exists() else {}
-    if not envelope_file.exists():
-        print(
-            json.dumps(
-                {
-                    "diagnosticComplete": False,
-                    "driverExit": executed.returncode,
-                    "driverError": summary.get("driverError"),
-                    "observationError": summary.get(
-                        "observationError",
-                        "no selected diagnostic envelope; no success claimed",
-                    ),
-                }
-            )
+    if not summary.get("report"):
+        summary["diagnosticComplete"] = False
+        summary.setdefault(
+            "observationError", "no selected diagnostic report; no success claimed"
         )
-        return 3
-    envelope = json.loads(envelope_file.read_text())
-    envelope["summary"]["result"] = summary.get("result")
-    envelope["summary"]["diagnosticComplete"] = summary.get("diagnosticComplete", False)
+    # The selected diagnostic is an explicit test_command report, not an 8KB stdout payload.
+    # Request reports=["structured-tool.json", "diagnostic-summary.json"] on that command.
+    summary["driverExit"] = executed.returncode
     if state.returncode == 0:
         facts = json.loads(state.stdout)
-        envelope["summary"]["persistence"] = {
+        summary["persistence"] = {
             key: facts.get(key)
             for key in (
                 "issueStatus",
@@ -158,14 +147,21 @@ def main():
             )
         }
     else:
-        envelope["summary"]["stateInspection"] = "failed"
-    text = json.dumps(envelope, separators=(",", ":"))
-    if len(text.encode()) >= 8000:
-        raise ValueError(
-            "final selected envelope exceeds 8000 bytes; no error detail dropped"
+        summary["stateInspection"] = "failed"
+    report = Path(os.environ["CONCORDE_CHECK_REPORT_DIR"]) / "diagnostic-summary.json"
+    with report.open("x") as stream:
+        os.chmod(report, 0o600)
+        stream.write(json.dumps(summary))
+    print(
+        json.dumps(
+            {
+                "diagnosticComplete": summary["diagnosticComplete"],
+                "report": summary.get("report"),
+                "driverExit": executed.returncode,
+            }
         )
-    print(text)
-    return 0 if envelope["summary"]["diagnosticComplete"] else 3
+    )
+    return 0 if summary["diagnosticComplete"] else 3
 
 
 if __name__ == "__main__":

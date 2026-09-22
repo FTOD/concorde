@@ -91,7 +91,10 @@ for (const args of f.invalid_arguments) {
   await assert.rejects(
     () => validateSdkArguments(sdk, tool(fixed), "retained-invalid", args),
     (error) => {
-      assert(!error.message.includes("schema is false"));
+      // The old unresolved root rejected data itself, even for valid values.
+      // SDK 0.87 also uses "schema is false" for a legitimately forbidden extra
+      // issue_decision.issue_id property; that is not the old composition defect.
+      assert(!error.message.includes("value.result.data: schema is false"));
       assert.match(error.message, /context_id.*outcome/);
       errors.after.push(error.message.split("Received arguments:")[0]);
       return true;

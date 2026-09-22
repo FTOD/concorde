@@ -524,3 +524,10 @@ a replacement task or unmanaged replacement path cannot supply evidence, even wh
 exists. Branch rename within that incarnation remains supported. If the original source is absent,
 a retry may use its already recorded immutable candidate commit and reverify ancestry; it cannot invent
 that evidence after removal. A removed cleanup outcome also requires the candidate path to be absent.
+
+### Additive error diagnostics
+
+An `errors` entry may additionally carry `feedback` using the
+[causal execution feedback record](execution-reference.md#execution-feedback). Its existing
+`code`, `field` and sanitized `message` remain present. This diagnostic addition does not change
+operation-result schema 3, statuses, domain payloads, invocation admission or retry authority.

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from .timing import timed
-
 import os
 import sys
 from pathlib import Path
@@ -19,7 +17,9 @@ from .change_worktree import (
     resume_owner,
     workspace_identity,
 )
+from .execution_error import ExecutionFailure, failure
 from .host import OperationHost
+from .timing import timed
 
 # An installed consumer keeps the framework below this project-relative root (the installer's
 # FRAMEWORK_ROOT); a source checkout is its own framework.
@@ -185,11 +185,21 @@ def relay_operation(
         not isinstance(envelope, dict)
         or envelope.get("type_id") != "concorde-operation-result"
     ):
-        detail = stderr.strip()[-2000:] or stdout.strip()[-2000:]
-        raise SpecError(
-            "the candidate worktree's launcher returned no result envelope"
-            + (f": {detail}" if detail else f" (exit code {process.returncode})"),
-            "relay_failed",
+        raise ExecutionFailure(
+            failure(
+                "the candidate worktree's launcher returned no result envelope",
+                code="relay_failed",
+                layer="relay",
+                category="transport",
+                attempt=host.invocation_id,
+                diagnostics=canonical(
+                    {
+                        "exit_code": process.returncode,
+                        "stdout": stdout,
+                        "stderr": stderr,
+                    }
+                ),
+            )
         )
     return envelope, stderr
 

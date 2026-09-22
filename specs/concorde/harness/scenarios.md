@@ -569,3 +569,26 @@ See [project root is the entry process's working directory](requirements.md#req.
 - THEN the actual StateGraph invokes that service and validates State input/output synchronously or asynchronously
 - AND State cannot choose authority, a missing service refuses, and Studio inspects the same graph
 - AND native capability workflows have no mirrored or mandatory graph backend
+
+### scenario.harness.execution-feedback — Preserve causal failures through callers
+
+- GIVEN a native proposal, workflow child, finite Host command or optional StateGraph service fails with a known lower-level cause
+- WHEN the parent reports the failure, including later gate or result polling after invalidation
+- THEN it preserves that cause's code, sanitized message and known attempt identity while adding its own layer context
+- AND no-submission, schema rejection, Host refusal, capture, exit, cancellation, timeout, transport and observation failures remain distinguishable without claiming unobserved causes
+- AND diagnostics too large for display have explicit completeness and retrieval facts, with export failure reported rather than silently clipped
+- AND failed immediate SDK-error observation returns the original schema cause and call identity alongside the secondary persistence error through supported SDK/native error reporting, with incomplete retention explicit
+- AND repeating that notification re-reports its cached failure without repeating persistence or invalidating an otherwise correctable schema slot
+- AND failure never becomes completion or permits an automatic invalid-slot retry, widened grant or credential disclosure
+
+### scenario.harness.outer-lifecycle — Actual compaction reinjects current task memory once
+
+- GIVEN source main or maintenance with explicit lifecycle loading, a current task brief and unchanged terminal tool grants
+- WHEN Pi performs measured threshold or overflow compaction or the explicit SDK compaction command
+- THEN successful persisted compaction injects only the latest brief once at the next provider-context boundary without launching a turn
+- AND failed or cancelled compaction does not inject task memory or claim recovery
+- AND repeated equal summaries, resume and branch navigation preserve identity-based deduplication
+- AND malformed optional supervisor memory does not block native feedback or reintroduce obsolete task instructions
+- AND source main can replace/read back the current brief through its explicitly projected model tool, not by writing slash-command text; only the trusted source-main entry enables that tool
+- AND default/maintenance loading keeps its supervisor route and seven tools, while tester, domain Agents and consumers receive neither the main brief tool nor active lifecycle authority
+- AND semantic progress remains worker-reported while host activity, context and compaction are separate observations

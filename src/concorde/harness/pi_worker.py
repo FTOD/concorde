@@ -22,8 +22,6 @@ against its own typed contract.
 
 from __future__ import annotations
 
-from .timing import Span, timed
-
 import json
 import os
 import shutil
@@ -37,6 +35,7 @@ from typing import Any, Callable, Literal, Mapping, cast
 
 from .harness import SAFE_ENVIRONMENT
 from .pi_rpc import PiRpcCancelled, PiRpcError, PiRpcTimeout, PiRun, run_prompt
+from .timing import Span, timed
 from .worker_sandbox import (
     WorkerSandboxError,
     bubblewrap_argv,
@@ -210,7 +209,15 @@ class _HostToolHandler(socketserver.StreamRequestHandler):
         except (
             Exception
         ) as error:  # explicit rejection, never a successful report receipt
-            reply = {"error": f"{type(error).__name__}: {error}"}
+            from .execution_error import exception_feedback, safe_text
+
+            feedback = exception_feedback(error, layer="worker-host-tool")
+            reply = {
+                "error": safe_text(f"{type(error).__name__}: {error}")
+                + "\n"
+                + json.dumps(feedback),
+                "feedback": feedback,
+            }
         try:
             self.wfile.write(json.dumps(reply).encode("utf-8"))
         except (BrokenPipeError, ConnectionResetError):

@@ -46,6 +46,7 @@ class SessionSelectionTests(unittest.TestCase):
                 "agents/maintenance-worker.md",
                 "agents/tester.md",
                 "extensions/concorde-observe.ts",
+                "extensions/concorde-outer-lifecycle.ts",
             },
         )
         selected = select_session(

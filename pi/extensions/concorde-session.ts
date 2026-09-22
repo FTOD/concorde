@@ -1,3 +1,5 @@
+import { errorFeedback, failure, executionError } from "../execution-error.mjs";
+import { errorDisplay } from "../error-display.mjs";
 /**
  * Concorde session extension.
  *
@@ -217,13 +219,50 @@ function runLauncher(
   });
 }
 
+function launcherFailure(run: LauncherRun, operation: string) {
+  let response: any;
+  try {
+    response = JSON.parse(run.stdout);
+  } catch {}
+  const feedback = failure(
+    `${operation} ${run.aborted ? "was cancelled" : "failed"}`,
+    {
+      layer: "session-launcher",
+      category: run.aborted
+        ? "cancelled"
+        : response
+          ? "host-refusal"
+          : "transport",
+      attempt: response?.invocation_id ?? null,
+      causes: response
+        ? [
+            errorFeedback({
+              response: response.result ? response : { result: response },
+            }),
+          ]
+        : [],
+      diagnostics: JSON.stringify({
+        exitCode: run.code,
+        stderr: run.stderr,
+        stdout: response ? undefined : run.stdout,
+      }),
+    },
+  );
+  const error = executionError(feedback);
+  error.message =
+    (run.aborted ? `${operation} was cancelled\n` : "") +
+    errorDisplay(response ? { ...response, failure: feedback } : feedback) +
+    (usageLine(run.stderr) ? `\n${usageLine(run.stderr)}` : "");
+  return error;
+}
+
 function bounded(text: string, label: string): string {
   if (Buffer.byteLength(text, "utf8") <= RESULT_LIMIT) return text;
   const file = path.join(
     fs.mkdtempSync(path.join(os.tmpdir(), "concorde-result-")),
     `${label}.json`,
   );
-  fs.writeFileSync(file, text, "utf8");
+  fs.writeFileSync(file, text, { encoding: "utf8", mode: 0o600, flag: "wx" });
   return (
     Buffer.from(text, "utf8").subarray(0, RESULT_LIMIT).toString("utf8") +
     `\n\n[Result truncated to ${RESULT_LIMIT} bytes; the complete result is saved at ${file}]`
@@ -281,8 +320,14 @@ export function concordeSession(
       { encoding: "utf8", maxBuffer: 8 * 1024 * 1024, timeout: 30000 },
     );
     if (result.error || result.status !== 0)
-      throw new Error(
-        "private Pi selection verification failed; reselect current candidate artifacts",
+      throw launcherFailure(
+        {
+          code: result.status,
+          stdout: result.stdout ?? "",
+          stderr: result.stderr ?? String(result.error ?? ""),
+          aborted: false,
+        },
+        "private Pi selection verification",
       );
     const selected = JSON.parse(result.stdout).result;
     if (
@@ -331,12 +376,28 @@ export function concordeSession(
           signal,
           selectionPath,
         );
-        if (run.aborted)
-          throw new Error(
-            "Native context preparation cancelled; no child accepted",
+        if (run.aborted || run.code !== 0)
+          throw launcherFailure(run, "Native preparation");
+        try {
+          return JSON.parse(run.stdout);
+        } catch {
+          throw launcherFailure(
+            run,
+            "Native preparation returned malformed output",
           );
-        return JSON.parse(run.stdout);
+        }
       },
+    });
+    pi.on("tool_result", (event) => {
+      if (event.toolName !== "concorde") return;
+      const value = event.details as any;
+      if (
+        value?.failure ||
+        ["failed", "stale", "rejected", "cancelled"].includes(value?.state) ||
+        ["failed", "stopped"].includes(value?.native_state) ||
+        ["blocked", "failed"].includes(value?.result?.status)
+      )
+        return { isError: true };
     });
     pi.on("before_agent_start", async (event) => ({
       systemPrompt:
@@ -425,7 +486,18 @@ export function concordeSession(
             );
           const value = await prepareContext.result(operation.name);
           return {
-            content: [{ type: "text", text: JSON.stringify(value) }],
+            content: [
+              {
+                type: "text",
+                text:
+                  value.failure ||
+                  ["rejected", "failed", "cancelled", "stale"].includes(
+                    value.state,
+                  )
+                    ? errorDisplay(value)
+                    : bounded(JSON.stringify(value), operation.name),
+              },
+            ],
             details: value,
           };
         }
@@ -464,10 +536,20 @@ export function concordeSession(
           (operation.name === "concorde-issues" && input.action === "solve")
         ) {
           const value = await prepareContext(envelope, ctx, signal);
-          if (value.state === "rejected")
-            throw new Error(JSON.stringify(value));
+          if (value.state === "rejected") throw new Error(errorDisplay(value));
           return {
-            content: [{ type: "text", text: JSON.stringify(value) }],
+            content: [
+              {
+                type: "text",
+                text:
+                  value.failure ||
+                  ["rejected", "failed", "cancelled", "stale"].includes(
+                    value.state,
+                  )
+                    ? errorDisplay(value)
+                    : bounded(JSON.stringify(value), operation.name),
+              },
+            ],
             details: value,
           };
         }
@@ -493,19 +575,17 @@ export function concordeSession(
           throw error;
         }
         const usage = usageLine(run.stderr);
-        const body = run.stdout.trim() || run.stderr.trim();
-        if (run.aborted)
-          throw new Error(
-            `${operation.name} was cancelled` +
-              (body ? `\n${bounded(body, operation.name)}` : ""),
-          );
-        if (run.code !== 0)
-          throw new Error(
-            (body
-              ? bounded(body, operation.name)
-              : `${operation.name} exited with code ${run.code}`) +
-              (usage ? `\n${usage}` : ""),
-          );
+        let response: any;
+        try {
+          response = JSON.parse(run.stdout);
+        } catch {}
+        if (
+          run.aborted ||
+          run.code !== 0 ||
+          !response ||
+          ["blocked", "failed"].includes(response.status)
+        )
+          throw launcherFailure(run, operation.name);
         return {
           content: [
             {

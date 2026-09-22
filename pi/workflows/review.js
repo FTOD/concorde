@@ -1,4 +1,17 @@
 // Authored native review order. No business scope cap; native configured budgets still apply.
+function stop(message, child, key) {
+  const feedback = failure(message, {
+    layer: "workflow",
+    attempt: key,
+    causes: child ? [nativeFeedback(child, { attempt: key })] : [],
+  });
+  emit({ kind: "concorde.failure", key, feedback });
+  throw new Error(
+    message +
+      "; full causal feedback: workflow status concorde.failure emission for " +
+      key,
+  );
+}
 const request = __CONCORDE_REVIEW__;
 await runs.host("bind", {
   kind: "command",
@@ -26,7 +39,7 @@ for (let index = 0; index < request.members.length; index++) {
     child.terminalOutcome ||
     child.results?.length !== 1
   )
-    throw new Error("Native reviewer incomplete");
+    stop("Native reviewer incomplete", child, "review-" + index);
   const row = child.results[0];
   if (
     row.exitCode !== 0 ||
@@ -35,17 +48,17 @@ for (let index = 0; index < request.members.length; index++) {
     row.outputSaveError ||
     row.transcriptError
   )
-    throw new Error("Native reviewer failed or lost evidence");
+    stop("Native reviewer failed or lost evidence", child, "review-" + index);
   const gates = row.acceptance?.verifyRuns;
   if (
     row.acceptance?.status !== "verified" ||
     gates?.length !== 1 ||
     gates[0].status !== "passed"
   )
-    throw new Error("Reviewer staging gate rejected");
+    stop("Reviewer staging gate rejected", child, "review-" + index);
   const raw = gates[0].stdout;
   if (typeof raw !== "string" || raw.length > 8000)
-    throw new Error("Reviewer control unavailable");
+    stop("Reviewer control unavailable", child, "review-" + index);
   const staged = JSON.parse(raw);
   if (
     staged.ticket !== member.ticket ||
@@ -53,7 +66,7 @@ for (let index = 0; index < request.members.length; index++) {
     staged.state !== "staged" ||
     staged.accepted !== false
   )
-    throw new Error("Foreign reviewer staging");
+    stop("Foreign reviewer staging", child, "review-" + index);
   const result = {};
   for (const field of [
     "agent",

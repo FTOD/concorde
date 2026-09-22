@@ -1,4 +1,6 @@
 /** Register one invocation-bound authored native plan resource; no model execution here. */
+import { errorFeedback, failure, nativeFeedback } from "../execution-error.mjs";
+import { errorDisplay } from "../error-display.mjs";
 import fs from "node:fs";
 import { issueCall, issueLayout } from "../issue-call.mjs";
 import path from "node:path";
@@ -74,27 +76,36 @@ export async function nativePlan(
       ...issueLayout(descriptor, prepared.descriptor, prepared.digest),
       commands,
     };
-  const script = fs
+  const errorHelpers = fs
     .readFileSync(
-      path.join(
-        descriptor.package_root,
-        issue
-          ? "pi/workflows/issues.js"
-          : review
-            ? "pi/workflows/review.js"
-            : "pi/workflows/plan.js",
-      ),
+      path.join(descriptor.package_root, "pi/execution-error.mjs"),
       "utf8",
     )
-    .replace(
-      issue
-        ? "__CONCORDE_ISSUE__"
-        : review
-          ? "__CONCORDE_REVIEW__"
-          : "__CONCORDE_PLAN__",
-      JSON.stringify(expansion),
-    )
-    .replace("__ISSUE_CALL__", "(" + issueCall.toString() + ")");
+    .replace(/^export /gm, "");
+  const script =
+    errorHelpers +
+    "\n" +
+    fs
+      .readFileSync(
+        path.join(
+          descriptor.package_root,
+          issue
+            ? "pi/workflows/issues.js"
+            : review
+              ? "pi/workflows/review.js"
+              : "pi/workflows/plan.js",
+        ),
+        "utf8",
+      )
+      .replace(
+        issue
+          ? "__CONCORDE_ISSUE__"
+          : review
+            ? "__CONCORDE_REVIEW__"
+            : "__CONCORDE_PLAN__",
+        JSON.stringify(expansion),
+      )
+      .replace("__ISSUE_CALL__", "(" + issueCall.toString() + ")");
   const name =
     (issue
       ? "concorde.issue."
@@ -128,6 +139,7 @@ export async function nativePlan(
     context: "fresh",
     intercomBridge: { mode: "off" },
   };
+  let launchFailure: any;
   let tool: string | undefined,
     runId: string | undefined,
     terminal = false,
@@ -174,8 +186,29 @@ export async function nativePlan(
         event.isError ||
         !details?.asyncDir ||
         !(details.runId ?? details.asyncId)
-      )
-        throw new Error("Native planning launch returned no binding");
+      ) {
+        launchFailure = failure("Native workflow launch returned no binding", {
+          layer: "workflow-launch",
+          attempt: prepared.ticket,
+          causes: [nativeFeedback(details)],
+          diagnostics: event.content
+            ?.filter((p: any) => p.type === "text")
+            .map((p: any) => p.text)
+            .join("\n"),
+        });
+        return {
+          isError: true,
+          content: [{ type: "text", text: errorDisplay(launchFailure) }],
+          details: {
+            ...details,
+            concorde_native: {
+              state: "failed",
+              accepted: false,
+              failure: launchFailure,
+            },
+          },
+        };
+      }
       fs.writeFileSync(
         path.join(descriptor.directory, "workflow-binding.tmp"),
         JSON.stringify({
@@ -211,7 +244,10 @@ export async function nativePlan(
     },
     async result() {
       verify();
-      if (!launched) return { state: "not-run", accepted: false };
+      if (!launched)
+        return launchFailure
+          ? { state: "failed", accepted: false, failure: launchFailure }
+          : { state: "not-run", accepted: false };
       const result = await nativeCommand(
         prepared.binding,
         "workflow-result",
@@ -228,7 +264,15 @@ export async function nativePlan(
       if (launched && !terminal) {
         try {
           await nativeCommand(prepared.binding, "workflow-stop", {});
-        } catch {}
+        } catch (error) {
+          pi.appendEntry(
+            "concorde.execution-failure",
+            errorFeedback(error, {
+              layer: "workflow-stop",
+              attempt: prepared.ticket,
+            }),
+          );
+        }
         pi.events.emit("subagents:rpc:v1:request", {
           version: 1,
           requestId: crypto.randomUUID(),
@@ -238,7 +282,15 @@ export async function nativePlan(
       } else if (!launched) {
         try {
           await nativeCommand(prepared.binding, "invalidate", {});
-        } catch {}
+        } catch (error) {
+          pi.appendEntry(
+            "concorde.execution-failure",
+            errorFeedback(error, {
+              layer: "workflow-invalidation",
+              attempt: prepared.ticket,
+            }),
+          );
+        }
       }
     },
   };

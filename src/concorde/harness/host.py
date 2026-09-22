@@ -21,8 +21,8 @@ from ..spec.contracts import load_operation_inventory
 from ..spec.repository import SpecError
 from ..spec.typed_data import canonical, validate_typed
 from .model_selection import worker_selection
-from .usage import record_usage
 from .timing import Span
+from .usage import record_usage
 from .worker_executor import WorkerOutcome, build_worker_invocation, worker_instructions
 from .worker_profile import binding_json, external_worker_name, worker_profile
 from .worker_sandbox import WORKER_SANDBOX_POLICY
@@ -166,6 +166,9 @@ def _record_worker_failure(host, invocation, error) -> str | None:
             "outcome": error.outcome,
             "exit_code": error.run.exit_code,
             "wall_seconds": error.run.wall_seconds,
+            "stderr_bytes": error.run.stderr_bytes,
+            "stderr_complete": error.run.stderr_complete
+            and len(error.run.stderr.encode("utf-8")) <= 20000,
             "stderr_tail": error.run.stderr.encode("utf-8")[-20000:].decode(
                 "utf-8", "ignore"
             ),
@@ -187,7 +190,8 @@ def _record_worker_failure(host, invocation, error) -> str | None:
                 .relative_to(primary_root(host.project_root))
                 .as_posix()
             )
-    except (OSError, ValueError):
+    except (OSError, ValueError) as observation_error:
+        error.diagnostic_failure = observation_error
         return None
 
 
@@ -226,7 +230,25 @@ def run_worker(
         ):
             outcome = executor(invocation, checks=checks, report_issue=reporter)
     except OperationExecutionError as error:
+        from .execution_error import exception_feedback
+
+        feedback = exception_feedback(
+            error, layer="worker", attempt=invocation.invocation_id
+        )
         diagnostic = _record_worker_failure(host, invocation, error)
+        feedback["diagnostics"]["references"] = [diagnostic] if diagnostic else []
+        feedback["diagnostics"]["complete"] = bool(
+            diagnostic and error.run and error.run.stderr_complete
+        )
+        if getattr(error, "diagnostic_failure", None) is not None:
+            feedback["causes"].append(
+                exception_feedback(
+                    error.diagnostic_failure,
+                    layer="failure-observation",
+                    attempt=invocation.invocation_id,
+                )
+            )
+        error.feedback = feedback
         if diagnostic is not None:
             raise OperationExecutionError(
                 f"{error}; see host diagnostic {diagnostic}",

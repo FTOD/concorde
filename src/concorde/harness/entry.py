@@ -48,6 +48,8 @@ def validate_invocation(value: Any, operation: str | None = None) -> dict:
 
 def invocation_failure(operation: str | None, error: Exception) -> dict:
     """The same pre-host failure envelope for paired CLI and Studio entries."""
+    from .execution_error import error_entry
+
     return {
         "type_id": "concorde-operation-result",
         "schema_version": 3,
@@ -58,11 +60,9 @@ def invocation_failure(operation: str | None, error: Exception) -> dict:
         "workspace": None,
         "output": None,
         "errors": [
-            {
-                "code": getattr(error, "code", "invalid_input"),
-                "field": getattr(error, "field", ""),
-                "message": str(error),
-            }
+            error_entry(
+                error, code=getattr(error, "code", "invalid_input"), layer="entry"
+            )
         ],
     }
 

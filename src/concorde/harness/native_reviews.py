@@ -15,6 +15,7 @@ from ..review.review import (
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import canonical, typed
 from .context import ContextSnapshot
+from .execution_error import response_failure, safe_text, workflow_feedback
 from .host import OperationHost
 from .invocation import Invocation
 from .native_evidence import NativeChildEvidence, _record, verify_native_children
@@ -195,10 +196,20 @@ def workflow_service(package, action, path, expected):
             **(
                 _record(receipt)
                 if receipt.exists()
-                else {"state": "running", "accepted": False}
+                else {
+                    "state": "running"
+                    if status.get("state") == "running"
+                    else "failed",
+                    "accepted": False,
+                }
             ),
             "native_state": status.get("state"),
-            "native_error": status.get("error"),
+            "native_error": safe_text(status["error"]) if status.get("error") else None,
+            "failure": workflow_feedback(base, status, binding)
+            if status.get("state") not in {"running", "complete"}
+            or status.get("error")
+            or (status.get("state") != "running" and not receipt.exists())
+            else None,
             "run_id": binding["runId"],
         }
     if (directory / "workflow-stopped").exists():
@@ -300,8 +311,11 @@ def admit_scope(package, scope, status, binding, keys):
             entry["digest"],
         )
         if value.get("state") != "admitted":
-            raise SpecError(
-                "review proposal was not independently admitted", "invalid_completion"
+            raise response_failure(
+                "review proposal was not independently admitted",
+                value,
+                layer="review",
+                attempt=slot["ticket"],
             )
         admitted.append(value)
     return admitted

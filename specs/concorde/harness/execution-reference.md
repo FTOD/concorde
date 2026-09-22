@@ -457,8 +457,11 @@ including a write followed by restoration. Project-local lifecycle and log paths
 
 ```python
 execute_check(project_root: Path, argv: Sequence[str], *, timeout: float,
-              environment: Mapping[str, str], private_tmp: bool = False) -> CheckResult
-CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False)
+              environment: Mapping[str, str], private_tmp: bool = False,
+              evidence: Callable[[Path | None, CheckResult | None, BaseException | None], None] | None = None,
+              cancel_event: threading.Event | None = None) -> CheckResult
+CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False,
+            stdout_bytes: int | None = None, stderr_bytes: int | None = None)
 CheckBackend.run(project: Path, argv: Sequence[str], scratch: Path,
                  environment: Mapping[str, str], timeout: float) -> CheckResult
 ```
@@ -499,16 +502,74 @@ Other old `/tmp` names are hidden unless covered by those preserved ancestors. I
 remains writable at its exact absolute name; new `/tmp` entries belong only to the private backing.
 All backing directories and temporary policy/config/socket data disappear with the same scratch
 lifetime, after PID-namespace descendant cleanup on success, timeout, failure or cancellation.
-Scratch and reports are ephemeral and disappear after the check. No report import into the project
-is implicit. Standard output/error remain separate byte streams for outside-host persistence.
+Scratch and reports are ephemeral and disappear after the check. No report import into project
+source is implicit. Standard output/error remain separate byte streams for outside-host persistence.
+The optional trusted `evidence` callback runs after descendant cleanup and pipe draining but before
+scratch removal, with the result or exception. It is Host code, never a command parameter. The tester
+bridge uses it for the bounded export below; ordinary configured checks keep their existing behavior.
 
 The result preserves command exit status using bubblewrap's shell encoding, including `128+signal`
 for signal termination. A timeout, including sandbox setup time, returns `timed_out=True` and
-`returncode=-1` with captured partial output. Host cancellation propagates after cleanup. A missing
+`returncode=-1` with captured partial output. Host cancellation propagates after cleanup as a
+`CheckCancelled(KeyboardInterrupt)` carrying drained output and observed byte counts. A missing
 trusted successful-exec status is an isolation/launch error, not an ordinary check failure. A
 successful sandbox exit establishes execution under this boundary, not test adequacy or semantic
 completeness. The calling host remains responsible for digest and candidate freshness checks;
 `CHECK_POLICY="project-read-only-v1"` identifies this execution guarantee for evidence invalidation.
+
+#### Tester evidence handoff {#execution-tester-evidence}
+
+`test_command` accepts command, timeout and optional `reports`, a unique list of at most sixteen
+canonical relative file names, each at most 240 characters. Report names select files only below
+issued CONCORDE_CHECK_REPORT_DIR, never export destinations. The Host assigns an execution UUID
+and stores selected artifacts and manifest under the existing Git-identified primary's
+`.concorde/runs/tester-<uuid>/`, using the existing repository lock and atomic mode-0600 run writer.
+No status/task ledger, candidate-local archive or arbitrary destination is introduced. A missing
+primary fails export rather than falling back. Disposable fixture primaries may exercise this
+service; source author checks must not create replacement candidate ledgers.
+
+The manifest binds execution/tool-call identity, command digest (not secret-bearing command text),
+source worktree, observed branch/commit/dirty input tree, local Python/runtime and verified selection
+entry/catalog/build/runtime digests when available. Unknown provenance stays null. This is execution
+and byte provenance, not proof of test adequacy, exclusive reads or model execution. Repeated calls
+get distinct identities and never overwrite another execution. Selection verification still precedes
+execution; a rejected request or failed selection has no admitted execution evidence.
+
+Each output stream is drained without blocking while retaining at most its last 2 MiB and counting
+all observed bytes; only its last 20,000 bytes appear in the tool response. Requested reports retain
+at most their first 2 MiB each and 8 MiB in aggregate, in request order. The collector opens only
+regular non-hardlinked files through non-symlink directory components, rejects missing files,
+directories, symlinks, FIFOs and changed files, and never recursively scans scratch. Digests and byte
+sizes identify the exact stored bytes, not an omitted remainder; per-artifact available/captured
+counts, prefix/tail portion and truncation facts make limits explicit. No auth/config/environment,
+raw transcript or unrelated scratch content is automatically archived. Output and selected reports
+are explicit diagnostic data: callers remain responsible for excluding secrets from them, since the
+check boundary is not a read or credential policy.
+
+The manifest records original returncode, timed_out, cancellation and exception text separately from
+artifact collection errors. `artifacts_complete` means every requested artifact and observed output
+byte was exported; `complete` additionally excludes timeout, cancellation and unavailable execution.
+An ordinary nonzero exit can have complete failure evidence without becoming a successful command.
+Neither flag asserts semantic report completeness: producer truncation or missing observation inside
+a report remains the driver's responsibility. Setup refusal still attempts a manifest and records
+missing requested reports. Timeout and cancellation retain available reports/output before cleanup.
+
+The tool response carries a compact manifest path/digest/byte reference, execution identity, counts,
+truncated names and export errors beside bounded output with total byte counts and truncation flags.
+Parent readers retrieve that primary file and verify its digest, then retrieve artifact references
+and verify exact bytes. Cancellation waits for Host readiness before sending SIGTERM; the bridge
+sets a trusted in-process cancellation event, polled during setup/execution, rather than raising
+asynchronously through cleanup or export. Repeated interrupts cannot interrupt settling/exporting.
+The error tool result preserves that response,
+not a replacement generic cancelled message. A signal requested after command completion remains a
+separate cancellation_requested fact. An abruptly killed Host or failed bridge acknowledgement cannot
+promise export completion and reports missing acknowledgement rather than success.
+
+Artifact writes are independent atomic saves; a partial export retains successful artifacts and the
+manifest records each failure. If manifest writing also fails, the response retains successful
+artifact references and explicit export errors. Failed bytes are not claimed retrievable, there is
+no hidden fallback archive, and scratch still cleans up. Export errors/incomplete evidence fail the
+tool even if the command returned zero; command status and lower-level cause are never replaced.
 
 #### Required Agent and Harness boundary {#execution-required-agent-and-harness-boundary}
 
@@ -1291,8 +1352,9 @@ files in explicit controlled scratch. The helper never serializes provider regis
 stores or process environments; common credential-labelled values are redacted. Each raw artifact
 has a 16-MiB bound and oversized/aliased input refuses rather than becoming successful evidence.
 The nonsecret summary is strictly below 8000 UTF-8 bytes and explicitly counts omitted child details.
-Before the tester command cleans scratch, its driver reads the details and returns the bounded
-projection needed for diagnosis. Raw paths do not imply retention after external scratch cleanup.
+Before the tester command cleans scratch, its driver selects sanitized diagnostics into explicitly
+named report files for the [Host export](#execution-tester-evidence). Raw scratch paths do not imply
+retention; readers use the returned manifest and verify exported bytes after cleanup.
 
 
 ### Selected structured-tool diagnosis
@@ -1311,14 +1373,15 @@ a schema-valid but business-invalid proposal may invalidate the Host slot, so a 
 on that same slot is not permission to replace it. Fresh admission remains required by the existing
 acceptance contract. No diagnostic treats prose as a proposal or weakens required fields.
 
-Before scratch cleanup the driver emits a sanitized selected-data gzip+base64 envelope with exact
-SHA-256 and compressed/decoded sizes, below 8000 UTF-8 bytes overall and 256 KiB decoded. A reserved
-7000-byte selected envelope leaves room for bounded domain facts. No auth/environment/provider values,
-unrelated reads or arbitrary transcript bodies enter this payload. Full selected details are tried
-first; if necessary only other calls are explicitly omitted, never the first actual failed call's
-complete available arguments/error. Failure to fit that first call refuses diagnostic completeness.
-Roundtrip, bounds and actual transcript record shapes are tested before model execution. Parent may
-decode/persist the returned envelope as data; paths alone are not retained diagnostic evidence.
+Before scratch cleanup the checked-in driver writes selected sanitized JSON to the issued reports
+directory and names the report for Host export, with a 2 MiB producer bound. No auth/environment/provider
+values, unrelated reads or arbitrary transcript bodies enter that selected report. Full available
+selected arguments/errors remain intact; oversize refuses diagnostic completeness rather than silently
+omitting calls to fit a UI envelope. The old gzip/base64 codec remains only for historical diagnostic
+compatibility, not new driver transport. A deterministic preflight crosses the actual SDK argument
+validator, native transcript producer, selected-data observer and real OS read-only test_command
+collector; parent-side retrieval verifies exact report bytes after scratch cleanup. No live model
+call is necessary to prove this observation/export wiring, and that proof is not model judgement.
 
 
 ### Native result schema composition and SDK admission
@@ -1339,3 +1402,51 @@ tool, proposal hook and Host gate. Host business/currentness checks remain indep
 schema-valid foreign context still rejects without completion. SDK validation errors are not proof
 that a model never attempted a tool call, and correcting schema composition does not repair missing,
 wrong-typed or extra fields in a model's value.
+
+## Causal execution feedback {#execution-feedback}
+
+Every execution boundary preserves the specific lower-level failure rather than substituting a
+successful result or a generic parent failure. The additive diagnostic `feedback` on an operation
+error, and `failure` on a native response, use a version-1 record: `schema_version`, `code`, `message`,
+`layer`, nullable `attempt`, ordered `causes`, and `diagnostics`. Diagnostics carry `complete`,
+`redacted`, nullable selected `text` and retrieval `references`. These are diagnostic records, not
+TypedValues, execution authority or a change to acceptance/status enums. Existing code/field/message
+and operation-result version 3 remain compatible; readers ignoring the additive diagnostic field
+still see the original public error. Upper layers add context as causes, retaining underlying codes,
+messages and known issued ticket/run/tool-call identity. Unknown causes and attempts remain unknown.
+
+Categories distinguish `no-submission` (no captured result and no retained failed attempt),
+`schema-rejection`, `host-refusal`, `capture-failure`, `native-exit`, `cancelled`, `timeout`,
+`transport`, `observation`, `invalid-completion` and `unknown`. Missing successful submission alone does not establish zero
+attempts. SDK rejection can precede proposal capture and bypass the tool-result hook; its supported
+tool-execution-end notification is observed without invalidating an otherwise
+correctable slot. A Host refusal invalidates its slot and retains its first cause across subsequent
+gate/acceptance calls. Neither observing errors nor returning a reference retries an invalidated slot.
+Failed invalidation or evidence retention is an additional observation failure, not replacement of
+the original cause. If an immediate SDK-error notification cannot persist observation, its combined
+sanitized record retains the original tool/schema cause and call identity plus the secondary
+observation error, with diagnostic completeness false. The SDK's supported extension-error channel
+receives that record or its bounded display/retrieval reference; native child reporting records that
+channel in its transcript. Repeated notifications re-report the cached failure without retrying
+persistence with unknown side effects. Notification hooks cannot patch an already finalized result;
+this reporting neither invalidates a correctable schema slot nor retries business effects.
+Existing native result schema composition and all independent acceptance checks remain unchanged.
+
+Direct Agents, authored plan/review/Issue workflows, finite Host command/relay adapters and optional
+sync/async StateGraph Operations propagate this feedback. Workflow failure emissions preserve child
+facts independently of successful child-terminal emissions; fixed Host steps retain errors before
+native stdout/stderr previews can clip them. Result polling returns those causes even when no domain
+receipt exists. A failed execution stays failed despite a prior accepted domain effect, whose receipt
+remains historical evidence. No task/result/body or transcript is copied merely to explain failure.
+
+Messages and selected diagnostics redact common credential-labelled values and bearer tokens; raw
+request, environment, credential-store and unrelated transcript objects are never serialized.
+Redaction is not a guarantee that arbitrary unlabelled secrets in third-party error prose are
+recognizable; producers must not put secrets in errors. Full sanitized causes are not silently
+clipped. Bounded Pi display exports the full sanitized record to a mode-0600 local temporary file,
+returning its exact reference, digest, size and temporary retention warning. Export refusal reports
+incompleteness and the observation error without claiming a retrievable full record. Native preview
+completeness remains false, with metadata/status references; references do not grant reads or promise
+survival of native/scratch cleanup. The owning Host must archive needed evidence under existing primary
+authority. Retained historical RPC stderr tails explicitly report completeness and observed byte count;
+missing earlier bytes cannot be reconstructed or described as complete diagnostics.

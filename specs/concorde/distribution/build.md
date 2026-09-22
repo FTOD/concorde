@@ -92,19 +92,22 @@ These companions are part of the same complete Module specification, not separat
 ## Fresh source-maintenance selection
 
 Source maintenance starts a new Concorde-catalog-free writer in a candidate, never a fork carrying
-old instructions. The main remains outside that authoring context. After the writer checks,
+old instructions. Main may directly author profiles, prompts, tools, workflows and process repairs in its own exclusive
+tree within task authority; it never mutates an active sibling's tree or frozen launch governance. After the writer checks,
 commits and stops, main chooses independent testing as none, targeted or full with scope and reason.
 When selected, main starts a separate fresh sibling tester in the same candidate. Both
 disable inherited/discovered Concorde catalogs; only the tester explicitly loads the candidate Pi
-entry. Failed tests return to the same maintenance session, then another fresh tester when selected.
-Neither child delegates tasks. Ordinary milestones do not replace the maintenance session.
+entry. Failed tests within a coherent stage return to its author, then a fresh tester when selected.
+Neither child delegates tasks. Ordinary milestones preserve continuity; after a completed stage
+with changed goals/context, main may select a fresh author after a durable handoff and exact
+stop/release/bind. Independent components may run in separate worktrees before a combination gate.
 
 ## Outer task roles and observation
 
 `maintenance-worker` and `tester` are project-discovered pi-subagents task roles, not LangGraph
 workers. Canonical prompts under `prompts/outer/` render checked project definitions in
 `.pi/agents/`. Source build projects the separate coordinator prompt into the discovered
-`.pi/extensions/concorde-coordinator.ts` extension, with a separate passive native-event observer entry.
+`.pi/extensions/concorde-coordinator.ts` extension, with a separate passive native-event observer entry and an explicit source-only lifecycle entry.
 Only the outer source main loads that coordinator: child profiles disable ambient extensions and
 list only their own assets; terminal workers load only their granted extension. The coordinator
 uses Pi's before-agent-start prompt hook and grants no tools or control. It does not infer role from
@@ -113,7 +116,7 @@ from context files, so replacement prompts and context inheritance flags cannot 
 Build retires the former source `.pi/APPEND_SYSTEM.md` only with exact prior-manifest ownership;
 modified owned bytes fail preflight, while unowned user append files remain untouched. Consumer
 installation never ships the source coordinator and preserves unrelated user append content. These explicit assets are not an ambient Operation
-catalog. Source-only prompts and the maintenance observer wrapper never ship to consumers;
+catalog. Source-only prompts, lifecycle extension and the maintenance observer wrapper never ship to consumers;
 installer-owned generic tester definitions use the installed local Framework/runtime instead.
 Outer pi-subagents is a host prerequisite, not a new worker dependency.
 
@@ -143,8 +146,11 @@ These instructions use the existing main-only projection boundary and never ship
 
 ### Coordination and validation
 
-Main owns scope, worktree assignment, continuation decisions, selected checks/independent testing
-and integration authorization. Source-main instructions make primary status registration a launch
+Main owns a lightweight high-level decomposition of work packages, dependencies, file/contract
+ownership, worktrees, native workflow steps, component acceptance and integration/testing gates.
+This is NOT Concorde product plan/tasks and requires neither a planner Operation nor a coordinator
+LLM. Main can author an ad-hoc native workflow or select a predeclared one; its steps are terminal Pi
+workers, not additional orchestrators. Main owns continuation and integration authorization. Source-main instructions make primary status registration a launch
 prerequisite: each candidate has a verified stable task identity before its maintenance child starts,
 then main binds the actual launched child rather than a workflow container. Before transferring
 ownership to a tester or resumed author, main verifies the previous child stopped, releases that
@@ -160,7 +166,12 @@ external fixtures and the trusted tester-only scratch-backed private `/tmp` prof
 isolation fails closed. Real host `/tmp` inputs use the explicit read-only `CONCORDE_TEST_HOST_TMP`
 view, except governing/runtime locations preserved at their canonical names. This permits normal
 nested terminal preparation without staging runtime assets or making host `/tmp` writable.
-The command schema remains only command/timeout; the model cannot select mounts or weaken this policy.
+The command schema admits command/timeout and explicit relative report names, never mounts or
+export destinations. The [Host evidence handoff](../harness/execution-reference.md#execution-tester-evidence)
+preserves selected nonsecret reports and bounded output in canonical primary run evidence before
+scratch cleanup, with digest/completeness/truncation facts and compact references. A failed export
+or scratch path alone is not retained evidence. This narrow service grants no tester status writes
+or arbitrary primary writes; it does not weaken the read-only execution policy.
 Explicit extension lists disable ambient
 catalogs without granting additional tools. Effective discovery/preflight remains host-owned.
 
@@ -201,3 +212,22 @@ commands, never public Operations governing their own implementation.
 Private selection refuses Studio runtime redirects. Candidate code may operate on explicitly
 scoped disposable consumer project data; it cannot redirect into another linked worktree of the
 source repository. The test session remains in its candidate. Consumer installation is separate.
+
+### Actual compaction and current task memory
+
+The separate explicit source lifecycle extension works with Pi's native measured threshold and
+overflow compaction, not a simulated checkpoint. It observes successful persisted compaction and
+injects the latest concise brief once into the next provider context without scheduling a turn.
+A user/Host command can invoke the SDK's compaction and await completion/error; assistant text
+naming a slash command cannot. Only the trusted source-main projection enables the bounded
+`update_task_brief` model tool to replace/read back current session memory. Default maintenance
+loading keeps its native supervisor route and unchanged tools. This never replaces Pi's summarizer,
+alters global settings, grants delegation or exposes model-side compaction control. Missing task memory is reported
+as missing rather than reconstructing obsolete launch instructions. The [outer task lifecycle contract](contracts.md#outer-task-lifecycle) defines the local
+session-memory transport and failure boundaries.
+
+Worker semantic progress travels through the existing native supervisor channel, with stage,
+objective, completed artifacts, check failures, blocker/decision, next action and evidence.
+Those are reported claims, distinct from native host lifecycle/current-tool/last-activity/context
+observations and from independently accepted results. Main reads native events/status on meaningful
+changes, not continuous polling; primary status/runs remain authoritative, not session task memory.

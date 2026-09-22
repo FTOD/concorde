@@ -50,13 +50,15 @@ export function modelFixture({
           "pi/native-proposal.ts",
         ),
       );
-      const proposalHandlers = [];
+      const proposalHandlers = new Map();
       let index;
       observeNativeProposal(
         {
           on(name, handler) {
-            assert.equal(name, "tool_result");
-            proposalHandlers.push(handler);
+            assert(["tool_result", "tool_execution_end"].includes(name));
+            const handlers = proposalHandlers.get(name) ?? [];
+            handlers.push(handler);
+            proposalHandlers.set(name, handlers);
           },
         },
         async (value) => {
@@ -169,13 +171,14 @@ export function modelFixture({
           );
           assert.equal(result.terminate, true);
           const event = {
+            toolCallId: "structured-1",
             toolName: "structured_output",
             input: args,
             content: result.content,
             details: result.details,
             isError: false,
           };
-          for (const handler of proposalHandlers)
+          for (const handler of proposalHandlers.get("tool_result") ?? [])
             Object.assign(event, await handler(event));
           assert.equal(event.isError, false, "Host proposal capture failed");
           if (scenario === "duplicate-output") {
@@ -192,17 +195,25 @@ export function modelFixture({
               "structured-2",
               duplicateArgs,
             );
-            const duplicate = { ...event, input: duplicateArgs };
-            for (const handler of proposalHandlers)
+            const duplicate = {
+              ...event,
+              toolCallId: "structured-2",
+              input: duplicateArgs,
+            };
+            for (const handler of proposalHandlers.get("tool_result") ?? [])
               Object.assign(duplicate, await handler(duplicate));
             assert.equal(duplicate.isError, true);
-            emit({
+            const ended = {
               type: "tool_execution_end",
               toolCallId: "structured-2",
               toolName: "structured_output",
               result: duplicateResult,
               isError: true,
-            });
+            };
+            for (const handler of proposalHandlers.get("tool_execution_end") ??
+              [])
+              await handler(ended);
+            emit(ended);
           }
 
           messages.push({
@@ -213,13 +224,17 @@ export function modelFixture({
             isError: false,
             timestamp: Date.now(),
           });
-          emit({
+          const ended = {
             type: "tool_execution_end",
             toolCallId: "structured-1",
             toolName: "structured_output",
             result,
             isError: false,
-          });
+          };
+          for (const handler of proposalHandlers.get("tool_execution_end") ??
+            [])
+            await handler(ended);
+          emit(ended);
           emit({ type: "agent_end", messages });
           if (scenario === "failed-child")
             throw new Error(
