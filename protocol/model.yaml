@@ -1,0 +1,383 @@
+---
+# Concorde Spec Protocol: machine-readable vocabulary of the semantic model.
+#
+# Node types, relation types and their context effects, in a form a tool reads.
+# The prose chapters (model.md, relations.md, context.md) explain the same model
+# and MUST agree with this file. Check identities are defined in checks.md;
+# every identity used here appears there and vice versa. Cardinalities are
+# informative text; the checks enforce them.
+#
+# The vocabulary is closed: projects do not add node or relation types.
+#
+# declared_in: entry means the module block of the Module's entry metadata.
+# mirrored_in: registry means the project registry keeps a copy that
+# CHK.registry.mirror requires to be equal; the registry is never a
+# declaration site.
+
+protocol: "11.0.0"
+model_version: 1
+
+context_channels:
+  - id: spec
+    statement: Both members of each selected document, read only.
+  - id: implementation
+    statement: The names of bound implementation paths. Contents are not granted.
+  - id: external
+    statement: Pinned third-party material, read only.
+
+# Grammar of context_grants and context_requires; see context.md.
+expressions:
+  spec(target): the target document
+  spec(selection): >
+    for a contains or uses with relies_on, the target's entry and the documents
+    defining the listed nodes; otherwise every document the target Module owns;
+    for an includes of kind document, that document
+  spec(definer(target)): >
+    the document defining the target node; for a Module target, that Module,
+    satisfied by any document it owns
+  external(target): the pinned material at the target path
+  implementation(target): the name of the target path
+
+value_types:
+  - id: path-literal
+    reason: A path carries no promise and has no owner in the Spec's sense.
+  - id: anchor
+    reason: No identity of its own; only its declaration refers to it.
+  - id: digest
+    reason: A measurement of a source member, not a declared thing.
+
+node_types:
+  - id: module
+    title: Module
+    declared_in: entry
+    mirrored_in: registry
+    fields: [id, title]
+    explanation: Purpose section of the entry document
+    checks: [CHK.node.id, CHK.node.title, CHK.document.entry]
+
+  - id: document
+    title: Document
+    declared_in: entry
+    fields: [id, owner, role]
+    attributes:
+      - {id: role, values: [module, implementation]}
+    explanation: none; a document explains itself
+    checks:
+      - CHK.document.pair
+      - CHK.document.path
+      - CHK.document.role
+      - CHK.document.schema
+      - CHK.document.sections
+      - CHK.document.topic-terminology
+      - CHK.document.prose
+      - CHK.terminology.rows
+      - CHK.terminology.import-row
+      - CHK.registry.mirror
+      - CHK.evidence.no-spec-coverage
+      - CHK.view.marked
+      - CHK.view.nodes
+      - CHK.view.edges
+
+  - id: concept
+    title: Concept
+    declared_in: metadata
+    fields: [id, type, title, meaning]
+    attributes:
+      - {id: definition, type: one sentence, declared_in: "reading (defining Terminology row)"}
+      - {id: retired, type: "object {reason}", optional: true}
+      - {id: external_conflict, type: prose, optional: true}
+    explanation: definition row and meaning anchor
+    owner_rule: >
+      the Module entitled to change the meaning; a provider owns its interface
+      words; a word shared with one meaning belongs to the nearest common
+      ancestor of its users, or the root
+    checks:
+      - CHK.node.id
+      - CHK.node.type
+      - CHK.node.owner
+      - CHK.node.title
+      - CHK.node.meaning
+      - CHK.node.explained
+      - CHK.concept.definition
+      - CHK.concept.retired
+      - CHK.contrasts.required
+
+  - id: realization
+    title: Realization
+    declared_in: metadata
+    fields: [id, type, title, meaning, entries]
+    attributes:
+      - {id: entries, type: list of path-literal}
+      - {id: pending, type: list of path-literal, optional: true}
+    explanation: meaning anchor
+    checks:
+      - CHK.node.id
+      - CHK.node.type
+      - CHK.node.owner
+      - CHK.node.title
+      - CHK.node.meaning
+      - CHK.node.explained
+
+  - id: requirement
+    title: Requirement
+    declared_in: reading
+    fields: [id, title]
+    explanation: its defining section
+    checks: [CHK.node.id, CHK.node.owner, CHK.node.title, CHK.requirement.statement]
+
+  - id: scenario
+    title: Scenario
+    declared_in: reading
+    fields: [id, title]
+    explanation: its defining section
+    checks: [CHK.node.id, CHK.node.owner, CHK.node.title, CHK.scenario.steps]
+
+  - id: contract
+    title: Canonical contract
+    declared_in: reading
+    fields: [id, version, schema, semantics, example]
+    explanation: semantics and the section containing the fence
+    checks: [CHK.node.id, CHK.node.owner, CHK.contract.fence]
+
+# Checks that apply to every relation type.
+relation_checks:
+  - CHK.relation.type
+  - CHK.relation.endpoints
+  - CHK.relation.site
+  - CHK.context.reconciled
+
+relation_types:
+  - id: owns
+    source: [module]
+    target: [document]
+    cardinality: "1..N per Module; a document is owned exactly once"
+    declared_in: entry
+    mirrored_in: registry
+    reified: []
+    symmetric: false
+    context_grants: spec(target)
+    context_requires: []
+    checks: [CHK.owns.unique, CHK.document.entry]
+
+  - id: defines
+    source: [document]
+    target: [concept, realization, requirement, scenario, contract]
+    cardinality: "0..N; a node is defined exactly once"
+    declared_in:
+      concept: metadata
+      realization: metadata
+      requirement: reading
+      scenario: reading
+      contract: reading
+    reified: []
+    symmetric: false
+    context_grants: none
+    context_requires: []
+    checks: [CHK.defines.once, CHK.defines.role]
+
+  - id: contains
+    source: [module]
+    target: [module]
+    cardinality: "0..N; a Module has at most one parent; acyclic"
+    declared_in: entry
+    mirrored_in: registry
+    reified: [meaning, relies_on]
+    optional: [relies_on]
+    symmetric: false
+    context_grants: spec(selection)
+    context_requires: []
+    checks:
+      - CHK.contains.acyclic
+      - CHK.contains.single-parent
+      - CHK.contains.root
+      - CHK.relation.meaning
+      - CHK.relies-on.owned
+      - CHK.relies-on.linked
+
+  - id: uses
+    source: [module]
+    target: [module]
+    cardinality: "0..N; at most one per target"
+    declared_in: entry
+    mirrored_in: registry
+    reified: [meaning, relies_on]
+    optional: [relies_on]
+    symmetric: false
+    context_grants: spec(selection)
+    context_requires: []
+    checks:
+      - CHK.uses.no-self
+      - CHK.uses.unique
+      - CHK.relation.meaning
+      - CHK.relies-on.owned
+      - CHK.relies-on.linked
+
+  - id: includes
+    source: [module]
+    target: [module, document, path-literal]
+    cardinality: "0..N; unique per (kind, target)"
+    declared_in: entry
+    mirrored_in: registry
+    reified: [kind, reason]
+    symmetric: false
+    context_grants:
+      module: spec(selection)
+      document: spec(selection)
+      external: external(target)
+    context_requires: []
+    checks:
+      - CHK.includes.no-self
+      - CHK.includes.unique
+      - CHK.includes.reason
+      - CHK.includes.redundant
+      - CHK.external.exists
+      - CHK.external.no-overlap
+
+  - id: binds
+    source: [realization]
+    target: [path-literal]
+    cardinality: "1..N per realization"
+    declared_in: metadata
+    reified: []
+    symmetric: false
+    context_grants: implementation(target)
+    context_requires: []
+    checks:
+      - CHK.binds.exists
+      - CHK.binds.disjoint
+      - CHK.binds.no-spec
+      - CHK.binds.pending-subset
+      - CHK.binds.unbound
+
+  - id: imports
+    source: [document]
+    target: [concept]
+    cardinality: "0..N; unique per target"
+    declared_in: reading
+    reified: []
+    symmetric: false
+    context_grants: none
+    context_requires: [spec(definer(target))]
+    checks:
+      - CHK.imports.foreign
+      - CHK.imports.owner
+      - CHK.terminology.import-row
+
+  - id: narrows
+    source: [concept]
+    target: [concept]
+    cardinality: "0..N"
+    declared_in: metadata
+    reified: []
+    symmetric: false
+    context_grants: none
+    context_requires: [spec(definer(target))]
+    checks: [CHK.narrows.acyclic]
+
+  - id: supersedes
+    source: [concept]
+    target: [concept]
+    cardinality: "0..1 per source"
+    declared_in: metadata
+    reified: []
+    symmetric: false
+    context_grants: none
+    context_requires: [spec(definer(target))]
+    checks: [CHK.concept.retired]
+
+  - id: contrasts
+    source: [concept]
+    target: [concept, module]
+    cardinality: "0..N; at most one per unordered pair"
+    declared_in: metadata
+    reified: [reason]
+    symmetric: true
+    context_grants: none
+    context_requires: []
+    checks: [CHK.contrasts.required, CHK.contrasts.once]
+
+  - id: relates
+    source: [concept, realization, module]
+    target: [concept, realization, module]
+    cardinality: "0..N; unique per (source, verb, target)"
+    declared_in: metadata
+    reified: [verb]
+    symmetric: false
+    context_grants: none
+    context_requires: [spec(definer(target))]
+    checks: [CHK.relates.source, CHK.relates.verb]
+
+  - id: participates
+    source: [module]
+    target: [contract]
+    cardinality: "0..N; unique per (contract, peer, role)"
+    declared_in: entry
+    mirrored_in: registry
+    reified: [version, role, peer, meaning]
+    symmetric: false
+    context_grants: none
+    context_requires: [spec(definer(target))]
+    checks:
+      - CHK.participates.version
+      - CHK.participates.complementary
+      - CHK.participates.unique
+      - CHK.relation.meaning
+
+  - id: verifies
+    source: [path-literal]
+    target: [scenario]
+    cardinality: "0..N"
+    declared_in: implementation-source
+    reified: []
+    symmetric: false
+    context_grants: none
+    context_requires: []
+    checks: [CHK.verifies.resolves]
+
+derived_indexes:
+  - id: selected-by
+    computed_from: inverting context selection
+    used_for: which Modules read a document, and so are concerned when it changes
+  - id: referenced-by
+    computed_from: inverting relies_on, imports, narrows, supersedes, relates and participates
+    used_for: which declarations depend on a concept, node or contract
+  - id: implemented-by
+    computed_from: inverting binds
+    used_for: which Modules a file change concerns
+  - id: covered-by
+    computed_from: aggregating verifies
+    used_for: per-scenario coverage reports
+
+# Sets a harness composes into task boundaries; see boundaries.md.
+boundary_sets:
+  - id: SpecContext
+    side: read
+    derived_from: [owns, contains, uses, includes]
+    contents: both members of every document the Module owns or selects
+  - id: ExternalContext
+    side: read
+    derived_from: [includes]
+    contents: pinned material the Module includes with kind external
+  - id: ImplementationContext
+    side: read
+    derived_from: [binds]
+    contents: names of every file the Module's realizations bind
+  - id: SpecScope
+    side: write
+    derived_from: [owns]
+    contents: both members of every document the Module owns, including the entry and its module block
+  - id: ImplementationScope
+    side: write
+    derived_from: [binds]
+    contents: every file covered by the Module's realization entries, including pending entries
+
+access_levels: [none, names, read, write]
+
+reconciliation:
+  statement: >
+    For every Module M, every context requirement of a relation declared in a
+    document M owns, including its entry's module block, is satisfied by Spec(M).
+  check: CHK.context.reconciled
+  limit: >
+    Exact. What is not checked is that relies_on names every promise a Module
+    relies on beyond those its explanation links to.

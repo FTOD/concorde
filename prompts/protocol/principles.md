@@ -4,10 +4,18 @@ audience: shared
 
 @protocol/principles.md
 
-@protocol/spec-management.md
+@protocol/model.md
 
-@protocol/spec-management/spec-and-context.md
+@protocol/relations.md
+
+@protocol/context.md
+
+@protocol/boundaries.md
 
 @protocol/format.md
+
+@protocol/checks.md
+
+@protocol/views.md
 
 @prompts/protocol/framework-profile.md
