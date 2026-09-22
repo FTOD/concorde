@@ -9,7 +9,6 @@ subprocess, the way a consumer would, and inspects the resulting project tree an
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -17,6 +16,7 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.managed_runtime import independent_runtime_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -153,7 +153,7 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             input=json.dumps(invocation),
             capture_output=True,
             text=True,
-            env={**os.environ, "CONCORDE_STUDIO_URL": ""},
+            env=child_environment(CONCORDE_STUDIO_URL=""),
         )
         result = json.loads(process.stdout)
         if result["status"] == "described":

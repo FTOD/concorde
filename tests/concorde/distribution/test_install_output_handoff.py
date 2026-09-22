@@ -11,6 +11,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import (
+    child_environment,
+    scrub_selection,
+    scrubbed_process_environment,
+)
 from tests.concorde.support.install_output_handoff import (
     install_selected_fixture,
     output_environment,
@@ -44,6 +49,51 @@ class HandoffPolicyTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             output_environment({"CONCORDE_STUDIO_URL": "http://localhost:2024"})
+
+    def test_shared_scrub_removes_only_the_ambient_selection(self):
+        ambient = {
+            "CONCORDE_SESSION_SELECTION": "/elsewhere/selection.json",
+            "CONCORDE_NATIVE_PROJECT_ROOT": "/elsewhere",
+            "CONCORDE_WORKER_POLICY": "/elsewhere/policy.json",
+            "PI_SUBAGENT_EXTENSION_BINDINGS": json.dumps(
+                {"concorde/1": {"selection": "/elsewhere/selection.json"}}
+            ),
+            "PATH": "kept",
+            "CONCORDE_CHECK_TMPDIR": "kept-too",
+        }
+        self.assertEqual(
+            {"PATH": "kept", "CONCORDE_CHECK_TMPDIR": "kept-too"},
+            scrub_selection(ambient),
+        )
+        self.assertEqual(
+            {"other/1": {"opaque": "preserve"}},
+            json.loads(
+                scrub_selection(
+                    {
+                        "PI_SUBAGENT_EXTENSION_BINDINGS": json.dumps(
+                            {"concorde/1": {}, "other/1": {"opaque": "preserve"}}
+                        )
+                    }
+                )["PI_SUBAGENT_EXTENSION_BINDINGS"]
+            ),
+        )
+        self.assertEqual(
+            {}, scrub_selection({"PI_SUBAGENT_EXTENSION_BINDINGS": "not json"})
+        )
+        with patch.dict(os.environ, ambient):
+            child = child_environment(CONCORDE_STUDIO_URL="")
+            self.assertEqual("", child["CONCORDE_STUDIO_URL"])
+            self.assertNotIn("CONCORDE_SESSION_SELECTION", child)
+            self.assertNotIn("PI_SUBAGENT_EXTENSION_BINDINGS", child)
+            with scrubbed_process_environment(EXTRA="1"):
+                self.assertNotIn("CONCORDE_SESSION_SELECTION", os.environ)
+                self.assertNotIn("CONCORDE_WORKER_POLICY", os.environ)
+                self.assertEqual("1", os.environ["EXTRA"])
+                self.assertEqual("kept", os.environ["PATH"])
+            self.assertEqual(
+                "/elsewhere/selection.json", os.environ["CONCORDE_SESSION_SELECTION"]
+            )
+            self.assertNotIn("EXTRA", os.environ)
 
     def test_outside_scratch_and_missing_governing_selection_refuse(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.distribution.local_installation import verify_installation
 from concorde.harness.pi_worker import (
@@ -26,6 +27,7 @@ from concorde.spec.verification import verifies
 from tests.concorde.harness.test_pi_worker import installed_pi
 from tests.concorde.spec.support import project
 from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
+from tests.concorde.support.environment import scrub_selection
 from tests.concorde.support.managed_runtime import independent_runtime_environment
 from tests.concorde.support.operation_json import configure
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -97,6 +99,11 @@ class InstalledWorkerRuntimeTests(unittest.TestCase):
             prefix="concorde-installed-worker-test-"
         )
         self.addCleanup(temporary.cleanup)
+        # In-process verification launches the installed consumer runtime from os.environ; an
+        # ambient candidate selection must not cross into that consumer for the whole test.
+        scrubbed = patch.dict(os.environ, scrub_selection(os.environ), clear=True)
+        scrubbed.start()
+        self.addCleanup(scrubbed.stop)
         self.root = Path(temporary.name)
         self.primary = self.root / "consumer"
         self.primary.mkdir()
@@ -120,8 +127,6 @@ class InstalledWorkerRuntimeTests(unittest.TestCase):
             "PATH": str(pi.parent) + os.pathsep + os.environ.get("PATH", ""),
             "CONCORDE_STUDIO_URL": "",
         }
-        for key in ("CONCORDE_SESSION_SELECTION", "CONCORDE_WORKER_POLICY"):
-            self.environment.pop(key, None)
         install = subprocess.run(
             [
                 sys.executable,

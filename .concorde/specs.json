@@ -666,6 +666,7 @@
         "tests/concorde/fixtures/build/golden/pi/",
         "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/support/build_fixture.py",
+        "tests/concorde/support/environment.py",
         "tests/concorde/support/fake_launcher.py",
         "tests/concorde/support/install_output_handoff.py",
         "tests/concorde/support/managed_runtime.py",

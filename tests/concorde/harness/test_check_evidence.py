@@ -16,6 +16,7 @@ from unittest.mock import patch
 from concorde.harness.check_evidence import CheckEvidence, report_names
 from concorde.harness.check_executor import CheckResult, execute_check
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -43,17 +44,10 @@ class CheckEvidenceTests(unittest.TestCase):
         self.project.mkdir()
         self.storage = self.root / "scratch"
         self.storage.mkdir()
-        self.environment = {
-            **os.environ,
-            "PYTHONPATH": str(REPOSITORY_ROOT / "src"),
-            "TMPDIR": str(self.storage),
-        }
-        for key in (
-            "CONCORDE_SESSION_SELECTION",
-            "PI_SUBAGENT_EXTENSION_BINDINGS",
-            "CONCORDE_STUDIO_URL",
-        ):
-            self.environment.pop(key, None)
+        self.environment = child_environment(
+            PYTHONPATH=str(REPOSITORY_ROOT / "src"), TMPDIR=str(self.storage)
+        )
+        self.environment.pop("CONCORDE_STUDIO_URL", None)
 
     def bridge(self, code, *, reports=(), timeout=10, bootstrap=None):
         command = shlex.join([sys.executable, "-c", code])

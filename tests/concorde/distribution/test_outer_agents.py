@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -143,11 +144,7 @@ class OuterAgentsTests(unittest.TestCase):
                     str(pi_root),
                     str(REPOSITORY_ROOT),
                 ],
-                env={
-                    **os.environ,
-                    "PI_CODING_AGENT_DIR": directory,
-                    "TMPDIR": directory,
-                },
+                env=child_environment(PI_CODING_AGENT_DIR=directory, TMPDIR=directory),
                 capture_output=True,
                 text=True,
             )
@@ -199,11 +196,7 @@ class OuterAgentsTests(unittest.TestCase):
                     str(pi_root),
                     str(consumer),
                 ],
-                env={
-                    **os.environ,
-                    "PI_CODING_AGENT_DIR": directory,
-                    "TMPDIR": directory,
-                },
+                env=child_environment(PI_CODING_AGENT_DIR=directory, TMPDIR=directory),
                 capture_output=True,
                 text=True,
             )
@@ -276,12 +269,9 @@ class OuterAgentsTests(unittest.TestCase):
                     scratch,
                     provider.base_url,
                 ],
-                env={
-                    **os.environ,
-                    "PI_CODING_AGENT_DIR": scratch,
-                    "PI_OFFLINE": "1",
-                    "PI_TELEMETRY": "0",
-                },
+                env=child_environment(
+                    PI_CODING_AGENT_DIR=scratch, PI_OFFLINE="1", PI_TELEMETRY="0"
+                ),
                 capture_output=True,
                 text=True,
                 timeout=60,

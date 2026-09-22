@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -56,7 +57,7 @@ class LauncherTerminationTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             cwd=REPOSITORY_ROOT,
             text=True,
-            env={**os.environ, "CONCORDE_STUDIO_URL": ""},
+            env=child_environment(CONCORDE_STUDIO_URL=""),
         )
         try:
             _wait_until_idle(process)

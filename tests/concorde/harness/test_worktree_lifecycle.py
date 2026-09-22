@@ -1,7 +1,6 @@
 """Real Git regressions for worktree ownership, awareness, recovery and primary delivery."""
 
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -22,6 +21,7 @@ from concorde.harness.change_worktree import (
     git_value,
     read_change,
 )
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.native_planning import OperationHost
 from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
@@ -758,7 +758,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             input=json.dumps(invocation),
             text=True,
             capture_output=True,
-            env={**os.environ, "CONCORDE_STUDIO_URL": ""},
+            env=child_environment(CONCORDE_STUDIO_URL=""),
         )
         result = json.loads(process.stdout)
         self.assertIsNotNone(result["workspace"], result)

@@ -19,6 +19,7 @@ from urllib.request import Request, urlopen
 from concorde.spec.verification import verifies
 from tests.concorde.harness.test_operation_node import _stage_context
 from tests.concorde.spec.support import PACKAGE
+from tests.concorde.support.environment import child_environment
 
 
 @unittest.skipUnless(
@@ -60,12 +61,10 @@ operation=build_studio_graph('planner',launcher=trusted_service)
         cls.base = f"http://127.0.0.1:{port}"
         cls.log = (directory / "server.log").open("w+")
         cls.addClassCleanup(cls.log.close)
-        environment = {
-            **os.environ,
-            "LANGSMITH_TRACING": "false",
-            "LANGGRAPH_CLI_NO_ANALYTICS": "1",
-        }
-        for key in ("PYTHONPATH", "CONCORDE_STUDIO_URL", "CONCORDE_SESSION_SELECTION"):
+        environment = child_environment(
+            LANGSMITH_TRACING="false", LANGGRAPH_CLI_NO_ANALYTICS="1"
+        )
+        for key in ("PYTHONPATH", "CONCORDE_STUDIO_URL"):
             environment.pop(key, None)
         cls.server = subprocess.Popen(
             [

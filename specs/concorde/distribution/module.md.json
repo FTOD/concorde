@@ -50,6 +50,7 @@
         "tests/concorde/distribution/test_install_output_handoff.py",
         "tests/concorde/distribution/test_local_installation.py",
         "tests/concorde/harness/test_host_tools.py",
+        "tests/concorde/support/environment.py",
         "tests/concorde/support/install_output_handoff.py",
         "tests/concorde/support/pytest_timing.py"
       ],

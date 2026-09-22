@@ -9,6 +9,8 @@ import sysconfig
 import zipfile
 from pathlib import Path
 
+from tests.concorde.support.environment import scrub_selection
+
 LANGGRAPH_VERSION = "1.2.11"
 
 
@@ -39,7 +41,7 @@ def independent_runtime_environment(root: Path, package: Path) -> dict[str, str]
             capture_output=True,
         )
     return {
-        **os.environ,
+        **scrub_selection(os.environ),
         "PIP_NO_INDEX": "1",
         "PIP_FIND_LINKS": wheels,
         "PYTHONNOUSERSITE": "1",
@@ -96,7 +98,7 @@ def create_langgraph_index(root: Path) -> Path:
 
 def runtime_install_environment(index: Path) -> dict[str, str]:
     tools = _create_npm_tools(index.parent)
-    environment = os.environ.copy()
+    environment = scrub_selection(os.environ)
     environment.update(
         {
             "PIP_DISABLE_PIP_VERSION_CHECK": "1",

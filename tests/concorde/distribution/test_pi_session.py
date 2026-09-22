@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -12,6 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -292,7 +292,7 @@ class SessionToolTests(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=120,
-            env={**os.environ, "FAKE_LAUNCHER_SCENARIO": scenario},
+            env=child_environment(FAKE_LAUNCHER_SCENARIO=scenario),
             cwd=str(REPOSITORY_ROOT),
         )
         self.assertEqual(0, process.returncode, process.stderr)

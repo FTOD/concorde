@@ -20,6 +20,7 @@ from concorde.harness.check_executor import CheckSandboxError, execute_check
 from concorde.harness.pi_rpc import _records, run_prompt
 from concorde.spec.verification import verifies
 from tests.concorde.distribution import test_pi_session as session_fixtures
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
 from tests.concorde.support.managed_runtime import independent_runtime_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -159,7 +160,7 @@ else:
                                 str(visible),
                             ],
                             timeout=10,
-                            environment=os.environ,
+                            environment=child_environment(),
                             private_tmp=private,
                         )
                         self.assertEqual(0, result.returncode, result.stderr)
@@ -175,7 +176,7 @@ else:
                     project,
                     [sys.executable],
                     timeout=1,
-                    environment=os.environ,
+                    environment=child_environment(),
                     private_tmp="yes",
                 )
             with self.assertRaises(CheckSandboxError):
@@ -183,7 +184,7 @@ else:
                     Path("/tmp"),
                     [sys.executable],
                     timeout=1,
-                    environment=os.environ,
+                    environment=child_environment(),
                     private_tmp=True,
                 )
 

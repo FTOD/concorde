@@ -25,9 +25,10 @@ class NativeInstallerTests(unittest.TestCase):
         cls.package = installer.load_package(REPOSITORY_ROOT)
         cls.runtime_temporary = tempfile.TemporaryDirectory()
         index = create_langgraph_index(Path(cls.runtime_temporary.name))
+        # The whole mapping is replaced: the in-process installer and the launchers it
+        # verifies inherit os.environ, which must carry no ambient candidate selection.
         cls.runtime_environment = mock.patch.dict(
-            os.environ,
-            runtime_install_environment(index),
+            os.environ, runtime_install_environment(index), clear=True
         )
         cls.runtime_environment.start()
 

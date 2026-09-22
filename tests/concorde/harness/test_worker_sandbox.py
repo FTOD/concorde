@@ -6,6 +6,7 @@ a worker never runs unconfined, so a host that cannot enforce the boundary canno
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
@@ -37,11 +38,17 @@ def git(root: Path, *arguments: str) -> None:
 
 class SandboxFixture(unittest.TestCase):
     def setUp(self) -> None:
-        # The fixture lives inside the repository, not under /tmp: the sandbox replaces /tmp with
-        # a private tmpfs, and the fixture's "home" must stay visible like a developer's own.
-        base = Path(__file__).resolve().parents[1] / ".tmp"
-        base.mkdir(exist_ok=True)
-        temporary = tempfile.TemporaryDirectory(dir=base)
+        # External scratch, never a directory inside the repository: a read-only check boundary
+        # refuses writes there. The tester's issued scratch is preferred; otherwise the usual
+        # temporary directory (TMPDIR) serves. The fixture may therefore sit below /tmp, which
+        # the sandbox replaces with a private tmpfs: that is fine because every path the probe
+        # observes is explicitly re-bound or masked (workspace, run directory, shared Git
+        # directory, the trusted toolchain asset via runtime_files, the secret masks), exactly
+        # as for a developer's own home; nothing else of the fixture is meant to be visible.
+        base = os.environ.get("CONCORDE_CHECK_TMPDIR") or tempfile.gettempdir()
+        temporary = tempfile.TemporaryDirectory(
+            prefix="concorde-sandbox-fixture-", dir=base
+        )
         self.addCleanup(temporary.cleanup)
         self.temp = Path(temporary.name).resolve()
         self.home = self.temp / "home"
@@ -204,12 +211,34 @@ attempt("pi_auth", lambda: open(os.path.join(home, ".pi/agent/auth.json")).read(
 attempt("toolchain", lambda: open(os.path.join(home, "toolchain/tool.txt")).read())
 attempt("primary_file", lambda: os.path.exists(os.path.join(primary, "README.md")))
 attempt("primary_git", lambda: os.path.isdir(os.path.join(primary, ".git")))
-attempt("host_tmp", lambda: os.path.exists(os.environ["HOST_TMP_MARKER"]))
+attempt("host_tmp", lambda: os.path.exists(os.environ["HOST_TMP_MARKER"]) if os.environ["HOST_TMP_MARKER"] else None)
 attempt("pid", lambda: os.getpid())
 attempt("env_home", lambda: os.environ["HOME"])
 attempt("cwd", lambda: os.getcwd())
 print(json.dumps(out))
 """
+
+    @contextlib.contextmanager
+    def host_tmp_marker(self):
+        """A file below the host's real /tmp that the sandbox's private tmpfs must hide.
+
+        Under a read-only check boundary /tmp itself is unwritable while the issued scratch
+        usually lies below it, so the scratch serves. Without any writable location below /tmp
+        the observation is reported as not made (None) instead of being faked.
+        """
+        for directory in ("/tmp", tempfile.gettempdir()):
+            if not Path(directory).is_relative_to("/tmp"):
+                continue
+            try:
+                marker = tempfile.NamedTemporaryFile(
+                    prefix="concorde-host-marker-", dir=directory
+                )
+            except OSError:
+                continue
+            with marker:
+                yield marker
+            return
+        yield None
 
     @verifies("scenario.harness.worker-sandbox")
     def test_the_process_writes_only_the_grant_and_sees_no_secret_or_other_worktree(
@@ -225,9 +254,7 @@ print(json.dumps(out))
             runtime_files=(self.home / "toolchain/tool.txt",),
         )
         created = create_placeholders(plan)
-        with tempfile.NamedTemporaryFile(
-            prefix="concorde-host-marker-", dir="/tmp"
-        ) as marker:
+        with self.host_tmp_marker() as marker:
             argv = bubblewrap_argv(
                 plan,
                 [
@@ -251,7 +278,7 @@ print(json.dumps(out))
                     "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
                     "HOME": plan.home,
                     "LANG": "C.UTF-8",
-                    "HOST_TMP_MARKER": marker.name,
+                    "HOST_TMP_MARKER": marker.name if marker is not None else "",
                 },
             )
         self.assertEqual(0, process.returncode, process.stderr)
@@ -268,7 +295,7 @@ print(json.dumps(out))
         self.assertEqual("tool\n", observed["toolchain"])
         self.assertFalse(observed["primary_file"])
         self.assertTrue(observed["primary_git"])
-        self.assertFalse(observed["host_tmp"])
+        self.assertEqual(False if marker is not None else None, observed["host_tmp"])
         self.assertLess(observed["pid"], 100)
         self.assertEqual(plan.home, observed["env_home"])
         self.assertEqual(str(self.candidate), observed["cwd"])

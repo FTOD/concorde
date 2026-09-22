@@ -16,6 +16,7 @@ from concorde.harness.worker_executor import build_worker_invocation
 from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -111,7 +112,7 @@ console.log(JSON.stringify({tools: tools.map(t => t.name), active, denied, rejec
                     str(REPOSITORY_ROOT / "pi/extensions/concorde-worker.ts"),
                     str(REPOSITORY_ROOT / "pi/extensions/concorde-session.ts"),
                 ],
-                env={**os.environ, "CONCORDE_WORKER_POLICY": str(policy)},
+                env=child_environment(CONCORDE_WORKER_POLICY=str(policy)),
                 text=True,
                 capture_output=True,
                 timeout=20,
