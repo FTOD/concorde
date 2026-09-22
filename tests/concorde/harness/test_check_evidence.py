@@ -58,9 +58,11 @@ class CheckEvidenceTests(unittest.TestCase):
     def bridge(self, code, *, reports=(), timeout=10, bootstrap=None):
         command = shlex.join([sys.executable, "-c", code])
         process = subprocess.run(
-            [sys.executable, "-c", bootstrap]
-            if bootstrap
-            else [sys.executable, "-m", "concorde.distribution.outer_check"],
+            (
+                [sys.executable, "-c", bootstrap]
+                if bootstrap
+                else [sys.executable, "-m", "concorde.distribution.tester_check"]
+            ),
             input=json.dumps(
                 {"command": command, "timeout": timeout, "reports": list(reports)}
             ),
@@ -252,7 +254,7 @@ print('deadline evidence',flush=True);time.sleep(30)
     def test_cancellation_captures_before_cleanup_and_ignores_repeat_abort(self):
         code = "import os,time;from pathlib import Path;Path(os.environ['CONCORDE_CHECK_REPORT_DIR'],'ready').write_text('cancel detail');print('cancel output',flush=True);time.sleep(30)"
         p = subprocess.Popen(
-            [sys.executable, "-m", "concorde.distribution.outer_check"],
+            [sys.executable, "-m", "concorde.distribution.tester_check"],
             cwd=self.project,
             env=self.environment,
             stdin=subprocess.PIPE,
@@ -297,7 +299,7 @@ print('deadline evidence',flush=True);time.sleep(30)
             bootstrap="""
 import os,signal
 from concorde.harness import check_evidence
-from concorde.distribution.outer_check import main
+from concorde.distribution.tester_check import main
 original=check_evidence.write_run
 sent=False
 def interrupt(root,relative,data):
@@ -330,7 +332,7 @@ main()
         result = self.bridge(
             "open('unsafe','w').write('bad')",
             reports=["missing"],
-            bootstrap="import sys;sys.platform='darwin';from concorde.distribution.outer_check import main;main()",
+            bootstrap="import sys;sys.platform='darwin';from concorde.distribution.tester_check import main;main()",
         )
         self.assertIsNone(result["returncode"])
         self.assertIn("no read-only check backend", result["error"])

@@ -24,10 +24,11 @@ Concorde helps developers agree on what software should do, execute changes with
 | Operation            | An explicitly selected LangGraph StateGraph flow or wrapper with typed State, effects, use conditions and trusted execution policy. |
 | Skill                | Retired standalone client instructions, retained here only as migration terminology; no Concorde Skill product or client projection is supported.                                                                                   |
 | Pi integration       | The exact Pi extension entry and embedded public capability catalog, bound to the Framework implementation and launcher that supplied them.                                                                                          |
-| Agent                | A specifically defined callable native Pi role; Agents owns the domain and outer-task role definitions.                                                                                                      |
+| Agent                | A callable native Pi agent with one canonical Concorde definition, either a Domain Agent or a Task subagent; Agents owns those definitions.                                                                   |
 | Workflow             | An authored native pi-subagents composition ordering real Agent calls and finite granted Host steps; public planning uses this boundary.                                                                                            |
 | Worker               | One fresh bounded Agent execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                      |
-| Task subagent        | A fresh one-layer delegate of the user-facing main session, owning one complete task in one fixed worktree without further task delegation.                                                                                         |
+| User session         | The external Pi session that talks to the user, understands needs and coordinates; in Concorde's own source checkout it is the source user session. It is not a registered Agent.                                                   |
+| Task subagent        | A fresh one-layer delegate of the user session, owning one complete task in one fixed worktree without further task delegation.                                                                                                     |
 | Host                 | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results.                                                                                                                        |
 | Harness              | The services that give a worker its inputs, tools, environment and limits, then check its result.                                                                                                                                   |
 | Graph                | LangGraph's declared nodes, edges and State channels for executing and composing Operations. A compiled graph can implement another Operation; a loop is a feedback path, not another executable kind.                              |
@@ -45,20 +46,20 @@ the Module concerned explains them.
 
 ## Usage
 
-The user-facing main session understands needs and coordinates. It may delegate complete tasks
-to one layer of fresh task subagents; simple consumer work may be edited directly in primary.
+The user session understands needs and coordinates. It may delegate complete tasks
+to one layer of fresh Task subagents; simple consumer work may be edited directly in primary.
 Task delegation is not Operation composition and never overrides actual harness limits.
 Concorde source maintenance starts a fresh Concorde-catalog-free candidate maintenance-worker and
-continues that same session across ordinary milestones. Main decides scope/ownership, continuation,
+continues that same session across ordinary milestones. The user session decides scope/ownership, continuation,
 check selection, none/targeted/full independent testing and integration authorization. When selected,
 a fresh sibling tester receives only explicit candidate-built Pi entry/catalog and runtime
-provenance plus its bounded observation/check assets. These are outer project-discovered task roles,
+provenance plus its bounded observation/check assets. These are project-discovered Task subagents,
 not LangGraph node identities. Tester cannot repair its governing artifacts; self-tests are not
 independent. Source-only coordination/maintenance prompts are not consumer assets; the generic tester
-is distributed to every full local worktree. See [role contracts and continuation policy](agents/module.md).
+is distributed to every full local worktree. See [Agent contracts and continuation policy](agents/module.md).
 Ordinary Git integration needs explicit authorization and does not require Concorde delivery.
 
-The calling agent reads and selects the relevant complete Specs directly, answers questions, and
+The calling session, the user session or its Task subagent, reads and selects the relevant complete Specs directly, answers questions, and
 edits reading, paired metadata and registry within its task authority. It chooses retained public
 capabilities and their order; there is no automatic discovery, Spec author or development orchestrator.
 Each Module-bound entry requires an explicit target and optional local scenario focus.
@@ -95,7 +96,7 @@ Reading a view or supplying feedback does not itself authorize changes or create
 **Graph-bound Operations and native Pi Agents have distinct execution boundaries.**
 Public context assessment prepares and calls a real native context-assessor Agent; finite Host
 services admit its result separately. Native plan orders assessor and planner through an authored pi-subagents workflow; tasks use a
-direct native task-author. Implement and public reviews now use native roles/workflows too; Issue solving also uses its bounded native workflow. Optional StateGraph Operations are a separately
+direct native task-author. Implement and public reviews now use native Agents/workflows too; Issue solving also uses its bounded native workflow. Optional StateGraph Operations are a separately
 selected execution boundary, not mirrors of these capabilities. Each Operation declares input State, output
 State updates, effects, use conditions and execution policy. It can be called as a LangGraph node
 without its caller reconstructing context selection, permissions, model execution or result checks.
@@ -124,7 +125,7 @@ Three relationships stay independent:
   grant execution permission or transfer ownership.
 
 The Framework has seven direct responsibility owners. [Agents](agents/module.md) defines all nine
-callable roles. [Operations](operations/module.md) owns explicit StateGraph composition and the
+callable Agents. [Operations](operations/module.md) owns explicit StateGraph composition and the
 compatibility capability dispatch boundary, and groups five
 provider Modules: Planning, Implementation, Review, Validation and Delivery.
 [Harness](harness/module.md) admits every request at one boundary and provides bounded model
@@ -157,7 +158,7 @@ flowchart TB
     distribution["Distribution"]
     issues["Issues"]
     views["Views"]
-    agents -->|supplies canonical role definitions to| harness
+    agents -->|supplies canonical Agent definitions to| harness
     harness -->|admits requests and hands them to| operations
     operations -->|bounds model execution through| harness
     operations -->|selects contracts through| spec

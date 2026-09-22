@@ -1,4 +1,4 @@
-/** Outer tester command capability; no unrestricted bash/write/edit or delegation. */
+/** Tester Task subagent command capability; no unrestricted bash/write/edit or delegation. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
@@ -43,7 +43,7 @@ export default function (pi: ExtensionAPI) {
 			const response = await new Promise<string>((done, reject) => {
 				const child = spawn(
 					python,
-					["-m", "concorde.distribution.outer_check"],
+					["-m", "concorde.distribution.tester_check"],
 					{
 						cwd: ctx.cwd,
 						env: {

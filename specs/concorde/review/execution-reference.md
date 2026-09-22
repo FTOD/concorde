@@ -203,7 +203,7 @@ that reaches this provider.
 
 ## Native public review workflow
 
-Run prepares a ticket-bound native scope; main invokes its exact returned async named workflow call,
+Run prepares a ticket-bound native scope; the calling session invokes its exact returned async named workflow call,
 then polls the same operation with action `result`. The resource `concorde.review.<ticket>` expands
 authored `pi/workflows/review.js`, with only two fixed Host grants: bind/preflight and aggregate
 finalize. Review count has no Concorde business cap; native configured fanout, script/artifact and

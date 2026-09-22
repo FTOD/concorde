@@ -90,8 +90,8 @@
         "pi/workflows/review.js",
         "tests/concorde/distribution/test_pi_session.py",
         "tests/concorde/support/fake_launcher.py",
-        "tests/concorde/support/outer_agents_preflight.mjs",
-        "tests/concorde/support/outer_observer_harness.mts",
+        "tests/concorde/support/task_subagents_preflight.mjs",
+        "tests/concorde/support/session_observer_harness.mts",
         "tests/concorde/support/pi_session_harness.mts"
       ],
       "meaning": "#entity.distribution.pi-session-extension"

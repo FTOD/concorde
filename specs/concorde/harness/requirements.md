@@ -194,7 +194,7 @@ Explicitly selected StateGraph Operations SHALL execute their declared Graph tra
 
 Public context assessment, tasks and implementation use direct native Agents; planning, review and
 Issue solving use authored native workflows with finite Host checkpoints. None selects a legacy
-Graph/Pi-RPC fallback. File scope is prompt-level policy for all native roles, not OS confinement.
+Graph/Pi-RPC fallback. File scope is prompt-level policy for all native Agents, not OS confinement.
 Initialization, configuration, validation, delivery and Issue bookkeeping are finite Host services.
 The optional Operation/Studio boundary is not a public capability mirror.
 
@@ -209,9 +209,9 @@ any other Module's listed implementation files.
 
 The host SHALL persist task status and durable candidate run evidence only in the Git-identified primary worktree with serialized atomic writes and explicit legacy migration.
 
-### req.harness.task-delegation — One fresh task-child layer
+### req.harness.task-delegation — One fresh Task subagent layer
 
-A task subagent SHALL remain in its assigned worktree without further task delegation under the outer task-host delegation limits; terminal Operation workers retain their separate file/tool grants.
+A Task subagent SHALL remain in its assigned worktree without further task delegation under the user session's task-host delegation limits; terminal Operation workers retain their separate file/tool grants.
 
 ### req.harness.local-execution — Consumer execution stays worktree-local
 
@@ -225,7 +225,7 @@ Installation does not widen worker grants, accept Protocol or duplicate primary 
 
 Timing diagnostics SHALL preserve actual authority and successful mutation outcomes while recording bounded, redacted, monotonic spans and wall timestamps with explicit unknown or incomplete observations.
 
-The common record distinguishes outer sessions, runtime work and test execution; no span is a
+The common record distinguishes direct sessions, runtime work and test execution; no span is a
 workflow grant. No network telemetry, credentials, environment values, raw prompts, source bodies,
 tool output or arbitrary command arguments are recorded. Concurrent/nested spans cannot be summed
 as elapsed wall time; outside-tools and roundtrip time are not server thinking time. Existing

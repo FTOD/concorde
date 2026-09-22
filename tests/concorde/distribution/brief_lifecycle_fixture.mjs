@@ -38,7 +38,7 @@ const loader = new sdk.DefaultResourceLoader({
   noThemes: true,
   appendSystemPromptOverride: () => [],
   additionalExtensionPaths: [
-    path.join(candidate, "pi/extensions/concorde-outer-lifecycle.ts"),
+    path.join(candidate, "pi/extensions/concorde-brief-lifecycle.ts"),
     path.join(candidate, "pi/extensions/concorde-maintenance.ts"),
   ],
   extensionFactories: [
@@ -152,7 +152,7 @@ try {
       .getEntries()
       .some(
         (e) =>
-          e.customType === "concorde.outer-compaction-failed.v1" &&
+          e.customType === "concorde.compaction-failed.v1" &&
           !e.data.aborted &&
           e.data.hasErrorMessage,
       ),
@@ -162,13 +162,13 @@ try {
   await report(brief);
   await report(brief);
   assert.equal(
-    sm.getEntries().filter((e) => e.customType === "concorde.outer-brief.v1")
+    sm.getEntries().filter((e) => e.customType === "concorde.task-brief.v1")
       .length,
     2,
   );
   assert.deepEqual(await projectContext(), []); // A checkpoint is not compaction.
   seed();
-  await session.prompt("/outer-compact"); // Actual command -> ctx.compact -> persisted SDK compaction.
+  await session.prompt("/session-compact"); // Actual command -> ctx.compact -> persisted SDK compaction.
   assert.equal(attempts.length, 1);
   assert(sm.getBranch().some((e) => e.type === "compaction"));
   await report({ ...brief, next: "LATEST-NEXT" }); // Update after compaction, before next request.
@@ -194,7 +194,7 @@ try {
   assert.equal(
     sm
       .getEntries()
-      .filter((e) => e.customType === "concorde.outer-brief-injected.v1")
+      .filter((e) => e.customType === "concorde.task-brief-injected.v1")
       .length,
     2,
   );
@@ -207,20 +207,20 @@ try {
   assert.equal(
     sm
       .getEntries()
-      .filter((e) => e.customType === "concorde.outer-brief-injected.v1")
+      .filter((e) => e.customType === "concorde.task-brief-injected.v1")
       .length,
     3,
   );
   seed();
   cancel = true;
   // Extension-command errors are reported by Pi, not rethrown by session.prompt.
-  await session.prompt("/outer-compact");
+  await session.prompt("/session-compact");
   assert(
     sm
       .getEntries()
       .some(
         (e) =>
-          e.customType === "concorde.outer-compaction-failed.v1" &&
+          e.customType === "concorde.compaction-failed.v1" &&
           e.data.aborted,
       ),
   );
@@ -228,7 +228,7 @@ try {
   assert(
     sm
       .getEntries()
-      .some((e) => e.customType === "concorde.outer-compaction-failed.v1"),
+      .some((e) => e.customType === "concorde.compaction-failed.v1"),
   );
   cancel = false;
   seed();
@@ -240,11 +240,11 @@ try {
   // Real branch navigation restores only memory on that branch, not future reports.
   const oldBrief = sm
     .getEntries()
-    .find((e) => e.customType === "concorde.outer-brief.v1");
+    .find((e) => e.customType === "concorde.task-brief.v1");
   await session.navigateTree(oldBrief.id, { summarize: false });
   assert.deepEqual(await projectContext(), []);
   await session.prompt(
-    "/outer-brief " + JSON.stringify({ ...brief, goal: "BRANCH-GOAL" }),
+    "/task-brief " + JSON.stringify({ ...brief, goal: "BRANCH-GOAL" }),
   );
   seed();
   await session.compact();

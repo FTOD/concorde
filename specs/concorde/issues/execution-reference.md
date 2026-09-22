@@ -308,7 +308,7 @@ Public solve prepares a session-bound `concorde.issue.<ticket>` native workflow.
 owns at most six decision iterations. Each iteration has three fixed Host steps, below the native
 32-grant ceiling: prepare decision (persisting attempt first), admit decision/prepare verification,
 and admit verification. Host steps never launch models. Develop/spec-repair/needs-decision return to
-main without automatic changes. Verify/resolved require fresh Issue-specific and ordinary Spec/code
+the calling session without automatic changes. Verify/resolved require fresh Issue-specific and ordinary Spec/code
 scope reviews; those terminal calls are flattened into the same native workflow, never nested scripts.
 Only actual successful native execution plus independent current evidence can authorize disposition.
 

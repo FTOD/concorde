@@ -1,4 +1,4 @@
-"""The public reading and real role discovery share one authority, not a link-only catalog."""
+"""The public reading and real Agent discovery share one authority, not a link-only catalog."""
 
 import importlib
 import json
@@ -45,28 +45,31 @@ class AgentInventoryTests(unittest.TestCase):
         self.assertEqual(9, len(agents.AGENTS))
         self.assertEqual(7, len(load_worker_profiles()))
         self.assertNotIn("main", agents.AGENTS)
+        self.assertNotIn("user-session", agents.AGENTS)
         for name in ("planner", "task_author"):
             readme = (REPOSITORY_ROOT / "agents" / name / "README.md").read_text()
             self.assertIn("distributed with `agents/`", readme)
             self.assertNotIn("worker Operation", readme)
         for name in ("context_assessor", "task_author"):
-            role_text = (REPOSITORY_ROOT / "agents" / name / "spec.md").read_text()
-            self.assertNotIn("`concorde-dependencies`", role_text)
-            self.assertIn("`dependencies`", role_text)
+            spec_text = (REPOSITORY_ROOT / "agents" / name / "spec.md").read_text()
+            self.assertNotIn("`concorde-dependencies`", spec_text)
+            self.assertIn("`dependencies`", spec_text)
         self.assertFalse(set(agents.DOMAIN_AGENTS) & set(operations.OPERATIONS))
         for name in agents.DOMAIN_AGENTS:
-            role = importlib.import_module("agents." + name)
-            self.assertIsInstance(role.PROFILE, WorkerProfile)
+            module = importlib.import_module("agents." + name)
+            self.assertIsInstance(module.PROFILE, WorkerProfile)
             self.assertFalse((REPOSITORY_ROOT / "operations" / name).exists())
-            self.assertFalse(hasattr(role, "STATE"))
-            self.assertFalse(hasattr(role, "run"))
+            self.assertFalse(hasattr(module, "STATE"))
+            self.assertFalse(hasattr(module, "run"))
         package = Package(
             REPOSITORY_ROOT, json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         )
         installed_files = _package_files(package)
         self.assertFalse(any("/agents/source/" in p for p in installed_files))
-        self.assertTrue(any(p.endswith("/agents/outer.py") for p in installed_files))
-        for profile in agents.OUTER_PROFILES:
+        self.assertTrue(
+            any(p.endswith("/agents/task_subagent.py") for p in installed_files)
+        )
+        for profile in agents.TASK_SUBAGENT_PROFILES:
             self.assertNotIsInstance(profile, WorkerProfile)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -88,7 +91,7 @@ class AgentInventoryTests(unittest.TestCase):
 
     @verifies("scenario.agents.inventory")
     def test_metadata_drift_refuses_instead_of_creating_another_authority(self):
-        path = "specs/concorde/agents/roles.md"
+        path = "specs/concorde/agents/contracts.md"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             build_package_copy(root)
@@ -104,8 +107,8 @@ class AgentInventoryTests(unittest.TestCase):
             self.assertTrue(_validate_spec_agents_block(root, {path: "reading"}))
 
     @verifies("scenario.agents.inventory")
-    def test_missing_role_and_malformed_metadata_are_findings(self):
-        path = "specs/concorde/agents/roles.md"
+    def test_missing_agent_and_malformed_metadata_are_findings(self):
+        path = "specs/concorde/agents/contracts.md"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             build_package_copy(root)

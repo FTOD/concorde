@@ -1,11 +1,11 @@
 """Canonical source-only author profile."""
 
-from ..outer import OuterProfile
+from ..task_subagent import TaskSubagentProfile
 
-PROFILE = OuterProfile(
+PROFILE = TaskSubagentProfile(
     "maintenance-worker",
-    "prompts/outer/source/maintenance-worker.md",
+    "prompts/task-subagent/source/maintenance-worker.md",
     ("read", "grep", "find", "ls", "bash", "edit", "write"),
-    ("concorde-maintenance.ts", "concorde-outer-lifecycle.ts"),
+    ("concorde-maintenance.ts", "concorde-brief-lifecycle.ts"),
     True,
 )

@@ -739,10 +739,10 @@ the invocation input: stage artifacts and, for a review, the typed changes to th
 own Spec documents or implementation files since the baseline revision. Those changes are derived
 from files inside the phase's visible scope, add no file to it and replace no granted file. A
 kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author inputs
-contain no implementation file contents. The outer agent reads and selects complete Module Specs
+contain no implementation file contents. The calling session, the user session or its Task subagent, reads and selects complete Module Specs
 directly and answers questions within its own task grant. It chooses an explicit Module target for
 each retained Operation, rather than asking a discovery worker to route or expand a task. Every
-bounded worker is fresh and receives only its selected complete Module context. Additional outer
+bounded worker is fresh and receives only its selected complete Module context. Additional calling-session
 reading never becomes an implicit worker grant.
 
 Assessors, planners and task authors use only the selected Module's complete
@@ -750,9 +750,9 @@ project-Spec collection and, for planners and task authors, its declared externa
 They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Pi integration are not context:
-instructions belong to the canonical native Agent role, and the Pi session tool exposes compatibility
-capability entries for the developer's own agent runtime. All native roles receive their terminal rules
-and role specification, and
+instructions belong to the canonical native Agent, and the Pi session tool exposes compatibility
+capability entries for the developer's own agent runtime. All native Agents receive their terminal rules
+and Agent specification, and
 reads the complete Protocol documents listed with their digests in its frozen context index.
 
 Context identities cover ownership, explicit references, inclusion reasons and document bytes,
@@ -787,11 +787,11 @@ code-writing invocations receive file contents with write authority, and only fo
 selected Module lists; they never change Spec documents, entity declarations or the registry. Code
 review and deterministic checks have separately declared read authority. The registry's reverse
 index never grants a writer another Module's Spec or unrelated code. How the host keeps an
-invocation within that authority belongs to the Harness Module's Specs, not to this profile. Task-authorized outer sessions may edit files, including `.concorde`, within their own workspace
+invocation within that authority belongs to the Harness Module's Specs, not to this profile. Task-authorized sessions, the user session and its Task subagents, may edit files, including `.concorde`, within their own workspace
 and task grant; the directory name creates no blanket host-only prohibition. Truthful evidence,
 concurrency safety and bounded worker phase permissions remain mandatory.
 
-An **Agent** is a callable native Pi role. A **Workflow** is an authored native pi-subagents
+An **Agent** is a callable native Pi agent with one canonical Concorde definition, either a Domain Agent or a Task subagent. A **Workflow** is an authored native pi-subagents
 composition. An **Operation** is an explicitly selected LangGraph StateGraph flow. Finite non-model
 actions are **Host tools/services**. Module ownership, context references and composition remain
 independent of these executable kinds. Compatibility `concorde-*` names, `operation_id` fields and
@@ -801,7 +801,7 @@ Context assessment, tasks and implementation use direct native Agents. Plan, ind
 scopes and bounded Issue solving use authored native workflows. Deterministic admission, configured
 checks, lifecycle, Issue bookkeeping/disposition and validation remain Host services. No public
 native path compiles a mandatory Graph or launches a hidden old Pi-RPC worker. All seven native
-roles are terminal, fresh and explicitly scoped, without recursive task delegation or an extra
+Domain Agents are terminal, fresh and explicitly scoped, without recursive task delegation or an extra
 coordinating model. Native capacity and tool ceilings remain authoritative.
 
 Model proposals and successful stage-only gates are not domain completion. Host acceptance follows
@@ -828,7 +828,7 @@ of project Spec.
 ### P8. Structure and file listings change together
 
 Direct structural edits reconcile Module parentage, uses, document ownership, explicit references,
-interface bindings and file listings as one consistent candidate. The task-authorized outer agent
+interface bindings and file listings as one consistent candidate. The task-authorized calling session
 edits the reading, paired metadata and registry directly. A Module's entity entry union equals its
 registry `files`, entry for entry, marking absent intended entries pending. Within one Module the
 most specific entry owns a file, and a listed directory never contains a registered Spec document.
@@ -864,40 +864,40 @@ old readiness never becomes fresh validation implicitly.
 
 ### P10. Fresh task sessions, never session moves
 
-The user-facing main session understands needs and coordinates. It may delegate complete tasks
-to at most one layer of fresh task subagents; a task child may run a series of public Operations
+The user session understands needs and coordinates. It may delegate complete tasks
+to at most one layer of fresh Task subagents; a Task subagent may run a series of public Operations
 and continue one change to delivery, but never delegates tasks or moves worktrees. Bounded
-native domain Agents are terminal pi-subagents roles, distinct from author/tester task delegation.
-Every native terminal role is a fresh Pi leaf with no delegation tools; its Host-issued
+native Domain Agents are terminal pi-subagents agents, distinct from author/tester task delegation.
+Every native terminal Domain Agent is a fresh Pi leaf with no delegation tools; its Host-issued
 preparation and independent acceptance remain separate from the native model execution. Native
 Pi child-safety ceilings apply; insufficient native launch capacity refuses rather than bypassing
 a ceiling.
 They cannot delegate, create subagents or recursively call Operations. Concorde neither inspects
 nor computes cross-runtime current/maximum agent depth for these leaves; absent or legacy depth
-variables do not govern launch. Outer task-subagent limits and all worker file/tool grants remain intact. An Operation in an assigned candidate reuses it instead of creating a nested one.
+variables do not govern launch. Task subagent limits and all worker file/tool grants remain intact. An Operation in an assigned candidate reuses it instead of creating a nested one.
 Ordinary consumer projects may use direct primary editing for simple authorized tasks.
 
-Main decides task scope, worktree ownership, author continuation, checks, independent testing and
+The user session decides task scope, worktree ownership, author continuation, checks, independent testing and
 integration authorization. One writer owns a worktree at a time and stops writing before testing.
-Main owns lightweight high-level decomposition into work packages, dependencies, file/contract
+The user session owns lightweight high-level decomposition into work packages, dependencies, file/contract
 ownership, independent worktrees, native workflow steps and component/integration/testing gates.
 This is not product Concorde plan/tasks and requires no mandatory planner Operation or coordinator
-LLM. Main may author profiles, prompts, tools, workflows and process repairs within task authority
+LLM. The user session may author profiles, prompts, tools, workflows and process repairs within task authority
 and its own exclusive tree. Native workflow steps remain terminal Pi workers with no child task
 delegation. Frozen launches do not adopt edited governance or wider grants retroactively.
 Reuse the author within an unfinished coherent stage and feedback cycle. Ordinary milestones do
 not require a new session; a completed stage with changed goals/context may use a fresh author
 after durable handoff, observed stop, exact ownership release and binding of the actual new child.
-Parallel component work stays in separate trees; combined-input integration is a distinct gate. Main chooses none, targeted or full
+Parallel component work stays in separate trees; combined-input integration is a distinct gate. The user session chooses none, targeted or full
 independent testing with an explicit scope and reason; an author's self-tests are not independent.
-When selected, the project-discovered `tester` is a fresh sibling task role, not a LangGraph node.
+When selected, the project-discovered `tester` is a fresh sibling Task subagent, not a LangGraph node.
 It receives only explicitly selected local Pi integration/runtime provenance and its actual grant.
 Missing or stale assets block without a primary/global fallback. Selection metadata is not proof
 of extension loading, tool use or model execution. Tester keeps governing artifacts read-only,
 uses scoped external fixtures, returns failures rather than repairing, and cannot delegate tasks.
 Its command tool enforces the OS read-only check boundary rather than unrestricted shell access.
-Outer pi-subagents is a host prerequisite, never a terminal-worker dependency. Passive observation
-adds no tools, catalogs, authority or network telemetry. Main owns durable primary persistence.
+The user session's pi-subagents is a host prerequisite, never a terminal-worker dependency. Passive observation
+adds no tools, catalogs, authority or network telemetry. The user session owns durable primary persistence.
 
 Changed relevant inputs/environment invalidate corresponding check evidence; stage reports and
 same-tree commits alone do not demand repeated full suites. State the reason for same-input reruns.
@@ -905,7 +905,7 @@ Already fully read unchanged complete Specs in valid same-session context need n
 new ownership seams and fresh readers retain complete-context obligations. Resource handoffs state
 observed capacity, current input including cache, reserve and compaction status or an actual error.
 Unknown metrics stay unknown. Cumulative usage, document size and absence of a compact tool do not
-establish exhaustion. Main verifies the need after supported compaction with an observed completion or error; a checkpoint
+establish exhaustion. The user session verifies the need after supported compaction with an observed completion or error; a checkpoint
 or a message saying compact is not compaction. After success inject the CURRENT concise task brief
 once: goal/grant, accepted decisions, evidence and next step, not obsolete launch instructions.
 Host-observed lifecycle/activity/context/compaction stays distinct from worker-reported stage,
@@ -930,7 +930,7 @@ referenced by metadata. Group adjacent anchors on one line when a coherent expla
 several entities. Do not replace the retired JSON inventory with another giant human inventory.
 
 Both source members are indexed, granted whole and byte-bound. A metadata-only change invalidates
-owner and direct-consumer evidence. The outer agent edits authored reading and metadata directly
+owner and direct-consumer evidence. The task-authorized calling session edits authored reading and metadata directly
 within its task authorization, reconciling the registry and topology as needed. Validate the complete
 combined candidate, not isolated files. Preserve stable identity and unique ownership through
 relocation and structural change. No private author result or topology application artifact is
@@ -944,7 +944,7 @@ Explain its scope; inventory coverage is not a readability requirement or proof 
 Files are bound in entity metadata, using owned package directory prefixes and exact shared files;
 the registry listing remains their exact union. Project-owned metadata extensions
 `concorde.operations` records the checked compatibility capability-adapter inventory, including
-State contracts and USES; `concorde.agents` separately records the Agents-owned nine-role inventory,
+State contracts and USES; `concorde.agents` separately records the Agents-owned nine-Agent inventory,
 including family, distribution scope, registration and canonical instruction source. Their
 behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
 

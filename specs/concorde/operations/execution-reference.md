@@ -34,13 +34,13 @@ detailed contract.
 
 ## Operation registry {#operations-operation-registry}
 
-An **Agent** is a callable native Pi role, a **Workflow** an authored pi-subagents composition,
+An **Agent** is a callable native Pi agent with one canonical Concorde definition, a **Workflow** an authored pi-subagents composition,
 an **Operation** an explicitly selected StateGraph flow, and a **Host service** a finite non-model
 action. Module ownership, context inclusion and these executable kinds remain independent.
 `operations/` and the eleven public `concorde-*` request/response names are compatibility spellings,
 not a mandate to execute every capability as a LangGraph node.
 
-Agents owns the [canonical Agent definitions](../agents/roles.md), which carry `PROFILE` and
+Agents owns the [canonical Agent definitions](../agents/contracts.md), which carry `PROFILE` and
 `KIND="agent"` with no `STATE`/`run` model-operation aliases. This Module inventories public
 `CAPABILITIES`, `WORKFLOWS`, `HOST_TOOLS` and separately selected `STATE_OPERATIONS`. Public capability modules retain
 the finite Python request/response adapter, `STATE` and `run` for wire compatibility. Those adapters
@@ -82,38 +82,38 @@ worker's task context.
 | tasks                    | true   | bound             | false         | task-author                                      | Derive acceptance tasks from the accepted plan                       |
 | implement                | true   | bound             | false         | programmer                                       | Fulfil local tasks after caller-selected component work              |
 
-The roles used by these adapters are defined once in [Agents](../agents/roles.md). Adapter `USES`
-references those definitions; it does not own another role inventory or grant another context.
+The Agents used by these adapters are defined once in [Agents](../agents/contracts.md). Adapter `USES`
+references those definitions; it does not own another Agent inventory or grant another context.
 
 #### Operation properties {#operations-operation-properties}
 
 Inventory entries declare `KIND`, `PUBLIC`, `CONTEXT_SELECTION`, `DETERMINISTIC`, `USES`, `PROFILE`
 and `EXTERNAL_NAME`. `KIND` distinguishes `agent-entry`, `workflow` and `host` in the
-compatibility adapter inventory; roles themselves belong to Agents. `PUBLIC` controls the eleven catalog/launcher names. `bound` means a
+compatibility adapter inventory; Agent definitions themselves belong to Agents. `PUBLIC` controls the eleven catalog/launcher names. `bound` means a
 caller-selected context; `none` means Host work without model context. Determinism covers all
 supported paths and transitive collaborators, not filesystem purity. `USES` records declared
 collaborators, grants no file authority, has no duplicate or unknown entries and no definition cycle.
 
 Domain Agent definitions have a profile and no `STATE`/`run`; public `agent-entry` adapters have
-no role profile and retain `STATE`/`run` only for finite wire compatibility. Separately selected StateGraph Operations declare actual typed graph channels. Native
+no Agent profile and retain `STATE`/`run` only for finite wire compatibility. Separately selected StateGraph Operations declare actual typed graph channels. Native
 branches/loops belong in authored pi-subagents workflows; optional graph ordering/reducers belong
 in StateGraph. A per-adapter `AGENTS` or obsolete `CLASS` declaration is not supported. The
-canonical role inventory is `agents.AGENTS`, not a second Operations catalog.
+canonical Agent inventory is `agents.AGENTS`, not a second Operations catalog.
 
 The `concorde.operations` paired metadata records kind, exposure, context selection, determinism,
-public name, direct uses, nullable State and profile. It matches compatibility adapter code exactly and excludes roles. The Agents-owned
-`concorde.agents` metadata checks role family, distribution and registration independently. The retired `skill` key remains rejected. Catalog schema 2
+public name, direct uses, nullable State and profile. It matches compatibility adapter code exactly and excludes Agents. The Agents-owned
+`concorde.agents` metadata checks Agent family, distribution and registration independently. The retired `skill` key remains rejected. Catalog schema 2
 is distinct from metadata schema 2 and the versioned request/result wire envelopes.
 
 ### Design {#operations-design}
 
 #### Behavioral ownership and composition limits {#operations-behavioral-ownership-and-composition-limits}
 
-Every capability has one canonical business owner; every role has one canonical definition in Agents. Native preparation and finite
+Every capability has one canonical business owner; every Agent has one canonical definition in Agents. Native preparation and finite
 request dispatch use common admission; no admission/dispatch Graph executes under these public
 paths. Optional StateGraph Operations are explicitly selected through Harness's Operation API.
 
-| Capability or role | Canonical behavioral owner | Execution |
+| Capability or Agent | Canonical behavioral owner | Execution |
 | --- | --- | --- |
 | context-solve, plan, tasks | [Planning](../planning/module.md) | Direct native assessor/task-author or authored assessor-then-planner workflow |
 | implement | [Implementation](../implementation/module.md) | Direct native programmer after finite admission |

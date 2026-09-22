@@ -145,7 +145,7 @@ def stage(
     if self.host.mode == "describe-policy":
         return data
     if data["documents"]:
-        # Project Specs are edited by the authorized outer agent, never this worker.
+        # Project Specs are edited by the task-authorized calling session, never this worker.
         raise SpecError("this phase cannot author Spec documents", "permission_denied")
     if implementation and not readonly:
         current = SpecRepository(self.repository.root, self.host.package_root)

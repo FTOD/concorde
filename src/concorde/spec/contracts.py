@@ -137,7 +137,7 @@ REVIEW_STAGES = {
 
 
 def operation_modules() -> dict:
-    """Compatibility wire lookup combines adapters and canonical domain roles, not ownership."""
+    """Compatibility wire lookup combines adapters and canonical Domain Agents, not ownership."""
     import importlib
 
     inventory = load_operation_inventory()

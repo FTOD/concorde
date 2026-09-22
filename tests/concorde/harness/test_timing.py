@@ -93,7 +93,9 @@ class TimingTests(unittest.TestCase):
         trace.emit({})
         self.assertEqual(trace.incomplete, 1)
 
-    @verifies("scenario.harness.outer-observation", "scenario.harness.diagnostic-spans")
+    @verifies(
+        "scenario.harness.session-observation", "scenario.harness.diagnostic-spans"
+    )
     def test_native_analysis_and_malformed_rpc_diagnostics(self):
         from concorde.harness.timing import analyze_native, observe_pi_event
 

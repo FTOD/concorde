@@ -328,7 +328,7 @@ and directed relationships; further diagrams may appear in other registered docu
 containing Markdown document is the diagram's only authored source.
 
 The diagram's bytes already occur in `documents` and participate in document,
-revision and context digests; no separate diagram-source pool or result field exists. The task-authorized outer agent
+revision and context digests; no separate diagram-source pool or result field exists. The task-authorized calling session
 edits a changed fence in its containing reading member and checks the paired metadata and registry. Shared Markdown
 changes retain their sole owner and are reviewed for affected direct context consumers; bounded workers
 cannot replace these sources; and rendered SVG/HTML is never a cognitive input or another
@@ -365,7 +365,7 @@ edge. Scoped omission of an inventory node is permitted; inventing a node is not
 retain id/target_id/argv/timeout_seconds and optional inputs. Shared implementation changes concern
 every listing Module, whose contract is evaluated separately.
 
-The task-authorized outer agent reconciles structural changes directly across the registry and
+The task-authorized calling session reconciles structural changes directly across the registry and
 paired document members. Repository overlays and deterministic validation can inspect a combined
 candidate without applying it; neither a valid overlay nor a direct edit supplies review evidence.
 No topology proposal store or authoring Operation remains.

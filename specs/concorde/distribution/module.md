@@ -118,10 +118,10 @@ describe-policy preview with `use_proposal`.
 
 <a id="entity.distribution.developer-session"></a>
 
-The Developer agent session is external main, not another registered role. [Agents](../agents/module.md)
+The Developer agent session is the external user session, not another registered Agent. [Agents](../agents/module.md)
 owns source-maintenance/tester behavior and continuation. Distribution supplies checked project
-role projections and passive observation separately from private capability catalogs; see
-[registration](build.md#outer-task-roles-and-observation).
+Agent projections and passive observation separately from private capability catalogs; see
+[registration](build.md#task-subagents-and-observation).
 The source writer builds with that candidate's own code; primary never renders candidate outputs.
 For consumer capabilities, host-created candidate relays keep the requesting session stationary;
 simple authorized consumer work may also stay directly in primary.
@@ -238,7 +238,7 @@ The Distribution Module owns the exact obligations and interface details in [req
 These companions are part of the same complete Module specification, not separate topic owners.
 
 Native context-assessment instructions are built from a canonical native prelude and the existing
-context-assessor role Spec. The invocation capsule contains only a deterministic execution projection;
+context-assessor Agent Spec. The invocation capsule contains only a deterministic execution projection;
 it is not another authored Agent registry. The supported native package is selected explicitly in the
 Pi process, separately from the candidate Python/runtime selection. Source-private testing may select
 a disposable data root while retaining exact candidate code and entry provenance; a sibling source
@@ -248,7 +248,7 @@ worktree is never a permitted redirection. No global Pi setting is changed by th
 
 <a id="entity.distribution.agents"></a>
 
-[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
-those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
-role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+[Agents](../agents/module.md) owns callable Agent definitions and interaction. This Module consumes
+those definitions rather than maintaining an Agent catalog or behavioral copy. It preserves the
+Agent's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
 acceptance and execution mechanisms remain with their existing owners.

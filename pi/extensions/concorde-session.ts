@@ -91,7 +91,7 @@ export function sessionPrompt(catalog: SessionCatalog): string {
       "",
       "This is Concorde's own source checkout: run an Operation only when the user explicitly " +
         "asks for it by name. Source maintenance belongs to a fresh catalog-free candidate writer, " +
-        "and, when main selects independent testing, a fresh sibling tester using only the exact candidate Pi entry/catalog and runtime; never rewrite its governing integration. " +
+        "and, when the user session selects independent testing, a fresh sibling tester using only the exact candidate Pi entry/catalog and runtime; never rewrite its governing integration. " +
         "A tester may use isolated deterministic fixture drivers with that exact runtime against explicitly granted disposable data, never against governing source.",
     );
   }

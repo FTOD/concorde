@@ -139,7 +139,7 @@ edit/delegation tools are supplied. Their conversation never inherits programmer
 
 <a id="entity.review.agents"></a>
 
-[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
-those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
-role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+[Agents](../agents/module.md) owns callable Agent definitions and interaction. This Module consumes
+those definitions rather than maintaining an Agent catalog or behavioral copy. It preserves the
+Agent's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
 acceptance and execution mechanisms remain with their existing owners.

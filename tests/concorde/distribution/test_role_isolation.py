@@ -25,7 +25,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 COORDINATOR = ".pi/extensions/concorde-coordinator.ts"
 APPEND = ".pi/APPEND_SYSTEM.md"
-IDENTITY = "You are the main coordinator, not a LangGraph node."
+IDENTITY = "You are the source user session and its coordinator, not a LangGraph node."
 
 
 def install_fixture(target):
@@ -137,7 +137,7 @@ def replacement_prompts(argv, project, env, session):
 
 class CoordinatorRetirementTests(unittest.TestCase):
     @verifies(
-        "scenario.distribution.outer-roles",
+        "scenario.distribution.task-subagents",
         "scenario.distribution.build-retired-skills",
     )
     def test_retire_only_manifest_owned_append_and_preflight_conflicts(self):
@@ -152,14 +152,14 @@ class CoordinatorRetirementTests(unittest.TestCase):
                 build_package_copy(root)
                 old = root / APPEND
                 content = resolve_role_prompt(
-                    REPOSITORY_ROOT, "prompts/outer/source/main.md"
+                    REPOSITORY_ROOT, "prompts/user-session/source/coordinator.md"
                 ).body.encode()
                 old.write_bytes(content)
                 manifest = root / "generated/build-manifest.json"
                 value = json.loads(manifest.read_text())
                 value["outputs"][APPEND] = {
                     "sha256": "sha256:" + hashlib.sha256(content).hexdigest(),
-                    "sources": ["prompts/outer/source/main.md"],
+                    "sources": ["prompts/user-session/source/coordinator.md"],
                 }
                 manifest.write_text(json.dumps(value))
                 if changed:
@@ -189,7 +189,7 @@ class CoordinatorRetirementTests(unittest.TestCase):
                     write_build(root)
                     self.assertEqual((True, ()), check_build(root))
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_consumer_install_update_preserve_user_append_bytes_and_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -206,11 +206,13 @@ class CoordinatorRetirementTests(unittest.TestCase):
             self.assertNotIn(APPEND, {r["path"] for r in receipt["outputs"]})
             self.assertFalse((root / COORDINATOR).exists())
             self.assertFalse((root / ".pi/agents/maintenance-worker.md").exists())
-            self.assertFalse(
-                (root / ".concorde/framework/prompts/outer/source").exists()
-            )
+            for source_only in (
+                ".concorde/framework/prompts/task-subagent/source",
+                ".concorde/framework/prompts/user-session",
+            ):
+                self.assertFalse((root / source_only).exists())
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_unowned_source_append_is_not_adopted_or_deleted(self):
         from tests.concorde.support.build_fixture import build_package_copy
 
@@ -327,7 +329,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 "--model",
                 "fake/fake-model",
             ]
-            if role != "main":
+            if role != "user-session":
                 definition = project / f".pi/agents/{role}.md"
                 _, front, body = definition.read_text().split("---", 2)
                 fields = dict(
@@ -354,7 +356,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 ]
                 for extension in fields["extensions"].split(", "):
                     argv += ["-e", str((definition.parent / extension).resolve())]
-            # Main uses normal discovery/default activation. An explicit --tools read
+            # The user session uses normal discovery/default activation. An explicit --tools read
             # ceiling would intentionally exclude the new model-callable brief tool.
             run = (
                 replacement_prompts(argv, project, env, session)
@@ -378,16 +380,17 @@ class EffectiveRolePromptTests(unittest.TestCase):
                         if m["role"] == "system"
                     )
                     self.assertEqual(
-                        role == "main" and project == self.source, IDENTITY in effective
+                        role == "user-session" and project == self.source,
+                        IDENTITY in effective,
                     )
                     self.assertEqual(
-                        role == "main" and project == self.source,
+                        role == "user-session" and project == self.source,
                         ".concorde/todos/" in effective,
                     )
             for observed in provider.requests:
                 names = {t["function"]["name"] for t in observed.get("tools", [])}
                 self.assertEqual(
-                    role == "main" and project == self.source,
+                    role == "user-session" and project == self.source,
                     "update_task_brief" in names,
                 )
             request = provider.requests[-1]
@@ -400,7 +403,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
         ]
         self.assertTrue(spans, "actual observer must persist records")
         self.assertEqual({role}, {s["metadata"]["role"] for s in spans})
-        self.assertTrue(any(s["name"] == "outer.request_roundtrip" for s in spans))
+        self.assertTrue(any(s["name"] == "session.request_roundtrip" for s in spans))
         print(
             json.dumps(
                 {
@@ -420,12 +423,12 @@ class EffectiveRolePromptTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.distribution.outer-roles",
-        "scenario.distribution.main-todo-collection",
+        "scenario.distribution.task-subagents",
+        "scenario.distribution.user-session-todo-collection",
     )
-    def test_source_main_and_child_effective_prompts_fresh_and_resumed(self):
+    def test_source_user_session_and_child_effective_prompts_fresh_and_resumed(self):
         identities = {
-            "main": IDENTITY,
+            "user-session": IDENTITY,
             "maintenance-worker": "# Source maintenance worker",
             "tester": "# Independent tester",
         }
@@ -446,10 +449,12 @@ class EffectiveRolePromptTests(unittest.TestCase):
                         self.assertIn(
                             "- concorde-validate:", system
                         )  # Actual bound catalog loading, not just observer registration.
-                    self.assertEqual(role == "main", IDENTITY in system)
-                    self.assertEqual(role == "main", ".concorde/todos/" in system)
+                    self.assertEqual(role == "user-session", IDENTITY in system)
                     self.assertEqual(
-                        1 if role == "main" else 0,
+                        role == "user-session", ".concorde/todos/" in system
+                    )
+                    self.assertEqual(
+                        1 if role == "user-session" else 0,
                         system.count("# Concorde source coordinator"),
                     )
                     self.assertNotIn("concorde", tools)
@@ -461,15 +466,15 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 self.assertEqual(ids[0], ids[2])
                 self.assertNotEqual(ids[0], ids[1])
 
-    @verifies("scenario.distribution.outer-roles")
-    def test_installed_main_generic_and_tester_isolated_with_user_append(self):
+    @verifies("scenario.distribution.task-subagents")
+    def test_installed_user_session_generic_and_tester_isolated_with_user_append(self):
         consumer = self.root / "consumer"
         consumer.mkdir()
         install_fixture(consumer)
         append = consumer / APPEND
         append.write_text("USER-APPEND: retain this unrelated consumer guidance.\n")
         install_fixture(consumer)
-        for role in ("main", "tester"):
+        for role in ("user-session", "tester"):
             for phase in ("first", "new", "first"):
                 system, _, _ = self.run_role(
                     consumer, role, self.root / f"consumer-{role}-{phase}.jsonl"
@@ -479,14 +484,14 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 self.assertIn(
                     "USER-APPEND", system
                 )  # Real append discovery remains active, not masked by the fixture.
-                if role == "main":
+                if role == "user-session":
                     self.assertIn("## Concorde", system)
                 else:
                     self.assertIn("# Independent tester", system)
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_rpc_new_and_switch_session_reload_role_safe_resources(self):
-        for role in ("main", "maintenance-worker", "tester"):
+        for role in ("user-session", "maintenance-worker", "tester"):
             self.run_role(
                 self.source, role, self.root / f"rpc-{role}.jsonl", replacements=True
             )
@@ -500,10 +505,12 @@ class EffectiveRolePromptTests(unittest.TestCase):
             replacements=True,
         )
 
-    @verifies("scenario.distribution.outer-roles")
+    @verifies("scenario.distribution.task-subagents")
     def test_negative_control_reproduces_unconditional_append_leak(self):
         (self.source / APPEND).write_text(
-            resolve_role_prompt(REPOSITORY_ROOT, "prompts/outer/source/main.md").body
+            resolve_role_prompt(
+                REPOSITORY_ROOT, "prompts/user-session/source/coordinator.md"
+            ).body
         )
         system, _, _ = self.run_role(
             self.source, "maintenance-worker", self.root / "legacy.jsonl"
@@ -516,7 +523,8 @@ class EffectiveRolePromptTests(unittest.TestCase):
         self.assertNotIn(IDENTITY, system)
 
     @verifies(
-        "scenario.distribution.private-selection", "scenario.distribution.outer-roles"
+        "scenario.distribution.private-selection",
+        "scenario.distribution.task-subagents",
     )
     def test_missing_binding_still_blocks_private_entry_loading(self):
         with self.assertRaises(PiRpcError) as raised:

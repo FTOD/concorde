@@ -80,7 +80,7 @@ separate deterministic step, and failed checks restore the Issue through the jou
 
 This conceptual view follows an explicitly requested solve, not the runtime's complete node/edge
 catalog. Listing, reporting and reopening do not start this repair loop. The solver chooses work
-but does not perform implementation or Spec authoring: those return to the outer agent.
+but does not perform implementation or Spec authoring: those return to the calling session.
 Independent review retains its own authority. Resolution needs current Issue-specific evidence; duplicate and not-actionable
 outcomes instead need their own supported reasons. Any final readiness claim includes the
 written disposition, and never means the primary branch has changed.
@@ -174,7 +174,7 @@ These companions are part of the same complete Module specification, not separat
 
 <a id="entity.issues.agents"></a>
 
-[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
-those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
-role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+[Agents](../agents/module.md) owns callable Agent definitions and interaction. This Module consumes
+those definitions rather than maintaining an Agent catalog or behavioral copy. It preserves the
+Agent's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
 acceptance and execution mechanisms remain with their existing owners.

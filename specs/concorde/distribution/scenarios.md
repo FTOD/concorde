@@ -26,7 +26,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 Throughout these scenarios, public operation/Operation is the compatibility catalog/launcher term
 from [Operations](../operations/module.md#terminology), not a StateGraph backend claim. Exact
 scenario IDs, transport fields and historical retirement names remain unchanged. Current
-capability kinds and canonical role ownership follow [Agents](../agents/roles.md) and the
+capability kinds and canonical Agent ownership follow [Agents](../agents/contracts.md) and the
 [typed catalog contract](contracts.md#typed-executable-catalog-compatibility).
 
 ## Installation service
@@ -157,7 +157,7 @@ Installation receipt schema 2 records `client: "pi"`, not client selections or S
 Schema 1 receipts are explicitly accepted for migration because their exact output-digest and
 bounded root-block records retain identical meanings; only their obsolete client/delegation
 metadata is discarded on successful upgrade. Unsupported receipt versions fail closed. Cleanup
-of root guidance alone preserves the rest of the existing receipt. Eleven public capability adapters and seven domain roles remain; the separate outer tester is
+of root guidance alone preserves the rest of the existing receipt. Eleven public capability adapters and seven Domain Agents remain; the separate tester Task subagent is
 also distributed, while maintenance-worker and source coordinator support are source-only.
 Removing a client does not remove a model provider.
 
@@ -287,7 +287,7 @@ Spec-alignment and build-output checks behind `python -m concorde validate` and 
 bind (`--bind-project`) the tracked `protocol/manifest.json` digest to the current build; accepting
 a changed Protocol export is developer-only, and a consumer separately accepts the installed
 manifest version/digest in its own project configuration. Domain Agent responsibility files are bound
-separately by their canonical role profiles. Protocol adapters and the Framework execution profile are bound by
+separately by their canonical Agent profiles. Protocol adapters and the Framework execution profile are bound by
 Protocol assets; the independent standard under `protocol/` is an external normative input, not a
 Module-bound Spec. Protocol adapters alone may include its plain Markdown chapters, which require
 no audience front matter. The build records included chapter bytes in source identities so edits

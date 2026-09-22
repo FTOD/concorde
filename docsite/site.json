@@ -28,11 +28,11 @@
         },
         {
           "title": "Choose Agents, Workflows or optional Operations.",
-          "description": "An Agent is a callable Pi role, a Workflow is native pi-subagents composition, an Operation is an explicitly selected StateGraph flow, and a Host service is finite deterministic work. Agents defines nine roles as a peer of Operations. Main is the external user Pi session, not a tenth Agent. Genuine Graph Specs remain with their owners."
+          "description": "An Agent is a callable Pi agent with one canonical Concorde definition, a Workflow is native pi-subagents composition, an Operation is an explicitly selected StateGraph flow, and a Host service is finite deterministic work. Agents defines nine Agents as a peer of Operations. The user session is the external Pi session that talks to the user, not a tenth Agent. Genuine Graph Specs remain with their owners."
         },
         {
           "title": "Develop in candidate worktrees.",
-          "description": "In consumer projects, a mutating capability requested from primary normally runs in a host-created candidate from the committed base; your session stays in place. Source maintenance uses a fresh catalog-free writer, then main selects independent testing and, when selected, a fresh sibling tester with exact candidate Pi entry, embedded catalog and runtime provenance. Evidence binds current inputs; delivery and primary merging remain separate requests."
+          "description": "In consumer projects, a mutating capability requested from primary normally runs in a host-created candidate from the committed base; your session stays in place. Source maintenance uses a fresh catalog-free writer, then the user session selects independent testing and, when selected, a fresh sibling tester with exact candidate Pi entry, embedded catalog and runtime provenance. Evidence binds current inputs; delivery and primary merging remain separate requests."
         },
         {
           "title": "Track problems as Issues.",
@@ -69,7 +69,7 @@
     },
     "reference": {
       "title": "Agents and public capabilities",
-      "description": "Eleven public capability adapters retain their concorde-* names. Agents owns seven domain roles and two outer task roles; consumer packages contain eight definitions, excluding source-only maintenance-worker, and statically register only generic tester. Main remains external. Init, configure, validate and deliver make no model calls; no removed workflow has an alias.",
+      "description": "Eleven public capability adapters retain their concorde-* names. Agents owns seven Domain Agents and two Task subagents; consumer packages contain eight definitions, excluding source-only maintenance-worker, and statically register only generic tester. The user session remains external. Init, configure, validate and deliver make no model calls; no removed workflow has an alias.",
       "tables": [
         {
           "title": "Public capabilities",
@@ -126,8 +126,8 @@
           ]
         },
         {
-          "title": "Callable Pi roles",
-          "description": "The Agents Module owns the canonical contracts. Domain roles receive invocation-owned projections; outer task roles receive explicit task/worktree grants rather than domain stage schemas. No role delegates tasks. Registration is discovery, not authority or execution evidence.",
+          "title": "Callable Pi Agents",
+          "description": "The Agents Module owns the canonical contracts. Domain Agents receive invocation-owned projections; Task subagents receive explicit task/worktree grants rather than domain stage schemas. No Agent delegates tasks. Registration is discovery, not authority or execution evidence.",
           "columns": [
             "Agents",
             "Responsibility and authority"
@@ -151,7 +151,7 @@
             ],
             [
               "maintenance-worker",
-              "Source-only author of verified candidate work under main's frozen grant; self-checks are not independent acceptance."
+              "Source-only author of verified candidate work under the user session's frozen grant; self-checks are not independent acceptance."
             ],
             [
               "tester",
@@ -173,7 +173,7 @@
             ],
             [
               "Agents",
-              "Define all nine callable roles and their interaction, family and distribution scope; main remains an external session."
+              "Define all nine callable Agents and their interaction, family and distribution scope; the user session remains external."
             ],
             [
               "Harness",

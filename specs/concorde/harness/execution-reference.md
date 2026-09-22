@@ -39,7 +39,7 @@ anchors remain addressable without implying that retired execution paths are cur
 
 #### The execution model {#agents-and-harnesses-the-execution-model}
 
-Canonical kinds are Agent (native Pi role), Workflow (authored pi-subagents composition), Operation
+Canonical kinds are Agent (canonically defined native Pi agent), Workflow (authored pi-subagents composition), Operation
 (explicit StateGraph flow) and Host service (finite non-model action). The compatibility inventory
 retains external names and transport fields, with explicit `kind` metadata; it does not schedule
 native capabilities through a Graph. Seven domain Agent definitions are canonical and have no parallel
@@ -48,7 +48,7 @@ spellings, not another executable identity or a claim of filesystem isolation.
 
 #### A1. Agent instructions and profile {#agents-and-harnesses-a1-operation-instructions-and-execution-profile}
 
-Each domain Agent has its Agents-owned canonical role Spec and native prelude. Native and compatibility rendered
+Each Domain Agent has its Agents-owned canonical Agent Spec and native prelude. Native and compatibility rendered
 Agent paths contain the same instruction bytes. Profiles bind role, task/result schemas, intended
 workspace/tools and limits. The Host verifies exact source/build/runtime identity before use. Context
 references remain independent from tool policy and executable composition.
@@ -89,7 +89,7 @@ There is no child definition, child selection, delegation tool or extension. Ret
 and tools are rejected, not ignored or translated into new launches. Workers perform their own
 admitted node work directly; the code reviewer receives read/check tools formerly used by its verifier.
 
-Outer Pi/task-subagent delegation limits belong to the outer host. Concorde does not read, infer or
+Task subagent delegation limits belong to the user session's Pi host. Concorde does not read, infer or
 calculate cross-runtime current/maximum agent depth for terminal workers. Missing, incomplete,
 malformed or exhausted legacy depth variables do not block a leaf launch and are not forwarded.
 OperationHost.depth remains internal graph invocation nesting and evidence, not agent depth.
@@ -97,16 +97,16 @@ File/tool grants, independent result admission, cancellation and deadlines remai
 
 #### Common worker rules and inventory {#agents-and-harnesses-common-worker-rules-and-inventory}
 
-The build combines each canonical native prelude with its Agent role Spec. It renders identical
+The build combines each canonical native prelude with its Agent Spec. It renders identical
 instruction bytes to `generated/native/<name>.md` and compatibility `generated/agents/<name>.md`.
-Protocol sources are supplied through the frozen context index. The [Agents inventory](../agents/roles.md)
-records the seven domain roles and the separate outer family. Compatibility adapters and optional
-StateGraph Operations do not define these roles; Agent entries have no State/run model aliases.
+Protocol sources are supplied through the frozen context index. The [Agents inventory](../agents/contracts.md)
+records the seven Domain Agents and the separate Task subagent family. Compatibility adapters and optional
+StateGraph Operations do not define these Agents; Agent entries have no State/run model aliases.
 
 #### Task contracts {#agents-and-harnesses-task-contracts}
 
-The canonical [domain task-profile bindings](../agents/roles.md#domain-task-profile-bindings)
-are owned by Agents. Harness validates those profiles without authoring a second role catalog.
+The canonical [domain task-profile bindings](../agents/contracts.md#domain-task-profile-bindings)
+are owned by Agents. Harness validates those profiles without authoring a second Agent catalog.
 
 The host selects the worker before freezing its context and compiling its permissions, and the
 executor checks that selection again before any process starts. A context of the wrong type or
@@ -606,8 +606,8 @@ with `stale_context` or `configuration_mismatch`.
 ##### Input and result {#execution-input-and-result}
 
 A historical RPC diagnostic worker's system prompt is the exact supplied invocation instruction
-bytes with its explicitly bound Protocol rules. Loading a current role projection yields the native
-prelude plus role Spec, not a restored common-worker-rules rendering; this diagnostic transport is
+bytes with its explicitly bound Protocol rules. Loading a current Agent projection yields the native
+prelude plus Agent Spec, not a restored common-worker-rules rendering; this diagnostic transport is
 not a native Agent backend or evidence of live prompt compatibility. Its only message is the canonical typed
 context: task context inline, Spec context as the index of granted files. Its output contract is its
 `submit_result` tool, whose parameters are the self-contained JSON Schema of the contract's result
@@ -750,12 +750,12 @@ candidate status/runs. The test runner supplies temporary per-unit storage and e
 runtime spans into its report; it never guesses install time from a whole unittest duration.
 This optional diagnostic location is not primary execution authority or a worker grant.
 
-Outer observation uses existing Pi session/provider/turn/tool/compaction events and native custom
+Session observation uses existing Pi session/provider/turn/tool/compaction events and native custom
 entries, including direct non-Operation sessions. It observes current context estimates/capacity,
 reported input/output/cache counts and reserve when actually supplied by compaction preparation.
 Unknown reserve/compaction information stays null. Role/session and hashed native lineage are
-recorded separately from task authority. Main may annotate bounded handoff/test-trigger reasons
-through the process-local concorde:outer-fact:v1 event; hooks never infer exhaustion, compact,
+recorded separately from task authority. The user session may annotate bounded handoff/test-trigger reasons
+through the process-local concorde:session-fact:v1 event; hooks never infer exhaustion, compact,
 launch children or change provider/settings/tool/prompt state. Native pi-subagents events remain
 owned by that package; explicit child observation extensions do not load ambient catalogs.
 
@@ -900,9 +900,9 @@ The private worker policy uses schema 2 and rejects schema 1 and retired `childr
 and `extension_path` fields. The profile, launch and invocation Python constructors no longer
 accept child definitions/selections. No compatibility alias recreates delegation. The extension
 registers only granted service tools and activates exactly the host tool list; all other tools,
-including `subagent` and the outer `concorde` tool, are refused.
+including `subagent` and the user session's `concorde` tool, are refused.
 
-Operation entry rejects the worker environment marker `CONCORDE_WORKER_POLICY`; the outer Pi
+Operation entry rejects the worker environment marker `CONCORDE_WORKER_POLICY`; the user session's Pi
 session extension also refuses loading there. This is a cooperative runtime guard, not a claim
 that arbitrary shell programs cannot clear environment variables or execute other agents. The
 existing mount sandbox, shared network and credential limitations are unchanged. Worker
@@ -1148,7 +1148,7 @@ normalizes only the encoding choices stated above.
 
 A TypedValue is exactly `{type_id: str, schema_version: int, data: object}`. This API constructs
 and accepts each registered type's exact declared version (an integer, never a boolean); context
-payloads/wrappers and stage values use the independent versions listed in admission contracts. The separate outer native/operation
+payloads/wrappers and stage values use the independent versions listed in admission contracts. The separate native/operation
 completion envelopes may have other versions; they are not constructed by this helper.
 `validate_typed` returns a deep copy after validating the registered payload schema and applicable
 type-specific rules. `expected` requires an exact type ID match. Errors are

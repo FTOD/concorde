@@ -2,14 +2,14 @@
 
 ## Purpose
 
-Operations owns explicitly selected LangGraph StateGraph composition and its typed boundaries. It also maintains the compatibility public capability adapters and dispatch that connect existing request names to their business providers. These adapters are not a second semantic Operation identity: native Agent calls, native Workflows and finite Host services keep their actual execution kinds. Agents owns callable role definitions; the provider children retain their individual business promises.
+Operations owns explicitly selected LangGraph StateGraph composition and its typed boundaries. It also maintains the compatibility public capability adapters and dispatch that connect existing request names to their business providers. These adapters are not a second semantic Operation identity: native Agent calls, native Workflows and finite Host services keep their actual execution kinds. Agents owns callable Agent definitions; the provider children retain their individual business promises.
 
 ## Terminology
 
 | Term                                       | Meaning / definition                                                                                |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
 | Public operation                           | Compatibility term for a public capability entry, not a claim of StateGraph execution.     |
-| Internal operation                         | Compatibility term for a non-public admitted composition entry; it does not define an Agent role. |
+| Internal operation                         | Compatibility term for a non-public admitted composition entry; it does not define an Agent. |
 | [Operation](../module.md#terminology)      | Defined in Concorde Framework.                                                                      |
 | [Module](../module.md#terminology)         | Defined in Concorde Framework.                                                                      |
 | [Graph](../module.md#terminology)          | Defined in Concorde Framework.                                                                      |
@@ -20,7 +20,7 @@ Operations owns explicitly selected LangGraph StateGraph composition and its typ
 
 ## Usage
 
-The outer agent reads and selects complete Module context, answers questions and edits Specs,
+The calling session, the user session or its Task subagent, reads and selects complete Module context, answers questions and edits Specs,
 paired metadata and registry directly under its task authority. It chooses which retained capability
 to call and in what order. Concorde does not route the user's task, author Specs or run an end-to-end
 development workflow.
@@ -38,9 +38,9 @@ code grant still apply; the choice to invoke Operations manually does not bypass
 
 ## Design
 
-Operations keeps the public compatibility-adapter inventory, separate from Agents-owned role definitions. Its five provider children own
+Operations keeps the public compatibility-adapter inventory, separate from Agents-owned Agent definitions. Its five provider children own
 Planning, Implementation, Review, Validation and Delivery. Module ownership and Operation USES are
-independent of explicit context references. The outer agent owns task sequencing; there is no
+independent of explicit context references. The calling session owns task sequencing; there is no
 replacement universal coordinator.
 
 <a id="entity.operations.dispatch"></a>
@@ -141,7 +141,7 @@ This collaboration applies when an admitted `concorde-issues` request reaches di
 
 <a id="entity.operations.agents"></a>
 
-[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
-those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
-role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+[Agents](../agents/module.md) owns callable Agent definitions and interaction. This Module consumes
+those definitions rather than maintaining an Agent catalog or behavioral copy. It preserves the
+Agent's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
 acceptance and execution mechanisms remain with their existing owners.

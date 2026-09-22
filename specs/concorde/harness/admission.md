@@ -4,7 +4,7 @@ These precise contracts belong to the [Harness Module](module.md): the boundary 
 request crosses, the typed values the host admits at that boundary and between stages, the result
 and error vocabulary, workspace binding and the admission Graph. [Preparing and coordinating
 work](host.md) explains their purpose; the [Operations Module](../operations/module.md) owns the
-compatibility capability catalog and dispatch. [Agents](../agents/module.md) owns role definitions.
+compatibility capability catalog and dispatch. [Agents](../agents/module.md) owns Agent definitions.
 
 ## Terminology
 
@@ -116,7 +116,7 @@ diagnostics are forwarded, and its workspace names the candidate; the originatin
 moves. Uncommitted primary changes are not copied. A request that names a recorded change_id from
 the primary worktree relays into that candidate, found through the worktree inventory; a launcher
 that returns no envelope fails with relay_failed. Host-created worktrees live in temporary storage.
-For source maintenance, the main instead assigns a fresh Concorde-catalog-free writer to a candidate;
+For source maintenance, the user session instead assigns a fresh Concorde-catalog-free writer to a candidate;
 source-primary mutations are refused even when a change ID already names a candidate. The source
 constructor injects no Operation guidance and never uses primary code to build candidate outputs:
 the fresh writer runs that candidate's own build before a separate sibling tests its exact private Pi entry/catalog and runtime.
@@ -246,7 +246,7 @@ exposure. Fresh builds and current input checks still apply; historical observat
 | `concorde-plan-artifact@1`             | A `stage_inputs` entry: produced by plan, consumed by tasks                                           | `{plan}`.                                                                                                                                                                                                                                                                                                                                           |
 | `concorde-task-identity-constraints@1` | Host to every fresh task author, including after replanning                                           | `{reserved_task_ids: list[nonblank str]}`; required, sorted and unique, possibly empty. Includes every retained historical ID and the current list for scope or code-review repair. New tasks must not reuse these identities; collisions report the conflicting IDs without rewriting output or history. No software obligations or code contents. |
 | `concorde-implementation-task@1`       | A `stage_inputs` entry: produced by tasks, consumed by implement                                      | `{plan, tasks: [{id,target_id,description,acceptance,complete}]}`; implement must return every task with the same identity, marked complete only when its acceptance is met.                                                                                                                                                                        |
-| `concorde-task-scope-feedback@1`       | Host to fresh task author only                                                                        | `{tasks_digest: sha256, reason: "implementation_boundary"}`; fixed semantic feedback preserves software acceptance while separating implementation from later Host validation, review and authorized outer-session commit. No code or raw logs.                                                                                                     |
+| `concorde-task-scope-feedback@1`       | Host to fresh task author only                                                                        | `{tasks_digest: sha256, reason: "implementation_boundary"}`; fixed semantic feedback preserves software acceptance while separating implementation from later Host validation, review and authorized user session commit. No code or raw logs.                                                                                                     |
 | `concorde-issue-selection@1`           | Host to Issue solver only                                                                             | Selected issue_id/revision, problem/type, bounded host feedback/verification and explicitly admitted duplicate candidates. No code, logs or predecessor conversation.                                                                                                                                                                               |
 | `concorde-issue-intent@1`              | Host to ordinary development stages                                                                   | `{intent}` carries only the selected intended behavior; it never widens a file grant.                                                                                                                                                                                                                                                               |
 | `concorde-issue-context@1`             | Host to admitted tasks/implementation repair                                                          | Selected immutable receipts and their contract-level description, impact and basis. It supplies meaning for the exact review references without exposing the whole Issue history.                                                                                                                                                                   |
@@ -281,7 +281,7 @@ context forms; package/schema alignment checks verify those identities.
 | `invalid_phase`                | The requested bounded context phase is not one this host supports.                                                                                                                                                                                    |
 | `missing_source`               | A required regular file named by the registry or by a resolved context is missing from the project.                                                                                                                                                   |
 | `not_installed`                | Initialization or Protocol acceptance found no Protocol copy under `.concorde/protocol/`; Concorde has not been installed into the project, so run the installer first.                                                                               |
-| `primary_session_required`     | Final primary merging requires the primary owning outer session.                                                                                                                                                                                      |
+| `primary_session_required`     | Final primary merging requires the primary owning user session.                                                                                                                                                                                      |
 | `delivery_required`            | Final primary merging requires a completed staged delivery; finish staging or cleanup first.                                                                                                                                                          |
 | `detached_primary`             | The destination (primary) worktree has no attached branch to deliver onto.                                                                                                                                                                            |
 | `detached_worktree`            | A change worktree has no attached branch.                                                                                                                                                                                                             |
@@ -439,7 +439,7 @@ these observations true. Original receipts are archived byte-for-byte, and journ
 these decisions rather than converting an interrupted copy into lifecycle success. No live-data
 migration is implicit.
 
-Every worker snapshot admits `workspace` lifecycle metadata. The outer agent can inspect status
+Every worker snapshot admits `workspace` lifecycle metadata. The calling session can inspect status
 directly; no question-answer worker is supplied. The current workspace identity and status are
 rechecked after a stage. Other live worktree summaries are frozen observations and grant no
 reading of those worktrees' contracts or implementation.

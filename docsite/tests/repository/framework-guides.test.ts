@@ -25,9 +25,9 @@ describe("Explicit Concorde self specification", () => {
       rows: string[][];
     }>;
     const workers = tables.find(
-      (table) => table.title === "Callable Pi roles",
+      (table) => table.title === "Callable Pi Agents",
     )!;
-    expect(workers.description).toContain("No role delegates tasks");
+    expect(workers.description).toContain("No Agent delegates tasks");
     expect(workers.description).toContain("rather than domain stage schemas");
     expect(workers.rows.flat().join(" ")).toContain("maintenance-worker");
     expect(workers.rows.flat().join(" ")).toContain("tester");

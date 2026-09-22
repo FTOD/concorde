@@ -55,7 +55,7 @@ This collaboration applies when the request concerns Validation.
 
 <a id="entity.concorde.delivery"></a><a id="agreement.document.concorde.module.12"></a>
 
-[Delivery Module](../delivery/module.md) stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the graph that produced the candidate.
+[Delivery Module](../delivery/module.md) stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating user sessions and Task subagents and consumes current evidence without owning the graph that produced the candidate.
 
 This collaboration applies when the request concerns Delivery.
 

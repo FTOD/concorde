@@ -1,10 +1,10 @@
-"""Outer task profiles, not domain stage-schema or bounded-Module profiles."""
+"""Task subagent profiles, not domain stage-schema or bounded-Module profiles."""
 
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class OuterProfile:
+class TaskSubagentProfile:
     name: str
     prompt: str
     tools: tuple[str, ...]
@@ -14,9 +14,9 @@ class OuterProfile:
 
 
 PROFILES = (
-    OuterProfile(
+    TaskSubagentProfile(
         "tester",
-        "prompts/outer/tester.md",
+        "prompts/task-subagent/tester.md",
         ("read", "grep", "find", "ls", "test_command"),
         ("concorde-tester.ts",),
         False,

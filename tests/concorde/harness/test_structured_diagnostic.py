@@ -80,7 +80,7 @@ console.log('Selected arguments/errors roundtrip; secret sources excluded; sourc
                     "CONCORDE_DIAGNOSTIC_REPORT": "1",
                 }
                 result = subprocess.run(
-                    [sys.executable, "-m", "concorde.distribution.outer_check"],
+                    [sys.executable, "-m", "concorde.distribution.tester_check"],
                     input=json.dumps(
                         {
                             "command": command,

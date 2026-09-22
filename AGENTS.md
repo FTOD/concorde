@@ -6,41 +6,41 @@ Specs and paired metadata under `specs/` use English.
 
 ## Self-maintenance
 
-Source main may discuss and, with user consent, collect mature lightweight TODO notes without
-starting maintenance. This main-only recordkeeping exception changes only TODOs and authorized
+The source user session may discuss and, with user consent, collect mature lightweight TODO notes without
+starting maintenance. This user-session-only recordkeeping exception changes only TODOs and authorized
 issue records, never implementation or Specs; it grants no child authoring authority. The canonical
-source-main prompt below defines maturity, persistence and safe issue promotion.
+source user session coordinator prompt below defines maturity, persistence and safe issue promotion.
 
-The main session owns high-level work packages, dependencies, file/contract ownership, native workflow
+The user session owns high-level work packages, dependencies, file/contract ownership, native workflow
 steps and component/integration/testing gates, not product Concorde plan/tasks. Within task authority
-main may directly author/repair profiles, prompts, tools, workflows and coordination mechanisms in
+the user session may directly author/repair profiles, prompts, tools, workflows and coordination mechanisms in
 its own exclusively owned tree. New assets never change an active sibling's frozen launch grant.
 For candidate implementation it creates a
 candidate from a committed base, registers it in primary `.concorde/status/` before launch, then
 launches one fresh, Concorde-catalog-free maintenance child there and binds its actual child run ID.
-Main verifies the child stopped before releasing its exact ownership and handing off to a tester
+The user session verifies the child stopped before releasing its exact ownership and handing off to a tester
 or resuming the same author. Primary runs evidence and pi-subagents mission records are not status
-registration; children never maintain a replacement ledger. See the canonical source-main prompt
-under `prompts/outer/source/main.md` for the supported host CLI lifecycle.
+registration; children never maintain a replacement ledger. See the canonical source user session
+coordinator prompt under `prompts/user-session/source/coordinator.md` for the supported host CLI lifecycle.
 Disable inherited and discovered Concorde catalogs; never fork previously loaded Concorde instructions.
 The child owns all authoring and deterministic checks, never delegates tasks, never moves
 worktrees, and stops writing before testing. Only one writer owns a worktree at a time.
 
 Reuse the stage author across ordinary milestones and feedback. A completed stage with changed
 goals/context may use a fresh author after a durable handoff and exact stop/release/bind. Independent
-components may use multiple worktrees in parallel, with main-controlled combination and verification.
-Main chooses independent testing as none, targeted or full with an explicit scope and reason.
-When selected, main launches a separate fresh sibling named tester in that candidate, explicitly
+components may use multiple worktrees in parallel, with user-session-controlled combination and verification.
+The user session chooses independent testing as none, targeted or full with an explicit scope and reason.
+When selected, the user session launches a separate fresh sibling named tester in that candidate, explicitly
 supplied only the exact candidate-built private Pi entry, embedded catalog and runtime provenance. A test child
 never rewrites the Pi integration governing it. Failures return to maintenance, then another fresh tester.
 Neither child creates grandchildren; Operation workers are terminal nodes scheduled by the Graph/host, with their own file/tool grants. Selection metadata is not evidence of extension loading, tool use or model execution.
 
 Build does not install this checkout's Operation entry/catalog in ambient discovery.
 It does maintain checked source project `.pi/agents/maintenance-worker.md`, `.pi/agents/tester.md`,
-a source-main-only `.pi/extensions/concorde-coordinator.ts` and a separate passive observer entry plus an explicit source-only lifecycle extension. Canonical sources are `prompts/outer/` and
-`pi/`; do not hand-edit projections. Outer pi-subagents support is a prerequisite, never a
+a source-user-session-only `.pi/extensions/concorde-coordinator.ts` and a separate passive observer entry plus an explicit source-only brief lifecycle extension. Canonical sources are `prompts/task-subagent/`,
+`prompts/user-session/` and `pi/`; do not hand-edit projections. The user session's pi-subagents support is a prerequisite, never a
 terminal-worker dependency. Coordinator delivery uses Pi extension discovery, not APPEND_SYSTEM:
-Pi discovers that append independently of context-file inheritance. Main alone loads the coordinator;
+Pi discovers that append independently of context-file inheritance. The user session alone loads the coordinator;
 child explicit extension lists and terminal discovery disablement exclude it. The installer ships only generic tester instructions, not source
 maintenance/coordinator rules. Strict tool profiles omit delegation; tester commands use the
 OS read-only check boundary and external scratch rather than unrestricted bash/write/edit.
@@ -49,7 +49,7 @@ runtime paths to verify private selection; a missing or stale candidate artifact
 never permission to fall back to a primary/global integration. Consumer installation is separate.
 
 Maintenance can finish through ordinary Git after verification; Concorde delivery is not required.
-Only the main session may integrate, and only with explicit merge authorization. Keep candidate
+Only the user session may integrate, and only with explicit merge authorization. Keep candidate
 and terminal status until separately authorized cleanup. Never edit another worktree's source or
 index. The primary coordinator owns durable `.concorde/status/` and `.concorde/runs/` persistence.
 Task-authorized edits to `.concorde` are not intrinsically forbidden, but must preserve scope,
@@ -72,7 +72,7 @@ current concise task brief once after observed success; checkpoints and `/compac
 are not compaction. Native supervisor updates report stage/objective/artifacts/check failures/blocker/
 next action/evidence, distinct from host activity, context and compaction observations. Resource handoff requests report observed capacity, current input/cache,
 reserve and compaction status or an actual error; missing metrics stay unknown. Cumulative tokens,
-document KB and lack of a compact tool do not prove exhaustion; main verifies the need.
+document KB and lack of a compact tool do not prove exhaustion; the user session verifies the need.
 
 Use format/static/targeted checks for local edits, affected integration for coherent changes and
 one full Python suite at final stable input. Stage handoff alone needs no full suite; a same-tree

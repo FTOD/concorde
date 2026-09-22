@@ -31,7 +31,7 @@ checked and independently reviewed there, and delivered only when you ask.
 You drive Concorde from the **Pi coding agent** through its `concorde` session tool. Pi is the
 only supported client; standalone Skills and Codex/Claude client integrations are retired.
 Pi model providers, including OpenAI and Anthropic, remain supported. Model cognition runs through native pi-subagents Agents and authored workflows; deterministic actions
-are Host services. LangGraph is an optional execution boundary, not a scheduler under every call. The outer agent reads,
+are Host services. LangGraph is an optional execution boundary, not a scheduler under every call. The user session reads,
 answers and edits Specs directly, then chooses which capabilities to call and in what order.
 
 ## Why Concorde
@@ -82,13 +82,14 @@ responsibilities; a model proposal or successful stage-only gate is never domain
 
 ### Native workflows and optional StateGraph Operations
 
-An **Agent** is a callable native Pi role. A **Workflow** is an authored pi-subagents composition.
+An **Agent** is a callable native Pi agent with one canonical Concorde definition, either a Domain Agent
+or a Task subagent. A **Workflow** is an authored pi-subagents composition.
 An **Operation** is an explicitly selected LangGraph StateGraph flow. Finite non-model actions are
 **Host services**. These executable kinds do not change Module ownership or context references.
 The compatibility `concorde-*` names and `operation_id` wire fields do not make every entry a Graph.
 
 Plan, review and bounded Issue solving use authored native workflows. Context assessment, tasks and
-implementation use direct native Agents. Main calls `concorde` to prepare a bound invocation, passes
+implementation use direct native Agents. The user session calls `concorde` to prepare a bound invocation, passes
 its exact returned `call` to native `subagent`, and polls the same workflow entry with action `result`
 when asynchronous. Final acceptance separately reconciles actual native artifacts and current inputs.
 
@@ -97,23 +98,23 @@ an authorized native launch/admission service through Runtime, synchronously or 
 State cannot choose that authority. There is no default model runner or old RPC fallback. Studio
 inspects this exact boundary, not fake graph mirrors of native workflows.
 
-### Find the Agent role, not an execution wrapper
+### Find the Agent, not an execution wrapper
 
 The [Agents Module](specs/concorde/agents/module.md) is the reading entry for all nine callable Pi
-roles, including their inputs, completion, authority and continuation rules. It is a peer of
+Agents, including their inputs, completion, authority and continuation rules. It is a peer of
 [Operations](specs/concorde/operations/module.md), not a replacement for the business Modules.
 Planning still owns sufficiency and accepted plans/tasks; Implementation owns fulfillment and
 partial-work semantics; Review owns coverage, findings and aggregation; Issues owns dispositions.
 
-The seven domain roles are `context-assessor`, `planner`, `task-author`, `programmer`,
+The seven Domain Agents are `context-assessor`, `planner`, `task-author`, `programmer`,
 `spec-reviewer`, `code-reviewer` and `issue-solver`. Their Host-prepared invocation capsules bind
-fresh terminal calls to selected context; they are not separately authored role definitions.
-The two outer task roles are `maintenance-worker` and `tester`: maintenance-worker is source-only,
+fresh terminal calls to selected context; they are not separately authored Agent definitions.
+The two Task subagents are `maintenance-worker` and `tester`: maintenance-worker is source-only,
 while tester has source-checkout and distributed consumer instructions with explicit local runtime
-selection. Project registration of an outer role does not impose a domain stage schema or a
+selection. Project registration of a Task subagent does not impose a domain stage schema or a
 single-Module context grant on it. Both retain their actual task/tool boundaries and cannot delegate.
 
-Main is the external calling/coordinating Pi session, not a tenth Agent profile. Its high-level work
+The user session is the external calling/coordinating Pi session, not a tenth Agent profile. Its high-level work
 packages, ownership and integration/testing gates are not Concorde product `plan`/`tasks` artifacts.
 
 ### Changes run in candidate worktrees and are delivered on request
@@ -134,7 +135,7 @@ selected intent to the caller without automatic authoring or development, and ne
 
 ## Choose work explicitly
 
-The outer agent reads the relevant complete Specs, selects the owner and directly edits reading,
+The user session, or its Task subagent, reads the relevant complete Specs, selects the owner and directly edits reading,
 paired metadata and registry/topology within the task grant. These edits retain deterministic Spec
 consistency and ownership rules; they do not create review or completion evidence.
 
@@ -243,7 +244,7 @@ Use concorde-plan for target module.storage and task “Implement the approved r
 ```
 
 In Pi, use the `concorde` tool for these capabilities. Every bounded domain task receives an
-explicit target; questions and Spec/registry edits are ordinary outer-agent work, not routed Agent calls.
+explicit target; questions and Spec/registry edits are ordinary user session work, not routed Agent calls.
 
 ## Choose an entry point
 
@@ -338,8 +339,8 @@ or [Concorde's own root Spec](specs/concorde/module.md), which applies it to thi
 The public catalog retains eleven compatibility capability names, each with an explicit execution
 kind. Issue bookkeeping actions are deterministic Host services while `issues.solve` is a bounded
 native workflow. The separately selected `terminal_agent_operation` is a genuine StateGraph boundary;
-roles are not private model-backed Operation aliases. [Agents](specs/concorde/agents/module.md) owns
-canonical role definitions; Distribution renders and registers their runtime projections, and Harness
+Agents are not private model-backed Operation aliases. [Agents](specs/concorde/agents/module.md) owns
+canonical Agent definitions; Distribution renders and registers their runtime projections, and Harness
 prepares invocation context and checks results. No public path schedules a mandatory Graph or hidden
 old Pi-RPC worker.
 
@@ -377,7 +378,7 @@ python3 scripts/development/run-tests.py
 Concorde self-maintenance uses a fresh Concorde-catalog-free writer in a candidate, followed by a
 separate fresh sibling tester supplied only the exact candidate-built Pi entry, embedded catalog
 and runtime provenance. Both disable inherited/discovered Concorde catalogs and never fork old
-instructions or delegate tasks. The main coordinates from its initial worktree and integrates
+instructions or delegate tasks. The user session coordinates from its initial worktree and integrates
 only with explicit authorization. The writer formats, checks and commits, then stops writing
 before testing. Failed tests return to maintenance followed by another fresh tester.
 
@@ -391,7 +392,7 @@ block; selection is provenance, not evidence of extension loading, tool use or m
 The host retains the actual file/tool grant; no global fallback or Studio redirect is allowed.
 
 Never edit build output under `generated/`; change `prompts/operation-guidance/`, other authored
-`prompts/`, canonical role/capability sources or `pi/extensions/` and rebuild. There is no standalone `skills/` product
+`prompts/`, canonical Agent/capability sources or `pi/extensions/` and rebuild. There is no standalone `skills/` product
 or `skills` publishing command. See the
 [source-checkout policy](AGENTS.md) and [development details](docs/workflow-guide.md#development).
 

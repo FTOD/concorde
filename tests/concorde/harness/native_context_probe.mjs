@@ -210,7 +210,7 @@ setChildSessionFactory({
     for (const hook of launch.hooks) hook.factory(childPi);
     assert(
       !childTools.has("update_task_brief"),
-      "source-main tool leaked into domain Agent",
+      "source user session tool leaked into Domain Agent",
     );
     const listeners = new Set(),
       messages = [];

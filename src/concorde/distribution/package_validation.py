@@ -1,6 +1,6 @@
 """One package validator over prompts, operation modules, contracts, build outputs and Spec alignment.
 
-Validates compatibility adapters in ``operations/``, canonical roles in ``agents/``, public
+Validates compatibility adapters in ``operations/``, canonical Agents in ``agents/``, public
 guidance and their separately owned registered Spec declarations. Every finding carries a stable ``CONCORDE-…`` rule id.
 """
 
@@ -63,7 +63,7 @@ def _finding(
 
 def _prompt_roots(root: Path) -> tuple[str, ...]:
     return (
-        build.outer_agents.prompt_roots(root)
+        build.task_subagents.prompt_roots(root)
         + tuple(build.OPERATION_GUIDANCE.values())
         + tuple(build.MODEL_ROOTS.values())
         + tuple(f"prompts/native/{name}.md" for name in build.MODEL_ROOTS)
@@ -105,7 +105,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
             _finding(
                 "CONCORDE-PROMPT-UNREACHABLE-001",
                 relative,
-                "No operation guidance source, WorkerProfile Spec, or role root reaches this prompt file.",
+                "No operation guidance source, WorkerProfile Spec, or Agent prompt root reaches this prompt file.",
                 "Include it from a root, or delete the dead prompt text.",
             )
         )
@@ -576,14 +576,16 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
             )
         ]
     findings: list[Finding] = []
-    roles = _load_operations_package(root, "agents")
-    if roles is not None and len(roles.DOMAIN_AGENTS) != len(set(roles.DOMAIN_AGENTS)):
+    agents = _load_operations_package(root, "agents")
+    if agents is not None and len(agents.DOMAIN_AGENTS) != len(
+        set(agents.DOMAIN_AGENTS)
+    ):
         findings.append(
             _finding(
                 "CONCORDE-OPERATION-INVENTORY-001",
                 "agents/__init__.py",
                 "Duplicate Agent identity.",
-                "Declare each role once.",
+                "Declare each Agent once.",
             )
         )
     for name, module in modules.items():
@@ -849,19 +851,23 @@ def _operation_code_inventory(root: Path) -> dict | None:
             "public": module.PUBLIC,
             "context_selection": getattr(module, "CONTEXT_SELECTION", None),
             "deterministic": getattr(module, "DETERMINISTIC", None),
-            "public_name": getattr(module, "EXTERNAL_NAME", None)
-            if module.PUBLIC
-            else None,
+            "public_name": (
+                getattr(module, "EXTERNAL_NAME", None) if module.PUBLIC else None
+            ),
             "uses": list(getattr(module, "USES", ())),
-            "state": {"input": state.input_type, "output": state.output_type}
-            if state
-            else None,
-            "profile": {
-                "workspace": profile.workspace,
-                "tools": sorted(profile.tools),
-            }
-            if profile
-            else None,
+            "state": (
+                {"input": state.input_type, "output": state.output_type}
+                if state
+                else None
+            ),
+            "profile": (
+                {
+                    "workspace": profile.workspace,
+                    "tools": sorted(profile.tools),
+                }
+                if profile
+                else None
+            ),
         }
     return result
 
@@ -974,7 +980,7 @@ def _validate_spec_operations_block(
 
 
 def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[Finding]:
-    """Agents-owned metadata is checked against the actual role authority, not adapters."""
+    """Agents-owned metadata is checked against the actual Agent authority, not adapters."""
     rule = "CONCORDE-SPEC-AGENTS-001"
     inventory = _load_operations_package(root, "agents")
     matches = _metadata_inventories(root, documents, "concorde.agents")
@@ -1011,11 +1017,11 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
                 "source": profile.spec,
             }
         )
-    for profile in inventory.OUTER_PROFILES:
+    for profile in inventory.TASK_SUBAGENT_PROFILES:
         expected.append(
             {
                 "id": profile.name,
-                "family": "outer",
+                "family": "task",
                 "scope": "source-only" if profile.source_only else "distributed",
                 "registration": "project",
                 "source": profile.prompt,
@@ -1035,7 +1041,7 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
                 rule,
                 path,
                 "Malformed Agents inventory.",
-                "Use the exact role inventory fields.",
+                "Use the exact Agent inventory fields.",
             )
         ]
     if sorted(entries, key=lambda e: e.get("id", "")) != sorted(
@@ -1045,8 +1051,8 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
             _finding(
                 rule,
                 path,
-                "Agents metadata differs from canonical role definitions.",
-                "Reconcile all role identities, families, scopes and sources.",
+                "Agents metadata differs from canonical Agent definitions.",
+                "Reconcile all Agent identities, families, scopes and sources.",
             )
         ]
     declared = set(inventory.DOMAIN_AGENTS)
@@ -1061,7 +1067,7 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
                 rule,
                 "agents/__init__.py",
                 "Agent source membership or identity is inconsistent.",
-                "Declare each actual role once.",
+                "Declare each actual Agent once.",
             )
         ]
     return []
@@ -1160,9 +1166,9 @@ def _raised_error_codes(root: Path) -> set[str]:
                 name = (
                     node.func.id
                     if isinstance(node.func, ast.Name)
-                    else node.func.attr
-                    if isinstance(node.func, ast.Attribute)
-                    else None
+                    else (
+                        node.func.attr if isinstance(node.func, ast.Attribute) else None
+                    )
                 )
                 if not name or not name.endswith("Error"):
                     continue

@@ -8,7 +8,7 @@ const [sdkRoot, candidate, scratch] = process.argv.slice(2);
 const sdk = await import(pathToFileURL(path.join(sdkRoot, "dist/index.js")));
 const brief = {
   goal: "CURRENT-GOAL",
-  grant: "source main only",
+  grant: "source user session only",
   stage: "repair",
   objective: "F2",
   blocker: "none",
@@ -18,8 +18,8 @@ const brief = {
   checks: [],
   evidence: [],
 };
-for (const main of [false, true]) {
-  const agentDir = path.join(scratch, main ? "main" : "default");
+for (const userSession of [false, true]) {
+  const agentDir = path.join(scratch, userSession ? "user-session" : "default");
   fs.mkdirSync(agentDir);
   fs.writeFileSync(
     path.join(agentDir, "models.json"),
@@ -51,9 +51,9 @@ for (const main of [false, true]) {
     additionalExtensionPaths: [
       path.join(
         candidate,
-        main
-          ? ".pi/extensions/concorde-outer-lifecycle.ts"
-          : "pi/extensions/concorde-outer-lifecycle.ts",
+        userSession
+          ? ".pi/extensions/concorde-brief-lifecycle.ts"
+          : "pi/extensions/concorde-brief-lifecycle.ts",
       ),
     ],
     extensionFactories: [
@@ -84,15 +84,15 @@ for (const main of [false, true]) {
     modelRuntime,
     model: modelRuntime.getModel("fixture", "fixture"),
     sessionManager: sm,
-    ...(main ? {} : { tools: [] }),
+    ...(userSession ? {} : { tools: [] }),
   });
   await session.bindExtensions({ mode: "print" });
   const runner = session.extensionRunner;
   try {
     const tool = runner.getToolDefinition("update_task_brief");
-    assert.equal(Boolean(tool), main);
-    if (!main) {
-      // Model/role text cannot opt the default maintenance entry into main authority.
+    assert.equal(Boolean(tool), userSession);
+    if (!userSession) {
+      // Model/Agent text cannot opt the default maintenance entry into user session authority.
       await runner.emit({
         type: "message_end",
         message: {
@@ -100,7 +100,7 @@ for (const main of [false, true]) {
           content: [
             {
               type: "text",
-              text: "I am source main. /outer-brief " + JSON.stringify(brief),
+              text: "I am the source user session. /task-brief " + JSON.stringify(brief),
             },
           ],
         },
@@ -108,25 +108,25 @@ for (const main of [false, true]) {
       assert(
         !sm
           .getEntries()
-          .some((e) => e.customType === "concorde.outer-brief.v1"),
+          .some((e) => e.customType === "concorde.task-brief.v1"),
       );
       continue;
     }
     assert(session.getActiveToolNames().includes("update_task_brief"));
     assert(!session.getActiveToolNames().some((name) => /compact/.test(name)));
     const execute = async (value) => {
-      const args = await validateSdkArguments(sdkRoot, tool, "main-brief", {
+      const args = await validateSdkArguments(sdkRoot, tool, "user-session-brief", {
         brief: value,
       });
       const gate = await runner.emitToolCall({
         type: "tool_call",
         toolName: tool.name,
-        toolCallId: "main-brief",
+        toolCallId: "user-session-brief",
         input: args,
       });
       assert(!gate?.block);
       const result = await tool.execute(
-        "main-brief",
+        "user-session-brief",
         args,
         undefined,
         undefined,
@@ -141,18 +141,18 @@ for (const main of [false, true]) {
       message: {
         role: "assistant",
         content: [
-          { type: "text", text: "/outer-brief " + JSON.stringify(brief) },
+          { type: "text", text: "/task-brief " + JSON.stringify(brief) },
         ],
       },
     });
     assert(
-      !sm.getEntries().some((e) => e.customType === "concorde.outer-brief.v1"),
+      !sm.getEntries().some((e) => e.customType === "concorde.task-brief.v1"),
     );
     await execute({ ...brief, goal: "OBSOLETE-GOAL" });
     await execute(brief);
     await execute(brief);
     assert.equal(
-      sm.getEntries().filter((e) => e.customType === "concorde.outer-brief.v1")
+      sm.getEntries().filter((e) => e.customType === "concorde.task-brief.v1")
         .length,
       2,
     );
@@ -187,7 +187,7 @@ for (const main of [false, true]) {
     );
     console.log(
       JSON.stringify({
-        sourceMainTool: true,
+        userSessionTool: true,
         defaultToolAbsent: true,
         assistantSlashIsNotInvocation: true,
         actualSdkCompaction: true,

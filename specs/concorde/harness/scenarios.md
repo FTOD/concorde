@@ -102,7 +102,7 @@ See [the changed-input recheck bound](requirements.md#req.harness.context-rechec
 
 ### scenario.harness.agent-bind — Bind a named worker's Spec and terminal profile
 
-- GIVEN a named domain Agent in the [Agents-owned role inventory](../agents/roles.md#inventory-and-compatibility) and a current, fresh build
+- GIVEN a named Domain Agent in the [Agents-owned Agent inventory](../agents/contracts.md#inventory-and-compatibility) and a current, fresh build
 - WHEN resolve_worker is called for that name
 - THEN the host returns a reproducible WorkerBinding covering spec_digest, instructions_digest, profile_digest, build_manifest_digest and timeout_seconds
 - AND worker_profile resolves that same name, its hyphenated spelling or its concorde- external name to the canonical Agent profile
@@ -191,7 +191,7 @@ settling-is-not-completion bound](requirements.md#req.harness.execute-exit-insuf
 
 ### scenario.harness.worker-contract — A worker runs only its own task contract
 
-- GIVEN a retained low-level RPC diagnostic using a canonical role profile and an explicitly selected Module
+- GIVEN a retained low-level RPC diagnostic using a canonical Agent profile and an explicitly selected Module
 - WHEN the host binds a worker and the executor admits its launch and its result
 - THEN the supplied canonical role instruction bytes and explicit Protocol rules form its prompt, not an implicitly restored common-worker-rules projection
 - AND a mismatched phase, context or result type, unadmitted or missing required stage artifacts, implementation contents for a worker without implementation reads and a policy wider than the contract are rejected before a process starts
@@ -361,7 +361,7 @@ See [the canonical-encoding bound](requirements.md#req.harness.typed-canonical).
 
 - GIVEN a terminal worker with its bounded file/tool grants
 - WHEN launched without depth variables or with incomplete, malformed or exhausted legacy depth values
-- THEN launch proceeds without consuming or changing outer task-host grants
+- THEN launch proceeds without consuming or changing the user session's task-host grants
 - AND the Pi catalog contains only the declared non-delegating tools and no ambient Skills, instructions, extensions or child catalogs
 - AND requests for subagent tools, recursive Operation tools, child definitions and child selections fail rather than launching another worker
 - AND result submission and correction, cancellation, timeouts, file scopes and runtime freshness retain their existing behavior
@@ -531,13 +531,13 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND analysis uses per-process interval unions and distinguishes summed nested work from elapsed wall time
 - AND durable Operation traces use existing primary authority while standalone diagnostics create no execution authority
 
-### scenario.harness.outer-observation — Observe direct sessions without Operation authority
+### scenario.harness.session-observation — Observe direct sessions without Operation authority
 
-- GIVEN a main, maintenance-worker or tester session with explicit passive observation and native Pi events
+- GIVEN a user, maintenance-worker or tester session with explicit passive observation and native Pi events
 - WHEN the session resumes, makes model requests, calls tools, waits for a supervisor or compacts
 - THEN native custom entries record measured intervals and observed capacity/current usage/cache/reserve/compaction with unknown fields preserved
 - AND no Operation, child, tool, prompt change, settings change or network telemetry is introduced by observation
-- AND native lineage and bounded main-supplied handoff/test reasons remain diagnostic facts rather than delegation or primary persistence grants
+- AND native lineage and bounded user-session-supplied handoff/test reasons remain diagnostic facts rather than delegation or primary persistence grants
 - AND request roundtrip and outside-tools intervals are not claimed as server thinking time
 
 ### scenario.harness.host-tools-direct — Deterministic admission does not compile a Graph
@@ -551,7 +551,7 @@ See [project root is the entry process's working directory](requirements.md#req.
 ### scenario.harness.native-context-public — Prepared native assessment is independently admitted
 
 - GIVEN the exact candidate Pi entry and a selected Module with complete current context
-- WHEN context-solve prepares and main invokes its exact native file-Agent call
+- WHEN context-solve prepares and the calling session invokes its exact native file-Agent call
 - THEN public preflight and the real native executor select the same capsule Agent, fresh context and terminal tools
 - AND no LangGraph or hidden Pi-RPC worker executes on this path
 - AND sufficient and business-blocked assessments remain distinguishable from a staged proposal
@@ -581,14 +581,14 @@ See [project root is the entry process's working directory](requirements.md#req.
 - AND repeating that notification re-reports its cached failure without repeating persistence or invalidating an otherwise correctable schema slot
 - AND failure never becomes completion or permits an automatic invalid-slot retry, widened grant or credential disclosure
 
-### scenario.harness.outer-lifecycle — Actual compaction reinjects current task memory once
+### scenario.harness.brief-lifecycle — Actual compaction reinjects current task memory once
 
-- GIVEN source main or maintenance with explicit lifecycle loading, a current task brief and unchanged terminal tool grants
+- GIVEN the source user session or maintenance-worker with explicit lifecycle loading, a current task brief and unchanged terminal tool grants
 - WHEN Pi performs measured threshold or overflow compaction or the explicit SDK compaction command
 - THEN successful persisted compaction injects only the latest brief once at the next provider-context boundary without launching a turn
 - AND failed or cancelled compaction does not inject task memory or claim recovery
 - AND repeated equal summaries, resume and branch navigation preserve identity-based deduplication
 - AND malformed optional supervisor memory does not block native feedback or reintroduce obsolete task instructions
-- AND source main can replace/read back the current brief through its explicitly projected model tool, not by writing slash-command text; only the trusted source-main entry enables that tool
-- AND default/maintenance loading keeps its supervisor route and seven tools, while tester, domain Agents and consumers receive neither the main brief tool nor active lifecycle authority
+- AND the source user session can replace/read back the current brief through its explicitly projected model tool, not by writing slash-command text; only the trusted source user session entry enables that tool
+- AND default/maintenance loading keeps its supervisor route and seven tools, while tester, Domain Agents and consumers receive neither the user session brief tool nor active lifecycle authority
 - AND semantic progress remains worker-reported while host activity, context and compaction are separate observations

@@ -61,8 +61,8 @@ Read [execution](execution.md) before relying on any of these distinct guarantee
 
 <a id="entity.harness.agent-model"></a><a id="entity.harness.agent-definitions"></a><a id="entity.harness.typed-values"></a>
 
-Agents owns canonical native role definitions and their task contracts, intended effects, workspace,
-tools and timeout. Harness owns their execution and binding mechanisms. The Model execution profiles service combines the authored role and Python profile into a reproducible
+Agents owns canonical native Agent definitions and their task contracts, intended effects, workspace,
+tools and timeout. Harness owns their execution and binding mechanisms. The Model execution profiles service combines the authored Agent Spec and Python profile into a reproducible
 WorkerBinding, using fresh instructions supplied by [Distribution Module](../distribution/module.md). The Typed values layer validates the
 contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
 instruction identity separate from the project knowledge a worker may read.
@@ -133,7 +133,7 @@ reach the planner, task author, programmer and code reviewer read-only; its task
 task, constraints, stage artifacts and lifecycle metadata. The frozen closure is never empty and its
 identity covers every admitted byte.
 
-Canonical Agent definitions bind role Specs, task contracts, intended scope, tools and limits.
+Canonical Agent definitions bind Agent Specs, task contracts, intended scope, tools and limits.
 Fresh preparation and native preflight bind the actual call; independent admission checks terminal
 results. File policy and terminal tool ceilings remain distinct. Authored native workflows own
 public cognitive control flow; optional StateGraph composition is explicit. Historical RPC utilities
@@ -142,7 +142,7 @@ retain their diagnostic sandbox contract without confining native Agents.
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: Context and role profiles prepare native terminal execution; admission and typed result checks preserve authority. Studio is a separately selected StateGraph surface. Pi worker runtime is retained historical diagnostic support, not the native backend.
+    accDescr: Context and Agent profiles prepare native terminal execution; admission and typed result checks preserve authority. Studio is a separately selected StateGraph surface. Pi worker runtime is retained historical diagnostic support, not the native backend.
     agentModel["Operation and Harness model"]
     agentDefs["Model execution profiles"]
     permissions["Permissions"]
@@ -192,7 +192,7 @@ acceptance cases belong to the Harness Module's [requirements](requirements.md) 
 Realized by `resolve_context` and its recheck; see
 [context](context.md).
 
-### Domain role profile and Harness binding
+### Domain Agent profile and Harness binding
 
 Realized by `worker_profile` and `resolve_worker`; see [Agents and Harnesses](agents-and-harnesses.md)
 and [runtime values](runtime-values.md).
@@ -324,7 +324,7 @@ These companions are part of the same complete Module specification, not separat
 
 <a id="entity.harness.agents"></a>
 
-[Agents](../agents/module.md) owns callable role definitions and interaction. This Module consumes
-those definitions rather than maintaining a role catalog or behavioral copy. It preserves the
-role's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
+[Agents](../agents/module.md) owns callable Agent definitions and interaction. This Module consumes
+those definitions rather than maintaining an Agent catalog or behavioral copy. It preserves the
+Agent's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
 acceptance and execution mechanisms remain with their existing owners.

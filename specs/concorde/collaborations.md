@@ -97,13 +97,13 @@ This collaboration applies when a developer wants to read Specs.
 
 <a id="entity.concorde.operations"></a><a id="operations-collaboration"></a>
 
-The [Operations Module](operations/module.md) owns explicit StateGraph composition and the compatibility capability-adapter inventory/dispatch, while Agents owns callable roles and business providers retain their domain contracts. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [composition and compatibility dispatch boundary](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
+The [Operations Module](operations/module.md) owns explicit StateGraph composition and the compatibility capability-adapter inventory/dispatch, while Agents owns callable Agent definitions and business providers retain their domain contracts. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [composition and compatibility dispatch boundary](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
 
 ### Agents
 
 <a id="entity.concorde.agents"></a>
 
-[Agents](agents/module.md) owns all nine callable Pi role definitions, distinguishing domain and
-outer task families. The Framework relies on that single inventory when selecting a role, preserves
+[Agents](agents/module.md) owns all nine callable Pi Agent definitions, distinguishing the Domain Agent
+and Task subagent families. The Framework relies on that single inventory when selecting an Agent, preserves
 source-only scope and independent Host acceptance, and refuses missing or stale definitions rather
-than inventing another role. Main remains the external user Pi session with coordinator support.
+than inventing another Agent. The user session remains external, with coordinator support.

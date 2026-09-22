@@ -235,10 +235,14 @@ def _package_files(package: Package) -> dict[str, bytes]:
             relative = path.relative_to(package.root).as_posix()
             parts = PurePosixPath(relative).parts
             if relative.startswith(
-                ("prompts/outer/source/", "agents/source/")
+                (
+                    "prompts/task-subagent/source/",
+                    "prompts/user-session/",
+                    "agents/source/",
+                )
             ) or relative in {
                 "pi/extensions/concorde-maintenance.ts",
-                "pi/extensions/concorde-outer-lifecycle.ts",
+                "pi/extensions/concorde-brief-lifecycle.ts",
             }:
                 continue  # Source coordination/maintenance never ships to consumers.
             if directory == "pi" and "node_modules" in parts:

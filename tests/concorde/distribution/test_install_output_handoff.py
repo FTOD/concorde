@@ -97,7 +97,7 @@ class HandoffPolicyTests(unittest.TestCase):
             governing = Path(temporary) / "governing"
             governing.mkdir()
             result = subprocess.run(
-                [sys.executable, "-m", "concorde.distribution.outer_check"],
+                [sys.executable, "-m", "concorde.distribution.tester_check"],
                 input=json.dumps({"command": shlex.join(argv), "timeout": 330}),
                 cwd=governing,
                 env=environment,

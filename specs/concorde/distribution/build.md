@@ -42,7 +42,7 @@ The checkout's own entry is `generated/session/pi/concorde-session.ts`, outside 
 It imports the checkout's extension and requests explicit developer authorization to invoke a
 capability. Installation instead places its receipt-owned shim under `.pi/extensions/`, importing
 the deployed Framework and selecting the managed runtime. Both catalogs contain exactly eleven
-public capability adapters with their actual kinds; private roles and optional StateGraph Operations
+public capability adapters with their actual kinds; private Agents and optional StateGraph Operations
 have no separate catalog entry. Seven worker projections remain
 independent internal instructions, not Skills.
 
@@ -66,14 +66,14 @@ updates preserve the existing binding until explicitly accepted.
 
 ### Projection identity
 
-Build renders seven canonical native Agent roles from `prompts/native/<name>.md` plus each role's
+Build renders seven canonical native Domain Agents from `prompts/native/<name>.md` plus each Agent's
 Spec. Identical instruction bytes appear under `generated/native/` and compatibility
 `generated/agents/`; the latter is not a separate legacy/common-worker-rules backend. The manifest
 records those actual inputs. Typed inventory validation compares kind, exposure, context selection,
 determinism, USES, nullable State and profile fields; canonical Agents have no State/run aliases.
 
 Agent instruction file membership must equal the declared worker inventory. Agent Python bindings,
-role Spec bodies and available operation/wire sources are recorded build
+Agent Spec bodies and available operation/wire sources are recorded build
 inputs; changing them makes verify_fresh reject the old build even when another Agent's native prelude is unchanged.
 
 ### Projection test fixtures
@@ -90,30 +90,30 @@ rejecting symlinks and unknown content. Golden comparisons remain byte-exact.
 The Distribution Module owns the exact obligations and interface details in [contracts](contracts.md), [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
 
-## Outer task roles and observation
+## Task subagents and observation
 
-`maintenance-worker` and `tester` are project-discovered pi-subagents task roles, not LangGraph
-workers. Canonical prompts under `prompts/outer/` render checked project definitions in
-`.pi/agents/`. Source build projects the separate coordinator prompt into the discovered
-`.pi/extensions/concorde-coordinator.ts` extension, with a separate passive native-event observer entry and an explicit source-only lifecycle entry.
-Only the outer source main loads that coordinator: child profiles disable ambient extensions and
+`maintenance-worker` and `tester` are project-discovered pi-subagents Task subagents, not LangGraph
+workers. Canonical prompts under `prompts/task-subagent/` render checked project definitions in
+`.pi/agents/`. Source build projects the separate coordinator prompt under `prompts/user-session/` into the discovered
+`.pi/extensions/concorde-coordinator.ts` extension, with a separate passive native-event observer entry and an explicit source-only brief lifecycle entry.
+Only the source user session loads that coordinator: child profiles disable ambient extensions and
 list only their own assets; terminal workers load only their granted extension. The coordinator
-uses Pi's before-agent-start prompt hook and grants no tools or control. It does not infer role from
+uses Pi's before-agent-start prompt hook and grants no tools or control. It does not infer the Agent from
 task text or inject contradictory instructions into children. Pi discovers APPEND_SYSTEM separately
 from context files, so replacement prompts and context inheritance flags cannot isolate it.
 Build retires the former source `.pi/APPEND_SYSTEM.md` only with exact prior-manifest ownership;
 modified owned bytes fail preflight, while unowned user append files remain untouched. Consumer
 installation never ships the source coordinator and preserves unrelated user append content. These explicit assets are not an ambient capability
-catalog. Source-only prompts, lifecycle extension and the maintenance observer wrapper never ship to consumers;
+catalog. Source-only prompts, brief lifecycle extension and the maintenance observer wrapper never ship to consumers;
 installer-owned generic tester definitions use the installed local Framework/runtime instead.
-Outer pi-subagents is a host prerequisite, not a new worker dependency.
+The user session's pi-subagents is a host prerequisite, not a new worker dependency.
 
-Role purpose, source-main collaboration, authorization, progress and stage continuation are owned by
-[Agents](../agents/module.md), with the detailed [outer collaboration](../agents/outer.md).
+Agent purpose, source user session collaboration, authorization, progress and stage continuation are owned by
+[Agents](../agents/module.md), with the detailed [Task subagent collaboration](../agents/task-subagents.md).
 This build owns projection and registration, not a second author/tester behavior contract.
 
 Passive timing reuses Pi lifecycle, provider, tool and compaction hooks and native session entries;
-it changes no prompts, tools, providers or settings. Main may analyze these local diagnostics and
+it changes no prompts, tools, providers or settings. The user session may analyze these local diagnostics and
 persist evidence under its existing primary authority; child hooks receive no primary write grant.
 
 `select-session --mode test --runtime <absolute-candidate-launcher> --pi-entry <absolute-private-entry.ts>`
@@ -147,15 +147,15 @@ The separate explicit source lifecycle extension works with Pi's native measured
 overflow compaction, not a simulated checkpoint. It observes successful persisted compaction and
 injects the latest concise brief once into the next provider context without scheduling a turn.
 A user/Host command can invoke the SDK's compaction and await completion/error; assistant text
-naming a slash command cannot. Only the trusted source-main projection enables the bounded
+naming a slash command cannot. Only the trusted source user session projection enables the bounded
 `update_task_brief` model tool to replace/read back current session memory. Default maintenance
 loading keeps its native supervisor route and unchanged tools. This never replaces Pi's summarizer,
 alters global settings, grants delegation or exposes model-side compaction control. Missing task memory is reported
-as missing rather than reconstructing obsolete launch instructions. The [outer task lifecycle contract](contracts.md#outer-task-lifecycle) defines the local
+as missing rather than reconstructing obsolete launch instructions. The [brief lifecycle contract](contracts.md#brief-lifecycle) defines the local
 session-memory transport and failure boundaries.
 
 Worker semantic progress travels through the existing native supervisor channel, with stage,
 objective, completed artifacts, check failures, blocker/decision, next action and evidence.
 Those are reported claims, distinct from native host lifecycle/current-tool/last-activity/context
-observations and from independently accepted results. Main reads native events/status on meaningful
+observations and from independently accepted results. The user session reads native events/status on meaningful
 changes, not continuous polling; primary status/runs remain authoritative, not session task memory.

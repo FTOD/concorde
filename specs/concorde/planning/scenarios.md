@@ -131,7 +131,7 @@ The independent contracts are [Assessment](assessment.md), [Plan](plan.md) and [
 ### scenario.planning.native-plan-tasks — Native plan and task authoring retain domain gates
 
 - GIVEN a managed selected Module with exact current intent and any required Spec review
-- WHEN main invokes the prepared native planning workflow and then its direct task-author call
+- WHEN the calling session invokes the prepared native planning workflow and then its direct task-author call
 - THEN separate fresh assessor/planner/task-author executions retain complete scoped inputs and no implementation contents
 - AND only sufficient independently accepted assessment launches the planner
 - AND stage-only success after native failure never permits a dependent launch or persistence
