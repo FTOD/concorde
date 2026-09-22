@@ -86,7 +86,13 @@ def invocation(operation="concorde-issues", mode="execute", data=None):
 def stable(value):
     # Host runs intentionally allocate different invocation/capsule identities.
     value = copy.deepcopy(value)
-    value.pop("invocation_id", None)
+    invocation_id = value.pop("invocation_id", None)
+    for error in value.get("errors", []):
+        feedback = error.get("feedback")
+        if feedback is not None:
+            # The new causal record must bind this execution, not lose identity.
+            assert feedback["attempt"] == invocation_id
+            feedback["attempt"] = "<this invocation>"
     return value
 
 

@@ -129,9 +129,12 @@ console.log('Selected arguments/errors roundtrip; secret sources excluded; sourc
                         "documents", a[0]["arguments"]["value"]["result"]["data"]
                     )
                     self.assertIn("documents", a[0]["resultRecords"][0]["text"])
+                    host_failure = json.loads(a[1]["resultRecords"][0]["text"])
+                    self.assertEqual(host_failure["attempt"], "attempt-2")
+                    self.assertIn("incompatible_handoff", json.dumps(host_failure))
                     self.assertIn(
-                        "Concorde rejected this proposal",
-                        a[1]["resultRecords"][0]["text"],
+                        "agent returned a different context identity",
+                        json.dumps(host_failure),
                     )
                     self.assertIn(
                         "duplicate structured submissions",

@@ -745,12 +745,21 @@ if (scenario === "diagnostic-attempts") {
   const a = diagnostic.attempts;
   assert.equal(a.length, 3);
   assert(a.every((x) => x.argumentsComplete && x.errorComplete && x.isError));
+  const schemaFailure = JSON.parse(a[0].resultRecords[0].text);
+  assert.equal(schemaFailure.category, "schema-rejection");
+  assert.equal(schemaFailure.attempt, "attempt-1");
   assert.match(
-    a[0].resultRecords[0].text,
+    schemaFailure.diagnostics.text,
     /Validation failed for tool "structured_output"/,
   );
-  assert.match(a[0].resultRecords[0].text, /documents/);
-  assert.match(a[1].resultRecords[0].text, /Concorde rejected this proposal/);
+  assert.match(schemaFailure.diagnostics.text, /documents/);
+  const hostFailure = JSON.parse(a[1].resultRecords[0].text);
+  assert.equal(hostFailure.attempt, "attempt-2");
+  assert.match(JSON.stringify(hostFailure), /incompatible_handoff/);
+  assert.match(
+    JSON.stringify(hostFailure),
+    /agent returned a different context identity/,
+  );
   assert.match(a[2].resultRecords[0].text, /duplicate structured submissions/);
   assert(!Object.hasOwn(a[0].arguments.value.result.data, "documents"));
   assert.equal(
@@ -778,7 +787,11 @@ if (scenario.startsWith("retained-invalid-")) {
   const attempt = diagnostic.attempts[0];
   assert(attempt.isError && attempt.errorComplete);
   assert.match(attempt.resultRecords[0].text, /context_id.*outcome/);
-  assert(!attempt.resultRecords[0].text.includes("schema is false"));
+  assert(
+    !attempt.resultRecords[0].text.includes(
+      "value.result.data: schema is false",
+    ),
+  );
   assert.equal(final.accepted, false);
 }
 if (scenario === "schema-correction") {
