@@ -1,29 +1,97 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.concorde.module",
     "owner": "module.concorde",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Concorde Framework",
+    "owns": [
+      "specs/concorde/module.md",
+      "specs/concorde/vocabulary.md",
+      "specs/concorde/requirements.md",
+      "specs/concorde/scenarios.md"
+    ],
+    "contains": [
+      {
+        "target": "module.spec",
+        "meaning": "#contains-spec"
+      },
+      {
+        "target": "module.harness",
+        "meaning": "#contains-harness"
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#contains-agents",
+        "relies_on": [
+          "concept.agents.agent"
+        ]
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#contains-operations",
+        "relies_on": [
+          "concept.operations.operation"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#contains-distribution"
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#contains-issues",
+        "relies_on": [
+          "concept.issues.issue"
+        ]
+      },
+      {
+        "target": "module.views",
+        "meaning": "#contains-views"
+      }
+    ],
+    "uses": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.execution.module",
+        "reason": "defines Workflow, which the Framework entry names"
+      },
+      {
+        "kind": "document",
+        "target": "document.worktrees.module",
+        "reason": "defines Candidate, which the Framework entry names"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.concorde.developer",
-      "title": "Developer",
-      "kind": "external actor",
-      "meaning": "#entity.concorde.developer"
+      "id": "realization.concorde.project-files",
+      "type": "realization",
+      "title": "Project files",
+      "meaning": "#realization.concorde.project-files",
+      "entries": [
+        "README.md",
+        "AGENTS.md",
+        "LICENSE",
+        ".gitignore",
+        ".gitmodules",
+        ".python-version",
+        "package.json",
+        "package-lock.json",
+        "docs/",
+        ".github/workflows/validate-source-checkout.yml"
+      ]
     },
     {
-      "id": "entity.concorde.protocol",
-      "title": "Spec Protocol",
-      "kind": "external standard",
-      "meaning": "#entity.concorde.protocol"
-    },
-    {
-      "id": "entity.concorde.acceptance-tests",
+      "id": "realization.concorde.acceptance-tests",
+      "type": "realization",
       "title": "Framework acceptance tests",
-      "kind": "tests",
-      "meaning": "#entity.concorde.acceptance-tests",
-      "files": [
+      "meaning": "#realization.concorde.acceptance-tests",
+      "entries": [
         "tests/concorde/distribution/test_configure.py",
         "tests/concorde/distribution/test_consumer_install_end_to_end.py",
         "tests/concorde/distribution/test_protocol_guidance.py",
@@ -31,10 +99,9 @@
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/issues/test_graph.py",
         "tests/concorde/operations/test_review.py",
-        "tests/concorde/spec/test_module_architecture.py"
+        "tests/concorde/spec/test_initialize.py"
       ]
     }
   ],
-  "dependencies": [],
-  "bindings": []
+  "relations": []
 }

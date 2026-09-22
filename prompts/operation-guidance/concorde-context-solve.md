@@ -26,7 +26,7 @@ an old slot. Previously committed observations and evidence are not erased by a 
 Known dependency gaps/conflicts stop deterministically with `state: not-run`, without a child.
 `describe-policy` returns the intended prompt-level read policy without a capsule/model launch.
 The assessor reads only the prepared complete Specs by policy, not by an OS confinement claim.
-It authors no Specs, plan, tasks or implementation. Other capability workflows are unchanged.
+It writes no Specs, plan, tasks or implementation. Other capability workflows are unchanged.
 
 The Pi host must explicitly select the supported installation with `CONCORDE_NATIVE_SUBAGENTS_ROOT`.
 A missing or incompatible runtime fails closed. This is a local process selection, not a global

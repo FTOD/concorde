@@ -11,8 +11,9 @@ Return one `issue_decision` choosing the next bounded action:
 
 - `develop`: return intended implementation work to the calling agent, which selects and orders
   retained capabilities explicitly. No automatic development workflow runs.
-- `spec-repair`: return the missing/conflicting promise and needed owner-local Spec, paired metadata
-  or registry changes to the calling agent. No author worker runs and no Spec is changed here.
+- `spec-repair`: return the missing/conflicting promise and the needed changes to the owner's Spec
+  documents (reading, metadata or the entry's `module` block, which the registry mirrors) to the
+  calling agent. No Spec-writing worker runs and no Spec is changed here.
 - `verify`: ask fresh read-only reviewers to verify this specific problem against current inputs.
   A code-free Module uses Spec review; a code-owning Module also uses code review.
 - `resolved`: the problem is actually resolved, with the host's current Issue-specific verification.
@@ -30,7 +31,8 @@ Never close merely because one attempt did not reproduce, a workaround exists, c
 or unrelated checks passed. Temporary infrastructure failure is not a product decision. Do not
 retry unchanged failed work indefinitely. The host bounds the decision loop and preserves progress.
 Do not reinterpret code-investigation text as a Spec promise. Needed foreign work requires that
-Module's separate authority; never expand your context by following ungranted references.
+Module's separate authority; never expand your context by following links or a selected Module's
+own relations.
 
 ## Goals
 

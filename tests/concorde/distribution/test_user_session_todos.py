@@ -68,7 +68,7 @@ class UserSessionTodoInstructionTests(unittest.TestCase):
             "boundaries and non-goals, necessary examples, and source issue references",
             "identity and path when present",
             "not a bare title or raw transcript",
-            "lightweight notes, not planner outputs or paired Spec units",
+            "lightweight notes, not planner outputs or paired Spec documents",
             "no metadata companion, registry entry, Spec verification or heavyweight task pipeline",
             "Write durably and reread the saved task to verify its complete content",
             "Preserve prior records on a failed write",

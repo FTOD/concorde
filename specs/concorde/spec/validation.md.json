@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.spec.validation",
+    "owner": "module.spec",
+    "role": "module"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

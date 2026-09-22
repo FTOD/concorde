@@ -3,8 +3,8 @@ import { resolve } from "node:path";
 import {
   loadScopedRegistry,
   requireScoped,
-  rewriteLinks,
 } from "../plugins/scoped-content/model";
+import { renderPage } from "../plugins/scoped-content/render";
 
 function projectRoot(): string {
   const index = process.argv.indexOf("--project-root");
@@ -19,9 +19,9 @@ async function main() {
   const root = projectRoot();
   requireScoped(root);
   const registry = loadScopedRegistry(root);
-  registry.pages.forEach((page) => rewriteLinks(registry, page));
+  registry.pages.forEach((page) => renderPage(registry, page));
   process.stdout.write(
-    `Validated Profile 15: ${registry.targets.length} targets, ${registry.pages.length} owned documents.\n`,
+    `Validated publication: ${registry.modules.length} Modules, ${registry.pages.length} documents.\n`,
   );
 }
 

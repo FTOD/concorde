@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-10.0.0-6264e8" alt="Spec Protocol 10.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-11.0.0-6264e8" alt="Spec Protocol 11.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/client-Pi-273449" alt="Client: Pi" /></a>
   <a href="#native-workflows-and-optional-stategraph-operations"><img src="https://img.shields.io/badge/graphs-LangGraph-273449" alt="Native workflows; optional StateGraph Operations" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
@@ -40,19 +40,22 @@ answers and edits Specs directly, then chooses which capabilities to call and in
 
 A **Module** is one cohesive responsibility, such as planning a change or publishing documentation.
 It need not be a package or directory: its realization may span several, or be supplied entirely by
-its child Modules. Each Module owns one complete Spec in two parts:
+its child Modules. A project's Specs form one graph: Modules and the documents they own, the
+concepts, requirements, scenarios and contracts those documents define, and typed relations between
+them.
 
-- **Module Specs** explain it for a reader who does not know the code: Purpose, Terminology,
-  Usage, Design and Relationships, with a Mermaid diagram of how its entities collaborate.
-- **Implementation Specs** hold the precise obligations: `SHALL` requirements, `GIVEN`/`WHEN`/`THEN`
-  scenarios and structured interface contracts.
+- A Module's **entry** (`module.md`) explains it for a reader who does not know the code: Purpose,
+  Terminology, Usage, Design and Relationships. Explanatory topics can join it.
+- **Implementation documents** hold the precise obligations: `SHALL` requirements,
+  `GIVEN`/`WHEN`/`THEN` scenarios and versioned interface contracts.
 
-Every Markdown document has a paired `.md.json` metadata file that records its identity, owner and
-role, the entities it explains and the files or directory prefixes that realize them. The registry
-`.concorde/specs.json` records how Modules compose (`parent`), what they depend on (`uses`) and which
-other documents they explicitly include as context (`references`). Tests declare the scenarios they
-verify, so coverage is derived from the tests rather than from a list someone must maintain.
-Concorde checks all of this for consistency and tracks which Module contracts a shared file affects.
+Every Markdown document has a paired `.md.json` metadata file. The entry's metadata declares the
+Module's own relations — which documents it owns, which Modules it `contains` and `uses` (optionally
+naming exactly the promises it `relies_on`), what else it `includes`, and which contracts it
+`participates` in — and the registry `.concorde/specs.json` mirrors them for a global view. Each term
+is defined once, in its owner's Terminology table, and imported elsewhere by link. Realizations bind
+every file of the repository to the Modules it realizes, and tests declare the scenarios they verify.
+Concorde checks all of this, and computes from it what each task may read and write.
 
 ### Each domain Agent sees one Module's contract, and only what its phase needs
 
@@ -60,9 +63,9 @@ A worker bound to a Module receives four kinds of context, frozen for its invoca
 
 | Context            | What it contains                                                                                  | Who receives it                                                       |
 | :----------------- | :------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------- |
-| **Spec**           | The Module's own documents plus the ones it explicitly references, one level deep                 | Every phase                                                           |
-| **Implementation** | The files bound by the Module's entities                                                          | Names for every phase; contents only for code writing and code review |
-| **Resource**       | Vendored, version-pinned documentation and source of the libraries it declares, such as LangGraph | Planning, task authoring, code writing and code review, read-only     |
+| **Spec**           | The Module's own documents plus the ones its `uses`, `contains` and `includes` select, one level  | Every phase                                                           |
+| **Implementation** | The files bound by the Module's realizations                                                      | Names for every phase; contents only for code writing and code review |
+| **External**       | Vendored, version-pinned documentation and source it includes, such as LangGraph                  | Planning, task authoring, code writing and code review, read-only     |
 | **Task**           | The request, constraints and the stage artifacts admitted for this phase                          | Every phase                                                           |
 
 Planners and task authors reason from the Spec alone. If the Spec does not say something the task
@@ -85,7 +88,7 @@ responsibilities; a model proposal or successful stage-only gate is never domain
 An **Agent** is a callable native Pi agent with one canonical Concorde definition, either a Domain Agent
 or a Task subagent. A **Workflow** is an authored pi-subagents composition.
 An **Operation** is an explicitly selected LangGraph StateGraph flow. Finite non-model actions are
-**Host services**. These executable kinds do not change Module ownership or context references.
+**Host services**. These executable kinds do not change Module ownership or Spec relations.
 The compatibility `concorde-*` names and `operation_id` wire fields do not make every entry a Graph.
 
 Plan, review and bounded Issue solving use authored native workflows. Context assessment, tasks and
@@ -309,25 +312,23 @@ optional execution does not mean untested removal of installed dependencies.
 
 ## The Spec Protocol in brief
 
-Concorde's independent **[Spec Protocol 10.0.0](protocol/README.md)** defines one specification
-category, the Module Spec, and which part of it is written for human reading. A Module's reading entry
-`module.md` answers five questions in order:
+Concorde's independent **[Spec Protocol 11.0.0](protocol/README.md)** has two purposes: a human
+understands a project's backbone from its Specs without reading code, and a harness derives from
+the Specs exactly what each AI task may read and write. A Module's entry `module.md` answers five
+questions in order:
 
 | Section           | The question it answers                                                          |
 | :---------------- | :------------------------------------------------------------------------------- |
 | **Purpose**       | What responsibility does this Module own, for whom and within which scope?       |
-| **Terminology**   | Which concepts does the reader need, each defined once in its canonical table?   |
+| **Terminology**   | Which words does the reader need, each defined once by its owner?                |
 | **Usage**         | When and how is it used, with which inputs, results, errors and limits?          |
-| **Design**        | How do its decomposition, state and constraints fulfill its guarantees, and why? |
-| **Relationships** | Which entities collaborate, under which conditions, as a labeled Mermaid view?   |
+| **Design**        | How do its decomposition, state and constraints fulfil its guarantees, and why?  |
+| **Relationships** | How does it collaborate with other Modules, shown in a diagram checked against the declared relations? |
 
-Explanatory topics join the entry with `document.role: module`. Formal requirements, scenarios and
-structured contracts live only in companions with `document.role: implementation`, owned by the same
-Module. Both roles are normative reading and both enter agent context whole; the docsite simply shows
-them in parallel tabs. A Module's context is its own documents plus its explicit `references`,
-expanded exactly one level: a Markdown link never adds a file to what an agent may read, and a
-metadata-only edit invalidates the reviews that relied on it. Structural validation and declared test
-coverage are evidence, not proof of semantic completeness.
+Every node and relation is declared exactly once. A Module's context is computed from its own
+declarations, one level deep: a Markdown link never adds a file to what an agent may read. Its write
+sets are its own documents and the files its realizations bind. Structural validation and declared
+test coverage are evidence, not proof that a Spec is sufficient.
 
 Start from the [Protocol](protocol/README.md), the [Module template](protocol/templates/module.md)
 or [Concorde's own root Spec](specs/concorde/module.md), which applies it to this repository.

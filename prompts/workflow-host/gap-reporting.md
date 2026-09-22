@@ -19,6 +19,6 @@ judgment does not require abandoning the rest of the review.
 
 References must be receipts from this invocation or explicitly admitted Issue context. Never invent
 IDs, borrow another worker's unseen record or relabel a provider's definition as consumer-owned.
-An included provider remains its sole definition owner; report unknown ownership as null. A repair
-requires fresh evidence before resuming the affected step. Releasing a task dependency or using a
+A selected provider remains the sole owner of its definitions; report unknown ownership as null.
+A repair requires fresh evidence before resuming the affected step. Releasing a task dependency or using a
 workaround does not itself resolve the underlying Issue.

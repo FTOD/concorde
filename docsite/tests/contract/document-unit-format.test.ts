@@ -1,182 +1,275 @@
 import { describe, it, expect } from "vitest";
 import {
+  contracts,
+  definitionHeadings,
+  metadata,
   parseJson,
   readingMeanings,
-  metadata,
-  relationshipLabels,
   requireReading,
+  terminologyRows,
 } from "../../plugins/scoped-content/reading-format";
-import { validateContractExample } from "../../plugins/scoped-content/contract-schema";
 
-const reading =
-  "# Example\n\n## Purpose\n\nProvide one result.\n\n## Terminology\n\nNo specialized terminology.\n\n## Usage\n\nSubmit one request.\n\n## Design\n\n" +
-  '<a id="entity.example.a"></a><a id="entity.example.b"></a>\n\nA produces the record B after admission.\n\n' +
-  '## Relationships\n\nThis view shows result production.\n\n```mermaid\nflowchart LR\n    producer["A"]\n    b["B"]\n    producer -->|produces| b\n```\n';
+const entry =
+  "# Example\n\n## Purpose\n\nProvide one result.\n\n## Terminology\n\n" +
+  "| Term | Definition |\n| --- | --- |\n| Result | The returned value. |\n" +
+  "| [Request](../provider/module.md#concept.provider.request) |  |\n" +
+  "| Pipe \\| term | A cell with an escaped \\| pipe. |\n\n" +
+  "## Usage\n\nSubmit one request.\n\n## Design\n\n" +
+  '<a id="concept.example.result"></a><a id="realization.example.service"></a>\n\nThe service produces the result.\n\n' +
+  "## Relationships\n\n```mermaid\nflowchart LR\n    Service[Example service] -->|produces| Result\n```\n";
 const declaration = {
-  schema_version: 2,
-  document: { id: "document.example", owner: "module.example", role: "module" },
-  entities: [
+  schema_version: 3,
+  document: {
+    id: "document.example.module",
+    owner: "module.example",
+    role: "module",
+  },
+  module: {
+    title: "Example",
+    owns: ["example/module.md"],
+    contains: [],
+    uses: [
+      {
+        target: "module.provider",
+        meaning: "#uses-provider",
+        relies_on: ["concept.provider.request"],
+      },
+    ],
+    includes: [
+      { kind: "external", target: "reference/sdk/", reason: "SDK fields" },
+    ],
+    participates: [],
+  },
+  defines: [
     {
-      id: "entity.example.a",
-      title: "A",
-      kind: "program",
-      meaning: "#entity.example.a",
+      id: "concept.example.result",
+      type: "concept",
+      title: "Result",
+      meaning: "#concept.example.result",
     },
     {
-      id: "entity.example.b",
-      title: "B",
-      kind: "record",
-      meaning: "#entity.example.b",
+      id: "realization.example.service",
+      type: "realization",
+      title: "Example service",
+      meaning: "#realization.example.service",
+      entries: ["src/example/"],
+      pending: [],
     },
   ],
-  dependencies: [],
-  bindings: [],
+  relations: [
+    {
+      type: "relates",
+      source: "realization.example.service",
+      verb: "produces",
+      target: "concept.example.result",
+    },
+  ],
+  extensions: { "concorde.operations": [] },
 };
+const parse = (value: unknown, entryDocument = true) =>
+  metadata(
+    JSON.stringify(value),
+    "example/module.md.json",
+    "module.example",
+    entryDocument,
+  );
 
-describe("Protocol-defined reading and document metadata", () => {
-  // verifies: scenario.views.reject-reading-collection
-  it("checks early terminology tables and keeps executable catalogs out of explanations", () => {
-    const terms =
-      "| Term | Meaning / definition |\n| --- | --- |\n| Result | The returned value. |";
-    const source = reading.replace("No specialized terminology.", terms);
-    expect(() =>
-      requireReading(source, "example/module.md", true),
-    ).not.toThrow();
-    for (const invalid of [
-      source.replace("## Terminology", "### Terminology"),
-      source.replace("| Result | The returned value. |", ""),
-      source.replace("Meaning / definition", "Files"),
-    ])
-      expect(() => requireReading(invalid, "example/module.md", true)).toThrow(
-        /Terminology/,
-      );
-    const graph =
-      "\n```mermaid\nflowchart LR\n    %% graph: example\n    a --> b\n```\n";
-    expect(() =>
-      requireReading(source + graph, "example/module.md", true),
-    ).toThrow(/executable Graph/);
-    expect(() =>
-      requireReading(
-        source + "\n````markdown\n" + graph + "\n````\n",
-        "example/module.md",
-        true,
-      ),
-    ).not.toThrow();
+describe("Protocol 11 reading and document metadata", () => {
+  it("reads schema-3 metadata with the entry's module block", () => {
+    expect(parse(declaration)).toEqual(declaration);
+    const { module: _block, ...topic } = declaration;
+    expect(parse(topic, false)).toEqual(topic);
   });
   // verifies: scenario.views.reject-reading-collection
-  it("requires explicit schema-2 roles and rejects formal definitions in entries and topics", () => {
-    const meanings = readingMeanings(reading, "example/module.md");
-    for (const value of [
-      { ...declaration, schema_version: 1 },
-      {
-        ...declaration,
-        document: { id: "document.example", owner: "module.example" },
-      },
-      { ...declaration, document: { ...declaration.document, role: "topic" } },
-      {
-        ...declaration,
-        extensions: { "concorde.publication": { collection: "module" } },
-      },
-    ])
-      expect(() =>
-        metadata(
-          JSON.stringify(value),
-          "example/module.md.json",
-          "module.example",
-          meanings,
-        ),
-      ).toThrow();
+  it("rejects other schemas, roles, owners and misplaced module blocks", () => {
+    const { module: _block, ...topic } = declaration;
+    for (const [value, isEntry] of [
+      [{ ...declaration, schema_version: 2 }, true],
+      [{ ...declaration, entities: [] }, true],
+      [
+        {
+          ...declaration,
+          document: { ...declaration.document, role: "topic" },
+        },
+        true,
+      ],
+      [
+        {
+          ...declaration,
+          document: { id: "document.example.module", owner: "module.example" },
+        },
+        true,
+      ],
+      [
+        {
+          ...declaration,
+          document: { ...declaration.document, owner: "module.other" },
+        },
+        true,
+      ],
+      [
+        {
+          ...declaration,
+          document: { ...declaration.document, id: "Invalid ID" },
+        },
+        true,
+      ],
+      [topic, true],
+      [declaration, false],
+      [{ ...declaration, module: { ...declaration.module, owns: [] } }, true],
+      [
+        { ...declaration, module: { ...declaration.module, parent: null } },
+        true,
+      ],
+      [
+        {
+          ...declaration,
+          defines: [{ ...declaration.defines[0], type: "entity" }],
+        },
+        true,
+      ],
+      [
+        {
+          ...declaration,
+          defines: [{ ...declaration.defines[1], entries: [] }],
+        },
+        true,
+      ],
+      [
+        {
+          ...declaration,
+          defines: [{ ...declaration.defines[0], meaning: "other.md#x" }],
+        },
+        true,
+      ],
+      [{ ...declaration, relations: [{ type: "imports" }] }, true],
+      [{ ...declaration, extensions: [] }, true],
+    ] as const)
+      expect(() => parse(value, isEntry)).toThrow();
+  });
+  // verifies: scenario.views.reject-reading-collection
+  it("keeps definitions and Graph Specs out of module-role reading", () => {
+    expect(() =>
+      requireReading(entry, "example/module.md", true, "module"),
+    ).not.toThrow();
+    expect(() =>
+      requireReading(entry, "example/module.md", true, "implementation"),
+    ).toThrow(/module.md must have document.role module/);
     const fragments = [
       "\n### req.example.once — One result\n\nExample SHALL return one result.\n",
       "\n### scenario.example.once — One result\n\n- GIVEN input\n- WHEN called\n- THEN one result\n",
       '\n```concorde-contract\n{"id":"contract.example.result"}\n```\n',
+      "\n```mermaid\nflowchart LR\n    %% graph: example\n    a -->|b| c\n```\n",
     ];
     for (const fragment of fragments) {
-      for (const primary of [true, false])
-        expect(() =>
-          requireReading(
-            (primary
-              ? reading
-              : "# Topic\n\n## Terminology\n\nNo specialized terminology.\n\n## Details\n") +
-              fragment,
-            "example/topic.md",
-            primary,
-            "module",
-          ),
-        ).toThrow(/implementation-role/);
+      expect(() =>
+        requireReading(entry + fragment, "example/module.md", true, "module"),
+      ).toThrow(/belong in an implementation-role document/);
       expect(() =>
         requireReading(
-          reading + fragment,
-          "example/contracts.md",
+          "# Topic\n" + fragment,
+          "example/topic.md",
+          false,
+          "module",
+        ),
+      ).toThrow(/belong in an implementation-role document/);
+      expect(() =>
+        requireReading(
+          "# Details\n" + fragment,
+          "example/details.md",
           false,
           "implementation",
         ),
       ).not.toThrow();
       expect(() =>
         requireReading(
-          reading + "\n````markdown\n" + fragment + "\n````\n",
+          entry + "\n````markdown\n" + fragment + "\n````\n",
           "example/module.md",
           true,
+          "module",
         ),
       ).not.toThrow();
     }
-    expect(() =>
-      requireReading(reading, "example/module.md", true, "implementation"),
-    ).toThrow(/module.md must have/);
   });
-  it("reads grouped anchors without copying semantic strings into metadata", () => {
-    const meanings = requireReading(reading, "example/module.md", true);
-    expect(meanings.get("entity.example.a")).toBe(
-      meanings.get("entity.example.b"),
+  it("reads grouped anchors, definition headings and contract fences", () => {
+    const meanings = readingMeanings(entry, "example/module.md");
+    expect(meanings.get("concept.example.result")).toBe(
+      meanings.get("realization.example.service"),
     );
-    expect(
-      metadata(
-        JSON.stringify(declaration),
-        "example/module.md.json",
-        "module.example",
-        meanings,
-      ),
-    ).toEqual(declaration);
-    expect([...relationshipLabels(reading, "example/module.md")]).toEqual([
-      "A",
-      "B",
+    expect(meanings.get("concept.example.result")).toBe(
+      "The service produces the result.",
+    );
+    const details =
+      "# Details\n\n## req.example.once – One result {#req.example.once}\n\nExample SHALL return one result.\n\n" +
+      "### scenario.example.once - One result\n\n- WHEN called\n- THEN one result\n\n" +
+      '```concorde-contract\n{"id":"contract.example.result","version":2,"schema":{},"semantics":"x","example":1}\n```\n' +
+      "\n````markdown\n### req.example.quoted — Not a definition\n````\n";
+    expect(definitionHeadings(details)).toEqual([
+      "req.example.once",
+      "scenario.example.once",
     ]);
-  });
-  it("rejects reserved Mermaid node identifiers before the browser renderer fails", () => {
+    expect(contracts(details, "example/details.md")).toEqual([
+      { id: "contract.example.result", version: 2 },
+    ]);
     expect(() =>
-      relationshipLabels(
-        reading.replaceAll("producer", "graph"),
-        "example/module.md",
+      readingMeanings(
+        "## req.example.once — One {#req.example.other}\n",
+        "example/details.md",
       ),
-    ).toThrow(/Reserved Mermaid/);
+    ).toThrow(/Definition anchor differs/);
+    expect(() =>
+      contracts(
+        '```concorde-contract\n{"version":1}\n```\n',
+        "example/details.md",
+      ),
+    ).toThrow(/Invalid canonical contract/);
   });
-  it("rejects missing, borrowed and malformed identity/meaning fields", () => {
-    for (const id of [null, true, 42, "Invalid ID"])
+  it("reads defining and import rows of the Terminology table", () => {
+    expect(terminologyRows(entry)).toEqual([
+      { term: "Result", definition: "The returned value." },
+      {
+        term: "[Request](../provider/module.md#concept.provider.request)",
+        definition: "",
+        link: {
+          text: "Request",
+          href: "../provider/module.md#concept.provider.request",
+          fragment: "concept.provider.request",
+        },
+      },
+      {
+        term: "Pipe \\| term",
+        definition: "A cell with an escaped \\| pipe.",
+      },
+    ]);
+    expect(
+      terminologyRows(
+        entry.replace(/\| Term[\s\S]*?\n\n## Usage/, "No terms.\n\n## Usage"),
+      ),
+    ).toEqual([]);
+  });
+  it("rejects diagrams that are neither checked flowcharts nor marked illustrative", () => {
+    for (const diagram of [
+      "```mermaid\nsequenceDiagram\n    A->>B: go\n```",
+      "```mermaid\nstateDiagram-v2\n    [*] --> A\n```",
+      "```mermaid illustrated\nsequenceDiagram\n    A->>B: go\n```",
+    ])
       expect(() =>
-        metadata(
-          JSON.stringify({
-            ...declaration,
-            document: { ...declaration.document, id },
-          }),
-          "example.md.json",
-          "module.example",
-          readingMeanings(reading, "example.md"),
+        requireReading(
+          entry + "\n" + diagram + "\n",
+          "example/module.md",
+          true,
+          "module",
         ),
-      ).toThrow();
-    const value = {
-      ...declaration,
-      entities: [
-        { ...declaration.entities[0], meaning: "other.md#entity.example.a" },
-      ],
-    };
+      ).toThrow(/neither a flowchart nor marked illustrative/);
     expect(() =>
-      metadata(
-        JSON.stringify(value),
-        "example.md.json",
-        "module.example",
-        readingMeanings(reading, "example.md"),
+      requireReading(
+        entry +
+          "\n```mermaid illustrative\nsequenceDiagram\n    A->>B: go\n```\n",
+        "example/module.md",
+        true,
+        "module",
       ),
-    ).toThrow();
+    ).not.toThrow();
   });
   it("rejects duplicate nested keys and overflowing JSON numbers", () => {
     expect(() =>
@@ -186,75 +279,4 @@ describe("Protocol-defined reading and document metadata", () => {
       /Non-finite/,
     );
   });
-  it("leaves fenced examples opaque to identity and metadata parsing", () => {
-    const example =
-      '\n````markdown\n<a id="entity.example.a"></a>\n```concorde-entities\n[]\n```\n````\n';
-    expect(() =>
-      requireReading(reading + example, "example/module.md", true),
-    ).not.toThrow();
-  });
-});
-
-describe("offline canonical contract examples", () => {
-  it("supports local definitions, combinators, bounds, required properties and exact values", () => {
-    const schema = {
-      $defs: { quantity: { type: "integer", minimum: 1, maximum: 3 } },
-      type: "object",
-      properties: {
-        quantity: { $ref: "#/$defs/quantity" },
-        tag: { oneOf: [{ const: "a" }, { const: "b" }] },
-      },
-      required: ["quantity", "tag"],
-      additionalProperties: false,
-    };
-    expect(() =>
-      validateContractExample(schema, { quantity: 2, tag: "b" }, "example"),
-    ).not.toThrow();
-    for (const example of [
-      { quantity: 0, tag: "b" },
-      { quantity: 2, tag: "c" },
-      { quantity: 2 },
-      { quantity: 2, tag: "a", extra: true },
-    ])
-      expect(() =>
-        validateContractExample(schema, example, "example"),
-      ).toThrow();
-  });
-  it("distinguishes boolean values from numeric values and measures string code points", () => {
-    expect(() =>
-      validateContractExample({ type: "integer" }, true, "example"),
-    ).toThrow();
-    expect(() =>
-      validateContractExample(
-        { type: "string", maxLength: 1 },
-        "🌱",
-        "example",
-      ),
-    ).not.toThrow();
-    expect(() =>
-      validateContractExample(
-        { type: "array", uniqueItems: true },
-        [
-          { a: 1, b: 2 },
-          { b: 2, a: 1 },
-        ],
-        "example",
-      ),
-    ).toThrow();
-  });
-  it.each([
-    { $ref: "https://example.test/schema" },
-    { $ref: "#/properties/other" },
-    { type: "object", unevaluatedProperties: false },
-    { type: "unsupported" },
-    { minLength: -1 },
-    { minimum: 2, maximum: 1 },
-    { oneOf: [] },
-    { format: "remote-url" },
-  ])(
-    "rejects unsupported or malformed schemas without fetching (%j)",
-    (schema) => {
-      expect(() => validateContractExample(schema, {}, "example")).toThrow();
-    },
-  );
 });

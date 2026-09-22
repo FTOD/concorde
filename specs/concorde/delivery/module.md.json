@@ -1,64 +1,145 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.delivery.module",
     "owner": "module.delivery",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Delivery",
+    "owns": [
+      "specs/concorde/delivery/module.md",
+      "specs/concorde/delivery/requirements.md",
+      "specs/concorde/delivery/scenarios.md",
+      "specs/concorde/delivery/records.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.validation",
+        "meaning": "#uses-validation",
+        "relies_on": ["concept.validation.ready", "req.validation.completion-gates"]
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-harness-worktrees",
+        "relies_on": ["concept.worktrees.candidate", "concept.worktrees.worktree"]
+      },
+      {
+        "target": "module.harness.admission",
+        "meaning": "#uses-harness-admission"
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-harness-checks"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.delivery.adapter",
-      "title": "Delivery adapter",
-      "kind": "shared program",
-      "files": [
+      "id": "concept.delivery.integration-commit",
+      "type": "concept",
+      "title": "Integration commit",
+      "meaning": "#concept.delivery.integration-commit"
+    },
+    {
+      "id": "concept.delivery.delivered-branch",
+      "type": "concept",
+      "title": "Delivered branch",
+      "meaning": "#concept.delivery.delivered-branch"
+    },
+    {
+      "id": "concept.delivery.primary-merge",
+      "type": "concept",
+      "title": "Primary merge",
+      "meaning": "#concept.delivery.primary-merge"
+    },
+    {
+      "id": "concept.delivery.receipt",
+      "type": "concept",
+      "title": "Delivery receipt",
+      "meaning": "#concept.delivery.receipt"
+    },
+    {
+      "id": "realization.delivery.service",
+      "type": "realization",
+      "title": "Delivery service",
+      "meaning": "#realization.delivery.service",
+      "entries": [
         "operations/deliver.py",
-        "src/concorde/harness/worktree_delivery.py",
+        "src/concorde/harness/worktree_delivery.py"
+      ]
+    },
+    {
+      "id": "realization.delivery.tests",
+      "type": "realization",
+      "title": "Delivery tests",
+      "meaning": "#realization.delivery.tests",
+      "entries": [
         "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
-      ],
-      "meaning": "#entity.delivery.adapter"
-    },
-    {
-      "id": "entity.delivery.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.delivery.harness"
-    },
-    {
-      "id": "entity.delivery.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "target_id": "module.spec",
-      "meaning": "#entity.delivery.spec"
-    },
-    {
-      "id": "entity.delivery.distribution",
-      "title": "Distribution",
-      "kind": "used module",
-      "target_id": "module.distribution",
-      "meaning": "#entity.delivery.distribution"
-    },
-    {
-      "id": "entity.delivery.receipt",
-      "title": "Delivery receipt",
-      "kind": "record",
-      "meaning": "#entity.delivery.receipt"
+      ]
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.harness",
-      "meaning": "#agreement.document.delivery.module.2"
+      "type": "relates",
+      "source": "realization.delivery.service",
+      "verb": "delivers only a",
+      "target": "concept.validation.ready"
     },
     {
-      "target_id": "module.spec",
-      "meaning": "#agreement.document.delivery.module.3"
+      "type": "relates",
+      "source": "realization.delivery.service",
+      "verb": "builds and verifies",
+      "target": "concept.delivery.integration-commit"
     },
     {
-      "target_id": "module.distribution",
-      "meaning": "#agreement.document.delivery.module.4"
+      "type": "relates",
+      "source": "realization.delivery.service",
+      "verb": "runs every configured check of the integration through",
+      "target": "module.harness.checks"
+    },
+    {
+      "type": "relates",
+      "source": "realization.delivery.service",
+      "verb": "publishes",
+      "target": "concept.delivery.delivered-branch"
+    },
+    {
+      "type": "relates",
+      "source": "realization.delivery.service",
+      "verb": "records each step in",
+      "target": "concept.delivery.receipt"
+    },
+    {
+      "type": "relates",
+      "source": "realization.delivery.service",
+      "verb": "removes the worktree of",
+      "target": "concept.worktrees.candidate"
+    },
+    {
+      "type": "relates",
+      "source": "realization.delivery.service",
+      "verb": "performs",
+      "target": "concept.delivery.primary-merge"
     }
   ],
-  "bindings": []
+  "extensions": {}
 }

@@ -57,7 +57,7 @@ the same change's record instead of creating a duplicate. Preserve substantive d
 context and motivation, agreed behavior, important decisions, alternatives and reasons,
 boundaries and non-goals, necessary examples, and source issue references (identity and path
 when present). Write a useful synthesis, not a bare title or raw transcript. These are
-lightweight notes, not planner outputs or paired Spec units: no metadata companion, registry
+lightweight notes, not planner outputs or paired Spec documents: no metadata companion, registry
 entry, Spec verification or heavyweight task pipeline is needed to collect them.
 
 Write durably and reread the saved task to verify its complete content before reporting

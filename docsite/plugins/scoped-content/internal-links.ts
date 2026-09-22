@@ -29,7 +29,7 @@ function inspect(html: string): DocumentLinks {
 
 /** Inspect the completed output, including optional reading collections. Never fetch URLs. */
 export async function validateInternalLinks(directory: string, site: {url: string; baseUrl: string},
-  aliases: Map<string, string>, requiredRoutes: string[]): Promise<void> {
+  requiredRoutes: string[]): Promise<void> {
   const files = new Set<string>();
   const documents = new Map<string, DocumentLinks>();
   async function collect(path: string) {
@@ -65,11 +65,6 @@ export async function validateInternalLinks(directory: string, site: {url: strin
     const key = url.href;
     if (seen.has(key)) return fail(referrer, destination);
     seen.add(key);
-    const canonical = aliases.get('/' + path.replace(/\.html$/, '').replace(/\/$/, ''));
-    if (canonical) {
-      const next = routeUrl(canonical); next.search = url.search; next.hash = url.hash;
-      return check(next, referrer, destination, seen);
-    }
     const file = locate(path);
     if (!file) return fail(referrer, destination);
     const document = documents.get(file);

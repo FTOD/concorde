@@ -1,51 +1,65 @@
 # Delivery scenarios
 
-These precise specifications belong directly to the [Delivery Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+These situations show how [Delivery](module.md) behaves. The obligations they demonstrate are
+defined once in [Delivery requirements](requirements.md).
 
-## Terminology
+## Staging a change
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
-| [Host](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery receipt](module.md#terminology) | Defined in Delivery. |
-| [Delivered branch](module.md#terminology) | Defined in Delivery. |
+### scenario.delivery.branch — Deliver a ready change to its own branch
 
-## Delivery
-
-### scenario.delivery.branch — Publish an independent delivery branch
-
-- GIVEN a ready change selected by `change_id`, requested from its source or the primary worktree
+- GIVEN a ready change selected by its `change_id`
+- AND a request from its source worktree or from the primary worktree
 - WHEN `concorde-deliver` runs
-- THEN the host verifies participation, candidate evidence and actual integration, then publishes an independent `concorde/delivered/<change_id>` branch and removes the source worktree unless `keep_worktree:true`
-- AND default delivery leaves the primary branch, index and project files unchanged
+- THEN the Host rechecks the candidate's readiness, builds the integration commit with the current primary head and verifies it
+- AND saves the delivery receipt and creates `concorde/delivered/<change_id>` without checking it out
+- AND removes the candidate's worktree, unless the request set `keep_worktree: true`
+- BUT the primary branch, its index and its files stay unchanged
 
-### scenario.delivery.merge-primary — Explicit primary merge
+### scenario.delivery.pending-confirmed — Delivery reports pending entries and confirms any left
 
-- GIVEN an already delivered receipt and an explicit user-authorized `merge_primary:true` request from the primary worktree's owning session
-- WHEN the host processes that request
-- THEN it verifies current integration against the latest primary commit and merges the delivered branch, recording its own commit, tree and checks separately from staging evidence
-- BUT a generic delivery request without `merge_primary:true` never merges into the primary branch
+- GIVEN a ready change whose Specs declare some realization entries as pending
+- AND validation already confirmed the entries whose files the change created
+- WHEN `concorde-deliver` runs
+- THEN the pending marker is removed for any remaining entry whose file now exists, as part of the delivered candidate
+- AND the response and the receipt list the files confirmed at delivery and the entries that are still pending
+- BUT an entry whose file does not exist stays pending in the delivered Specs
 
-See [only one agent writes to primary](requirements.md#req.delivery.single-primary-writer) and
-[repository lock serializes primary writes](requirements.md#req.delivery.primary-writes-serialized).
+Because a candidate's files must equal its validated tree at delivery, and validation confirms
+created files before recording that tree, delivery normally finds nothing left to confirm.
 
-### scenario.delivery.session-rejected — Delivery refused from an unrelated worktree
+### scenario.delivery.session-rejected — A third worktree cannot deliver
 
-- GIVEN a session whose worktree is neither the change's selected source nor the primary worktree
-- WHEN it requests delivery or final merging for that change
-- THEN the host refuses it with `delivery_session_required` or `primary_session_required`
-- AND no branch is published or merged
+- GIVEN a session whose worktree is neither the change's source worktree nor the primary worktree
+- WHEN it requests delivery or a primary merge for that change
+- THEN the Host refuses with `delivery_session_required` or `primary_session_required`
+- BUT no branch is published or merged
 
-### scenario.delivery.conflict — Integration conflict blocks final merge
+### scenario.delivery.retry — Retries finish the interrupted step only
 
-- GIVEN the candidate's actual integration against the latest primary commit fails its configured checks or conflicts
-- WHEN final merging runs
-- THEN the host blocks the merge with `merge_conflict` or `failed_merge_checks`, preserves the delivered branch, and leaves the primary branch, index and project files unchanged
+- GIVEN a change whose delivered branch was published but whose cleanup failed or was interrupted
+- WHEN a participating session requests delivery of the same change again
+- THEN the Host only finishes cleanup, keeping the recorded `keep_worktree` choice unless the retry states another
+- AND a retried primary merge whose merge commit is already on the primary branch is only recorded
+- BUT no branch is published twice and no merge is repeated
 
-The detailed contract is [Participating-session delivery](execution-reference.md#delivery-delivery-operation).
+## Merging into the primary branch
+
+### scenario.delivery.merge-primary — An explicit primary merge
+
+- GIVEN a delivered change whose cleanup is complete
+- AND the developer has authorized merging it
+- WHEN the primary worktree's own session requests `concorde-deliver` with `merge_primary: true`
+- THEN the Host verifies the merge of the delivered branch with the latest primary head and fast-forwards the primary branch to it
+- AND records the merge commit, its tree and its checks in the receipt apart from the delivery's own evidence
+- BUT a delivery request without `merge_primary: true` never merges into the primary branch
+
+### scenario.delivery.conflict — A conflict or failed check blocks the integration
+
+- GIVEN a candidate or a delivered branch that conflicts with the latest primary head, or whose integration with it fails its configured checks
+- WHEN delivery or the primary merge runs
+- THEN the Host stops with `merge_conflict` or `failed_merge_checks`
+- AND the candidate's files and any delivered branch are kept, and a candidate is marked blocked with that outcome
+- BUT the primary branch, its index and its files stay unchanged
+
+The conflict is resolved in a new or the existing candidate worktree, which is then validated
+again before another delivery.

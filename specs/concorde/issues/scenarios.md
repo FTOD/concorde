@@ -1,186 +1,172 @@
 # Issues scenarios
 
-These precise specifications belong directly to the [Issues Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+Concrete situations that show the [requirements](requirements.md) at work. Shapes and error codes
+are defined in the [Issue interface](interface.md).
 
-## Terminology
-
-| Term                                    | Meaning / definition                   |
-| --------------------------------------- | -------------------------------------- |
-| [Issue](../module.md#terminology)       | Defined in Concorde Framework.         |
-| [Blocker](../module.md#terminology)     | Defined in Concorde Framework.         |
-| [Candidate](../module.md#terminology)   | Defined in Concorde Framework.         |
-| [Evidence](../module.md#terminology)    | Defined in Concorde Framework.         |
-| [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Ready](../module.md#terminology)       | Defined in Concorde Framework.         |
-| [Delivery](../module.md#terminology)    | Defined in Concorde Framework.         |
-| [Worker](../module.md#terminology)      | Defined in Concorde Framework.         |
-| [Host](../module.md#terminology)        | Defined in Concorde Framework.         |
-| [Grant](../module.md#terminology)       | Defined in Concorde Framework.         |
-| [Spec](../module.md#terminology)        | Defined in Concorde Framework.         |
-| [Worktree](../module.md#terminology)    | Defined in Concorde Framework.         |
-
-## Issue interface
-
-### scenario.issues.inspect — Inspect without starting work
-
-- GIVEN an initialized project, with or without Issue records
-- WHEN list or show is requested
-- THEN the current records are returned without a model invocation, candidate creation or issue mutation
-
-### scenario.issues.reference — Admit only observed or granted Issue references
-
-- GIVEN a bounded worker with reporting authority and optional admitted repair feedback
-- WHEN it submits task blockers or review judgments
-- THEN every reference resolves to an observation it reported or was explicitly granted
-- AND missing, foreign and fabricated references fail admission without removing saved reports
-
-### scenario.issues.blocker-history — Track dependencies without task-text identity
-
-- GIVEN a candidate with an Issue blocking a Module phase
-- WHEN the same work is replanned and a fresh successful assessment releases that dependency
-- THEN its stable Issue relation remains in history without depending on old task wording
-- AND the Issue itself remains open unless separately disposed with evidence
-- AND another Module's blocker is absent from the worker's bounded workspace context
-
-### scenario.issues.component-scope — Select component work without transferring authority
-
-- GIVEN an accepted parent plan and tasks naming one declared component
-- WHEN the caller explicitly selects retained Operations for that component
-- THEN component workers receive only their own complete context and phase grant while the root owner stays unchanged
-- AND parent implementation cannot automatically start the component's work
-- AND an undeclared task target is rejected before any implementation worker starts
-
-### scenario.issues.archive — Preserve legacy history explicitly
-
-- GIVEN legacy Reflection data and no archive destination
-- WHEN the developer explicitly requests archival
-- THEN the complete directory is moved without altering its records or relative evidence links
-- AND no active Issue is created or marked resolved
-- AND conflicting destinations and symlinks are refused without discarding data
-
-## Issue solving lifecycle
-
-### scenario.issues.solve-ready — Resolve and verify the candidate
-
-- GIVEN an explicitly selected open Issue with current evidence
-- WHEN caller-performed work and fresh Issue-specific verification succeed
-- THEN the authorized solver can resolve the Issue and final checks bind the disposition bytes
-- AND the result is a ready candidate without automatic delivery or primary merge
-
-### scenario.issues.solve-spec-repair — Return needed edits to the caller
-
-- GIVEN an admitted solver decision with action spec-repair or develop
-- WHEN the native workflow admits the decision and its finite Host service selects the response
-- THEN it returns unsupported with the exact selected target, intended behavior and rationale while retaining the open Issue and decision history
-- AND it launches no author, planner or programmer and changes no Spec, metadata, registry or implementation
-- AND after the caller performs authorized edits, a fresh solve can request current independent verification without automatic development prerequisites
-
-### scenario.issues.solve-decision — Ask only for genuinely unsettled decisions
-
-- GIVEN a selected Issue whose required product or design choice cannot be determined from its context
-- WHEN the solver returns needs-decision
-- THEN the Issue remains open and the precise question is returned without inventing a fix
-- AND an explicit solve note supplies developer clarification and permits a fresh bounded attempt
-
-### scenario.issues.solve-stale — Refuse changed selections and retain failed work
-
-- GIVEN selected Issue bytes or verification inputs that change during solving
-- WHEN a dependent solve or disposition step is attempted
-- THEN stale evidence is rejected and unrelated work is preserved
-- AND failed final candidate verification cannot leave the runtime's unchanged disposition presented as completed
-
-### scenario.issues.disposition-recovery — Recover an interrupted closing transaction
-
-- GIVEN a selected Issue whose disposition is about to be published
-- WHEN execution or persistence fails before publication, after publication or before the completed checkpoint
-- THEN a journal is durable before any closing write and an unjournaled failed preparation leaves the Issue open
-- AND retry first invalidates old readiness and restores only the exact journaled write before fresh solving and validation
-- AND a rollback whose acknowledgement is lost can be retried without another restoration write
-- AND the original selected request can resume across its own journaled revision without automatic delivery
-
-### scenario.issues.disposition-recovery-stale — Refuse unprovable restoration
-
-- GIVEN an interrupted solver disposition
-- WHEN a retry finds changed Issue bytes, a corrupt journal or a legacy unfinished close without a journal
-- THEN it rejects recovery without overwriting the record or treating it as an ordinary completed close
-- AND no solver worker is launched before those checks succeed
-
-### scenario.issues.solve-handoff — Carry an uncommitted selected report
-
-- GIVEN an open report not yet present in the committed base
-- WHEN the host prepares a candidate for its explicit solve request
-- THEN that record's exact selected bytes are copied to the candidate before the solve request is relayed into it
-- AND unrelated local edits and the source worktree's index are preserved
-
-## Issue records and reporting
-
-### scenario.issues.historical-record — Preserve historical observations without wire aliases
-
-- GIVEN an intact schema-1 Issue with historical provenance and immutable observation receipts
-- WHEN the current Host reads it or attempts to mutate it
-- THEN reads preserve its exact bytes and receipts while mutations fail with unsupported_issue_version
-- AND new reports accept only current provenance and create schema-2 records
-- AND corrupted historical observation digests are rejected rather than repaired silently
-
-### scenario.issues.report-authority — Bind reporting without granting arbitrary writes
-
-- GIVEN a worker with a frozen context and host reporting service
-- WHEN it reports an admitted observation or attempts foreign evidence, ownership or provenance
-- THEN the host saves the admitted observation without granting the worker project writes
-- AND foreign evidence, forged provenance and appends to unselected issues are rejected
-- AND policy preview launches no reporting service and creates no issue
+## Reporting
 
 ### scenario.issues.report-independent — Report without ending the task
 
-- GIVEN a worker assessment or review invocation with reporting authority
-- WHEN it reports issues and then completes its own task
-- THEN the reports remain available and the task can complete successfully
-- AND the reporting tool itself neither terminates the worker nor starts a repair
+- GIVEN a worker whose run has the `report_issue` tool
+- WHEN it reports one or more problems and then submits its result
+- THEN each report is saved and acknowledged while the worker keeps running
+- AND the worker's task completes with its own outcome
+- BUT the reports neither stop the worker nor start a repair
 
-### scenario.issues.report-survives-failure — Retain observations from interrupted work
+### scenario.issues.report-authority — Report only within the worker's context
 
-- GIVEN a worker whose issue report was acknowledged by the host
-- WHEN its final result is invalid or its execution is interrupted
-- THEN the issue observation remains persisted independently of the failed stage
-- AND the failed or incomplete stage is not represented as successful
+- GIVEN a worker whose frozen context admits some Modules and files
+- WHEN it reports a problem naming an admitted owner and admitted evidence
+- THEN the Host saves the report with Host-supplied provenance
+- AND the worker still has no write access to project files
+- BUT a report naming an owner or evidence outside the context, forged provenance, or an append to an Issue not selected for the run is refused
+- AND a policy preview that runs no worker creates no reporting service and no Issue
 
-### scenario.issues.store-report — Persist and reference classified observations
+### scenario.issues.report-survives-failure — Keep reports from a failed run
 
-- GIVEN a host-issued reporting context and a classified issue report
-- WHEN the host records it and retries the identical report
-- THEN one branch-local issue and one immutable observation exist with the same returned receipt
-- AND appending current evidence can revise the classification without changing the original report
-- AND querying an absent collection creates no record or directory
+- GIVEN a worker whose report the Host has acknowledged
+- WHEN the worker later submits an invalid result, fails, times out or is cancelled
+- THEN the report stays saved
+- AND the failed run is still reported as failed, not as successful
+
+### scenario.issues.reference — Reference only reported or admitted reports
+
+- GIVEN a worker that reported some problems and may have received admitted Issue reports as input
+- WHEN it submits Blockers or review Findings that reference Issue reports
+- THEN each reference must name a report the worker made in this run or received as input
+- AND a missing, foreign, fabricated or repeated reference fails the result
+- BUT the reports already saved are kept
+
+### scenario.issues.blocker-history — Track a Blocker independently of task wording
+
+- GIVEN a candidate in which an Issue report blocks one Module's phase
+- WHEN the work is replanned with different task wording and a fresh successful assessment of that phase releases the dependency
+- THEN the Blocker stays in the candidate's history keyed by change, Module, phase and Issue
+- AND the Issue itself stays open until a separate disposition closes it
+- AND a worker bound to another Module does not see that Blocker
+
+## Records
+
+### scenario.issues.store-report — Save a report once
+
+- GIVEN a Host-issued provenance and a classified report
+- WHEN the Host saves it and then saves the identical report again
+- THEN exactly one Issue with one report exists and both calls return the same receipt
+- AND a later append with the current revision may classify the problem differently without changing the first report
+- AND listing a project without an Issue directory returns nothing and creates nothing
 
 ### scenario.issues.store-concurrency — Serialize writes without coupling branches
 
-- GIVEN concurrent reports in one worktree and an independent branch copy
-- WHEN the host accepts reports and disposes a record in one branch
-- THEN accepted observations are not lost or duplicated by identical retries
-- AND another branch's copy retains its own disposition until explicit integration
+- GIVEN concurrent reports in one worktree and a second worktree with its own copy of the records
+- WHEN the Host accepts the reports and closes an Issue in one worktree
+- THEN no accepted report is lost or duplicated
+- AND the other worktree keeps its own status for that Issue until the branches are integrated
 
-### scenario.issues.store-disposition — Retain evidence-bound disposition history
+### scenario.issues.store-disposition — Close and reopen with evidence
 
-- GIVEN an open issue with its current byte revision
-- WHEN an authorized host supplies a valid disposition with rationale and evidence
-- THEN the record is retained with the requested disposition and unchanged original observations
-- AND stale revisions, empty evidence, self-duplicates and invalid transitions are rejected
+- GIVEN an open Issue and its current revision
+- WHEN an authorized Host call supplies a disposition with a note, evidence and actor
+- THEN the Issue gets the disposition and keeps every report unchanged
+- BUT a stale revision, empty evidence, a duplicate of itself, a closed duplicate target or an invalid transition is refused
 
-### scenario.issues.store-boundary — Reject malformed and unsafe persistence
+### scenario.issues.store-boundary — Refuse malformed or unsafe records
 
-- GIVEN a malformed report, unsafe path, corrupted observation or failed publication
-- WHEN the host attempts to admit or persist it
-- THEN it does not acknowledge successful recording of that invalid operation
-- AND existing valid observations remain available without widening file authority
+- GIVEN a malformed report, an unsafe path, a corrupted report digest or a failed file publication
+- WHEN the Host tries to accept or save it
+- THEN it does not report success
+- AND existing valid records stay readable and unchanged
 
+### scenario.issues.historical-record — Read schema-1 records without changing them
 
-### scenario.issues.native-solve — Native decisions cannot bypass trusted closure
+- GIVEN an intact schema-1 Issue record
+- WHEN the Host reads it and then tries to append to, dispose, render or solve it
+- THEN reads return its exact bytes and receipts
+- AND every write fails with `unsupported_issue_version`
+- AND new reports always create schema-2 records
+- BUT a schema-1 record with a corrupted report digest is refused rather than repaired
 
-- GIVEN one current selected Issue in its managed candidate
-- WHEN the authored native workflow makes bounded decisions and flattened fresh verification calls
-- THEN each attempt is persisted before model launch and only independently correlated native results advance
-- AND develop/spec-repair/needs-decision return to the caller without automatic edits or integration
-- AND current resolved/duplicate/not-actionable dispositions use the exact write-ahead journal and separate final validation
-- AND failed final checks restore the Issue, interruption preserves recovery evidence, and stale/failed/cancelled work cannot replay closure
-- AND more than thirty-two dynamically prepared reviewers use preflighted exclusive slots and bounded closed Host controls without per-reviewer Host grants
+### scenario.issues.archive — Archive an old Reflection queue
+
+- GIVEN a project with a `.concorde/reflections/` directory and no archive yet
+- WHEN the developer runs `scripts/issues.py archive-reflections`
+- THEN the directory moves unchanged to `.concorde/archive/reflections/`
+- AND no Issue is created, closed or changed
+- BUT an existing destination or a symbolic link in the source is refused without changing either directory
+
+## The capability
+
+### scenario.issues.inspect — Inspect without starting work
+
+- GIVEN an initialized project with or without Issues
+- WHEN the user session calls `concorde-issues` with `list` or `show`
+- THEN the current records are returned
+- BUT no model runs, no candidate is created and no record changes
+
+## Solving
+
+### scenario.issues.solve-handoff — Carry an uncommitted Issue into the candidate
+
+- GIVEN an open Issue whose report is not yet committed in the primary worktree
+- WHEN the user session requests `solve` from the primary worktree
+- THEN the Host copies exactly the selected Issue's bytes into the new candidate before relaying the request there
+- AND other local edits and the primary worktree's index are left alone
+
+### scenario.issues.solve-spec-repair — Hand needed changes back
+
+- GIVEN a solve whose solver decides `develop` or `spec-repair`
+- WHEN the Host admits the decision
+- THEN the solve stops with outcome `unsupported`, naming the Module, the intended change and the reason
+- AND the Issue stays open and the decision is kept in the solve history
+- BUT no worker writes code or Specs and nothing is changed
+- AND after the user session makes the change, a new solve can verify it on the current inputs
+
+### scenario.issues.solve-decision — Ask only when a choice is genuinely open
+
+- GIVEN a selected Issue whose fix needs a product or design choice that its context does not settle
+- WHEN the solver decides `needs-decision`
+- THEN the solve stops with the precise question and the Issue stays open
+- AND a later solve with a `note` carrying the developer's answer starts a fresh bounded attempt
+
+### scenario.issues.solve-ready — Close, validate and stop at ready
+
+- GIVEN a selected open Issue that the user session has already fixed
+- WHEN fresh Issue-specific and ordinary reviews pass and the solver decides `resolved`
+- THEN the Host writes the disposition and final validation checks the candidate including it
+- AND the result is a ready candidate
+- BUT nothing is delivered or merged, and repeating solve does not run the workflow again
+
+### scenario.issues.solve-stale — Refuse changed inputs
+
+- GIVEN a solve in progress
+- WHEN the selected Issue's bytes, the offered duplicate, or the Module's Specs or implementation files change before a dependent step
+- THEN that step is refused as stale and earlier work is kept
+- AND a failed final validation leaves the Issue open, not closed
+
+### scenario.issues.native-solve — Only Host steps close an Issue
+
+- GIVEN one selected Issue in its candidate and the native solve workflow
+- WHEN the workflow runs solver and reviewer calls between its Host steps
+- THEN each solver attempt is saved before the model starts, and only results correlated with an actual finished native child are admitted
+- AND `develop`, `spec-repair` and `needs-decision` return to the user session without changes
+- AND `resolved`, `duplicate` and `not-actionable` close the Issue only through the journal and final validation
+- AND failed validation restores the Issue, and a stopped, failed, stale or duplicated step cannot close it
+- AND a verification with many reviewers runs them all in the same workflow without extra Host permissions
+
+## Recovery
+
+### scenario.issues.disposition-recovery — Recover an interrupted close
+
+- GIVEN a solve that saved its closing journal
+- WHEN the process fails before the disposition is written, after it is written, or before completion is saved
+- THEN the next solve in the same candidate first invalidates any earlier ready result
+- AND restores exactly the journal's open bytes, or does nothing if they are already on disk
+- AND continues with a fresh solve and fresh validation
+- BUT a failure before the journal was saved leaves the Issue open with nothing to restore
+- AND nothing is delivered automatically
+
+### scenario.issues.disposition-recovery-stale — Refuse recovery that cannot be proven
+
+- GIVEN an interrupted solver close
+- WHEN the next solve finds Issue bytes that match neither journal image, a corrupt journal, or a solver close without any journal
+- THEN it refuses to recover and does not overwrite the record
+- AND no solver is launched

@@ -424,25 +424,35 @@ def spec_consumers(run) -> set[str]:
             from ..spec.typed_data import decode
 
             registry = decode(raw.stdout)
-            if registry.get("schema_version") != 5:
+            if registry.get("schema_version") != 3 or not isinstance(
+                registry.get("modules"), list
+            ):
                 raise SpecError(
                     "review baseline uses a retired Spec format; migrate the candidate explicitly",
                     "unsupported_profile",
                 )
-            overrides = {}
-            for path in {
-                member
-                for target in registry["targets"]
-                for document in target["documents"]
-                for member in (document, document + ".json")
-            }:
-                result = subprocess.run(
+
+            def baseline_bytes(path: str) -> bytes:
+                return subprocess.run(
                     ("git", "show", f"{baseline}:{path}"),
                     cwd=run.repository.root,
                     capture_output=True,
                     check=True,
+                ).stdout
+
+            # The baseline's documents are those its entries own; the entries are the declaration
+            # site, the registry only says which Modules existed and where their entries were.
+            documents: set[str] = set()
+            for record in registry["modules"]:
+                block = decode(baseline_bytes(record["entry"] + ".json").decode()).get(
+                    "module", {}
                 )
-                overrides[path] = result.stdout
+                documents.update(block.get("owns", ()) or (record["entry"],))
+            overrides = {
+                member: baseline_bytes(member)
+                for document in documents
+                for member in (document, document + ".json")
+            }
             old = SpecRepository(
                 run.repository.root,
                 run.host.package_root,

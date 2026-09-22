@@ -72,7 +72,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.binds.pending-subset` | `pending` is a subset of `entries`, and pending entries do not exist. | error |
 | `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, generated output, external material or a control record such as the project registry and configuration. | error |
 | `CHK.imports.foreign` | An imported concept is owned by a Module other than the importer's owner. | error |
-| `CHK.imports.owner` | An imported concept's owner is a Module the importer uses, or an ancestor of the importer. | warning |
+| `CHK.imports.owner` | An imported concept's owner is a Module the importer uses, an ancestor of the importer, or a descendant of it. | warning |
 | `CHK.narrows.acyclic` | `narrows` never relates a concept to itself, directly or through other `narrows`. | error |
 | `CHK.contrasts.required` | Two nodes of different owners whose titles normalize equal have a `contrasts` between them. | error |
 | `CHK.contrasts.once` | At most one `contrasts` is declared per unordered pair, and it has a nonempty `reason`. | error |

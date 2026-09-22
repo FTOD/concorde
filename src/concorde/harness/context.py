@@ -18,8 +18,9 @@ from ..spec.repository import (
     most_specific,
     read_file,
 )
-from ..spec.repository_base import RepositoryCore
 from ..spec.typed_data import canonical
+
+RepositoryCore = SpecRepository
 from .worker_profile import WorkerProfile, validate_worker_artifacts
 
 PHASES = frozenset(
@@ -68,19 +69,19 @@ def _protocol(repository: RepositoryCore) -> list[dict]:
 
 
 def _implementation_entries(repository: SpecRepository, target) -> list[dict]:
-    """The Module's declared listing entries; declarations only, never contents."""
-    try:
-        entities = repository.entity_files(target)
-    except SpecError:
-        entities = {}
+    """The Module's realization entries (its ImplementationScope); declarations only, never contents.
+
+    ``entity_id`` names the realization that lists the entry.
+    """
+    realizations = repository.realization_entries(target)
     result = []
     for entry in target.files:
-        entity = entities.get(entry)
+        realization = realizations.get(entry)
         result.append(
             {
                 "path": entry,
-                "entity_id": entity.id if entity else None,
-                "pending": bool(entity and entry in entity.pending),
+                "entity_id": realization.id if realization else None,
+                "pending": bool(realization and entry in realization.pending),
                 "directory": is_directory_entry(entry),
             }
         )
@@ -88,27 +89,26 @@ def _implementation_entries(repository: SpecRepository, target) -> list[dict]:
 
 
 def _implementation_files(repository: SpecRepository, target) -> list[dict]:
-    """File names of the Module's implementation context: existing bound files plus pending files."""
-    try:
-        entities = repository.entity_files(target)
-    except SpecError:
-        entities = {}
-    names: dict[str, dict] = {}
-    for path in repository.implementation_files(target):
-        entry = most_specific(entities, path)
-        names[path] = {
-            "path": path,
-            "entity_id": entities[entry].id if entry else None,
-            "pending": False,
-        }
-    for entry, entity in entities.items():
-        if (
-            entry in entity.pending
-            and not is_directory_entry(entry)
-            and entry not in names
-        ):
-            names[entry] = {"path": entry, "entity_id": entity.id, "pending": True}
-    return [names[path] for path in sorted(names)]
+    """The Module's ImplementationContext: names of existing bound files plus pending exact entries."""
+    from ..spec.boundaries import implementation_context
+
+    realizations = repository.realization_entries(target)
+    names: list[dict] = []
+    for path in implementation_context(repository, target.id):
+        entry = most_specific(realizations, path)
+        realization = realizations[entry] if entry else None
+        names.append(
+            {
+                "path": path,
+                "entity_id": realization.id if realization else None,
+                "pending": bool(
+                    realization
+                    and path in realization.pending
+                    and not (repository.root / path).is_file()
+                ),
+            }
+        )
+    return names
 
 
 def _implementation_artifacts(repository: SpecRepository, target) -> list[dict]:

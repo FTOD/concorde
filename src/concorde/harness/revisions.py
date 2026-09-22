@@ -39,12 +39,12 @@ def implementation_users(repository: SpecRepository, target) -> tuple:
 
 
 def unconfirmed_files(repository: SpecRepository, target) -> list[str]:
-    """Listed entries that neither exist nor are explicitly declared pending by their entity."""
-    entities = repository.entity_files(target)
+    """Realization entries that neither exist nor are declared pending by their realization."""
+    realizations = repository.realization_entries(target)
     return sorted(
         entry
         for entry in repository.missing_entries(target)
-        if entry not in entities or entry not in entities[entry].pending
+        if entry not in realizations or entry not in realizations[entry].pending
     )
 
 

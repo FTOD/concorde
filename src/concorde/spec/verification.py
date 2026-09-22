@@ -2,11 +2,12 @@
 
 A test names the scenario it verifies with the ``verifies`` decorator in Python, or with a
 ``// verifies:`` comment above the test in TypeScript. The scanner reads those declarations from
-the test files a Module's entities bind without importing, compiling or executing them, so a
+the test files a Module's realizations bind without importing, compiling or executing them, so a
 deterministic check can report which tests verify each scenario and which scenarios no test
 declares. The Spec side stays free of test locations: the Protocol fixes only the direction of the
 declaration and the scenario identity it names, leaving each language's syntax to this tool.
 """
+
 from __future__ import annotations
 
 import ast
@@ -30,8 +31,13 @@ F = TypeVar("F", bound=Callable)
 
 def verifies(*scenario_ids: str) -> Callable[[F], F]:
     """Declare the scenario IDs a test verifies; the test itself is returned unchanged."""
-    if not scenario_ids or any(not isinstance(item, str) or not item.startswith("scenario.") for item in scenario_ids):
-        raise ValueError("verifies() takes one or more scenario IDs beginning with 'scenario.'")
+    if not scenario_ids or any(
+        not isinstance(item, str) or not item.startswith("scenario.")
+        for item in scenario_ids
+    ):
+        raise ValueError(
+            "verifies() takes one or more scenario IDs beginning with 'scenario.'"
+        )
 
     def decorate(function: F) -> F:
         declared = tuple(getattr(function, ATTRIBUTE, ())) + tuple(scenario_ids)
@@ -44,6 +50,7 @@ def verifies(*scenario_ids: str) -> Callable[[F], F]:
 @dataclass(frozen=True)
 class Verification:
     """One declaration: the test at ``path``:``line`` named ``name`` verifies ``scenario_id``."""
+
     scenario_id: str
     path: str
     line: int
@@ -84,14 +91,34 @@ def _declarations(path: str, tree: ast.AST) -> list[Verification]:
             for decorator in node.decorator_list:
                 if _decorator_name(decorator) != DECORATOR:
                     continue
-                if not isinstance(decorator, ast.Call) or not decorator.args or decorator.keywords:
-                    raise DeclarationError(path, decorator.lineno, "verifies() takes scenario ID string literals")
+                if (
+                    not isinstance(decorator, ast.Call)
+                    or not decorator.args
+                    or decorator.keywords
+                ):
+                    raise DeclarationError(
+                        path,
+                        decorator.lineno,
+                        "verifies() takes scenario ID string literals",
+                    )
                 for argument in decorator.args:
-                    if not isinstance(argument, ast.Constant) or not isinstance(argument.value, str):
-                        raise DeclarationError(path, decorator.lineno, "verifies() takes scenario ID string literals")
+                    if not isinstance(argument, ast.Constant) or not isinstance(
+                        argument.value, str
+                    ):
+                        raise DeclarationError(
+                            path,
+                            decorator.lineno,
+                            "verifies() takes scenario ID string literals",
+                        )
                     if not argument.value.startswith("scenario."):
-                        raise DeclarationError(path, decorator.lineno, f"not a scenario ID: {argument.value!r}")
-                    result.append(Verification(argument.value, path, decorator.lineno, name))
+                        raise DeclarationError(
+                            path,
+                            decorator.lineno,
+                            f"not a scenario ID: {argument.value!r}",
+                        )
+                    result.append(
+                        Verification(argument.value, path, decorator.lineno, name)
+                    )
             # A function nested inside another function is a helper, never a test.
             return
         for child in ast.iter_child_nodes(node):
@@ -145,16 +172,24 @@ def _typescript_declarations(path: str, text: str) -> list[Verification]:
         declaration = TYPESCRIPT_DECLARATION.match(line)
         if declaration is None:
             continue
-        identities = [item for item in re.split(r"[,\s]+", declaration.group("ids").strip()) if item]
+        identities = [
+            item
+            for item in re.split(r"[,\s]+", declaration.group("ids").strip())
+            if item
+        ]
         if not identities:
-            raise DeclarationError(path, number, "verifies: takes one or more scenario IDs")
+            raise DeclarationError(
+                path, number, "verifies: takes one or more scenario IDs"
+            )
         for identity in identities:
             if not identity.startswith("scenario."):
                 raise DeclarationError(path, number, f"not a scenario ID: {identity!r}")
         name = _typescript_title(lines, number)
         if name is None:
             raise DeclarationError(path, number, "verifies: comment declares no test")
-        result.extend(Verification(identity, path, number, name) for identity in identities)
+        result.extend(
+            Verification(identity, path, number, name) for identity in identities
+        )
     return result
 
 
@@ -177,11 +212,19 @@ def scan_declarations(root: Path, paths) -> tuple[Verification, ...]:
         if target.is_symlink() or not target.is_file():
             continue
         if typescript:
-            result.extend(_typescript_declarations(relative, target.read_text(encoding="utf-8", errors="replace")))
+            result.extend(
+                _typescript_declarations(
+                    relative, target.read_text(encoding="utf-8", errors="replace")
+                )
+            )
             continue
         try:
             tree = ast.parse(target.read_bytes(), filename=relative)
         except (SyntaxError, ValueError) as error:
-            raise DeclarationError(relative, getattr(error, "lineno", None), f"cannot parse Python source: {error.msg if hasattr(error, 'msg') else error}") from error
+            raise DeclarationError(
+                relative,
+                getattr(error, "lineno", None),
+                f"cannot parse Python source: {error.msg if hasattr(error, 'msg') else error}",
+            ) from error
         result.extend(_declarations(relative, tree))
     return tuple(result)

@@ -1,83 +1,246 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.planning.module",
     "owner": "module.planning",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Planning",
+    "owns": [
+      "specs/concorde/planning/module.md",
+      "specs/concorde/planning/workflow.md",
+      "specs/concorde/planning/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.harness.admission",
+        "meaning": "#uses-admission",
+        "relies_on": [
+          "concept.admission.capability-request",
+          "concept.admission.result-envelope",
+          "concept.admission.relay"
+        ]
+      },
+      {
+        "target": "module.harness.context",
+        "meaning": "#uses-context",
+        "relies_on": [
+          "concept.context.snapshot",
+          "concept.context.capsule",
+          "req.context.names-every-phase",
+          "req.context.recheck"
+        ]
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.workflow",
+          "concept.execution.host-step",
+          "concept.execution.result-gate",
+          "concept.execution.proposal",
+          "req.execution.proposal-not-completion"
+        ]
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.agent",
+          "concept.agents.definition"
+        ]
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate",
+          "concept.worktrees.change-status",
+          "concept.worktrees.run-record"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.registry"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.issue",
+          "concept.issues.blocker",
+          "req.issues.references"
+        ]
+      },
+      {
+        "target": "module.review",
+        "meaning": "#uses-review",
+        "relies_on": [
+          "concept.review.finding",
+          "concept.review.required-review",
+          "req.review.repair-feedback"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "req.distribution.fresh-instructions"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "reference/pi/",
+        "reason": "Pi Agent definition, extension and tool formats that the native preparation writes and the capture extension uses"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.planning.adapter",
-      "title": "Planning adapter",
-      "kind": "shared program",
-      "files": [
+      "id": "concept.planning.assessment",
+      "type": "concept",
+      "title": "Context assessment",
+      "meaning": "#concept.planning.assessment"
+    },
+    {
+      "id": "concept.planning.plan",
+      "type": "concept",
+      "title": "Plan",
+      "meaning": "#concept.planning.plan"
+    },
+    {
+      "id": "concept.planning.task",
+      "type": "concept",
+      "title": "Task",
+      "meaning": "#concept.planning.task"
+    },
+    {
+      "id": "realization.planning.capabilities",
+      "type": "realization",
+      "title": "Planning capability declarations",
+      "meaning": "#realization.planning.capabilities",
+      "entries": [
         "operations/context_solve.py",
         "operations/plan.py",
-        "operations/tasks.py",
+        "operations/tasks.py"
+      ]
+    },
+    {
+      "id": "realization.planning.native",
+      "type": "realization",
+      "title": "Native planning preparation",
+      "meaning": "#realization.planning.native",
+      "entries": [
+        "pi/native-plan-host.mjs",
         "pi/workflows/plan.js",
-        "src/concorde/planning/",
+        "src/concorde/harness/native_context.py",
+        "src/concorde/harness/native_planning.py"
+      ]
+    },
+    {
+      "id": "realization.planning.records",
+      "type": "realization",
+      "title": "Plan and task records",
+      "meaning": "#realization.planning.records",
+      "entries": [
+        "src/concorde/planning/"
+      ]
+    },
+    {
+      "id": "realization.planning.tests",
+      "type": "realization",
+      "title": "Planning tests",
+      "meaning": "#realization.planning.tests",
+      "entries": [
+        "tests/concorde/harness/native_context_probe.mjs",
         "tests/concorde/harness/native_planning_probe.mjs",
+        "tests/concorde/harness/test_native_context.py",
         "tests/concorde/harness/test_native_context_public.py",
         "tests/concorde/harness/test_native_planning_public.py",
+        "tests/concorde/issues/test_scope.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_specify_loop.py",
-        "tests/concorde/support/native_planning.py"
-      ],
-      "meaning": "#entity.planning.adapter"
-    },
-    {
-      "id": "entity.planning.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.planning.harness"
-    },
-    {
-      "id": "entity.planning.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "target_id": "module.spec",
-      "meaning": "#entity.planning.spec"
-    },
-    {
-      "id": "entity.planning.assessment",
-      "title": "Context assessment",
-      "kind": "record",
-      "meaning": "#entity.planning.assessment"
-    },
-    {
-      "id": "entity.planning.plan",
-      "title": "Accepted plan",
-      "kind": "record",
-      "meaning": "#entity.planning.plan"
-    },
-    {
-      "id": "entity.planning.tasks",
-      "title": "Acceptance tasks",
-      "kind": "record",
-      "meaning": "#entity.planning.tasks"
-    },
-    {
-      "id": "entity.planning.agents",
-      "title": "Agents",
-      "kind": "used module",
-      "target_id": "module.agents",
-      "meaning": "#entity.planning.agents"
+        "tests/concorde/support/native_planning.py",
+        "tests/concorde/distribution/test_install_output_handoff.py",
+        "tests/concorde/harness/test_feedback_export.py",
+        "tests/concorde/harness/test_native_observation.py",
+        "tests/concorde/harness/test_structured_diagnostic.py"
+      ]
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.harness",
-      "meaning": "#agreement.document.planning.module.2"
+      "type": "relates",
+      "source": "realization.planning.capabilities",
+      "verb": "hands requests to",
+      "target": "module.harness.admission"
     },
     {
-      "target_id": "module.spec",
-      "meaning": "#agreement.document.planning.module.3"
+      "type": "relates",
+      "source": "realization.planning.native",
+      "verb": "freezes context through",
+      "target": "module.harness.context"
     },
     {
-      "target_id": "module.agents",
-      "meaning": "#entity.planning.agents"
+      "type": "relates",
+      "source": "realization.planning.native",
+      "verb": "prepares calls for",
+      "target": "module.agents"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.native",
+      "verb": "verifies native runs with",
+      "target": "module.harness.execution"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.native",
+      "verb": "accepts",
+      "target": "concept.planning.assessment"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.native",
+      "verb": "reports gaps to",
+      "target": "module.issues"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.records",
+      "verb": "saves",
+      "target": "concept.planning.plan"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.records",
+      "verb": "saves",
+      "target": "concept.planning.task"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.records",
+      "verb": "stores records in",
+      "target": "module.harness.worktrees"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.records",
+      "verb": "requires a current Spec review from",
+      "target": "module.review"
     }
-  ],
-  "bindings": []
+  ]
 }

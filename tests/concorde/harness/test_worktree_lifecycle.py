@@ -824,30 +824,39 @@ class WorktreeLifecycleTests(unittest.TestCase):
         """Declare two files the plan intends to create, before any of them exists."""
         path = self.change / "specs/transfer/module.md.json"
         metadata = json.loads(path.read_text())
-        entities = metadata["entities"]
-        entities[0].update(
-            files=["app/rounding.py", "app/transfer.py"], pending=["app/rounding.py"]
+        realizations = [
+            item for item in metadata["defines"] if item["type"] == "realization"
+        ]
+        realizations[0].update(
+            entries=["app/rounding.py", "app/transfer.py"], pending=["app/rounding.py"]
         )
-        entities[1].update(
-            files=["checks/rounding_check.py", "checks/transfer_check.py"],
+        realizations[1].update(
+            entries=["checks/rounding_check.py", "checks/transfer_check.py"],
             pending=["checks/rounding_check.py"],
         )
         path.write_text(json.dumps(metadata, indent=2) + "\n")
-        registry = json.loads((self.change / ".concorde/specs.json").read_text())
-        registry["targets"][2]["files"] = [
-            "app/rounding.py",
-            "app/transfer.py",
-            "checks/rounding_check.py",
-            "checks/transfer_check.py",
-        ]
-        (self.change / ".concorde/specs.json").write_text(json.dumps(registry))
 
-    def test_delivery_confirms_created_pending_files_and_keeps_the_rest_pending(self):
+    @verifies(
+        "scenario.validation.pending-confirmed",
+        "scenario.delivery.pending-confirmed",
+    )
+    def test_created_pending_files_are_confirmed_and_the_rest_stay_pending(self):
         self.declare_pending_files()
         (self.change / "app/rounding.py").write_text(
             "def round_half_up(value):\n    return value\n"
         )
+        # A pending entry whose file exists fails CHK.binds.pending-subset, so the host confirms
+        # it in the candidate before validating; delivery then has nothing left to confirm.
         change_id = self.ready_delivery()
+        realizations = [
+            item
+            for item in json.loads(
+                (self.change / "specs/transfer/module.md.json").read_text()
+            )["defines"]
+            if item["type"] == "realization"
+        ]
+        self.assertEqual([], realizations[0]["pending"])
+        self.assertEqual(["checks/rounding_check.py"], realizations[1]["pending"])
         result = self.call_operation(
             self.change,
             "concorde-deliver",
@@ -855,33 +864,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertEqual("succeeded", result["status"], result)
         answer = result["output"]["data"]["answer"]
-        self.assertIn("app/rounding.py", answer)
         self.assertIn("checks/rounding_check.py", answer)
         receipt = json.loads(
             (self.primary / f".concorde/status/{change_id}.json").read_text()
         )["delivery"]
-        self.assertEqual(
-            [
-                {
-                    "module": "service.transfer",
-                    "entity": "entity.transfer.calculation",
-                    "path": "app/rounding.py",
-                }
-            ],
-            receipt["confirmed_files"],
-        )
+        self.assertEqual([], receipt["confirmed_files"])
         self.assertEqual(["checks/rounding_check.py"], receipt["still_pending"])
-        self.assertEqual(
-            "Confirm created files for " + change_id,
-            git_value(
-                self.primary, "log", "-1", "--format=%s", receipt["candidate_commit"]
-            ),
-        )
-        entities = json.loads(
-            (self.change / "specs/transfer/module.md.json").read_text()
-        )["entities"]
-        self.assertNotIn("pending", entities[0])
-        self.assertEqual(["checks/rounding_check.py"], entities[1]["pending"])
         self.assertEqual(
             "success", validate_repository(self.change, package_root=PACKAGE).status
         )
@@ -890,12 +878,14 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.declare_pending_files()
         path = self.change / "specs/transfer/module.md.json"
         metadata = json.loads(path.read_text())
-        metadata["entities"][0].pop("pending")
+        next(item for item in metadata["defines"] if item["type"] == "realization").pop(
+            "pending"
+        )
         path.write_text(json.dumps(metadata, indent=2) + "\n")
         report = validate_repository(self.change, package_root=PACKAGE)
         self.assertEqual("invalid", report.status)
         self.assertIn(
-            "CONCORDE-ENTITY-002", {finding.rule_id for finding in report.findings}
+            "CHK.binds.exists", {finding.rule_id for finding in report.findings}
         )
 
     @verifies(
@@ -940,7 +930,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("succeeded", again["status"], again)
         self.assertEqual(head, git_value(self.primary, "rev-parse", "HEAD"))
 
-    @verifies("scenario.delivery.branch")
+    @verifies("scenario.delivery.branch", "scenario.delivery.retry")
     def test_explicit_retention_survives_interrupted_initial_cleanup(self):
         change_id = self.ready_delivery()
         before = git_value(self.primary, "rev-parse", "HEAD")
@@ -961,7 +951,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertIn("retained", again["output"]["data"]["answer"])
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
 
-    @verifies("scenario.delivery.branch")
+    @verifies("scenario.delivery.branch", "scenario.delivery.retry")
     def test_cleanup_retry_persists_a_changed_retention_choice_before_cleanup(self):
         change_id = self.ready_delivery()
         with patch.object(
@@ -1189,6 +1179,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     @verifies(
         "scenario.delivery.branch",
         "scenario.delivery.merge-primary",
+        "scenario.delivery.retry",
     )
     def test_primary_merge_recovers_receipt_after_update_without_merging_again(self):
         change_id = self.ready_delivery()
@@ -1484,14 +1475,15 @@ class WorktreeLifecycleTests(unittest.TestCase):
     @verifies("scenario.delivery.branch")
     def test_primary_can_advance_before_a_clean_verified_merge(self):
         change_id = self.ready()
-        (self.primary / "another.txt").write_text("Accepted independent change\n")
+        # Every version-controlled file is bound; the Workspace Module binds AGENTS.md.
+        (self.primary / "AGENTS.md").write_text("Accepted independent change\n")
         advanced = self.commit(self.primary, "Independent accepted change")
         result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual(
-            "Accepted independent change\n", (self.primary / "another.txt").read_text()
+            "Accepted independent change\n", (self.primary / "AGENTS.md").read_text()
         )
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertEqual(
@@ -1608,7 +1600,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue(self.state_file().exists())
 
-    @verifies("scenario.delivery.branch")
+    @verifies("scenario.delivery.branch", "scenario.delivery.retry")
     def test_cleanup_failure_resumes_without_a_second_merge_or_check_run(self):
         change_id = self.ready()
         actual_git = worktree_delivery.git

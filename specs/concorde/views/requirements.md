@@ -1,123 +1,111 @@
 # Views requirements
 
-These are the precise Module-wide obligations of [Views](module.md). They constrain implementations,
-including externally observable behavior; they are not a description of current code or a separate
-Spec owner. Read the Module entry first for purpose, correct use and design. Concrete situations and
-interface definitions live in the Module-owned [scenarios](scenarios.md) and [contracts](contracts.md),
-with explanatory topics linked from the Module entry.
+The Module-wide obligations of [Views](module.md). The entry explains why they exist; the
+[pipeline](pipeline.md) explains how the publisher meets them.
 
-## Terminology
+## Sources and pages
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module Specs](../module.md#terminology) | Defined in Concorde Framework. |
-| [Implementation Specs](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
-| [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
-| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+### req.views.registry-derived-pages — Pages derive from the registry
 
-### req.views.registry-derived-pages — Pages and navigation derive from the registry
+Publication SHALL publish as Spec pages exactly the documents that the registry's Modules own.
 
-Publication SHALL derive Module Spec pages and their navigation only from the explicit registry.
+The optional homepage and custom docs are separate surfaces and are not Spec pages.
 
-Every published Module Spec is traceable to a registered entry. The optional project introduction
-and project-owned custom docs are presentation surfaces outside that membership.
-Both Spec sidebars follow registry parentage alone; a document's explicit publication collection
-selects its reading tab without changing ownership or context. See
-[req.views.no-directory-scanning](#req.views.no-directory-scanning).
-
-### req.views.custom-docs — Separate project documentation
-
-Publication SHALL support project-owned custom docs through independent tabs outside Module Spec registration and agent Spec context.
-
-The generic template defaults to Module Specs alone until a registered companion explicitly selects
-Implementation Specs, and publishes no unregistered Projections section. See
-[custom docs](scenarios.md#scenario.views.custom-docs) for configuration and migration.
-
-### req.views.reading-collections — Reading tabs preserve one complete Module specification
-
-Publication SHALL preserve the same document ownership, canonical definitions and complete Spec context when a registered companion is assigned to Implementation Specs.
-
-Module Specs is the explanation-first reading path; Implementation Specs contains precise normative
-obligations, scenarios and interface details. Both remain human-readable specification content.
-Publication classification never makes a document optional for context resolution or review.
-The [collection scenarios](scenarios.md#scenario.views.reading-collections) define admission,
-navigation and rejection of missing or invalid document roles.
-
-### req.views.no-directory-scanning — No directory scanning or link-based discovery
+### req.views.no-directory-scanning — No discovery of documents
 
 Publication SHALL NOT discover Spec documents by scanning directories or following links.
 
-### req.views.one-page-per-document — One canonical page per registered document
+### req.views.one-page-per-document — One canonical page per document
 
-A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules reference it.
+Publication SHALL publish every registered document at exactly one canonical page, however many Modules select it.
 
-### req.views.current-internal-links — Published internal links resolve
+### req.views.navigation-follows-composition — Navigation follows composition
 
-Publication SHALL promote only a candidate in which every internal navigation link retained in its published documents resolves to an available destination and, when specified, an existing anchor.
+The Spec navigation SHALL nest one Module under another only where the other declares `contains` for it.
 
-The guarantee covers the site's own published pages, including enabled reading collections.
-Cross-Module references are valid navigation and do not establish document ownership and references or expand
-Spec context. External destinations retain their existing handling; publication does not promise
-the continued availability of another website. Current-owner legacy aliases and failure
-behavior are defined in [publication](scenarios.md#scenario.views.publish-legacy-redirect)
-and [pipeline](scenarios.md#scenario.views.validate-candidate-mismatch).
+### req.views.reading-collections — Role selects the reading collection
 
-### req.views.no-agent-context-grant — No extra agent context from a rendered view
+Publication SHALL place each document in the reading collection named by its declared role without changing its route, owner or selecting Modules.
 
-A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context beyond its own host-bound target snapshot.
+A document with role `module` is listed in Module Specs and one with role `implementation` in
+Implementation Specs. The role is read from metadata and never inferred from a file name, a heading
+or the presence of definitions.
 
-### req.views.diagram-source-identity — Mermaid fence is the sole diagram source
+## Rendering
 
-An inline Mermaid fence in a Module's Relationships subsection SHALL be its sole authored diagram source.
+### req.views.stable-anchors — Identities are anchors
 
-### req.views.no-external-diagram-record — No external diagram record or output
+Publication SHALL expose every concept, realization, requirement, scenario and contract identity as an anchor on the canonical page of the document that defines it.
 
-Publication SHALL create no external diagram record or `generated/diagrams` output.
+### req.views.import-definition — Imported definitions are shown
 
-The authored fence is the sole source; publication produces no external record derived from it.
+Publication SHALL show next to each Terminology import row the definition of the imported concept as written in its defining document at build time.
 
-### req.views.no-docsite-graph-view — No docsite graph view
+### req.views.illustrative-label — Illustrative diagrams are labelled
 
-Publication SHALL NOT expose a graph view outside the registered Specs, such as the former Module, Scenario or entity-relationship graph view or a separate Operation or execution-graph page.
+Publication SHALL render every Mermaid block marked `illustrative` with a visible label stating that it is not normative.
 
-This removes the docsite graph page and route, Graph navigation entry, graph-specific UI,
-architecture-graph projection and artifact, and resources or dependencies used exclusively for that
-feature. It also applies to the publishing template supplied to consumer projects. Dependencies
-and resources still needed for ordinary reading, navigation or inline Mermaid rendering remain.
+### req.views.derived-views-not-written — Rendering never edits sources
 
-Each Operation is explained in the Specs of the Module that owns it, and an Operation that runs an
-executable Graph is shown by that Graph's Graph Spec in the owner's implementation-role documents.
-Publication renders both as ordinary registered reading, so every Graph Spec appears once, on its
-owner's Implementation Specs page. Concorde's own site therefore adds no custom page that explains
-Operations or draws their Graphs a second time, and building it needs no Python graph environment.
-See [Operation Graphs in their owning Specs](scenarios.md#scenario.views.operation-graphs-in-owner-specs).
+Publication SHALL NOT write rendered, enriched or rewritten content into any registered Spec document.
 
-### req.views.production-preview-isolation — Production builds preserve preview output
+### req.views.diagram-source-identity — A fence is its diagram's only source
 
-A production build SHALL NOT clear or overwrite the development preview's generated directory.
+Publication SHALL render each Mermaid diagram from its fence in the containing document and from no other source.
 
-### req.views.hash-format — Digests use the sha256 hex format
+The publisher produces no separate diagram files or records, so a diagram changes only when the
+document containing it changes.
 
-Every content or source digest SHALL be `sha256:` followed by 64 lowercase hexadecimal digits.
+### req.views.no-docsite-graph-view — No generated graph pages
 
-### req.views.safe-relative-paths — Member paths are safe relative POSIX paths
+Publication SHALL NOT generate pages that draw Modules, scenarios or Graphs outside the documents that contain those drawings.
 
-Every member path SHALL use POSIX separators without absolute paths, backslashes, empty, dot or traversal components, or symlinks.
+Each Operation's Graph Spec is published as part of its owner's implementation documents, like any
+other reading.
 
-### req.views.promote-atomic — Promotion restores the prior destination on failure
+### req.views.custom-docs — Custom docs stay outside the Specs
 
-`promoteCandidate` SHALL attempt to restore the prior destination on a failed move or removal.
+Publication SHALL publish custom docs only in their own tabs and routes, never as Spec pages or inside a Spec collection.
 
-### req.views.promote-requires-checked-candidate — Promotion runs only on checked candidates
+### req.views.no-agent-context-grant — Pages grant no context
 
-`promoteCandidate` SHALL NOT be called on unchecked or stale output.
+Views SHALL NOT supply a published page to any agent as context or as a substitute for a registered document.
 
-### req.views.no-contract-context-expansion — Contract edges do not expand loaded context
+## Build and promotion
 
-The registry loader SHALL NOT follow a `concorde-contract` edge to import additional Module context.
+### req.views.current-internal-links — Internal links resolve
+
+The build SHALL promote only a candidate in which every internal link resolves to an existing page and every requested fragment to an anchor on that page.
+
+Links to other origins, or outside the site's base URL, are not checked; publication does not
+promise that another website stays available.
+
+### req.views.promote-requires-checked-candidate — Only checked candidates are promoted
+
+The build SHALL promote only a candidate whose build manifest, source digest and page inventory match the current sources.
+
+### req.views.promote-atomic — Failed promotion restores the published site
+
+Promotion SHALL restore the previous published site when moving the candidate into place fails.
+
+### req.views.production-preview-isolation — Production does not disturb the preview
+
+A production build SHALL NOT clear or overwrite the generated files of the development preview.
+
+### req.views.hash-format — Digest format
+
+Every content or source digest that publication records SHALL be `sha256:` followed by 64 lowercase hexadecimal digits.
+
+### req.views.safe-relative-paths — Safe source paths
+
+Publication SHALL read only source paths that are relative POSIX paths without empty, `.` or `..` components, backslashes or symbolic links.
+
+## Scaffold
+
+### req.views.scaffold-creation-only — The scaffold only creates
+
+The scaffold SHALL NOT replace or delete any existing file.
+
+### req.views.template-inventory — One template inventory
+
+The scaffold and the installer SHALL select the packaged docsite template files by one shared inventory rule.

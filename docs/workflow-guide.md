@@ -18,37 +18,30 @@ covers genuine StateGraph composition. Native workflows compose Agents without b
 Public `concorde-*` names and `operation_id` fields are compatibility entry identifiers, not backend claims.
 Planning, Implementation, Review and Issues retain their business artifacts and acceptance rules.
 
-The explicitly selected work and delivery examples below use **Spec Protocol 10.0.0**. It defines one Module
-Spec content model and the human-readable subset of that content. Reading begins with Purpose,
-Terminology, Usage, Design and Relationships in module-role entries, followed by explanatory topics
-that each open with their own Terminology table. Formal requirements,
-scenarios and canonical interfaces belong only in implementation-role companions owned directly by
-the same Module. Both roles remain normative reading and complete agent context; a topic does not
-own a separate set of obligations. Identity, explicit roles, mappings and file bindings live in
-paired schema-2 `.md.json` metadata,
-which points to canonical readable meaning. Neither an inventory nor a summary replaces design.
+The work and delivery examples below use **Spec Protocol 11.0.0**. A project's Specs form one
+graph of declared nodes and relations. Each Module has an entry `module.md` (Purpose, Terminology,
+Usage, Design, Relationships) and may add explanatory topics; precise requirements, scenarios and
+versioned contracts live in implementation documents owned by the same Module. Every document has
+paired schema-3 `.md.json` metadata, and the entry's metadata declares the Module's own relations in
+a `module` block.
 
-Each Module has one structural parent at most. A shared provider is owned by none of its
-consumers and may sit at any level of the hierarchy; `uses` does not create another parent. Module composition and file reuse are separate
-relationships: several Modules may bind the same implementation file. Within one Module the most
-specific entry owns a file, an exact path before a directory prefix, so a directory prefix can list a
-whole package while a shared file keeps its own entry. Every Module registers its
-complete document-unit collection and one local `module.md` reading entry. A dependency link does not
-import the provider's Spec or source.
+A Module has at most one parent (`contains`). A shared provider is owned by none of its consumers;
+a consumer declares `uses` and may name exactly the promises it `relies_on`. Composition and file
+reuse are separate: several Modules may bind the same file, and within one Module the longest
+covering realization entry decides a file's realization. Every version-controlled file is bound by
+some Module unless it is a document, generated output, external material or a control record.
 
-Bounded domain readers, planners and task authors determine behavior from their selected Module Spec alone; its
-entity declarations name the entries and the files they bind, but never their contents. Only the
-code-writing and code-review phases receive those file contents, in their declared subsets. The
-Framework maintains a reverse file-listing index and checks each listing Module separately after a
-shared file changes. Context, checks and reviews identify the exact contracts and revisions they
-assessed.
+A Module's context is computed from its own declarations, one level deep; a Markdown link never
+imports anything. Assessors, planners and task authors see the names of the Module's files but never
+their contents; only code writing and code review receive contents. When a shared file or document
+changes, Concorde knows every Module it concerns and checks each one separately.
 
 The Protocol standard is independent of the software Specs that implement it:
 
 ```text
 protocol/                 Independent standard, organized as ordinary chapters
-specs/concorde/           Module contracts, entities and architectures
-.concorde/specs.json       Registry schema 5: Modules and their relationships
+specs/concorde/           Concorde's own Module Specs
+.concorde/specs.json      Registry: every Module and a checked mirror of its entry's declarations
 ```
 
 Start with the [Concorde Module](../specs/concorde/module.md), its
@@ -145,10 +138,10 @@ Review the returned proposal, then send action apply and that complete proposal.
 an honest reading/metadata pair. Supply Purpose, Terminology, Usage, Design and Relationships before precise
 requirements/scenarios and implementation. Topic documents have their own metadata companions and
 need not repeat the entry template. All selected pairs enter context whole.
-`.concorde/config.json` pins the Protocol and references `.concorde/specs.json`; that registry explicitly
-records document members, parent/uses relationships, each Module's `files` and deterministic checks.
-Local dependency declarations state the promises needed for explicit selection and planning; validation keeps
-them aligned with direct relationships. Arbitrary nearby Markdown is not context.
+`.concorde/config.json` pins the Protocol, names the registry `.concorde/specs.json` and lists the
+project's deterministic checks. Each Module's relations are declared in its entry's `module` block;
+the registry lists every Module and mirrors those blocks, and `validate` rejects any disagreement.
+Arbitrary nearby Markdown is not context.
 Document declarations are likewise checked against reverse registry membership.
 
 ## Run a change
@@ -261,11 +254,10 @@ Only the outside host saves stdout/stderr and lifecycle evidence in the project.
 checkout's docsite type check prepares its sidebar and any missing dependencies in an external copy.
 This boundary does not define finer read, network or credential policies.
 
-For architecture changes, the task-authorized caller edits the registry and paired document
-members directly, keeping parentage, uses, ownership, explicit references, interface bindings and
-file listings consistent as one candidate. Validate that combined model before dependent work.
-A shared document has one owner and one canonical definition; affected consumers receive separate
-complete contexts and current compatibility evidence, not copied definitions or broader grants.
+For architecture changes, the user session edits the affected entries, document metadata and
+reading together, regenerates the registry mirror (`python3 scripts/concorde.py registry --write`)
+and validates the combined result before dependent work. A shared definition has one owner; other
+Modules import or rely on it and receive it in their own context, never a copy or a broader grant.
 A file may be listed by several Modules without merging their responsibilities. No deleted author
 or topology artifact is required, and a direct edit is never fabricated review or completion evidence.
 
@@ -292,25 +284,25 @@ clarification. A successful candidate-local close is not a claim about primary. 
 [Issue lifecycle](../specs/concorde/issues/lifecycle.md). Legacy data can be preserved explicitly with
 `scripts/issues.py archive-reflections`; it is never automatically classified or approved.
 
-Concorde 8 uses Pi-only Package Manifest 4, installation receipt 2, Architecture Profile 15, registry schema 5, Workspace Protocol
-16 and Delivery Proposal 10. Older profiles require an explicit migration; normal execution never
-reinterprets old formats. The offline migration planner is not a second supported runtime.
+Concorde uses Pi-only Package Manifest 4, installation receipt 2, Architecture Profile 15 with
+Spec Protocol 11, registry schema 3, Workspace Protocol 16 and Delivery Proposal 10. Other formats
+are refused; normal execution never reinterprets them, and there is no migration path from Spec
+Protocol 10.
 
-The docsite publishes one canonical reading page per document unit, with parallel Module Specs and
-Implementation Specs tabs sharing the same Module-parent hierarchy,
-inline scoped diagrams and optional source-provenance disclosure. Reading and metadata both bind
-build identity, but machine inventories do not appear in the main reading graph. Spec Protocol uses
-an independent custom-document tab. There is no docsite Graph page, separate Operation-graph page or
-unregistered Projections group: capability behavior and each genuine StateGraph Operation's Graph Spec
-are read in their owning Modules' Specs. Agent contracts are read through the Agents Module. Source and link validation precede candidate promotion; human
+The docsite publishes one canonical page per document, with parallel Module Specs and
+Implementation Specs tabs following the `contains` tree, inline diagrams (illustrative ones labelled
+as such) and optional source provenance. Terminology import rows show the imported definition at
+render time. Spec Protocol uses an independent custom-document tab. Capability behaviour and each
+StateGraph Operation's Graph Spec are read in their owning Modules' Specs.
+Source and link validation precede candidate promotion; human
 navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines candidate worktrees in [P10](../prompts/protocol/framework-profile.md#p10-fresh-task-sessions-never-session-moves).
-Concorde Spec Protocol 10.0.0 defines readable Module specifications with paired metadata whose entities bind the
-files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
-the tests that verify them. Root instructions and runtime drafts refer to that rule; the Pi
+Concorde Spec Protocol 11.0.0 defines Module Specs as a checked graph whose realizations bind the
+files that realize each Module, and whose scenarios are declared by the tests that verify them.
+Root instructions and runtime drafts refer to that rule; the Pi
 catalog does not carry another copy. The installer adds a receipt-owned `concorde-protocol` block
 to `AGENTS.md`, directing the user session to read `.concorde/protocol/principles.md`. A
 Markdown link alone is not an automatic import. Verify active context and extension loading when
@@ -346,10 +338,9 @@ Remove the entry before separately removing the framework; do not delete whole u
 Installing an updated package never rewrites `.concorde/config.json`. Existing projects remain bound
 to their accepted version/digest; execution rejects a mismatch with `protocol_mismatch`. The user session
 entry points at the installed rules, but does not accept them for project execution. After reviewing and explicitly accepting new Protocol assets for the same profile, a consumer
-developer can update that binding from the project root. A project older than Profile 15 must first migrate its complete registered collection to
-reading/metadata document units and registry schema 5; changing a version or digest alone is not
-migration. The explicit offline conversion planner reports preserved definitions and remaining
-editorial work and does not enable an old-format runtime. For a structurally compatible project:
+developer can update that binding from the project root. A project written for Spec Protocol 10
+must be rewritten for Protocol 11 first; changing a version or digest alone is not migration. For a
+project whose Specs already conform:
 
 ```python
 import hashlib

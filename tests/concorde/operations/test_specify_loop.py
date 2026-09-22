@@ -32,11 +32,7 @@ class SpecReviewFreshnessTests(unittest.TestCase):
     gap = staticmethod(fixtures.ReviewTests.gap)
 
     def add_spec_consumer(self):
-        path = self.root / ".concorde/specs.json"
-        registry = json.loads(path.read_text())
-        bank = next(t for t in registry["targets"] if t["id"] == "scope.bank")
-        bank["references"].append({"kind": "module", "id": "service.transfer"})
-        path.write_text(json.dumps(registry))
+        # Banking uses the transfer Module, so it reads the transfer Specs: it is a Spec consumer.
         ensure_change(self.root, task=self.task, allow_primary=True)
         bind_owner(self.root, self.task)
 
@@ -146,15 +142,19 @@ class SpecReviewFreshnessTests(unittest.TestCase):
                     path = self.root / "specs/bank/module.md.json"
                     path.write_text(path.read_text() + "\n")
                 else:
-                    path = self.root / ".concorde/specs.json"
-                    registry = json.loads(path.read_text())
-                    bank = next(
-                        t for t in registry["targets"] if t["id"] == "scope.bank"
+                    from tests.concorde.spec.support import update_module
+
+                    update_module(
+                        self.root,
+                        "scope.bank",
+                        includes=[
+                            {
+                                "kind": "document",
+                                "target": "document.transfer.promises",
+                                "reason": "the transfer amount rules",
+                            }
+                        ],
                     )
-                    bank["references"].append(
-                        {"kind": "document", "id": "document.transfer.promises"}
-                    )
-                    path.write_text(json.dumps(registry))
                 self.assertIsNone(current_spec_scope(self.invocation()))
                 with self.assertRaises(SpecError):
                     verify_required(self.invocation())

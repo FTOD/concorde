@@ -6,9 +6,30 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.verification import verifies
-from tests.concorde.harness.test_studio import invocation
+from concorde.spec.wire_shapes import type_version
 from tests.concorde.spec.support import PACKAGE, ModelProcessDouble, project
 from tests.concorde.support.legacy_graphs.studio import build_studio_graph
+
+
+def invocation(operation="concorde-issues", mode="execute", data=None):
+    return {
+        "type_id": "concorde-operation-invocation",
+        "schema_version": 3,
+        "operation_id": operation,
+        "mode": mode,
+        "configuration": None,
+        "input": {
+            "type_id": operation + "-request",
+            "schema_version": type_version(operation + "-request"),
+            "data": data
+            if data is not None
+            else {
+                "target_id": "service.transfer",
+                "task": "Explain transfer",
+                **({"action": "list"} if operation == "concorde-issues" else {}),
+            },
+        },
+    }
 
 
 class StandaloneReviewTests(unittest.TestCase):
@@ -146,9 +167,10 @@ class StandaloneReviewTests(unittest.TestCase):
                 self.assertTrue(reviewed["representative_tasks"])
                 self.assertEqual(head, reviewed["revision"]["baseline"])
                 self.assertTrue((self.root / output["artifacts"][0]["path"]).is_file())
+                # Spec review also covers the target's Spec consumers; code review only the target.
                 self.assertEqual(
-                    [mode + "-review"],
-                    [call["stage"] for call in self.double.calls],
+                    {mode + "-review"},
+                    {call["stage"] for call in self.double.calls},
                 )
                 for policy in actual["policies"]:
                     self.assertEqual([], policy["write_paths"])

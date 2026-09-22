@@ -20,6 +20,12 @@ def create_parser() -> argparse.ArgumentParser:
     validate.add_argument("target", nargs="?")
     validate.add_argument("--format", choices=["json"], default="json")
 
+    registry = subparsers.add_parser("registry")
+    registry_mode = registry.add_mutually_exclusive_group(required=True)
+    registry_mode.add_argument("--write", action="store_true")
+    registry_mode.add_argument("--check", action="store_true")
+    registry.add_argument("--format", choices=["json"], default="json")
+
     docsite = subparsers.add_parser("docsite")
     docsite_mode = docsite.add_mutually_exclusive_group(required=True)
     docsite_mode.add_argument("--propose", action="store_true")
@@ -291,6 +297,10 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                     ),
                 ),
             )
+    if arguments.tool == "registry":
+        from ..spec.registry import registry_command
+
+        return registry_command(root, write=arguments.write)
     from ..spec.validation import validate_repository
 
     return validate_repository(root, arguments.target)
@@ -417,6 +427,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if tool
             in {
                 "validate",
+                "registry",
                 "docsite",
                 "build",
                 "protocol-manifest",

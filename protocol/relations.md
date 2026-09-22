@@ -205,8 +205,8 @@ importer's context.
 
 The owner of a shared word is the Module entitled to change its meaning; see
 [Node types](model.md#concept). An import from a Module that is neither a provider the importer
-uses nor one of its ancestors usually means the word belongs higher in the composition tree, which
-`CHK.imports.owner` reports.
+uses, nor one of its ancestors or descendants, usually means the word belongs higher in the
+composition tree, which `CHK.imports.owner` reports.
 
 **Checks.** `CHK.imports.foreign`, `CHK.imports.owner`, `CHK.terminology.import-row`,
 `CHK.context.reconciled`.

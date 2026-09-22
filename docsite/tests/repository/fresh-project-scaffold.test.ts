@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Concorde-repository evidence for scenario.views.scaffold-propose: a project holding
- * only Profile 15 initialization outputs receives the packaged docsite through the native `docsite`
+ * only initialization outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
  * dependencies without a separate diagram renderer, so it stays outside the packaged template.
  */
@@ -119,7 +119,7 @@ afterAll(async () => {
   if (root) await rm(root, { recursive: true, force: true });
 });
 
-describe("a project holding only Profile 15 initialization outputs", () => {
+describe("a project holding only initialization outputs", () => {
   // verifies: scenario.views.scaffold-propose
   it("receives the graph-free adapter and identity", async () => {
     const files = (
@@ -180,23 +180,29 @@ describe("a project holding only Profile 15 initialization outputs", () => {
 
   // verifies: scenario.views.publish-homepage-default scenario.views.publish-without-graph scenario.views.id-anchors
   it("builds the received adapter", async () => {
-    const sourcePath = resolve(root, "specs/project/obligations.md");
     const registryPath = resolve(root, ".concorde/specs.json");
     const registry = JSON.parse(await readFile(registryPath, "utf8"));
-    registry.targets[0].documents.push("specs/project/obligations.md");
+    const [module] = registry.modules;
+    const directory = module.entry.replace(/module\.md$/, "");
+    const relativePath = directory + "obligations.md";
+    const sourcePath = resolve(root, relativePath);
+    module.owns.push(relativePath);
     await writeFile(registryPath, JSON.stringify(registry));
+    const entryMetadataPath = resolve(root, module.entry + ".json");
+    const entryMetadata = JSON.parse(await readFile(entryMetadataPath, "utf8"));
+    entryMetadata.module.owns.push(relativePath);
+    await writeFile(entryMetadataPath, JSON.stringify(entryMetadata));
     await writeFile(
       sourcePath + ".json",
       JSON.stringify({
-        schema_version: 2,
+        schema_version: 3,
         document: {
           id: "document.atlas.obligations",
-          owner: "module.atlas",
+          owner: module.id,
           role: "implementation",
         },
-        entities: [],
-        dependencies: [],
-        bindings: [],
+        defines: [],
+        relations: [],
       }),
     );
     const definitions = [
@@ -210,7 +216,8 @@ describe("a project holding only Profile 15 initialization outputs", () => {
       "\n## req.atlas.publication — Readable obligation\n\nAtlas SHALL preserve the reading contract.\n" +
       "\n## scenario.atlas.publication – Readable situation\n\n- GIVEN a definition\n- WHEN it is published\n- THEN its title is readable\n" +
       "\n## scenario.atlas.another - Readable situation\n\n- GIVEN another definition with the same title\n- WHEN it is published\n- THEN its identity remains distinct\n" +
-      "\nSee [obligation](#req.atlas.publication), [situation](#scenario.atlas.publication) and [another](#scenario.atlas.another).\n";
+      "\nSee [obligation](#req.atlas.publication), [situation](#scenario.atlas.publication) and [another](#scenario.atlas.another).\n" +
+      "\n```mermaid illustrative\nsequenceDiagram\n    accTitle: Publication over time\n    accDescr: Conceptual overview.\n    Source->>Site: publish\n```\n";
     await writeFile(sourcePath, source);
     await mkdir(resolve(root, "docsite/.docusaurus"), { recursive: true });
     await writeFile(
@@ -235,13 +242,12 @@ describe("a project holding only Profile 15 initialization outputs", () => {
         "utf8",
       ),
     );
-    expect(manifest.schema_version).toBe(21);
+    expect(manifest.schema_version).toBe(22);
     expect(manifest.pages).toHaveLength(2);
-    expect(manifest.pages[0].route).toBe("/specs/project/module");
-    expect(manifest.pages[0].owner).toEqual("module.atlas");
-    expect(manifest.pages[0].aliases).toEqual([
-      expect.stringMatching(/^\/specs\/module\.atlas\/[0-9a-f]{16}$/),
-    ]);
+    expect(manifest.pages[0].route).toBe(
+      "/specs/" + module.entry.replace(/^specs\//, "").replace(/\.md$/, ""),
+    );
+    expect(manifest.pages[0].owner).toEqual(module.id);
     const homepage = await readFile(
       resolve(root, "docsite/build/index.html"),
       "utf8",
@@ -265,12 +271,6 @@ describe("a project holding only Profile 15 initialization outputs", () => {
         ),
       ),
     ).toBe(true);
-    const [legacyAlias] = manifest.pages[0].aliases as string[];
-    const redirectStub = await readFile(
-      resolve(root, "docsite/build", legacyAlias.slice(1) + ".html"),
-      "utf8",
-    );
-    expect(redirectStub).toContain(manifest.pages[0].route);
     expect(
       await readFile(
         resolve(root, "generated/protocol/framework-owned.txt"),
@@ -306,10 +306,17 @@ describe("a project holding only Profile 15 initialization outputs", () => {
     expect(mainPage).not.toContain("/diagrams/");
     expect(mainPage).toContain("Spec metadata");
     const detailPage = await readFile(
-      resolve(root, "docsite/build/specs/project/obligations.html"),
+      resolve(
+        root,
+        "docsite/build",
+        manifest.pages[1].route.slice(1) + ".html",
+      ),
       "utf8",
     );
     expect(detailPage).toContain("Literal Spec expression: {6 * 7}.");
+    expect(detailPage).toContain("Illustrative, non-normative.");
+    expect(detailPage).toContain('id="document.atlas.obligations"');
+    expect(mainPage).toContain(`id="${module.id}"`);
     expect(await readFile(sourcePath, "utf8")).toBe(source);
     const search = JSON.parse(
       await readFile(resolve(root, "docsite/build/search-index.json"), "utf8"),
@@ -428,9 +435,12 @@ describe("a project holding only Profile 15 initialization outputs", () => {
       ),
     );
     expect(manifest.pages).toHaveLength(2);
-    expect(manifest.pages[0].route).toBe("/specs/project/module");
     const spec = await readFile(
-      resolve(root, "docsite/build/specs/project/module.html"),
+      resolve(
+        root,
+        "docsite/build",
+        manifest.pages[0].route.slice(1) + ".html",
+      ),
       "utf8",
     );
     expect(spec.match(/<nav\b[\s\S]*?<\/nav>/)![0]).toContain("Team Handbook");

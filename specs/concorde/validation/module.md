@@ -2,119 +2,189 @@
 
 ## Purpose
 
-Validation checks specification structure and runs configured verification commands against the current candidate. It uses those results and existing completion requirements to assess readiness. It does not repair failures or deliver the change.
+Validation decides whether a candidate change is ready to be delivered. It checks the Specs'
+structure, runs the project's configured checks against the candidate's current files, and then
+confirms that the change's own gates hold: accepted tasks are complete, required reviews are current
+and no task blocker is open. The user session calls it after implementing or editing a change;
+Delivery calls its completion check again before publishing. Validation runs no model, repairs
+nothing and delivers nothing. A ready candidate has passed deterministic gates for its exact bytes;
+that is not proof that its Specs or code are semantically complete.
 
 ## Terminology
 
-| Term                                                      | Meaning / definition                             |
-| --------------------------------------------------------- | ------------------------------------------------ |
-| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.                   |
-| [Evidence](../module.md#terminology)                      | Defined in Concorde Framework.                   |
-| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.                   |
-| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.                   |
-| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                   |
-| [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
-| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
-| [Scenario](../module.md#terminology)                      | Defined in Concorde Framework.                   |
-| [Operation](../module.md#terminology)                     | Defined in Concorde Framework.                   |
+| Term | Definition |
+| --- | --- |
+| Ready | The state of a candidate whose current Spec validation, configured checks, accepted tasks, required reviews and task blockers all satisfy its gates for its exact current files. |
+| Validation evidence | The recorded Spec validation and configured check results of a candidate, each bound to digests of the inputs it examined. |
+| Affected Module | A Module whose realizations bind a file that the validated Module also binds, so its checks run too. |
+| Direct candidate | A candidate whose change records no planned Module work, typically because the user session edited it directly. |
+| [Module](../vocabulary.md#concept.concorde.module) | |
+| [Spec](../vocabulary.md#concept.concorde.spec) | |
+| [Capability](../vocabulary.md#concept.concorde.capability) | |
+| [Host](../vocabulary.md#concept.concorde.host) | |
+| [Evidence](../vocabulary.md#concept.concorde.evidence) | |
+| [Candidate](../harness/worktrees/module.md#concept.worktrees.candidate) | |
+| [Task](../planning/module.md#concept.planning.task) | |
+| [Blocker](../issues/module.md#concept.issues.blocker) | |
+| [Required review](../review/module.md#concept.review.required-review) | |
 
 ## Usage
 
-Run `concorde-validate` for the current admitted candidate with target_id and task; optionally
-choose whether to run configured checks. This deterministic operation launches no Agent. It
-returns structural and configured-check evidence tied to current bytes and evaluates existing
-readiness requirements. A directly authored candidate needs no invented plan or attempt; existing
-authored tasks and required reviews still apply.
+The user session calls `concorde-validate` in the candidate's worktree with `target_id` (the Module
+the change is about), `task`, and optionally `focus_id`, `constraints`, `change_id` and `run_checks`
+(default `true`). Validation is a Host service: it starts no worker and selects no model context.
 
-Omitting checks does not satisfy a gate whose evidence is missing or stale. Failed checks,
-incomplete tasks or required reviews block ready while preserving the candidate. Repeating
-validation evaluates current inputs; prior passing results are not permanent. Checks can read
-project files but must write temporary output only to issued external scratch. Unsupported check
-isolation fails closed with private diagnostics, not a less restricted fallback. Validation
-neither repairs defects nor delivers a change, and structural success or scenario coverage does
-not prove semantics.
+For example, after `concorde-implement` finished the accepted tasks of `module.transfer`, the user
+session calls `concorde-validate` with the same task. Validation checks the Specs, finds that
+`module.transfer` shares a file with `module.ledger`, runs the configured checks of both Modules,
+verifies that the tasks are complete and the required reviews are current, and answers with outcome
+`ready` and the check results. The candidate's status record now says it is ready and remembers the
+exact file tree that was validated. Delivery can take it from there.
 
-For example, if code changes after a passing check, the old result is no longer evidence for those
-new bytes. Validation recomputes or rechecks the relevant evidence before reporting readiness.
+Before it checks anything, validation in a candidate confirms pending realization entries. A Spec
+may declare a file as `pending` while it does not exist yet; once the file exists, the Protocol
+requires the marker to go. So when the worktree has a change status record, the Host removes from
+every realization's `pending` list each entry whose file or directory now exists, keeping the entry
+itself bound. Only the metadata members of the affected documents change; reading prose is never
+touched, and entries whose files are still missing stay pending. The confirmation becomes part of
+the validated tree. In a directory without a change status record, pending entries are left alone
+and an existing pending file is reported by structural validation.
+
+<a id="concept.validation.evidence"></a><a id="concept.validation.affected-module"></a>
+
+The checks run are those of every affected Module, including the validated Module itself, because a
+change to a shared file can break any Module that binds it. Each check result states the check,
+its Module, `passed`, `failed` or `timeout`, the exit code, and digests of the check's inputs and its
+log. The logs themselves stay in the Host's run records. The checks run in a sandbox that lets them
+read the project but not write anything in it, so temporary files, caches and reports must go to the
+scratch directories the sandbox provides.
+
+<a id="concept.validation.ready"></a>
+
+Validation answers with one of these outcomes:
+
+- `failed` when the Specs are structurally invalid or a check did not pass. The candidate is marked
+  blocked and stays as it is for inspection.
+- `ready` when every gate holds. The candidate's status becomes `ready` and its validated tree is
+  recorded.
+- `completed` with "semantic completeness is not proven" when the checks passed but the change
+  still has unfinished accepted tasks, so it cannot be ready yet.
+
+A gate that is not met stops the request with an error that names it, for example
+`review_required` for a missing or stale required review, `spec_incomplete` for an open task
+blocker, `incomplete_change` for unfinished tasks and `stale_evidence` when files changed while
+validation ran.
+
+<a id="concept.validation.direct-candidate"></a>
+
+A direct candidate needs no invented plan. When the user session edited Specs or code directly,
+`concorde-validate` runs every configured check of the project, records the evidence against the
+candidate's exact tree and marks it ready if every review the change has required is current. A
+change with planned Module work cannot use this path to skip its unfinished tasks.
+
+`run_checks: false` skips running the checks but never fakes them: a gate that needs check results
+still fails when they are missing or stale. Repeating validation always recomputes against current
+bytes; an earlier pass is not permanent. If the check sandbox cannot be set up, validation stops
+with `check_sandbox_unavailable` and never runs the checks with fewer restrictions. The sandbox
+currently needs Linux with a system bubblewrap and working namespace support.
 
 ## Design
 
-<a id="entity.validation.adapter"></a><a id="entity.validation.evidence"></a><a id="entity.validation.readiness"></a>
+<a id="realization.validation.service"></a>
 
-Validation resolves affected Spec consumers and changed-file users before collecting evidence.
-The host admits configured commands and delegates execution to [Harness Module](../harness/module.md)'s OS-enforced read-only
-executor; only the outside host persists logs and digest-bound results. [Check execution](execution-reference.md#validation-configured-check-execution)
-describes scratch, private diagnostics and concurrent-change rechecks. Child processes share the
-read-only boundary; caches and reports go to issued storage. Formatting source is an implementation
-action, not something a check may silently do while claiming to verify the original bytes.
+The validation service separates collecting evidence from deciding readiness. Collecting evidence
+checks Spec structure and runs checks; deciding readiness then reads that evidence together with
+the change's task, review and blocker state. Keeping the two apart means a passing command can
+never stand in for a missing review or an unfinished task, and the same completion check serves
+both Validation and Delivery.
 
-Currently the isolated runner requires Linux, system bubblewrap and working namespace/pidfd support.
-If that boundary is unavailable, validation stops instead of running unrestricted commands.
+Every piece of evidence is bound to digests of what it examined. A check result is bound to the
+check's command, its explicit input files, the implementation revision of its Module and the
+sandbox policy. The recorded state also holds the Spec and implementation revisions of every
+affected Module. Validation snapshots the candidate's file tree before and after running checks and
+recomputes the affected revisions afterwards; a difference means someone changed the candidate
+during validation, and the result is refused rather than recorded. Delivery later compares the
+validated tree with the candidate's actual tree for the same reason.
 
-Readiness combines current structural/check evidence with existing task completion and required
-reviews, without inventing a plan for a manual candidate. Unavailable isolation fails closed.
-This separation keeps a command's success from granting writes, proving semantics or bypassing a
-previously required review.
+Readiness is not transitive trust. When the change recorded component work, each component's own
+completion is checked again with its own task, and a component whose Spec or implementation changed
+since it completed stops readiness.
 
-`validate` is a finite deterministic Host service after direct target admission. It calls no model
-and compiles no Graph. There is no public validate Studio leaf in the retired dispatch Graph.
-The caller chooses when to validate; no development sequence runs other stages before or after it.
+<a id="realization.validation.check-runner"></a>
+
+The configured check runner is the Host code that turns the project's check configuration into
+sandboxed runs. It resolves each Module's checks, replaces a leading `{python}` with the Host's
+interpreter, runs the command through Check execution, saves stdout and stderr as a private log,
+and records the result. It also serves the same checks to implementation and code review workers
+on request. This file is shared with Check execution, which owns the sandbox itself.
+
+<a id="realization.validation.tests"></a>
+
+The validation tests cover check execution, gates and readiness on fixture projects, including
+real sandboxed check runs.
+
+Open questions. The Host's `defer_ready` switch, which stops a validation before marking the
+candidate ready, is never set by any current caller.
 
 ## Relationships
 
-The diagram separates Validation evidence from the Readiness decision that consumes it. The [Spec Module](../spec/module.md)
-identifies affected consumers and checks structure, Harness executes admitted commands without
-project writes, and [Harness admission](../harness/admission.md) records results and evaluates existing gates. A passing command
-is evidence for its checked inputs, not permission to skip required reviews or a proof of semantic
-completeness. These collaborations are operation dependencies; Validation does not own its providers.
-
 ```mermaid
-flowchart TB
-    accTitle: Validation entities and dependencies
-    accDescr: Validation resolves affected users and validates Spec structure, runs configured checks through the isolated Harness executor and records evidence and readiness decisions through the host.
-    e0["Validation adapter"]
-    e2["Harness"]
-    e3["Spec"]
-    e0 -->|runs isolated configured checks, and records evidence and readiness through| e2
-    e0 -->|validates structure and resolves affected users through| e3
-    domain_evidence["Validation evidence"]
-    e0 -->|records current check results as| domain_evidence
-    domain_readiness["Readiness decision"]
-    e0 -->|evaluates current gates for| domain_readiness
+flowchart LR
+    accTitle: Validation collaboration
+    accDescr: The validation service validates Specs, runs configured checks through the check runner and records readiness on the candidate.
+    Service[Validation service] -->|validates the Specs with| Spec[Spec tooling]
+    Service -->|runs configured checks through| Runner[Configured check runner]
+    Runner -->|executes each check in| Checks[Check execution]
+    Service -->|records| Evidence[Validation evidence]
+    Service -->|requires current| Req[Review / Required review]
+    Service -->|decides| Ready[Ready]
+    Ready -->|is recorded on| Cand[Candidate worktrees / Candidate]
 ```
 
-## Provider collaboration
+The picture shows one validation request. Admission, task state and blockers are explained below.
 
-Validation relies on these providers while retaining responsibility for its own readiness decision.
+<a id="uses-spec"></a>
 
-### Harness
+**Spec tooling** loads the registry and checks structural conformance. Validation runs its structural
+validation first and reports any error as outcome `failed`; it also asks Spec tooling which Modules bind
+the validated Module's files. A structurally invalid project never reaches the checks.
 
-<a id="entity.validation.harness"></a><a id="agreement.document.validation.module.2"></a>
+<a id="uses-harness-checks"></a>
 
-Execute configured checks with OS-enforced read-only project access, external scratch and bounded process-tree lifetime.
+**Check execution** runs one command with read-only access to the project, external scratch space
+and a bounded process lifetime, and reports its output, exit code and timeout. Validation supplies
+the command, the timeout and an environment whose `PYTHONPATH` points at the Concorde package, and
+keeps the raw output private. When Check execution cannot provide its sandbox, Validation saves the
+diagnostic log and stops with `check_sandbox_unavailable`.
 
-This collaboration applies when run_checks admits a configured command whose result is needed for candidate evidence.
+<a id="uses-harness-worktrees"></a>
 
-Admit deterministic validation requests, retain private check logs and store current candidate evidence and readiness decisions.
+**Candidate worktrees** keeps the status record of the [candidate](../harness/worktrees/module.md#concept.worktrees.candidate)
+change and computes its file tree snapshot. Validation reads the recorded tasks, components,
+blockers and earlier evidence from it and writes the new evidence, the phase and the `ready` status.
+Validation of a direct candidate stores its evidence in the change's `validation` record.
 
-This collaboration applies when validation is requested, check results are recorded or existing task and review gates are evaluated.
+<a id="uses-harness-admission"></a>
 
-- [Isolated configured-check execution](../harness/execution-reference.md#execution-configured-deterministic-checks); Supply the registered command and timeout; keep raw diagnostics in host records and refuse checks when isolation is unavailable.
-- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+**Request admission** receives the `concorde-validate` request, binds it to the candidate worktree
+and wraps the answer. Validation relies on it to have selected the Module and the worktree before it
+starts.
 
-### Spec
+<a id="uses-review"></a>
 
-<a id="entity.validation.spec"></a><a id="agreement.document.validation.module.3"></a>
+**Review** answers whether every [required review](../review/module.md#concept.review.required-review)
+of the change is current, following [its currentness rule](../review/requirements.md#req.review.required-current).
+Validation asks this first when deciding readiness and stops with `review_required` when the answer
+is no. It never chooses new review requirements itself.
 
-The Spec Module validates Spec structure and resolves every affected contract consumer and implementation-file user for candidate checks.
+<a id="uses-planning"></a>
 
-This collaboration applies when computing structural evidence and the affected Module set for current validation.
+**Planning** writes the accepted [tasks](../planning/module.md#concept.planning.task) of a change.
+Validation only reads whether every accepted task of the validated Module is marked complete and
+stops with `incomplete_change` otherwise.
 
-- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
-- [Structural validation](../spec/scenarios.md#scenario.spec.validate-success); require consistent registered state without claiming semantic completeness.
+<a id="uses-issues"></a>
 
-## Precise specifications
-
-The Validation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#validation-validation-operation).
-These companions are part of the same complete Module specification, not separate topic owners.
+**Issues** records [blockers](../issues/module.md#concept.issues.blocker) against a task. An open
+blocker for the validated Module's current task stops readiness with `spec_incomplete`; Validation
+never closes a blocker because files changed.

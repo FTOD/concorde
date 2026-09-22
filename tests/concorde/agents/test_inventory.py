@@ -36,12 +36,17 @@ class AgentInventoryTests(unittest.TestCase):
                 self.assertEqual(source["document_id"], paired["document_id"])
                 self.assertEqual(source["owner"], paired["owner"])
                 self.assertEqual(source["reasons"], paired["reasons"])
-        # Explicit defining entries do not recursively import provider collections.
-        self.assertIn("specs/concorde/operations/module.md", sources)
-        self.assertNotIn("specs/concorde/operations/composition.md", sources)
-        self.assertIn("specs/concorde/spec/registry.md", sources)
-        self.assertNotIn("specs/concorde/spec/scenarios.md", sources)
-        self.assertIn("specs/concorde/planning/tasks.md", sources)
+        # Every selected document is explained by a declaration of this Module alone.
+        declaration = repository.module_declaration(target.id)
+        selected = set(target.documents)
+        for relation in (*declaration.contains, *declaration.uses):
+            selected.update(repository.selection({**relation, "kind": "module"}))
+        for relation in declaration.includes:
+            selected.update(repository.selection(relation))
+        self.assertEqual(
+            {path for path, source in sources.items() if source["role"] == "reading"},
+            selected,
+        )
         self.assertEqual(9, len(agents.AGENTS))
         self.assertEqual(7, len(load_worker_profiles()))
         self.assertNotIn("main", agents.AGENTS)
@@ -53,7 +58,7 @@ class AgentInventoryTests(unittest.TestCase):
         for name in ("context_assessor", "task_author"):
             spec_text = (REPOSITORY_ROOT / "agents" / name / "spec.md").read_text()
             self.assertNotIn("`concorde-dependencies`", spec_text)
-            self.assertIn("`dependencies`", spec_text)
+            self.assertIn("`uses`", spec_text)
         self.assertFalse(set(agents.DOMAIN_AGENTS) & set(operations.OPERATIONS))
         for name in agents.DOMAIN_AGENTS:
             module = importlib.import_module("agents." + name)

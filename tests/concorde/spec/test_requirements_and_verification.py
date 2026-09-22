@@ -1,63 +1,48 @@
-"""Protocol 6: reader parts, normative definitions, identity and test-declared scenarios."""
+"""Requirements, scenarios and the scenario coverage tests declare, on a one-Module project."""
 
 from __future__ import annotations
 
-import json
-import re
 import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.distribution.project_defaults import write_protocol_copy
-from concorde.spec.initialize import protocol_binding
-from concorde.spec.repository import SpecError, SpecRepository
-from concorde.spec.validation import validate_repository
 from concorde.spec.verification import scan_declarations, verifies
 from tests.concorde.spec.support import (
     DocumentSource,
+    SpecProject,
     module_document,
+    register_module,
     write_document,
 )
 
-PACKAGE = Path(__file__).resolve().parents[3]
-
-ENTITIES = [
+NODES = [
     {
-        "id": "entity.shop.cart",
+        "id": "realization.shop.cart",
+        "type": "realization",
         "title": "Cart",
-        "kind": "record",
-        "responsibility": "Holds the lines a customer intends to buy.",
-        "files": ["src/shop/"],
+        "meaning": "Holds the lines a customer intends to buy.",
+        "entries": ["src/shop/"],
     },
     {
-        "id": "entity.shop.tests",
+        "id": "realization.shop.tests",
+        "type": "realization",
         "title": "Shop tests",
-        "kind": "tests",
-        "responsibility": "Exercise the cart.",
-        "files": ["tests/shop/"],
+        "meaning": "Exercise the cart.",
+        "entries": ["tests/shop/"],
     },
+]
+RELATES = [
+    {
+        "type": "relates",
+        "source": "realization.shop.tests",
+        "verb": "exercise",
+        "target": "realization.shop.cart",
+    }
 ]
 DIAGRAM = (
     "flowchart TB\n    accTitle: Shop\n    accDescr: The tests exercise the cart.\n"
     '    cart["Cart"]\n    tests["Shop tests"]\n    tests -->|exercise| cart'
 )
-
-
-def reading_entry(requirements, scenarios, extra=""):
-    return module_document(
-        "document.shop",
-        "module.shop",
-        "Shop",
-        "Shop sells things.",
-        scenarios,
-        ("Cart and verification.", ENTITIES),
-        "The cart holds lines and its tests exercise checkout.",
-        DIAGRAM,
-        requirements=requirements,
-        trailer=extra,
-    )
-
-
 REQUIREMENT = (
     "### req.shop.single-order — One order per submission\n\n"
     "Shop SHALL create at most one order for a successfully\nsubmitted checkout request.\n\n"
@@ -69,92 +54,65 @@ SCENARIO = (
 )
 
 
+def shop(requirements=REQUIREMENT, scenarios=SCENARIO, extra="", nodes=NODES):
+    both = len(nodes) == 2
+    diagram = DIAGRAM if both else 'flowchart TB\n    cart["Cart"]' if nodes else None
+    return module_document(
+        "document.shop",
+        "module.shop",
+        "Shop",
+        "Shop sells things.",
+        scenarios,
+        ("Cart and verification.", nodes),
+        "The cart holds lines and its tests exercise checkout.",
+        diagram,
+        requirements=requirements,
+        trailer=extra,
+        relations=RELATES if both else (),
+        extra_owned=("notes.md",),
+    )
+
+
+NOTES = DocumentSource(
+    "# Notes\n\nSee [checkout](obligations.md#scenario.shop.submit) and "
+    "[the cart](module.md#realization.shop.cart).\n",
+    {
+        "schema_version": 3,
+        "document": {
+            "id": "document.shop.notes",
+            "owner": "module.shop",
+            "role": "module",
+        },
+        "defines": [],
+        "relations": [],
+    },
+)
+
+
 class RequirementsAndVerificationTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
-        configuration = {
-            "type_id": "concorde-operation-configuration",
-            "schema_version": 2,
-            "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
-        }
-        self.write(
-            ".concorde/config.json",
-            json.dumps(
-                {
-                    "profile_version": 15,
-                    "registry": ".concorde/specs.json",
-                    "protocol": protocol_binding(PACKAGE),
-                    "operation_configuration": configuration,
-                }
-            ),
-        )
-        write_protocol_copy(self.root, PACKAGE)
-        self.write(
-            ".concorde/specs.json",
-            json.dumps(
-                {
-                    "schema_version": 5,
-                    "project_id": "project.shop",
-                    "entry_target": "module.shop",
-                    "checks": [],
-                    "targets": [
-                        {
-                            "id": "module.shop",
-                            "kind": "module",
-                            "title": "Shop",
-                            "documents": [
-                                "specs/shop/module.md",
-                                "specs/shop/notes.md",
-                            ],
-                            "parent": None,
-                            "uses": [],
-                            "files": ["src/shop/", "tests/shop/"],
-                            "checks": [],
-                            "references": [],
-                        }
-                    ],
-                }
-            ),
-        )
+        self.project = SpecProject(self.root)
         self.write("src/shop/cart.py", "def total(lines):\n    return sum(lines)\n")
         self.write(
             "tests/shop/test_cart.py",
             "from concorde.spec.verification import verifies\n\n"
             "class CartTests:\n    @verifies('scenario.shop.submit')\n    def test_submit(self):\n        pass\n",
         )
-        self.write("specs/shop/module.md", reading_entry(REQUIREMENT, SCENARIO))
-        self.write(
-            "specs/shop/notes.md",
-            DocumentSource(
-                "# Notes\n\n\nSee [checkout](obligations.md#scenario.shop.submit) and [the cart](module.md#entity.shop.cart).\n",
-                {
-                    "schema_version": 2,
-                    "document": {
-                        "id": "document.shop.notes",
-                        "owner": "module.shop",
-                        "role": "module",
-                    },
-                    "entities": [],
-                    "dependencies": [],
-                    "bindings": [],
-                },
-            ),
-        )
+        self.write("specs/shop/notes.md", NOTES)
+        self.project.module("module.shop", "specs/shop/module.md", shop())
 
     def write(self, path, content):
         write_document(self.root, path, content)
 
-    def validate(self):
-        return validate_repository(self.root, package_root=PACKAGE)
-
-    def rules(self, report):
-        return {(f.rule_id, f.severity) for f in report.findings}
+    def rules(self, severity="error"):
+        return self.project.rules(severity)
 
     @verifies("scenario.spec.validate-success")
     def test_a_requirement_section_is_parsed_with_its_one_shall_statement(self):
-        repository = SpecRepository(self.root, PACKAGE)
+        repository = self.project.repository()
         target = repository.select("module.shop")
         (requirement,) = repository.requirements(target)
         self.assertEqual(
@@ -167,206 +125,53 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         )
         (scenario,) = repository.scenarios(target)
         self.assertEqual(4, len(scenario.steps))
-        report = self.validate()
+        report = self.project.validate()
         self.assertEqual("success", report.status, [f.message for f in report.findings])
-        self.assertNotIn(("CONCORDE-VERIFICATION-002", "warning"), self.rules(report))
+        self.assertNotIn("CONCORDE-COVERAGE-001", self.rules("warning"))
 
-    def test_a_statement_expresses_exactly_one_behavior(self):
-        self.write(
-            "specs/shop/module.md",
-            reading_entry(
-                "### req.shop.double — Two things\n\nShop SHALL create one order and SHALL notify the customer.\n",
-                SCENARIO,
-            ),
-        )
-        with self.assertRaisesRegex(SpecError, "exactly once"):
-            SpecRepository(self.root, PACKAGE).requirements(
-                SpecRepository(self.root, PACKAGE).select("module.shop")
-            )
-        self.write(
-            "specs/shop/module.md",
-            reading_entry(
-                "### req.shop.none — No statement\n\n- a list instead of a statement\n",
-                SCENARIO,
-            ),
-        )
-        with self.assertRaisesRegex(SpecError, "before any list"):
-            SpecRepository(self.root, PACKAGE).requirements(
-                SpecRepository(self.root, PACKAGE).select("module.shop")
-            )
-        self.write(
-            "specs/shop/module.md",
-            reading_entry("### req.shop.empty — Nothing\n", SCENARIO),
-        )
-        with self.assertRaisesRegex(SpecError, "no statement"):
-            SpecRepository(self.root, PACKAGE).requirements(
-                SpecRepository(self.root, PACKAGE).select("module.shop")
-            )
-
-    def test_requirement_list_items_and_non_step_items_in_scenarios_are_rejected(self):
-        self.write(
-            "specs/shop/module.md",
-            reading_entry(
-                "- req.shop.old: Shop SHALL not use the old form.\n", SCENARIO
-            ),
-        )
-        with self.assertRaisesRegex(SpecError, "not a list item"):
-            SpecRepository(self.root, PACKAGE).scenarios(
-                SpecRepository(self.root, PACKAGE).select("module.shop")
-            )
-        self.write(
-            "specs/shop/module.md",
-            reading_entry(
-                REQUIREMENT,
-                SCENARIO.replace(
-                    "- AND the identifier is returned", "- the identifier is returned"
-                ),
-            ),
-        )
-        with self.assertRaisesRegex(SpecError, "not a GIVEN/WHEN/THEN"):
-            SpecRepository(self.root, PACKAGE).scenarios(
-                SpecRepository(self.root, PACKAGE).select("module.shop")
-            )
-
-    @verifies("scenario.spec.validate-structural-errors")
-    def test_the_reading_entry_requires_the_four_reading_sections(self):
-        text = (self.root / "specs/shop/module.md").read_text()
-        for heading in ("## Purpose", "## Usage", "## Design", "## Relationships"):
-            with self.subTest(heading=heading):
-                self.write(
-                    "specs/shop/module.md", text.replace(heading, "## Missing section")
-                )
-                self.assertIn(
-                    ("CONCORDE-MODULE-001", "error"), self.rules(self.validate())
-                )
-        self.write(
-            "specs/shop/module.md",
-            text.replace("## Relationships", "### Relationships"),
-        )
-        self.assertIn(("CONCORDE-MODULE-001", "error"), self.rules(self.validate()))
-
-    @verifies("scenario.spec.reader-parts-invalid")
-    def test_reading_structure_rejects_legacy_duplicates_wrong_levels_and_empty_explanations(
-        self,
-    ):
-        text = str(reading_entry(REQUIREMENT, SCENARIO))
-        cases = [
-            text.replace("## Usage", "## Usage & Contract"),
-            text.replace("## Design", "## Architecture & Realization"),
-            text + "\n## Purpose\n\nDuplicate.\n",
-            text + "\n## Entities\n\nInventory chapter.\n",
-            text.replace("## Usage", "### Usage"),
-            text.replace("## Design", "#### Design"),
-            text.replace("## Purpose", "## Purpose\n\n### Nested title"),
-            text.replace(
-                "Use the declared boundary for the cases below; rejected input has no implicit retry.",
-                "",
-            ),
-            text.replace("The cart holds lines and its tests exercise checkout.", "")
-            .replace("Holds the lines a customer intends to buy.", "")
-            .replace("Exercise the cart.", ""),
-            text.replace("## Usage", "~~~~markdown\n## Usage\n~~~~"),
-            text + "\n```concorde-entities\n[]\n```\n",
-            re.sub(r"(```mermaid\n[\s\S]*?\n```)", r"~~~~markdown\n\1\n~~~~", text),
-            text.replace("## Purpose", "## Premature detail\n\nExtra.\n\n## Purpose"),
-        ]
-        for index, invalid in enumerate(cases):
-            with self.subTest(case=index):
-                self.write("specs/shop/module.md", invalid)
-                self.assertIn(
-                    ("CONCORDE-MODULE-001", "error"), self.rules(self.validate())
-                )
-
-    @verifies("scenario.spec.reader-parts")
-    def test_closed_atx_headings_and_no_final_newline_are_valid(self):
-        text = (
-            reading_entry(REQUIREMENT, SCENARIO)
-            .replace("## Purpose\n", "## Purpose ##\n")
-            .rstrip()
-        )
-        self.write("specs/shop/module.md", text)
-        self.assertEqual("success", self.validate().status)
-
-    @verifies("scenario.spec.reader-parts", "scenario.spec.reader-parts-invalid")
-    def test_companions_use_topic_reading_without_an_entry_template(self):
-        for body in (
-            "Consumer notes.",
-            "## Design\n\nInternal notes.",
-            "## Use\n\nConsumer notes.\n\n## Implementation\n\nInternal notes.",
+    @verifies("scenario.spec.node-checks")
+    def test_a_requirement_statement_is_one_sentence_with_one_shall(self):
+        for requirements in (
+            "### req.shop.double — Two things\n\nShop SHALL create one order and SHALL notify.\n",
+            "### req.shop.two — Two sentences\n\nShop SHALL create one order. It notifies.\n",
+            "### req.shop.none — No statement\n\n- a list instead of a statement\n",
+            "### req.shop.empty — Nothing\n",
+            "- req.shop.old: Shop SHALL not use the old form.\n",
+            "### req.shop.nested — Nested\n\nShop SHALL nest.\n\n#### Detail\n\nMore.\n",
         ):
-            with self.subTest(body=body):
-                self.write(
-                    "specs/shop/notes.md",
-                    "# Notes\n\n## Terminology\n\nNo specialized terminology.\n\n## Details\n\n"
-                    + body,
-                )
-                self.assertEqual("success", self.validate().status)
-        for body in (
-            "",
-            "# Notes\n\n## Usage & Contract\n\nRetired.",
-            "# Notes\n\n```concorde-document\n{}\n```",
+            with self.subTest(requirements=requirements):
+                self.write("specs/shop/module.md", shop(requirements=requirements))
+                self.assertIn("CHK.requirement.statement", self.rules())
+
+    @verifies("scenario.spec.node-checks")
+    def test_scenario_steps_follow_the_grammar(self):
+        for replacement in (
+            ("- AND the identifier is returned", "- the identifier is returned"),
+            ("- GIVEN a valid cart\n", "- AND a valid cart\n"),
+            ("- THEN one order exists\n", "- THEN one order exists\n- GIVEN again\n"),
+            ("- THEN one order exists\n- AND the identifier is returned\n", ""),
         ):
-            with self.subTest(body=body):
-                self.write("specs/shop/notes.md", body)
-                self.assertIn(
-                    ("CONCORDE-MODULE-001", "error"), self.rules(self.validate())
+            with self.subTest(replacement=replacement):
+                self.write(
+                    "specs/shop/module.md",
+                    shop(scenarios=SCENARIO.replace(*replacement)),
                 )
+                self.assertIn("CHK.scenario.steps", self.rules())
 
-    @verifies("scenario.spec.internal-contract-context")
-    def test_internal_definitions_keep_owner_full_context_and_verification_identity(
-        self,
-    ):
-        internal = (
-            "\n### Internal constraints and verification\n\n"
-            "#### req.shop.lock — Serialize order persistence\n\n"
-            "Shop SHALL hold its lock during order persistence.\n\n"
-            "#### scenario.shop.lock — Persistence holds the lock\n\n"
-            "- GIVEN a valid order\n- WHEN persistence writes it\n- THEN the lock is held\n"
+    @verifies("scenario.spec.document-roles")
+    def test_precise_definitions_belong_to_implementation_documents(self):
+        path = self.root / "specs/shop/notes.md"
+        path.write_text(
+            path.read_text()
+            + "\n## Extra\n\n"
+            + REQUIREMENT.replace("single-order", "notes")
         )
-        self.write(
-            "specs/shop/module.md", reading_entry(REQUIREMENT, SCENARIO, internal)
-        )
-        self.write(
-            "tests/shop/test_lock.py",
-            "from concorde.spec.verification import verifies\n"
-            "@verifies('scenario.shop.lock')\ndef test_lock():\n    pass\n",
-        )
-        repository = SpecRepository(self.root, PACKAGE)
-        target = repository.select("module.shop")
-        self.assertEqual(
-            {"req.shop.single-order", "req.shop.lock"},
-            {r.id for r in repository.requirements(target)},
-        )
-        scenario = next(
-            s for s in repository.scenarios(target) if s.id == "scenario.shop.lock"
-        )
-        self.assertEqual("module.shop", scenario.owner)
-        resolution = repository.spec_context(scenario.id)
-        self.assertEqual(
-            repository.spec_files(target.id), repository.spec_files(scenario.id)
-        )
-        self.assertEqual(6, len(resolution.sources))
-        self.assertEqual(1, len(repository.scenario_verifications(target)[scenario.id]))
-        self.assertEqual("success", self.validate().status)
-        self.assertIn("## Usage", repository.document("specs/shop/module.md").body)
-        self.assertIn("## Design", repository.document("specs/shop/module.md").body)
-
-    @verifies("scenario.spec.link-anchors")
-    def test_links_with_id_fragments_must_reach_the_defining_document(self):
-        self.write(
-            "specs/shop/notes.md",
-            "# Notes\n\n## Terminology\n\nNo specialized terminology.\n\n## Links\n\n[wrong document](#scenario.shop.submit) and "
-            "[unknown](module.md#req.shop.missing) and [plain heading](module.md#purpose).\n",
-        )
-        report = self.validate()
-        messages = [
-            f.message for f in report.findings if f.rule_id == "CONCORDE-LINK-001"
-        ]
-        self.assertEqual(2, len(messages), messages)
-        self.assertTrue(
-            any("defined in specs/shop/obligations.md" in m for m in messages)
-        )
-        self.assertTrue(any("names no scenario" in m for m in messages))
+        self.assertIn("CHK.defines.role", self.rules())
+        path.write_text(NOTES)
+        metadata = self.project.metadata("specs/shop/notes.md")
+        metadata["document"]["role"] = "topic"
+        self.project.save_metadata("specs/shop/notes.md", metadata)
+        self.assertIn("CHK.document.role", self.rules())
 
     @verifies("scenario.spec.verification-declarations")
     def test_tests_declare_the_scenarios_they_verify_and_coverage_is_reported(self):
@@ -383,7 +188,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             ],
             [(d.scenario_id, d.path, d.name) for d in declarations],
         )
-        repository = SpecRepository(self.root, PACKAGE)
+        repository = self.project.repository()
         self.assertEqual(
             {"scenario.shop.submit": 1},
             {
@@ -393,25 +198,35 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                 ).items()
             },
         )
+        self.assertEqual(1, len(repository.covered_by("scenario.shop.submit")))
         self.write("tests/shop/test_cart.py", "def test_nothing():\n    pass\n")
-        report = self.validate()
-        self.assertIn(("CONCORDE-VERIFICATION-002", "warning"), self.rules(report))
-        self.assertEqual("success", report.status)
+        self.assertIn("CONCORDE-COVERAGE-001", self.rules("warning"))
+        self.assertEqual("success", self.project.validate().status)
         self.write(
             "tests/shop/test_cart.py",
             "from concorde.spec.verification import verifies\n\n@verifies('scenario.shop.unknown')\ndef test_x():\n    pass\n",
         )
-        report = self.validate()
-        self.assertIn(("CONCORDE-VERIFICATION-001", "error"), self.rules(report))
+        self.assertIn("CHK.verifies.resolves", self.rules())
         self.write("tests/shop/test_cart.py", "def broken(:\n    pass\n")
-        report = self.validate()
-        self.assertIn(("CONCORDE-VERIFICATION-004", "error"), self.rules(report))
+        self.assertIn("CONCORDE-COVERAGE-003", self.rules())
         self.write(
             "tests/shop/test_cart.py",
             "from concorde.spec.verification import verifies\n\n@verifies(name)\ndef test_x():\n    pass\n",
         )
-        report = self.validate()
-        self.assertIn(("CONCORDE-VERIFICATION-004", "error"), self.rules(report))
+        self.assertIn("CONCORDE-COVERAGE-003", self.rules())
+
+    @verifies("scenario.spec.verification-declarations")
+    def test_reading_never_carries_test_declarations(self):
+        path = self.root / "specs/shop/notes.md"
+        path.write_text(
+            path.read_text() + '\nThe test uses @verifies("scenario.shop.submit").\n'
+        )
+        self.assertIn("CHK.evidence.no-spec-coverage", self.rules())
+        path.write_text(
+            str(NOTES)
+            + '\n```python\n@verifies("scenario.shop.submit")\ndef test(): ...\n```\n'
+        )
+        self.assertNotIn("CHK.evidence.no-spec-coverage", self.rules())
 
     def test_the_decorator_records_scenarios_and_returns_the_function(self):
         @verifies("scenario.shop.submit", "scenario.shop.other")
@@ -448,61 +263,27 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             ],
             [(d.scenario_id, d.line, d.name) for d in declarations],
         )
-        report = self.validate()
-        self.assertNotIn(("CONCORDE-VERIFICATION-002", "warning"), self.rules(report))
-        self.assertIn(("CONCORDE-VERIFICATION-001", "error"), self.rules(report))
+        self.assertIn("CHK.verifies.resolves", self.rules())
         self.write(
             "tests/shop/cart.test.ts",
             "// verifies: scenario.shop.submit\nconst unused = 1;\n",
         )
-        self.assertIn(
-            ("CONCORDE-VERIFICATION-004", "error"), self.rules(self.validate())
-        )
-        self.write(
-            "tests/shop/cart.test.ts",
-            "// verifies: req.shop.single-order\nit('x', () => {});\n",
-        )
-        self.assertIn(
-            ("CONCORDE-VERIFICATION-004", "error"), self.rules(self.validate())
-        )
+        self.assertIn("CONCORDE-COVERAGE-003", self.rules())
 
     @verifies("scenario.spec.verification-declarations")
-    def test_a_module_binding_no_implementation_entry_reports_no_uncovered_scenario(
-        self,
-    ):
+    def test_a_module_binding_nothing_reports_no_uncovered_scenario(self):
         self.write("tests/shop/test_cart.py", "def test_nothing():\n    pass\n")
-        self.assertIn(
-            ("CONCORDE-VERIFICATION-002", "warning"), self.rules(self.validate())
+        self.assertIn("CONCORDE-COVERAGE-001", self.rules("warning"))
+        self.write("specs/shop/module.md", shop(nodes=[]))
+        (self.root / "specs/shop/notes.md").write_text(
+            "# Notes\n\nNothing is bound yet.\n"
         )
-        registry = json.loads((self.root / ".concorde/specs.json").read_text())
-        registry["targets"][0]["files"] = []
-        (self.root / ".concorde/specs.json").write_text(json.dumps(registry))
-        metadata = json.loads((self.root / "specs/shop/module.md.json").read_text())
-        for entity in metadata["entities"]:
-            entity.pop("files", None)
-        (self.root / "specs/shop/module.md.json").write_text(json.dumps(metadata))
-        report = self.validate()
-        self.assertEqual("success", report.status)
-        self.assertNotIn(("CONCORDE-VERIFICATION-002", "warning"), self.rules(report))
+        report = self.project.validate()
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        self.assertNotIn("CONCORDE-COVERAGE-001", self.rules("warning"))
 
     @verifies("scenario.spec.verification-declarations")
-    def test_a_declaration_in_a_file_the_module_does_not_list_is_a_warning(self):
-        registry = json.loads((self.root / ".concorde/specs.json").read_text())
-        registry["targets"].append(
-            {
-                "id": "module.other",
-                "kind": "module",
-                "title": "Other",
-                "documents": ["specs/other/module.md"],
-                "parent": None,
-                "uses": [],
-                "files": ["tests/other/"],
-                "checks": [],
-                "references": [],
-            }
-        )
-        registry["targets"][0]["files"] = ["src/shop/"]
-        (self.root / ".concorde/specs.json").write_text(json.dumps(registry))
+    def test_a_declaration_in_a_file_the_owner_does_not_bind_is_a_warning(self):
         self.write(
             "specs/other/module.md",
             module_document(
@@ -510,16 +291,16 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                 "module.other",
                 "Other",
                 "Other tests exercise the shop.",
-                "No local scenarios.",
+                "",
                 (
                     "Verification program.",
                     [
                         {
-                            "id": "entity.other.tests",
+                            "id": "realization.other.tests",
+                            "type": "realization",
                             "title": "Other tests",
-                            "kind": "tests",
-                            "responsibility": "Exercise the shop from outside.",
-                            "files": ["tests/other/"],
+                            "meaning": "Exercise the shop from outside.",
+                            "entries": ["tests/other/"],
                         }
                     ],
                 ),
@@ -527,17 +308,23 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                 'flowchart TB\n    tests["Other tests"]',
             ),
         )
-        metadata = json.loads((self.root / "specs/shop/module.md.json").read_text())
-        metadata["entities"][1].pop("files")
-        (self.root / "specs/shop/module.md.json").write_text(json.dumps(metadata))
+        register_module(self.root, "module.other", "specs/other/module.md")
+        self.write("specs/shop/module.md", shop(nodes=NODES[:1]))
         self.write(
             "tests/other/test_shop.py",
             "from concorde.spec.verification import verifies\n"
             '@verifies("scenario.shop.submit")\ndef test_x():\n    pass\n',
         )
-        report = self.validate()
-        self.assertIn(("CONCORDE-VERIFICATION-003", "warning"), self.rules(report))
-        self.assertNotIn(("CONCORDE-VERIFICATION-002", "warning"), self.rules(report))
+        (self.root / "tests/shop/test_cart.py").unlink()
+        (self.root / "tests/shop").rmdir()
+        report = self.project.validate()
+        self.assertEqual(
+            "success",
+            report.status,
+            [f.message for f in report.findings if f.severity == "error"],
+        )
+        self.assertIn("CONCORDE-COVERAGE-002", self.rules("warning"))
+        self.assertNotIn("CONCORDE-COVERAGE-001", self.rules("warning"))
 
 
 if __name__ == "__main__":

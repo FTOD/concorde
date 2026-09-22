@@ -1,4 +1,4 @@
-"""Initialize the document-unit profile (Profile 15) with an honest, self-contained Module stub."""
+"""Initialize a project with a Protocol 11 registry and an honest root Module stub."""
 
 from __future__ import annotations
 
@@ -48,80 +48,126 @@ def installed_protocol_binding(root: Path) -> dict:
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
 
-def empty_target(target_id: str, kind: str, title: str, documents: list[str]) -> dict:
-    return {
-        "id": target_id,
-        "kind": kind,
-        "title": title,
-        "documents": documents,
-        "references": [],
-        "parent": None,
-        "uses": [],
-        "files": [],
-        "checks": [],
-    }
-
-
-def initial_module_metadata(target_id: str) -> dict:
+def initial_module_metadata(
+    target_id: str, name: str, path: str, entries: list[str] | tuple[str, ...] = ()
+) -> dict:
     local = target_id.split(".")[-1]
+    defines = (
+        [
+            {
+                "id": f"realization.{local}.existing-files",
+                "type": "realization",
+                "title": "Existing project files",
+                "meaning": f"#realization.{local}.existing-files",
+                "entries": list(entries),
+            }
+        ]
+        if entries
+        else []
+    )
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "document": {
-            "id": "document." + target_id,
+            "id": f"document.{local}.module",
             "owner": target_id,
             "role": "module",
         },
-        "entities": [
-            {
-                "id": f"entity.{local}.project-spec",
-                "title": "Project Spec",
-                "kind": "document collection",
-                "meaning": f"#entity.{local}.project-spec",
-            },
-            {
-                "id": f"entity.{local}.developer",
-                "title": "Developer",
-                "kind": "external actor",
-                "meaning": f"#entity.{local}.developer",
-            },
-            {
-                "id": f"entity.{local}.framework",
-                "title": "Concorde Framework",
-                "kind": "external software",
-                "meaning": f"#entity.{local}.framework",
-            },
-        ],
-        "dependencies": [],
-        "bindings": [],
+        "module": {
+            "title": name,
+            "owns": [path],
+            "contains": [],
+            "uses": [],
+            "includes": [],
+            "participates": [],
+        },
+        "defines": defines,
+        "relations": [],
     }
 
 
-def initial_module_text(target_id: str, name: str) -> str:
+def existing_files(root: Path, documents: set[str]) -> list[str]:
+    """Realization entries covering every file the project already keeps under version control.
+
+    Every version-controlled file must be bound by some Module (CHK.binds.unbound). Until the
+    project's Specs decompose it, the root Module binds the existing files: a top-level file
+    exactly, a top-level directory by its prefix, and exactly the files a directory entry cannot
+    bind (files the exclusion rule skips, and files next to a document member).
+    """
+    from .repository_base import bound_by, control_path
+    from .validation import build_path, generated, generated_outputs, version_controlled
+
+    tracked = version_controlled(root, untracked=True)
+    if tracked is None:
+        return []
+    files, links = tracked
+    outputs = generated_outputs(root)
+    entries: set[str] = set()
+    for path in files:
+        if (
+            path in documents
+            or control_path(path)
+            or generated(path, outputs)
+            or build_path(path)
+            or any(path == link or path.startswith(link + "/") for link in links)
+            or not (root / path).is_file()
+        ):
+            continue
+        top, _, rest = path.partition("/")
+        directory = top + "/"
+        if (
+            rest
+            and bound_by(directory, path)
+            and not any(member.startswith(directory) for member in documents)
+        ):
+            entries.add(directory)
+        else:
+            entries.add(path)
+    return sorted(entries)
+
+
+def initial_registry(target_id: str, name: str, path: str) -> dict:
+    block = initial_module_metadata(target_id, name, path)["module"]
+    return {
+        "schema_version": REGISTRY_SCHEMA,
+        "modules": [
+            {
+                "id": target_id,
+                "title": name,
+                "entry": path,
+                **{
+                    key: block[key]
+                    for key in ("owns", "contains", "uses", "includes", "participates")
+                },
+            }
+        ],
+    }
+
+
+def initial_module_text(target_id: str, name: str, bound: bool = False) -> str:
     local = target_id.split(".")[-1]
+    realization = (
+        f'<a id="realization.{local}.existing-files"></a>\n\n'
+        "The files the project kept under version control when Concorde was initialized are bound\n"
+        "to this Module as its existing project files. They are not yet assigned to any\n"
+        "responsibility; binding them describes nothing about what they do.\n\n"
+        if bound
+        else "No realization binds implementation files yet.\n\n"
+    )
     return (
         f"# {name}\n\n## Purpose\n\n"
-        "This Module identifies the initialized project. Its business purpose has not yet been supplied.\n\n"
-        "## Terminology\n\n| Term | Meaning / definition |\n| --- | --- |\n"
-        "| Project Spec | The documents describing the project's intended responsibilities and behavior. |\n"
-        "| Draft | An initial description with explicit unknowns, not an invented business contract. |\n\n"
-        "## Usage\n\nUse this draft to supply intended responsibility before planning implementation.\n"
-        "Business entry points, inputs, results, effects, errors, repeat, cancellation and compatibility\n"
-        "behavior are unknown; do not infer them from existing code or this authoring example.\n\n"
-        "## Design\n\nBusiness responsibility decomposition, state, graph, dependencies and internal constraints\n"
-        "remain unknown. The known authoring boundary is not an invented business design.\n\n"
-        f'<a id="entity.{local}.project-spec"></a><a id="entity.{local}.developer"></a><a id="entity.{local}.framework"></a>\n\n'
-        "The Developer supplies intended behavior in the Project Spec; Concorde Framework checks its\n"
-        "Protocol conformance. No entity binds implementation files yet.\n\n"
-        "## Relationships\n\nThis diagram covers authoring only, not the project's unknown business architecture.\n\n"
-        "```mermaid\nflowchart TB\n"
-        f"    accTitle: {name} authoring boundary\n"
-        "    accDescr: The Developer specifies the Project Spec and Concorde Framework validates it. Business entities remain unknown.\n"
-        '    developer["Developer"]\n    spec["Project Spec"]\n    framework["Concorde Framework"]\n'
-        "    developer -->|specifies| spec\n    framework -->|validates| spec\n```\n\n"
-        "## Precise specifications\n\nNo business requirements or scenarios have been supplied.\n"
-        "Author them in registered implementation-role companions owned by this Module, not in this entry.\n"
-        "A task needing that behavior reports Spec incomplete; initialization invents no acceptance cases.\n\n"
-        "## Unresolved information\n\nBusiness scenarios, requirements, design and implementation remain unspecified.\n"
+        f"This Module is the root of the {name} project. The project's purpose, its users and the\n"
+        "limits of its promises have not been specified yet.\n\n"
+        "## Terminology\n\n"
+        "No terms have been defined yet.\n\n"
+        "## Usage\n\n"
+        "How the project is used is not specified yet: its entry points, inputs, results, effects,\n"
+        "errors and repeat behaviour are unknown. Do not infer them from existing code.\n\n"
+        "## Design\n\n"
+        "The project's decomposition, state, control flow and design reasons are not specified yet.\n\n"
+        + realization
+        + "## Relationships\n\n"
+        "The project's parts and their collaborations are not specified yet. This Module contains,\n"
+        "uses and includes nothing, and no requirement or scenario has been written.\n"
     )
 
 
@@ -142,30 +188,31 @@ def project_proposal(
             "already_initialized",
         )
     path = "specs/project/module.md"
-    target = empty_target(target_id, "module", name, [path])
-    registry = {
-        "schema_version": REGISTRY_SCHEMA,
-        "project_id": "project.initialized",
-        "entry_target": target_id,
-        "targets": [target],
-        "checks": [],
-    }
+    registry = initial_registry(target_id, name.strip(), path)
+    entries = existing_files(root, {path, path + ".json"})
     config = {
         "profile_version": PROFILE_VERSION,
         "registry": ".concorde/specs.json",
         "protocol": installed_protocol_binding(root),
         "operation_configuration": configuration,
+        "checks": [],
     }
     files = [
         file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
         file_change(
             root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"
         ),
-        file_change(root, path, initial_module_text(target_id, name)),
+        file_change(
+            root, path, initial_module_text(target_id, name.strip(), bool(entries))
+        ),
         file_change(
             root,
             path + ".json",
-            json.dumps(initial_module_metadata(target_id), indent=2) + "\n",
+            json.dumps(
+                initial_module_metadata(target_id, name.strip(), path, entries),
+                indent=2,
+            )
+            + "\n",
         ),
     ]
     # Initialization creates only what the user's project generates through Concorde. Everything
@@ -207,16 +254,22 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
             "project proposal has a mismatched registry or Protocol binding",
             "invalid_proposal",
         )
-    allowed = {
-        ".concorde/config.json",
-        ".concorde/specs.json",
-        *(
-            member
-            for target in registry["targets"]
-            for p in target["documents"]
-            for member in (p, p + ".json")
-        ),
-    }
+    try:
+        allowed = {
+            ".concorde/config.json",
+            ".concorde/specs.json",
+            *(
+                member
+                for record in registry["modules"]
+                for p in record["owns"]
+                for member in (p, p + ".json")
+            ),
+        }
+    except (KeyError, TypeError) as error:
+        raise SpecError(
+            "project proposal registry is not a Protocol 11 registry",
+            "invalid_proposal",
+        ) from error
     if proposal["base_digest"] is not None or any(
         item["before_digest"] is not None for item in files
     ):
@@ -226,10 +279,11 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
 
     def verify():
         report = validate_repository(root, package_root=package)
-        if report.status != "success":
+        errors = [finding for finding in report.findings if finding.severity == "error"]
+        if errors:
             raise SpecError(
                 "target-state validation failed: "
-                + "; ".join(f.message for f in report.findings)
+                + "; ".join(f"{f.rule_id}: {f.message}" for f in errors)
             )
 
     changed = apply_files(root, files, allowed, verify=verify)

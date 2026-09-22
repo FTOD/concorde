@@ -1,34 +1,56 @@
 # Issues requirements
 
-These precise specifications belong directly to the [Issues Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+The Module-wide obligations of Issues. The [entry](module.md) explains them; the
+[scenarios](scenarios.md) show them in concrete situations.
 
-## Terminology
-
-| Term | Meaning / definition |
-| --- | --- |
-| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
-| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
-| [Workflow](../module.md#terminology) | Defined in Concorde Framework. |
-
-## Issues
+## Reporting
 
 ### req.issues.report-control — Reporting does not control execution
 
-Accepting an Issue report SHALL NOT itself stop a worker, start repair or change task completion.
+Accepting an Issue report SHALL NOT stop the reporting worker, start a repair or change the outcome of the worker's task.
 
-### req.issues.scope — Issue routing preserves authority
+A worker can report several problems and still complete its task. Whether a problem stops the task
+is stated separately, by a Blocker in the worker's result.
 
-Selecting or reporting an Issue SHALL NOT widen the selected worker's Spec, implementation or command grant.
+### req.issues.scope — Issues never widen authority
 
-### req.issues.retention — Closing preserves observations
+Reporting, selecting or solving an Issue SHALL NOT widen any worker's Spec, implementation or command Grant.
 
-Issue disposition SHALL preserve the record and every original observation.
+The reporting tool writes only through the Host, the owner a report names must already be in the
+reporter's context, and a solve stays bound to the Module the Issue is about.
+
+### req.issues.host-writes — Only the Host writes Issue records
+
+Every write to a file under `.concorde/issues/` SHALL go through the Host's Issue store.
+
+### req.issues.references — Results reference only known reports
+
+A stage result SHALL reference only Issue reports made in the same worker run or explicitly admitted as that worker's input.
+
+## Records
+
+### req.issues.retention — Reports are never rewritten
+
+The Issue store SHALL NOT modify or remove an accepted report, including when the Issue is closed or reopened.
+
+Restoring a solve's own unfinished close does not touch reports either: it removes only the
+disposition that solve added, as described under
+[the closing journal](solving.md#concept.issues.journal).
+
+## Solving
+
+### req.issues.verified-resolution — Resolution needs current verification
+
+The solve workflow SHALL write a `resolved` disposition only after Issue-specific and ordinary reviews completed without blocking findings on the Module's current Specs and implementation files.
+
+### req.issues.bounded-decisions — Solving is bounded
+
+One solve SHALL launch the Issue solver at most six times for an unchanged set of inputs and clarification.
+
+### req.issues.journal-first — The journal precedes the close
+
+The Host SHALL save the closing journal in the candidate before it writes a solver disposition to the Issue.
 
 ### req.issues.ready-boundary — Solving stops before delivery
 
-A successful native Issue-solving workflow SHALL stop at ready without delivery or primary merge.
+A successful solve SHALL end at a ready candidate without delivering it or changing the primary branch.

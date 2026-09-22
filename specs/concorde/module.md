@@ -2,194 +2,158 @@
 
 ## Purpose
 
-Concorde helps developers agree on what software should do, execute changes within explicit boundaries and check the result before delivery. It provides native Agents and Workflows and finite Host services for those tasks, with separately selected optional StateGraph Operations, supported by specifications that explain responsibilities, design and precise behavior. Developers can also ask questions, inspect documentation and track problems without starting a code change.
+Concorde keeps a project's Specs at the center of AI-assisted development. The Specs explain what
+each part of the software is for, how it is designed and what it precisely promises; Concorde's
+agents work inside boundaries derived from those Specs; and every code change is made in its own
+candidate worktree, checked, independently reviewed and delivered only when the developer asks.
+A developer uses Concorde from the Pi coding agent, both to change a project and to understand it.
+Concorde does not decide business behaviour, does not run an autonomous development loop, and never
+merges into the primary branch without explicit authorization.
 
 ## Terminology
 
-| Term                 | Meaning / definition                                                                                                                                                                                                                |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Module               | One cohesive software responsibility, such as planning a change or publishing documentation. It need not be a separate package.                                                                                                     |
-| Spec                 | The agreed description of a Module's intended behavior and design, used to guide work and judge its result.                                                                                                                         |
-| Module Specs         | The explanation-first part of a Module's Spec: purpose, concepts, correct use, design and collaborations.                                                                                                                           |
-| Implementation Specs | The same Module's precise requirements, acceptance situations and technical contracts. They are specifications, not source code.                                                                                                    |
-| Entity               | A named participant, concept or record that matters to a Module's behavior or design. Its role is explained where it participates.                                                                                                  |
-| Requirement          | A precise obligation applying across a Module, defined once with a stable identity.                                                                                                                                                 |
-| Scenario             | A concrete situation with preconditions, an action and an expected outcome, used as a basis for verification.                                                                                                                       |
-| Registry             | The explicit record of Modules, document owners, relationships and implementation-file bindings.                                                                                                                                    |
-| Context              | The information explicitly made available for one task. Knowing that another document exists does not make it available.                                                                                                            |
-| Grant                | Permission to use particular tools or read/write particular files for one invocation; information and permission are separate.                                                                                                      |
-| Snapshot             | A record of exactly which inputs a task received, so later changes can be detected.                                                                                                                                                 |
-| Evidence             | A recorded check or review result tied to the inputs it examined, not a permanent guarantee about future revisions.                                                                                                                 |
-| State                | The declared data channels an Operation accepts and updates when invoked as a graph node. State carries task information and results, never execution authority.                                                                    |
-| Operation            | An explicitly selected LangGraph StateGraph flow or wrapper with typed State, effects, use conditions and trusted execution policy. |
-| Skill                | Retired standalone client instructions, retained here only as migration terminology; no Concorde Skill product or client projection is supported.                                                                                   |
-| Pi integration       | The exact Pi extension entry and embedded public capability catalog, bound to the Framework implementation and launcher that supplied them.                                                                                          |
-| Agent                | A callable native Pi agent with one canonical Concorde definition, either a Domain Agent or a Task subagent; Agents owns those definitions.                                                                   |
-| Workflow             | An authored native pi-subagents composition ordering real Agent calls and finite granted Host steps; public planning uses this boundary.                                                                                            |
-| Worker               | One fresh bounded Agent execution, such as writing a plan or reviewing code; not a complete-task delegate.                                                                                                                      |
-| User session         | The external Pi session that talks to the user, understands needs and coordinates; in Concorde's own source checkout it is the source user session. It is not a registered Agent.                                                   |
-| Task subagent        | A fresh one-layer delegate of the user session, owning one complete task in one fixed worktree without further task delegation.                                                                                                     |
-| Host                 | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results.                                                                                                                        |
-| Harness              | The services that give a worker its inputs, tools, environment and limits, then check its result.                                                                                                                                   |
-| Graph                | LangGraph's declared nodes, edges and State channels for executing and composing Operations. A compiled graph can implement another Operation; a loop is a feedback path, not another executable kind.                              |
-| Candidate            | An isolated proposed project change together with its progress and verification records. It is not yet an update to the primary branch.                                                                                             |
-| Worktree             | A separate working directory of a Git repository, used here to keep candidate changes apart from primary work.                                                                                                                      |
-| Ready                | The candidate has met the required current checks and reviews; it has not thereby been delivered or merged.                                                                                                                         |
-| Delivery             | A separately requested operation that publishes a verified candidate and normally removes its source worktree; merging primary needs separate authorization.                                                                        |
-| Issue                | A durable record of an observed bug, missing/conflicting promise or limitation. Recording it does not itself stop work or authorize repair.                                                                                         |
-| Blocker              | A task's recorded dependency on a problem that prevents a particular next step. Releasing it does not automatically close the Issue.                                                                                                |
-| Contract             | A precise agreement about inputs, effects, results, failures or constraints that callers and implementations rely on.                                                                                                               |
+| Term | Definition |
+| --- | --- |
+| [Agent](agents/module.md#concept.agents.agent) | |
+| [Workflow](harness/execution/module.md#concept.execution.workflow) | |
+| [Operation](operations/module.md#concept.operations.operation) | |
+| [Candidate](harness/worktrees/module.md#concept.worktrees.candidate) | |
+| [Issue](issues/module.md#concept.issues.issue) | |
 
-A term explains a concept. It does not declare that a Module owns a file, depends on another
-Module or can read another worker's context; the registry records those facts separately, and
-the Module concerned explains them.
+The words shared by every Module — developer, user session, capability, Module, Spec, context,
+boundary, Host, worker and evidence — are defined in the [shared vocabulary](vocabulary.md). Read it
+first if Concorde is new to you.
 
 ## Usage
 
-The user session understands needs and coordinates. It may delegate complete tasks
-to one layer of fresh Task subagents; simple consumer work may be edited directly in primary.
-Task delegation is not Operation composition and never overrides actual harness limits.
-Concorde source maintenance starts a fresh Concorde-catalog-free candidate maintenance-worker and
-continues that same session across ordinary milestones. The user session decides scope/ownership, continuation,
-check selection, none/targeted/full independent testing and integration authorization. When selected,
-a fresh sibling tester receives only explicit candidate-built Pi entry/catalog and runtime
-provenance plus its bounded observation/check assets. These are project-discovered Task subagents,
-not LangGraph node identities. Tester cannot repair its governing artifacts; self-tests are not
-independent. Source-only coordination/maintenance prompts are not consumer assets; the generic tester
-is distributed to every full local worktree. See [Agent contracts and continuation policy](agents/module.md).
-Ordinary Git integration needs explicit authorization and does not require Concorde delivery.
+### Setting up
 
-The calling session, the user session or its Task subagent, reads and selects the relevant complete Specs directly, answers questions, and
-edits reading, paired metadata and registry within its task authority. It chooses retained public
-capabilities and their order; there is no automatic discovery, Spec author or development orchestrator.
-Each Module-bound entry requires an explicit target and optional local scenario focus.
+Install Concorde into a project with its installer, then call `concorde-init` to create an honest
+starting Spec. From then on, open the project in Pi: the session extension adds one tool,
+`concorde`, whose `describe` action explains every capability and whose `run` action calls one.
 
-For example, adding retries may first require the developer to clarify which failures may be retried
-and the agent to edit that contract. The agent can request a fresh Spec review, assess sufficiency,
-plan, author tasks and implement in separately selected calls. A missing necessary promise stops
-dependent work instead of being inferred from code. Validation and selected independent reviews
-record current evidence; direct edits never fabricate that evidence. A changed input invalidates
-its old plan or review. A ready candidate is not a merge: delivery and primary integration remain
-separately authorized.
+### Making a change
 
-### Developer entry points
+A typical change runs as a sequence of explicit calls, each chosen by the user session:
 
-| Intent                      | Capability and completion                                                                                                                                             |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Assess a selected contract  | `concorde-context-solve` reports task-specific sufficiency or attributed blockers.                                                                                   |
-| Plan a change               | `concorde-plan` assesses the explicit target and records a current plan.                                                                                             |
-| Author implementation tasks | `concorde-tasks` requires a current accepted plan; repair uses explicitly selected current evidence.                                                                 |
-| Implement accepted tasks    | `concorde-implement` writes only the selected Module's bound implementation; component work returns to the caller for separate selection.                            |
-| Review a Spec               | `concorde-spec-review` returns independent contract and terminology-consistency findings.                                                                            |
-| Review code                 | `concorde-code-review` checks authorized implementation against its Spec.                                                                                            |
-| Initialize a project        | `concorde-init` proposes then applies configuration and an honest Module stub without overwriting an existing project.                                               |
-| Configure workers           | `concorde-configure` applies explicit supported model, thinking and timeout selections.                                                                              |
-| Check a candidate           | `concorde-validate` records current deterministic evidence; failed or stale evidence cannot establish readiness.                                                     |
-| Deliver a candidate         | `concorde-deliver` stages an independent branch and normally removes its source worktree; primary merging is a separate authorization.                               |
-| Work with Issues            | `concorde-issues` inspects, reports, reopens or solves an explicit Issue; repair decisions return intent to the caller; verification is explicit and never delivery. |
+1. **Agree on the Spec.** The user session and the developer read the owning Module's Spec and edit
+   it until it states the intended behaviour. `concorde-spec-review` gives an independent opinion.
+2. **Check sufficiency and plan.** `concorde-context-solve` tells whether the Spec says enough for
+   the task; `concorde-plan` writes a plan for one Module in a new candidate worktree.
+3. **Derive and implement tasks.** `concorde-tasks` turns the accepted plan into acceptance tasks;
+   `concorde-implement` lets a programmer worker change only that Module's implementation files.
+4. **Check and review.** `concorde-code-review` reviews the code against the Spec;
+   `concorde-validate` runs the deterministic checks and records evidence.
+5. **Deliver.** `concorde-deliver` stages the ready candidate on its own branch. Merging it into the
+   primary branch is a separate decision.
 
-[Views](views/module.md) publishes contracts and relationships.
-Reading a view or supplying feedback does not itself authorize changes or create an Issue.
+If a step finds that the Spec does not say something it needs, it stops and reports the gap instead
+of guessing from code. The developer fixes the Spec, and the step is repeated with current inputs.
+
+For example, adding retries to a network client starts by deciding which failures may be retried,
+written into the client Module's Spec. Only then is a plan written, and the programmer receives
+tasks that cite that promise.
+
+### Other capabilities
+
+| Capability | Use it to |
+| --- | --- |
+| `concorde-issues` | list, show, report, reopen or solve a recorded Issue |
+| `concorde-configure` | choose the model, thinking level and time limits of workers |
+| `concorde-init` | create the first Spec of an uninitialized project |
+
+The Specs can also be published as a documentation site, which is the easiest way to read them.
 
 ## Design
 
-**Graph-bound Operations and native Pi Agents have distinct execution boundaries.**
-Public context assessment prepares and calls a real native context-assessor Agent; finite Host
-services admit its result separately. Native plan orders assessor and planner through an authored pi-subagents workflow; tasks use a
-direct native task-author. Implement and public reviews now use native Agents/workflows too; Issue solving also uses its bounded native workflow. Optional StateGraph Operations are a separately
-selected execution boundary, not mirrors of these capabilities. Each Operation declares input State, output
-State updates, effects, use conditions and execution policy. It can be called as a LangGraph node
-without its caller reconstructing context selection, permissions, model execution or result checks.
-Its nodes may use deterministic code or admitted model calls. Planning, by contrast, first assesses
-the selected Spec and then writes a plan through a native workflow, not an Operation. Neither
-composition chooses the caller's next capability, automatically authors contracts or develops child Modules.
+Concorde is built around one idea: **the Spec, not the code, is the shared source of truth between
+the developer and the agents.** The rest of the design follows from making that safe and practical.
 
-Completeness does not eliminate trusted infrastructure. The common Host and Harness apply an
-Operation's declared permission ceiling to the actual task and narrow the effective grant.
-Trusted Runtime context supplies execution services; State carries data and cannot carry or expand
-authority. Public/internal exposure changes entry availability, not this completeness obligation.
+- **Specs are structured** so that both humans and tools can read them. The [Spec tooling](spec/module.md)
+  Module loads and checks every Spec and computes, from the declarations alone, what a task bound to
+  a Module may read and write.
+- **Agents are bounded.** The [Harness](harness/module.md) admits every capability request, freezes
+  the task's context, runs each model step as a fresh worker, and accepts results only after the Host
+  has checked them. [Agents](agents/module.md) defines every callable agent once.
+- **Capabilities are small and explicit.** [Operations](operations/module.md) lists the public
+  capabilities and routes each request to the Module that owns its behaviour: Planning,
+  Implementation, Review, Validation or Delivery. None of them calls the next one; the user session
+  stays in charge of the sequence.
+- **Changes are isolated.** Every mutating task runs in a candidate worktree, so the primary branch
+  stays untouched until the developer decides.
+- **Problems are remembered.** [Issues](issues/module.md) keeps durable records of gaps and defects
+  that outlive one conversation.
+- **Concorde ships and explains itself.** [Distribution](distribution/module.md) builds and installs
+  the Framework and its Pi integration; [Views](views/module.md) publishes the Specs as a website.
 
-<a id="entity.concorde.developer"></a><a id="entity.concorde.protocol"></a>
-
-The Developer supplies intent and constraints through the Pi session tool. The independent Spec
-Protocol defines Module ownership, complete context and readable contracts: a Module's Spec pairs
-explanation-first Module Specs with precise Implementation Specs, which define its requirements and
-scenarios. A **Module owns a responsibility and its Spec**; it is not a synonym for an Operation.
-Three relationships stay independent:
-
-- **Module ownership** identifies who promises behavior and owns its Spec. One Module can provide
-  several capabilities, as Planning does; one workflow or Operation can rely on several provider Modules.
-- **Operation composition** identifies which Operations call others in a graph. It does not make
-  a provider Module a child of the caller's Module.
-- **Context references** select knowledge supplied to a task. They neither compose Operations nor
-  grant execution permission or transfer ownership.
-
-The Framework has seven direct responsibility owners. [Agents](agents/module.md) defines all nine
-callable Agents. [Operations](operations/module.md) owns explicit StateGraph composition and the
-compatibility capability dispatch boundary, and groups five
-provider Modules: Planning, Implementation, Review, Validation and Delivery.
-[Harness](harness/module.md) admits every request at one boundary and provides bounded model
-execution; [Spec](spec/module.md) resolves identities and complete contexts.
-[Distribution](distribution/module.md) supplies fresh runnable assets, [Issues](issues/module.md)
-retains problems and [Views](views/module.md) publishes contracts.
-
-<a id="entity.concorde.acceptance-tests"></a>
-
-Framework acceptance tests exercise requests across those responsibilities. Each provider owns
-its local behavior; cross-provider tests check that composition preserves the Framework promises.
-The [ownership ledger](ownership-migration.md) records historical extraction limits rather than
-replacing the current architecture.
+The same Protocol governs Concorde's own Specs, so this project is also the reference example of a
+Concorde project.
 
 ## Relationships
 
-This diagram shows responsibility ownership and supporting services, not an executable graph.
-The Operations hierarchy groups retained behavior providers; it does not make their called
-providers children of the calling Operation, because Module ownership, Operation composition and
-context references stay independent as described in Design.
-
 ```mermaid
 flowchart TB
-    accTitle: Operations and shared execution services
-    accDescr: Harness admits every request and hands it to Operations, which dispatches it to the behavior provider that owns it. Operations bounds model execution through Harness and selects contracts through Spec. Distribution, Issues and Views support distinct Agent, Workflow, Operation and Host-service execution kinds without changing Module ownership.
-    agents["Agents"]
-    operations["Operations"]
-    harness["Harness"]
-    spec["Spec"]
-    distribution["Distribution"]
-    issues["Issues"]
-    views["Views"]
-    agents -->|supplies canonical Agent definitions to| harness
-    harness -->|admits requests and hands them to| operations
-    operations -->|bounds model execution through| harness
-    operations -->|selects contracts through| spec
-    harness -->|loads fresh assets from| distribution
-    issues -->|requests admitted resolution through| harness
-    views -->|publishes contracts from| spec
+    accTitle: The Modules of the Concorde Framework
+    accDescr: The root Module contains seven Modules. Harness and Operations are themselves composites.
+    root[Concorde Framework]
+    spec[Spec tooling]
+    harness[Harness]
+    agents[Agents]
+    operations[Operations]
+    distribution[Distribution]
+    issues[Issues]
+    views[Views]
+    root -->|contains| spec
+    root -->|contains| harness
+    root -->|contains| agents
+    root -->|contains| operations
+    root -->|contains| distribution
+    root -->|contains| issues
+    root -->|contains| views
 ```
 
-The [collaboration agreements](collaborations.md) state conditions, relied-upon guarantees and local
-duties for each direct child. Root context explicitly includes provider collections for reader
-understanding; neither hierarchy nor those providers' own references expand that context implicitly.
-A relationship grants neither implementation access nor execution authority.
+<a id="contains-spec"></a>
 
-### Project diagram convention
+**Spec tooling** is the foundation: every other Module relies on it to know which documents exist, who owns
+them, and what a task may read. Concorde relies on it to reject inconsistent Specs before any agent
+sees them.
 
-Concorde's own reading diagrams use English labels, accessible titles and descriptions. Conceptual
-views explain one collaboration; exact executable graphs live in their owners' Implementation
-Specs and are checked against compiled LangGraph topology. A diagram is not another ownership or
-permission declaration.
+<a id="contains-harness"></a>
 
-## Compatibility and unresolved information
+**Harness** is the execution boundary. Every capability request enters through it, and every model
+step runs under it. Concorde relies on it to keep model output a proposal until the Host accepts it.
 
-Protocol 10/Profile 15 distinguishes native Agents/Workflows, finite Host services and optional StateGraph Operations. Old executable names and record
-formats require the explicit refusal or migration described in the
-[Host boundary](harness/admission.md#wire-contracts); byte-bound evidence must be rebuilt.
-The source-maintenance record is `docs/changes/operations-graphs.md`, separate from current Spec
-context and execution evidence.
-Unresolved behavioral facts remain with their provider owners. Structural validation does not
-prove semantic completeness, and direct maintenance creates no lifecycle-ready or delivery evidence.
+<a id="contains-agents"></a>
 
-## Precise specifications
+**Agents** supplies the definitions of the callable agents that the Harness runs and that the
+providers under Operations call.
 
-The root owns [requirements](requirements.md) and [scenarios](scenarios.md). Its provider Modules own
-their own precise contracts; grouping them under Operations neither copies nor weakens those promises.
+<a id="contains-operations"></a>
+
+**Operations** turns a capability name into the owning provider's behaviour. Its five providers own
+planning, implementation, review, validation and delivery.
+
+<a id="contains-distribution"></a>
+
+**Distribution** produces what a developer installs and runs: the built assets, the installer, the
+managed runtime and the Pi session integration.
+
+<a id="contains-issues"></a>
+
+**Issues** is used by every worker that finds a problem and by the `concorde-issues` capability.
+
+<a id="contains-views"></a>
+
+**Views** publishes the Specs for reading; a published page never grants context or authority.
+
+<a id="realization.concorde.project-files"></a>
+
+The root Module also owns the project-level files that belong to no single responsibility: the
+README and contribution guide, the licence, repository configuration, the CI workflow that validates
+this checkout, and the documentation assets.
+
+<a id="realization.concorde.acceptance-tests"></a>
+
+Its **acceptance tests** exercise whole flows that cross several Modules, such as installing into a
+consumer project or driving a candidate from planning to delivery; the promises they verify are the
+root's [scenarios](scenarios.md).

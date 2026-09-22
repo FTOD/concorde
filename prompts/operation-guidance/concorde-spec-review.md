@@ -14,12 +14,12 @@ supplied. There is no implicit routing or review_mode selector. The host determi
 the target and freezes its complete context before starting a fresh read-only reviewer.
 
 Review runs in the current worktree without creating a development change or requiring a preexisting
-Issue. It reads the complete selected Module contract, including owned and directly referenced
-reading and metadata, but no implementation. It checks every imported terminology restatement in
-that admitted collection against its direct canonical definition for semantic consistency; wording
-need not match. Report coverage and unresolved comparisons rather than assuming consistency.
-Reviewers have no write, network or credential grants. The host persists review reports separately
-from reviewer authority.
+Issue. It reads the Module's complete Spec context, its own documents and those its `contains`,
+`uses` and `includes` select (reading and metadata), but no implementation. Import rows are
+link-only; it checks every local explanation of an imported term in that collection against the
+owner's canonical definition for semantic consistency; wording need not match. Report coverage
+and unresolved comparisons rather than assuming consistency. Reviewers have no write, network or
+credential grants. The host persists review reports separately from reviewer authority.
 
 A managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.
 Do not claim this compares against another branch or a merge base. Report the returned review

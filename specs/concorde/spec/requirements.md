@@ -1,174 +1,217 @@
 # Spec requirements
 
-These precise specifications belong directly to the [Spec Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+The Module-wide obligations of the [Spec tooling](module.md) Module. The headings group them by subject;
+each requirement belongs to the Module as a whole.
 
-## Terminology
+## Loading
 
-| Term                                              | Meaning / definition                             |
-| ------------------------------------------------- | ------------------------------------------------ |
-| [Module](../module.md#terminology)                | Defined in Concorde Framework.                   |
-| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                   |
-| [Registry](../module.md#terminology)              | Defined in Concorde Framework.                   |
-| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                   |
-| [Entity](../module.md#terminology)                | Defined in Concorde Framework.                   |
-| [Implementation binding](registry.md#terminology) | Defined in Registry.                             |
-| [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
-| [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
-| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                   |
-| [Initialization](initialize.md#terminology)       | Defined in Project initialization.               |
-| [Initial proposal](initialize.md#terminology)     | Defined in Project initialization.               |
-| [Worktree](../module.md#terminology)              | Defined in Concorde Framework.                   |
+### req.spec.registered-only — Documents come from declarations only
 
-## Spec
+The loader SHALL treat as documents only the reading paths listed in some Module's `owns`, each
+together with its exact `.json` companion.
 
-### req.spec.no-body-read — Metadata resolution does not read collaborator bodies
+A Markdown file found on disk, a Markdown link or a directory neighbour never adds a document.
 
-Resolving a Module's identity, ownership or file listing SHALL NOT read a collaborator Module's
-Spec body or a listed file's contents.
+### req.spec.no-writes — Loading and queries never write
 
-### req.spec.one-owner-per-module — One owning entity per bound file
+Constructing a repository, querying it and validating a project SHALL NOT write any project file.
 
-Within one Module, a bound implementation file SHALL belong to exactly one entity, the owner of the
-most specific entry that covers it.
+### req.spec.snapshot-reconstruct — A repository is a snapshot
 
-### req.spec.directory-entry — Directory prefix binds every file below it
+A repository SHALL answer every query from the sources as they were when it was constructed.
 
-A listing entry that ends with `/` SHALL bind every regular file below that directory.
+A caller that needs to see a change constructs a new repository. Replacement bytes handed to the
+constructor for the registry or for documents stay in memory and are never written.
 
-### req.spec.directory-no-spec-document — No Spec document inside a listed directory
+### req.spec.deterministic-order — Same input, same answer
 
-A listed directory SHALL NOT contain a registered Spec document.
+Repeated queries against the same repository SHALL return equal results in the same order.
 
-### req.spec.sibling-sharing — Shared providers may cross hierarchy levels
+### req.spec.no-implementation-read — Boundary sets never read code
 
-A shared provider SHALL be admissible independently of its consumers' hierarchy levels, provided
-it is not structurally owned by one of those consumers.
+Loading the Specs and computing boundary sets and impact indexes SHALL NOT read the contents of
+implementation files.
 
-Sharing preserves the provider's single identity and at most one structural parent. The ordinary
-identity, parentage and composition-cycle checks still apply; cross-level use neither reparents the
-provider nor grants its documents or implementation implicitly.
+Listing a directory to expand its entries is allowed; only paths are used. Validation's coverage
+scan, which parses bound test files, is a separate step.
+
+### req.spec.no-partial-repository — No partial repository
+
+The loader SHALL NOT return a repository for use by consumers when the project has a problem that
+makes a boundary untrustworthy.
+
+These problems are listed in the [interface definitions](contracts.md#loading-failures). Validation
+opens the repository so that the same problems become findings instead.
+
+### req.spec.protocol-binding — Only the accepted Protocol is admitted
+
+The loader SHALL admit a project only when its configuration binds exactly the Protocol copy under
+`.concorde/protocol/`, that copy's assets match their recorded digests, and the copy equals the
+Protocol of the installed Concorde package.
+
+## Checks
+
+### req.spec.every-check — Every Protocol check is evaluated
+
+Validation SHALL evaluate every check listed in the Protocol's Checks chapter and report each
+violation as a finding whose rule identity is that check's identity and whose severity is the
+severity the chapter gives it.
+
+### req.spec.all-findings — One run reports everything it can
+
+Validation SHALL continue after a finding and report every further violation that the remaining
+readable declarations allow it to establish.
+
+### req.spec.status-from-errors — Only errors make a result invalid
+
+The validation status SHALL be `invalid` exactly when at least one finding has severity error.
 
 ### req.spec.no-structural-proof — Structural checks are not semantic proof
 
-Structural validation SHALL NOT be represented as proof of semantic completeness.
+A validation result SHALL NOT be represented as proof that a Spec is semantically sufficient or
+that an implementation conforms to it.
 
-## Registry
+The result carries an explicit marker saying semantic completeness is not proven.
 
-### req.spec.no-writes — No writes during construction or queries
+### req.spec.link-fragments — Links to definitions resolve
 
-SpecRepository construction and every query method SHALL NOT write project files.
+Validation SHALL report as an error every link in Spec reading whose fragment has the form of a
+node identity and does not name a definition in the linked document.
 
-### req.spec.snapshot-reconstruct — A repository instance is an immutable snapshot
+### req.spec.digest-per-assessment — Every result names what it assessed
 
-A repository instance SHALL be treated as a snapshot.
+Every validation result SHALL carry a digest of the exact configuration, registry, document,
+Protocol binding and Issue record inputs it assessed.
 
-### req.spec.reconstruct-for-changes — Reconstruct the repository to see changes
+## Registry mirror
 
-A caller SHALL reconstruct the repository to observe source changes.
+### req.spec.registry-mirror-only — Regeneration changes only mirrored fields
 
-### req.spec.deterministic-order — Deterministic order for repeated queries
+Regenerating the registry SHALL rewrite only the mirrored fields of the Modules it already records,
+leaving each record's identity, title and entry path and the set of recorded Modules unchanged.
 
-Repeated queries against the same admitted repository SHALL return results in the same order.
+### req.spec.registry-check-read-only — Checking the mirror never writes
 
-### req.spec.local-contracts-only — Definition ownership stays local
+Checking the registry mirror SHALL report every record whose mirrored fields differ from its entry
+without writing any file.
 
-contracts(target) SHALL return only canonical definitions in documents owned by the target.
+## Boundary sets
 
-### req.spec.contracts-defer-agreement-checks — Cross-Module checks stay with the validator
+### req.spec.one-level-selection — Context selection is one level deep
 
-contracts(target) SHALL leave canonical-definition uniqueness and cross-Module binding checks to the
-repository validator.
+Spec context selection SHALL follow only the selected Module's own `owns`, `contains`, `uses` and
+`includes` declarations and never the relations of the Modules and documents they select.
 
-## Spec structure and validation
+### req.spec.both-members — Documents are selected whole
 
-### req.spec.structural-only — Validation checks structure and explicit references
+Every boundary set that contains a document SHALL contain both its reading member and its metadata
+member.
 
-Validation SHALL check structure and explicit references.
+### req.spec.write-sets-own-only — Write sets hold only the Module's own files
 
-### req.spec.no-semantic-completeness-claim — Validation never claims semantic completeness
+A Module's Spec scope and implementation scope SHALL contain only the documents it owns and the
+files its own realizations cover.
 
-Validation SHALL NOT claim to prove semantic completeness.
+A provider's documents therefore appear in a consumer's Spec context but never in the consumer's
+Spec scope.
 
-### req.spec.host-checks-separate — Host checks execute separately with registered argv
+### req.spec.one-realization-per-file — The longest entry decides
 
-Configured implementation checks SHALL execute separately on the host using their registered argv
-and timeout_seconds.
+Within one Module, a bound file SHALL belong to the realization whose covering entry is the longest.
 
-Structural validation preflights every registered explicit check input without running commands or
-reading input content. Inputs are required existing regular files or directories, never pending.
-Directory membership uses the check revision's bytecode exclusions, but symlinks remain forbidden
-even in excluded members. A missing or unsafe input produces a deterministic error finding naming
-the owning check, Module and offending path; a missing input is not an optional skipped source.
-Availability and admitted membership participate in the validation source identity; content-byte
-freshness remains separate configured-check evidence.
+### req.spec.directory-entry — A directory entry binds the files below it
 
-### req.spec.host-check-not-a-read-substitute — Check results never substitute for reading source
+An entry ending with `/` SHALL bind every regular file below that directory except those the
+implementation exclusion rule skips.
 
-A configured check's result SHALL NOT substitute for an agent reading source.
+The exclusion rule is part of the [interface definitions](contracts.md#implementation-exclusions).
 
-### req.spec.digest-per-assessment — Every validation result carries a source digest
+### req.spec.scenario-query-owner — A scenario selects its owner's whole context
 
-Every validation result SHALL carry a source digest of the exact state it assessed.
+A query by scenario identity SHALL return exactly the Spec context of the Module that owns the
+scenario.
 
-## Project initialization
+## Coverage
 
-### req.spec.init-allowed-files — Initialization touches only its allowed files
+### req.spec.coverage-from-tests — Coverage comes from the tests
 
-Application SHALL touch only .concorde/config.json, .concorde/specs.json and the explicit document paths named in the proposed registry.
+Scenario coverage SHALL be read only from verification declarations in bound test sources, without
+importing, compiling or running the tests.
 
-### req.spec.init-null-digests — Every proposed file has a null before_digest
+## Typed values
 
-Every proposed file SHALL have a null before_digest.
+### req.spec.typed-closed — Typed values are closed and exactly versioned
 
-### req.spec.init-destination-absent — Application requires each destination to still be absent
+Checking a typed value SHALL reject an unknown type, a schema version other than the registered
+one, a missing required field and any field its schema does not declare.
 
-Application SHALL require each proposed destination to still be absent.
+### req.spec.typed-offline — Typed values are checked offline
 
-### req.spec.init-no-overwrite — New initialization never overwrites an existing file
+Checking a typed value or a contract schema SHALL use no network access and no schema outside
+those registered in Concorde or defined in the checked schema itself.
 
-A new initialization SHALL NOT overwrite an existing file.
+## File transactions
 
-### req.spec.init-no-profile-migration — Older profile configurations are not migratable
+### req.spec.transaction-all-or-nothing — A transaction applies completely or not at all
 
-An existing configuration declaring an older profile SHALL NOT be treated as migratable.
+A file transaction SHALL either write every listed file with its new content or leave every listed
+file with its original bytes.
 
-### req.spec.init-explicit-envelope — Apply admits only the exact proposal envelope
+### req.spec.transaction-digest-bound — Stale input stops a transaction
 
-Apply SHALL admit the proposal by its exact concorde-project-proposal@1 envelope.
+A file transaction SHALL refuse to write when any listed file's current bytes do not match the
+digest the transaction expects to replace.
 
-### req.spec.init-no-token-substitute — Apply rejects issuance tokens and store lookups
+A file expected to be absent has a null digest and must still be absent.
 
-Apply SHALL NOT accept an issuance token or a store lookup in place of that exact proposal
-envelope.
+## Initialization
 
-### req.spec.init-configuration-roles — Outer configuration controls host settings only
+### req.spec.init-allowed-files — Initialization writes only its own files
 
-The invocation's outer configuration SHALL control host settings for the call itself.
+Applying an initial proposal SHALL write only `.concorde/config.json`, `.concorde/specs.json` and
+the members of the documents the proposed registry registers.
 
-### req.spec.init-propose-configuration-role — Propose controls the proposal's settings
+### req.spec.init-no-overwrite — Initialization never overwrites
 
-The propose request's configuration SHALL control the project settings written into the proposal.
+Applying an initial proposal SHALL NOT replace a file that already exists.
 
-### req.spec.init-apply-uses-proposal-configuration — Apply uses the proposal's configuration bytes
+### req.spec.init-explicit-envelope — Apply accepts only the exact proposal
 
-Apply SHALL use the accepted proposal's configuration bytes rather than a replacement from either
-invocation field.
+Applying SHALL accept an initial proposal only as the complete typed value that propose returned.
 
-### req.spec.init-configuration-required — Null outer configuration loads existing settings
+### req.spec.init-apply-uses-proposal-configuration — The proposal carries the configuration
 
-A null outer configuration SHALL load existing project settings.
+Applying SHALL write the configuration bytes contained in the proposal rather than any
+configuration supplied with the apply request.
 
-### req.spec.init-requires-outer-configuration — Uninitialized projects require outer configuration
+### req.spec.init-validated — The result must validate
 
-Before a project is initialized no such settings exist, so the caller SHALL supply a valid outer
-configuration or receive configuration_mismatch.
+Applying SHALL keep the written files only if the resulting project validates without errors.
 
-### req.spec.init-worktree-handoff — Initialization from primary applies only in the candidate
+### req.spec.init-honest-stub — The first Spec invents nothing
 
-An initialization requested from the primary worktree SHALL apply in the host-created candidate
-worktree and report that candidate, never as an applied initialization of the primary worktree.
+The initial Module stub SHALL state the project's purpose, behaviour and architecture as not yet
+specified rather than invent concepts, requirements, scenarios or relations.
 
-### req.spec.init-no-blind-retry — No blind retries of a rejected proposal
+### req.spec.init-binds-existing-files — Existing files are bound at once
 
-The host SHALL NOT silently retry a rejected proposal against different bytes.
+The initial Module stub SHALL bind every existing project file that version control tracks or
+does not ignore, apart from document members, control records and generated outputs, so that the
+new project validates without errors.
+
+The binding is one realization of the root Module, Existing project files. It locates files and
+promises nothing about them.
+
+### req.spec.init-no-installer-files — Installer outputs are not initialization outputs
+
+Initialization SHALL NOT create files that exist only because Concorde is installed, such as the
+Protocol copy under `.concorde/protocol/`.
+
+## Protocol assets
+
+### req.spec.protocol-assets-projected — Distributed assets are built from the text
+
+Every distributed Protocol asset SHALL be built from the Protocol text and the Framework profile and
+have its digest recorded in the tracked manifest.
+
+The build that renders the assets and checks their freshness belongs to the Distribution Module.

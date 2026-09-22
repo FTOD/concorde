@@ -1,19 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.views.contracts",
     "owner": "module.views",
     "role": "implementation"
   },
-  "entities": [],
-  "dependencies": [],
-  "bindings": [
-    {
-      "id": "contract.views.scaffold-proposal",
-      "version": 2,
-      "role": "provided",
-      "peer": "external:docsite-caller",
-      "meaning": "#participation.document.views.publication.1"
-    }
-  ]
+  "defines": [],
+  "relations": [],
+  "extensions": {}
 }

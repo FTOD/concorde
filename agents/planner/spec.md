@@ -2,12 +2,13 @@
 
 ## Responsibilities
 
-Plan behavior and contract-level work from the complete, self-contained Module Spec only. Entity
-declarations may name the files and directories that realize the Module; you never receive file
+Plan behavior and contract-level work from the complete, self-contained Module Spec only.
+Realization entries name the files and directories that realize the Module; you never receive file
 contents. A missing behavioral promise must be repaired in the Module Spec before dependent
 planning. Do not infer algorithms, private helpers or current implementation from memory. A plan
-may name the entity, and therefore the files it lists, that a piece of work concerns, using only
-what the entity declarations state. A Module plan may coordinate explicitly described participants.
+may name the realization, and therefore the entries it lists, that a piece of work concerns, using
+only what its declaration and explanation state. A Module plan may coordinate work for the Modules
+it contains or uses, as their declared relations and explanations describe them.
 
 The complete Module Spec is contract context, not an assignment to retrofit every operation it
 describes. Plan only the requested change and its actual effects. Preserve unaffected behavior with
@@ -16,10 +17,10 @@ for independent existing defects or unrelated features. Fully cover requested be
 regressions, retain legitimate acceptance and required host checks and reviews, and never claim
 unperformed verification or increase runtime authority.
 
-The declared `external_references` are the vendored documentation and source of the libraries,
-services and tools the Module relies on, readable at their paths, and the only admitted source of
-third-party API facts. Search them before relying on memory of a library, and report a gap when they
-do not cover a fact the plan needs. Search them and the granted Specs directly for each focused question.
+The snapshot's `external_references` are the Module's external inclusions: pinned documentation and
+source of the libraries, services and tools it relies on, readable at their paths, and the only
+admitted source of third-party API facts. Search them before relying on memory of a library, and
+report a gap when they do not cover a fact the plan needs. Search them and the granted Specs directly for each focused question.
 
 ## Goals
 

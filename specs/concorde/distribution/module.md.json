@@ -1,66 +1,181 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.distribution.module",
     "owner": "module.distribution",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Distribution",
+    "owns": [
+      "specs/concorde/distribution/module.md",
+      "specs/concorde/distribution/installation.md",
+      "specs/concorde/distribution/session.md",
+      "specs/concorde/distribution/requirements.md",
+      "specs/concorde/distribution/scenarios.md",
+      "specs/concorde/distribution/interfaces.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.harness.admission",
+        "meaning": "#uses-admission"
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-execution"
+      },
+      {
+        "target": "module.harness.context",
+        "meaning": "#uses-context"
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate"
+        ]
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#uses-agents"
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.views",
+        "meaning": "#uses-views"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "reference/pi/",
+        "reason": "Pi extension, tool and agent-definition APIs used by the session extension and the Task subagent files"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.distribution.build",
-      "title": "Build",
-      "kind": "program",
-      "files": [
-        "concorde.json",
-        "operations/__init__.py",
-        "pyproject.toml",
+      "id": "concept.distribution.package",
+      "type": "concept",
+      "title": "Package",
+      "meaning": "#concept.distribution.package"
+    },
+    {
+      "id": "concept.distribution.guidance",
+      "type": "concept",
+      "title": "Capability guidance",
+      "meaning": "#concept.distribution.guidance"
+    },
+    {
+      "id": "concept.distribution.catalog",
+      "type": "concept",
+      "title": "Capability catalog",
+      "meaning": "#concept.distribution.catalog"
+    },
+    {
+      "id": "concept.distribution.session-entry",
+      "type": "concept",
+      "title": "Session entry",
+      "meaning": "#concept.distribution.session-entry"
+    },
+    {
+      "id": "concept.distribution.build-manifest",
+      "type": "concept",
+      "title": "Build manifest",
+      "meaning": "#concept.distribution.build-manifest"
+    },
+    {
+      "id": "concept.distribution.launcher",
+      "type": "concept",
+      "title": "Launcher",
+      "meaning": "#concept.distribution.launcher"
+    },
+    {
+      "id": "concept.distribution.consumer-project",
+      "type": "concept",
+      "title": "Consumer project",
+      "meaning": "#concept.distribution.consumer-project"
+    },
+    {
+      "id": "concept.distribution.receipt",
+      "type": "concept",
+      "title": "Installation receipt",
+      "meaning": "#concept.distribution.receipt"
+    },
+    {
+      "id": "concept.distribution.protocol-copy",
+      "type": "concept",
+      "title": "Protocol copy",
+      "meaning": "#concept.distribution.protocol-copy"
+    },
+    {
+      "id": "concept.distribution.managed-runtime",
+      "type": "concept",
+      "title": "Managed runtime",
+      "meaning": "#concept.distribution.managed-runtime"
+    },
+    {
+      "id": "concept.distribution.local-installation",
+      "type": "concept",
+      "title": "Local installation",
+      "meaning": "#concept.distribution.local-installation"
+    },
+    {
+      "id": "concept.distribution.session-selection",
+      "type": "concept",
+      "title": "Session selection",
+      "meaning": "#concept.distribution.session-selection"
+    },
+    {
+      "id": "realization.distribution.build",
+      "type": "realization",
+      "title": "Build renderer",
+      "meaning": "#realization.distribution.build",
+      "entries": [
         "src/concorde/distribution/build.py",
-        "src/concorde/distribution/package_validation.py",
         "src/concorde/distribution/prompt_resolver.py",
+        "operations/__init__.py",
         "tests/concorde/distribution/test_build.py",
-        "tests/concorde/distribution/test_package_validation.py",
         "tests/concorde/distribution/test_prompt_resolver.py",
-        "tests/concorde/fixtures/build/golden/pi/",
-        "tests/concorde/support/build_fixture.py",
-        "uv.lock"
-      ],
-      "meaning": "#entity.distribution.build"
+        "tests/concorde/distribution/test_fresh_clone_bootstrap.py",
+        "tests/concorde/fixtures/build/golden/pi/concorde-session.ts",
+        "tests/concorde/support/build_fixture.py"
+      ]
     },
     {
-      "id": "entity.distribution.installation",
-      "title": "Installation",
-      "kind": "program",
-      "files": [
-        "conftest.py",
-        "operations/configure.py",
-        "scripts/concorde.ps1",
-        "scripts/concorde.py",
-        "scripts/concorde.sh",
-        "scripts/development/check-docsite-types.py",
-        "scripts/development/init-references.py",
-        "scripts/install-concorde.py",
-        "scripts/requirements.lock",
-        "scripts/run-operation.py",
-        "src/concorde/distribution/",
-        "src/concorde/distribution/installation.py",
-        "src/concorde/distribution/local_installation.py",
-        "src/concorde/spec/project.py",
-        "tests/concorde/distribution/",
-        "tests/concorde/distribution/installed_output_probe.py",
-        "tests/concorde/distribution/test_install_output_handoff.py",
-        "tests/concorde/distribution/test_local_installation.py",
-        "tests/concorde/harness/test_host_tools.py",
-        "tests/concorde/support/environment.py",
-        "tests/concorde/support/install_output_handoff.py",
-        "tests/concorde/support/pytest_timing.py"
-      ],
-      "meaning": "#entity.distribution.installation"
+      "id": "realization.distribution.build-checks",
+      "type": "realization",
+      "title": "Package validation",
+      "meaning": "#realization.distribution.build-checks",
+      "entries": [
+        "src/concorde/distribution/package_validation.py",
+        "tests/concorde/distribution/test_package_validation.py"
+      ]
     },
     {
-      "id": "entity.distribution.skill-sources",
-      "title": "Capability guidance sources",
-      "kind": "authored instructions",
-      "files": [
+      "id": "realization.distribution.guidance",
+      "type": "realization",
+      "title": "Guidance sources",
+      "meaning": "#realization.distribution.guidance",
+      "entries": [
         "prompts/operation-guidance/",
         "prompts/workflow-host/candidate-worktree.md",
         "prompts/workflow-host/gap-reporting.md",
@@ -69,147 +184,249 @@
         "prompts/workflow-host/lifecycle-no-cognition.md",
         "prompts/workflow-host/target-identity-opener.md",
         "prompts/workflow-host/task-request-fields.md"
-      ],
-      "meaning": "#entity.distribution.skill-sources"
+      ]
     },
     {
-      "id": "entity.distribution.pi-session-extension",
-      "title": "Pi session extension",
-      "kind": "program",
-      "files": [
-        "pi/extensions/concorde-native-child.ts",
+      "id": "realization.distribution.task-subagent-projector",
+      "type": "realization",
+      "title": "Task subagent projector",
+      "meaning": "#realization.distribution.task-subagent-projector",
+      "entries": [
+        "src/concorde/distribution/task_subagents.py",
+        "tests/concorde/distribution/test_task_subagents.py",
+        "tests/concorde/distribution/test_role_isolation.py",
+        "tests/concorde/distribution/test_coordinator_status.py",
+        "tests/concorde/distribution/test_user_session_todos.py",
+        "tests/concorde/distribution/brief_lifecycle_fixture.mjs",
+        "tests/concorde/distribution/user_session_brief_fixture.mjs",
+        "tests/concorde/support/task_subagents_preflight.mjs"
+      ]
+    },
+    {
+      "id": "realization.distribution.launcher",
+      "type": "realization",
+      "title": "Launcher script",
+      "meaning": "#realization.distribution.launcher",
+      "entries": [
+        "scripts/run-operation.py",
+        "tests/concorde/distribution/test_launcher_termination.py"
+      ]
+    },
+    {
+      "id": "realization.distribution.session-extension",
+      "type": "realization",
+      "title": "Session extension code",
+      "meaning": "#realization.distribution.session-extension",
+      "entries": [
+        "pi/extensions/concorde-session.ts",
         "pi/extensions/concorde-native-context.ts",
         "pi/extensions/concorde-native-plan.ts",
-        "pi/extensions/concorde-session.ts",
-        "pi/issue-call.d.mts",
-        "pi/issue-call.mjs",
-        "pi/native-issue-host.mjs",
-        "pi/native-plan-host.mjs",
+        "pi/extensions/concorde-native-child.ts",
         "pi/native-preflight.ts",
+        "pi/native-plan-host.mjs",
         "pi/native-review-host.mjs",
+        "pi/native-issue-host.mjs",
+        "pi/issue-call.mjs",
+        "pi/issue-call.d.mts",
         "pi/workflows/issues.js",
         "pi/workflows/plan.js",
         "pi/workflows/review.js",
         "tests/concorde/distribution/test_pi_session.py",
         "tests/concorde/support/fake_launcher.py",
-        "tests/concorde/support/task_subagents_preflight.mjs",
-        "tests/concorde/support/session_observer_harness.mts",
-        "tests/concorde/support/pi_session_harness.mts"
-      ],
-      "meaning": "#entity.distribution.pi-session-extension"
+        "tests/concorde/support/pi_session_harness.mts",
+        "tests/concorde/support/session_observer_harness.mts"
+      ]
     },
     {
-      "id": "entity.distribution.developer-runtime",
-      "title": "Developer runtime",
-      "kind": "external actor",
-      "meaning": "#entity.distribution.developer-runtime"
+      "id": "realization.distribution.cli",
+      "type": "realization",
+      "title": "Command-line interface",
+      "meaning": "#realization.distribution.cli",
+      "entries": [
+        "src/concorde/__main__.py",
+        "src/concorde/distribution/__init__.py",
+        "src/concorde/distribution/cli.py",
+        "scripts/concorde.py",
+        "scripts/concorde.sh",
+        "scripts/concorde.ps1"
+      ]
     },
     {
-      "id": "entity.distribution.managed-runtime",
-      "title": "Managed runtime",
-      "kind": "program",
-      "files": [
+      "id": "realization.distribution.configure",
+      "type": "realization",
+      "title": "Configure service",
+      "meaning": "#realization.distribution.configure",
+      "entries": [
+        "operations/configure.py",
+        "src/concorde/spec/project.py",
+        "tests/concorde/distribution/test_configure.py",
+        "tests/concorde/harness/test_host_tools.py"
+      ]
+    },
+    {
+      "id": "realization.distribution.installer",
+      "type": "realization",
+      "title": "Installer",
+      "meaning": "#realization.distribution.installer",
+      "entries": [
+        "src/concorde/distribution/installation.py",
+        "src/concorde/distribution/protocol_guidance.py",
+        "src/concorde/distribution/project_defaults.py",
+        "src/concorde/distribution/local_installation.py",
+        "scripts/install-concorde.py",
+        "concorde.json",
+        "tests/concorde/distribution/test_install_concorde.py",
+        "tests/concorde/distribution/test_protocol_guidance.py",
+        "tests/concorde/distribution/test_local_installation.py",
+        "tests/concorde/distribution/test_consumer_install_end_to_end.py",
+        "tests/concorde/distribution/test_manifests.py"
+      ]
+    },
+    {
+      "id": "realization.distribution.runtime-provisioner",
+      "type": "realization",
+      "title": "Runtime provisioner",
+      "meaning": "#realization.distribution.runtime-provisioner",
+      "entries": [
         "src/concorde/distribution/managed_runtime.py",
+        "scripts/requirements.lock",
         "tests/concorde/support/managed_runtime.py"
-      ],
-      "meaning": "#entity.distribution.managed-runtime"
+      ]
     },
     {
-      "id": "entity.distribution.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "target_id": "module.spec",
-      "meaning": "#entity.distribution.spec"
+      "id": "realization.distribution.selection",
+      "type": "realization",
+      "title": "Selection and tester bridge",
+      "meaning": "#realization.distribution.selection",
+      "entries": [
+        "src/concorde/distribution/session_selection.py",
+        "src/concorde/distribution/tester_check.py",
+        "tests/concorde/distribution/test_session_selection.py",
+        "tests/concorde/distribution/test_install_output_handoff.py",
+        "tests/concorde/distribution/installed_output_probe.py",
+        "tests/concorde/support/install_output_handoff.py"
+      ]
     },
     {
-      "id": "entity.distribution.install-script",
-      "title": "Install script",
-      "kind": "interface",
-      "meaning": "#entity.distribution.install-script"
-    },
-    {
-      "id": "entity.distribution.build-command",
-      "title": "Build command",
-      "kind": "interface",
-      "meaning": "#entity.distribution.build-command"
-    },
-    {
-      "id": "entity.distribution.runtime-provisioning",
-      "title": "Runtime provisioning interface",
-      "kind": "interface",
-      "meaning": "#entity.distribution.runtime-provisioning"
-    },
-    {
-      "id": "entity.distribution.authored-sources",
-      "title": "Authored sources",
-      "kind": "concept",
-      "meaning": "#entity.distribution.authored-sources"
-    },
-    {
-      "id": "entity.distribution.build-manifest",
-      "title": "Build manifest",
-      "kind": "record",
-      "meaning": "#entity.distribution.build-manifest"
-    },
-    {
-      "id": "entity.distribution.package-inventory",
-      "title": "Package inventory",
-      "kind": "record",
-      "meaning": "#entity.distribution.package-inventory"
-    },
-    {
-      "id": "entity.distribution.installation-proposal",
-      "title": "Installation proposal",
-      "kind": "record",
-      "meaning": "#entity.distribution.installation-proposal"
-    },
-    {
-      "id": "entity.distribution.ownership-receipt",
-      "title": "Ownership receipt",
-      "kind": "record",
-      "meaning": "#entity.distribution.ownership-receipt"
-    },
-    {
-      "id": "entity.distribution.target-project",
-      "title": "Target project",
-      "kind": "concept",
-      "meaning": "#entity.distribution.target-project"
-    },
-    {
-      "id": "entity.distribution.verified-runtime",
-      "title": "Verified managed runtime",
-      "kind": "concept",
-      "meaning": "#entity.distribution.verified-runtime"
-    },
-    {
-      "id": "entity.distribution.integration-configuration",
-      "title": "Pi worker configuration",
-      "kind": "concept",
-      "meaning": "#entity.distribution.integration-configuration"
-    },
-    {
-      "id": "entity.distribution.developer-session",
-      "title": "Developer agent session",
-      "kind": "external actor",
-      "meaning": "#entity.distribution.developer-session"
-    },
-    {
-      "id": "entity.distribution.agents",
-      "title": "Agents",
-      "kind": "used module",
-      "target_id": "module.agents",
-      "meaning": "#entity.distribution.agents"
+      "id": "realization.distribution.development",
+      "type": "realization",
+      "title": "Development environment",
+      "meaning": "#realization.distribution.development",
+      "entries": [
+        "pyproject.toml",
+        "uv.lock",
+        "conftest.py",
+        "tests/concorde/support/pytest_timing.py",
+        "tests/concorde/support/environment.py",
+        "scripts/development/init-references.py",
+        "scripts/development/check-docsite-types.py",
+        "tests/concorde/distribution/test_check_docsite_types.py",
+        "tests/concorde/distribution/__init__.py"
+      ]
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.spec",
-      "meaning": "#agreement.document.distribution.module.1"
+      "type": "relates",
+      "source": "concept.distribution.guidance",
+      "verb": "is rendered into",
+      "target": "concept.distribution.catalog"
     },
     {
-      "target_id": "module.agents",
-      "meaning": "#entity.distribution.agents"
+      "type": "relates",
+      "source": "realization.distribution.build",
+      "verb": "renders",
+      "target": "concept.distribution.session-entry"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.build",
+      "verb": "records",
+      "target": "concept.distribution.build-manifest"
+    },
+    {
+      "type": "relates",
+      "source": "concept.distribution.session-entry",
+      "verb": "carries",
+      "target": "concept.distribution.catalog"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.session-extension",
+      "verb": "runs",
+      "target": "concept.distribution.launcher"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.session-extension",
+      "verb": "prepares native calls through",
+      "target": "module.harness.execution"
+    },
+    {
+      "type": "relates",
+      "source": "concept.distribution.launcher",
+      "verb": "hands each invocation to",
+      "target": "module.harness.admission"
+    },
+    {
+      "type": "relates",
+      "source": "concept.distribution.launcher",
+      "verb": "re-executes inside",
+      "target": "concept.distribution.managed-runtime"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.installer",
+      "verb": "installs into",
+      "target": "concept.distribution.consumer-project"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.installer",
+      "verb": "writes",
+      "target": "concept.distribution.receipt"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.installer",
+      "verb": "deploys",
+      "target": "concept.distribution.protocol-copy"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.installer",
+      "verb": "provisions through",
+      "target": "realization.distribution.runtime-provisioner"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.runtime-provisioner",
+      "verb": "verifies",
+      "target": "concept.distribution.managed-runtime"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.selection",
+      "verb": "records",
+      "target": "concept.distribution.session-selection"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.selection",
+      "verb": "runs tester commands through",
+      "target": "module.harness.checks"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.task-subagent-projector",
+      "verb": "renders definitions from",
+      "target": "module.agents"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.configure",
+      "verb": "rebinds the project to",
+      "target": "concept.distribution.protocol-copy"
     }
-  ],
-  "bindings": []
+  ]
 }

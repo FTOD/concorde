@@ -16,9 +16,30 @@ from concorde.harness.studio_client import _NoRedirect, run_in_studio
 from concorde.spec.contracts import load_operation_inventory
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
-from tests.concorde.harness.test_studio import invocation
+from concorde.spec.wire_shapes import type_version
 from tests.concorde.spec.support import PACKAGE
 from tests.concorde.support.environment import scrubbed_process_environment
+
+
+def invocation(operation="concorde-issues", mode="execute", data=None):
+    return {
+        "type_id": "concorde-operation-invocation",
+        "schema_version": 3,
+        "operation_id": operation,
+        "mode": mode,
+        "configuration": None,
+        "input": {
+            "type_id": operation + "-request",
+            "schema_version": type_version(operation + "-request"),
+            "data": data
+            if data is not None
+            else {
+                "target_id": "service.transfer",
+                "task": "Explain transfer",
+                **({"action": "list"} if operation == "concorde-issues" else {}),
+            },
+        },
+    }
 
 
 class StudioClientTests(unittest.TestCase):

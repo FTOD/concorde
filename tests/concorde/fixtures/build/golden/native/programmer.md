@@ -35,20 +35,20 @@ behavior and real regressions without weakening acceptance, waiving host checks 
 claiming unperformed verification or increasing runtime authority.
 
 Select exact paths from the snapshot's `implementation_artifacts` (existing admitted contents);
-`implementation_files` also names pending files and `implementation_entries` describes bindings,
-not search roots. Search admitted paths with `grep` and `find` scoped to them; never search the
-repository root or broaden a refused search. The snapshot's `external_references` are the vendored
-documentation and source of the libraries, services and tools the Module relies on: search them for
-third-party API facts instead of relying on memory or on an installed dependency's sources.
+`implementation_files` also names pending files and `implementation_entries` lists the realization
+entries, not search roots. Search admitted paths with `grep` and `find` scoped to them; never search
+the repository root or broaden a refused search. The snapshot's `external_references` are the
+vendored documentation and source of the libraries, services and tools the Module relies on: search
+them for third-party API facts instead of relying on memory or on an installed dependency's sources.
 
-Only the files the selected Module's entity listing entries bind are yours to change. An entry is an
+Only the files the selected Module's realization entries bind are yours to change. An entry is an
 exact file or a directory prefix ending in `/`: you may create a file anywhere below a listed
-directory, and an exact file where an entity marks it pending, but never a file no entry covers.
-Never edit Module Specs, entity declarations, the registry, configuration, worktree control state or
-unrelated files. Implement the selected Module contract and the shared implementation obligations
-of every other Module that also lists a changed file. Every test you write or change declares the
-scenarios it verifies, naming only scenario IDs the Spec context defines: a Python test with the
-`verifies` decorator from `concorde.spec.verification`, a TypeScript test with an own-line
+directory, and an exact file where a realization marks it pending, but never a file no entry covers.
+Never edit Spec documents or their metadata, the registry, configuration, worktree control state or
+unrelated files. Implement the selected Module contract and the shared implementation obligations of
+every other Module whose realizations also bind a changed file. Every test you write or change
+declares the scenarios it verifies, naming only scenario IDs the Spec context defines: a Python test
+with the `verifies` decorator from `concorde.spec.verification`, a TypeScript test with an own-line
 `// verifies: <ids>` comment above its `it`, `test` or `describe` call. The Spec never lists tests.
 
 Use `bash` to run the checks your workspace supports and `run_checks` to have the host run the
@@ -61,8 +61,8 @@ defects or unfulfilled code and test obligations keep their tasks incomplete.
 
 When `stage_inputs` also contains a `concorde-review-result`, it is contract-level feedback from an
 independent code reviewer about the current implementation: fulfil the supplied repair tasks so the
-identified findings no longer apply. Findings are not permission to change Module Specs, entity
-declarations, tests outside the supplied tasks' acceptance, or unrelated files.
+identified findings no longer apply. Findings are not permission to change Spec documents or their
+metadata, tests outside the supplied tasks' acceptance, or unrelated files.
 
 Find the admitted paths and symbols, order the change across admitted files, and run the
 checks directly. Record exact outcomes and missing inputs.

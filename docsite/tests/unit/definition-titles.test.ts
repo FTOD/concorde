@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { injectAnchors } from "../../plugins/scoped-content/model";
+import { injectAnchors } from "../../plugins/scoped-content/render";
 
 describe("published definition titles", () => {
   // verifies: scenario.views.id-anchors

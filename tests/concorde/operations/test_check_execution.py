@@ -22,12 +22,16 @@ class CheckIntegrationTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.registry = project(self.root)
+        project(self.root)
+        self.config = json.loads((self.root / ".concorde/config.json").read_text())
+
+    def save_config(self):
+        (self.root / ".concorde/config.json").write_text(json.dumps(self.config))
 
     def configure(self, code, timeout=10):
-        check = self.registry["checks"][0]
+        check = self.config["checks"][0]
         check.update(argv=["{python}", "-c", code], timeout_seconds=timeout)
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+        self.save_config()
         repo = SpecRepository(self.root, PACKAGE)
         return repo, repo.select("service.transfer"), check["id"]
 
@@ -39,7 +43,7 @@ class CheckIntegrationTests(unittest.TestCase):
 
     @verifies("scenario.validation.blocked")
     def test_missing_check_input_is_reported_before_execution(self):
-        self.registry["checks"][0]["inputs"] = ["removed-lock.json"]
+        self.config["checks"][0]["inputs"] = ["removed-lock.json"]
         repo, target, check_id = self.configure("print('must not run')")
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("invalid", report.status)
@@ -66,7 +70,7 @@ class CheckIntegrationTests(unittest.TestCase):
 
     @verifies("scenario.validation.blocked")
     def test_public_validation_reports_preflight_owner_without_executing_checks(self):
-        self.registry["checks"][0]["inputs"] = ["removed-lock.json"]
+        self.config["checks"][0]["inputs"] = ["removed-lock.json"]
         _, target, check_id = self.configure("print('must not run')")
         with patch("concorde.harness.checks.execute_check") as execute:
             result = run_operation(
@@ -89,7 +93,7 @@ class CheckIntegrationTests(unittest.TestCase):
     def test_regular_files_and_directories_share_revision_and_preflight_rules(self):
         directory = self.root / "check-data"
         directory.mkdir()
-        self.registry["checks"][0]["inputs"] = ["app/transfer.py", "check-data"]
+        self.config["checks"][0]["inputs"] = ["app/transfer.py", "check-data"]
         repo, target, _ = self.configure("print('safe')")
         empty = check_revision(repo, target)
         (directory / "data.txt").write_text("one")
@@ -122,7 +126,7 @@ class CheckIntegrationTests(unittest.TestCase):
                 path = self.root / link
                 path.symlink_to(destination)
                 try:
-                    self.registry["checks"][0]["inputs"] = [entry]
+                    self.config["checks"][0]["inputs"] = [entry]
                     repo, target, check_id = self.configure("print('must not run')")
                     report = validate_repository(self.root, package_root=PACKAGE)
                     finding = next(
@@ -144,7 +148,7 @@ class CheckIntegrationTests(unittest.TestCase):
         import os
 
         os.mkfifo(self.root / "pipe")
-        self.registry["checks"][0]["inputs"] = ["pipe"]
+        self.config["checks"][0]["inputs"] = ["pipe"]
         repo, target, _ = self.configure("print('must not run')")
         with self.assertRaises(SpecError) as raised:
             check_revision(repo, target)
@@ -155,7 +159,7 @@ class CheckIntegrationTests(unittest.TestCase):
 
     @verifies("scenario.validation.blocked")
     def test_input_disappearing_during_hashing_still_names_its_owner(self):
-        self.registry["checks"][0]["inputs"] = ["app/transfer.py"]
+        self.config["checks"][0]["inputs"] = ["app/transfer.py"]
         repo, target, check_id = self.configure("print('must not run')")
         with (
             patch(
@@ -175,13 +179,13 @@ class CheckIntegrationTests(unittest.TestCase):
 
     @verifies("scenario.validation.blocked")
     def test_unsafe_registered_spelling_keeps_owning_check_diagnostics(self):
-        self.registry["checks"][0]["inputs"] = ["../outside"]
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+        self.config["checks"][0]["inputs"] = ["../outside"]
+        self.save_config()
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("invalid", report.status)
         message = " ".join(f.message for f in report.findings)
         for value in (
-            self.registry["checks"][0]["id"],
+            self.config["checks"][0]["id"],
             "service.transfer",
             "../outside",
         ):

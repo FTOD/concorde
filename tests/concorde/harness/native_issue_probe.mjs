@@ -23,18 +23,8 @@ project(Path(${JSON.stringify(root)}))
 import json
 r=Path(${JSON.stringify(root)})
 if ${JSON.stringify(scenario)} in ('shared','many','missing','budget'):
- registry=json.loads((r/'.concorde/specs.json').read_text())
- template=next(t for t in registry['targets'] if t['id']=='module.ledger')
- for i in range(19 if ${JSON.stringify(scenario)}=='many' else 2):
-  name='consumer'+str(i);member=json.loads(json.dumps(template).replace('ledger',name))
-  member['references']=[{'kind':'document','id':'document.transfer.promises'}]
-  for old,new in zip(template['documents'],member['documents']):
-   dest=r/new;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text((r/old).read_text().replace('ledger',name))
-   (r/(new+'.json')).write_text((r/(old+'.json')).read_text().replace('ledger',name))
-  for old,new in zip(template['files'],member['files']):
-   dest=r/new;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes((r/old).read_bytes())
-  registry['targets'].append(member)
- (r/'.concorde/specs.json').write_text(json.dumps(registry))
+ from tests.concorde.spec.support import add_consumers
+ add_consumers(r, 19 if ${JSON.stringify(scenario)}=='many' else 2)
 `,
 ]);
 execFileSync(python, [

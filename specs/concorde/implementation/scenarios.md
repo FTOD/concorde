@@ -1,77 +1,67 @@
 # Implementation scenarios
 
-These precise specifications belong directly to the [Implementation Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+Concrete situations for `concorde-implement` in the [Implementation Module](module.md). The
+Module-wide obligations and the exact checks are in
+[programmer admission and completion](programmer.md).
 
-## Terminology
+## Normal completion
 
-| Term                                                | Meaning / definition               |
-| --------------------------------------------------- | ---------------------------------- |
-| [Spec](../module.md#terminology)                    | Defined in Concorde Framework.     |
-| [Module](../module.md#terminology)                  | Defined in Concorde Framework.     |
-| [Worker](../module.md#terminology)                  | Defined in Concorde Framework.     |
-| [Host](../module.md#terminology)                    | Defined in Concorde Framework.     |
-| [Grant](../module.md#terminology)                   | Defined in Concorde Framework.     |
-| [Candidate](../module.md#terminology)               | Defined in Concorde Framework.     |
-| [Ready](../module.md#terminology)                   | Defined in Concorde Framework.     |
-| [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
+### scenario.implementation.admitted-work — Every local task is fulfilled
 
-## Implementation
+- GIVEN a managed candidate with a current accepted plan and task list for the selected Module
+- WHEN the programmer fulfils every local task within the Module's files and returns the complete list
+- THEN the Host accepts completion for exactly those tasks, with identities and acceptance unchanged and every task complete
+- AND it records the Module's implementation digest in the candidate
+- BUT it changes no Spec and does not make the candidate ready
 
-### scenario.implementation.admitted-work — Return complete fulfillment of the admitted tasks
+See [preserve task identity and acceptance](programmer.md#req.implementation.admitted-contract).
 
-- GIVEN a current accepted plan and nonempty task list bound to a selected Module
-- WHEN the worker fulfills every task's acceptance within that Module's implementation grant and returns the complete task list
-- THEN the host accepts completion only for those same tasks with their IDs and acceptance preserved and all complete flags true
-- AND the host records accepted progress without declaring ready or changing Specs
+### scenario.implementation.native-programmer — The native programmer edits the real candidate
 
-The detailed contract is [Exact tasks and bounded code effects](execution-reference.md#implementation-implementation-operation).
+- GIVEN current accepted plan and tasks, and any required review feedback and component work, for a selected Module
+- WHEN the prepared native programmer uses its write, edit and `run_checks` tools
+- THEN the candidate worktree's files change, not copies in the capsule
+- AND completion is accepted only after the Host verified the native run and the unchanged inputs
+- BUT an incomplete, malformed or foreign answer, a failed or cancelled run, or a changed plan, task list, feedback or Spec accepts no completion, and the edits made so far remain in the candidate
 
-## Implementation operation
+## Refusals
 
-### scenario.implementation.missing-tasks — Implementation has no authored tasks
+### scenario.implementation.missing-tasks — No task list
 
-- GIVEN an admitted selected target with no authored task list
-- WHEN its declared composing caller requests implementation
-- THEN the host rejects the request with missing_tasks before launching the programmer
-- AND it does not invent tasks or grant implementation writes for that request
+- GIVEN a managed candidate whose selected target has an accepted plan but no task list
+- WHEN the user session requests implementation
+- THEN the Host refuses with `missing_tasks` before starting a programmer
+- BUT it invents no tasks and grants no write access for the request
 
-### scenario.implementation.incomplete-output — The result does not complete every task
+### scenario.implementation.incomplete-output — The answer does not complete every task
 
-- GIVEN a programmer invocation with a current accepted plan and nonempty task list
-- WHEN its result omits an admitted task or leaves an admitted task incomplete
-- THEN the host reports incomplete_tasks instead of accepting full implementation completion
-- AND authorized code changes remain inspectable in the candidate without establishing readiness
+- GIVEN a programmer run for a current accepted task list
+- WHEN its answer omits a local task, changes one, or leaves one incomplete
+- THEN the Host reports `incomplete_tasks` instead of accepting completion
+- AND the code changes made so far remain in the candidate for inspection
+- BUT the candidate does not become ready
 
-### scenario.implementation.failed-execution — Recover after partial authorized edits
+### scenario.implementation.failed-execution — A failed run leaves edits and no completion
 
-- GIVEN an implementation invocation has made authorized code edits in its selected Module's grant
-- WHEN execution fails before a matching successful completion is accepted
-- THEN the failure neither establishes task completion nor implies rollback of those code edits
-- AND the host preserves the candidate and progress for inspection and recovery
-- AND a subsequent attempt re-admits current task artifacts and context in a fresh invocation without wider permissions
+- GIVEN a programmer run that has made edits in the Module's files
+- WHEN the run fails or is cancelled before its answer is accepted
+- THEN no task completion is recorded and the edits are not rolled back
+- AND the candidate and its recorded progress stay available for inspection
+- AND a later attempt admits the current plan, tasks and context afresh in a new run, with no wider permission
 
-### scenario.implementation.caller-components — Separate component work returns to the caller
+## Component work
 
-- GIVEN a current accepted task list names local work and declared component Modules
-- WHEN implementation lacks current complete component evidence
-- THEN it returns the exact target and derived task intent to the calling agent without launching child development, authoring or implementation workers
-- AND after the caller separately completes the component work, a retry checks its intent, complete tasks and current Spec/code revisions before local implementation
-- AND the root change owner is preserved and subsequent component changes invalidate dependent completion
+### scenario.implementation.caller-components — Component work returns to the user session
 
-### scenario.implementation.component-stale-parent — Component admission requires current parent intent
+- GIVEN an accepted task list with local tasks and tasks for a Module that the target uses or directly contains
+- WHEN implementation finds no current completed work for that component
+- THEN it returns `unsupported` with the component's target and derived task text, without starting any programmer
+- AND after the user session completes that work for the component, a retry checks its task text, constraints, completion and current Spec and implementation before the local programmer starts
+- BUT after a later change to the component's Spec or code, its work must be completed again before the parent's next run
 
-- GIVEN the caller explicitly selects component work derived from an accepted parent plan and tasks
-- WHEN the parent's Spec or registration has changed, or the component request differs from the derived task or accepted constraints
-- THEN admission rejects before launching a component worker or replacing accepted target state
-- AND the caller must reconcile and replan explicitly rather than reuse stale parent artifacts
+### scenario.implementation.component-stale-parent — Component work needs the parent's current plan
 
-### scenario.implementation.native-programmer — Native writes affect the admitted candidate
-
-- GIVEN current accepted plan/tasks, intent, feedback and component evidence
-- WHEN the prepared native programmer uses write/edit and the fixed Host check service
-- THEN actual assigned candidate files change, not capsule implementation copies
-- AND exact fulfilled tasks are accepted only after independent native completion/currentness checks
-- AND incomplete/malformed/foreign tasks, native failure/cancellation or changed plan/task/feedback/Spec inputs cannot accept completion
-- AND partial edits survive refusal; missing components/tasks stop before a model
-- AND status, checks and durable run evidence remain primary-owned with no automatic readiness/integration
+- GIVEN the user session requests component work derived from a parent's accepted plan and tasks
+- WHEN the parent's Spec has changed since its plan, or the request's task or constraints differ from the derived work
+- THEN the request is refused before any component worker starts or any recorded work changes
+- AND the user session must plan the parent again before retrying

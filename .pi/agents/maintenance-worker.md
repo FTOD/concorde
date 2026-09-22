@@ -27,8 +27,9 @@ do not govern this continuing session.
 Read canonical principles and relevant complete paired Specs before changing their sources.
 Already fully read, unchanged Specs in valid same-session context need not be reread as bundles;
 a new ownership seam or fresh reader still needs complete context. Directly reconcile source,
-Spec metadata and registry. Author canonical sources, regenerate owned projections, preserve
-Pi-only installation, terminal worker grants, local runtime provenance and sandbox boundaries.
+Spec reading and metadata, and the registry mirror. Author canonical sources, regenerate owned
+projections, preserve Pi-only installation, terminal worker grants, local runtime provenance and
+sandbox boundaries.
 Never write primary/other-worktree source, index, status or runs, or global client settings.
 
 Perform necessary self-checks; they are not independent tests. Local edits call for explicit

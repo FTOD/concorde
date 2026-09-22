@@ -22,7 +22,10 @@ from tests.concorde.spec.support import (
     PACKAGE,
     ModelProcessDouble,
     project,
+    set_realization,
+    sync_registry,
     update_document_declaration,
+    update_module,
 )
 
 
@@ -37,18 +40,11 @@ class BoundaryTests(unittest.TestCase):
             "task": "Implement the specified transfer",
         }
 
-    def save(self):
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+    def validation_rules(self):
+        from concorde.spec.validation import validate_repository
 
-    def entities(self, path):
-        document = self.root / (path + ".json")
-        metadata = json.loads(document.read_text())
-
-        def save(value):
-            metadata["entities"] = value
-            document.write_text(json.dumps(metadata, indent=2) + "\n")
-
-        return metadata["entities"], save
+        report = validate_repository(self.root, package_root=PACKAGE)
+        return {f.rule_id for f in report.findings if f.severity == "error"}
 
     def call_operation(self, name, data=None, callback=None, mode="execute"):
         double = ModelProcessDouble(callback)
@@ -79,10 +75,17 @@ class BoundaryTests(unittest.TestCase):
 
     @verifies("scenario.harness.context-freeze")
     def test_shared_physical_markdown_is_one_hop_context_not_entity_expansion(self):
-        self.registry["targets"][3]["references"].append(
-            {"kind": "document", "id": "document.transfer.promises"}
+        update_module(
+            self.root,
+            "module.ledger",
+            includes=[
+                {
+                    "kind": "document",
+                    "target": "document.transfer.promises",
+                    "reason": "the amount rules the balance store must accept",
+                }
+            ],
         )
-        self.save()
         update_document_declaration(
             self.root, "specs/transfer/promises.md", owner="service.transfer"
         )
@@ -120,17 +123,13 @@ class BoundaryTests(unittest.TestCase):
         )
         self.assertNotIn("specs/transfer/module.md", json.dumps(module))
 
-    def test_a_directory_is_listed_only_with_an_explicit_trailing_slash(self):
-        self.registry["targets"][3]["files"] = ["app"]
-        self.save()
-        with self.assertRaisesRegex(SpecError, "use a trailing slash for a directory"):
-            SpecRepository(self.root)
+    def test_a_directory_is_bound_only_with_an_explicit_trailing_slash(self):
+        set_realization(self.root, "realization.ledger.store", entries=["app"])
+        self.assertIn("CHK.binds.exists", self.validation_rules())
         # The trailing slash binds every regular file below the directory, including a new one.
-        self.registry["targets"][3]["files"] = ["app/"]
-        self.save()
-        entities, save = self.entities("specs/ledger/module.md")
-        entities[1]["files"] = ["app/"]
-        save(entities)
+        set_realization(self.root, "realization.ledger.store", entries=["app/"])
+        sync_registry(self.root)
+        self.assertNotIn("CHK.binds.exists", self.validation_rules())
         repo = SpecRepository(self.root)
         ledger = repo.select("module.ledger")
         self.assertEqual(("app/",), repo.implementation_entries(ledger))
@@ -138,27 +137,25 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(
             ("app/ledger.py", "app/transfer.py"), repo.implementation_files(ledger)
         )
-        entity = repo.entity_for_path(ledger, "app/transfer.py")
-        assert entity is not None
-        self.assertEqual("entity.ledger.store", entity.id)
+        realization = repo.realization_for_path(ledger, "app/transfer.py")
+        assert realization is not None
+        self.assertEqual("realization.ledger.store", realization.id)
         self.assertEqual(
             ("service.transfer", "module.ledger"),
             tuple(t.id for t in repo.affected_modules(["app/transfer.py"])),
         )
 
-    def test_control_and_spec_paths_cannot_be_listed_implementation_entries(self):
-        for path, message in (
-            (".concorde/config.json", "control or generated path"),
-            (".concorde/", "control or generated path"),
-            ("generated/protocol/principles.md", "control or generated path"),
-            ("specs/ledger/module.md", "listed file cannot be a project Spec document"),
-            ("specs/", "listed directory cannot contain a project Spec document"),
+    def test_control_and_spec_paths_cannot_be_bound(self):
+        for path in (
+            ".concorde/config.json",
+            ".concorde/",
+            "generated/protocol/principles.md",
+            "specs/ledger/module.md",
+            "specs/",
         ):
             with self.subTest(path=path):
-                self.registry["targets"][2]["files"] = [path]
-                self.save()
-                with self.assertRaisesRegex(SpecError, message):
-                    SpecRepository(self.root)
+                set_realization(self.root, "realization.transfer.check", entries=[path])
+                self.assertIn("CHK.binds.no-spec", self.validation_rules())
 
     def test_module_and_scenario_share_one_global_identity_namespace(self):
         from concorde.spec.validation import validate_repository
@@ -170,7 +167,7 @@ class BoundaryTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("invalid", report.status)
         self.assertIn(
-            "CONCORDE-IDENTITY-001", {finding.rule_id for finding in report.findings}
+            "CHK.defines.once", {finding.rule_id for finding in report.findings}
         )
 
     @verifies("scenario.harness.context-freeze")
@@ -311,8 +308,10 @@ class BoundaryTests(unittest.TestCase):
         self.assertIn(
             "specs/transfer/module.md.json", self.host.descriptions[0]["read_paths"]
         )
+        # uses selects the provider's documents; Audit is not selected.
+        self.assertIn("specs/ledger/module.md", self.host.descriptions[0]["read_paths"])
         self.assertNotIn(
-            "specs/ledger/module.md", self.host.descriptions[0]["read_paths"]
+            "specs/audit/module.md", self.host.descriptions[0]["read_paths"]
         )
         self.assertTrue(
             all(item["write_paths"] == [] for item in self.host.descriptions)
@@ -334,7 +333,7 @@ class BoundaryTests(unittest.TestCase):
             "blocked", self.call_operation("concorde-tasks", task)["status"]
         )
 
-    @verifies("scenario.harness.permission-reject", "scenario.harness.worker-contract")
+    @verifies("scenario.harness.permission-reject", "scenario.context.contract-checks")
     def test_planner_cannot_emit_spec_metadata_provider_or_registry_replacements(self):
         paths = (
             "specs/transfer/module.md",
@@ -374,9 +373,10 @@ class BoundaryTests(unittest.TestCase):
             self.completion(task)
 
     def test_separate_check_inputs_invalidate_evidence(self):
-        check = self.registry["checks"][0]
-        check["inputs"] = ["acceptance.json"]
-        self.save()
+        path = self.root / ".concorde/config.json"
+        config = json.loads(path.read_text())
+        config["checks"][0]["inputs"] = ["acceptance.json"]
+        path.write_text(json.dumps(config))
         (self.root / "acceptance.json").write_text("{}")
         task = self.change()
         self.call_operation("concorde-tasks", task)
@@ -417,7 +417,6 @@ class BoundaryTests(unittest.TestCase):
             "user change", (self.root / "specs/transfer/module.md").read_text()
         )
 
-    @verifies("scenario.harness.typed-validate")
     def test_unsupported_and_malformed_contract_schemas_fail_admission(self):
         for schema in [
             {"type": "object", "unevaluatedProperties": False},

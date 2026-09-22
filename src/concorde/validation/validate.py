@@ -31,8 +31,17 @@ def validate(run, run_checks: bool = True) -> dict:
         progress(
             run.repository.root, phase="validate", status="active", invalidate=True
         )
-    before_tree = snapshot_tree(run.repository.root) if run.work_directory else None
     change = read_change(run.repository.root)
+    if change is not None:
+        # A pending entry is removed once its file exists (Protocol 11, CHK.binds.pending-subset).
+        # In a candidate the host confirms created files before validating, as delivery does.
+        from ..spec.changes import confirm_pending_files
+
+        confirmed, _ = confirm_pending_files(run.repository.root, run.host.package_root)
+        if confirmed:
+            run.repository = SpecRepository(run.repository.root, run.host.package_root)
+            run.target = run.repository.select(run.target.id)
+    before_tree = snapshot_tree(run.repository.root) if run.work_directory else None
     direct_candidate = bool(
         change is not None and not change["targets"] and not run.host.coordinated
     )

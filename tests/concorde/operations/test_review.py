@@ -95,9 +95,13 @@ class ReviewTests(unittest.TestCase):
     ):
         from concorde.harness.worker_executor import OperationExecutionError
         from concorde.review.review import require_reviews, verify_required
-        from concorde.spec.initialize import empty_target
         from concorde.spec.repository import SpecError
-        from tests.concorde.spec.support import module_document, write_document
+        from tests.concorde.spec.support import (
+            module_document,
+            register_module,
+            uses,
+            write_document,
+        )
 
         for mode in ("code", "spec"):
             with self.subTest(mode=mode):
@@ -105,26 +109,16 @@ class ReviewTests(unittest.TestCase):
                 fixture.setUp()
                 try:
                     path = fixture.root / ".concorde/specs.json"
-                    registry = json.loads(path.read_text())
                     for name in ("first", "second"):
                         target_id = "module." + name
                         document = "specs/" + name + "/module.md"
-                        peer = empty_target(target_id, "module", name, [document])
-                        peer["files"] = ["app/transfer.py"]
-                        if mode == "spec":
-                            peer["references"] = [
-                                {"kind": "module", "id": "service.transfer"}
-                            ]
-                        registry["targets"].append(peer)
-                        file = fixture.root / document
-                        file.parent.mkdir()
                         write_document(
                             fixture.root,
                             document,
                             module_document(
                                 "document." + name,
                                 target_id,
-                                name,
+                                name.title(),
                                 "Observe the shared transfer calculation.",
                                 "### scenario." + name + ".read — Read the result\n\n"
                                 "- GIVEN a valid transfer\n- WHEN its result is read\n- THEN the remaining balance is returned\n",
@@ -132,19 +126,22 @@ class ReviewTests(unittest.TestCase):
                                     "The shared calculation supplies the result.",
                                     [
                                         {
-                                            "id": "entity." + name + ".shared",
+                                            "id": "realization." + name + ".shared",
+                                            "type": "realization",
                                             "title": "Shared calculation",
-                                            "kind": "function",
-                                            "responsibility": "Compute the remaining balance.",
-                                            "files": ["app/transfer.py"],
+                                            "meaning": "Compute the remaining balance.",
+                                            "entries": ["app/transfer.py"],
                                         }
                                     ],
                                 ),
-                                "",
+                                "The shared calculation is bound by several Modules.",
                                 'flowchart TB\n    shared["Shared calculation"]',
+                                uses=[uses("service.transfer")]
+                                if mode == "spec"
+                                else (),
                             ),
                         )
-                    path.write_text(json.dumps(registry))
+                        register_module(fixture.root, target_id, document)
                     planned = fixture.call_operation("concorde-plan")
                     self.assertEqual("succeeded", planned["status"], planned)
                     require_reviews(fixture.invocation(), True, modes=[mode])
@@ -159,7 +156,11 @@ class ReviewTests(unittest.TestCase):
                     original = read_change(fixture.root, required=True)[field][
                         "service.transfer"
                     ]
-                    self.assertEqual({"module.first", "module.second"}, set(original))
+                    # Banking uses the transfer Module, so it is a Spec consumer as well.
+                    consumers = {"scope.bank"} if mode == "spec" else set()
+                    self.assertEqual(
+                        {"module.first", "module.second"} | consumers, set(original)
+                    )
                     artifacts = {
                         r["artifact"]["path"]: (
                             fixture.root / r["artifact"]["path"]
@@ -170,27 +171,24 @@ class ReviewTests(unittest.TestCase):
                     # Spec removal removes the Module identity; live old-impact consumers
                     # must continue to be required when only a reference is removed.
                     for removed, remaining in (
-                        ("first", {"module.second"}),
-                        ("second", set()),
+                        ("first", {"module.second"} | consumers),
+                        ("second", consumers),
                     ):
                         registry = json.loads(path.read_text())
                         peer = next(
                             t
-                            for t in registry["targets"]
+                            for t in registry["modules"]
                             if t["id"] == "module." + removed
                         )
-                        document = fixture.root / peer["documents"][0]
                         if mode == "spec":
-                            registry["targets"].remove(peer)
-                            document.unlink()
-                            Path(str(document) + ".json").unlink()
+                            registry["modules"].remove(peer)
+                            for document in peer["owns"]:
+                                (fixture.root / document).unlink()
+                                (fixture.root / (document + ".json")).unlink()
                         else:
-                            peer["files"] = []
-                            metadata_path = Path(str(document) + ".json")
+                            metadata_path = fixture.root / (peer["entry"] + ".json")
                             metadata = json.loads(metadata_path.read_text())
-                            for entity in metadata["entities"]:
-                                entity.pop("files", None)
-                                entity.pop("pending", None)
+                            metadata["defines"] = []
                             metadata_path.write_text(json.dumps(metadata))
                         path.write_text(json.dumps(registry))
                         with self.assertRaises(SpecError):
@@ -775,10 +773,19 @@ class ReviewTests(unittest.TestCase):
 
     @verifies("scenario.harness.execute-operation")
     def test_modes_use_full_collection_fresh_sessions_and_no_write_grants(self):
-        self.registry["targets"][3]["references"].append(
-            {"kind": "document", "id": "document.transfer.promises"}
+        from tests.concorde.spec.support import update_module
+
+        update_module(
+            self.root,
+            "module.ledger",
+            includes=[
+                {
+                    "kind": "document",
+                    "target": "document.transfer.promises",
+                    "reason": "the amount rules the balance store accepts",
+                }
+            ],
         )
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
         update_document_declaration(
             self.root, "specs/transfer/promises.md", owner="service.transfer"
         )
@@ -795,6 +802,10 @@ class ReviewTests(unittest.TestCase):
             snapshot = calls[-1]["snapshot"]
             self.assertEqual(
                 [
+                    "specs/ledger/module.md",
+                    "specs/ledger/module.md.json",
+                    "specs/ledger/obligations.md",
+                    "specs/ledger/obligations.md.json",
                     "specs/transfer/module.md",
                     "specs/transfer/module.md.json",
                     "specs/transfer/obligations.md",
@@ -872,15 +883,10 @@ class ReviewTests(unittest.TestCase):
         )
 
     def relist_checks_directory(self):
-        """List the transfer check entity as the whole `checks/` directory instead of one file."""
-        document = self.root / "specs/transfer/module.md.json"
-        metadata = json.loads(document.read_text())
-        for entity in metadata["entities"]:
-            if entity["id"] == "entity.transfer.check":
-                entity["files"] = ["checks/"]
-        document.write_text(json.dumps(metadata, indent=2) + "\n")
-        self.registry["targets"][2]["files"] = ["app/transfer.py", "checks/"]
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+        """Bind the whole `checks/` directory to the transfer check instead of one file."""
+        from tests.concorde.spec.support import set_realization
+
+        set_realization(self.root, "realization.transfer.check", entries=["checks/"])
 
     def test_a_directory_entry_scopes_history_and_grants_its_subtree(self):
         self.relist_checks_directory()
@@ -984,7 +990,8 @@ class ReviewTests(unittest.TestCase):
 
         def foreign(stage, snapshot, data, cwd):
             self.missing("spec-review")(stage, snapshot, data, cwd)
-            data["issues"][0]["document"] = "specs/ledger/module.md"
+            # Audit's documents are outside the transfer Module's Spec context.
+            data["issues"][0]["document"] = "specs/audit/module.md"
 
         result = self.review(callback=foreign)
         self.assertEqual("failed", result["status"])
@@ -1144,12 +1151,13 @@ class ReviewTests(unittest.TestCase):
         body = load_model_instructions(PACKAGE, "concorde-spec-reviewer").body
         for obligation in (
             "Terminology semantic consistency is a mandatory check",
-            "including directly referenced documents",
+            "Enumerate the import rows of every Terminology table",
+            "never expect or request a restated definition there",
             "text equality is not required",
-            "scope, conditions, constraints, exceptions and obligation strength",
+            "flag additions, omissions,",
             "Record terminology coverage in representative_tasks",
-            "If there are no imported restatements",
-            "report incomplete rather than silently treating them as consistent",
+            "If no imported term has a local",
+            "If required comparisons cannot be completed",
         ):
             self.assertIn(obligation, body)
         self.assertIn("Allow different wording", body)
@@ -2024,19 +2032,12 @@ class ReviewTests(unittest.TestCase):
         )
         metadata = Path(str(document) + ".json")
         body = json.loads(metadata.read_text())
-        entity = next(e for e in body["entities"] if "files" in e)
-        entity["files"].append("app/retry.py")
+        entity = next(e for e in body["defines"] if e["type"] == "realization")
+        entity["entries"].append("app/retry.py")
         metadata.write_text(json.dumps(body, indent=2) + "\n")
         (self.root / "app/retry.py").write_text(
             "# Retry admission belongs to transfer.\n"
         )
-        registry_path = self.root / ".concorde/specs.json"
-        registry = json.loads(registry_path.read_text())
-        target = next(
-            t for t in registry["targets"] if t["id"] == self.task["target_id"]
-        )
-        target["files"] = sorted([*target["files"], "app/retry.py"])
-        registry_path.write_text(json.dumps(registry, indent=2) + "\n")
         self.assertEqual(
             original, read_change(self.root, required=True)["issue_blockers"]
         )
@@ -2548,7 +2549,6 @@ class ExplicitRepairTests(unittest.TestCase):
     def test_direct_paired_spec_and_registry_edits_then_explicit_operations(self):
         spec = self.root / "specs/transfer/module.md"
         metadata = self.root / "specs/transfer/module.md.json"
-        registry = self.root / ".concorde/specs.json"
         spec.write_text(
             spec.read_text()
             + "\nThe calculation may share its pure arithmetic helpers.\n"
@@ -2556,18 +2556,11 @@ class ExplicitRepairTests(unittest.TestCase):
         declaration = json.loads(metadata.read_text())
         entity = next(
             e
-            for e in declaration["entities"]
-            if e["id"] == "entity.transfer.calculation"
+            for e in declaration["defines"]
+            if e["id"] == "realization.transfer.calculation"
         )
-        entity["files"].append("app/arithmetic.py")
+        entity["entries"].append("app/arithmetic.py")
         metadata.write_text(json.dumps(declaration, indent=2) + "\n")
-        registration = json.loads(registry.read_text())
-        target = next(
-            t for t in registration["targets"] if t["id"] == self.task["target_id"]
-        )
-        target["files"].append("app/arithmetic.py")
-        target["files"].sort()
-        registry.write_text(json.dumps(registration, indent=2) + "\n")
         (self.root / "app/arithmetic.py").write_text(
             "def subtract(balance, amount):\n    return balance - amount\n"
         )

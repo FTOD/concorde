@@ -38,7 +38,7 @@ WORKER_OUTCOMES = {
 CHECK = obj(
     {
         "id": STRING,
-        "target_id": STRING,
+        "module": STRING,
         "argv": {**array(STRING), "minItems": 1},
         "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
         "inputs": array(PATH, unique=True),
@@ -79,13 +79,22 @@ IMPLEMENTATION_ENTRY = obj(
         "directory": {"type": "boolean"},
     }
 )
+REGISTRY_RECORD = obj(
+    {
+        "id": STRING,
+        "title": STRING,
+        "entry": PATH,
+        "owns": {**array(PATH, unique=True), "minItems": 1},
+        "contains": {"type": "array"},
+        "uses": {"type": "array"},
+        "includes": {"type": "array"},
+        "participates": {"type": "array"},
+    }
+)
 REGISTRY = obj(
     {
-        "schema_version": {"const": 5},
-        "project_id": STRING,
-        "entry_target": STRING,
-        "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
-        "checks": array(CHECK),
+        "schema_version": {"const": 3},
+        "modules": {**array(REGISTRY_RECORD), "minItems": 1},
     }
 )
 PROPOSAL_FILE = obj(

@@ -1,153 +1,133 @@
 # Distribution requirements
 
-These precise specifications belong directly to the [Distribution Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+These are the Module-wide obligations of [Distribution](module.md). Each is stated once; the
+[scenarios](scenarios.md) show them in concrete situations.
 
-## Terminology
+## Build
 
-| Term                                                | Meaning / definition                         |
-| --------------------------------------------------- | -------------------------------------------- |
-| [Pi integration](../module.md#terminology)          | Defined in Concorde Framework.               |
-| [Installation](installation.md#terminology)         | Defined in Installing and updating Concorde. |
-| [Update](installation.md#terminology)               | Defined in Installing and updating Concorde. |
-| [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Protocol binding](../spec/values.md#terminology)   | Defined in Identities and versions.          |
-| [Worktree](../module.md#terminology)                | Defined in Concorde Framework.               |
+### req.distribution.build-idempotent — Identical sources give identical outputs
 
-## Distribution
+`build` and `build --check` SHALL produce byte-identical outputs and manifest from unchanged sources.
 
-### req.distribution.no-silent-protocol-rewrite — No silent Protocol rebinding
+### req.distribution.build-no-io — The build performs no network or process I/O
 
-Install or update SHALL NOT silently rewrite a consumer's Protocol binding.
+Rendering the build SHALL NOT start a process or use the network.
 
-### req.distribution.explicit-binding-decision — Changed Protocol assets need explicit acceptance
+Schema sources are evaluated inside the build's own process from the checkout's files, without
+bytecode caches, so that the recorded source bytes are exactly what produced the schemas.
 
-A package with changed Protocol assets SHALL require the consumer's explicit binding decision
-before execution.
+### req.distribution.one-worktree-build — A build writes only its own checkout
 
-### req.distribution.build-idempotent — Build output is deterministic and idempotent
+A build SHALL write only into the checkout that holds its sources.
 
-`build` and `build --check` SHALL be idempotent and byte-identical across repeated runs.
+There is no option to write another root; the installer uses the pure renderer and performs its
+own writes under its receipt.
 
-### req.distribution.build-no-io — Build performs no network or process I/O
+### req.distribution.fresh-instructions — Model work never uses a stale build
 
-`build` and `build --check` SHALL perform no network or process I/O.
+Starting a model-backed capability or loading an Agent's instructions SHALL fail when a recorded build source differs from the build manifest.
 
-### req.distribution.one-worktree-build — Build stays within its own worktree
+Both checks use `verify_fresh`, which fails with `stale_build`. Host capabilities load no generated
+instructions and are not stopped by this check at admission.
 
-Every build invocation SHALL operate only on the worktree containing its named sources.
+### req.distribution.owned-retirement — Only owned outputs are removed
 
-### req.distribution.no-cross-worktree-build — No cross-worktree build output
+The build SHALL remove a file only when its bytes equal the digest the previous build manifest recorded for it.
 
-Build SHALL NOT point one worktree's build at another worktree's outputs.
+### req.distribution.checkout-skills-user-invoked — The source session entry stays private
 
-### req.distribution.checkout-skills-user-invoked — Source-checkout Pi entry waits for the developer
+The build SHALL write this checkout's session entry only to `generated/session/pi/concorde-session.ts`, outside Pi's discovery directories.
 
-Build SHALL render the source-checkout Pi entry only under private `generated/session/pi/`, never ambient client discovery directories or standalone Skill products.
+### req.distribution.operation-guidance-fresh — The catalog matches its sources
 
-There is no independent publishing step or supported Codex/Claude client renderer. Consumer
-installation remains a separate Pi-only receipt-owned deployment. Fresh source-maintenance
-isolation and private selection obligations remain independent of output generation.
+Build checking and package validation SHALL report every difference between a session entry's catalog and the capability guidance, request schemas and capability inventory it was rendered from.
 
-### req.distribution.private-selection — Exact private candidate provenance
+## Session integration
 
-Private session selection SHALL reject missing, stale, unreadable or out-of-candidate Pi entry, embedded catalog, implementation and runtime paths without any global or name-based fallback.
+### req.distribution.pi-session-public-only — The tool offers only public capabilities
 
-A selection returns complete bytes and their provenance, not evidence of model loading or execution.
+The `concorde` tool SHALL accept exactly the capabilities listed in its catalog, which are the eleven public capabilities.
 
-### req.distribution.pi-session-public-only — The Pi session tool exposes only public capabilities
+### req.distribution.launcher-sigterm-cancels — SIGTERM cancels like an interrupt
 
-The Pi session extension SHALL offer exactly the eleven public capability adapters through the compatibility `operation` selector of its `concorde` tool.
+The launcher SHALL handle SIGTERM as an interrupt and print its result envelope before exiting.
 
-All seven native Agents are callable through prepared native calls; no private Python model-operation alias or independent concorde tool entry is exposed; the source checkout's shim additionally tells the
-model to invoke a capability only on the developer's explicit request.
+The Host decides what the interrupt cancels and records it; committed effects are not rolled back.
 
-### req.distribution.launcher-sigterm-cancels — SIGTERM cancels the launcher like Ctrl-C
+### req.distribution.private-selection — Selections name exact current bytes
 
-The launcher SHALL treat SIGTERM as a host interrupt of its admitted finite Host invocation and preserve its cancellation result envelope.
+Session selection SHALL refuse any entry, catalog, launcher or source path that is missing, aliased, outside the candidate or different from the candidate's current build.
 
-The Pi session extension separately owns stopping native children/workflows through their actual
-native controls. A finite launcher is not a hidden model-worker process. Historical RPC diagnostic
-launchers retain their worker cancellation tests; neither path promises rollback of committed effects.
+### req.distribution.no-runtime-fallback — No substitute environment
 
-### req.distribution.launcher-managed-runtime — The installed launcher runs inside the managed runtime
+Distribution SHALL NOT substitute another worktree's, the primary checkout's or a global environment for a missing or failed local installation, managed runtime or session selection.
 
-In an installed project the launcher SHALL execute under the managed runtime's interpreter,
-whatever interpreter started it.
+### req.distribution.source-only-assets — Source-only files never ship
 
-The launcher may be started with ambient `python3`, which need not carry LangGraph, and the
-managed runtime `.concorde/.venv` is the only environment the installer verified for the installed
-framework. The launcher therefore re-executes itself with that runtime's interpreter when the
-installer's verified runtime is present beside the framework, and the provisioner verifies each
-public Operation with that same interpreter. An unavailable selected Graph backend reports
-`missing_runtime` instead of a bare import failure. Direct Host-tool dispatch does not itself
-require Graph compilation; complete installed-runtime verification remains mandatory.
+Installation SHALL NOT deploy the maintenance-worker definition, the source user session prompts, the coordinator extension, the brief lifecycle extension or the maintenance extension.
 
-### req.distribution.operation-guidance-fresh — Pi catalogs are complete fresh projections
+## Installation
 
-Build and package validation SHALL check the complete Pi catalog's descriptions, guidance, request schemas and output/source identities against the authored public capability-adapter inventory.
+### req.distribution.no-silent-protocol-rewrite — Installing never rebinds the Protocol
 
-Eleven public entry names and seven canonical native Domain Agents remain. All seven have native
-instruction projections and byte-identical compatibility `generated/agents` paths. Context-solve,
-tasks and implement prepare direct native calls; plan, review and Issue solve prepare authored
-workflows. Finite Host acceptance verifies actual native completion and current inputs, without a
-legacy worker fallback. Internal instructions are not Skills. Missing/drifted output fails checking;
-build regenerates only from its authored inputs.
+Installation and update SHALL NOT change a project's `protocol` binding in `.concorde/config.json`.
 
+A project adopts a new Protocol copy only through `concorde-configure` with `accept_protocol`.
 
-### req.distribution.pi-only-install — Installation supports only Pi
+### req.distribution.receipt-ownership — Only unchanged owned files are replaced
 
-Installation SHALL install only the Pi client extension and its Protocol guidance, without invoking a Skills CLI or distributing standalone Skills.
+Installation SHALL replace or remove a file only when its current bytes equal the bytes the installation receipt recorded for it.
 
-The manifest explicitly declares `client: "pi"`. Retired client flags are rejected, not silently
-mapped to Pi. npm remains required for actual Pi runtime dependencies.
+### req.distribution.root-block-ownership — Root files are owned only within the block
 
-### req.distribution.retired-installation-ownership — Legacy retirement preserves ownership
+Installation SHALL own a root instruction file only within its marked Concorde block.
 
-Installation SHALL remove retired outputs only under the existing receipt/digest and bounded root-block ownership rules.
+### req.distribution.no-surrounding-text-rewrite — Text around the block stays
 
-External CLI-owned Skills and locks are not installer ownership and remain untouched, with an
-explicit manual migration notice. Edited owned output conflicts rather than being discarded.
+Installation SHALL NOT change any byte of a root instruction file outside its owned block.
 
-### req.distribution.root-block-ownership — Root rule ownership is block-scoped
+The one whole-file effect is removing a file that the receipt records the installer created for its
+block, when removing the block leaves it empty.
 
-A root rule entry SHALL be owned only within its exact bounded block, including its separator.
+### req.distribution.rollback-on-failure — A failed apply restores what it changed
 
-### req.distribution.no-surrounding-text-rewrite — Surrounding user text stays untouched
+A failed installation apply SHALL return every file it touched, and the receipt, to its previous bytes and mode.
 
-Installation SHALL NOT hash or replace user text surrounding an owned root block.
+A runtime rebuild is outside this rollback: the previous runtime was deleted before rebuilding.
 
-### req.distribution.rollback-on-failure — Installation rolls back atomically on failure
+### req.distribution.stale-plan-refused — Plans apply only to the state they were made from
 
-A runtime or setup failure during installation SHALL roll back root bytes, modes and the receipt
-together with the other installation outputs.
+Applying SHALL refuse a plan when a recomputed plan, a root file or the package identity differs from what the preview saw.
 
-### req.distribution.worktree-local-install — Independent local execution installation
+### req.distribution.pi-only-install — Pi is the only client
 
-The installation service SHALL return verified execution paths only for a complete target-local Pi entry, Framework, managed runtime/dependencies and receipt of the exact explicitly admitted package identity.
+Installation SHALL install the Pi session entry as Concorde's only client integration, without Skills or any other client's files.
 
-A source or installed provider supplies installation bytes, not a fallback runtime. Installation
-adds no lifecycle authority: primary alone retains durable status and runs. A caller must complete
-installation verification and ordinary project/Protocol admission before any local Operation or
-worker launch; this service itself launches neither.
+### req.distribution.worktree-local-install — A verified installation is complete and exact
 
-### req.distribution.task-subagents — Real Task subagent registration
+Local installation verification SHALL report a worktree as verified only when its Framework files, session entry, managed runtime and receipt all belong to the exact admitted package identity.
 
-Build and installation SHALL provide documented project-discovered Task subagent definitions with checked canonical prompt provenance, distributing tester but never source-only maintenance/coordinator instructions.
+## Runtime
 
-Exact names are maintenance-worker and tester. Task subagent definitions and passive telemetry are allowed
-project discovery assets, not public Operation entries. Source Operation shims remain private.
-Existing user agent-file collisions and modified receipt-owned definitions block replacement.
-Coordinator delivery is source-user-session-only through the explicit extension loading boundary, not a
-project-wide append prompt. Actual Pi effective-prompt loading, including fresh and resumed sessions,
-must keep maintenance-worker, tester and terminal node identities free of source user session instructions.
-Unrelated consumer APPEND_SYSTEM content is not adopted, overwritten or removed.
+### req.distribution.runtime-verified-before-use — The runtime is marked only after it is checked
 
-### req.distribution.test-evidence — Input-bound test diagnostics
+Provisioning SHALL write the managed runtime's owner marker only after every public capability's runtime check passed inside that runtime.
 
-The test runner SHALL record declared reason, scope, phase and whitelisted input/test/runtime/lock/environment fingerprints without converting diagnostic timing into workflow authority.
+### req.distribution.launcher-managed-runtime — Installed capabilities run in the managed runtime
 
-Legacy CLI calls remain valid with manual reason and unspecified scope/phase. Discovery, queue,
-execution intervals and prior/attempt references are observable; fixture setup is unknown unless
-runtime spans measure it. Summed concurrent work is not elapsed wall time. Fingerprints do not
-claim coverage of unobserved environment values, and telemetry excludes secret values and outputs.
+In a consumer project the launcher SHALL run capabilities with the managed runtime's interpreter, whatever interpreter started it.
+
+## Configuration
+
+### req.distribution.configure-atomic — Configuration changes are all or nothing
+
+`concorde-configure` SHALL leave `.concorde/config.json` unchanged when the request is invalid, the project cannot be loaded or the write fails.
+
+## Development
+
+### req.distribution.test-evidence — Test runs record why and on what they ran
+
+The pytest evidence plugin SHALL record each run's reason, scope, phase, attempt and input fingerprints in its JSON report.
+
+Callers that pass none of these get `manual` and `unspecified`. The report keeps discovery,
+queueing and execution times apart and never presents summed parallel test time as elapsed time.

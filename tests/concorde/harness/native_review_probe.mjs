@@ -19,16 +19,8 @@ project(Path(${JSON.stringify(root)}))
 import json
 r=Path(${JSON.stringify(root)})
 if ${JSON.stringify(scenario)} in ('shared','many','missing','budget'):
- registry=json.loads((r/'.concorde/specs.json').read_text())
- template=next(t for t in registry['targets'] if t['id']=='module.ledger')
- for i in range(39 if ${JSON.stringify(scenario)}=='many' else 2):
-  name='consumer'+str(i);member=json.loads(json.dumps(template).replace('ledger',name))
-  member['references']=[{'kind':'document','id':'document.transfer.promises'}]
-  for old,new in zip(template['documents'],member['documents']):
-   dest=r/new;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text((r/old).read_text().replace('ledger',name))
-   (r/(new+'.json')).write_text((r/(old+'.json')).read_text().replace('ledger',name))
-  registry['targets'].append(member)
- (r/'.concorde/specs.json').write_text(json.dumps(registry))
+ from tests.concorde.spec.support import add_consumers
+ add_consumers(r, 39 if ${JSON.stringify(scenario)}=='many' else 2)
 `,
 ]);
 if (scenario.startsWith("code") || scenario === "managed") {
@@ -39,8 +31,9 @@ import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")})
 import json,subprocess
 r=Path(${JSON.stringify(root)})
 if ${JSON.stringify(scenario)}=='code-shared':
- file=r/'.concorde/specs.json';v=json.loads(file.read_text());next(t for t in v['targets'] if t['id']=='module.ledger')['files']=['app/transfer.py'];file.write_text(json.dumps(v))
- file=r/'specs/ledger/module.md.json';v=json.loads(file.read_text());next(e for e in v['entities'] if e['id']=='entity.ledger.store')['files']=['app/transfer.py'];file.write_text(json.dumps(v))
+ sys.path.insert(0,${JSON.stringify(candidate)})
+ from tests.concorde.spec.support import set_realization
+ set_realization(r,'realization.ledger.store',entries=['app/transfer.py'])
 def git(*a):subprocess.run(['git',*a],cwd=r,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 git('init');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');git('add','.');git('commit','-m','Fixture');git('worktree','add','-b','review',str(r/'candidate'))
 from concorde.harness.change_worktree import ensure_change,bind_owner,read_change,save_change,target_state,save_target_state

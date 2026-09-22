@@ -2,253 +2,392 @@
 
 ## Purpose
 
-Distribution prepares the Framework assets that developers install and run: Agent instructions, Pi capability guidance and managed runtime dependencies. It builds from authored sources and installs only the outputs it owns. It does not decide or silently rewrite a consumer project’s business specification.
+Distribution turns the Concorde checkout into something a developer can run. It builds the
+generated files Concorde needs at run time, installs Concorde into other projects together with the
+Python environment that runs it there, and connects the developer's Pi session to Concorde's
+capabilities through one `concorde` tool. It also provides the `concorde` command line, the launcher
+that runs one capability request, the `concorde-configure` capability, and the exact launch inputs
+for a fresh test session of a candidate. Distribution does not decide what a capability does: that
+belongs to the provider Modules under Operations and to the Harness. It does not write a project's
+Specs or registry, which the Spec Module's `concorde-init` creates, and it never makes a project
+accept a new Protocol version unless the developer asks for it through `concorde-configure`. It
+creates no worktrees and gives no worker any permission.
 
 ## Terminology
 
-| Term                                                | Meaning / definition                         |
-| --------------------------------------------------- | -------------------------------------------- |
-| [Pi integration](../module.md#terminology)          | Defined in Concorde Framework.               |
-| [Worker](../module.md#terminology)                  | Defined in Concorde Framework.               |
-| [Operation](../module.md#terminology)               | Defined in Concorde Framework.               |
-| [Worktree](../module.md#terminology)                | Defined in Concorde Framework.               |
-| [Installation](installation.md#terminology)         | Defined in Installing and updating Concorde. |
-| [Update](installation.md#terminology)               | Defined in Installing and updating Concorde. |
-| [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization.           |
-| [Protocol binding](../spec/values.md#terminology)   | Defined in Identities and versions.          |
-| [Registry](../module.md#terminology)                | Defined in Concorde Framework.               |
-| [Spec](../module.md#terminology)                    | Defined in Concorde Framework.               |
+| Term | Definition |
+| --- | --- |
+| Package | The set of Concorde files described by `concorde.json` that is built, validated and installed as one unit. |
+| Capability guidance | The source text of one public capability under `prompts/operation-guidance/`, telling a user session when and how to call it. |
+| Capability catalog | The list of public capabilities embedded in a session entry, with each one's kind, description, guidance and request schema. |
+| Session entry | A generated TypeScript file that binds the Concorde session extension to one project and carries that project's capability catalog. |
+| Build manifest | The generated record `generated/build-manifest.json` holding the digest of every build source and every build output. |
+| Launcher | The script `scripts/run-operation.py`, which runs one public capability request read from its standard input and prints one result envelope. |
+| Consumer project | A project other than this checkout into which Concorde is installed. |
+| Installation receipt | The file `.concorde/install.json` recording which files the installer owns in a consumer project and the exact bytes it last wrote. |
+| Protocol copy | The Spec Protocol bundle placed under `.concorde/protocol/`, whose manifest digest the project configuration binds. |
+| Managed runtime | The installer-owned Python environment at `.concorde/.venv`, with locked LangGraph and Pi dependencies, that runs Concorde in a consumer project. |
+| Local installation | A complete, verified installation of one exact package in one worktree: Framework files, session entry, managed runtime and receipt. |
+| Session selection | A verified record naming the exact candidate-built session entry, catalog and launcher that a fresh Pi test session may load. |
+| [Developer](../vocabulary.md#concept.concorde.developer) | |
+| [User session](../vocabulary.md#concept.concorde.user-session) | |
+| [Capability](../vocabulary.md#concept.concorde.capability) | |
+| [Host](../vocabulary.md#concept.concorde.host) | |
+| [Task subagent](../vocabulary.md#concept.concorde.task-subagent) | |
+| [Worker](../vocabulary.md#concept.concorde.worker) | |
+| [Agent](../agents/module.md#concept.agents.agent) | |
+| [Workflow](../harness/execution/module.md#concept.execution.workflow) | |
+| [Candidate](../harness/worktrees/module.md#concept.worktrees.candidate) | |
+
+Learn the terms in two groups. The first five describe what the **build** produces in this
+checkout: the package, its guidance, the catalog and session entry rendered from it, and the build
+manifest that records what was rendered. The rest describe what exists **where Concorde runs**: the
+launcher, and in a consumer project the receipt, Protocol copy and managed runtime that together
+form a local installation. A session selection is the one term that joins the two: it names exact
+build outputs of a candidate for a test session.
 
 ## Usage
 
-Use Distribution to build this checkout, install or update Concorde in a consumer project, change
-an initialized project's worker configuration, or provision the pinned runtime. Run
-`python3 scripts/concorde.py build` after authored instruction or contract changes; use
-`build --check` to check freshness without writing. Builds stay with their source worktree. A
-public capability's guidance is authored under `prompts/operation-guidance/` and embedded in the
-Pi shim. No standalone Skill publishing command or client selector is supported.
-Installation previews owned changes by default and applies them only with explicit
-acceptance; local modifications to receipt-owned output conflict rather than being silently
-adopted. Pi is the only supported installation client; retired `--integration` flags are rejected.
+### Building this checkout
 
-The Pi coding agent loads a session extension whose single `concorde` tool describes or runs the
-public entries. Context-solve, tasks and implement prepare direct native Agent calls; plan, reviews
-and Issue solving prepare authored native workflows. Finite Host commands perform preparation and
-independent acceptance; workflow results are polled separately. Non-model actions finish as Host
-services. These are not public Studio or alternate client backends. Aborting a turn cancels the active finite invocation or native run through its own controls. In an installed project the launcher
-uses `.concorde/.venv`, the managed runtime verified by the installer. Missing runtime dependencies
-produce a `missing_runtime` result; rerun installation to provision them. The installer distributes
-no standalone Skills and does not invoke a Skills CLI.
+Anyone who changes a source that the build reads — Agent definitions, prompts, capability guidance,
+Protocol text, request contracts or the Pi extension code — rebuilds in the same worktree:
 
-Installation deploys Framework assets and the Protocol copy, not project business Specs or a
-registry. Initialize those separately. An update does not accept a new Protocol binding for you:
-review and explicitly rebind it after any required project migration. Use `concorde-configure` for
-worker model, thinking, timeout and overrides. Runtime provisioning needs a reviewed current plan;
-launching a worker does not implicitly provision it. See [installation](installation.md),
-[build](build.md) and [runtime](runtime.md). The existing runtime-rebuild preservation gap below
-means a failed rebuild must not be assumed to have recovered the prior environment.
+```sh
+python3 scripts/concorde.py build           # render every output and write it
+python3 scripts/concorde.py build --check   # render in memory and compare, writing nothing
+```
+
+The build writes Agent instructions, the private session entry, the Studio configuration and the
+Protocol assets under `generated/`, and the Task subagent files that this checkout's own Pi sessions
+discover under `.pi/agents/` and `.pi/extensions/`. All of them are generated outputs listed in the
+build manifest and are never edited by hand; [Interfaces](interfaces.md#build-outputs-and-ownership)
+lists them. A build only ever writes into the checkout that holds its sources.
+
+After a Protocol change, `python3 scripts/concorde.py protocol-manifest --write --bind-project`
+accepts the new asset digests into `protocol/manifest.json`, binds this checkout's configuration to
+them and refreshes its own Protocol copy.
+
+### Installing into a project
+
+The installer previews by default and writes only when asked:
+
+```sh
+python3 /path/to/concorde/scripts/install-concorde.py --target /path/to/project           # preview
+python3 /path/to/concorde/scripts/install-concorde.py --target /path/to/project --apply   # install
+```
+
+The preview lists one action per file, such as `create`, `update`, `unchanged` or `conflict`, and
+exits with status 2 if any action is a conflict. Applying places the Framework under
+`.concorde/framework/`, the Protocol copy under `.concorde/protocol/`, the session entry under
+`.pi/extensions/`, the tester definition under `.pi/agents/`, a short block in `AGENTS.md` that
+points readers to the Protocol, and the managed runtime at `.concorde/.venv`, then records all of it
+in the installation receipt. The developer then opens the project in Pi and calls `concorde-init`
+to create its first Spec. Updating is the same command run from a newer package: files the receipt
+owns are replaced, and a file the developer changed is reported as a conflict instead of being
+overwritten. [Installing and updating](installation.md) explains every action and option.
+
+An update never changes which Protocol the project has accepted. When the new package brings a new
+Protocol copy, capabilities refuse to run until the developer reviews the change and calls
+`concorde-configure` with `accept_protocol: true`.
+
+### Calling capabilities from Pi
+
+In a consumer project Pi discovers `.pi/extensions/concorde-session.ts` by itself. The entry adds a
+short Concorde section to the system prompt and registers the `concorde` tool with three actions:
+
+- `describe` returns a capability's guidance and request schema without running anything;
+- `run` sends the request data given as `input` to the capability and returns its typed result;
+- `result` polls a capability that runs as an asynchronous workflow.
+
+For example, the user session calls `concorde` with `{"operation": "concorde-validate", "action":
+"describe"}`, reads the schema, then calls `run` with the request as `input`. Host capabilities such
+as `concorde-validate` run the launcher and return its result envelope. Model-backed capabilities
+are prepared rather than run inside the tool: `run` returns an exact native Agent call or workflow
+for the user session to start, and the Harness later accepts or rejects what the Agent proposes.
+Aborting the turn cancels a running launcher. See [Pi session integration](session.md).
+
+In this checkout the session entry is private: Pi does not discover it, and a session loads it only
+with an explicit session selection. Its catalog also tells the model to run a capability only when
+the developer asks for it by name.
+
+### Configuring workers
+
+`concorde-configure` sets the model, thinking level and time limit that workers use, with optional
+per-worker overrides, in `.concorde/config.json`. Its request is:
+
+```json
+{
+  "configuration": {
+    "type_id": "concorde-operation-configuration",
+    "schema_version": 2,
+    "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"}
+  },
+  "accept_protocol": false
+}
+```
+
+With `accept_protocol: true` it also rebinds the project to the installed Protocol copy. It answers
+`status: applied`, or leaves the previous configuration in place when the value is invalid, the
+project is not initialized, the Protocol copy does not match without acceptance, or the write fails.
+
+### The command line
+
+`scripts/concorde.py` (with `concorde.sh` and `concorde.ps1` wrappers) is the command line of both
+this checkout and an installed Framework. Besides `build`, `protocol-manifest` and
+`select-session`, it routes `validate` to Spec, `status` and `migrate-status` to Candidate
+worktrees, `usage` to Agent execution and `docsite` to Views. Every subcommand prints one JSON
+envelope and exits non-zero unless it succeeded; see [Interfaces](interfaces.md#command-line).
+
+### When something goes wrong
+
+- A model-backed capability run against a stale build stops with `stale_build`; rebuild.
+- In a consumer project, a capability run whose local installation is incomplete, stale or not
+  running inside its managed runtime is refused by admission with `local_installation_required`;
+  run the installer again. The launcher's own runtime check reports `missing_runtime` when
+  LangGraph cannot be imported.
+- An installer conflict writes nothing; resolve the listed file by hand and preview again.
+- A second installer on the same target fails at once; retry after the first finishes.
+- A failed runtime rebuild leaves no runtime behind; run the installer again once the cause is fixed.
 
 ## Design
 
-<a id="entity.distribution.build"></a><a id="entity.distribution.build-command"></a><a id="entity.distribution.authored-sources"></a><a id="entity.distribution.skill-sources"></a><a id="entity.distribution.build-manifest"></a><a id="entity.distribution.package-inventory"></a><a id="entity.distribution.developer-runtime"></a>
+### One renderer for two layouts
 
-The Build command resolves Authored sources, including Capability guidance sources, into
-terminal worker instructions, a private Pi catalog, runtime schemas and Protocol assets. Build
-manifest binds exact inputs and outputs, while Package inventory determines distributable assets.
-The external Developer runtime loads the explicitly selected Pi entry; descriptions, guidance and
-schemas remain useful through its `concorde` tool, not as standalone Skills. The catalog is not
-worker context or an execution grant. [Build realization](build.md#design) explains source
-accounting and freshness checks. Installation owns consumer deployment separately.
-Templates travel with their owners: the Protocol holds the canonical Module and Scenario starters,
-while the planner and task-author Agent packages hold their plan and task starters. There is
-no separate root template product or forwarding copy; this layout changes no worker context or
-runtime injection. See the [template ownership scenario](scenarios.md#scenario.distribution.template-ownership).
+<a id="concept.distribution.package"></a><a id="realization.distribution.build"></a>
 
-<a id="entity.distribution.pi-session-extension"></a>
+The **package** is described by `concorde.json`: its version, the package roots that ship, the
+runtime launcher and lock, and the installation layout. The **build renderer**
+(`src/concorde/distribution/build.py`) is a pure function from the package's sources to a set of
+outputs, each with the exact list of sources that produced it. The same function renders two
+layouts. For this checkout it renders the private layout; for an installation it renders the
+installed layout, in which every path is prefixed with `.concorde/framework` and the session entry
+lives under `.pi/extensions/`. Because both come from one renderer, an installed catalog cannot
+drift from the one tested in the checkout.
 
-The Pi session extension is the projection for a developer whose client is the Pi coding agent.
-Source build renders a private shim under `generated/session/pi/`; consumer installation places it in `.pi/extensions/` that imports the tracked extension and
-carries the catalog of public capabilities: each one's description, ordinary guidance and exact request schema. The extension registers one `concorde` tool.
-Its `describe` action returns that guidance and schema; its `run` action wraps the caller's input
-in the invocation envelope. Host actions finish through the shared launcher; cognitive entries
-prepare exact native calls and independently accept their results, with result polling for workflows.
-Large ordinary Host output above 48 KiB is saved to a file. Aborting the turn sends the
-launcher SIGTERM, which it treats like Ctrl-C, and kills the launcher's process group after a
-grace period. A short section appended to the system prompt names the tool and the capabilities, so
-Pi needs no standalone Skills. The tool grants nothing: the launcher performs every check, and
-the source checkout's shim tells the model to invoke a capability only on the developer's explicit
-request. Existing external CLI-owned Skills require explicit manual retirement; the installer
-never erases those unowned assets.
+<a id="concept.distribution.build-manifest"></a>
 
-<a id="entity.distribution.installation"></a><a id="entity.distribution.install-script"></a><a id="entity.distribution.installation-proposal"></a><a id="entity.distribution.ownership-receipt"></a><a id="entity.distribution.target-project"></a>
+The **build manifest** records the digest of every source the build read, including the Python
+sources of Agents, capability modules and the Pi extension code that the outputs depend on, and the
+digest of every output. Two checks use it. `verify_fresh` only recomputes source digests, so it is
+cheap enough to run before every model-backed capability and before loading any Agent's
+instructions; a mismatch fails with `stale_build`, because instructions rendered from old sources
+would silently disagree with the current Agent definitions. `build --check` re-renders everything in
+memory and compares bytes, so it also catches a hand-edited output.
 
-Install script exposes Installation's preview/apply boundary and is deployed with the same
-supported Python service. The host can explicitly bootstrap a complete independent consumer
-worktree installation, then verify/reuse it without reinstalling. A provider is bound by exact
-package bytes, never substituted as a cross-worktree runtime. Preservation mode leaves inherited
-project guidance and accepted Protocol untouched and unowned; local receipt ownership still
-applies. See the [service contract](contracts.md#local-installation-service). An Installation proposal selects
-exact owned changes in the Target project; an Ownership receipt records those installed bytes and
-their before-state for later updates. A fresh build is not installation acceptance, and a receipt
-is not permission to overwrite unrelated user content. Failure restores owned installation state.
-Project Specs and their accepted Protocol binding remain separately controlled. Upgrades retire
-legacy receipt-owned files and root blocks only when their current bytes match recorded ownership.
-External CLI-placed Skills and lock files were never owned by the installer and remain untouched;
-the preview and result describe explicit manual retirement. A root file created only for an owned
-entry can disappear when its removal leaves it empty; developer-owned files and surrounding text
-are preserved. See [installation](installation.md) for the Pi-only upgrade route.
+Writing is guarded the same way. The build owns only its declared locations under `generated/`
+(other tools may write there too) and its `.pi/` outputs. It removes an output it no longer
+produces only when the file's bytes match the digest the previous manifest recorded, and it refuses
+to overwrite a `.pi/` file whose bytes it did not write. Any unknown, modified or symbolic-link file
+stops the whole write before anything changes. This lets old outputs disappear safely without ever
+deleting a file the developer created.
 
-<a id="entity.distribution.managed-runtime"></a><a id="entity.distribution.runtime-provisioning"></a><a id="entity.distribution.verified-runtime"></a><a id="entity.distribution.integration-configuration"></a>
+<a id="concept.distribution.guidance"></a><a id="concept.distribution.catalog"></a><a id="concept.distribution.session-entry"></a><a id="realization.distribution.guidance"></a>
 
-Managed runtime implements the Runtime provisioning interface and records a Verified managed
-runtime only after its checks succeed. Provisioning does not decide which project files may be
-replaced. Pi worker configuration is a separate explicit operation selecting model, thinking,
-timeout and overrides; accepting new Protocol assets is an additional explicit decision. The
-runtime-rebuild preservation gap below remains an unfulfilled obligation, not a claim that every
-failed rebuild restored the prior environment.
+**Capability guidance** is ordinary Markdown with a small front matter (`name`, `description`,
+`operation`). Guidance files share fragments under `prompts/workflow-host/` through whole-line
+`@path.md` references, which the prompt resolver expands. The build embeds each capability's
+resolved guidance, its request schema and the schema's version in the **capability catalog**, and
+writes the catalog into the **session entry**, a small file that imports the tracked session
+extension `pi/extensions/concorde-session.ts` and binds it to one project root. The catalog, not the
+guidance files, is what a session reads, so a session never needs the source tree.
 
-`concorde-configure` is that explicit operation. It takes the typed worker configuration and, only
-when the developer asks, `accept_protocol` to rebind the installed Protocol copy. It returns the
-applied configuration with `status: applied`. An unsupported value, an uninitialized project, a
-Protocol mismatch without `accept_protocol` or a failed write leaves the previous configuration in
-place. It is a finite deterministic Host service with no model or configure/project-Graph Studio
-adapter. It refuses a
-describe-policy preview with `use_proposal`.
+<a id="realization.distribution.task-subagent-projector"></a>
 
-<a id="entity.distribution.developer-session"></a>
+The **Task subagent projector** (`src/concorde/distribution/task_subagents.py`) renders the Pi
+definition files of the Task subagents that Agents defines, and the small extension entries the
+source user session loads. It keeps source-only assets out of the installed layout. See
+[Task subagent files](session.md#task-subagent-files).
 
-The Developer agent session is the external user session, not another registered Agent. [Agents](../agents/module.md)
-owns source-maintenance/tester behavior and continuation. Distribution supplies checked project
-Agent projections and passive observation separately from private capability catalogs; see
-[registration](build.md#task-subagents-and-observation).
-The source writer builds with that candidate's own code; primary never renders candidate outputs.
-For consumer capabilities, host-created candidate relays keep the requesting session stationary;
-simple authorized consumer work may also stay directly in primary.
+<a id="realization.distribution.build-checks"></a>
+
+**Package validation** (`src/concorde/distribution/package_validation.py`) checks the whole package
+behind `validate` and the installer: every prompt is reachable and well formed, every capability
+module declares consistent constants, every Agent profile matches its definition, every exported
+contract is unique and valid, the capability and Agent inventories kept in the Operations and Agents
+Specs match the code, and the build is fresh.
+
+### Running a capability
+
+<a id="concept.distribution.launcher"></a><a id="realization.distribution.launcher"></a>
+
+The **launcher** accepts exactly one of the eleven public capability names, finds its module through
+the `operation` field of the capability's guidance, and hands the invocation read from standard
+input to the Harness's admission boundary. It has two other entries: `--runtime-check`, a quick
+offline probe that the runtime provisioner runs for every capability, and `--native-context`, which
+the session extension and the native workflow steps use to prepare and accept native Agent work.
+SIGTERM takes the same path as Ctrl-C, so a cancelled run still prints its result envelope.
+
+In a consumer project the launcher checks whether it runs inside the managed runtime and, if not,
+re-executes itself with that runtime's interpreter. A caller may therefore start it with any
+`python3`, even one without LangGraph. In this checkout it keeps the interpreter that started it.
+
+<a id="realization.distribution.session-extension"></a>
+
+The **session extension code** under `pi/` is the Pi side of every capability call. It registers
+the `concorde` tool, runs the launcher for Host capabilities, and for model-backed capabilities
+drives the native preparation and workflow steps that Agent execution defines. The extension grants
+nothing: the launcher and the Host perform every check.
+
+<a id="realization.distribution.cli"></a><a id="realization.distribution.configure"></a>
+
+The **command-line interface** (`src/concorde/distribution/cli.py`, started by `scripts/concorde.py`
+or `python -m concorde`) is the one command surface of the package; most subcommands only route to
+the owning Module's service.
+The **configure service** (`operations/configure.py` and the configure step of
+`src/concorde/spec/project.py`) implements `concorde-configure` as a deterministic Host capability:
+it rewrites `.concorde/config.json` as one checked file change and verifies the repository before
+keeping it.
+
+### Installing and running elsewhere
+
+<a id="concept.distribution.consumer-project"></a><a id="concept.distribution.receipt"></a><a id="concept.distribution.protocol-copy"></a><a id="realization.distribution.installer"></a>
+
+The **installer** (`src/concorde/distribution/installation.py`, started by
+`scripts/install-concorde.py`) installs one package into one **consumer project**. It decides every
+file by comparing three things: the bytes it wants to write, the bytes on disk, and the bytes the
+**installation receipt** says it wrote last time. Only a file whose current bytes are exactly what
+it wrote is its to replace or remove; anything else is a conflict. The receipt is the reason an
+update can be safe without a merge tool. Shared root files such as `AGENTS.md` are owned only
+within one marked block, so the developer's own text around it is never rewritten. The installer
+also places the **Protocol copy**, which is the Protocol text agents are given as project files and
+whose manifest digest the configuration binds; placing it never changes that binding.
+
+<a id="concept.distribution.managed-runtime"></a><a id="realization.distribution.runtime-provisioner"></a>
+
+The **runtime provisioner** (`src/concorde/distribution/managed_runtime.py`) creates and verifies
+the **managed runtime**: a virtual environment with the one LangGraph version pinned in
+`scripts/requirements.lock` and the Pi dependencies pinned in `pi/package-lock.json`. It records the
+runtime as verified only after every public capability's runtime check has passed inside that
+environment and reported that environment as its own. Pinning one environment per project means a
+capability never runs with whatever happens to be installed globally.
+
+<a id="concept.distribution.local-installation"></a>
+
+A **local installation** is what makes a worktree runnable. The local installation service in
+`src/concorde/distribution/local_installation.py` lets the Host verify that a worktree carries a
+complete installation of exactly the package it admitted, and, only with an explicit bootstrap
+request, install one first. Admission verifies it before every top-level run in a consumer
+project, and the candidate relay uses it before starting work in a consumer candidate.
+Verification reads everything and writes nothing, and never falls back to another worktree's files
+or a global environment. [Installing and updating](installation.md) describes the installer, local
+installations and the managed runtime in detail.
+
+<a id="concept.distribution.session-selection"></a><a id="realization.distribution.selection"></a>
+
+A **session selection** solves one problem: a tester must test exactly what a candidate built, not
+the primary checkout's build or an installed copy. `select-session`
+(`src/concorde/distribution/session_selection.py`) checks that the candidate's build is current and
+records the exact bytes of its private session entry, embedded catalog and launcher, together with
+the Pi flags a fresh session needs. The private entry refuses to load without it and reverifies it
+before every tool call. The tester's commands run through the **tester bridge**
+(`src/concorde/distribution/tester_check.py`), which executes them in the operating system's
+read-only sandbox provided by Check execution. A selection is launch provenance only; it is not
+evidence that a model loaded the entry or ran a tool. See [Session selection](session.md#session-selection).
+
+<a id="realization.distribution.development"></a>
+
+The **development environment** is how this checkout itself is set up and tested: `pyproject.toml`
+and `uv.lock` pin the development dependencies, the pytest plugin under `tests/concorde/support/`
+records why and on what inputs each test run happened, and the scripts under `scripts/development/`
+check out the vendored references and type-check the docsite in a disposable copy.
+
+### Limits and open questions
+
+A runtime rebuild removes the previous environment before creating the new one. If the rebuild
+fails, the project has no managed runtime until the installer runs again successfully; nothing is
+restored. Callers must not read the absence of a success record as a recovered runtime.
+
+Open questions. The `select-session` mode `task` behaves like `test`, and no current caller of it
+is known. The Spec tooling is adding a registry maintenance subcommand to the
+command line; it is not described here until it exists.
 
 ## Relationships
 
-Build, Installation and Managed runtime are independent programs that only meet at explicit
-records: Build never writes into a target project, Installation never renders Framework assets
-itself, and Managed runtime never chooses which files Installation replaces. Ownership receipt and
-Build manifest play matching but distinct roles — one binds installed bytes in a target project,
-the other binds authored sources to rendered outputs in this checkout or a build client — and
-neither substitutes for the other. The developer agent session is the same actor in this source
-checkout and in an installed consumer project: it works in the worktree whose build supplied its
-projections and lets the host run candidate work elsewhere.
-
-Capability guidance sources are authored and owned here. The `prompts/operation-guidance/` path
-and `operation` front matter remain compatibility identifiers, not StateGraph claims. Build embeds their descriptions and
-resolved text with versioned request schemas in the Pi session extension's shim. Installation
-places that receipt-owned shim in the target. The Developer runtime calls its `concorde` tool,
-which uses the shared launcher. This creates no worker grant and transfers no executable
-business behavior to Distribution.
-
 ```mermaid
-flowchart TB
-    accTitle: Distribution entities and relationships
-    accDescr: Build renders authored worker instructions and capability guidance into runtime assets and a private Pi catalog. Installation deploys the receipt-owned Pi entry and provisions a verified managed runtime without installing standalone Skills.
-    authored["Authored sources"]
-    build["Build"]
-    buildCmd["Build command"]
-    manifest["Build manifest"]
-    inventory["Package inventory"]
-    installScript["Install script"]
-    installation["Installation"]
-    proposal["Installation proposal"]
-    receipt["Ownership receipt"]
-    target["Target project"]
-    config["Pi worker configuration"]
-    runtimeIface["Runtime provisioning interface"]
-    managedRuntime["Managed runtime"]
-    verifiedRuntime["Verified managed runtime"]
-    session["Developer agent session"]
-    spec["Spec"]
-    guidanceSources["Capability guidance sources"]
-    piSession["Pi session extension"]
-    developerRuntime["Developer runtime"]
-    guidanceSources -->|are rendered by| build
-    build -->|renders the project shim of| piSession
-    installation -->|installs the shim of| piSession
-    developerRuntime -->|calls the concorde tool of| piSession
-    authored -->|are rendered by| build
-    build -->|is exposed through| buildCmd
-    build -->|records freshness in| manifest
-    build -->|validates| inventory
-    inventory -->|supplies distributable assets to| proposal
-    installScript -->|is realized by| installation
-    installation -->|computes| proposal
-    receipt -->|supplies before-state to| proposal
-    proposal -->|applies accepted replacements to| target
-    proposal -->|requires| verifiedRuntime
-    installation -->|records accepted ownership in| receipt
-    installation -->|applies| config
-    config -->|is applied to initialized| target
-    runtimeIface -->|is realized by| managedRuntime
-    managedRuntime -->|provisions and verifies| verifiedRuntime
-    installation -->|reads project configuration and registry through| spec
-    session -->|loads worktree-owned outputs rendered by| build
+flowchart LR
+    accTitle: Distribution realizations and collaborators
+    accDescr: How the build, the session extension, the launcher, the installer and the selection bridge relate to each other and to the Modules they rely on.
+    guidance[Capability guidance] -->|is rendered into| catalog[Capability catalog]
+    build[Build renderer] -->|renders| entry[Session entry]
+    build -->|records| manifest[Build manifest]
+    entry -->|carries| catalog
+    extension[Session extension code] -->|runs| launcher[Launcher]
+    extension -->|prepares native calls through| execution[Agent execution]
+    launcher -->|hands each invocation to| admission[Request admission]
+    launcher -->|re-executes inside| runtime[Managed runtime]
+    installer[Installer] -->|installs into| consumer[Consumer project]
+    installer -->|writes| receipt[Installation receipt]
+    installer -->|deploys| protocol[Protocol copy]
+    installer -->|provisions through| provisioner[Runtime provisioner]
+    provisioner -->|verifies| runtime
+    selection[Selection and tester bridge] -->|records| selected[Session selection]
+    selection -->|runs tester commands through| checks[Check execution]
+    projector[Task subagent projector] -->|renders definitions from| agents[Agents]
+    configure[Configure service] -->|rebinds the project to| protocol
 ```
 
-## Provider collaboration
+The build is the only producer: everything a session, a tester or an installer uses was rendered by
+it and recorded in its manifest. The installer consumes the build's installed layout and adds the
+consumer-specific parts, the receipt and the runtime. The launcher and the session extension are
+where the rendered files meet the Harness: the extension decides nothing, and the launcher only
+hands requests to admission. The collaborations with other Modules are explained below.
 
-The [installation](installation.md), [build](build.md) and [runtime](runtime.md) topics explain the
-three workflows; their exact acceptance cases are owned together in [Distribution scenarios](scenarios.md).
+<a id="uses-spec"></a>
 
-### Spec
+**Spec** loads and checks the project's configuration, registry and Specs, defines the Protocol
+text and its rendered assets, and provides typed values, front matter parsing and file changes.
+Distribution relies on it whenever it reads `.concorde/config.json`, validates a package, renders
+the Protocol assets or rebinds a configuration. The `validate` subcommand runs its checks, and
+`concorde-configure` keeps a configuration write only if the Spec repository still loads
+afterwards. When Spec rejects a project, Distribution reports that finding and changes nothing.
 
-<a id="entity.distribution.spec"></a><a id="agreement.document.distribution.module.1"></a>
+<a id="uses-admission"></a>
 
-The [Spec Module](../spec/module.md) defines the project configuration and registry that installation, configuration and initialization read or write, with exactly one pinned Protocol binding.
+**Request admission** is the boundary every capability invocation enters. The launcher hands it
+the invocation read from standard input and prints the result envelope it returns, including
+failure envelopes for a request the launcher itself could not start. The session extension builds
+the invocation envelope that admission defines. Distribution adds no check of its own on top.
 
-Define the project configuration and registry that installation, configuration and initialization read or write.
+<a id="uses-execution"></a>
 
-This collaboration applies when installing into or configuring an initialized project, or when a Protocol binding must be checked.
+**Agent execution** runs native Agents and workflows and owns the native preparation steps, the
+Studio graph that `generated/langgraph.json` points to, and usage and timing records. Distribution
+relies on it for the model-backed capability paths of the session tool, for the timing spans the
+installer and provisioner emit, and for the `usage` subcommand. A preparation failure is returned
+to the user session as a tool error.
 
-- [Preserve the accepted binding and reject incompatible configuration](../spec/contracts.md#values-framework-configuration-and-storage-versions)
+<a id="uses-context"></a>
 
-## Unresolved information
+**Task context** owns the worker profiles and their effect ceilings. The build renders instructions
+for exactly the Agents that have a profile, and loading one Agent's instructions returns its profile
+binding and effects for the Host to narrow.
 
-Managed runtime's replacement design intends to preserve the previous valid runtime until a rebuild
-is verified and to restore it after a failed rebuild, but the current provisioning implementation
-still removes an owned environment before rebuilding; this preservation promise is not yet fulfilled
-by code, and callers must not infer recovery from the absence of success metadata.
+<a id="uses-checks"></a>
 
-Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
-operation, not to this Module; installation never creates the registry or a Module stub itself.
+**Check execution** runs commands in the operating system's read-only sandbox and exports their
+evidence. The tester bridge relies on it to execute every tester command; the bridge validates the
+request and bounds the output it returns, and never runs a command outside that executor.
 
-The Pi projection distinguishes finite Host-command output from native run status. Native cognitive
-entries prepare exact calls and workflow results are polled; no public capability is synchronously
-hidden behind a Graph/RPC worker. Finite Host services return their final envelopes; these envelopes
-are not a native progress stream. The private source entry requires the candidate's `.venv` interpreter to verify selection before
-registration and each tool call; a missing environment blocks without an ambient interpreter
-fallback. A consumer entry selects the installed managed runtime interpreter. If it is missing,
-the consumer launcher may be started with ambient Python, but that does not provision or attest
-a runtime: missing dependencies still produce `missing_runtime`. Only an installed project's
-launcher switches to its adjacent managed runtime by itself. These are separate source-private
-and consumer paths, not permission to replace a selected candidate runtime with a global one.
+<a id="uses-worktrees"></a>
 
-## Ownership, context and implementation status
+**Candidate worktrees** owns candidate registration and the durable status store. The `status` and
+`migrate-status` subcommands only route to it, and saving a session selection uses its atomic
+scratch writer. Distribution creates no worktree itself.
 
-Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 10/Profile 15. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.
+<a id="uses-agents"></a>
 
-## Precise specifications
+**Agents** defines every callable Agent and Task subagent. The build renders native instructions
+from each Agent's definition and the Task subagent files from Agents' Task subagent profiles, and
+fails when a canonical definition is missing.
 
-The Distribution Module owns the exact obligations and interface details in [requirements](requirements.md).
-These companions are part of the same complete Module specification, not separate topic owners.
+<a id="uses-operations"></a>
 
-Native context-assessment instructions are built from a canonical native prelude and the existing
-context-assessor Agent Spec. The invocation capsule contains only a deterministic execution projection;
-it is not another authored Agent registry. The supported native package is selected explicitly in the
-Pi process, separately from the candidate Python/runtime selection. Source-private testing may select
-a disposable data root while retaining exact candidate code and entry provenance; a sibling source
-worktree is never a permitted redirection. No global Pi setting is changed by this mechanism.
+**Operations** defines the public capability names and their modules. The launcher loads a
+capability's module through that inventory, package validation compares the capability constants
+with the inventory kept in the Operations Spec, and the catalog lists exactly those capabilities.
 
-### Agents
+<a id="uses-views"></a>
 
-<a id="entity.distribution.agents"></a>
-
-[Agents](../agents/module.md) owns callable Agent definitions and interaction. This Module consumes
-those definitions rather than maintaining an Agent catalog or behavioral copy. It preserves the
-Agent's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
-acceptance and execution mechanisms remain with their existing owners.
+**Views** publishes the Specs. The `docsite` subcommand routes to its scaffold, and the installer
+ships the docsite template files that Views provides.

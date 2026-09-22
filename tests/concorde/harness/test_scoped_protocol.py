@@ -21,6 +21,7 @@ from tests.concorde.spec.support import (
     ModelProcessDouble,
     project,
     update_document_declaration,
+    update_module,
 )
 
 
@@ -52,13 +53,11 @@ class ScopedProtocolTests(unittest.TestCase):
         context = resolve_context(
             repo, target.id, focus_id="scenario.transfer.debit"
         ).value
+        # uses selects the provider's documents; its own relations select nothing further.
+        expected = sorted(target.sources + repo.select("module.ledger").sources)
         self.assertEqual(
-            sorted(target.sources),
+            expected,
             [source["path"] for source in context["spec_resolution"]["sources"]],
-        )
-        self.assertEqual(
-            sorted(target.sources),
-            [d["path"] for d in context["spec_resolution"]["sources"]],
         )
         self.assertEqual(
             [".concorde/protocol/principles.md", ".concorde/protocol/kinds/module.md"],
@@ -67,14 +66,19 @@ class ScopedProtocolTests(unittest.TestCase):
         text = json.dumps(context)
         self.assertNotIn("PRIVATE_CODE", text)
         self.assertNotIn("specs/audit/module.md", text)
-        self.assertNotIn("specs/ledger/module.md", text)
+        self.assertNotIn("specs/bank/module.md", text)
         self.assertEqual("success", validate_repository(self.root).status)
-        participants = repo.dependencies(repo.select("scope.bank"))
+        participants = repo.module_declaration("scope.bank").uses
         self.assertEqual(
             ["service.transfer", "module.ledger", "scope.audit"],
-            [item["target_id"] for item in participants],
+            [item["target"] for item in participants],
         )
-        self.assertTrue(all(item["explanation"] for item in participants))
+        self.assertTrue(
+            all(
+                repo.meaning_text("scope.bank", item["meaning"])
+                for item in participants
+            )
+        )
 
     def test_protocol_handoff_rules_are_bound_context_and_old_binding_is_rejected(self):
         (self.root / "AGENTS.md").write_text("UNTRUSTED_AMBIENT_GUIDANCE")
@@ -113,7 +117,7 @@ class ScopedProtocolTests(unittest.TestCase):
             resolve_context(SpecRepository(self.root), "service.transfer")
         report = validate_repository(self.root)
         self.assertIn(
-            "CONCORDE-DOCUMENT-001", {finding.rule_id for finding in report.findings}
+            "CHK.document.pair", {finding.rule_id for finding in report.findings}
         )
         for path, text in original.items():
             (self.root / path).write_text(text)
@@ -121,9 +125,7 @@ class ScopedProtocolTests(unittest.TestCase):
             self.root, "specs/ledger/module.md", id="document.transfer.feature"
         )
         report = validate_repository(self.root)
-        self.assertIn(
-            "CONCORDE-DOCUMENT-002", {finding.rule_id for finding in report.findings}
-        )
+        self.assertIn("CHK.node.id", {finding.rule_id for finding in report.findings})
         for path, text in original.items():
             (self.root / path).write_text(text)
 
@@ -131,12 +133,18 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_missing_module_dependency_is_validated_and_stops_context_solving(self):
         path = self.root / "specs/bank/module.md.json"
         metadata = json.loads(path.read_text())
-        metadata["dependencies"] = []
-        path.write_text(json.dumps(metadata))
+        update_module(
+            self.root,
+            "scope.bank",
+            uses=[
+                {**item, "meaning": "#unexplained-" + str(index)}
+                for index, item in enumerate(metadata["module"]["uses"])
+            ],
+        )
         report = validate_repository(self.root)
         self.assertEqual("invalid", report.status)
         self.assertIn(
-            "CONCORDE-DEPENDENCY-001", {finding.rule_id for finding in report.findings}
+            "CHK.relation.meaning", {finding.rule_id for finding in report.findings}
         )
         for peer in ("service.transfer", "module.ledger", "scope.audit"):
             self.assertTrue(any(peer in finding.message for finding in report.findings))
@@ -169,20 +177,23 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_duplicate_and_unrelated_dependency_declarations_are_rejected(self):
         path = self.root / "specs/bank/module.md.json"
         original = path.read_text()
-        metadata = json.loads(original)
-        participants = metadata["dependencies"]
+        registry = (self.root / ".concorde/specs.json").read_text()
+        participants = json.loads(original)["module"]["uses"]
         cases = [
-            participants + [copy.deepcopy(participants[0])],
-            [{**participants[0], "target_id": "module.unknown"}, *participants[1:]],
+            (participants + [copy.deepcopy(participants[0])], "CHK.uses.unique"),
+            (
+                [
+                    {**participants[0], "relies_on": ["req.ledger.unknown"]},
+                    *participants[1:],
+                ],
+                "CHK.relies-on.owned",
+            ),
         ]
-        for value in cases:
-            metadata["dependencies"] = value
-            path.write_text(json.dumps(metadata))
+        for value, rule in cases:
+            update_module(self.root, "scope.bank", uses=value)
             report = validate_repository(self.root)
             self.assertEqual("invalid", report.status)
-            self.assertIn(
-                "CONCORDE-DEPENDENCY-001", {f.rule_id for f in report.findings}
-            )
+            self.assertIn(rule, {f.rule_id for f in report.findings})
         double = ModelProcessDouble()
         result = self.call_operation(
             "concorde-plan",
@@ -193,6 +204,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual([], result["output"]["data"]["blockers"])
         self.assertEqual([], [call["stage"] for call in double.calls])
         path.write_text(original)
+        (self.root / ".concorde/specs.json").write_text(registry)
 
     def test_module_scenario_focus_is_local(self):
         repo = SpecRepository(self.root)
@@ -201,7 +213,8 @@ class ScopedProtocolTests(unittest.TestCase):
         )
         with self.assertRaises(SpecError):
             repo.select("module.ledger", "scenario.transfer.debit")
-        self.registry["entry_target"] = "module.ledger"
+        # The root is the first Module no other Module contains.
+        self.registry["modules"].insert(0, self.registry["modules"].pop(3))
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
         self.assertEqual("module.ledger", SpecRepository(self.root).entry_target)
 
@@ -226,10 +239,17 @@ class ScopedProtocolTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "changed"):
             recheck_context(repository, snapshot)
         path.write_bytes(original)
-        self.registry["targets"][0]["references"].append(
-            {"kind": "document", "id": "document.transfer.promises"}
+        update_module(
+            self.root,
+            "scope.bank",
+            includes=[
+                {
+                    "kind": "document",
+                    "target": "document.transfer.promises",
+                    "reason": "the transfer amount rules",
+                }
+            ],
         )
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
         update_document_declaration(
             self.root, "specs/transfer/promises.md", owner="service.transfer"
         )
@@ -249,8 +269,8 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_membership_changes_invalidate_snapshot(self):
         repo = SpecRepository(self.root)
         snapshot = resolve_context(repo, "service.transfer")
-        self.registry["targets"][2]["documents"].reverse()
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+        owns = self.registry["modules"][2]["owns"]
+        update_module(self.root, "service.transfer", owns=list(reversed(owns)))
         with self.assertRaisesRegex(SpecError, "changed"):
             recheck_context(repo, snapshot)
 
@@ -258,10 +278,18 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_another_targets_reference_does_not_change_provider_context(self):
         repo = SpecRepository(self.root)
         snapshot = resolve_context(repo, "service.transfer")
-        self.registry["targets"][3]["references"].append(
-            {"kind": "document", "id": "document.transfer.promises"}
+        # Audit's own selection changes; transfer never selects Audit's documents.
+        update_module(
+            self.root,
+            "scope.audit",
+            includes=[
+                {
+                    "kind": "document",
+                    "target": "document.transfer.promises",
+                    "reason": "the transfer amount rules",
+                }
+            ],
         )
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
         update_document_declaration(
             self.root, "specs/transfer/promises.md", owner="service.transfer"
         )
@@ -272,9 +300,16 @@ class ScopedProtocolTests(unittest.TestCase):
         )
 
     def test_module_parent_cycle_rejected(self):
-        self.registry["targets"][0]["parent"] = "scope.audit"
-        self.registry["targets"][1]["parent"] = "scope.bank"
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+        update_module(
+            self.root,
+            "scope.bank",
+            contains=[{"target": "scope.audit", "meaning": "#a"}],
+        )
+        update_module(
+            self.root,
+            "scope.audit",
+            contains=[{"target": "scope.bank", "meaning": "#b"}],
+        )
         with self.assertRaisesRegex(SpecError, "cycle"):
             SpecRepository(self.root)
 

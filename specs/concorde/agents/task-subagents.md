@@ -1,89 +1,127 @@
 # Task subagents and the user session
 
-Source authoring and independent testing use Task subagents, sibling Pi Agents with explicit task grants. This is not a product planning stage or a new scheduler.
+This topic explains how a user session hands whole tasks to the two Task subagents, and what the
+source user session's coordinator instructions add when the project is Concorde's own checkout.
+The exact tools, fields and commands are in [Agent interfaces](contracts.md#task-subagent-interfaces).
 
 ## Terminology
 
-| Term | Meaning / definition |
+| Term | Definition |
 | --- | --- |
-| [Task subagent](../module.md#terminology) | Defined in Concorde Framework. |
-| [User session](../module.md#terminology) | Defined in Concorde Framework. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
-| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| [User session](../vocabulary.md#concept.concorde.user-session) | |
+| [Task subagent](../vocabulary.md#concept.concorde.task-subagent) | |
+| [Evidence](../vocabulary.md#concept.concorde.evidence) | |
+| [Candidate](../harness/worktrees/module.md#concept.worktrees.candidate) | |
+| [Worktree](../harness/worktrees/module.md#concept.worktrees.worktree) | |
+| [Issue](../issues/module.md#concept.issues.issue) | |
 
-## Fresh source-maintenance selection
+## Two Task subagents
 
-Source maintenance starts a new Concorde-catalog-free writer in a candidate, never a fork carrying
-old instructions. The user session may directly author profiles, prompts, tools, workflows and process repairs in its own exclusive
-tree within task authority; it never mutates an active sibling's tree or frozen launch governance. After the writer checks,
-commits and stops, the user session chooses independent testing as none, targeted or full with scope and reason.
-When selected, the user session starts a separate fresh sibling tester in the same candidate. Both
-disable inherited/discovered Concorde catalogs; only the tester explicitly loads the candidate Pi
-entry. Failed tests within a coherent stage return to its author, then a fresh tester when selected.
-Neither child delegates tasks. Ordinary milestones preserve continuity; after a completed stage
-with changed goals/context, the user session may select a fresh author after a durable handoff and exact
-stop/release/bind. Independent components may run in separate worktrees before a combination gate.
+A Task subagent is a sibling of the user session, not a step inside a capability. It receives a
+whole task and works until it reports back.
 
-### Source user session discussion and task collection
+- **maintenance-worker** changes Concorde's own sources in one candidate worktree. It reads the
+  Protocol principles and the complete Specs it affects, edits sources, Specs and the registry
+  directly, runs its own checks, commits verified work and stops. It exists only in the source
+  checkout.
+- **tester** tests a stopped candidate independently. It keeps every governing file read-only, runs
+  commands only through `test_command`, and returns failures to the user session instead of fixing
+  them. It is installed in consumer projects too, as a generic tester without any source-only
+  instructions.
 
-The source user session can answer questions, inspect relevant sources and clarify changes without starting
-maintenance. It can retain a sufficiently discussed actionable change as a lightweight TODO note
-when the user requests or approves recording. Maturity concerns the goal, scope and expected
-behavior, not a detailed plan or verified Spec. An underspecified TODO request leads to a choice
-between more clarification and saving an issue, not an automatic record. This keeps open questions
-out of the actionable list without losing the user's option to retain an immature concern.
+Both start fresh: no inherited project or global instructions, no Skills, no Concorde catalog, and
+no `subagent` tool. Neither creates or moves worktrees, merges, pushes or cleans up. Their own
+self-checks are never independent evidence; only the tester's observations are, and only for the
+exact revision and scope it tested.
 
-The notes preserve the discussion's rationale and decisions for later work rather than replacing
-planning or implementation artifacts. The user session updates the same change instead of duplicating it.
-Promotion of a mature issue transfers its relevant background before removing its source, with
-consent, write verification and unresolved-content safeguards. Ordinary Issue dispositions still
-retain observations under the [Issues storage contract](../issues/execution-reference.md#issues-disposition-boundary);
-record transfer does not claim a verified resolution or change that runtime API. Unsafe deletion
-or associated-record ownership conflicts preserve the source instead of widening authority.
+## The source maintenance flow
 
-Collection is always available, not another mode, Operation or delegated task. Recording alone
-creates no maintenance candidate or child ownership record and changes no implementation or Spec.
-Explicit implementation requests still use maintenance; an accumulated list never triggers work
-without a user request. The [collection scenarios](scenarios.md#scenario.distribution.user-session-todo-collection)
-define the source user session instruction contract, not a promise of deterministic model decisions.
-These instructions use the existing user-session-only projection boundary and never ship to consumers.
+In Concorde's source checkout, the user session loads the coordinator instructions and acts as the
+coordinator. It owns a lightweight decomposition of the work: packages, dependencies, which Module
+or file each writer owns, the gates between them, and when to test. This is not a Concorde plan
+and uses no planner. A normal change runs like this:
 
-### Coordination and validation
+```mermaid illustrative
+sequenceDiagram
+    accTitle: One source maintenance change
+    accDescr: The user session registers a candidate, launches and binds a maintenance-worker, releases it after it stops, and optionally hands the candidate to a fresh tester.
+    participant U as User session
+    participant S as Primary status
+    participant M as maintenance-worker
+    participant T as tester
+    U->>U: create candidate from a committed base
+    U->>S: register candidate, verify record
+    U->>M: launch fresh, with task and grant
+    U->>S: bind the actual child run
+    M->>M: edit, check, commit, stop
+    M-->>U: handoff report
+    U->>S: release the stopped child
+    U->>T: launch fresh tester (if selected)
+    U->>S: bind tester
+    T-->>U: observations and failures
+    U->>S: release tester
+    Note over U: failures go back to the same maintenance-worker, then a new tester
+```
 
-The user session owns a lightweight high-level decomposition of work packages, dependencies, file/contract
-ownership, worktrees, native workflow steps, component acceptance and integration/testing gates.
-This is NOT Concorde product plan/tasks and requires neither a planner Operation nor a coordinator
-LLM. The user session can author an ad-hoc native workflow or select a predeclared one; its steps are terminal Pi
-workers, not additional orchestrators. The user session owns continuation and integration authorization. Source user session instructions make primary status registration a launch
-prerequisite: each candidate has a verified stable task identity before its maintenance child starts,
-then the user session binds the actual launched child rather than a workflow container. Before transferring
-ownership to a tester or resumed author, the user session verifies the previous child stopped, releases that
-exact owner and verifies the new binding. Failed registration or handoff stops dependent work;
-run evidence and mission notes cannot replace status. Terminal records remain available, and
-integration and separately authorized cleanup stay distinct. These are host-coordination duties,
-not a new runtime or child grant; the [Task subagent scenario](scenarios.md#scenario.distribution.task-subagents)
-defines the instruction obligation. Already-running sessions retain their loaded instructions.
-Maintenance directly edits and self-checks, never delegates or
-integrates. Tester starts fresh, keeps governing artifacts read-only and returns failures rather
-than repairing. Its command tool uses the existing OS read-only check executor with disposable
-external fixtures and the trusted tester-only scratch-backed private `/tmp` profile; unavailable
-isolation fails closed. Real host `/tmp` inputs use the explicit read-only `CONCORDE_TEST_HOST_TMP`
-view, except governing/runtime locations preserved at their canonical names. This permits normal
-nested terminal preparation without staging runtime assets or making host `/tmp` writable.
-The command schema admits command/timeout and explicit relative report names, never mounts or
-export destinations. The [Host evidence handoff](../harness/execution-reference.md#execution-tester-evidence)
-preserves selected nonsecret reports and bounded output in canonical primary run evidence before
-scratch cleanup, with digest/completeness/truncation facts and compact references. A failed export
-or scratch path alone is not retained evidence. This narrow service grants no tester status writes
-or arbitrary primary writes; it does not weaken the read-only execution policy.
-Explicit extension lists disable ambient
-catalogs without granting additional tools. Effective discovery/preflight remains host-owned.
+Three rules hold the flow together:
 
-Local edits need format/static/targeted checks, coherent changes affected integration, final
-stable input one full Python suite and applicable gates. Stage handoff alone adds no full suite;
-a same-tree commit only needs HEAD/bootstrap checks. Changed relevant input/environment invalidates
-corresponding evidence. Same-input reruns state their reason; self-tests never become independent.
-Same-session complete unchanged Specs need no repeated bundle read; new seams/readers do.
-Resource handoff requests distinguish observed capacity/current input/cache/reserve/compaction
-from cumulative usage, document size or missing tools. Unknown metrics remain unknown and the user session
-verifies handoff need; quality concerns are separately labelled.
+1. **Register before launch.** Every candidate has a record in the primary `.concorde/status/`
+   store before its maintenance-worker starts. The user session binds the child's actual run
+   identity right after launch and rereads the record to verify it. Run evidence, notes and
+   pi-subagents mission records never replace this record.
+2. **One writer at a time.** Before a tester or a resumed maintenance-worker takes over, the user
+   session verifies that the current child has stopped, releases exactly that child, then binds the
+   next.
+   A failed release or bind blocks the handoff; there is never concurrent ownership.
+3. **Frozen launch grants.** A running child keeps the instructions and grant it was launched
+   with. The user session may change prompts, profiles or workflows in its own tree, but that never
+   changes an active sibling. New instructions govern only sessions that load them.
+
+The user session keeps the same maintenance-worker through an unfinished stage and its feedback
+cycle; a small milestone is not a reason to restart. After a completed stage whose goals or context
+changed, it may launch a fresh maintenance-worker after a durable handoff: the current brief,
+accepted decisions, exact HEAD and dirty state, artifacts, checks, risks and next step. Independent
+components may run in parallel in separate candidates; shared files or contracts need an explicit
+owner and an integration barrier, and component passes alone do not prove the combination works.
+
+Independent testing is an explicit choice: none, targeted or full, with a stated scope and reason.
+The tester receives the exact candidate-built Pi entry, catalog and runtime to test; a missing or
+stale candidate artifact blocks testing instead of falling back to the primary or a global
+installation. Integration into the primary branch and cleanup of candidates each need the
+developer's explicit authorization, and only the user session records them.
+
+## Checks and context lifecycle
+
+Both the coordinator and the maintenance-worker choose checks by what changed: formatting, static
+and targeted checks for local edits; affected integration for a coherent change; one full Python
+suite and the build gates at the final stable input. A stage handoff alone needs no full suite, and
+a commit of an already checked tree needs only HEAD checks. Evidence is repeated only after a
+relevant input changed or a check failed, with the reason recorded.
+
+The maintenance-worker keeps a short current task brief in its progress messages, and the source
+user session keeps one with the `update_task_brief` tool. After Pi actually compacts a session, a
+lifecycle extension injects that brief once. A request to replace a child for lack of room must
+report measured context use; cumulative token counts or document sizes alone do not show that a
+session is exhausted.
+
+## Collecting TODO notes
+
+The source user session can also just talk: answer questions, read sources and clarify a change
+without starting any maintenance. When a discussion reaches a concrete, actionable conclusion whose
+goal, scope and expected behaviour are settled, and the developer asks for or approves it, the user
+session records it as one Markdown note under `.concorde/todos/`. The directory is the list. An
+existing note for the same change is updated instead of duplicated, and each note keeps the
+reasoning, decisions, alternatives, boundaries and examples, not just a title.
+
+A request that is still unsettled gets a question back: keep clarifying, or save it as an
+[Issue](../issues/module.md#concept.issues.issue)? Nothing is recorded until the developer chooses.
+Moving a mature Issue into a TODO note copies its background first, verifies the note, and only then
+deletes the Issue; a failure at any point keeps the source. Recording a note never changes
+implementation or Specs, never creates a candidate and never starts a child. These instructions
+exist only for the source user session.
+
+## In a consumer project
+
+A consumer installation has no coordinator instructions and no maintenance-worker. Its user session
+can still launch the generic `tester` with the same isolation, selecting the project's installed
+Concorde entry explicitly. Everything else in this topic applies only to Concorde's own checkout.

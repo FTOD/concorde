@@ -1,77 +1,242 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.operations.module",
     "owner": "module.operations",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Operations",
+    "owns": [
+      "specs/concorde/operations/module.md",
+      "specs/concorde/operations/catalog.md",
+      "specs/concorde/operations/scenarios.md"
+    ],
+    "contains": [
+      {
+        "target": "module.planning",
+        "meaning": "#contains-planning"
+      },
+      {
+        "target": "module.implementation",
+        "meaning": "#contains-implementation"
+      },
+      {
+        "target": "module.review",
+        "meaning": "#contains-review"
+      },
+      {
+        "target": "module.validation",
+        "meaning": "#contains-validation"
+      },
+      {
+        "target": "module.delivery",
+        "meaning": "#contains-delivery"
+      }
+    ],
+    "uses": [
+      {
+        "target": "module.harness.admission",
+        "meaning": "#uses-admission",
+        "relies_on": [
+          "concept.admission.capability-request",
+          "concept.admission.result-envelope",
+          "concept.admission.relay",
+          "req.admission.relay-result"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.registry",
+          "concept.spec.initial-proposal"
+        ]
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate",
+          "req.worktrees.owner-preserved"
+        ]
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.workflow",
+          "concept.execution.terminal-agent-operation",
+          "concept.execution.graph-spec",
+          "req.execution.graph-api-only"
+        ]
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.agent",
+          "concept.agents.definition"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.issue"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "reference/langgraph/",
+        "reason": "LangGraph Graph API (StateGraph, runtime context) that every Operation is built with"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.operations.providers",
-      "title": "Operation providers",
-      "kind": "concept",
-      "meaning": "#entity.operations.providers"
+      "id": "concept.operations.operation",
+      "type": "concept",
+      "title": "Operation",
+      "meaning": "#concept.operations.operation"
     },
     {
-      "id": "entity.operations.dispatch",
-      "title": "Operation dispatch",
-      "kind": "program",
-      "meaning": "#entity.operations.dispatch",
-      "files": [
-        "src/concorde/operations/",
-        "tests/concorde/operations/__init__.py",
-        "tests/concorde/operations/test_review.py",
-        "tests/concorde/operations/test_run_operation.py",
-        "tests/concorde/operations/test_target_discovery.py",
-        "tests/concorde/operations/test_orchestration_removal.py"
+      "id": "concept.operations.capability-declaration",
+      "type": "concept",
+      "title": "Capability declaration",
+      "meaning": "#concept.operations.capability-declaration"
+    },
+    {
+      "id": "concept.operations.capability-kind",
+      "type": "concept",
+      "title": "Capability kind",
+      "meaning": "#concept.operations.capability-kind"
+    },
+    {
+      "id": "realization.operations.catalog",
+      "type": "realization",
+      "title": "Capability inventory",
+      "meaning": "#realization.operations.catalog",
+      "entries": [
+        "operations/"
       ]
     },
     {
-      "id": "entity.operations.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.operations.harness"
+      "id": "realization.operations.dispatch",
+      "type": "realization",
+      "title": "Capability dispatch",
+      "meaning": "#realization.operations.dispatch",
+      "entries": [
+        "src/concorde/operations/"
+      ]
     },
     {
-      "id": "entity.operations.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "target_id": "module.spec",
-      "meaning": "#entity.operations.spec"
+      "id": "realization.operations.graph-catalog",
+      "type": "realization",
+      "title": "Operation catalog",
+      "meaning": "#realization.operations.graph-catalog",
+      "entries": [
+        "src/concorde/operations/graph_catalog.py"
+      ]
     },
     {
-      "id": "entity.operations.issues",
-      "title": "Issues",
-      "kind": "used module",
-      "target_id": "module.issues",
-      "meaning": "#entity.operations.issues"
-    },
-    {
-      "id": "entity.operations.agents",
-      "title": "Agents",
-      "kind": "used module",
-      "target_id": "module.agents",
-      "meaning": "#entity.operations.agents"
+      "id": "realization.operations.tests",
+      "type": "realization",
+      "title": "Operations tests",
+      "meaning": "#realization.operations.tests",
+      "entries": [
+        "tests/concorde/operations/__init__.py",
+        "tests/concorde/operations/test_operation_modules.py",
+        "tests/concorde/operations/test_run_operation.py"
+      ]
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.harness",
-      "meaning": "#agreement.document.operations.module.1"
+      "type": "contrasts",
+      "source": "concept.operations.operation",
+      "target": "concept.concorde.capability",
+      "reason": "a capability is a public entry the user session calls; an Operation is a StateGraph the Host runs, and no public capability is one"
     },
     {
-      "target_id": "module.spec",
-      "meaning": "#agreement.document.operations.module.2"
+      "type": "relates",
+      "source": "realization.operations.catalog",
+      "verb": "hands requests to",
+      "target": "module.harness.admission"
     },
     {
-      "target_id": "module.issues",
-      "meaning": "#agreement.document.operations.module.3"
+      "type": "relates",
+      "source": "realization.operations.catalog",
+      "verb": "names the Agents of",
+      "target": "module.agents"
     },
     {
-      "target_id": "module.agents",
-      "meaning": "#entity.operations.agents"
+      "type": "relates",
+      "source": "realization.operations.dispatch",
+      "verb": "checks the target with",
+      "target": "module.spec"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.dispatch",
+      "verb": "binds the candidate through",
+      "target": "module.harness.worktrees"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.dispatch",
+      "verb": "routes Module requests to",
+      "target": "module.planning"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.dispatch",
+      "verb": "routes Module requests to",
+      "target": "module.implementation"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.dispatch",
+      "verb": "routes Module requests to",
+      "target": "module.review"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.dispatch",
+      "verb": "routes Module requests to",
+      "target": "module.validation"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.dispatch",
+      "verb": "routes delivery requests to",
+      "target": "module.delivery"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.dispatch",
+      "verb": "routes Issue requests to",
+      "target": "module.issues"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.graph-catalog",
+      "verb": "lists",
+      "target": "concept.operations.operation"
+    },
+    {
+      "type": "relates",
+      "source": "realization.operations.graph-catalog",
+      "verb": "builds Operations from",
+      "target": "module.harness.execution"
     }
-  ],
-  "bindings": []
+  ]
 }

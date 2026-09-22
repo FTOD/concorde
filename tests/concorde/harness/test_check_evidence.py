@@ -33,7 +33,7 @@ class CheckEvidenceTests(unittest.TestCase):
         paths = [source["path"] for source in sources]
         for suffix in ("", ".json"):
             self.assertEqual(
-                1, paths.count("specs/concorde/harness/execution-reference.md" + suffix)
+                1, paths.count("specs/concorde/harness/checks/interfaces.md" + suffix)
             )
 
     def setUp(self):

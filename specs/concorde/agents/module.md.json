@@ -1,114 +1,248 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.agents.module",
     "owner": "module.agents",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Agents",
+    "owns": [
+      "specs/concorde/agents/module.md",
+      "specs/concorde/agents/task-subagents.md",
+      "specs/concorde/agents/contracts.md",
+      "specs/concorde/agents/requirements.md",
+      "specs/concorde/agents/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.harness.context",
+        "meaning": "#uses-harness-context",
+        "relies_on": [
+          "concept.context.grant"
+        ]
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-harness-execution",
+        "relies_on": [
+          "concept.execution.workflow"
+        ]
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-harness-checks"
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-harness-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate",
+          "concept.worktrees.worktree"
+        ]
+      },
+      {
+        "target": "module.planning",
+        "meaning": "#uses-planning",
+        "relies_on": [
+          "concept.planning.plan",
+          "concept.planning.task"
+        ]
+      },
+      {
+        "target": "module.review",
+        "meaning": "#uses-review",
+        "relies_on": [
+          "concept.review.finding"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.issue"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "reference/pi/",
+        "reason": "Pi agent sessions, tools, extensions and compaction that the Agent definitions and Task subagent instructions rely on"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.agents.definitions",
-      "title": "Agent definitions",
-      "kind": "program",
-      "meaning": "#entity.agents.definitions",
-      "files": [
-        "agents/",
-        "prompts/task-subagent/",
-        "prompts/user-session/",
-        "prompts/native/code-reviewer.md",
-        "prompts/native/context-assessor.md",
-        "prompts/native/issue-solver.md",
-        "prompts/native/planner.md",
-        "prompts/native/programmer.md",
-        "prompts/native/spec-reviewer.md",
-        "prompts/native/task-author.md",
+      "id": "concept.agents.agent",
+      "type": "concept",
+      "title": "Agent",
+      "meaning": "#concept.agents.agent"
+    },
+    {
+      "id": "concept.agents.domain-agent",
+      "type": "concept",
+      "title": "Domain Agent",
+      "meaning": "#concept.agents.domain-agent"
+    },
+    {
+      "id": "concept.agents.definition",
+      "type": "concept",
+      "title": "Agent definition",
+      "meaning": "#concept.agents.definition"
+    },
+    {
+      "id": "realization.agents.inventory",
+      "type": "realization",
+      "title": "Agent inventory",
+      "meaning": "#realization.agents.inventory",
+      "entries": [
+        "agents/__init__.py",
+        "tests/concorde/agents/"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.agents.domain-agents",
+      "type": "realization",
+      "title": "Domain Agent definitions",
+      "meaning": "#realization.agents.domain-agents",
+      "entries": [
+        "agents/code_reviewer/",
+        "agents/context_assessor/",
+        "agents/issue_solver/",
+        "agents/planner/",
+        "agents/programmer/",
+        "agents/spec_reviewer/",
+        "agents/task_author/",
+        "prompts/native/",
         "prompts/workers/common.md",
+        "prompts/workflow-host/review-scope-and-result.md",
         "tests/concorde/fixtures/build/golden/agents/",
-        "tests/concorde/fixtures/build/golden/native/",
-        "tests/concorde/agents/",
+        "tests/concorde/fixtures/build/golden/native/"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.agents.task-subagents",
+      "type": "realization",
+      "title": "Task subagent definitions",
+      "meaning": "#realization.agents.task-subagents",
+      "entries": [
+        "agents/task_subagent.py",
+        "agents/source/",
+        "prompts/task-subagent/",
         "tests/concorde/distribution/test_task_subagents.py",
-        "tests/concorde/distribution/test_coordinator_status.py",
-        "tests/concorde/distribution/test_user_session_todos.py",
         "tests/concorde/distribution/test_role_isolation.py",
         "tests/concorde/distribution/test_local_installation.py",
-        "tests/concorde/distribution/test_pi_session.py",
-        "prompts/workflow-host/review-scope-and-result.md"
-      ]
+        "tests/concorde/distribution/test_pi_session.py"
+      ],
+      "pending": []
     },
     {
-      "id": "entity.agents.coordinator",
-      "title": "User session",
-      "kind": "external actor",
-      "meaning": "#entity.agents.coordinator"
-    },
-    {
-      "id": "entity.agents.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.agents.harness"
-    },
-    {
-      "id": "entity.agents.distribution",
-      "title": "Distribution",
-      "kind": "used module",
-      "target_id": "module.distribution",
-      "meaning": "#entity.agents.distribution"
-    },
-    {
-      "id": "entity.agents.planning",
-      "title": "Planning",
-      "kind": "used module",
-      "target_id": "module.planning",
-      "meaning": "#entity.agents.planning"
-    },
-    {
-      "id": "entity.agents.implementation",
-      "title": "Implementation",
-      "kind": "used module",
-      "target_id": "module.implementation",
-      "meaning": "#entity.agents.implementation"
-    },
-    {
-      "id": "entity.agents.review",
-      "title": "Review",
-      "kind": "used module",
-      "target_id": "module.review",
-      "meaning": "#entity.agents.review"
-    },
-    {
-      "id": "entity.agents.issues",
-      "title": "Issues",
-      "kind": "used module",
-      "target_id": "module.issues",
-      "meaning": "#entity.agents.issues"
+      "id": "realization.agents.coordinator",
+      "type": "realization",
+      "title": "Source coordinator instructions",
+      "meaning": "#realization.agents.coordinator",
+      "entries": [
+        "prompts/user-session/",
+        "tests/concorde/distribution/test_coordinator_status.py",
+        "tests/concorde/distribution/test_user_session_todos.py",
+        "pi/extensions/concorde-brief-lifecycle.ts",
+        "pi/extensions/concorde-maintenance.ts"
+      ],
+      "pending": []
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.harness",
-      "meaning": "#entity.agents.harness"
+      "type": "narrows",
+      "source": "concept.agents.domain-agent",
+      "target": "concept.agents.agent"
     },
     {
-      "target_id": "module.distribution",
-      "meaning": "#entity.agents.distribution"
+      "type": "relates",
+      "source": "concept.agents.domain-agent",
+      "verb": "runs as",
+      "target": "concept.concorde.worker"
     },
     {
-      "target_id": "module.planning",
-      "meaning": "#entity.agents.planning"
+      "type": "relates",
+      "source": "realization.agents.inventory",
+      "verb": "lists",
+      "target": "realization.agents.domain-agents"
     },
     {
-      "target_id": "module.implementation",
-      "meaning": "#entity.agents.implementation"
+      "type": "relates",
+      "source": "realization.agents.inventory",
+      "verb": "lists",
+      "target": "realization.agents.task-subagents"
     },
     {
-      "target_id": "module.review",
-      "meaning": "#entity.agents.review"
+      "type": "relates",
+      "source": "realization.agents.domain-agents",
+      "verb": "are run by",
+      "target": "module.harness.execution"
     },
     {
-      "target_id": "module.issues",
-      "meaning": "#entity.agents.issues"
+      "type": "relates",
+      "source": "realization.agents.domain-agents",
+      "verb": "declare limits in the profile format of",
+      "target": "module.harness.context"
+    },
+    {
+      "type": "relates",
+      "source": "realization.agents.domain-agents",
+      "verb": "propose plans and tasks for",
+      "target": "module.planning"
+    },
+    {
+      "type": "relates",
+      "source": "realization.agents.domain-agents",
+      "verb": "report findings for",
+      "target": "module.review"
+    },
+    {
+      "type": "relates",
+      "source": "realization.agents.domain-agents",
+      "verb": "report problems through",
+      "target": "module.issues"
+    },
+    {
+      "type": "relates",
+      "source": "realization.agents.task-subagents",
+      "verb": "are projected by",
+      "target": "module.distribution"
+    },
+    {
+      "type": "relates",
+      "source": "realization.agents.task-subagents",
+      "verb": "run tester commands through",
+      "target": "module.harness.checks"
+    },
+    {
+      "type": "relates",
+      "source": "realization.agents.coordinator",
+      "verb": "launches and hands off",
+      "target": "realization.agents.task-subagents"
+    },
+    {
+      "type": "relates",
+      "source": "realization.agents.coordinator",
+      "verb": "registers children in",
+      "target": "module.harness.worktrees"
     }
   ],
-  "bindings": []
+  "extensions": {}
 }

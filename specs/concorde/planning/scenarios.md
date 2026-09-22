@@ -1,142 +1,155 @@
 # Planning scenarios
 
-These precise specifications belong directly to the [Planning Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
-
-## Terminology
-
-| Term                                                      | Meaning / definition                                      |
-| --------------------------------------------------------- | --------------------------------------------------------- |
-| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.                            |
-| [Module](../module.md#terminology)                        | Defined in Concorde Framework.                            |
-| [Host](../module.md#terminology)                          | Defined in Concorde Framework.                            |
-| [Task sufficiency](assessment.md#terminology)             | Defined in Is the specification sufficient for this task? |
-| [Acceptance task](tasks.md#terminology)                   | Defined in Making work verifiable.                        |
-| [Reserved task ID](tasks.md#terminology)                  | Defined in Making work verifiable.                        |
-| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.                            |
-| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you.          |
-
-## Planning
-
-### scenario.planning.task-history-identities — Task authors receive reserved identities
-
-- GIVEN a target may retain task lists from earlier repair rounds
-- WHEN the Host invokes a fresh task author, including after replanning
-- THEN its typed stage inputs include every retained historical task ID and, for a scope or code-review repair, every ID in the list being replaced
-- AND those reserved IDs constrain identity only and add no software obligations or implementation contents
-- AND returned tasks must be nonempty, internally unique, initially incomplete and disjoint from the reserved IDs
-- AND a collision reports the conflicting IDs without rewriting the result, replacing tasks or discarding history
-
-The independent contracts are [Assessment](assessment.md), [Plan](plan.md) and [Tasks](tasks.md).
+Concrete situations for context assessment, planning and task authoring in the
+[Planning Module](module.md). The Module-wide obligations and the exact records are in the
+[planning workflow](workflow.md).
 
 ## Context assessment
 
-### scenario.planning.assessment-sufficient — The admitted contract supports the task
+### scenario.planning.assessment-sufficient — The Spec supports the task
 
-- GIVEN a selected Module whose dependency declarations agree with its registered relationships
-- AND its complete admitted Spec supplies the contracts necessary for the task
-- WHEN the fresh context assessor evaluates that task
-- THEN it returns sufficient without authored documents, a plan or tasks
-- AND the assessment concerns that task and does not prove universal semantic completeness
+- GIVEN a selected Module whose declared collaborations are consistent
+- AND whose Spec states everything the task needs
+- WHEN a fresh context assessor evaluates the task
+- THEN the Host accepts the outcome `sufficient`
+- AND no plan, task or document is written
+- BUT the answer concerns this task only and says nothing about other tasks
 
-### scenario.planning.assessment-gap — A necessary promise is missing
+### scenario.planning.assessment-gap — A needed promise is missing
 
-- GIVEN the selected Module's complete admitted Spec lacks a contract needed for the task
-- WHEN context assessment reaches the dependent judgment
-- THEN it reports spec_incomplete with question, blocked_step and needed_contract and host-bound target/context provenance
-- AND the dependent step pauses while independent reasoning may continue
-- AND the assessor neither reads implementation contents nor expands the selected context to supply the missing promise
+- GIVEN the selected Module's Spec lacks a promise the task needs
+- WHEN a fresh context assessor evaluates the task
+- THEN it reports the missing promise as an Issue and returns `spec_incomplete` with a blocker citing that Issue and naming the blocked step
+- AND the Host records the blocker for that step, target and task
+- BUT the assessor reads no implementation contents and no other Module's context to fill the gap
 
-## Planning operation
+See [report necessary gaps as Issues](workflow.md#req.planning.assessment-gap).
 
-### scenario.planning.plan-current — Assessment admits a revision-bound plan
+### scenario.planning.historical-author-gap — A fresh assessment supersedes a removed step's blocker
 
-- GIVEN a selected Module, task and constraints with sufficient complete contract context
-- WHEN a fresh planner returns a nonempty plan
-- THEN the host persists the accepted plan against that revision and returns its ArtifactRef
-- AND no task list, code changes or ready state is produced
+- GIVEN a candidate still holds an open blocker that the removed Spec-authoring step recorded for the same target and task
+- WHEN the user session edits the Spec as needed and obtains an accepted `sufficient` context assessment for that target, task, focus and constraints
+- THEN the Host marks only that blocker superseded, recording the new assessment's context, the Spec revision and the reason `retired_author_prerequisite`
+- AND it keeps the original blocker, its Issue and their history
+- BUT an edit alone, an insufficient, failed or stale assessment, or a blocker whose attribution is ambiguous supersedes nothing, and no Issue is closed
 
-### scenario.planning.plan-empty — An empty result cannot replace a plan
+### scenario.harness.native-context-public — A prepared native assessment is accepted independently
 
-- GIVEN a target has a previously accepted plan and current sufficient assessment admits a fresh planner
-- WHEN that planner returns an empty plan
-- THEN the host rejects the returned plan and preserves the previously accepted plan
-- AND no replacement plan artifact is accepted for dependent task authoring
+- GIVEN a selected Module with a current frozen context and the candidate's own Pi entry
+- WHEN `concorde-context-solve` prepares its native context-assessor call and the user session invokes that exact call
+- THEN the prepared call and its descriptor are returned as `prepared` and not accepted, and no model runs during preparation
+- AND the proposal the Agent submits and its passing staging gate are recorded as `proposed` and `staged`, never as accepted
+- AND the Host accepts the assessment only after the native run completed and every frozen input is unchanged, keeping a sufficient result distinct from a business-blocked one
+- AND `describe-policy` returns the intended read policy without writing a capsule or starting an Agent, and a known collaboration gap stops before any Agent starts
+- BUT a duplicate, foreign or malformed proposal, a native failure despite a passing gate, a cancellation, a changed configuration, registry, Spec, Agent definition or capture extension, or a missing capsule accepts nothing
+
+The prepared Agent is found only in the capsule's project scope, so an Agent with the same name
+installed elsewhere cannot replace it. Accepted evidence is written to the primary worktree's run
+records, not kept in the capsule. The identity's `harness` prefix is kept because tests declare
+it; an identity prefix does not establish ownership.
+
+## Planning
+
+### scenario.planning.plan-current — A sufficient assessment admits a plan
+
+- GIVEN a selected Module, task and constraints whose Spec is sufficient
+- WHEN the planning workflow's planner returns a nonempty plan and the Host accepts it
+- THEN the plan is saved in the candidate, bound to the current Spec revision and the task
+- AND the result references the saved plan
+- BUT no task list, code change or readiness is produced
+
+### scenario.planning.plan-empty — An empty plan is rejected
+
+- GIVEN a target with a previously accepted plan
+- AND a sufficient assessment that admitted a fresh planner
+- WHEN the planner returns an empty plan
+- THEN the Host rejects it
+- AND the previously accepted plan and tasks stay unchanged
 
 ### scenario.planning.plan-stale — Changed inputs invalidate a returned plan
 
-- GIVEN a previously accepted plan and a fresh planning invocation bound to a selected Spec revision and intent
-- AND relevant admitted inputs change before its result is accepted
-- WHEN the host rechecks the returned nonempty plan against current inputs
-- THEN it rejects stale output without replacing the previously accepted plan
-- AND preserving old bytes does not make the old plan current; reuse requires current admission
+- GIVEN a planning run prepared against a Spec revision and task
+- AND the Spec, registry, configuration or candidate state changes before the plan is accepted
+- WHEN the Host checks the returned plan
+- THEN it rejects the plan as stale
+- AND the previously accepted plan stays unchanged
+- BUT keeping the old plan does not make it current for the changed inputs
 
-## Task authoring operation
+## Task authoring
 
-### scenario.planning.tasks-from-plan — Accepted plan yields implementation tasks
+### scenario.planning.tasks-from-plan — An accepted plan yields tasks
 
-- GIVEN a current managed change, accepted plan and complete reserved task-ID input
-- WHEN a fresh task author returns a nonempty, internally unique, initially incomplete acceptance-task list disjoint from the reserved IDs
-- THEN the host accepts and persists the list with its plan as the implementation task artifact
-- AND its response supplies artifact references without completing tasks or granting the author project writes
+- GIVEN a managed candidate with a current accepted plan for the target
+- WHEN a fresh task author returns a nonempty list of new, uniquely identified, incomplete tasks aimed at the Module, a Module it uses or a direct child
+- THEN the Host saves the list in the candidate's change record
+- AND the result references that record
+- BUT the task author completes no task and writes no project file
 
-### scenario.planning.tasks-missing-plan — Task authoring has no prerequisite plan
+### scenario.planning.tasks-missing-plan — Task authoring without a plan
 
-- GIVEN a current managed change with no authored plan for the selected target
-- WHEN a declared composing caller requests task authoring
-- THEN the host rejects the request with missing_plan before launching a task author
-- AND it does not create a task list or discard retained task history
+- GIVEN a managed candidate with no accepted plan for the selected target
+- WHEN the user session requests task authoring
+- THEN the Host refuses the request with `missing_plan` before starting a task author
+- AND no task list is created and the task history is unchanged
 
-### scenario.planning.tasks-id-conflict — New output reuses a reserved identity
+### scenario.planning.tasks-foreign-target — A task for an unrelated Module is refused
 
-- GIVEN an accepted plan, prior tasks and retained history with IDs reserved for a fresh task author
-- WHEN the returned task list reuses an admitted reserved ID
-- THEN the host rejects the list and reports the conflicting IDs without rewriting author output
-- AND the prior task list and retained history remain unchanged
+- GIVEN a current accepted plan for the selected Module
+- WHEN the task author returns a task whose target is neither the Module, a Module it uses nor one of its direct children
+- THEN the Host refuses the list and the result is blocked
+- BUT no task list is saved and no programmer starts for that target
 
-### scenario.planning.repair-current — Explicit repair requires current independent evidence
+See [accept only valid new task lists](workflow.md#req.planning.tasks-admission).
 
-- GIVEN accepted tasks and a caller-selected repair_review ArtifactRef
-- WHEN task authoring admits blocking code-review feedback
-- THEN the reference must match the current host-recorded report and its exact bytes, selected intent, target, focus and current review inputs
-- AND the report must contain completed representative coverage and blocking findings with resolvable Issue receipts
-- AND missing, corrupt, forged, replaced or stale evidence stops before a task worker or task-state replacement
-- AND implementation rechecks the admitted feedback before use without automatically launching review or validation
+### scenario.planning.task-history-identities — Task authors receive the reserved identities
 
-### scenario.planning.repair-replacement — Replacement retires feedback without losing history
+- GIVEN a target that keeps task lists from earlier plans or repairs
+- WHEN the Host prepares a fresh task author, including after a new plan
+- THEN its inputs include every identity in the task history and, for a repair, every identity of the list being replaced
+- AND those identities constrain naming only and add no work to the new list
 
-- GIVEN a target has tasks admitted from blocking review feedback
-- WHEN the caller replaces those tasks without repair feedback or obtains a new accepted plan
-- THEN old repair feedback is removed from the replacement state while prior task identities remain reserved in history
-- AND selected independent review requirements remain in force without acquiring fabricated successful evidence
+### scenario.planning.tasks-id-conflict — A reserved identity is reused
 
-### scenario.planning.historical-author-gap — Supersede an obsolete author prerequisite
+- GIVEN reserved task identities for a fresh task author
+- WHEN the returned list reuses one of them
+- THEN the Host rejects the list and reports the colliding identities
+- AND the prior task list and task history stay unchanged
+- BUT the Host never rewrites the Agent's answer to make it fit
 
-- GIVEN a managed change with a correctly attributed same-intent historical specify task relation, including an unknown original revision or obsolete non-contract author failure
-- WHEN the caller makes any necessary direct contract edits and explicitly obtains a sufficient current context assessment for the accepted target, task, focus and constraints
-- THEN the host supersedes only that retired prerequisite with current assessment evidence and an explicit retirement reason while preserving the original receipt, contexts, source evidence and open Issue
-- AND editing alone, malformed attribution, unrelated intent, stale, insufficient or failed assessment cannot supersede it
-- AND no historical success, Issue closure or contract repair is inferred from an obsolete execution failure
-- AND required independent reviews must still be current before planning and task authoring
-- AND retained plan, tasks, implementation and review gaps require their own accepted phase output rather than another phase's success
+See [collisions preserve history](workflow.md#req.planning.task-collision-preserves).
 
-### scenario.planning.scope-repair — Repair task scope without accepting a stale plan
+## Repair
 
-- GIVEN an accepted current plan and an exact incomplete task list selected by repair_task_scope digest
-- WHEN a fresh task author corrects implementation-boundary acceptance using the plan, prior list, fixed scope feedback and reserved IDs
-- THEN the host accepts only new incomplete tasks and retains the prior list in history without weakening software acceptance
-- AND a stale Spec or plan, mismatched list digest, completed replacement or reserved-ID collision is rejected without replacing the accepted list or history
-- AND implementation, configured checks and required independent review remain separately selected responsibilities
+### scenario.planning.repair-current — Review repair needs current review evidence
 
-### scenario.planning.native-plan-tasks — Native plan and task authoring retain domain gates
+- GIVEN accepted tasks and a `repair_review` reference chosen by the user session
+- WHEN task authoring admits it
+- THEN the reference must match the review currently recorded for this target and task, byte for byte
+- AND the review must have completed its coverage and contain blocking findings with resolvable Issue references
+- BUT missing, corrupt, replaced or stale evidence stops the request before a task author starts or any task changes
 
-- GIVEN a managed selected Module with exact current intent and any required Spec review
-- WHEN the calling session invokes the prepared native planning workflow and then its direct task-author call
-- THEN separate fresh assessor/planner/task-author executions retain complete scoped inputs and no implementation contents
-- AND only sufficient independently accepted assessment launches the planner
-- AND stage-only success after native failure never permits a dependent launch or persistence
-- AND valid nonempty plan/tasks persist in the candidate with true primary-owned evidence/status
-- AND empty output, duplicate/reserved task IDs, stale Spec/metadata/intent/plan or mismatched repair feedback cannot replace accepted artifacts
-- AND cancellation stops unsettled acceptance while prior accepted artifacts remain inspectable
-- AND scoped external references are delivered and rechecked without admitting unrelated references
-- AND no Graph or hidden Pi-RPC model worker runs on these public paths
+### scenario.planning.repair-replacement — Replacing repaired tasks keeps history
+
+- GIVEN a target whose current tasks were admitted from review feedback
+- WHEN the user session replaces them without repair feedback, or obtains a new plan
+- THEN the old feedback is dropped from the target
+- AND the replaced identities stay reserved in the task history
+- BUT required independent reviews still need fresh evidence
+
+### scenario.planning.scope-repair — Correcting task scope without a stale plan
+
+- GIVEN a current accepted plan and an incomplete task list selected by its digest in `repair_task_scope`
+- WHEN a fresh task author rewrites the acceptance conditions to stay within what the programmer can do
+- THEN the Host accepts the new incomplete tasks and moves the prior list to the task history
+- BUT a changed Spec, a stale plan, a mismatched digest, an all-complete list or a reserved-identity collision is refused without changing the tasks or the history
+
+## Native execution
+
+### scenario.planning.native-plan-tasks — Native planning keeps the business rules
+
+- GIVEN a managed candidate for a selected Module with a current required Spec review, if one is required
+- WHEN the user session invokes the prepared planning workflow and then the prepared task-author call
+- THEN each assessor, planner and task author runs as a fresh Agent with its own frozen context and no implementation contents
+- AND the planner starts only after the Host accepted a sufficient assessment
+- AND a valid plan and task list are saved in the candidate with their run evidence in the primary worktree
+- BUT a failed, cancelled or unverifiable run, an empty plan or task list, a reserved identity, or changed Spec, metadata, task or plan inputs replaces nothing that was accepted before

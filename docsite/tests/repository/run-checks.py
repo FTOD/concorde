@@ -31,6 +31,13 @@ DIRECTORIES = (
     "reference",
 )
 FILES = (
+    "AGENTS.md",
+    "LICENSE",
+    ".gitignore",
+    ".gitmodules",
+    ".python-version",
+    "package.json",
+    "package-lock.json",
     "concorde.json",
     "conftest.py",
     "pyproject.toml",
@@ -43,22 +50,19 @@ FILES = (
 
 
 def uncopied_listing_roots() -> list[str]:
-    """Registry listing entries whose top-level name this copy would leave out.
+    """Realization entries whose top-level name this copy would leave out.
 
     The copied project is validated, so every non-pending entry must exist in it. Deriving the
-    complaint from the registry keeps a new listing root from silently emptying these checks.
-    A source whose registry cannot be read carries no listing to compare, as in the preparation
+    complaint from the Specs keeps a new implementation root from silently emptying these checks.
+    Entries are read from the `defines` realizations of every document the registry's Modules own.
+    A source whose registry cannot be read carries no entries to compare, as in the preparation
     fixtures that drive this script over stub inputs.
     """
     try:
         registry = json.loads(
             (ROOT / ".concorde/specs.json").read_text(encoding="utf-8")
         )
-        listed = {
-            entry.split("/")[0]
-            for target in registry["targets"]
-            for entry in target["files"]
-        }
+        documents = [path for module in registry["modules"] for path in module["owns"]]
     except (
         OSError,
         UnicodeDecodeError,
@@ -68,6 +72,12 @@ def uncopied_listing_roots() -> list[str]:
         AttributeError,
     ):
         return []
+    listed = set()
+    for path in documents:
+        metadata = json.loads((ROOT / f"{path}.json").read_text(encoding="utf-8"))
+        for node in metadata["defines"]:
+            if node["type"] == "realization":
+                listed.update(entry.split("/")[0] for entry in node["entries"])
     return sorted(listed - set(DIRECTORIES) - {name.split("/")[0] for name in FILES})
 
 

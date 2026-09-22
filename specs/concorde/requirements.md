@@ -1,63 +1,49 @@
-# Concorde Framework requirements
+# Framework requirements
 
-These precise specifications belong directly to the [Concorde Framework Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+These obligations hold across the whole Framework. Each Module states its own precise
+requirements; the ones here are the promises that no single Module can keep alone.
 
-## Terminology
+## Boundaries
 
-| Term                                             | Meaning / definition               |
-| ------------------------------------------------ | ---------------------------------- |
-| [Module](module.md#terminology)                  | Defined in Concorde Framework.     |
-| [Spec](module.md#terminology)                    | Defined in Concorde Framework.     |
-| [Operation](module.md#terminology)               | Defined in Concorde Framework.     |
-| [Candidate](module.md#terminology)               | Defined in Concorde Framework.     |
-| [Context](module.md#terminology)                 | Defined in Concorde Framework.     |
-| [Grant](module.md#terminology)                   | Defined in Concorde Framework.     |
-| [Worker](module.md#terminology)                  | Defined in Concorde Framework.     |
-| [Host](module.md#terminology)                    | Defined in Concorde Framework.     |
-| [Issue](module.md#terminology)                   | Defined in Concorde Framework.     |
-| [Initialization](spec/initialize.md#terminology) | Defined in Project initialization. |
-| [Delivery](module.md#terminology)                | Defined in Concorde Framework.     |
-| [Ready](module.md#terminology)                   | Defined in Concorde Framework.     |
+### req.concorde.routing-no-access — Selection grants no access
 
-## Concorde Framework
+Selecting a Module or a scenario for a request SHALL NOT by itself give a worker access to any file
+beyond that Module's frozen context.
 
-### req.concorde.routing-no-access — No access beyond frozen context
+### req.concorde.read-no-mutate — Read-only capabilities change nothing
 
-An explicit target or scenario focus SHALL NOT by itself grant file access beyond the selected Module's
-frozen context.
+A read or preview capability SHALL NOT modify project Specs, implementation files or the registry.
 
-### req.concorde.read-no-mutate — No mutation from read operations
+Reporting an Issue while doing read-only work is the one permitted side effect: it adds an Issue
+record and gives the reporting worker no other write access.
 
-A read or preview operation SHALL NOT modify project Specs, implementation or topology.
+## Results
 
-A worker may explicitly report a classified Issue through its host reporting tool; that limited
-bookkeeping effect grants no project-file write authority to the worker. Policy previews and
-queries of stored issue metadata remain free of issue-creation effects.
+### req.concorde.versioned-result — Every call returns a versioned result
 
-### req.concorde.versioned-result — Versioned result per invocation
+Every capability call SHALL return a versioned result that keeps an admission failure, an execution
+failure and the domain outcome distinct.
 
-Every invocation SHALL return a versioned operation result that distinguishes admission failure,
-execution failure and the domain outcome.
+### req.concorde.unsupported-explicit — Unsupported inputs fail explicitly
 
-### req.concorde.preserve-user-content — Preservation of developer-owned content
+A request with an unsupported version, capability or integration SHALL fail with an explicit error
+instead of being handled in a degraded way.
 
-Installation and configuration changes SHALL preserve content the developer owns.
+### req.concorde.no-stale-replay — Repeated mutations use current state
 
-### req.concorde.no-overwrite-initialized — No overwrite of initialized projects
+A repeated mutating request SHALL be admitted against the current saved state, or require a fresh
+proposal, instead of replaying an effect computed from stale inputs.
 
-Initialization SHALL NOT overwrite an already-initialized project.
+## Developer content and delivery
 
-### req.concorde.delivery-separate — Delivery as a separately authorized step
+### req.concorde.preserve-user-content — Developer content is preserved
 
-Delivery to a destination SHALL require a separately authorized transition beyond a ready candidate.
+Installation and configuration SHALL preserve content that the developer owns.
 
-### req.concorde.unsupported-explicit — Explicit failure for unsupported versions
+### req.concorde.no-overwrite-initialized — Initialization never overwrites
 
-An unsupported operation version or integration SHALL fail explicitly rather than degrading
-silently.
+Initialization SHALL NOT overwrite an already initialized project.
 
-### req.concorde.no-stale-replay — No replay of stale effects
+### req.concorde.delivery-separate — Delivery needs its own request
 
-A repeated mutation SHALL re-admit current saved state or require a fresh proposal rather than
-replaying a stale effect.
+Delivering a candidate SHALL require its own explicit request after the candidate is ready.
