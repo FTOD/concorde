@@ -55,13 +55,12 @@ Private session selection SHALL reject missing, stale, unreadable or out-of-cand
 
 A selection returns complete bytes and their provenance, not evidence of model loading or execution.
 
-### req.distribution.pi-session-public-only — The Pi session tool exposes only public Operations
+### req.distribution.pi-session-public-only — The Pi session tool exposes only public capabilities
 
-The Pi session extension SHALL offer exactly the public Operations as the operations of its
-`concorde` tool.
+The Pi session extension SHALL offer exactly the eleven public capability adapters through the compatibility `operation` selector of its `concorde` tool.
 
 All seven native Agents are callable through prepared native calls; no private Python model-operation alias or independent concorde tool entry is exposed; the source checkout's shim additionally tells the
-model to run an Operation only on the developer's explicit request.
+model to invoke a capability only on the developer's explicit request.
 
 ### req.distribution.launcher-sigterm-cancels — SIGTERM cancels the launcher like Ctrl-C
 
@@ -86,7 +85,7 @@ require Graph compilation; complete installed-runtime verification remains manda
 
 ### req.distribution.operation-guidance-fresh — Pi catalogs are complete fresh projections
 
-Build and package validation SHALL check the complete Pi catalog's descriptions, guidance, request schemas and output/source identities against the authored public Operation inventory.
+Build and package validation SHALL check the complete Pi catalog's descriptions, guidance, request schemas and output/source identities against the authored public capability-adapter inventory.
 
 Eleven public entry names and seven canonical native Agent roles remain. All seven roles have native
 instruction projections and byte-identical compatibility `generated/agents` paths. Context-solve,

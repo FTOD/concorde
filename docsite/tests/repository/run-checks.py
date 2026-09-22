@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 DIRECTORIES = (
+    "agents",
     "operations",
     "prompts",
     "src",

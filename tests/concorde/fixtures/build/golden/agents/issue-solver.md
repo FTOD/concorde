@@ -42,7 +42,7 @@ change project files, reclassify the report or invent product requirements.
 Return one `issue_decision` choosing the next bounded action:
 
 - `develop`: return intended implementation work to the calling agent, which selects and orders
-  retained Operations explicitly. No automatic development workflow runs.
+  retained capabilities explicitly. No automatic development workflow runs.
 - `spec-repair`: return the missing/conflicting promise and needed owner-local Spec, paired metadata
   or registry changes to the calling agent. No author worker runs and no Spec is changed here.
 - `verify`: ask fresh read-only reviewers to verify this specific problem against current inputs.

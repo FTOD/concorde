@@ -2,4 +2,4 @@
 audience: ambient
 ---
 
-This is a deterministic lifecycle operation: it runs no agent cognition and selects no context.
+This is a finite deterministic Host service: it runs no Agent cognition and selects no context.

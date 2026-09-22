@@ -64,8 +64,8 @@ The resolver (`resolve_model_instructions`, `resolve_role_prompt`, `resolve_oper
 `find_unreachable_prompts`, `check_reachability`) expands whole-line `@path.md` references, enforces
 audience/layering rules, and detects unreachable or diamond-included sources; `resolve_model_instructions`
 additionally rejects an Agent Spec that carries front matter. `package_validation` attributes its
-findings to `module.distribution` and requires exactly one registered `concorde-operations` block
-across all Module documents, equal to the typed public compatibility-adapter inventory, including kind, State, USES and public
+findings to `module.distribution` and requires exactly one registered `concorde.operations` metadata array
+across all paired Module metadata, equal to the typed public compatibility-adapter inventory, including kind, State, USES and public
 name. A separate Agents-owned `concorde.agents` array checks all nine roles against their canonical
 definitions as specified in [Agents](../agents/roles.md). Agents have no Python State/run aliases. The retired `skill` metadata field
 is rejected rather than aliased. Guidance membership is checked independently and must match
@@ -113,7 +113,7 @@ The retired column-one `@include` followed by whitespace or end of line fails ex
 rendered instruction text. Inline/indented mentions of that spelling remain ordinary text.
 
 Recursion preserves exact source provenance and the existing audience/layer boundaries: workers
-cannot include ambient text or vice versa, shared text is allowed to either, Operation guidance
+cannot include ambient text or vice versa, shared text is allowed to either, Public capability guidance
 and project Specs cannot be included, and worker instruction Specs include only `prompts/` files.
 Protocol adapters/chapters stay isolated from other prompts. Cycles fail with
 `CONCORDE-PROMPT-CYCLE-001`; reaching the same file twice within one root fails with

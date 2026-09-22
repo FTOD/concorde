@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
@@ -344,6 +345,18 @@ class OuterAgentsTests(unittest.TestCase):
         self.assertNotEqual(
             first["digest"], runner.fingerprint(sys.executable, ["other"])["digest"]
         )
+        read_bytes = Path.read_bytes
+        role = REPOSITORY_ROOT / "agents/planner/spec.md"
+
+        def changed_role(path):
+            content = read_bytes(path)
+            return content + b"\nchanged role\n" if path == role else content
+
+        with patch.object(Path, "read_bytes", changed_role):
+            changed = runner.fingerprint(
+                sys.executable, ["tests.concorde.harness.test_timing"]
+            )
+        self.assertNotEqual(first["input"], changed["input"])
         with tempfile.TemporaryDirectory() as directory:
             report = Path(directory) / "report.json"
             result = subprocess.run(

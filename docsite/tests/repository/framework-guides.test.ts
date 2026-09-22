@@ -25,12 +25,13 @@ describe("Explicit Concorde self specification", () => {
       rows: string[][];
     }>;
     const workers = tables.find(
-      (table) => table.title === "Model-backed Operations",
+      (table) => table.title === "Callable Pi roles",
     )!;
-    expect(workers.description).toContain("Workers are terminal nodes");
-    expect(workers.description).toContain(
-      "cannot delegate or recursively call Operations",
-    );
+    expect(workers.description).toContain("No role delegates tasks");
+    expect(workers.description).toContain("rather than domain stage schemas");
+    expect(workers.rows.flat().join(" ")).toContain("maintenance-worker");
+    expect(workers.rows.flat().join(" ")).toContain("tester");
+    expect(JSON.stringify(homepage)).not.toContain("18 Operations");
     const services = tables.find(
       (table) => table.title === "Shared execution services",
     )!;

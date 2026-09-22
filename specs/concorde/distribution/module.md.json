@@ -56,7 +56,7 @@
     },
     {
       "id": "entity.distribution.skill-sources",
-      "title": "Operation guidance sources",
+      "title": "Capability guidance sources",
       "kind": "authored instructions",
       "files": [
         "prompts/operation-guidance/",

@@ -74,7 +74,7 @@ This collaboration applies when a developer works with recorded feedback.
 
 <a id="entity.concorde.distribution"></a><a id="agreement.document.concorde.module.5"></a>
 
-The [Distribution Module](distribution/module.md) owns Operation guidance and Pi integration sources, builds authored projections, installs and configures owned integrations, provisions the managed runtime and keeps a source checkout's own projections bound to the worktree that built them.
+The [Distribution Module](distribution/module.md) owns public capability guidance and Pi integration sources, builds authored projections, installs and configures owned integrations, provisions the managed runtime and keeps a source checkout's own projections bound to the worktree that built them.
 
 This collaboration applies when a project adopts, updates or configures the Framework, or when built assets must be current.
 
@@ -97,7 +97,7 @@ This collaboration applies when a developer wants to read Specs.
 
 <a id="entity.concorde.operations"></a><a id="operations-collaboration"></a>
 
-The [Operations Module](operations/module.md) owns explicit StateGraph composition and the compatibility capability-adapter inventory/dispatch, while Agents owns callable roles and business providers retain their domain contracts. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [complete Operation contract](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
+The [Operations Module](operations/module.md) owns explicit StateGraph composition and the compatibility capability-adapter inventory/dispatch, while Agents owns callable roles and business providers retain their domain contracts. This collaboration applies when a developer selects behavior such as assessment, planning, task authoring, implementation, review or delivery. The Framework relies on the [composition and compatibility dispatch boundary](operations/module.md#design), supplies explicit intent through Harness admission, and preserves each provider's blocked, failed, ready and delivered outcomes rather than treating a composed result as universal success. Module containment does not grant context or execution authority.
 
 ### Agents
 

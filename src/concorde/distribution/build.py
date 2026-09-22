@@ -283,8 +283,8 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
     depth = shim_path.count("/")
     import_path = "../" * depth + extension
     content = (
-        "// Rendered by `python3 scripts/concorde.py build` from operation guidance, prompts/ and the\n"
-        "// operation contracts; do not edit. The Concorde session extension itself lives at\n"
+        "// Rendered by `python3 scripts/concorde.py build` from capability guidance, prompts/ and the\n"
+        "// public request contracts; do not edit. The Concorde session extension itself lives at\n"
         f"// {extension}; this shim binds it to this project.\n"
         'import { fileURLToPath } from "node:url";\n'
         f'import {{ concordeSession }} from "{import_path}";\n'

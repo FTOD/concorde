@@ -1,8 +1,8 @@
 # Build
 
-Build renders terminal worker instructions, a private Pi session entry with the public Operation
-catalog, Studio graph configuration, runtime schemas and Protocol assets. It reads authored
-Operation guidance under `prompts/operation-guidance/`, worker instructions and Protocol adapters;
+Build renders terminal worker instructions, a private Pi session entry with the public capability
+catalog, optional Studio graph configuration, runtime schemas and Protocol assets. It reads authored
+capability guidance under `prompts/operation-guidance/`, worker instructions and Protocol adapters;
 there is no independent Skill product, publishing command or client selector. Consumer installation
 uses the same pure renderer with its explicit framework prefix and owns deployment separately.
 
@@ -30,19 +30,20 @@ runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.
 
 ## Rendering and freshness
 
-Distribution owns each public Operation's authored description and guidance. Build resolves its
+Distribution owns each public capability's authored description and guidance. Build resolves its
 whole-line `@path.md` references and embeds those bytes with the exact versioned request schema in one Pi catalog. The
-extension's `concorde` tool describes or runs the selected Operation through the shared launcher;
+extension's `concorde` tool describes or invokes the selected capability through the shared launcher;
 Pi supplies the invocation envelope, so guidance contains no standalone stdin mechanics. Building
-or installing the catalog does not execute an Operation or grant worker authority. Operation
+or installing the catalog does not execute a capability or grant worker authority. Business
 behavior stays with its providing Module. The [reference grammar](contracts.md#prompt-reference-grammar)
 defines parameters and rejection rules; the old `@include path.md` spelling is retired.
 
 The checkout's own entry is `generated/session/pi/concorde-session.ts`, outside ambient discovery.
-It imports the checkout's extension and requests explicit developer authorization to run an
-Operation. Installation instead places its receipt-owned shim under `.pi/extensions/`, importing
+It imports the checkout's extension and requests explicit developer authorization to invoke a
+capability. Installation instead places its receipt-owned shim under `.pi/extensions/`, importing
 the deployed Framework and selecting the managed runtime. Both catalogs contain exactly eleven
-public Operations; internal Operations have no catalog entry. Seven worker projections remain
+public capability adapters with their actual kinds; private roles and optional StateGraph Operations
+have no separate catalog entry. Seven worker projections remain
 independent internal instructions, not Skills.
 
 Rebuilding may retire obsolete output only after complete safety preflight. An old manifest's
@@ -102,7 +103,7 @@ task text or inject contradictory instructions into children. Pi discovers APPEN
 from context files, so replacement prompts and context inheritance flags cannot isolate it.
 Build retires the former source `.pi/APPEND_SYSTEM.md` only with exact prior-manifest ownership;
 modified owned bytes fail preflight, while unowned user append files remain untouched. Consumer
-installation never ships the source coordinator and preserves unrelated user append content. These explicit assets are not an ambient Operation
+installation never ships the source coordinator and preserves unrelated user append content. These explicit assets are not an ambient capability
 catalog. Source-only prompts, lifecycle extension and the maintenance observer wrapper never ship to consumers;
 installer-owned generic tester definitions use the installed local Framework/runtime instead.
 Outer pi-subagents is a host prerequisite, not a new worker dependency.
@@ -126,7 +127,7 @@ Save selection only to ignored candidate `.concorde/work/` scratch with `--outpu
 excludes or ambient installer settings are changed. `select-session --verify <absolute-selection>`
 reverifies without issuing replacement inputs. The fresh Pi host supplies that same path in
 `CONCORDE_SESSION_SELECTION`, a separate host-owned configuration directory and only the returned
-Operation entry with all returned discovery-disable flags, plus the explicitly registered bounded
+capability entry with all returned discovery-disable flags, plus the explicitly registered bounded
 observation/check assets. Native pi-subagents launches use fresh context, no skills, async true and
 the [per-launch selection binding](contracts.md#private-session-selection), not a global alias or
 settings/environment mutation. It must reject extension loading errors.

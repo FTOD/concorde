@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -30,6 +31,12 @@ def snapshot(root: Path):
 
 
 class RepositoryCheckPreparationTests(unittest.TestCase):
+    @verifies("scenario.views.load-registry")
+    def test_real_registry_listing_roots_are_copied(self):
+        wrapper = load_wrapper()
+        self.assertEqual([], wrapper.uncopied_listing_roots())
+        self.assertIn("agents", wrapper.DIRECTORIES)
+
     def make_source(self, root, wrapper, *, stale=False):
         for name in wrapper.FILES:
             path = root / name

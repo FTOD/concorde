@@ -23,6 +23,12 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Protocol binding](../spec/values.md#terminology)         | Defined in Identities and versions.          |
 | [Spec](../module.md#terminology)                          | Defined in Concorde Framework.               |
 
+Throughout these scenarios, public operation/Operation is the compatibility catalog/launcher term
+from [Operations](../operations/module.md#terminology), not a StateGraph backend claim. Exact
+scenario IDs, transport fields and historical retirement names remain unchanged. Current
+capability kinds and canonical role ownership follow [Agents](../agents/roles.md) and the
+[typed catalog contract](contracts.md#typed-executable-catalog-compatibility).
+
 ## Installation service
 
 ### scenario.distribution.install-preview — Preview reports current owned output integrity without writing
@@ -151,8 +157,9 @@ Installation receipt schema 2 records `client: "pi"`, not client selections or S
 Schema 1 receipts are explicitly accepted for migration because their exact output-digest and
 bounded root-block records retain identical meanings; only their obsolete client/delegation
 metadata is discarded on successful upgrade. Unsupported receipt versions fail closed. Cleanup
-of root guidance alone preserves the rest of the existing receipt. Eleven public Operations and
-seven terminal worker roles remain; removing a client does not remove a model provider.
+of root guidance alone preserves the rest of the existing receipt. Eleven public capability adapters and seven domain roles remain; the separate outer tester is
+also distributed, while maintenance-worker and source coordinator support are source-only.
+Removing a client does not remove a model provider.
 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
 operation owned by the [Spec Module](../spec/module.md), not by this Module.
@@ -279,8 +286,8 @@ Spec-alignment and build-output checks behind `python -m concorde validate` and 
 `recompute_protocol_manifest`/`python -m concorde protocol-manifest` report, accept (`--write`), or
 bind (`--bind-project`) the tracked `protocol/manifest.json` digest to the current build; accepting
 a changed Protocol export is developer-only, and a consumer separately accepts the installed
-manifest version/digest in its own project configuration. Agent responsibility files are bound
-separately by their Operation execution profiles. Protocol adapters and the Framework execution profile are bound by
+manifest version/digest in its own project configuration. Domain Agent responsibility files are bound
+separately by their canonical role profiles. Protocol adapters and the Framework execution profile are bound by
 Protocol assets; the independent standard under `protocol/` is an external normative input, not a
 Module-bound Spec. Protocol adapters alone may include its plain Markdown chapters, which require
 no audience front matter. The build records included chapter bytes in source identities so edits
@@ -294,7 +301,7 @@ prefixes themselves.
 - THEN each module must declare a boolean `DETERMINISTIC`, rejecting missing values, strings and integers
 - AND the flag must be true exactly when neither its model profile nor any transitive USES operation can call a model
 - AND an operation declaring no Agent context selection must have no model-call path
-- AND the single registered `concorde-operations` block must contain the same boolean `deterministic` for every operation alongside its `id`, `public`, `context_selection` and `public_name`
+- AND the single registered `concorde.operations` metadata array must contain the same boolean `deterministic` for every operation alongside its `id`, `public`, `context_selection` and `public_name`
 - BUT a path that skips model execution does not make a model-backed operation deterministic
 
 Validation checks declared model-call paths, not arbitrary Python or subprocess behavior. It

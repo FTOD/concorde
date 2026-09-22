@@ -148,6 +148,15 @@ class ShimRenderingTests(unittest.TestCase):
                     )
                     self.assertNotIn("other Operations", entry["guidance"])
                     self.assertNotIn("poll this same operation", entry["guidance"])
+                    for obsolete in (
+                        "Invoke this operation",
+                        "deterministic lifecycle operation",
+                        "public Operations",
+                        "Operation workers",
+                        "scheduled by the Graph/host",
+                        "Non-implementation workers never receive",
+                    ):
+                        self.assertNotIn(obsolete, entry["guidance"])
                     self.assertEqual(
                         json_schema(f"{entry['name']}-request"), entry["request_schema"]
                     )
@@ -211,8 +220,10 @@ class CurrentGuidanceTests(unittest.TestCase):
         for path in ("README.md", "docs/workflow-guide.md"):
             with self.subTest(path=path):
                 text = (REPOSITORY_ROOT / path).read_text()
-                # The entry is supplied by the canonical Agents component at integration.
                 self.assertIn("specs/concorde/agents/module.md", text)
+                self.assertTrue(
+                    (REPOSITORY_ROOT / "specs/concorde/agents/module.md").is_file()
+                )
                 for role in roles:
                     self.assertIn(f"`{role}`", text)
                 self.assertIn("source-only", text)

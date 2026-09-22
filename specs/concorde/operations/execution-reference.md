@@ -1,8 +1,8 @@
 # Operation catalog and dispatch contracts
 
 These are the precise implementation agreements and executable Graph specifications owned by the
-[Operations Module](module.md): the catalog of every Operation, the ownership of each Operation's
-behavior and the dispatch that routes an admitted request to its provider. Explanatory topics
+[Operations Module](module.md): explicit StateGraph composition, the compatibility capability
+inventory and the dispatch that routes an admitted request to its business provider. Explanatory topics
 introduce their purposes; exact identities, limits and transitions are retained here as the single
 detailed contract.
 
@@ -65,9 +65,9 @@ retain their contract/binding meaning without retiring the canonical Agent inven
 Each public capability has exactly one public name in the Pi catalog and launcher entry
 `scripts/run-operation.py <public-name>`. Non-public Operations have neither a catalog entry nor
 a direct launcher entry. [Distribution Module](../distribution/module.md) owns the ordinary
-Operation guidance sources and Pi projection; [Harness](../harness/admission.md) owns shared
-admission and this Module owns dispatch. Guidance describes use of the Operation, not the
-worker's task context or another executable kind.
+capability guidance sources and Pi projection; [Harness](../harness/admission.md) owns shared
+admission and this Module owns dispatch. Guidance describes use of the capability and its actual kind, not the
+worker's task context.
 
 | Compatibility capability | Public | Context selection | Deterministic | Uses                                             | Behavior                                                             |
 | ------------------------ | ------ | ----------------- | ------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
@@ -94,8 +94,8 @@ caller-selected context; `none` means Host work without model context. Determini
 supported paths and transitive collaborators, not filesystem purity. `USES` records declared
 collaborators, grants no file authority, has no duplicate or unknown entries and no definition cycle.
 
-Agent entries have a profile and no `STATE`/`run`; the public Python wire adapters retain those
-fields. Separately selected StateGraph Operations declare actual typed graph channels. Native
+Domain Agent definitions have a profile and no `STATE`/`run`; public `agent-entry` adapters have
+no role profile and retain `STATE`/`run` only for finite wire compatibility. Separately selected StateGraph Operations declare actual typed graph channels. Native
 branches/loops belong in authored pi-subagents workflows; optional graph ordering/reducers belong
 in StateGraph. A per-adapter `AGENTS` or obsolete `CLASS` declaration is not supported. The
 canonical role inventory is `agents.AGENTS`, not a second Operations catalog.

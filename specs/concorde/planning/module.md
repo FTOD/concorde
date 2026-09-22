@@ -97,11 +97,11 @@ A provider dependency does not make that provider a child of Planning or grant i
 ```mermaid
 flowchart TB
     accTitle: Planning entities and dependencies
-    accDescr: Planning uses the host to save current plans and tasks, Harness to isolate assessors and authors, and Spec to resolve contracts and participants. Assessment, plans and tasks remain distinct outputs.
+    accDescr: Planning uses the host to save current plans and tasks, Harness to bind fresh separately scoped assessors and authors, and Spec to resolve contracts and participants. Assessment, plans and tasks remain distinct outputs.
     e0["Planning adapter"]
     e2["Harness"]
     e3["Spec"]
-    e0 -->|binds isolated assessors and authors, and admits requests and saves plans and tasks through| e2
+    e0 -->|binds fresh separately scoped assessors and authors, and admits requests and saves plans and tasks through| e2
     e0 -->|resolves planning contracts and participants through| e3
     domain_assessment["Context assessment"]
     e0 -->|records task sufficiency in| domain_assessment
@@ -115,7 +115,7 @@ flowchart TB
 
 <a id="entity.planning.harness"></a><a id="agreement.document.planning.module.2"></a>
 
-Freeze Spec-only inputs and run separate isolated context assessors, planners and task authors without implementation contents or project writes.
+Freeze Spec-only inputs and run fresh context assessors, planners and task authors with terminal tools and no implementation-content or project-write grant. Native file/network/credential exclusions remain prompt policy, not OS confinement.
 
 This collaboration applies before invoking the context assessor, planner or task author, including admitted repair task authoring.
 

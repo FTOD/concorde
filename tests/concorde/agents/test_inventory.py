@@ -25,9 +25,34 @@ class AgentInventoryTests(unittest.TestCase):
         target = repository.select("module.agents")
         self.assertEqual("module.concorde", target.parent)
         self.assertEqual("specs/concorde/agents/module.md", target.primary_document)
+        resolution = repository.spec_context(target.id).value
+        scenario = repository.spec_context("scenario.agents.inventory").value
+        self.assertEqual(resolution["sources"], scenario["sources"])
+        sources = {source["path"]: source for source in resolution["sources"]}
+        self.assertEqual(len(sources), len(resolution["sources"]))
+        for path, source in sources.items():
+            if source["role"] == "reading":
+                paired = sources[path + ".json"]
+                self.assertEqual(source["document_id"], paired["document_id"])
+                self.assertEqual(source["owner"], paired["owner"])
+                self.assertEqual(source["reasons"], paired["reasons"])
+        # Explicit defining entries do not recursively import provider collections.
+        self.assertIn("specs/concorde/operations/module.md", sources)
+        self.assertNotIn("specs/concorde/operations/composition.md", sources)
+        self.assertIn("specs/concorde/spec/registry.md", sources)
+        self.assertNotIn("specs/concorde/spec/scenarios.md", sources)
+        self.assertIn("specs/concorde/planning/tasks.md", sources)
         self.assertEqual(9, len(agents.AGENTS))
         self.assertEqual(7, len(load_worker_profiles()))
         self.assertNotIn("main", agents.AGENTS)
+        for name in ("planner", "task_author"):
+            readme = (REPOSITORY_ROOT / "agents" / name / "README.md").read_text()
+            self.assertIn("distributed with `agents/`", readme)
+            self.assertNotIn("worker Operation", readme)
+        for name in ("context_assessor", "task_author"):
+            role_text = (REPOSITORY_ROOT / "agents" / name / "spec.md").read_text()
+            self.assertNotIn("`concorde-dependencies`", role_text)
+            self.assertIn("`dependencies`", role_text)
         self.assertFalse(set(agents.DOMAIN_AGENTS) & set(operations.OPERATIONS))
         for name in agents.DOMAIN_AGENTS:
             role = importlib.import_module("agents." + name)
