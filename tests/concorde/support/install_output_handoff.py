@@ -61,6 +61,12 @@ def install_selected_fixture(target: Path, selection: Path) -> tuple[dict, dict]
         )
     admitted = admit_package(SOURCE)
     environment = output_environment(dict(os.environ))
+    if environment.get("NPM_CONFIG_OFFLINE") == "true":
+        from tests.concorde.support.managed_runtime import seed_npm_cache
+
+        # The offline install reads only the npm cache in use (issued scratch under a tester
+        # boundary); fill it from local bytes rather than the network.
+        seed_npm_cache(environment, SOURCE)
     target.mkdir(parents=True, exist_ok=True)
     # This exact source was admitted above; no installed code is treated as selected source.
     installed = subprocess.run(

@@ -43,6 +43,10 @@ jobs:
       - name: Validate the Spec and package
         run: python3 scripts/concorde.py validate
 
+      - name: Install the Pi extension dependencies
+        # Populates npm's cache with the locked tarballs the offline test installs are seeded from.
+        run: npm ci --prefix pi
+
       - name: Run the full Python test suite
         env:
           PYTHONPATH: src

@@ -27,6 +27,7 @@ from tests.concorde.support.environment import (
     child_environment,
     scrubbed_process_environment,
 )
+from tests.concorde.support.managed_runtime import seed_npm_cache
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -279,6 +280,8 @@ class NativeLocalInstallationTests(unittest.TestCase):
                 "NPM_CONFIG_OFFLINE": "true",
                 "PIP_DISABLE_PIP_VERSION_CHECK": "1",
             }
+            # Offline installs below read the npm cache in use; fill it from local bytes first.
+            seed_npm_cache(child_environment(**environment), REPOSITORY_ROOT)
             primary = root / "project"
             primary.mkdir()
 

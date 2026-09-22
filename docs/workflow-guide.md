@@ -402,6 +402,16 @@ drawing conclusions. The worker runtime tests and the worker sandbox tests need 
 trusted system bubblewrap and a Pi installation on PATH; the sandbox tests fail rather than skip
 where the boundary cannot be enforced.
 
+Tests that install the Pi worker extensions run `npm ci` offline, so the suite has no online npm
+path and no test depends on which worker installs first. Before such an install,
+`tests/concorde/support/managed_runtime.seed_npm_cache` copies the tarballs locked by
+`pi/package-lock.json` into the npm cache in use (`npm_config_cache`, for example a tester's
+issued scratch) from a local populated npm cache: npm's default cache, which the bootstrap
+`npm ci --prefix pi` fills, or the cache named by `CONCORDE_TEST_NPM_CACHE`. Seeding happens
+once per cache under a file lock; the extracted `pi/node_modules` cannot serve because a locked
+install accepts only the exact tarball bytes. A tarball found nowhere locally fails the test with
+the missing input named rather than falling back to the network.
+
 Canonical role definitions, `prompts/` (including public capability guidance under
 `prompts/operation-guidance/`) and `pi/extensions/` produce this checkout's Agent surfaces. Never edit
 `generated/`, the private `generated/session/pi/` entry or generated worker instructions directly;
