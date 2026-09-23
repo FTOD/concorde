@@ -1,11 +1,17 @@
-"""Finite Issue bookkeeping, selection and journal predicates; native solve is separate."""
+"""The binding step and the bookkeeping actions of ``concorde-issues``, and the journal check.
+
+The binding step runs before admission chooses a worktree: it binds a selected Issue's owner and
+revision, refuses a solve of an uncommitted Issue and finds an unfinished close. The bookkeeping
+actions ``list``, ``show``, ``report`` and ``reopen``, and ``solve`` of an already closed Issue, are
+Host services that run in place without a Workflow.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from ..spec.repository import SpecError, SpecRepository, digest
-from .store import (
+from ..harness.change_worktree import git, read_change, workspace_identity
+from ..issues.store import (
     MAX_RECORD_BYTES,
     dispose_issue,
     issue_path,
@@ -14,8 +20,9 @@ from .store import (
     read_issue,
     validate_report,
 )
-
-END = "__end__"
+from ..spec.repository import SpecError, SpecRepository, digest
+from ..spec.typed_data import typed
+from .records import solutions
 
 MAX_DECISIONS = 6
 DECISION_ROUTES = {
@@ -27,39 +34,27 @@ DECISION_ROUTES = {
     "not-actionable": "close",
     "needs-decision": "finish",
 }
-NODES = (
-    "select_operation",
-    "inspect",
-    "report",
-    "reopen",
-    "prepare",
-    "decide",
-    "verify",
-    "close",
-    "ready",
-    "finish",
-)
+JOURNAL_FIELDS = {
+    "schema_version",
+    "change_id",
+    "issue_id",
+    "before",
+    "before_digest",
+    "after",
+    "after_digest",
+}
 
 
 def pending_disposition(change: dict | None, identifier: str) -> dict | None:
     """Validate a candidate-local write-ahead record before it can authorize any restoration."""
-    solution = (change or {}).get("issue_solutions", {}).get(identifier) or {}
+    solution = solutions(change).get(identifier) or {}
     if "pending_disposition" not in solution:
         return None
     journal = solution["pending_disposition"]
     try:
         if (
             not isinstance(journal, dict)
-            or set(journal)
-            != {
-                "schema_version",
-                "change_id",
-                "issue_id",
-                "before",
-                "before_digest",
-                "after",
-                "after_digest",
-            }
+            or set(journal) != JOURNAL_FIELDS
             or type(journal["schema_version"]) is not int
             or journal["schema_version"] != 1
             or journal["change_id"] != (change or {}).get("change_id")
@@ -109,8 +104,6 @@ def prepare_request(root: Path, package: Path, task: dict) -> dict:
                 "this action requires an explicit issue_id", "invalid_input"
             )
         record, revision = read_issue(root, task["issue_id"])
-        from ..harness.change_worktree import read_change
-
         change = read_change(root) if action == "solve" else None
         journal = pending_disposition(change, task["issue_id"])
         if journal is not None:
@@ -135,7 +128,7 @@ def prepare_request(root: Path, package: Path, task: dict) -> dict:
         elif task.get("expected_revision", revision) != revision:
             raise SpecError("selected Issue has changed", "stale_issue")
         elif record["status"] == "closed" and change:
-            solution = change.get("issue_solutions", {}).get(task["issue_id"]) or {}
+            solution = solutions(change).get(task["issue_id"]) or {}
             closing = record["dispositions"][-1]
             contexts = {item.get("context_id") for item in solution.get("history", [])}
             if (
@@ -158,6 +151,9 @@ def prepare_request(root: Path, package: Path, task: dict) -> dict:
             )
         task["target_id"] = owner
         task["expected_revision"] = revision
+        if action in {"solve", "reopen"}:
+            # Only a registered owner can be solved or reopened; showing it needs none.
+            repository.module(owner)
         task.setdefault(
             "task",
             f"Resolve Issue {record['id']}: {latest['report']['title']}\n"
@@ -169,23 +165,17 @@ def prepare_request(root: Path, package: Path, task: dict) -> dict:
                 "report requires target_id and a classified report", "invalid_input"
             )
         validate_report(task["report"])
-    for field in ("report",):
-        if field in task and action != field:
-            raise SpecError(
-                f"{field} is only accepted by its own action", "invalid_input"
-            )
+    if "report" in task and action != "report":
+        raise SpecError("report is only accepted by its own action", "invalid_input")
     if action == "reopen" and not task.get("note", "").strip():
         raise SpecError("reopen requires a rationale", "invalid_input")
     task.setdefault("target_id", repository.root_module)
-    repository.module(task["target_id"], task.get("focus_id"))
     task.setdefault("task", "Inspect project Issues")
     return task
 
 
 def require_committed(root: Path, issue_id: str) -> None:
     """Refuse a solve of an Issue whose record is not committed, unchanged, at ``HEAD``."""
-    from ..harness.change_worktree import git, workspace_identity
-
     _, current = workspace_identity(root)
     if current is None:
         return
@@ -209,6 +199,8 @@ def select_target(root: Path, package: Path, data: dict) -> tuple[dict, bool]:
     """Target selection hook of ``concorde-issues``: bind the Issue before a worktree is chosen.
 
     Returns the bound request and whether it mutates: only ``solve`` of an open Issue does.
+    ``list`` and ``show`` need no registered Module, so an Issue of a removed Module can still
+    be inspected.
     """
     from ..harness.admission import bind_module_target
 
@@ -216,106 +208,118 @@ def select_target(root: Path, package: Path, data: dict) -> tuple[dict, bool]:
     mutates = task["action"] == "solve" and not task.get("_issue_closed")
     if mutates and not task.get("_issue_recovery"):
         require_committed(root, task["issue_id"])
+    if task["action"] in {"list", "show"}:
+        return task, False
     return bind_module_target(root, package, task, mutates=mutates), mutates
 
 
-def issue_nodes(run):
-    """Finite bookkeeping only. Solve preparation is a separate native service."""
-    root, task = run.repository.root, run.task
-    identifier = task.get("issue_id", "")
+def response(
+    request, outcome="completed", answer="", records=(), decision=None
+) -> dict:
+    """The ``concorde-issues`` response of a request that runs no Workflow."""
+    task = request.data
+    change = read_change(request.host.project_root)
+    return typed(
+        "concorde-issues-response",
+        {
+            "target_id": task["target_id"],
+            "focus_id": task.get("focus_id"),
+            "change_id": task.get("change_id")
+            or (change["change_id"] if change else None),
+            "context_id": None,
+            "outcome": outcome,
+            "answer": answer,
+            "blockers": [],
+            "checks": [],
+            "artifacts": [],
+            "completed_operations": [],
+            "issues": list(records),
+            "decision": decision,
+        },
+    )
 
-    def response(
-        outcome="completed", answer="", disposition=None, records=(), **kwargs
-    ):
-        result = run.response(outcome, answer, **kwargs)
-        result["data"].update(issues=list(records), decision=disposition)
-        return result
 
-    def select_operation(state):
-        return {
-            "route": {
-                "list": "inspect",
-                "show": "inspect",
-                "report": "report",
-                "reopen": "reopen",
-                "solve": "prepare",
-            }[task["action"]]
-        }
+def _report(request) -> dict:
+    """Save the developer's report through a reporting service bound to the reporting Module."""
+    from ..issues.reporting import IssueReporter
 
-    def inspect(state):
-        records = (
-            [read_issue(root, identifier)[0]]
-            if identifier
-            else [
-                read_issue(root, row["id"])[0]
-                for row in list_issues(root, target_id=task["_issue_filter"])
-            ]
+    root, task = request.host.project_root, request.data
+    repository = SpecRepository(root, request.host.package_root)
+    target = repository.module(task["target_id"])
+    context = repository.spec_context(target.id).value
+    sources = context["sources"]
+    change = read_change(root)
+    service = IssueReporter(
+        root,
+        {
+            "invocation_id": request.host.invocation_id,
+            "agent": "developer",
+            "operation": request.operation,
+            "phase": "report",
+            "target_id": target.id,
+            "context_id": digest(context),
+            "change_id": task.get("change_id")
+            or (change["change_id"] if change else None),
+            "head": None,
+        },
+        frozenset({target.id, *target.uses, *(item["owner"] for item in sources)}),
+        frozenset(
+            {*(item["path"] for item in sources), *repository.bound_files(target)}
+        ),
+        frozenset({task["report"]["issue_id"]})
+        if "issue_id" in task["report"]
+        else frozenset(),
+    )
+    return service(task["report"])
+
+
+def serve(request) -> dict:
+    """Serve a bookkeeping action, or the solve of an already closed Issue, in place."""
+    root, task = request.host.project_root, request.data
+    action = task["action"]
+    if request.host.mode == "describe-policy":
+        return response(
+            request, "described", "Host bookkeeping only; no worker is launched."
         )
-        return {
-            "output": response(
-                answer="Branch-local Issues; no repair or disposition was performed.",
-                records=records,
-            )
-        }
-
-    def report(state):
-        from .reporting import IssueReporter
-
-        context = run.repository.spec_context(run.target.id).value
-        sources = context["sources"]
-        service = IssueReporter(
-            root,
-            {
-                "invocation_id": run.host.invocation_id,
-                "agent": "developer",
-                "operation": run.operation,
-                "phase": "report",
-                "target_id": run.target.id,
-                "context_id": digest(context),
-                "change_id": run.change_id,
-                "head": None,
-            },
-            frozenset(
-                {run.target.id, *run.target.uses, *(item["owner"] for item in sources)}
-            ),
-            frozenset(
-                {
-                    *(item["path"] for item in sources),
-                    *run.repository.bound_files(run.target),
-                }
-            ),
-            frozenset({task["report"]["issue_id"]})
-            if "issue_id" in task["report"]
-            else frozenset(),
+    if action == "solve":
+        return response(
+            request,
+            answer="Issue is already disposed in this branch; no work was replayed.",
+            records=[read_issue(root, task["issue_id"])[0]],
+            decision="already-closed",
         )
-        result = service(task["report"])
-        return {
-            "output": response(
-                answer="Issue recorded without changing task execution.",
-                records=[read_issue(root, result["receipt"]["issue_id"])[0]],
-            )
-        }
-
-    def reopen(state):
+    if action == "report":
+        result = _report(request)
+        return response(
+            request,
+            answer="Issue recorded without changing task execution.",
+            records=[read_issue(root, result["receipt"]["issue_id"])[0]],
+        )
+    if action == "reopen":
         dispose_issue(
             root,
-            identifier,
+            task["issue_id"],
             task["expected_revision"],
             reason="reopened",
             note=task["note"],
             evidence=["Explicit developer request"],
             actor="developer",
         )
-        return {
-            "output": response(
-                answer="Issue reopened in this branch.",
-                records=[read_issue(root, identifier)[0]],
-            )
-        }
-
-    return {
-        "select_operation": select_operation,
-        "inspect": inspect,
-        "report": report,
-        "reopen": reopen,
-    }
+        return response(
+            request,
+            answer="Issue reopened in this branch.",
+            records=[read_issue(root, task["issue_id"])[0]],
+        )
+    records = (
+        [read_issue(root, task["issue_id"])[0]]
+        if action == "show"
+        else [
+            read_issue(root, row["id"])[0]
+            for row in list_issues(root, target_id=task["_issue_filter"])
+        ]
+    )
+    return response(
+        request,
+        answer="Branch-local Issues; no repair or disposition was performed.",
+        records=records,
+    )

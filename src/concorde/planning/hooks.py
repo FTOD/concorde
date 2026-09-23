@@ -30,9 +30,10 @@ SUCCESS = {"completed", "sufficient"}
 
 
 def _mark_active(run, phase: str) -> None:
-    """The candidate's progress enters ``phase`` when a planning step is prepared."""
-    if run.host.mode == "execute" and not run.host.coordinated:
-        progress(run.repository.root, phase=phase, status="active", invalidate=True)
+    """The candidate's progress enters ``phase`` when a planning step is prepared, which
+    withdraws any earlier ready state; a component request leaves the owner's lifecycle."""
+    if run.host.mode == "execute" and run.owns_change():
+        progress(run.repository.root, phase=phase, status="active")
 
 
 def _pending_stop(run, phase: str) -> dict | None:

@@ -35,7 +35,9 @@ to the Host.
 
 ## Receipt
 
-The receipt is stored in the `delivery` field of the change status. Its fields:
+Delivery keeps its records in its provider section `delivery` of the change status, a typed value
+`concorde-delivery-records@1` whose `data` is `{receipt, manual_merge}`, each null until written.
+The receipt is stored as `receipt`. Its fields:
 
 | Field | Meaning |
 | --- | --- |
@@ -145,7 +147,7 @@ primary worktree and is reached through the project CLI's `status --change-id <i
    candidate commit contained in the commit (`stale_evidence`);
 5. accepts the cleanup outcome `pending`, `retained` or `removed` (`invalid_input` otherwise), and
    `removed` only when the candidate's worktree is gone (`stale_evidence`);
-6. writes `manual_merge: {commit, candidate_commit, method: "ordinary-git"}`, `cleanup.status`
+6. writes the section's `manual_merge: {commit, candidate_commit, method: "ordinary-git"}`, `cleanup.status`
    (`not_needed` for a change registered in the primary worktree itself), status and outcome
    `merged` and phase `complete`.
 

@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-from ..harness.change_worktree import (
-    WORK_PATH,
-    read_change,
-    save_target_state,
-    target_state,
-    work_path,
-)
+from ..harness.change_worktree import WORK_PATH, read_change, work_path
 from ..harness.revisions import target_revision
 from ..spec.changes import apply_files, file_change
 from ..spec.repository import SpecError
 from ..spec.typed_data import artifact
 from .gaps import record_gaps
+from .records import save_target_state, target_state
 
 
 def persist_plan_result(run, result):
@@ -37,7 +32,6 @@ def persist_plan_result(run, result):
             }
         )
     state.pop("repair_review", None)
-    state.pop("coordination", None)
     state.pop("component_revisions", None)
     state.update(
         plan=result["plan"],

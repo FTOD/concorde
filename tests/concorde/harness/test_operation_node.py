@@ -80,8 +80,6 @@ def _stage_context():
             "phase": None,
             "status": None,
             "outcome": None,
-            "blockers": [],
-            "components": [],
             "active_worktrees": [],
         },
     }

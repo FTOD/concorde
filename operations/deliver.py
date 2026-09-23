@@ -34,4 +34,4 @@ WORKSPACE = "delivery-session"
 TARGET = {"selection": "none", "hook": None}
 DEFAULT_TASK = None
 CONFIGURATION = "stored"
-ENTRY_POINT = "concorde.harness.worktree_delivery:run"
+ENTRY_POINT = "concorde.delivery.deliver:run"

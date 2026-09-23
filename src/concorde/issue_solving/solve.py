@@ -1,20 +1,21 @@
-"""Finite Issue solve services. Native workflow owns every model decision/verification branch.
+"""The solve state of one selected Issue: attempts, decisions, verification and the journaled close.
 
-The exact before/after write-ahead journal and recovery remain Host domain authority.
-Instances live for one finite command; dump contains JSON, never callbacks or executors.
+The solve workflow's Host steps call these services; the workflow owns every model decision and
+verification branch, while the exact before/after closing journal and its recovery stay Host
+code. Instances live for one Host step; ``dump`` holds JSON, never callbacks or executors.
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import replace
 
 from ..harness.change_worktree import progress, read_change, save_change
 from ..harness.revisions import implementation_digest, target_revision
 from ..spec.repository import SpecError, SpecRepository, digest, read_file
 from ..spec.typed_data import checked_path, typed
-from .graph import DECISION_ROUTES, MAX_DECISIONS, pending_disposition
-from .store import (
+from .bookkeeping import DECISION_ROUTES, MAX_DECISIONS, pending_disposition
+from .records import solutions, store_solution
+from ..issues.store import (
     MAX_RECORD_BYTES,
     dispose_issue,
     disposition_record,
@@ -82,9 +83,11 @@ class IssueSolve:
         return result
 
     def save(self):
+        """Save the solve state; every save also withdraws the change's ready state."""
         state = read_change(self.root, required=True)
-        state.setdefault("issue_solutions", {})[self.identifier] = self.solution
-        state["validated_tree"] = None
+        store_solution(state, self.identifier, self.solution)
+        if state["status"] == "ready":
+            state.update(status="active", outcome=None)
         save_change(self.root, state)
         descriptor = os.open(
             checked_path(self.root, ".concorde"), os.O_RDONLY | os.O_DIRECTORY
@@ -127,10 +130,8 @@ class IssueSolve:
                     "pending disposition lost its owning change",
                     "invalid_worktree_state",
                 )
-            self.solution = change["issue_solutions"][self.identifier]
-            progress(
-                self.root, phase="issue-recovery", status="active", invalidate=True
-            )
+            self.solution = solutions(change)[self.identifier]
+            progress(self.root, phase="issue-recovery", status="active")
             restore_issue(
                 self.root,
                 self.identifier,
@@ -150,9 +151,7 @@ class IssueSolve:
             )
         self.original = read_file(self.root, issue_path(self.identifier))
         change = read_change(self.root, required=True)
-        self.solution = (
-            change.setdefault("issue_solutions", {}).get(self.identifier) or {}
-        )
+        self.solution = solutions(change).get(self.identifier) or {}
         if self.solution and self.solution["revision"] != revision:
             raise SpecError(
                 "Issue changed since this solve attempt; start a fresh selected change",
@@ -182,7 +181,7 @@ class IssueSolve:
                 verified_inputs=None,
                 status="active",
             )
-        progress(self.root, phase="issue-solve", status="active", invalidate=True)
+        progress(self.root, phase="issue-solve", status="active")
         self.save()
         return {"route": "decide"}
 
@@ -197,16 +196,15 @@ class IssueSolve:
             ),
         }
 
-    def child(self, operation, payload, *, coordinated=True):
+    def child(self, operation, payload):
         from ..operations.dispatch import run_child
 
-        child_host = replace(self.run.host, coordinated=coordinated)
         return run_child(
             self.run.operation,
             operation,
             self.run.configuration,
             typed(operation + "-request", payload),
-            child_host,
+            self.run.host,
         )
 
     def close(self, state):
@@ -285,12 +283,12 @@ class IssueSolve:
         return {}
 
     def ready(self, state):
-        result = self.child("concorde-validate", self.base_task(), coordinated=False)
+        result = self.child("concorde-validate", self.base_task())
         if (
             result["status"] != "succeeded"
             or result["output"]["data"]["outcome"] != "ready"
         ):
-            progress(self.root, status="blocked", invalidate=True)
+            progress(self.root, status="blocked")
             restore_issue(
                 self.root, self.identifier, self.original, self.closed_revision
             )
@@ -312,7 +310,7 @@ class IssueSolve:
             closed_revision=self.closed_revision,
         )
         self.solution.pop("pending_disposition")
-        change["issue_solutions"][self.identifier] = self.solution
+        store_solution(change, self.identifier, self.solution)
         save_change(self.root, change)
         return {
             "output": self.response(
@@ -452,7 +450,7 @@ class IssueSolve:
         return requests
 
     def accept_verification(self, outputs, before):
-        from .references import review_blockers
+        from ..issues.references import review_blockers
 
         evidence = []
         for output in outputs:
@@ -488,9 +486,7 @@ class IssueSolve:
         return {"route": "decide"}
 
     def assert_current(self):
-        current = read_change(self.root, required=True)["issue_solutions"].get(
-            self.identifier
-        )
+        current = solutions(read_change(self.root, required=True)).get(self.identifier)
         if current != self.solution:
             raise SpecError(
                 "Issue solve state changed outside this invocation", "stale_issue"

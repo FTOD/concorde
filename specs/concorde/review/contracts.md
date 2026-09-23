@@ -282,18 +282,18 @@ Module, the mode and a unique suffix; beside a failed report, a private record o
 failure; and for the workflow, one record of the scope, the workflow binding, the admitted proposals
 and the final output.
 
-When the worktree has a change status record, the Host also writes:
+When the worktree has a change status record, the Host also writes Review's provider section
+`review` of the change status, a `concorde-review-records@1` value holding:
 
-- `review_intents` and `review_requirements` per Module: the accepted intent and the required review
-  kinds;
+- `intents` and `requirements` per Module: the accepted intent and the required review kinds;
 - `reviews` per Module and kind: the latest report reference, input digest, status, task, focus and
   constraints, written only when the review's intent matches a recorded intent or none is recorded;
 - `shared_spec_reviews` per Module: the current Spec consumers' report references and tasks;
 - `shared_implementation_reviews` per Module: the code-review members' report references, tasks and
   scope identity.
 
-Writing a result for a required review clears the change's `validated_tree` and returns a `ready`
-change to `active` in that review's phase.
+Writing a result for a required review returns a `ready` change to `active` in that review's phase,
+which withdraws its readiness.
 
 ## Required reviews
 

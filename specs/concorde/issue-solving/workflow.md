@@ -35,8 +35,8 @@ Before a worktree is chosen, the capability's binding step:
    supplied `expected_revision` (`stale_issue`), sets `target_id` to the Issue's owner and refuses a
    different supplied `target_id` with `permission_denied`; for `reopen` and `solve` the owner must
    be a registered Module (`unknown_target`);
-2. for `solve`, requires the record file to be tracked and unchanged against `HEAD` of the worktree
-   the request starts in (`uncommitted_issue`);
+2. for `solve` of an open Issue without a closing journal, requires the record file to be tracked
+   and unchanged against `HEAD` of the worktree the request starts in (`uncommitted_issue`);
 3. for `solve`, finds a closing journal of this Issue in the worktree's change status; its presence
    requires the Issue's bytes to equal the journal's open or closed image (`stale_issue`) and keeps
    the request in this worktree (recovery never creates a candidate);
@@ -61,7 +61,9 @@ a closed Issue, runs in the current worktree without a candidate.
 
 ## Solve state
 
-The change status holds, in its section for provider records, `issue_solutions[<issue_id>]`:
+Issue solving keeps its records in its provider section `issue-solving` of the change status, a
+typed value `concorde-issue-solving-records@1` whose `data` is `{solutions}`. `solutions[<issue_id>]`
+is the solve state of one selected Issue:
 
 | Field | Meaning |
 | --- | --- |
@@ -78,7 +80,7 @@ The change status holds, in its section for provider records, `issue_solutions[<
 
 `attempts` returns to 0 when `inputs` differ from the stored value or a new `clarification` is
 given. The attempt count is saved before each solver launch. Every save of the solve state also
-clears the change's validated tree, so no earlier ready state survives a solve step.
+returns a `ready` change to `active`, so no earlier ready state survives a solve step.
 
 ## Closing journal
 

@@ -40,7 +40,8 @@ if ${JSON.stringify(scenario)}=='code-shared':
  set_realization(r,'realization.ledger.store',entries=['app/transfer.py'])
 def git(*a):subprocess.run(['git',*a],cwd=r,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 git('init');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');git('add','.');git('commit','-m','Fixture');git('worktree','add','-b','review',str(r/'candidate'))
-from concorde.harness.change_worktree import ensure_change,bind_owner,read_change,save_change,target_state,save_target_state
+from concorde.harness.change_worktree import ensure_change,bind_owner,read_change,save_change
+from concorde.planning.records import target_state,save_target_state
 r=r/'candidate';task={'target_id':'scope.bank' if ${JSON.stringify(scenario)}=='code-parent' else 'service.transfer','task':'Assess the transfer contract'}
 ensure_change(r,task=task);bind_owner(r,task)
 file=r/'app/transfer.py';file.write_text(file.read_text()+chr(10)+'# selected change'+chr(10))

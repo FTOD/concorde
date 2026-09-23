@@ -115,6 +115,14 @@ Planning registers these typed values with Spec tooling. Each is a `{"type_id", 
 | `concorde-plan-artifact` | `plan`: the accepted plan text |
 | `concorde-task-identity-constraints` | `reserved_task_ids`: sorted unique strings |
 | `concorde-task-scope-feedback` | `tasks_digest`: the SHA-256 digest of the canonical current task list; `reason`: `implementation_boundary` |
+| `concorde-planning-records` | `targets`: the progress entry of every Module worked on in the change, by Module; `gaps`: the pending-gap history |
+
+Planning keeps its records in its provider section `planning` of the change status, a
+`concorde-planning-records@1` value. A progress entry carries the change and worktree incarnation
+that created it and a revision; a save through Planning refuses an entry read at an older revision
+(`stale_status`) or created for another change or incarnation (`workspace_mismatch`), and reading
+such an entry is refused the same way. Validation stores its evidence of a planned Module in that
+Module's progress entry through Planning.
 
 ## Implementation task contract
 
@@ -213,8 +221,8 @@ or the task of a required review of it); a request for an unrelated task gets a 
 result's blockers as an open gap of that step, bound to the step's revision: the Module's Spec
 revision, and for `implementation` and `code-review` also its implementation revision; a review
 gap also keeps the review's input digest. A `context-solve` result records only when its task
-matches an intent the candidate records for the Module. Recording any blocker clears the
-candidate's validation evidence.
+matches an intent the candidate records for the Module. Recording any blocker returns a `ready`
+change to `active`, withdrawing its readiness.
 
 **Blocking.** Preparing `concorde-plan` (both its steps), `concorde-tasks` or `concorde-implement`
 returns `spec_incomplete` with the recorded blockers, without starting a model, when an open gap of

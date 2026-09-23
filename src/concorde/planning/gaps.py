@@ -8,15 +8,14 @@ same Module and work scope. The collaboration pre-check of the context assessor 
 
 from __future__ import annotations
 
-from ..harness.change_worktree import (
-    blocker_scope,
-    read_change,
-    record_task_gaps,
-    unchanged_task_gaps,
-)
+from pathlib import Path
+
+from ..harness.change_worktree import read_change, save_change
 from ..harness.revisions import implementation_digest, target_revision
+from ..review.records import recorded
 from ..spec.repository import digest
 from ..spec.validation import MISSING_PROMISES, module_dependency_findings
+from .records import gap_history, planning_records, targets
 
 # The steps in order; a gap of an earlier step blocks every later one.
 STEPS = (
@@ -31,6 +30,174 @@ STEPS = (
 READ_ONLY_STAGES = frozenset(
     {"concorde-context-solve", "concorde-spec-review", "concorde-code-review"}
 )
+
+
+def open_gaps(change: dict | None) -> list[dict]:
+    """The open pending gaps of ``change``, in recording order."""
+    return [item for item in gap_history(change) if item["status"] == "open"]
+
+
+def blocker_scope(state: dict, target_id: str, task: str | None) -> str | None:
+    """Bind a request to accepted candidate work, not an ID hashed from task wording.
+
+    Root intent, evolving component intent and required consumer review intent all select the
+    same durable Module work scope. A separately requested unrelated task cannot borrow it.
+    """
+    if task is None:
+        return "module:" + target_id
+    intents = []
+    if state.get("target_id") == target_id:
+        intents.append(state.get("task"))
+    intents.append(targets(state).get(target_id, {}).get("task"))
+    intents.append(recorded(state, "intents").get(target_id, {}).get("task"))
+    for name in ("shared_spec_reviews", "shared_implementation_reviews"):
+        for consumers in recorded(state, name).values():
+            intents.append(consumers.get(target_id, {}).get("task"))
+    if task in intents:
+        return "module:" + target_id
+    return next(
+        (
+            item["scope_id"]
+            for item in gap_history(state)
+            if item["target_id"] == target_id and item["task"] == task
+        ),
+        None,
+    )
+
+
+def record_task_gaps(
+    root: Path,
+    target_id: str,
+    task: str,
+    phase: str,
+    blockers,
+    spec_digest: str,
+    *,
+    review_input_digest: str | None = None,
+    spec_resolution: dict | None = None,
+    scope_id: str | None = None,
+) -> None:
+    """Retain Issue dependencies by change/Module/phase/Issue, never by task wording.
+
+    A successful fresh assessment releases a dependency, not the referenced Issue. Reports and
+    their immutable observations survive independently. Caller admission protects unrelated review
+    intents; one candidate has one evolving work scope for each participating Module. Recording a
+    blocker withdraws the change's ready state.
+    """
+    from ..issues.references import receipt, requires_contract_repair
+    from ..issues.store import resolve_report
+
+    state = read_change(root)
+    if state is None:
+        return
+    history = planning_records(state)["gaps"]
+    scope_id = scope_id or blocker_scope(state, target_id, task)
+    if scope_id is None:
+        if not blockers:
+            return
+        scope_id = (
+            "independent:"
+            + resolve_report(root, receipt(blockers[0]))["source"]["invocation_id"]
+        )
+    existing = {item["id"]: item for item in history}
+    for blocker in blockers:
+        observation = resolve_report(root, receipt(blocker))
+        context_id = observation["source"]["context_id"]
+        key = digest(
+            {
+                "change_id": state["change_id"],
+                "target_id": target_id,
+                "scope_id": scope_id,
+                "phase": phase,
+                "issue_id": blocker["issue_id"],
+            }
+        )
+        if key not in existing:
+            item = {
+                "id": key,
+                "target_id": target_id,
+                "task": task,
+                "phase": phase,
+                "scope_id": scope_id,
+                "blocker": dict(blocker),
+                "status": "open",
+                "contexts": [],
+                "spec_digest": spec_digest,
+            }
+            history.append(item)
+            existing[key] = item
+        item = existing[key]
+        item.update(
+            blocker=dict(blocker), task=task, status="open", spec_digest=spec_digest
+        )
+        if spec_resolution is not None:
+            evidence = {
+                key: value for key, value in spec_resolution.items() if key != "sources"
+            }
+            evidence["sources"] = [
+                {key: value for key, value in source.items() if key != "content"}
+                for source in spec_resolution["sources"]
+            ]
+            item.setdefault("context_evidence", {})[context_id] = evidence
+        if review_input_digest is not None:
+            item["review_input_digest"] = review_input_digest
+        if context_id not in item["contexts"]:
+            item["contexts"].append(context_id)
+    for item in history:
+        if (
+            item["target_id"] == target_id
+            and item["scope_id"] == scope_id
+            and item["status"] == "open"
+            and item["phase"] == phase
+            and not blockers
+            and (
+                item.get("spec_digest") != spec_digest
+                or (
+                    review_input_digest is not None
+                    and item.get("review_input_digest") != review_input_digest
+                )
+                or (
+                    phase in {"spec-review", "code-review"}
+                    and not requires_contract_repair(root, [item["blocker"]])
+                )
+            )
+        ):
+            item["status"] = "resolved"
+    if blockers and state["status"] == "ready":
+        state.update(status="active", outcome=None)
+    save_change(root, state)
+
+
+def unchanged_task_gaps(
+    root: Path,
+    target_id: str,
+    task: str,
+    phase: str,
+    spec_digest: str,
+    *,
+    review_input_digest: str | None = None,
+) -> list[dict]:
+    """The open gaps of ``phase`` for this Module and work scope bound to the current revision."""
+    from ..issues.references import requires_contract_repair
+
+    state = read_change(root)
+    scope = blocker_scope(state or {}, target_id, task)
+    return [
+        dict(item["blocker"])
+        for item in open_gaps(state)
+        if item["target_id"] == target_id
+        and item["scope_id"] == scope
+        and item["phase"] == phase
+        and item.get("spec_digest") == spec_digest
+        and (
+            phase != "code-review" or requires_contract_repair(root, [item["blocker"]])
+        )
+        and (
+            review_input_digest is None
+            or phase not in {"spec-review", "code-review"}
+            or item.get("review_input_digest") == review_input_digest
+        )
+    ]
 
 
 def blocker_revision(run, phase: str) -> str:
@@ -62,22 +229,22 @@ def record_gaps(run, phase: str, blockers, *, review_input_digest=None) -> None:
     required_review = bool(
         phase in {"spec-review", "code-review"}
         and change
-        and change.get("review_requirements", {})
+        and recorded(change, "requirements")
         .get(run.target.id, {})
         .get(phase.split("-")[0])
-        and change.get("review_intents", {}).get(run.target.id) == intent
+        and recorded(change, "intents").get(run.target.id) == intent
     )
     assessment_intent = False
     if phase == "context-solve" and change:
         records = [
             change if change.get("target_id") == run.target.id else {},
-            change.get("targets", {}).get(run.target.id, {}),
-            change.get("review_intents", {}).get(run.target.id, {}),
+            targets(change).get(run.target.id, {}),
+            recorded(change, "intents").get(run.target.id, {}),
         ]
         for name in ("shared_spec_reviews", "shared_implementation_reviews"):
             records.extend(
                 consumers.get(run.target.id, {})
-                for consumers in change.get(name, {}).values()
+                for consumers in recorded(change, name).values()
             )
         assessment_intent = any(
             {
@@ -89,12 +256,7 @@ def record_gaps(run, phase: str, blockers, *, review_input_digest=None) -> None:
         )
         if not assessment_intent:
             return
-    if (
-        run.host.track_gaps
-        or assessment_intent
-        or required_review
-        or run.operation not in READ_ONLY_STAGES
-    ):
+    if assessment_intent or required_review or run.operation not in READ_ONLY_STAGES:
         record_task_gaps(
             run.repository.root,
             run.target.id,
@@ -126,9 +288,8 @@ def pending_gaps(
         change = read_change(run.repository.root)
         blockers.extend(
             dict(item["blocker"])
-            for item in (change or {}).get("issue_blockers", [])
-            if item["status"] == "open"
-            and item["target_id"] == run.target.id
+            for item in open_gaps(change)
+            if item["target_id"] == run.target.id
             and item["scope_id"]
             == blocker_scope(change or {}, run.target.id, run.task["task"])
             and item["phase"] in prerequisites

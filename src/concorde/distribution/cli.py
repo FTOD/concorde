@@ -93,22 +93,13 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             findings=findings,
         )
     if arguments.tool == "status":
+        from ..delivery.manual_merge import record_manual_merge
         from ..harness.change_worktree import ensure_change
-        from ..harness.status_store import (
-            all_status,
-            coordinate_child,
-            primary_root,
-            record_manual_merge,
-        )
+        from ..harness.status_store import all_status, coordinate_child, primary_root
         from ..spec.repository import SpecError
 
         if root.resolve() != primary_root(root) and any(
-            (
-                arguments.register,
-                arguments.child,
-                arguments.manual_merge,
-                arguments.cleanup,
-            )
+            (arguments.register, arguments.child)
         ):
             raise SpecError(
                 "status coordination requires primary", "primary_session_required"
@@ -366,7 +357,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write(canonical_json(payload))
             return exit_code(payload["status"])
         if arguments.tool == "docsite":
-            from ..harness.worktree import require_isolated_worktree
+            from ..harness.change_worktree import require_isolated_worktree
 
             require_isolated_worktree(
                 arguments.project_root,

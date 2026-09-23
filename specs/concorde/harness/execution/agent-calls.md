@@ -286,9 +286,11 @@ running. `on_failure` is called once when the result step first observes a faile
 Workflow without a receipt, and returns the receipt to record, if any; a `SpecError` it raises is
 reported as `stale`.
 
-A workflow hook may also provide `serve_in_place(request) -> dict | None`: without the native
-driver, dispatch asks it to answer a request that needs no Workflow, such as an Issue bookkeeping
-action; `None` refuses with `native_required`.
+A workflow hook may also provide `serve_in_place(request) -> dict | None`, which answers a request
+that needs no Workflow, such as an Issue bookkeeping action, as a Host result. Dispatch without the
+native driver, and the native driver's preparation, offer the request to it before anything else; a
+value is the answer, recorded by the driver as not run and accepted, and `None` means the request
+needs the Workflow, which without the native driver is refused with `native_required`.
 
 ## Model selection
 

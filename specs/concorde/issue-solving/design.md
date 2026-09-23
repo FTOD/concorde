@@ -133,6 +133,8 @@ not settled.
 
 ## Where the code lives
 
-The solver hook and the workflow hook live in `src/concorde/issue_solving/native.py`; the solve
-services they call still live in `src/concorde/issues/graph.py` and `src/concorde/issues/solve.py`,
-which belong under `src/concorde/issue_solving/`.
+The binding step, the bookkeeping actions and the journal check live in
+`src/concorde/issue_solving/bookkeeping.py`, the solve state and the journaled close in
+`src/concorde/issue_solving/solve.py`, the declaration of Issue solving's section of the change
+status in `src/concorde/issue_solving/records.py`, and the solver hook and the workflow hook in
+`src/concorde/issue_solving/native.py`.

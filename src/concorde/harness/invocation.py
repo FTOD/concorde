@@ -84,6 +84,15 @@ class Invocation:
             data["components"] = list(components)
         return typed(response_type, data)
 
+    def owns_change(self) -> bool:
+        """Whether this request's Module owns the lifecycle of the change it runs in.
+
+        A component request, admitted for another Module of the owner's planned work, and a
+        request outside any change record nothing in the change's lifecycle position.
+        """
+        change = read_change(self.host.project_root)
+        return change is not None and change.get("target_id") in {None, self.target.id}
+
     def check_state(self, state: dict) -> None:
         if state.get("spec_digest") != target_revision(self.repository, self.target):
             raise SpecError(

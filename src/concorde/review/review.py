@@ -11,7 +11,6 @@ import hashlib
 import json
 import subprocess
 import uuid
-from dataclasses import replace
 
 from ..harness.change_worktree import (
     git,
@@ -33,8 +32,10 @@ from ..harness.worker_profile import (
 )
 from ..spec.boundaries import scope_roots
 from ..planning.gaps import pending_gaps, record_gaps
+from ..planning.records import targets
 from ..planning.scope import change_scope
 from .impact import review_impact
+from .records import recorded, review_records
 from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
 from ..harness.status_store import (
     read_record,
@@ -206,6 +207,7 @@ HOST_RUNTIME = (
     "src/concorde/operations/dispatch.py",
     "src/concorde/operations/catalog.py",
     "src/concorde/planning/gaps.py",
+    "src/concorde/planning/records.py",
     "src/concorde/planning/plan.py",
     "src/concorde/planning/tasks.py",
     "src/concorde/planning/scope.py",
@@ -261,10 +263,11 @@ def _persist(run, value, *, failure=None) -> dict:
             "focus_id": run.task.get("focus_id"),
             "constraints": run.task.get("constraints", []),
         }
-        expected = state.get("review_intents", {}).get(run.target.id)
+        records = review_records(state)
+        expected = records["intents"].get(run.target.id)
         if expected is not None and expected != intent:
             return reference
-        state.setdefault("reviews", {}).setdefault(run.target.id, {})[mode] = {
+        records["reviews"].setdefault(run.target.id, {})[mode] = {
             "artifact": reference,
             "input_digest": value["data"]["input_digest"],
             "status": value["data"]["status"],
@@ -272,12 +275,12 @@ def _persist(run, value, *, failure=None) -> dict:
             "focus_id": run.task.get("focus_id"),
             "constraints": run.task.get("constraints", []),
         }
-        if state.get("review_requirements", {}).get(run.target.id, {}).get(mode):
-            # Only lifecycle-required review supersedes the candidate's ready
-            # receipt. Standalone queries may record unrelated review evidence.
-            state["validated_tree"] = None
-            if state["status"] == "ready":
-                state.update(status="active", phase=mode + "-review", outcome=None)
+        if records["requirements"].get(run.target.id, {}).get(mode) and (
+            state["status"] == "ready"
+        ):
+            # Only lifecycle-required review withdraws the candidate's ready state.
+            # Standalone queries may record unrelated review evidence.
+            state.update(status="active", phase=mode + "-review", outcome=None)
         save_change(run.repository.root, state)
     return reference
 
@@ -491,7 +494,7 @@ def spec_consumers(run) -> set[str]:
     its documents is a consumer. Consumers already recorded for this Module stay members.
     """
     state = read_change(run.repository.root) or {}
-    selected = set(state.get("shared_spec_reviews", {}).get(run.target.id, {}))
+    selected = set(recorded(state, "shared_spec_reviews").get(run.target.id, {}))
     baseline = state.get("base_commit")
     old = baseline_repository(run, baseline) if baseline else None
     if old is None:
@@ -569,7 +572,7 @@ def _component_tasks(run, state):
     """Read explicit completed component selections; never resume legacy orchestration."""
     from ..planning.scope import component_intent
 
-    work = (state or {}).get("targets", {}).get(run.target.id, {})
+    work = targets(state).get(run.target.id, {})
     allowed = set(change_scope(run.repository, run.target.id)) - {run.target.id}
     tasks = {}
     for target_id in work.get("component_revisions", {}):
@@ -642,7 +645,7 @@ def scope_members(run, mode, *, initialize=False):
         intent = (
             change
             if change.get("target_id") == run.target.id
-            else change["targets"].get(run.target.id, {})
+            else targets(change).get(run.target.id, {})
         )
         if all(
             intent.get(k, [] if k == "constraints" else None)
@@ -712,7 +715,7 @@ def aggregate_scope(run, mode, components, scope_identity, outputs):
             # membership. Historical report and execution artifacts remain intact.
             records = {
                 key: value
-                for key, value in state.get("shared_spec_reviews", {})
+                for key, value in recorded(state, "shared_spec_reviews")
                 .get(run.target.id, {})
                 .items()
                 if key in peers
@@ -731,7 +734,7 @@ def aggregate_scope(run, mode, components, scope_identity, outputs):
                             "task": components[target_id]["task"],
                             "constraints": run.task.get("constraints", []),
                         }
-            state.setdefault("shared_spec_reviews", {})[run.target.id] = records
+            review_records(state)["shared_spec_reviews"][run.target.id] = records
             save_change(run.repository.root, state)
     if mode == "code" and run.host.mode == "execute":
         if _code_scope_identity(run) != scope_identity:
@@ -740,7 +743,7 @@ def aggregate_scope(run, mode, components, scope_identity, outputs):
         if state is not None:
             records = {
                 key: value
-                for key, value in state.get("shared_implementation_reviews", {})
+                for key, value in recorded(state, "shared_implementation_reviews")
                 .get(run.target.id, {})
                 .items()
                 if key in affected_ids and key != run.target.id
@@ -766,7 +769,7 @@ def aggregate_scope(run, mode, components, scope_identity, outputs):
                             "constraints": run.task.get("constraints", []),
                             "scope_digest": scope_identity,
                         }
-            state.setdefault("shared_implementation_reviews", {})[run.target.id] = (
+            review_records(state)["shared_implementation_reviews"][run.target.id] = (
                 records
             )
             save_change(run.repository.root, state)
@@ -782,7 +785,7 @@ def aggregate_scope(run, mode, components, scope_identity, outputs):
 def repair_feedback(run, reference: dict) -> dict:
     """Admit only the selected current host-recorded blocking code review."""
     state = read_change(run.repository.root, required=True)
-    record = state.get("reviews", {}).get(run.target.id, {}).get("code", {})
+    record = recorded(state, "reviews").get(run.target.id, {}).get("code", {})
     if record.get("artifact") != reference:
         raise SpecError(
             "repair requires the current recorded code review", "stale_evidence"
@@ -865,7 +868,7 @@ def _current_artifact(run, mode: str, reference: dict) -> dict | None:
 def current(run, mode: str, *, required: bool = False) -> dict | None:
     """Validate version, intent and artifact integrity before reusing any result."""
     state = read_change(run.repository.root) or {}
-    record = state.get("reviews", {}).get(run.target.id, {}).get(mode)
+    record = recorded(state, "reviews").get(run.target.id, {}).get(mode)
     value = _current_artifact(run, mode, record.get("artifact")) if record else None
     if value is not None and (
         record.get("status") != value["data"]["status"]
@@ -883,7 +886,7 @@ def current(run, mode: str, *, required: bool = False) -> dict | None:
 def _spec_consumer_artifacts(run, state: dict) -> list[dict] | None:
 
     peers = spec_consumers(run)
-    records = state.get("shared_spec_reviews", {}).get(run.target.id, {})
+    records = recorded(state, "shared_spec_reviews").get(run.target.id, {})
     if set(records) != peers:
         return None
     # A standalone scope may legitimately review an overlapping component under its
@@ -911,7 +914,7 @@ def _spec_consumer_artifacts(run, state: dict) -> list[dict] | None:
             "concorde-spec-review",
             run.configuration,
             task,
-            replace(run.host, coordinated=True),
+            run.host,
         )
         if _current_artifact(reviewer, "spec", record.get("artifact")) is None:
             return None
@@ -927,13 +930,16 @@ def current_spec_scope(run) -> list[dict] | None:
     consumers = _spec_consumer_artifacts(run, state)
     if consumers is None:
         return None
-    return [state["reviews"][run.target.id]["spec"]["artifact"], *consumers]
+    return [
+        recorded(state, "reviews")[run.target.id]["spec"]["artifact"],
+        *consumers,
+    ]
 
 
 def _code_peer_artifacts(run, state: dict) -> list[dict] | None:
     """Every explicit component and changed-file peer needs current exact-intent evidence."""
     tasks = _code_scope_tasks(run, state)
-    records = state.get("shared_implementation_reviews", {}).get(run.target.id, {})
+    records = recorded(state, "shared_implementation_reviews").get(run.target.id, {})
     if set(records) != set(tasks):
         return None
     references = []
@@ -949,7 +955,7 @@ def _code_peer_artifacts(run, state: dict) -> list[dict] | None:
             "concorde-code-review",
             run.configuration,
             task,
-            replace(run.host, coordinated=True),
+            run.host,
         )
         if _current_artifact(reviewer, "code", record.get("artifact")) is None:
             return None
@@ -964,7 +970,7 @@ def current_code_scope(run) -> list[dict] | None:
     if run.target.files:
         if current(run, "code") is None:
             return None
-        local.append(state["reviews"][run.target.id]["code"]["artifact"])
+        local.append(recorded(state, "reviews")[run.target.id]["code"]["artifact"])
     elif not _code_scope_tasks(run, state):
         return None
     peers = _code_peer_artifacts(run, state)
@@ -975,14 +981,13 @@ def current_code_scope(run) -> list[dict] | None:
 
 def require_reviews(run, enabled: bool, *, modes=None) -> None:
     state = read_change(run.repository.root, required=True)
-    state.setdefault("review_intents", {})[run.target.id] = {
+    records = review_records(state)
+    records["intents"][run.target.id] = {
         "task": run.task["task"],
         "focus_id": run.task.get("focus_id"),
         "constraints": run.task.get("constraints", []),
     }
-    requirements = state.setdefault("review_requirements", {}).setdefault(
-        run.target.id, {}
-    )
+    requirements = records["requirements"].setdefault(run.target.id, {})
     for mode in (
         modes
         if modes is not None
@@ -995,24 +1000,23 @@ def require_reviews(run, enabled: bool, *, modes=None) -> None:
 
 def verify_required(run) -> None:
     state = read_change(run.repository.root, required=True)
+    requirements = recorded(state, "requirements")
     if (
-        state.get("review_requirements", {}).get(run.target.id, {}).get("spec")
+        requirements.get(run.target.id, {}).get("spec")
         and _spec_consumer_artifacts(run, state) is None
     ):
         raise SpecError(
             "required Spec consumer reviews are missing, incomplete, blocking, or stale",
             "review_required",
         )
-    if state["targets"]:
-        for mode, required in (
-            state.get("review_requirements", {}).get(run.target.id, {}).items()
-        ):
+    if targets(state):
+        for mode, required in requirements.get(run.target.id, {}).items():
             if required and mode != "code":
                 current(run, mode, required=True)
         # Each consumer review keeps its own intent and Module context. It is not replaced
         # by another consumer's current review or a later unrelated review of the same Module.
         if (
-            state.get("review_requirements", {}).get(run.target.id, {}).get("code")
+            requirements.get(run.target.id, {}).get("code")
             and current_code_scope(run) is None
         ):
             raise SpecError(
@@ -1023,8 +1027,8 @@ def verify_required(run) -> None:
         # Directly authored candidates have no invented target plans. Their
         # explicitly required reviews still apply to every selected target.
 
-        for target_id, modes in state.get("review_requirements", {}).items():
-            intent = state.get("review_intents", {}).get(target_id)
+        for target_id, modes in requirements.items():
+            intent = recorded(state, "intents").get(target_id)
             if any(modes.values()) and intent is None:
                 raise SpecError(
                     "required review has no bound intent", "review_required"
@@ -1038,7 +1042,7 @@ def verify_required(run) -> None:
                         f"concorde-{mode}-review",
                         run.configuration,
                         task,
-                        replace(run.host, coordinated=True),
+                        run.host,
                     )
                     if mode == "code":
                         if current_code_scope(reviewer) is None:
@@ -1054,9 +1058,7 @@ def require_spec_review(run) -> None:
     if run.host.mode != "execute":
         return
     change = read_change(run.repository.root)
-    if change and change.get("review_requirements", {}).get(run.target.id, {}).get(
-        "spec"
-    ):
+    if recorded(change, "requirements").get(run.target.id, {}).get("spec"):
         if current_spec_scope(run) is None:
             raise SpecError(
                 "required Spec scope review is missing, incomplete, blocking, or stale",

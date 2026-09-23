@@ -46,11 +46,14 @@ valid identifier. Schema version 3 has exactly these fields:
 | `sections` | map of provider section name to that provider's typed value `{type_id, schema_version, data}` |
 
 A provider declares a section with `declare_section(name, type_id)` before it writes it; the name
-matches the identifier grammar and is declared at most once. A write validates each present
-section against its declared type and refuses an undeclared name. The sections in use are
-Planning's plan, task and pending-gap records, Validation's evidence, Delivery's delivery and
-manual-merge records and Issue solving's closing journal; their content is specified by those
-Modules.
+matches the identifier grammar and is declared once, and declaring it again with another type is
+refused. A write validates every section it adds or changes against its declared type and refuses
+an undeclared name; a section the write leaves unchanged was checked when it was written. The
+sections in use are Planning's `planning` (plan, task and pending-gap records), Review's `review`
+(review records), Validation's `validation` (evidence and the validated tree), Delivery's
+`delivery` (delivery receipt and manual-merge record) and Issue solving's `issue-solving` (solve
+states and the closing journal); their content is specified by those Modules. A provider reads and
+writes only its own section, through its own code.
 
 A change status is bound to the current worktree when its `path` is the worktree's resolved path,
 its `git_worktree_id` equals the worktree's incarnation token, and its `primary_worktree` is the
@@ -96,11 +99,12 @@ model read.
 | `ensure_change(root, task=, change_id=, allow_primary=, mode=)` | registers a change for the current worktree once, under the lock |
 | `read_change(root, required=)` | returns the change bound to this worktree, or refuses with `missing_change` when required |
 | `resume_owner(state, task)` / `bind_owner(root, task)` | restore or bind the recorded owner |
-| `progress(root, status=, outcome=)` | record the lifecycle position of the bound change |
+| `progress(root, phase=, status=, outcome=)` | record the lifecycle position of the bound change; leaving `ready` withdraws its readiness |
 | `declare_section(name, type_id)` | declare a provider section and its typed-value type |
+| `section(state, name)` / `put_section(state, name, data)` | the `data` of a provider section of a read status, or place new `data` there for the next write |
 | `snapshot_tree(root, state)` | the deliverable Git tree, computed in a private index |
 | `write_status(root, value, create=)` | the revision-checked write |
-| `record_run(host, operation=, result=, task=)` | open or finish a run record |
+| `record_run(host, operation=, result=, task=, relayed_run_id=)` | open or finish a run record; a mutating request is added to a change's `runs` when it names the change or carries its recorded intent |
 | `coordinate_child(root, change_id, child_id=, phase=, release=)` | record or release the Task subagent that owns a change; primary only |
 | `workspace_context(root)` | the workspace facts |
 | `require_isolated_worktree(root, allow_primary_worktree=)` | the isolation check; failures raise a worktree boundary error |

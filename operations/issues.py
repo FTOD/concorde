@@ -43,7 +43,10 @@ RESPONSE_VERSION = 2
 
 MUTATION = {"policy": "by-action", "actions": ["solve"]}
 WORKSPACE = "candidate"
-TARGET = {"selection": "provider-hook", "hook": "concorde.issues.graph:select_target"}
+TARGET = {
+    "selection": "provider-hook",
+    "hook": "concorde.issue_solving.bookkeeping:select_target",
+}
 DEFAULT_TASK = None
 CONFIGURATION = "stored"
 ENTRY_POINT = "concorde.issue_solving.native:issues_workflow"

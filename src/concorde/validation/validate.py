@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from ..harness.change_worktree import (
-    blocker_scope,
     progress,
     read_change,
     save_change,
-    save_target_state,
     snapshot_tree,
-    target_state,
     workspace_identity,
 )
 from ..harness.checks import check_revision, configured_checks
@@ -20,12 +15,14 @@ from ..harness.invocation import Invocation, bind
 from ..harness.revisions import (
     impact_revisions,
     implementation_digest,
-    issues_revision,
     target_revision,
 )
+from ..planning.gaps import blocker_scope, open_gaps
+from ..planning.records import save_target_state, target_state, targets
 from ..spec.impact import binding_modules
 from ..spec.repository import SpecError, SpecRepository
 from ..spec.validation import validate_repository
+from .records import direct_evidence, validation_records
 
 
 def edited_modules(repository, paths) -> tuple[str, ...]:
@@ -71,10 +68,11 @@ def checked_modules(repository, target, *, direct: bool = False) -> tuple:
 def select_target(root, package, data: dict) -> tuple[dict, bool]:
     """Target selection hook of ``concorde-validate``: validation needs an existing change.
 
-    In a linked worktree the request validates that worktree's change. Started in the primary
-    worktree or outside Git, a request that names no ``change_id`` is refused with
-    ``missing_change`` unless a change is registered there, so validation never creates an empty
-    candidate; an unknown ``change_id`` is refused the same way when the workspace is bound.
+    In a linked worktree the request validates that worktree's change, and a linked worktree
+    without one is refused with ``missing_change``. Started in the primary worktree or outside
+    Git, a request that names no ``change_id`` is refused the same way unless a change is
+    registered there, so validation never creates an empty candidate or change; an unknown
+    ``change_id`` is refused when the workspace is bound.
     """
     data = bind_module_target(root, package, data, mutates=True)
     primary, current = workspace_identity(root)
@@ -83,7 +81,7 @@ def select_target(root, package, data: dict) -> tuple[dict, bool]:
         and primary is not None
         and current["path"] != primary["path"]
     )
-    if data.get("change_id") is None and not linked and read_change(root) is None:
+    if (linked or data.get("change_id") is None) and read_change(root) is None:
         raise SpecError(
             "validation needs an existing change; name its change_id or run it in the change's candidate",
             "missing_change",
@@ -100,11 +98,30 @@ def run(request) -> dict:
     return validate(invocation, request.data.get("run_checks", True))
 
 
+def _withdraw_readiness(run) -> None:
+    """Step 1: the change enters ``validate`` and loses any earlier ready state and tree."""
+    progress(run.repository.root, phase="validate", status="active")
+    change = read_change(run.repository.root)
+    if change is not None:
+        validation_records(change).update(validated_tree=None, evidence=None)
+        save_change(run.repository.root, change)
+
+
+def _failed(run, outcome: str, answer: str, state: dict | None, results=()) -> dict:
+    """A failed validation marks the change, and a planned target's entry, ``blocked``."""
+    if state is not None:
+        state["status"] = "blocked"
+        save_target_state(run.repository.root, state)
+    progress(run.repository.root, status="blocked", outcome=outcome)
+    # Admission records the request's final lifecycle position from these values.
+    run.host.lifecycle.update(status="blocked", outcome=outcome)
+    return run.response("failed", answer, checks=list(results))
+
+
 def validate(run, run_checks: bool = True) -> dict:
-    if not run.host.coordinated:
-        progress(
-            run.repository.root, phase="validate", status="active", invalidate=True
-        )
+    owner = run.owns_change()
+    if owner:
+        _withdraw_readiness(run)
     change = read_change(run.repository.root)
     if change is not None:
         # A pending entry is removed once its file exists (Protocol 11, CHK.binds.pending-subset).
@@ -116,23 +133,28 @@ def validate(run, run_checks: bool = True) -> dict:
             run.repository = SpecRepository(run.repository.root, run.host.package_root)
             run.target = run.repository.module(run.target.id)
     before_tree = snapshot_tree(run.repository.root) if run.work_directory else None
-    direct_candidate = bool(
-        change is not None and not change["targets"] and not run.host.coordinated
+    direct_candidate = bool(change is not None and not targets(change) and owner)
+    planned = change is not None and run.target.id in targets(change)
+    state = (
+        target_state(run.repository.root, run.target.id, run.task.get("focus_id"))
+        if planned
+        else None
     )
     report = validate_repository(
         run.repository.root, run.target.id, run.host.package_root
     )
     if report.status != "success":
-        progress(run.repository.root, status="blocked", outcome="invalid_spec")
         input_errors = [
             finding.message
             for finding in report.findings
             if finding.rule_id == "CONCORDE-CHECK-001"
         ]
-        return run.response(
-            "failed",
+        return _failed(
+            run,
+            "invalid_spec",
             "Spec structure or shared contracts failed deterministic validation."
             + (" " + "; ".join(input_errors) if input_errors else ""),
+            state,
         )
     checked_targets = checked_modules(
         run.repository, run.target, direct=direct_candidate
@@ -149,28 +171,19 @@ def validate(run, run_checks: bool = True) -> dict:
         if run_checks
         else []
     )
-    state = None
-    if change and run.target.id in change["targets"]:
-        state = target_state(
-            run.repository.root, run.target.id, run.task.get("focus_id")
-        )
+    if state is not None:
         state.update(
             checks=results,
             implementation_impacts=impacts,
             validation_spec_digest=report.result["source_digest"],
-            validation_issue_digest=issues_revision(run.repository.root),
             phase="validate",
             status="active",
         )
         save_target_state(run.repository.root, state)
     run.completed.append("concorde-validate")
-    failed = any(item["status"] != "passed" for item in results)
-    if failed:
-        if state is not None:
-            state["status"] = "blocked"
-            save_target_state(run.repository.root, state)
-        return run.response(
-            "failed", "Deterministic validation failed.", checks=results
+    if any(item["status"] != "passed" for item in results):
+        return _failed(
+            run, "failed_checks", "Deterministic validation failed.", state, results
         )
     if run.work_directory and snapshot_tree(run.repository.root) != before_tree:
         raise SpecError(
@@ -189,7 +202,7 @@ def validate(run, run_checks: bool = True) -> dict:
     run.repository, run.target = current_repository, current_target
     if direct_candidate:
         change = read_change(run.repository.root, required=True)
-        change["validation"] = {
+        validation_records(change)["evidence"] = {
             "target_id": run.target.id,
             "focus_id": run.task.get("focus_id"),
             "task": run.task["task"],
@@ -215,17 +228,17 @@ def mark_ready(run) -> dict:
         raise SpecError(
             "candidate changed during completion verification", "stale_evidence"
         )
-    change = read_change(run.repository.root, required=True)
-    if run.target.id in change["targets"]:
-        change["targets"][run.target.id].update(phase="ready", status="ready")
-    if not run.host.coordinated:
-        change.update(
-            phase="ready",
-            status="ready",
-            outcome="ready",
-            validated_tree=before_tree,
+    if run.target.id in targets(read_change(run.repository.root, required=True)):
+        state = target_state(
+            run.repository.root, run.target.id, run.task.get("focus_id")
         )
-    save_change(run.repository.root, change)
+        state.update(phase="ready", status="ready")
+        save_target_state(run.repository.root, state)
+    if run.owns_change():
+        change = read_change(run.repository.root, required=True)
+        change.update(phase="ready", status="ready", outcome="ready")
+        validation_records(change)["validated_tree"] = before_tree
+        save_change(run.repository.root, change)
     return run.response(
         "ready",
         "Candidate verified. Request delivery from this source or the destination worktree.",
@@ -240,16 +253,15 @@ def verify_completion(run) -> dict:
     verify_required(run)
     change = read_change(run.repository.root, required=True)
     if any(
-        item["status"] == "open"
-        and item["target_id"] == run.target.id
+        item["target_id"] == run.target.id
         and item["scope_id"] == blocker_scope(change, run.target.id, run.task["task"])
-        for item in change.get("issue_blockers", [])
+        for item in open_gaps(change)
     ):
         raise SpecError(
             "current task still has unresolved contract gaps", "spec_incomplete"
         )
-    if not change["targets"]:
-        validation = change.get("validation")
+    if not targets(change):
+        validation = direct_evidence(change)
         if (
             not validation
             or validation["target_id"] != run.target.id
@@ -308,12 +320,7 @@ def verify_completion(run) -> dict:
             "change_id": run.change_id,
         }
         verify_completion(
-            Invocation(
-                "concorde-validate",
-                run.configuration,
-                payload,
-                replace(run.host, coordinated=True),
-            )
+            Invocation("concorde-validate", run.configuration, payload, run.host)
         )
     if not state["tasks"] or any(not task["complete"] for task in state["tasks"]):
         raise SpecError("delivery requires completed tasks", "incomplete_change")

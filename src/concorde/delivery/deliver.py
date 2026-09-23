@@ -1,50 +1,56 @@
-"""Deliver an exact candidate from either participating worktree session."""
+"""Deliver an exact candidate from either participating worktree session.
+
+Publication, cleanup and the primary merge are recorded in the delivery receipt, kept in
+Delivery's section of the change status, before the Git reference each one changes.
+"""
 
 from __future__ import annotations
 
 import copy
-import os
-import subprocess
-import sys
 import tempfile
 from dataclasses import replace
 from pathlib import Path
 
-from ..spec.changes import confirm_pending_files
-from ..spec.repository import SpecError, SpecRepository, identifier, read_file
-from ..spec.typed_data import checked_path, typed
-from ..spec.validation import validate_repository
-from .change_worktree import (
-    _inventory,
+from ..harness.change_worktree import (
     git,
     git_value,
     list_worktrees,
     read_change,
+    refresh_registry,
     repository_lock,
     save_change,
     snapshot_tree,
     workspace_identity,
 )
-
-from .status_store import (
+from ..harness.status_store import (
     read_status,
     record_artifact,
     status_path,
     write_status,
-    write_run,
 )
+from ..spec.changes import confirm_pending_files
+from ..spec.repository import SpecError, SpecRepository, identifier
+from ..spec.typed_data import typed
+from ..spec.validation import validate_repository
+from ..validation.records import planned_work, recorded_evidence, validated_tree
+from .records import delivery_records
+
+
+def _inventory(root: Path) -> dict:
+    return refresh_registry(root, persist=False)
 
 
 def _read_receipt(root: Path, relative: str) -> dict | None:
-    state = read_status(root, Path(relative).stem)
-    return state.get("delivery") if state else None
+    from .records import receipt
+
+    return receipt(read_status(root, Path(relative).stem))
 
 
 def _write_json(root: Path, relative: str, receipt: dict) -> None:
     state = read_status(root, receipt["change_id"])
     if state is None:
         raise SpecError("delivery requires durable task status", "unknown_change")
-    state["delivery"] = receipt
+    delivery_records(state)["receipt"] = receipt
     source = Path(receipt["source_worktree"])
     source_present = source.exists() or any(
         item["path"] == str(source) for item in list_worktrees(root)
@@ -72,7 +78,7 @@ def require_delivery_session(host, change_id: str) -> dict:
             "delivery requires linked Git worktrees", "delivery_session_required"
         )
     root = Path(primary["path"])
-    inventory = _inventory(root, persist=False)
+    inventory = _inventory(root)
     selected = [
         item for item in inventory["worktrees"] if item["change_id"] == change_id
     ]
@@ -160,43 +166,18 @@ def _commit(root: Path, tree: str, parents: tuple[str, ...], message: str) -> st
 def _verify_merged_tree(
     host, commit: str, tree: str, change_id: str, *, phase: str = "staging"
 ) -> list[dict]:
-    """Run deterministic checks against the actual integration result, without agents."""
-    from .checks import configured_checks
+    """Run deterministic checks against the actual integration result, without agents.
+
+    Spec validation uses the Host's own package; no build or other program of the integrated
+    tree runs outside Check execution's boundary.
+    """
+    from ..harness.checks import configured_checks
 
     with tempfile.TemporaryDirectory(prefix="concorde-delivery-check-") as directory:
         root = Path(directory) / "project"
         git(host.project_root, "worktree", "add", "--detach", str(root), commit)
         try:
             package = host.package_root
-            if (root / "concorde.json").is_file():
-                # This integration may change the renderer itself. Execute its own
-                # launcher, not an imported renderer from the invoking worktree.
-                launcher = checked_path(root, "scripts/concorde.py")
-                built = subprocess.run(
-                    [sys.executable, str(launcher), "build"],
-                    cwd=root,
-                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                prefix = f".concorde/runs/{host.invocation_id}/delivery/{phase}"
-                write_run(
-                    host.project_root,
-                    prefix + "/build.log",
-                    (built.stdout + built.stderr).encode(),
-                )
-                if built.returncode:
-                    raise SpecError(
-                        "the integration's own build failed; see its run log",
-                        "invalid_merge",
-                    )
-                write_run(
-                    host.project_root,
-                    prefix + "/build-manifest.json",
-                    read_file(root, "generated/build-manifest.json"),
-                )
-                package = root
             report = validate_repository(root, package_root=package)
             if report.status != "success":
                 raise SpecError(
@@ -257,22 +238,20 @@ def _cleanup(host, receipt: dict, *, keep_worktree: bool = False) -> bool:
                 )
             if keep_worktree:
                 state.update(phase="delivered", status="delivered", outcome="delivered")
-                save_change(source, state, publish=False, locked=True)
+                save_change(source, state, locked=True)
                 receipt.update(
                     status="delivered", cleanup_error=None, retained_worktree=True
                 )
                 _write_json(root, relative, receipt)
-                _inventory(root, persist=True)
                 return True
             state.update(phase="cleanup", status="cleanup_pending", outcome="delivered")
-            save_change(source, state, publish=False, locked=True)
+            save_change(source, state, locked=True)
         removal = git(root, "worktree", "remove", "--force", str(source), check=False)
         if removal.returncode:
             receipt.update(
                 status="cleanup_pending", cleanup_error=removal.stderr.strip()
             )
             _write_json(root, relative, receipt)
-            _inventory(root, persist=True)
             return False
     elif source.exists():
         raise SpecError(
@@ -281,7 +260,6 @@ def _cleanup(host, receipt: dict, *, keep_worktree: bool = False) -> bool:
         )
     receipt.update(status="delivered", cleanup_error=None, retained_worktree=False)
     _write_json(root, relative, receipt)
-    _inventory(root, persist=True)
     return True
 
 
@@ -319,7 +297,7 @@ def deliver(host, configuration: dict, task: dict) -> dict:
 
 def _remember_failure(host, change_id: str, error: Exception) -> None:
     with repository_lock(host.project_root):
-        inventory = _inventory(host.project_root, persist=False)
+        inventory = _inventory(host.project_root)
         selected = [
             item for item in inventory["worktrees"] if item["change_id"] == change_id
         ]
@@ -328,11 +306,7 @@ def _remember_failure(host, change_id: str, error: Exception) -> None:
         source = Path(selected[0]["path"])
         state = read_change(source, required=True)
         receipt_path = _receipt_path(change_id)
-        receipt = (
-            _read_receipt(host.project_root, receipt_path)
-            if checked_path(host.project_root, receipt_path).exists()
-            else None
-        )
+        receipt = _read_receipt(host.project_root, receipt_path)
         merged = receipt is not None and _is_ancestor(
             host.project_root,
             receipt["merged_commit"],
@@ -350,8 +324,8 @@ def _remember_failure(host, change_id: str, error: Exception) -> None:
 
 
 def _deliver(host, configuration: dict, task: dict) -> dict:
+    from ..harness.invocation import Invocation
     from ..validation.validate import verify_completion
-    from .invocation import Invocation
 
     primary = require_delivery_session(host, task["change_id"])
     change_id = task["change_id"]
@@ -361,7 +335,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
         if _read_receipt(root, relative) is not None:
             state = _read_receipt(root, relative)
         else:
-            inventory = _inventory(root, persist=False)
+            inventory = _inventory(root)
             selected = [
                 item
                 for item in inventory["worktrees"]
@@ -394,8 +368,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
             },
         )
     with repository_lock(root):
-        receipt_file = checked_path(root, relative)
-        receipt = _read_receipt(root, relative) if receipt_file.exists() else None
+        receipt = _read_receipt(root, relative)
         if receipt is not None and (
             receipt.get("schema_version") != 1 or receipt.get("change_id") != change_id
         ):
@@ -423,7 +396,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                 complete = _cleanup(host, receipt, keep_worktree=keep_worktree)
                 return _response(root, receipt, complete)
 
-        inventory = _inventory(root, persist=True)
+        inventory = _inventory(root)
         selected = [
             item for item in inventory["worktrees"] if item["change_id"] == change_id
         ]
@@ -440,9 +413,10 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                 "incompatible_handoff",
             )
         retry = state["status"] == "blocked" and state["phase"] == "deliver"
-        if (state["status"] not in {"ready", "delivering"} and not retry) or not state[
-            "validated_tree"
-        ]:
+        validated = validated_tree(state)
+        if (
+            state["status"] not in {"ready", "delivering"} and not retry
+        ) or not validated:
             raise SpecError(
                 "the change worktree has not reached a verified ready state",
                 "incomplete_change",
@@ -460,11 +434,11 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                 "stale_delivery",
             )
         actual_tree = snapshot_tree(source, state)
-        if actual_tree != state["validated_tree"]:
+        if actual_tree != validated:
             raise SpecError(
                 "candidate files changed after validation", "stale_evidence"
             )
-        evidence = state["targets"].get(state["target_id"], state.get("validation"))
+        evidence = recorded_evidence(state)
         if evidence is None:
             raise SpecError(
                 "candidate has no completion or validation evidence", "stale_evidence"
@@ -478,7 +452,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
         if state["focus_id"] is not None:
             payload["focus_id"] = state["focus_id"]
         # Delivery reads evidence and runs deterministic checks without starting agents.
-        candidate_host = replace(host, project_root=source, coordinated=True)
+        candidate_host = replace(host, project_root=source)
         verify_completion(
             Invocation("concorde-validate", configuration, payload, candidate_host)
         )
@@ -522,7 +496,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                 "Deliver " + change_id + " from " + source_branch,
             )
         state.update(phase="deliver", status="delivering", outcome=None)
-        save_change(source, state, publish=False, locked=True)
+        save_change(source, state, locked=True)
         try:
             checks = _verify_merged_tree(host, merged, merged_tree, change_id)
             if (
@@ -555,7 +529,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                 "merged_tree": merged_tree,
                 "task": state["task"],
                 "constraints": state["constraints"],
-                "targets": copy.deepcopy(state["targets"]),
+                "targets": copy.deepcopy(planned_work(state)),
                 "checks": checks,
                 "confirmed_files": confirmed_files,
                 "still_pending": still_pending,
@@ -589,8 +563,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                 # current record under this transaction's lock before the failure update.
                 state = read_change(source, required=True)
                 state.update(phase="deliver", status="blocked", outcome="failed")
-                save_change(source, state, publish=False, locked=True)
-                _inventory(root, persist=True)
+                save_change(source, state, locked=True)
             raise
         complete = _cleanup(host, receipt, keep_worktree=keep_worktree)
         return _response(root, receipt, complete)

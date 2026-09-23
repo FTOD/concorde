@@ -297,8 +297,9 @@ def declarations() -> dict[str, dict]:
     return {name: dict(item.declaration) for name, item in CATALOG.items()}
 
 
-# The owners' registering modules; loading one registers that owner's typed values, and
-# Planning's scope registers its component request rule with Candidate worktrees.
+# The owners' registering modules; loading one registers that owner's typed values and declares
+# its provider section of the change status, and Planning's scope registers its component
+# request rule with Candidate worktrees.
 RECORD_MODULES = (
     "..spec.initialize",
     "..harness.configuration",
@@ -308,6 +309,9 @@ RECORD_MODULES = (
     "..planning.records",
     "..planning.scope",
     "..review.records",
+    "..validation.records",
+    "..delivery.records",
+    "..issue_solving.records",
 )
 
 

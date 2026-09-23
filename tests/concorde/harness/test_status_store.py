@@ -10,6 +10,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.delivery.manual_merge import record_manual_merge
+from concorde.delivery.records import manual_merge, receipt
 from concorde.harness.change_worktree import (
     ensure_change,
     git,
@@ -17,18 +19,21 @@ from concorde.harness.change_worktree import (
     read_change,
     refresh_registry,
     save_change,
-    save_target_state,
-    target_state,
 )
 from concorde.harness.status_store import (
     all_status,
     primary_root,
     read_status,
-    record_manual_merge,
     run_path,
     status_path,
     write_run,
     write_status,
+)
+from concorde.planning.records import (
+    planning_records,
+    save_target_state,
+    target_state,
+    targets,
 )
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
@@ -219,13 +224,8 @@ class StatusStoreTests(unittest.TestCase):
             before, (self.primary / status_path(state["change_id"])).read_bytes()
         )
         stale = copy.deepcopy(state)
-        state.update(
-            status="blocked",
-            phase="review",
-            blockers=[{"reason": "blocked"}],
-            validation={"checks": ["new"]},
-            validated_tree="new-tree",
-        )
+        state.update(status="blocked", phase="review")
+        planning_records(state)["gaps"].append({"reason": "blocked"})
         save_change(self.candidate, state)
         stale.update(phase="implementation")
         for save in (save_change, write_status):
@@ -236,8 +236,7 @@ class StatusStoreTests(unittest.TestCase):
         progress(self.candidate, phase="waiting")
         current = read_change(self.candidate, required=True)
         self.assertEqual("blocked", current["status"])
-        self.assertEqual(state["blockers"], current["blockers"])
-        self.assertEqual(state["validation"], current["validation"])
+        self.assertEqual(state["sections"], current["sections"])
         self.assertEqual("waiting", current["phase"])
 
     @verifies("scenario.worktrees.primary-status")
@@ -252,7 +251,8 @@ class StatusStoreTests(unittest.TestCase):
         stale = copy.deepcopy(target)
         # A whole-status caller must advance target revisions as well.
         state = read_change(self.candidate, required=True)
-        state["targets"]["module.example"].update(checks=["new validation"])
+        targets(state)["module.example"].update(checks=["new validation"])
+        targets(state)["module.example"]["revision"] += 1
         save_change(self.candidate, state)
         stale["phase"] = "implementation"
         with self.assertRaises(SpecError) as error:
@@ -262,7 +262,7 @@ class StatusStoreTests(unittest.TestCase):
         other = target_state(self.candidate, "module.other", None, create=True)
         other["plan"] = "independent"
         save_target_state(self.candidate, other)
-        progress(self.candidate, status="blocked", blockers=[{"reason": "new blocker"}])
+        progress(self.candidate, status="blocked")
         first["phase"] = "review"
         save_target_state(self.candidate, first)
         # Same in-memory target can save again after a successful update.
@@ -270,11 +270,10 @@ class StatusStoreTests(unittest.TestCase):
         save_target_state(self.candidate, first)
         result = read_change(self.candidate, required=True)
         self.assertEqual(
-            ["new validation"], result["targets"]["module.example"]["checks"]
+            ["new validation"], targets(result)["module.example"]["checks"]
         )
-        self.assertEqual("independent", result["targets"]["module.other"]["plan"])
+        self.assertEqual("independent", targets(result)["module.other"]["plan"])
         self.assertEqual("blocked", result["status"])
-        self.assertEqual([{"reason": "new blocker"}], result["blockers"])
 
     @verifies("scenario.worktrees.primary-status")
     def test_target_snapshot_rejects_recreated_incarnation_with_equal_revision(self):
@@ -317,15 +316,17 @@ class StatusStoreTests(unittest.TestCase):
         with self.assertRaises(SpecError) as error:
             save_target_state(self.candidate, stale)
         self.assertEqual("workspace_mismatch", error.exception.code)
-        # Whole-status saves must not provide a second laundering entry point.
-        current = read_change(self.candidate, required=True)
-        current["targets"]["module.example"] = stale
-        for writer in (save_change, write_status):
-            with self.assertRaises(SpecError):
-                writer(self.candidate, current)
         self.assertEqual(
             before, (self.primary / status_path(new["change_id"])).read_bytes()
         )
+        # A whole-status write stores Planning's section without interpreting it; the stale
+        # entry is still refused when Planning reads it, never adopted by the new change.
+        current = read_change(self.candidate, required=True)
+        targets(current)["module.example"] = stale
+        save_change(self.candidate, current)
+        with self.assertRaises(SpecError) as laundered:
+            target_state(self.candidate, "module.example", None)
+        self.assertEqual("workspace_mismatch", laundered.exception.code)
         self.assertEqual(
             old_bytes, (self.primary / status_path(old["change_id"])).read_bytes()
         )
@@ -366,7 +367,7 @@ class StatusStoreTests(unittest.TestCase):
         )
         # Loading an unbound on-disk target refuses it, never adds current ownership.
         saved = read_change(self.primary, required=True)
-        saved["targets"]["module.example"].pop("owner")
+        targets(saved)["module.example"].pop("owner")
         path = self.primary / status_path(second["change_id"])
         path.write_text(json.dumps(saved))
         unbound = path.read_bytes()
@@ -391,7 +392,7 @@ class StatusStoreTests(unittest.TestCase):
         self.assertEqual(
             before, (self.primary / status_path(new["change_id"])).read_bytes()
         )
-        self.assertEqual({}, read_change(self.candidate)["targets"])
+        self.assertEqual({}, targets(read_change(self.candidate)))
 
     @verifies("scenario.worktrees.primary-status")
     def test_new_unsaved_target_keeps_binding_through_rename_and_noop(self):
@@ -461,7 +462,7 @@ class StatusStoreTests(unittest.TestCase):
         retried = record_manual_merge(
             self.primary, state["change_id"], commit="HEAD", cleanup="removed"
         )
-        self.assertEqual(recorded["manual_merge"], retried["manual_merge"])
+        self.assertEqual(manual_merge(recorded), manual_merge(retried))
         self.assertEqual("removed", retried["cleanup"]["status"])
         self.assertFalse(self.candidate.exists())
 
@@ -474,7 +475,7 @@ class StatusStoreTests(unittest.TestCase):
             )
         self.assertEqual("stale_evidence", unrecorded.exception.code)
         untouched = read_status(self.primary, state["change_id"]) or {}
-        self.assertIsNone(untouched["manual_merge"])
+        self.assertIsNone(manual_merge(untouched))
         recorded = record_manual_merge(
             self.primary, state["change_id"], commit="HEAD", cleanup="pending"
         )
@@ -488,7 +489,7 @@ class StatusStoreTests(unittest.TestCase):
         updated = record_manual_merge(
             self.primary, state["change_id"], commit=None, cleanup="removed"
         )
-        self.assertEqual(recorded["manual_merge"], updated["manual_merge"])
+        self.assertEqual(manual_merge(recorded), manual_merge(updated))
         self.assertEqual("removed", updated["cleanup"]["status"])
         self.assertEqual(updated, read_status(self.primary, state["change_id"]))
 
@@ -526,7 +527,7 @@ class StatusStoreTests(unittest.TestCase):
         )
         self.assertEqual("merged", result["outcome"])
         self.assertEqual("pending", result["cleanup"]["status"])
-        self.assertIsNone(result["delivery"])
+        self.assertIsNone(receipt(result))
         self.assertTrue(self.candidate.exists())
 
     @verifies("scenario.worktrees.primary-status")
@@ -570,7 +571,7 @@ class StatusStoreTests(unittest.TestCase):
             record_manual_merge(
                 self.primary, state["change_id"], commit="HEAD", cleanup="removed"
             )
-        self.assertIsNone(read_status(self.primary, state["change_id"])["manual_merge"])
+        self.assertIsNone(manual_merge(read_status(self.primary, state["change_id"])))
 
     @verifies("scenario.worktrees.primary-status")
     def test_terminal_direct_tasks_do_not_claim_subsequent_primary_tasks(self):

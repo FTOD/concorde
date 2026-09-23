@@ -1,8 +1,9 @@
-"""Primary-owned local task status and durable run evidence.
+"""Primary-owned change status, provider sections and durable run records.
 
 Candidates have no authoritative copies. Git's common-dir identity, not a directory
 name, locates the primary. If it is unavailable, stop and retry after restoring it;
-never create a replacement archive in a candidate.
+never create a replacement archive in a candidate. Provider sections are stored and
+type-checked here but never interpreted.
 """
 
 from __future__ import annotations
@@ -15,20 +16,23 @@ import tempfile
 import sys
 from pathlib import Path
 
-from ..issues.shapes import BLOCKER
 from ..spec.repository import SpecError, identifier, read_file
 from ..spec.typed_data import (
     STRING,
+    TypedDataError,
     array,
     artifact,
     canonical,
     checked_path,
     decode,
     obj,
+    typed,
+    validate_typed,
 )
 
 STATUS_PATH = ".concorde/status"
 RUNS_PATH = ".concorde/runs"
+STATUS_VERSION = 3
 
 # The workspace facts of a worktree (Candidate worktrees' records), embedded in context snapshots.
 NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
@@ -47,14 +51,6 @@ WORKTREE_SUMMARY = obj(
         "outcome": NULLABLE_ID,
     }
 )
-COMPONENT_PROGRESS = obj(
-    {
-        "target_id": STRING,
-        "spec_status": STRING,
-        "implementation_status": STRING,
-        "outcome": NULLABLE_ID,
-    }
-)
 WORKSPACE_CONTEXT = obj(
     {
         "kind": {"enum": ["primary", "change", "unversioned"]},
@@ -66,11 +62,71 @@ WORKSPACE_CONTEXT = obj(
         "phase": NULLABLE_ID,
         "status": NULLABLE_ID,
         "outcome": NULLABLE_ID,
-        "blockers": array(BLOCKER),
-        "components": array(COMPONENT_PROGRESS),
         "active_worktrees": array(WORKTREE_SUMMARY),
     }
 )
+
+# Provider section name -> the typed-value type its provider declared for it.
+_SECTIONS: dict[str, str] = {}
+
+
+def declare_section(name: str, type_id: str) -> None:
+    """Declare the provider section ``name`` of every change status, holding ``type_id`` values.
+
+    A section is declared once; declaring it again with the same type changes nothing, with
+    another type it is refused.
+    """
+    identifier(name)
+    existing = _SECTIONS.get(name)
+    if existing not in {None, type_id}:
+        raise SpecError(
+            f"provider section {name!r} is already declared", "invalid_input"
+        )
+    _SECTIONS[name] = type_id
+
+
+def declared_sections() -> dict[str, str]:
+    return dict(_SECTIONS)
+
+
+def section(state: dict | None, name: str) -> dict | None:
+    """The ``data`` of provider section ``name`` of a change status, or None when absent."""
+    value = ((state or {}).get("sections") or {}).get(name)
+    return value["data"] if isinstance(value, dict) and "data" in value else None
+
+
+def put_section(state: dict, name: str, data: dict) -> dict:
+    """Place ``data`` into provider section ``name``; the next status write type-checks it."""
+    if name not in _SECTIONS:
+        raise SpecError(
+            f"provider section {name!r} is not declared", "invalid_worktree_state"
+        )
+    state.setdefault("sections", {})[name] = typed(_SECTIONS[name], data)
+    return state["sections"][name]["data"]
+
+
+def _check_sections(value: dict, previous: dict | None) -> None:
+    """Refuse an undeclared or mistyped provider section the write would store or change."""
+    sections = value.get("sections")
+    if not isinstance(sections, dict):
+        raise SpecError(
+            "change status has no provider sections map", "invalid_worktree_state"
+        )
+    stored = (previous or {}).get("sections") or {}
+    for name, item in sections.items():
+        if stored.get(name) == item:
+            continue  # checked when it was written
+        if name not in _SECTIONS:
+            raise SpecError(
+                f"provider section {name!r} is not declared", "invalid_worktree_state"
+            )
+        try:
+            validate_typed(item, _SECTIONS[name], f"/sections/{name}")
+        except TypedDataError as error:
+            raise SpecError(
+                f"provider section {name!r} is invalid: {error}",
+                "invalid_worktree_state",
+            ) from error
 
 
 def primary_root(root: Path) -> Path:
@@ -188,16 +244,10 @@ def write_status(root: Path, value: dict, *, create: bool = False) -> None:
     Successful saves refresh the caller's revision; a stale snapshot is never
     merged by a field allowlist or silently substituted for newer progress.
     """
-    from .change_worktree import (
-        _exclude_control_files,
-        repository_lock,
-        verify_target_owner,
-    )
+    from .change_worktree import _exclude_control_files, repository_lock
 
     with repository_lock(root):
         destination = _local_storage(root)
-        for target in value.get("targets", {}).values():
-            verify_target_owner(value, target)
         previous = read_status(destination, value["change_id"])
         if create and previous is not None:
             raise SpecError(
@@ -211,11 +261,9 @@ def write_status(root: Path, value: dict, *, create: bool = False) -> None:
             )
         if previous == value:
             return  # A successful no-op preserves byte-bound lifecycle evidence.
+        _check_sections(value, previous)
         updated = copy.deepcopy(value)
         updated["revision"] = (previous or {}).get("revision", 0) + 1
-        for key, target in updated.get("targets", {}).items():
-            old = (previous or {}).get("targets", {}).get(key, {})
-            target["revision"] = old.get("revision", 0) + (target != old)
         _exclude_control_files(root)
         atomic_write(
             destination,
@@ -238,118 +286,6 @@ def write_run(root: Path, relative: str, data: bytes) -> None:
         destination = _local_storage(root)
         _exclude_control_files(root)
         atomic_write(destination, relative, data)
-
-
-def record_manual_merge(
-    root: Path, change_id: str, *, commit: str | None, cleanup: str
-) -> dict:
-    """Record observed ordinary-Git integration, never perform or authorize a merge.
-
-    ``commit=None`` updates only the cleanup outcome of an already recorded manual
-    merge, reverifying that recorded commit; it cannot invent merge evidence.
-    """
-    from .change_worktree import (
-        git,
-        git_value,
-        read_change,
-        repository_lock,
-        workspace_identity,
-        worktree_incarnation,
-    )
-
-    with repository_lock(root):
-        primary = primary_root(root)
-        state = read_status(root, change_id)
-        if state is None:
-            raise SpecError("unknown task", "unknown_change")
-        if commit is None:
-            commit = (state.get("manual_merge") or {}).get("commit")
-            if not commit:
-                raise SpecError(
-                    "cleanup outcome requires a recorded or observed manual merge",
-                    "stale_evidence",
-                )
-        resolved = git_value(primary, "rev-parse", "--verify", commit + "^{commit}")
-        if git(
-            primary, "merge-base", "--is-ancestor", resolved, "HEAD", check=False
-        ).returncode:
-            raise SpecError(
-                "merge commit is not integrated in primary HEAD", "stale_evidence"
-            )
-        candidate = Path(state["path"])
-        prior = state.get("manual_merge") or {}
-        candidate_commit = prior.get("candidate_commit")
-        if candidate.exists():
-            source_primary, current = workspace_identity(candidate)
-            owner = read_change(candidate)
-            if (
-                current is None
-                or source_primary is None
-                or source_primary["path"] != str(primary)
-                or not state.get("git_worktree_id")
-                or state["git_worktree_id"] != worktree_incarnation(candidate)
-                or (owner is not None and owner["change_id"] != change_id)
-                or (owner is None and not candidate_commit)
-            ):
-                raise SpecError(
-                    "present source does not belong to the selected task incarnation",
-                    "workspace_mismatch",
-                )
-        if not candidate.exists() and not candidate_commit:
-            raise SpecError(
-                "record verified manual integration before removing its candidate",
-                "stale_evidence",
-            )
-        if (
-            candidate_commit
-            and git(
-                primary,
-                "merge-base",
-                "--is-ancestor",
-                candidate_commit,
-                resolved,
-                check=False,
-            ).returncode
-        ):
-            raise SpecError(
-                "recorded candidate is not integrated in the observed merge",
-                "stale_evidence",
-            )
-        if candidate.exists() and candidate != primary:
-            head = git_value(candidate, "rev-parse", "HEAD")
-            candidate_commit = head
-            if git(
-                primary, "merge-base", "--is-ancestor", head, resolved, check=False
-            ).returncode:
-                raise SpecError(
-                    "candidate commit is not part of the observed merge",
-                    "stale_evidence",
-                )
-            from .change_worktree import snapshot_tree
-
-            if snapshot_tree(candidate, state) != git_value(
-                candidate, "rev-parse", "HEAD^{tree}"
-            ):
-                raise SpecError(
-                    "candidate has uncommitted deliverable input", "stale_evidence"
-                )
-        if cleanup not in {"pending", "retained", "removed"}:
-            raise SpecError("invalid cleanup outcome", "invalid_input")
-        if cleanup == "removed" and Path(state["path"]).exists():
-            raise SpecError("candidate still exists", "stale_evidence")
-        state.update(
-            manual_merge={
-                "commit": resolved,
-                "candidate_commit": candidate_commit or resolved,
-                "method": "ordinary-git",
-            },
-            cleanup={"status": "not_needed" if candidate == primary else cleanup},
-            outcome="merged",
-            status="merged",
-            phase="complete",
-        )
-        write_status(root, state)
-        return state
 
 
 @timed("evidence.record_run")
@@ -379,11 +315,10 @@ def record_run(
             record = decode(path.read_text())
         else:
             primary, current = workspace_identity(host.project_root)
-            change = (
-                read_status(archive, task["change_id"])
-                if operation == "concorde-deliver" and task and task.get("change_id")
-                else read_change(host.project_root)
-            )
+            change = read_change(host.project_root)
+            if change is None and task and task.get("change_id"):
+                # A request started outside the change's worktree names it explicitly.
+                change = read_status(archive, task["change_id"])
             manifest = host.package_root / "generated/build-manifest.json"
             runtime = host.package_root / "scripts/run-operation.py"
             input_tree = (
@@ -462,26 +397,7 @@ def record_run(
             }
             # A build catalog is not evidence of Pi extension loading or tool execution. Only an explicitly supplied,
             # verified selection can provide that provenance; otherwise it stays unknown.
-            if (
-                change
-                and result is None
-                and task
-                and (
-                    operation == "concorde-deliver"
-                    or (
-                        task.get("task") == change.get("task")
-                        and all(
-                            field not in task or task[field] == change.get(field)
-                            for field in ("constraints", "focus_id")
-                        )
-                        and (
-                            "target_id" in task
-                            and task["target_id"]
-                            == (change.get("target_id") or change.get("target_hint"))
-                        )
-                    )
-                )
-            ):
+            if change and result is None and task and _belongs_to(task, change):
                 change.setdefault("runs", []).append(relative)
                 write_status(host.project_root, change)
         if result is not None:
@@ -492,6 +408,22 @@ def record_run(
                 host.project_root, archive, host.invocation_id, result
             )
         write_run(archive, relative, (canonical(record) + "\n").encode())
+
+
+def _belongs_to(task: dict, change: dict) -> bool:
+    """Whether a mutating request is part of ``change``: it names the change, or it carries
+    exactly the change's recorded intent."""
+    if task.get("change_id") is not None:
+        return task["change_id"] == change["change_id"]
+    return (
+        task.get("task") == change.get("task")
+        and all(
+            field not in task or task[field] == change.get(field)
+            for field in ("constraints", "focus_id")
+        )
+        and "target_id" in task
+        and task["target_id"] == (change.get("target_id") or change.get("target_hint"))
+    )
 
 
 def _archive_artifacts(source: Path, archive: Path, run_id: str, result) -> list[dict]:

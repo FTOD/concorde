@@ -395,12 +395,13 @@ the code's meaning in its own context.
 | `stale_reference` | an artifact reference's digest does not match the file | Spec tooling |
 | `stale_status` | a change status changed since it was read | Candidate worktrees |
 | `state_persistence_failed` | status or run evidence could not be written after a final outcome | Request admission, Delivery |
+| `uncommitted_issue` | `solve` of an open Issue whose record file is not committed, unchanged, at `HEAD` of the worktree the request starts in | Issue solving |
 | `undeclared_operation` | an Operation composed another it does not declare | Agent execution |
 | `unknown_agent` | no Agent has this name | Task context |
 | `unknown_change` | a change identity has no status or delivery record | Candidate worktrees, Delivery |
 | `unknown_issue` | the Issue does not exist | Issues |
 | `unknown_operation` | the capability is not in the catalog or not public | Request admission |
-| `unknown_target` | the target Module is not registered | Spec tooling |
+| `unknown_target` | the target Module is not registered, or a selected Issue's owner is not a registered Module | Spec tooling, Issue solving |
 | `unknown_type` | a typed value names no registered type | Spec tooling |
 | `unsafe_path` | a path escapes the project, aliases a control path or crosses a symbolic link | Spec tooling, Candidate worktrees |
 | `unsupported_profile` | the registry declares an unsupported profile | Spec tooling |

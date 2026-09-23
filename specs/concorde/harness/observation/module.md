@@ -99,9 +99,7 @@ wall time as unknown, because no record measures them.
 
 **The caller chooses the sink.** Observation uses no other Module, so every part of Concorde can use
 it without creating a dependency cycle, and so it cannot write where it has no authority. The
-Host's traces reach the run directory only through the sink Request admission supplies;
-`src/concorde/harness/timing.py` still locates that directory itself, and that persistence moves
-into admission's sink so that the recorder depends on nothing.
+Host's traces reach the run directory only through the sink Request admission supplies.
 
 <a id="realization.observation.session-observer"></a>
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 from ..harness.change_worktree import register_component_policy
 from ..harness.revisions import target_revision
 from ..spec.impact import binding_modules
+from .records import targets
 
 
 def owned_nodes(repository, module_id: str) -> tuple[str, ...]:
@@ -65,7 +66,7 @@ def component_request(repository, change: dict, task: dict) -> bool:
     and constraints equal the component task derived from the owner's current accepted tasks for
     that Module, planned against the owner's current Spec revision.
     """
-    for owner_id, record in change.get("targets", {}).items():
+    for owner_id, record in targets(change).items():
         if owner_id not in repository.modules:
             continue
         selected = [

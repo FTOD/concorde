@@ -24,7 +24,8 @@ import subprocess
 r=Path(${JSON.stringify(root)})
 def git(*a):subprocess.run(['git',*a],cwd=r,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 git('init');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');git('add','.');git('commit','-m','Fixture');git('worktree','add','-b','programmer',str(r/'candidate'))
-from concorde.harness.change_worktree import ensure_change,bind_owner,target_state,save_target_state
+from concorde.harness.change_worktree import ensure_change,bind_owner
+from concorde.planning.records import target_state,save_target_state
 from concorde.harness.host import OperationHost
 from concorde.harness.invocation import Invocation
 from concorde.harness.configuration import load_configuration
@@ -153,9 +154,9 @@ if (
   const projectRoot = path.join(root, "candidate");
   execFileSync(python, [
     "-c",
-    "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change,save_change;r=Path(" +
+    "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change,save_change;from concorde.planning.records import targets;r=Path(" +
       JSON.stringify(projectRoot) +
-      ");s=read_change(r);t=s['targets']['service.transfer'];" +
+      ");s=read_change(r);t=targets(s)['service.transfer'];t['revision']+=1;" +
       (scenario === "missing-components"
         ? "t['tasks'][0]['target_id']='module.ledger'"
         : scenario === "missing-tasks"
@@ -387,9 +388,9 @@ setChildSessionFactory({
         ) {
           execFileSync(python, [
             "-c",
-            "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change,save_change;r=Path(" +
+            "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change,save_change;from concorde.planning.records import targets;r=Path(" +
               JSON.stringify(snapshot.native_workspace) +
-              ");s=read_change(r);t=s['targets']['service.transfer'];" +
+              ");s=read_change(r);t=targets(s)['service.transfer'];t['revision']+=1;" +
               (scenario === "stale-plan"
                 ? "t['plan']='changed plan'"
                 : scenario === "stale-tasks"
@@ -408,9 +409,9 @@ setChildSessionFactory({
           if (scenario === "tampered-feedback")
             execFileSync(python, [
               "-c",
-              "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.harness.status_store import run_path;r=Path(" +
+              "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.harness.status_store import run_path;from concorde.planning.records import targets;r=Path(" +
                 JSON.stringify(snapshot.native_workspace) +
-                ");p=run_path(r,read_change(r)['targets']['service.transfer']['repair_review']['path']);p.write_bytes(p.read_bytes()+b' ')",
+                ");p=run_path(r,targets(read_change(r))['service.transfer']['repair_review']['path']);p.write_bytes(p.read_bytes()+b' ')",
             ]);
         }
         const expected = snapshot.stage_inputs.find(

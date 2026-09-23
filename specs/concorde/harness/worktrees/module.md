@@ -47,10 +47,11 @@ Terminal records outlive the candidate.
 
 <a id="concept.worktrees.provider-section"></a>
 
-**Provider sections.** Planning's plan, tasks and pending gaps, Validation's evidence, Delivery's
-delivery and merge records and Issue solving's journal live in provider sections. A provider
-declares a section name and its typed-value type and writes it through the same revision-checked
-write; an undeclared section or a mistyped value is refused with `invalid_worktree_state`.
+**Provider sections.** Planning's plan, tasks and pending gaps, Review's review records,
+Validation's evidence, Delivery's delivery and merge records and Issue solving's journal live in
+provider sections. A provider declares a section name and its typed-value type and writes it
+through the same revision-checked write; an undeclared section or a mistyped value is refused with
+`invalid_worktree_state`.
 
 <a id="concept.worktrees.run-record"></a>
 
@@ -83,7 +84,8 @@ the [design topic](design.md).
 **One authority, in the primary.** The **worktree lifecycle** keeps every durable record in the
 primary, located through Git's shared repository directory, because a candidate can disappear. An
 incarnation token in Git's administrative directory ties a change to one worktree incarnation, so a
-recreated worktree never inherits an old change.
+recreated worktree never inherits an old change. The same code holds the worktree boundary check,
+which reports a directory's Git identity and changes nothing.
 
 <a id="realization.worktrees.status-store"></a>
 
@@ -95,10 +97,6 @@ so a stale writer never erases newer content.
 share the revision check and primary authority. Deliverable snapshots drop local control paths and
 the recorded guidance block without touching the caller's index.
 
-<a id="realization.worktrees.boundary"></a>
-
-The **worktree boundary** check reports a directory's Git identity and changes nothing.
-
 <a id="realization.worktrees.tests"></a>
 
 The **worktree tests** run against real disposable Git repositories. A candidate is not a sandbox:
@@ -109,10 +107,9 @@ see the Harness entry for what is enforced.
 ```mermaid
 flowchart LR
     accTitle: Candidate worktrees relationships
-    accDescr: The lifecycle creates candidates and computes facts; the status store keeps records in the primary; the boundary inspects worktrees.
+    accDescr: The lifecycle creates candidates, computes facts and inspects worktrees; the status store keeps records in the primary.
     lifecycle[Worktree lifecycle]
     store[Status store]
-    boundary[Worktree boundary]
     candidate[Candidate]
     status[Change status]
     section[Provider section]
@@ -131,7 +128,7 @@ flowchart LR
     store -->|writes only in| primary
     store -->|times its writes with| observation
     status -->|holds| section
-    boundary -->|inspects| worktree
+    lifecycle -->|inspects| worktree
 ```
 
 <a id="uses-spec"></a>

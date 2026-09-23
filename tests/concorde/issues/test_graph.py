@@ -9,13 +9,10 @@ from pathlib import Path
 
 from concorde.harness.host import OperationHost
 from concorde.operations.dispatch import run_operation
-from concorde.harness.change_worktree import (
-    ensure_change,
-    read_change,
-    record_task_gaps,
-    workspace_context,
-)
-from concorde.issues.graph import select_target
+from concorde.harness.change_worktree import ensure_change, read_change
+from concorde.issue_solving.bookkeeping import select_target
+from concorde.planning.gaps import open_gaps, record_task_gaps
+from concorde.planning.records import gap_history
 from concorde.issues.store import read_issue, report_issue
 from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import typed
@@ -77,16 +74,50 @@ class IssueGraphTests(unittest.TestCase):
 
     @verifies("scenario.issue-solving.spec-repair-handback")
     def test_every_solver_action_has_an_explicit_declared_route(self):
-        from concorde.issues.graph import DECISION_ROUTES, NODES
+        from concorde.issue_solving.bookkeeping import DECISION_ROUTES
         from concorde.spec.typed_data import data_schema
 
         actions = data_schema("concorde-agent-stage-result")["properties"][
             "issue_decision"
         ]["properties"]["action"]["enum"]
         self.assertEqual(set(actions), set(DECISION_ROUTES))
-        self.assertLessEqual(set(DECISION_ROUTES.values()), set(NODES))
+        self.assertLessEqual(
+            set(DECISION_ROUTES.values()), {"finish", "verify", "close"}
+        )
         self.assertEqual("finish", DECISION_ROUTES["spec-repair"])
         self.assertEqual("finish", DECISION_ROUTES["develop"])
+
+    @verifies("scenario.issue-solving.unknown-owner")
+    def test_issue_of_a_removed_module_is_shown_but_not_solved_or_reopened(self):
+        orphan = report_issue(
+            self.root,
+            report(
+                report_key="orphan",
+                type="bug",
+                subtype=None,
+                title="A removed Module's problem",
+                description="The owner is no longer registered.",
+                owner_target_id=None,
+                evidence=[],
+            ),
+            source(target_id="module.removed"),
+        )
+        before = read_issue(self.root, orphan["issue_id"])
+        shown = self.call("show", issue_id=orphan["issue_id"])
+        self.assertEqual("succeeded", shown["status"], shown)
+        self.assertEqual([before[0]], shown["output"]["data"]["issues"])
+        self.assertEqual("module.removed", shown["output"]["data"]["target_id"])
+        listed = self.call("list")
+        self.assertIn(
+            orphan["issue_id"],
+            [record["id"] for record in listed["output"]["data"]["issues"]],
+        )
+        for action, extra in (("solve", {}), ("reopen", {"note": "Retry"})):
+            refused = self.call(action, issue_id=orphan["issue_id"], **extra)
+            self.assertEqual("blocked", refused["status"], refused)
+            self.assertEqual("unknown_target", refused["errors"][0]["code"])
+        self.assertEqual(before, read_issue(self.root, orphan["issue_id"]))
+        self.assertFalse((self.root / ".concorde/status").exists())
 
     @verifies("scenario.issue-solving.stale-issue")
     def test_stale_selection_is_rejected_before_any_worker_runs(self):
@@ -132,7 +163,7 @@ class IssueGraphTests(unittest.TestCase):
             "old",
             scope_id="module:service.transfer",
         )
-        original = read_change(self.root, required=True)["issue_blockers"][0]
+        original = gap_history(read_change(self.root, required=True))[0]
         record_task_gaps(
             self.root,
             "service.transfer",
@@ -144,10 +175,15 @@ class IssueGraphTests(unittest.TestCase):
         )
         self.assertEqual(
             original["id"],
-            read_change(self.root, required=True)["issue_blockers"][0]["id"],
+            gap_history(read_change(self.root, required=True))[0]["id"],
         )
         self.assertEqual(
-            [], workspace_context(self.root, target_id="module.ledger")["blockers"]
+            [],
+            [
+                gap
+                for gap in open_gaps(read_change(self.root))
+                if gap["target_id"] == "module.ledger"
+            ],
         )
         record_task_gaps(
             self.root,
@@ -160,7 +196,7 @@ class IssueGraphTests(unittest.TestCase):
         )
         self.assertEqual(
             "resolved",
-            read_change(self.root, required=True)["issue_blockers"][0]["status"],
+            gap_history(read_change(self.root, required=True))[0]["status"],
         )
         self.assertEqual(
             "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]

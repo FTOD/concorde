@@ -8,7 +8,6 @@ rechecked. A partially run scope is never accepted as complete.
 
 from __future__ import annotations
 
-from dataclasses import replace
 
 from ..harness.context import ContextSnapshot, recheck_context
 from ..harness.invocation import Invocation
@@ -75,7 +74,7 @@ def _member(run, scope, task) -> Invocation:
         scope["operation"],
         scope["configuration"],
         task,
-        replace(run.host, coordinated=True),
+        run.host,
     )
 
 

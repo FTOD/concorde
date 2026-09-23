@@ -115,7 +115,7 @@ if scenario in {'control-extra','control-large'}:
   return value
  native.IssuesWorkflowHook.step=bad_control
 if scenario=='journal':
- from concorde.issues.solve import IssueSolve
+ from concorde.issue_solving.solve import IssueSolve
  real=IssueSolve.ready
  def interrupted(self,state):
   marker=self.root/'journal-interrupted'
@@ -774,7 +774,7 @@ if (
     "-c",
     "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
       JSON.stringify(path.join(root, "candidate")) +
-      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['issue_solutions'][i];assert v['attempts']==1 and not v['history'] and not v.get('verification') and not v.get('pending_disposition') and not s.get('validated_tree');assert read_issue(r,i)[0]['status']=='open'",
+      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['sections']['issue-solving']['data']['solutions'][i];assert v['attempts']==1 and not v['history'] and not v.get('verification') and not v.get('pending_disposition') and s['status']!='ready';assert read_issue(r,i)[0]['status']=='open'",
   ]);
 if (scenario.startsWith("retained-invalid-")) {
   assert.equal(diagnostic.attempts.length, 1);
@@ -825,7 +825,7 @@ if (scenario === "prose-only") {
     "-c",
     "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
       JSON.stringify(path.join(root, "candidate")) +
-      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['issue_solutions'][i];assert v['attempts']==1 and not v['history'];assert not v.get('verification') and not v.get('pending_disposition') and not s.get('validated_tree');assert read_issue(r,i)[0]['status']=='open'",
+      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['sections']['issue-solving']['data']['solutions'][i];assert v['attempts']==1 and not v['history'];assert not v.get('verification') and not v.get('pending_disposition') and s['status']!='ready';assert read_issue(r,i)[0]['status']=='open'",
   ]);
 }
 if (
@@ -894,9 +894,9 @@ if (scenario === "journal") {
     python,
     [
       "-c",
-      "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.graph import pending_disposition;r=Path(" +
+      "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issue_solving.bookkeeping import pending_disposition;from concorde.issue_solving.records import solutions;r=Path(" +
         JSON.stringify(path.join(root, "candidate")) +
-        ");c=read_change(r);i=next(iter(c['issue_solutions']));assert pending_disposition(c,i);print(i)",
+        ");c=read_change(r);i=next(iter(solutions(c)));assert pending_disposition(c,i);print(i)",
     ],
     { encoding: "utf8" },
   ).trim();
@@ -940,7 +940,7 @@ const attempts = Number(
       "-c",
       "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;s=read_change(Path(" +
         JSON.stringify(path.join(root, "candidate")) +
-        ")).get('issue_solutions',{});print(next(iter(s.values()))['attempts'])",
+        ")).get('sections',{}).get('issue-solving',{}).get('data',{}).get('solutions',{});print(next(iter(s.values()))['attempts'])",
     ],
     { encoding: "utf8" },
   ).trim(),

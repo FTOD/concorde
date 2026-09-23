@@ -47,13 +47,8 @@ class ProgrammerHook:
                     ),
                     stop_accepted=True,
                 )
-            if run.host.mode == "execute" and not run.host.coordinated:
-                progress(
-                    run.repository.root,
-                    phase="implementation",
-                    status="active",
-                    invalidate=True,
-                )
+            if run.host.mode == "execute" and run.owns_change():
+                progress(run.repository.root, phase="implementation", status="active")
         return StagePlan(stage_inputs=tuple(inputs), bind_admitted_snapshot=True)
 
     def recheck(self, run, descriptor):

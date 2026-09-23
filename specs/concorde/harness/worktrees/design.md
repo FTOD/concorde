@@ -43,8 +43,8 @@ If this Module understood plans, gaps, delivery records or Issue journals, it wo
 provider. A declared, typed, opaque section keeps the one-writer revision check and the primary
 authority for everyone while the meaning stays with the provider. For the same reason workspace
 facts hold only identity and lifecycle; a provider that wants an Agent to see its records supplies
-them as a stage input. The code still keeps several provider records as fields and interprets them
-(Issue blockers, task gaps, manual merges); those move to Planning's and Delivery's sections.
+them as a stage input. Each provider reads and writes its own section through its own code, and
+keeps the rules of its records there, such as the revision of Planning's progress entries.
 
 ## Inventory without trespassing
 
@@ -60,8 +60,7 @@ The caller's index, the working files and the status record are untouched, and r
 same snapshot as a run's exact input tree.
 
 The worktree boundary check reports a directory's Git identity and whether it is a linked worktree,
-reading no file contents. `worktree.py` holds it today and is merged into the lifecycle's worktree
-identity code.
+reading no file contents. It lives with the lifecycle's worktree identity code.
 
 ## Not a sandbox
 

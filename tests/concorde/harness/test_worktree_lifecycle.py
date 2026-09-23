@@ -1,7 +1,6 @@
 """Real Git regressions for worktree ownership, awareness, recovery and primary delivery."""
 
 import json
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -11,7 +10,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness import change_worktree, worktree_delivery
+from concorde.delivery import deliver as delivery_service
+from concorde.delivery.records import receipt as delivery_receipt
+from concorde.harness import change_worktree
+from concorde.planning.records import targets
+from concorde.validation.records import direct_evidence
 from concorde.operations.dispatch import run_operation
 from concorde.harness.change_worktree import (
     GUIDANCE_START,
@@ -78,6 +81,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
             '    if amount <= 0 or amount > balance: raise ValueError("invalid transfer")\n'
             "    return balance - amount\n"
         )
+        # Validation needs a registered change; the user session registers the candidate.
+        change_worktree.ensure_change(self.change, task=self.task)
         result = self.call_operation(self.change, "concorde-validate", self.task)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"], result)
@@ -236,6 +241,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(
             worktrees, git_value(self.primary, "worktree", "list", "--porcelain")
         )
+        # A linked worktree without a registered change is refused the same way.
+        result = self.call_operation(self.change, "concorde-validate", self.task)
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("missing_change", result["errors"][0]["code"], result)
+        self.assertFalse((self.primary / ".concorde/status").exists())
 
     def configure_request(self, **extra):
         selection = typed(
@@ -435,9 +445,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         answer = result["output"]["data"]["answer"]
         self.assertIn("checks/rounding_check.py", answer)
-        receipt = json.loads(
-            (self.primary / f".concorde/status/{change_id}.json").read_text()
-        )["delivery"]
+        receipt = delivery_receipt(
+            json.loads(
+                (self.primary / f".concorde/status/{change_id}.json").read_text()
+            )
+        )
         self.assertEqual([], receipt["confirmed_files"])
         self.assertEqual(["checks/rounding_check.py"], receipt["still_pending"])
         self.assertEqual(
@@ -492,7 +504,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("succeeded", merged["status"], merged)
         head = git_value(self.primary, "rev-parse", "HEAD")
         with patch.object(
-            worktree_delivery,
+            delivery_service,
             "_verify_merged_tree",
             side_effect=AssertionError("duplicate merge checks"),
         ):
@@ -505,7 +517,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         change_id = self.ready_delivery()
         before = git_value(self.primary, "rev-parse", "HEAD")
         with patch.object(
-            worktree_delivery, "_cleanup", side_effect=OSError("interrupted cleanup")
+            delivery_service, "_cleanup", side_effect=OSError("interrupted cleanup")
         ):
             result = self.call_operation(
                 self.change,
@@ -525,7 +537,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_cleanup_retry_persists_a_changed_retention_choice_before_cleanup(self):
         change_id = self.ready_delivery()
         with patch.object(
-            worktree_delivery, "_cleanup", side_effect=OSError("interrupted cleanup")
+            delivery_service, "_cleanup", side_effect=OSError("interrupted cleanup")
         ):
             result = self.call_operation(
                 self.change, "concorde-deliver", {"change_id": change_id}
@@ -578,7 +590,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         start = threading.Barrier(2)
         checking = threading.Lock()
-        verify = worktree_delivery._verify_merged_tree
+        verify = delivery_service._verify_merged_tree
 
         def checked(*args, **kwargs):
             self.assertTrue(
@@ -602,7 +614,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             )
 
         with (
-            patch.object(worktree_delivery, "_verify_merged_tree", side_effect=checked),
+            patch.object(delivery_service, "_verify_merged_tree", side_effect=checked),
             ThreadPoolExecutor(max_workers=2) as pool,
         ):
             results = list(pool.map(promote, (first_id, second_id)))
@@ -730,7 +742,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             self.change, "concorde-deliver", {"change_id": change_id}
         )
         self.assertEqual("succeeded", staged["status"], staged)
-        write = worktree_delivery._write_json
+        write = delivery_service._write_json
 
         def interrupted(root, relative, receipt):
             if (receipt.get("primary_merge") or {}).get("status") == "merged":
@@ -738,21 +750,25 @@ class WorktreeLifecycleTests(unittest.TestCase):
             return write(root, relative, receipt)
 
         request = {"change_id": change_id, "merge_primary": True}
-        with patch.object(worktree_delivery, "_write_json", side_effect=interrupted):
+        with patch.object(delivery_service, "_write_json", side_effect=interrupted):
             result = self.call_operation(self.primary, "concorde-deliver", request)
         self.assertEqual("failed", result["status"], result)
         merged = git_value(self.primary, "rev-parse", "HEAD")
         with patch.object(
-            worktree_delivery,
+            delivery_service,
             "_verify_merged_tree",
             side_effect=AssertionError("duplicate checks"),
         ):
             again = self.call_operation(self.primary, "concorde-deliver", request)
         self.assertEqual("succeeded", again["status"], again)
         self.assertEqual(merged, git_value(self.primary, "rev-parse", "HEAD"))
-        receipt = json.loads(
-            (self.primary / again["output"]["data"]["artifacts"][0]["path"]).read_text()
-        )["delivery"]
+        receipt = delivery_receipt(
+            json.loads(
+                (
+                    self.primary / again["output"]["data"]["artifacts"][0]["path"]
+                ).read_text()
+            )
+        )
         self.assertEqual("merged", receipt["primary_merge"]["status"])
         self.assertTrue(
             list((self.primary / ".concorde/runs").glob("*/delivery/staging"))
@@ -776,12 +792,13 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         spec = self.change / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nClarified directly in the candidate.\n")
+        change_worktree.ensure_change(self.change, task=self.task)
         result = self.call_operation(self.change, "concorde-validate", self.task)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
         state = read_change(self.change, required=True)
-        self.assertEqual({}, state["targets"])
-        self.assertTrue(state["validation"]["checks"])
+        self.assertEqual({}, targets(state))
+        self.assertTrue(direct_evidence(state)["checks"])
         result = self.call_operation(
             self.primary, "concorde-deliver", {"change_id": state["change_id"]}
         )
@@ -798,75 +815,41 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertFalse(self.change.exists())
 
-    def test_self_hosted_integration_builds_its_exact_checkout_before_validation(self):
-        from concorde.distribution.build import verify_fresh
-
+    @verifies("scenario.delivery.branch")
+    def test_integration_is_verified_with_the_host_package_and_never_built(self):
         fixture_report = validate_repository(self.primary, package_root=PACKAGE)
         self.assertEqual(fixture_report.status, "success")
-        for directory in (
-            "prompts",
-            "agents",
-            "operations",
-            "protocol",
-            "scripts",
-            "src",
-            "pi",
-        ):
-            shutil.copytree(
-                PACKAGE / directory,
-                self.primary / directory,
-                ignore=shutil.ignore_patterns("__pycache__", "node_modules"),
-            )
+        # A self-hosted integration carries its own launcher; delivery never runs it.
+        (self.primary / "scripts").mkdir(exist_ok=True)
+        (self.primary / "scripts/concorde.py").write_text(
+            "raise SystemExit('the integrated tree must not be executed')\n"
+        )
         (self.primary / "concorde.json").write_text("{}")
         (self.primary / "app/transfer.py").write_text(
             "def transfer(balance, amount):\n"
             '    if amount <= 0 or amount > balance: raise ValueError("invalid transfer")\n'
             "    return balance - amount\n"
         )
-        with (self.primary / ".gitignore").open("a") as stream:
-            stream.write("\ngenerated/\n.agents/\n.claude/\n.pi/\n")
         commit = self.commit(self.primary, "Self-hosted integration fixture")
         tree = git_value(self.primary, "rev-parse", "HEAD^{tree}")
         verified = []
 
         def inspect(root, **kwargs):
             self.assertNotEqual(root, self.primary)
+            self.assertEqual(PACKAGE, kwargs["package_root"])
             self.assertEqual(git_value(root, "rev-parse", "HEAD^{tree}"), tree)
-            verify_fresh(root)
-            self.assertTrue(
-                (root / "generated/session/pi/concorde-session.ts").is_file()
-            )
-            for retired in (
-                "skills",
-                ".agents/skills",
-                ".claude/skills",
-                ".pi/extensions/concorde-session.ts",
-            ):
-                self.assertFalse((root / retired).exists(), retired)
-            self.assertEqual(
-                (PACKAGE / "prompts/operation-guidance/concorde-plan.md").read_bytes(),
-                (root / "prompts/operation-guidance/concorde-plan.md").read_bytes(),
-            )
+            self.assertFalse((root / "generated").exists())
             verified.append(root)
             return fixture_report
 
-        with (
-            patch.object(worktree_delivery, "validate_repository", side_effect=inspect),
-            patch.object(
-                worktree_delivery.subprocess, "run", wraps=subprocess.run
-            ) as launched,
-        ):
-            checks = worktree_delivery._verify_merged_tree(
+        with patch.object(delivery_service, "validate_repository", side_effect=inspect):
+            checks = delivery_service._verify_merged_tree(
                 OperationHost(self.primary, PACKAGE),
                 commit,
                 tree,
                 "change.integration-build",
             )
         self.assertEqual(len(verified), 1)
-        expected = [sys.executable, str(verified[0] / "scripts/concorde.py"), "build"]
-        self.assertTrue(
-            any(call.args[0] == expected for call in launched.call_args_list)
-        )
         self.assertFalse(verified[0].exists())
         self.assertTrue(checks)
         self.assertTrue(all(check["status"] == "passed" for check in checks))

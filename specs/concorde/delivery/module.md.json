@@ -117,10 +117,6 @@
       "entries": [
         "operations/deliver.py",
         "prompts/operation-guidance/concorde-deliver.md",
-        "src/concorde/harness/worktree_delivery.py",
-        "src/concorde/delivery/"
-      ],
-      "pending": [
         "src/concorde/delivery/"
       ]
     },

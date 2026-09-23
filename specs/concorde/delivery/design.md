@@ -68,5 +68,6 @@ merge cannot be recorded once the candidate was removed without one.
 
 ## Where the code lives
 
-The delivery transitions live in `src/concorde/harness/worktree_delivery.py`; they and the
-manual-merge recording belong under `src/concorde/delivery/`.
+The delivery transitions live in `src/concorde/delivery/deliver.py`, the manual merge record in
+`src/concorde/delivery/manual_merge.py`, and the declaration of Delivery's section of the change
+status in `src/concorde/delivery/records.py`.

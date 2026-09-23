@@ -90,7 +90,7 @@ class DispatchTests(unittest.TestCase):
             "M AGENTS.md", git_value(self.change, "status", "--porcelain").strip()
         )
         state = read_change(self.change, required=True)
-        self.assertEqual(("created", {}), (state["phase"], state["targets"]))
+        self.assertEqual(("created", {}), (state["phase"], state["sections"]))
 
 
 if __name__ == "__main__":

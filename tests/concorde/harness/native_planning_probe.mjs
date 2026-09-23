@@ -162,7 +162,7 @@ run=Invocation('concorde-plan',load_configuration(r),task,OperationHost(r,Path($
 persist_plan_result(run,{'plan':'PREVIOUS ACCEPTED PLAN','answer':'Fixture precondition'})
 if ${JSON.stringify(scenario)}=='prior-gap':
  from concorde.issues.store import report_issue
- from concorde.harness.change_worktree import record_task_gaps
+ from concorde.planning.gaps import record_task_gaps
  from concorde.harness.revisions import target_revision
  from concorde.harness.context import resolve_context
  context_id=resolve_context(run.repository,run.target.id,agent='context_assessor',task=task['task']).id
@@ -170,7 +170,8 @@ if ${JSON.stringify(scenario)}=='prior-gap':
  record_task_gaps(r,'service.transfer',task['task'],'context-solve',[{**receipt,'blocked_step':'Assess contract'}],target_revision(run.repository,run.target),spec_resolution=run.repository.spec_context(run.target.id).value)
  file=r/'specs/transfer/module.md';file.write_text(file.read_text()+chr(10)+'The previously missing promise is now explicit.'+chr(10))
 if ${JSON.stringify(scenario)}=='review-required':
- c=read_change(r);c.setdefault('review_requirements',{})['service.transfer']={'spec':True,'code':False};save_change(r,c)
+ from concorde.review.records import review_records
+ c=read_change(r);review_records(c)['requirements']['service.transfer']={'spec':True,'code':False};save_change(r,c)
 `,
   ]);
 }
@@ -647,7 +648,7 @@ if (
         "-c",
         "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;print(read_change(Path(" +
           JSON.stringify(prepared.binding.root) +
-          "))['targets']['service.transfer']['plan'])",
+          "))['sections']['planning']['data']['targets']['service.transfer']['plan'])",
       ],
       { encoding: "utf8" },
     ).trim();
@@ -740,9 +741,9 @@ if (
         python,
         [
           "-c",
-          "from concorde.operations.catalog import register_types;register_types();import json; from pathlib import Path; from concorde.harness.change_worktree import read_change; print(json.dumps(read_change(Path(" +
+          "from concorde.operations.catalog import register_types;register_types();import json; from pathlib import Path; from concorde.harness.change_worktree import read_change; from concorde.planning.records import targets; c=read_change(Path(" +
             JSON.stringify(projectRoot) +
-            "))))",
+            ")); print(json.dumps({**c, 'targets': targets(c)}))",
         ],
         { encoding: "utf8" },
       ),

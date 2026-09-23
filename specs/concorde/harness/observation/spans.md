@@ -146,6 +146,8 @@ further start as incomplete telemetry.
 | --- | --- |
 | `Span(name, **labels)` / `timed(name)` | mark a unit of work as a span; a no-op without an open trace or `CONCORDE_DIAGNOSTIC_TIMING_DIR` |
 | `Trace(trace_id=None, sink=None, layer="B")` / `tracing(trace)` | open a trace in the current context; its sink receives the finished trace once |
+| `operation_trace(trace_id, sink)` / `traced_operation(sink_for)` | open one trace for a top-level request with the caller's sink, or join the trace already open; `sink_for(host)` supplies the sink of each decorated request |
+| `notice_incomplete()` | write the one `CONCORDE_TIMING_INCOMPLETE` line of a sink that could not keep its trace |
 | `diagnostic_sink(directory)` | a sink writing each trace as a new mode-0600 file in an existing directory |
 | `interval_record(...)` | adapt an interval measured elsewhere to the span shape |
 | `analyze_native(records)` / `summarize(spans)` | the timing summary of session entries, event records or spans |

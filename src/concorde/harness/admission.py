@@ -13,6 +13,7 @@ import copy
 import hashlib
 import importlib
 import json
+import os
 import sys
 import uuid
 from dataclasses import replace
@@ -38,7 +39,7 @@ from .configuration import load_configuration
 from .execution_error import OperationExecutionError, error_entry
 from .host import AdmittedRequest, OperationHost
 from .relay import bind_worktree, relay_operation
-from .timing import timed, traced_operation
+from .timing import notice_incomplete, timed, traced_operation
 
 # contract.admission.capability-declaration, version 1.
 _NAME = {"type": "string", "minLength": 1}
@@ -214,7 +215,41 @@ def bind_module_target(
     return data
 
 
-@traced_operation
+def run_trace_sink(host: OperationHost):
+    """The sink of a request's trace: ``timing.json`` beside its run record in the primary.
+
+    Only an admitted request that opened its run record keeps its trace; a preview or a refused
+    request reports it as not admitted. A failing write marks the trace incomplete and never
+    changes the request.
+    """
+
+    def persist(value):
+        from .change_worktree import repository_lock
+        from .status_store import run_path
+
+        try:
+            archive = host.archive_root or host.project_root
+            path = run_path(archive, f".concorde/runs/{value['trace_id']}/timing.json")
+            if host.mode == "execute" and (path.parent / "run.json").is_file():
+                with repository_lock(archive):
+                    fd = os.open(
+                        path,
+                        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                        0o600,
+                    )
+                    with os.fdopen(fd, "w") as stream:
+                        json.dump(value, stream, separators=(",", ":"))
+            else:
+                value = {**value, "persistence": "not-admitted"}
+        except Exception:
+            value = {**value, "complete": False, "persistence": "unavailable"}
+            notice_incomplete()
+        host.observe("timing", **value)
+
+    return persist
+
+
+@traced_operation(run_trace_sink)
 def run_operation(
     operation: str,
     configuration: dict | None,
@@ -405,9 +440,8 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             if change and (
                 change["status"] in {"delivering", "cleanup_pending"}
                 or (
-                    change.get("delivery")
+                    change.get("outcome") == "delivered"
                     and change.get("cleanup", {}).get("status") == "pending"
-                    and change.get("outcome") == "delivered"
                 )
             ):
                 record_progress = False
@@ -491,16 +525,15 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             # A request for a Module that does not own the change is admitted only as the
             # component request the owner's Planning records derive; its owner is unchanged.
             change = read_change(host.project_root)
-            if (
+            component = bool(
                 change
                 and change.get("target_id") not in {None, data["target_id"]}
                 and component_request(
                     SpecRepository(host.project_root, host.package_root), change, data
                 )
-            ):
-                host = replace(host, coordinated=True)
+            )
             if host.mode == "execute" and mutates:
-                bind_owner(host.project_root, data, coordinated=host.coordinated)
+                bind_owner(host.project_root, data, component=component)
         accept_output(
             services.dispatcher(
                 AdmittedRequest(
@@ -636,9 +669,9 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                     host.project_root,
                     status=host.lifecycle.get("status")
                     or ("blocked" if result["status"] == "blocked" else "failed"),
-                    outcome=output.get("outcome")
+                    outcome=host.lifecycle.get("outcome")
+                    or output.get("outcome")
                     or (result["errors"][0]["code"] if result["errors"] else "failed"),
-                    blockers=output.get("blockers", []),
                 )
             except (ValueError, OSError) as error:
                 result["errors"].append(

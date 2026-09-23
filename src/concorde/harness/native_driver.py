@@ -23,7 +23,6 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Protocol
 
 from ..spec.repository import SpecError, SpecRepository, digest, read_file
@@ -329,6 +328,19 @@ class _Call:
 
     def workflow(self, request: AdmittedRequest, entry: str) -> dict:
         if self.action == PREPARE:
+            # A request that needs no Workflow is a Host result of the workflow hook.
+            serve = getattr(
+                resolve_hook(entry, WORKFLOW_HOOK_METHODS), "serve_in_place", None
+            )
+            served = serve(request) if serve is not None else None
+            if served is not None:
+                self.result.update(
+                    state="described"
+                    if request.host.mode == "describe-policy"
+                    else "not-run",
+                    accepted=True,
+                )
+                return served
             return _prepare_workflow(self, bind(request), entry)
         return self._run(bind(request), self.internal.get("agent"))
 
@@ -810,11 +822,7 @@ class _Call:
                     "outcome": data["outcome"],
                     "output": output,
                     "change_digest": candidate_input_digest(run.repository.root),
-                    "workspace": workspace_context(
-                        run.repository.root,
-                        target_id=run.target.id,
-                        task=run.task["task"],
-                    ),
+                    "workspace": workspace_context(run.repository.root),
                 }
             )
         )
@@ -848,37 +856,58 @@ def _refuse_failed_run(payload, descriptor, directory) -> None:
 
 
 def _reporter(run, descriptor, snapshot, definition: AgentDefinition):
-    from ..issues.reporting import reporter_for_invocation
+    """The reporting service of one Agent call, derived from its frozen context.
 
-    review = definition.context == "concorde-review-stage-context"
-    invocation = SimpleNamespace(
-        context_json=canonical(
-            typed(
-                definition.context,
-                {
-                    "snapshot": typed("concorde-context-snapshot", snapshot.value),
-                    **(
-                        {
-                            "review": typed(
-                                "concorde-review-input", descriptor["review_input"]
-                            )
-                        }
-                        if review
-                        else {"change_id": run.change_id, "expected_artifacts": []}
-                    ),
-                },
-            )
-        ),
-        invocation_id=descriptor["ticket"],
-        agent=definition.name,
-        operation=descriptor["operation"],
-        stage=descriptor["phase"],
+    The admitted owners are the bound Modules, the Modules they use and the owners of every
+    selected Spec document; the evidence paths are the selected Spec documents, the snapshot's
+    implementation files and every path of a review patch; the selected Issues are those of an
+    Issue selection or Issue context among the stage inputs. Nothing comes from the Agent.
+    """
+    from ..issues.reporting import IssueReporter
+    from .change_worktree import git
+
+    value = snapshot.value
+    resolution = value["spec_resolution"]
+    owners = {
+        resolution["module_id"],
+        *resolution["registration"]["uses"],
+        *(source["owner"] for source in resolution["sources"]),
+    }
+    paths = {source["path"] for source in resolution["sources"]}
+    paths.update(item["path"] for item in value.get("implementation_artifacts", []))
+    if definition.context == "concorde-review-stage-context":
+        # Removed files present in the Host's scoped review patch remain valid evidence.
+        paths.update(item["path"] for item in descriptor["review_input"]["changes"])
+    inputs = value.get("stage_inputs", [])
+    admitted = tuple(
+        item["receipt"]
+        for stage_input in inputs
+        if stage_input["type_id"] == "concorde-issue-context"
+        for item in stage_input["data"]["observations"]
     )
-    reporter = reporter_for_invocation(
+    selected = {item["issue_id"] for item in admitted}
+    selected.update(
+        stage_input["data"]["issue_id"]
+        for stage_input in inputs
+        if stage_input["type_id"] == "concorde-issue-selection"
+    )
+    head = git(run.repository.root, "rev-parse", "HEAD", check=False)
+    reporter = IssueReporter(
         run.repository.root,
-        invocation,
-        target_id=run.target.id,
-        change_id=run.change_id,
+        {
+            "invocation_id": descriptor["ticket"],
+            "agent": definition.name,
+            "operation": descriptor["operation"],
+            "phase": descriptor["phase"],
+            "target_id": run.target.id,
+            "context_id": value["context_id"],
+            "change_id": run.change_id,
+            "head": head.stdout.strip() if head.returncode == 0 else None,
+        },
+        frozenset(owners),
+        frozenset(paths),
+        frozenset(selected),
+        admitted,
     )
     receipts = Path(descriptor["directory"]) / "reports.json"
     if receipts.exists():

@@ -44,11 +44,15 @@ change and never gets a new candidate:
    planned target's progress entry `blocked`, and answer `failed`.
 9. Compare the deliverable tree and the affected revisions with those of steps 3 and 5. A difference
    stops with `stale_evidence`.
-10. A direct candidate stores its `validation` record in the change status and proceeds to
-    readiness. A planned target proceeds to readiness when all its accepted tasks are complete;
-    otherwise the answer is `completed` with the note that semantic completeness is not proven.
+10. A direct candidate stores its evidence in Validation's section of the change status and
+    proceeds to readiness. A planned target proceeds to readiness when all its accepted tasks are
+    complete; otherwise the answer is `completed` with the note that semantic completeness is not
+    proven.
 11. Readiness runs the completion check, confirms the tree is unchanged (`stale_evidence`), sets the
     target's progress entry and the change to `ready`, and records the validated tree.
+
+Steps 1 and 11 change the change's own lifecycle only for a request of the Module the change is
+about; a component request of another Module records only its progress entry.
 
 ## Affected and edited Modules
 
@@ -77,10 +81,12 @@ A planned target's progress entry holds, after validation:
 | `validation_spec_digest` | digest of the Spec sources the structural validation examined |
 | `phase`, `status` | `validate` and `active`, `blocked` or `ready` |
 
-A direct candidate's change status holds one `validation` record with `target_id`, `focus_id`,
-`task`, `constraints`, `spec_digest` (the target's Spec revision), `source_digest` (the Spec
-sources digest) and `checks`. The change status additionally records `validated_tree` when the
-change becomes ready.
+Validation keeps its own records in its provider section `validation` of the change status, a
+typed value `concorde-validation-records@1` whose `data` is `{validated_tree, evidence}`. For a
+direct candidate `evidence` holds `target_id`, `focus_id`, `task`, `constraints`, `spec_digest`
+(the target's Spec revision), `source_digest` (the Spec sources digest) and `checks`;
+`validated_tree` is the deliverable tree recorded when the change became ready, or null. A
+planned target's progress entry belongs to Planning's section and is updated through Planning.
 
 A Module's Spec revision is the digest of its record, the bound Protocol and its resolved Spec
 context; its implementation revision is the digest of its realization entries and of the bytes of
@@ -158,7 +164,7 @@ same code on failure; a caller that receives an error treats it as `complete: fa
 | --- | --- |
 | every required review of the change, with its consumers and components, is current | `review_required` |
 | no open Blocker exists for this Module and its task scope | `spec_incomplete` |
-| *direct candidate:* a `validation` record exists for this Module, focus, task and constraints | `stale_evidence` |
+| *direct candidate:* validation evidence exists for this Module, focus, task and constraints | `stale_evidence` |
 | *direct candidate:* Spec validation passes with the recorded source digest and Spec revision | `stale_evidence` |
 | *direct candidate:* every configured check of the project passed for its current input digest | `stale_evidence` |
 | *planned target:* the Module's Spec revision equals the one its plan was written for | `stale_context` |

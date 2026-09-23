@@ -10,7 +10,7 @@ from tests.concorde.support.paths import RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.harness.worktree import (
+from concorde.harness.change_worktree import (
     WorktreeBoundaryError,
     inspect_worktree,
     require_isolated_worktree,
@@ -60,9 +60,7 @@ class WorktreeBoundaryTests(unittest.TestCase):
             ):
                 require_isolated_worktree(root)
             self.assertEqual(
-                require_isolated_worktree(
-                    root, allow_primary_worktree=True
-                ),
+                require_isolated_worktree(root, allow_primary_worktree=True),
                 boundary,
             )
 
@@ -72,8 +70,12 @@ class WorktreeBoundaryTests(unittest.TestCase):
             parent = Path(directory)
             primary = self.create_repository(parent)
             committed = git(primary, "rev-parse", "HEAD")
-            (primary / "tracked.txt").write_text("another programmer\n", encoding="utf-8")
-            (primary / "untracked.txt").write_text("another programmer\n", encoding="utf-8")
+            (primary / "tracked.txt").write_text(
+                "another programmer\n", encoding="utf-8"
+            )
+            (primary / "untracked.txt").write_text(
+                "another programmer\n", encoding="utf-8"
+            )
             linked = parent / "isolated"
             git(primary, "worktree", "add", "-qb", "agent/test", str(linked), committed)
 
@@ -91,14 +93,9 @@ class WorktreeBoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(WorktreeBoundaryError):
                 require_isolated_worktree(directory)
-            explicit = require_isolated_worktree(
-                directory, allow_primary_worktree=True
-            )
+            explicit = require_isolated_worktree(directory, allow_primary_worktree=True)
             self.assertFalse(explicit.isolated)
             self.assertEqual(explicit.head, "")
-
-
-
 
 
 if __name__ == "__main__":

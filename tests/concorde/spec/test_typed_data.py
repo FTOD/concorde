@@ -62,7 +62,7 @@ class TypedDataTests(unittest.TestCase):
             # targets is outside the measured validation region.
             boundaries = (
                 "concorde.harness.change_worktree.save_change",
-                "concorde.harness.change_worktree.save_target_state",
+                "concorde.planning.records.save_target_state",
                 "builtins.open",
                 "io.open",
                 "os.open",

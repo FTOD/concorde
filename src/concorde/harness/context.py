@@ -349,7 +349,7 @@ def resolve_context(
         "stage_inputs": list(stage_inputs),
         "workspace": workspace
         if workspace is not None
-        else workspace_context(repository.root, target_id=target.id, task=task),
+        else workspace_context(repository.root),
     }
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
 
@@ -399,9 +399,7 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot) -> No
     declared = value.pop("context_id")
     if digest(value) != declared:
         raise SpecError("context snapshot identity has changed", "stale_context")
-    _recheck_workspace(
-        repository.root, value["workspace"], value["target_id"], value["task"]
-    )
+    _recheck_workspace(repository.root, value["workspace"])
     current = SpecRepository(
         repository.root,
         repository.package_root,
@@ -448,12 +446,10 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot) -> No
         raise SpecError("the Agent binding changed", "stale_context")
 
 
-def _recheck_workspace(
-    root: Path, observed: dict, target_id: str | None = None, task: str | None = None
-) -> None:
+def _recheck_workspace(root: Path, observed: dict) -> None:
     from .change_worktree import workspace_context
 
-    current = workspace_context(root, target_id=target_id, task=task)
+    current = workspace_context(root)
     # Other worktrees may advance while this stage runs. Their inventory is an
     # explicitly timestamp-free observation, never an authority grant. This
     # invocation's own identity and lifecycle boundary must remain unchanged.

@@ -94,7 +94,8 @@ class TimingTests(unittest.TestCase):
         self.assertEqual(trace.incomplete, 1)
 
     @verifies(
-        "scenario.observation.session-observation", "scenario.observation.diagnostic-spans"
+        "scenario.observation.session-observation",
+        "scenario.observation.diagnostic-spans",
     )
     def test_native_analysis_omits_payloads(self):
         from concorde.harness.timing import analyze_native
@@ -136,7 +137,10 @@ class TimingTests(unittest.TestCase):
                 observe=lambda event, **value: events.append(value),
             )
 
-            @traced_operation
+            def sink_for(host):
+                return lambda value: host.observe("timing", **value)
+
+            @traced_operation(sink_for)
             def cancelled(*, host_context):
                 Span("unfinished.prepare")
                 return {
@@ -147,6 +151,7 @@ class TimingTests(unittest.TestCase):
 
             result = cancelled(host_context=host)
             self.assertEqual(result["status"], "failed")
+            # The caller's sink decides where a trace goes; the recorder writes nothing itself.
             self.assertFalse((Path(directory) / ".concorde/runs").exists())
         [trace] = events
         self.assertFalse(trace["complete"])

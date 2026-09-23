@@ -162,11 +162,8 @@
       "entries": [
         "operations/issues.py",
         "prompts/operation-guidance/concorde-issues.md",
-        "src/concorde/issues/graph.py",
-        "src/concorde/issues/solve.py",
         "src/concorde/issue_solving/"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.issue-solving.workflow",

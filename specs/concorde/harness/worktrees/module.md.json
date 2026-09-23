@@ -103,15 +103,6 @@
       ]
     },
     {
-      "id": "realization.worktrees.boundary",
-      "type": "realization",
-      "title": "Worktree boundary",
-      "meaning": "#realization.worktrees.boundary",
-      "entries": [
-        "src/concorde/harness/worktree.py"
-      ]
-    },
-    {
       "id": "realization.worktrees.tests",
       "type": "realization",
       "title": "Worktree tests",
@@ -181,7 +172,7 @@
     },
     {
       "type": "relates",
-      "source": "realization.worktrees.boundary",
+      "source": "realization.worktrees.lifecycle",
       "verb": "inspects",
       "target": "concept.worktrees.worktree"
     }

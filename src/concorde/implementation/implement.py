@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..harness.change_worktree import read_change, save_target_state, target_state
+from ..harness.change_worktree import read_change
 from ..harness.revisions import (
     implementation_digest,
     target_revision,
@@ -10,6 +10,7 @@ from ..harness.revisions import (
 )
 from ..review.review import repair_feedback, require_spec_review
 from ..planning.gaps import pending_gaps, record_gaps
+from ..planning.records import save_target_state, target_state, targets
 from ..planning.scope import change_scope, component_intent
 from ..spec.repository import SpecError
 from ..spec.typed_data import typed
@@ -54,7 +55,7 @@ def prepare_implementation(run, *, admitted_inputs=None):
     change = read_change(run.repository.root, required=True)
     for target_id, tasks in grouped.items():
         component = run.repository.module(target_id)
-        child = change["targets"].get(target_id, {})
+        child = targets(change).get(target_id, {})
         if (
             child.get("task") != component_intent(tasks)
             or child.get("constraints", []) != run.task.get("constraints", [])
@@ -134,7 +135,7 @@ def persist_implementation(run, data, state, local, revisions):
     state["implementation_digest"] = implementation_digest(run.repository, run.target)
     state["checks"] = []
     state.pop("repair_review", None)
-    if revisions or state.get("coordination"):
+    if revisions:
         state["component_revisions"] = revisions
     state.update(phase="implementation", status="completed")
     save_target_state(run.repository.root, state)

@@ -87,7 +87,9 @@ route by `KIND`:
 
 The `agent-call` and `pi-workflow` routes require the native driver that the Pi session's native
 preparation entry supplies. Without it, reached through the bare launcher, they fail with
-`native_required` before any hook runs. Dispatch passes `describe-policy` mode through unchanged; the
+`native_required` before any Agent hook or workflow step runs; only a `pi-workflow` request that its
+workflow hook's in-place service answers, such as an Issue bookkeeping action, is served as a Host
+result there. Dispatch passes `describe-policy` mode through unchanged; the
 entry point or native driver produces the preview. Dispatch performs no target, workspace or stage
 check of its own.
 

@@ -3,15 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from pathlib import Path
 
 from ..spec.repository import SpecRepository, digest, read_file
-
-
-def issues_revision(root: Path) -> str:
-    from ..issues.store import list_issues
-
-    return digest([(item["id"], item["revision"]) for item in list_issues(root)])
 
 
 def implementation_digest(repository: SpecRepository, target) -> str:

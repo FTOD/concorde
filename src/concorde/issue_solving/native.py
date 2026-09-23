@@ -1,20 +1,20 @@
 """The Issue solver's Agent hook and the solve workflow hook of ``concorde-issues``.
 
 Bookkeeping actions and the solve of an already closed Issue are served in place without a
-Workflow. Solving an open Issue runs the solve workflow: at most six iterations of a Host step that
-issues one solver slot, the solver, a Host step that admits its decision and either finishes,
-closes and validates, or issues review slots, the reviewers, and a Host step that admits every
-review of the iteration together. Every decision about state, evidence and closure is Host code.
+Workflow (``bookkeeping.serve``). Solving an open Issue runs the solve workflow: at most six
+iterations of a Host step that issues one solver slot, the solver, a Host step that admits its
+decision and either finishes, closes and validates, or issues review slots, the reviewers, and a
+Host step that admits every review of the iteration together. Every decision about state,
+evidence and closure is Host code.
 """
 
 from __future__ import annotations
 
-import dataclasses
 import json
 import re
 import subprocess
 
-from ..harness.invocation import Invocation, bind, validate_stage_identity
+from ..harness.invocation import Invocation, validate_stage_identity
 from ..harness.native_driver import (
     StagePlan,
     WorkflowPlan,
@@ -22,9 +22,9 @@ from ..harness.native_driver import (
     stage_response,
     stop_plan,
 )
-from ..issues.graph import MAX_DECISIONS, issue_nodes
-from ..issues.solve import IssueSolve
 from ..issues.store import read_issue
+from .bookkeeping import MAX_DECISIONS, serve
+from .solve import IssueSolve
 from ..spec.repository import SpecError
 from ..spec.typed_data import canonical
 
@@ -59,26 +59,6 @@ class IssueSolverHook:
         return stage_response(run, data)
 
 
-def _bookkeeping(run) -> dict:
-    """List, show, report and reopen, and the solve of an already closed Issue."""
-    task = run.task
-    if run.host.mode == "describe-policy":
-        return run.response(
-            "described", "Host bookkeeping only; no worker is launched."
-        )
-    if task["action"] == "solve":
-        value = run.response(
-            "completed", "Issue is already disposed; no work replayed."
-        )
-        value["data"].update(
-            issues=[read_issue(run.repository.root, task["issue_id"])[0]],
-            decision="already-closed",
-        )
-        return value
-    nodes = issue_nodes(run)
-    return nodes[nodes["select_operation"]({})["route"]]({})["output"]
-
-
 def _needs_workflow(task: dict) -> bool:
     return task["action"] == "solve" and not task.get("_issue_closed")
 
@@ -94,11 +74,9 @@ class IssuesWorkflowHook:
         """Bookkeeping needs no Workflow; a solve of an open Issue does."""
         if _needs_workflow(request.data):
             return None
-        return _bookkeeping(bind(request))
+        return serve(request)
 
     def prepare(self, run, driver):
-        if not _needs_workflow(run.task):
-            return stop_plan(_bookkeeping(run), accepted=True)
         if run.host.mode == "describe-policy":
             return stop_plan(
                 run.response(
@@ -229,7 +207,7 @@ class IssuesWorkflowHook:
                 "concorde-" + mode + "-review",
                 run.configuration,
                 task,
-                dataclasses.replace(run.host, coordinated=True),
+                run.host,
             )
             components, identity, members = scope_members(child, mode, initialize=True)
             keys = []
@@ -267,7 +245,7 @@ class IssuesWorkflowHook:
                 scope["operation"],
                 run.configuration,
                 scope["parent_task"],
-                dataclasses.replace(run.host, coordinated=True),
+                run.host,
             )
             current(child, scope, driver, check_members=True)
             admitted.append(

@@ -81,8 +81,6 @@ class OperationHost:
     session_root: Path | None = None
     archive_root: Path | None = None
     session_provenance: dict | None = None
-    coordinated: bool = False
-    track_gaps: bool = False
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     # The top-level request's identity, inherited by every nested request so one run keeps one

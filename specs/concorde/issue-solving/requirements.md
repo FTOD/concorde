@@ -14,12 +14,13 @@ A different `target_id` is refused, so selecting an Issue never widens a task's 
 
 ### req.issue-solving.committed-issue — Only committed Issues are solved
 
-Issue solving SHALL refuse to solve an Issue whose record file is not committed, unchanged, at
-`HEAD` of the worktree the request starts in.
+Issue solving SHALL refuse to start solving an open Issue whose record file is not committed,
+unchanged, at `HEAD` of the worktree the request starts in.
 
 The refusal happens before any candidate exists. It keeps a solved Issue from being delivered while
 an uncommitted copy of the same file remains in the primary worktree, where it would block the
-primary merge.
+primary merge. Recovering an interrupted close continues a solve that already started, in its own
+candidate, and is not refused.
 
 ### req.issue-solving.bookkeeping-in-place — Bookkeeping never creates a candidate
 

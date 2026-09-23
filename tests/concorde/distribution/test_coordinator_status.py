@@ -209,6 +209,8 @@ class CoordinatorStatusTests(unittest.TestCase):
             self.assertEqual("pending", merged["cleanup"]["status"])  # default
             git(primary, "worktree", "remove", "--force", str(candidate))
             removed = invoke("--change-id", change_id, "--cleanup", "removed")
-            self.assertEqual(merged["manual_merge"], removed["manual_merge"])
+            from concorde.delivery.records import manual_merge
+
+            self.assertEqual(manual_merge(merged), manual_merge(removed))
             self.assertEqual("removed", removed["cleanup"]["status"])
             self.assertEqual(removed, read_status(primary, change_id))

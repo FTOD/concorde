@@ -859,9 +859,10 @@ class ModuleImplementationTests(unittest.TestCase):
                 repository=repository,
                 target=repository.module("module.a"),
                 host=SimpleNamespace(
-                    coordinated=True, package_root=PACKAGE, invocation_id="test-impact"
+                    lifecycle={}, package_root=PACKAGE, invocation_id="test-impact"
                 ),
                 work_directory=None,
+                owns_change=lambda: False,
                 completed=[],
                 response=lambda outcome="completed", answer="", **kwargs: {
                     "outcome": outcome,
@@ -907,9 +908,10 @@ class ModuleImplementationTests(unittest.TestCase):
             repository=repository,
             target=repository.module("module.a"),
             host=SimpleNamespace(
-                coordinated=True, package_root=PACKAGE, invocation_id="mutating-check"
+                lifecycle={}, package_root=PACKAGE, invocation_id="mutating-check"
             ),
             work_directory=None,
+            owns_change=lambda: False,
             completed=[],
             response=lambda outcome="completed", answer="", **kwargs: {
                 "outcome": outcome,
