@@ -7,7 +7,7 @@ in concrete situations.
 
 ### req.distribution.build-owned-outputs — The build writes only where it owns
 
-The build SHALL write only inside `generated/protocol/` and to `generated/build-manifest.json`.
+The build SHALL write only inside `generated/protocol/`, `generated/workers/` and `generated/main-session/` and to `generated/build-manifest.json`.
 
 Other locations under `generated/` belong to other producers, and the build never judges or removes
 them. Each new prompt root adds its own owned location in the same change.
@@ -30,8 +30,7 @@ manifest.
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command SHALL print exactly one JSON result envelope on standard
-output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `task` and `run` SHALL print exactly one JSON result envelope on standard output, except `--help`.
 
 The exit status follows the envelope's status, so a caller that only checks the status and a caller
 that reads the envelope reach the same conclusion.

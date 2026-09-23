@@ -5,50 +5,49 @@ check the rendered guidance against them are pending.
 
 ## Working method
 
-### scenario.main-session.change-through-task — A requested change runs as a task
+### scenario.main-session.change-through-task — The guidance routes an agreed change through a task
 
-- GIVEN a developer who has agreed a change to one Module with the main agent
-- WHEN the main agent carries it out
-- THEN it opens a task with its own branch and worktree for that Module
-- AND runs the Operations the change needs in that worktree in background Bash
-- BUT it does not edit the Module's Specs or code itself
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to carry out a change agreed with the developer
+- THEN it is told to open a task with its own branch and worktree for the Modules involved
+- AND to run the Operations the change needs in that worktree in background Bash
+- BUT it is told never to edit Specs or code in the primary worktree itself
 
-### scenario.main-session.parallel-tasks — Independent work runs in parallel
+### scenario.main-session.parallel-tasks — The guidance allows parallel work only between worktrees
 
-- GIVEN two agreed changes whose Modules and shared files do not overlap
-- WHEN the main agent plans them
-- THEN it opens one task for each and runs their Operations at the same time
-- BUT two changes that write the same Module run one after another
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to plan several changes
+- THEN it is told to run tasks in parallel only in separate worktrees whose Modules and shared files do not overlap
+- BUT to run tasks that write the same Module or shared file one after another
 
-### scenario.main-session.merge-delivered — A delivered task is merged without asking
+### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
 
-- GIVEN a task whose `delivery` committed the change and its evidence on the task branch
-- WHEN the main agent reads that result
-- THEN it merges the task branch into the primary branch without asking the developer
-- AND records the merge and reports it in its summary
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads what to do after `delivery` committed a task's change with its evidence
+- THEN it is told to merge the task branch into the primary branch without asking the developer
+- AND to close the task as merged and report the merge
 
 ## Escalation
 
-### scenario.main-session.ordinary-decision — An ordinary uncertainty is decided and reported
+### scenario.main-session.ordinary-decision — The guidance decides ordinary questions and reports them
 
-- GIVEN an Operation result that is `blocked` on a choice of ordinary scope, such as a name or an internal structure
-- WHEN the main agent handles it
-- THEN it decides, records the decision and its reason in the task's decision log and re-runs the Operation
-- AND reports the decision in its final summary
-- BUT it does not stop to ask the developer
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to handle an Operation result blocked on a choice of ordinary scope, such as a name or an internal structure
+- THEN it is told to decide, to record the decision and its reason in the task's decision log and to report it at the end
+- BUT not to stop and ask the developer
 
-### scenario.main-session.major-decision — A major decision is escalated
+### scenario.main-session.major-decision — The guidance escalates major decisions with their evidence
 
-- GIVEN an Operation result whose options would change what a Module promises to its users
-- WHEN the main agent handles it
-- THEN it records the escalation in the task's decision log
-- AND asks the developer with the problem, the evidence and the options before acting
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to handle a result whose options would change what a Module promises to its users
+- THEN it is told to ask the developer before acting
+- AND to pass the escalation on in full: the problem, what was tried, the evidence, the options and a recommendation
 
 ## Issues
 
-### scenario.main-session.solve-issue — An Issue is solved through a task
+### scenario.main-session.solve-issue — The guidance solves Issues through tasks
 
-- GIVEN an open Issue owned by a Module
-- WHEN the developer asks the main agent to solve it
-- THEN the main agent opens a task for that Module and runs the Operations that fix the problem
-- AND closes the Issue on the task branch with the evidence before merging it
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to solve an open Issue owned by a Module
+- THEN it is told to open a task for that Module and run the Operations that fix the problem
+- AND to close the Issue on the task branch with the evidence, so the closure is merged with the fix

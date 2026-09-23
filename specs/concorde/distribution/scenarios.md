@@ -1,7 +1,6 @@
 # Distribution scenarios
 
-Concrete situations that show the [requirements](requirements.md) at work. The tests that verify
-them are pending, so these are promises of the design until those tests exist.
+Concrete situations that show the [requirements](requirements.md) at work.
 
 ## Build
 

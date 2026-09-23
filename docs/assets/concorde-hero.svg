@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" fill="none" role="img" aria-labelledby="title description">
   <title id="title">Concorde — Specify the architecture.</title>
-  <desc id="description">Architecture-aware Specs, scoped agent context, sandboxed Pi workers and inspectable LangGraph Operations.</desc>
+  <desc id="description">Architecture-aware Specs, Spec-derived grants and fenced Claude Code workers.</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1200" y2="440" gradientUnits="userSpaceOnUse">
       <stop stop-color="#111A30"/><stop offset="1" stop-color="#17152E"/>
@@ -25,7 +25,7 @@
     <text x="52" y="223" fill="#F5F5FF" font-size="56" font-weight="700" letter-spacing="-2.2">Specify the</text>
     <text x="52" y="285" fill="#F5F5FF" font-size="56" font-weight="700" letter-spacing="-2.2">architecture.</text>
     <text x="56" y="332" fill="#B7BED5" font-size="20">Understand the system. Guide your agents.</text>
-    <text x="56" y="399" fill="#8791B0" font-size="12" font-weight="550" letter-spacing="1.4">SPECS  /  SCOPED CONTEXT  /  SANDBOXED WORKERS  /  LANGGRAPH OPERATIONS</text>
+    <text x="56" y="399" fill="#8791B0" font-size="12" font-weight="550" letter-spacing="1.4">SPECS  /  SPEC-DERIVED GRANTS  /  FENCED WORKERS  /  CLAUDE CODE</text>
   </g>
   <g stroke="#7375D8" stroke-opacity=".3">
     <path d="M835 119 1020 89 1120 213 1002 341 811 299 835 119Z"/>

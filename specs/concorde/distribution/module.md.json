@@ -139,10 +139,7 @@
         "scripts/install-concorde.py",
         "src/concorde/distribution/install.py"
       ],
-      "pending": [
-        "scripts/install-concorde.py",
-        "src/concorde/distribution/install.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.distribution.tests",
@@ -152,9 +149,7 @@
       "entries": [
         "tests/concorde/distribution/"
       ],
-      "pending": [
-        "tests/concorde/distribution/"
-      ]
+      "pending": []
     }
   ],
   "relations": [

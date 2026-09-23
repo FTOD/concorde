@@ -4,238 +4,150 @@
   "projectName": "concorde",
   "repository": "https://github.com/FTOD/concorde",
   "schema_version": 1,
-  "tagline": "Architecture-aware Specs, explicit Agent grants and independently checked results.",
+  "tagline": "Architecture-aware Specs, Spec-derived grants and fenced Claude Code workers.",
   "title": "Concorde Framework",
   "url": "https://ftod.github.io",
   "homepage": {
-    "eyebrow": "Specs · Pi Agents · Independent evidence",
-    "title": "Specify the architecture. Guide your agents.",
-    "description": "Concorde keeps your project's Specs at the center of AI-assisted development. Your Pi session reads Specs, answers questions and edits them with you, then calls Concorde's Operations one explicit step at a time. Model steps run as native Pi Agent calls or pi workflows and count only after the Host accepts their proposals; richer flows may be LangGraph Graphs. Evidence binds to current inputs; direct edits never supply successful review or completion.",
+    "eyebrow": "Specs · Grants · Claude Code workers",
+    "title": "Specify the architecture. Fence your agents.",
+    "description": "Concorde keeps your project's Specs at the center of AI-assisted development. Its Spec tooling validates the Specs, computes from them exactly what a task may read and write, serves them over a local MCP server and publishes them as this site. Your Claude Code session, the main agent, splits work into tasks and runs Concorde's Operations, whose headless Claude Code workers run inside the Spec-derived boundary and whose results keep host evidence apart from worker claims.",
     "features": {
       "title": "Context and permission, managed around the Spec.",
       "items": [
         {
           "title": "Read complete Module specifications.",
-          "description": "Module documents explain purpose, terminology, correct use, design and relationships for a reader who does not know the code. Implementation documents hold the precise requirements, scenarios and contracts. Paired metadata binds entities to the files that realize them, and tests declare the scenarios they verify."
+          "description": "Module documents explain purpose, terminology, use, design and relationships for a reader who does not know the code. Implementation documents hold the precise requirements, scenarios and contracts, and tests declare the scenarios they verify."
         },
         {
-          "title": "Give each Agent call exactly its context.",
-          "description": "An Agent call receives four kinds of context: the Spec context its Module's declarations select, the names (and, for code phases, the contents) of its Module's files, the contracts of the tools it may use, and its task. A missing promise becomes a reported Spec gap, never a guess from code."
+          "title": "Grants computed from the Specs.",
+          "description": "The Spec Protocol defines six task types — understand, specify, implement, test, review-spec, review-code — and the access level each gives every boundary set. A grant lists every path a task may know by name, read or write; everything else is denied."
         },
         {
-          "title": "Distinguish grants from enforced isolation.",
-          "description": "Domain Agents have fresh context and terminal tool ceilings. Native file, network and credential restrictions are prompt policy, not OS confinement. Only programmer receives a code-write grant. Configured checks and tester commands separately enforce read-only governing files with writable external scratch; unavailable isolation refuses execution."
+          "title": "Workers fenced by their own settings.",
+          "description": "Each worker is a headless claude -p process with generated deny rules (which also bind its Bash sandbox), a write-only hook, a sandbox without network, a cleared environment and its own configuration directory. The host audits every round against the grant. These guard against drift and mistakes, not a malicious actor."
         },
         {
-          "title": "Operations, Agents and two kinds of control flow.",
-          "description": "An Operation is one cataloged entry: a Host service, a single Agent call, a pi workflow run by pi-subagents, or a LangGraph Graph built with the Graph API. Agents defines the seven domain Agents; the Pi session owns the two Task subagents. Every flow is explained in its owner's Spec by a step table or a Graph Spec."
+          "title": "Operations: host steps plus workers.",
+          "description": "understand, specify, implement, test, spec_review and code_review run workers; validate and delivery are deterministic. The host runs configured checks itself, resumes a worker only to fix failing checks, and stops with an escalation on a Spec gap or a boundary it would have to cross."
         },
         {
-          "title": "Develop in candidate worktrees.",
-          "description": "In consumer projects, a mutating capability requested from primary normally runs in a host-created candidate from the committed base; your session stays in place. Source maintenance uses a fresh catalog-free writer, then the user session selects independent testing and, when selected, a fresh sibling tester with exact candidate Pi entry, embedded catalog and runtime provenance. Evidence binds current inputs; delivery and primary merging remain separate requests."
+          "title": "Tasks are branches.",
+          "description": "Each task is a branch with its own worktree, a record and a decision log. Tasks run in parallel only in separate worktrees; delivery commits the change with its evidence and the main agent merges it."
         },
         {
-          "title": "Track problems as Issues.",
-          "description": "Agents record attributed bugs, contract gaps and limitations as Git-versioned Issues. concorde-issues lists, shows, reports, reopens or solves one selected Issue; solving runs in a candidate, returns Spec repairs to the developer and closes an Issue only after checks."
+          "title": "Spec tooling that stands alone.",
+          "description": "concorde validate, concorde grant and the stdio MCP server concorde spec-mcp answer from the Specs of one worktree without calling a model, so any agent can ask what a task may touch."
         }
       ]
     },
     "workflow": {
-      "title": "Choose the result you need.",
-      "description": "The calling agent chooses the target and order: read and edit the contract directly, then explicitly select context-solve, plan, tasks, implement, independent reviews and validation as needed. There is no automatic authoring, routing or development workflow.",
+      "title": "One task from idea to merge.",
+      "description": "The main agent agrees the direction with the developer, then works through a task; it decides ordinary questions itself and escalates only decisions with major impact.",
       "steps": [
         {
-          "title": "Read & select",
-          "description": "Read complete Module Specs, choose an explicit target, and reconcile authorized Spec, metadata and registry edits directly. Select independent Spec review separately."
+          "title": "Discuss & open",
+          "description": "Agree the change with the developer and open a task: a branch and worktree for the Modules it touches."
         },
         {
-          "title": "Plan & implement",
-          "description": "Confirm the contract suffices, plan and derive tasks from the Spec alone, then write only the Module's listed files."
+          "title": "Understand & specify",
+          "description": "Run understand to assess and plan; run specify when the Spec must change first."
         },
         {
-          "title": "Validate & review",
-          "description": "Run configured checks and select independent code review. Blocking findings return to the caller, who chooses repair tasks or a stop."
+          "title": "Implement & test",
+          "description": "Run implement and test; the host audits every write and runs the configured checks itself."
         },
         {
-          "title": "Ready, not merged",
-          "description": "Inspect the candidate. Delivery publishes its branch on request; merging primary needs a separate authorization."
+          "title": "Validate, deliver, merge",
+          "description": "validate decides readiness, delivery commits the change with its evidence, and the main agent merges the branch."
         }
       ]
     },
     "quickstart": {
-      "title": "Start with an explicit project contract.",
-      "description": "Clone and build Concorde, then preview the installation into your Git project. Use Python 3.11+, Node.js 22.6+ with npm and the Pi coding agent with the supported native pi-subagents producer. Linux with bubblewrap is required for enforced check/tester execution, not a claim of native Agent confinement. Pi is the only supported client. Its concorde tool describes and prepares native capabilities or runs finite Host services; initialize the project with concorde-init after installation.",
-      "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\n\n# Replace the path with your Git project.\npython3 scripts/install-concorde.py \\\n  --target /absolute/path/to/project --preview\n\n# Review the preview, then rerun with --apply."
+      "title": "Install into a Git project.",
+      "description": "Use Python 3.11+ and a logged-in Claude Code on Linux with bubblewrap. The installer places the runtime, the concorde command, the Protocol copy and the main-session guidance; it never writes your Specs. Claude Code is the only supported client in this version.",
+      "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\npython3 scripts/install-concorde.py /absolute/path/to/project\n\ncd /absolute/path/to/project\n.concorde/bin/concorde init --propose --name \"My project\""
     },
     "reference": {
-      "title": "Agents and public capabilities",
-      "description": "Eleven Operations, all public, keep their concorde-* names. Agents defines seven domain Agents; the Pi session owns two Task subagents, of which consumer packages carry only the tester. Init, configure, validate and deliver make no model calls.",
+      "title": "Commands and Operations",
+      "description": "Everything runs through the concorde command; Operations print one JSON result.",
       "tables": [
         {
-          "title": "Public capabilities",
-          "description": "Public entries pass common admission. Targeted entries require an explicit Module target. describe-policy previews applicable worker grants without execution; initialization instead uses its deterministic proposal preview.",
+          "title": "Operations",
+          "description": "Run with concorde run <operation> --task <task> in the task's worktree.",
           "columns": [
-            "Capability",
+            "Operation",
             "Result and boundary"
           ],
           "rows": [
             [
-              "concorde-context-solve",
-              "Assess whether the explicitly selected contract supports the task without editing it."
+              "understand",
+              "An assessment of the Modules and, when asked, a plan; reads Specs and only the names of code."
             ],
             [
-              "concorde-plan",
-              "Assess current context and produce a revision-bound plan from Specs, not implementation contents."
+              "specify",
+              "A change of the bound Modules' own Spec documents; structural validation afterwards."
             ],
             [
-              "concorde-tasks",
-              "Author acceptance tasks from a current plan; explicitly selected repair feedback must be current."
+              "implement",
+              "A code change within the bound Modules' realization; configured checks with resume rounds."
             ],
             [
-              "concorde-implement",
-              "Complete admitted local tasks within the listed code grant; return separately selected component work to the caller."
+              "test",
+              "The host's check results interpreted by a read-only worker."
             ],
             [
-              "concorde-spec-review",
-              "Review the complete Spec and terminology semantic consistency without starting a development change."
+              "spec_review",
+              "Review findings and a verdict on the bound Modules' Specs."
             ],
             [
-              "concorde-code-review",
-              "Review or diagnose the granted implementation against its Spec without starting a development change."
+              "code_review",
+              "Review findings and a verdict on the task's code changes."
             ],
             [
-              "concorde-issues",
-              "Inspect or assess an explicit Issue; return repairs to the caller and verify actual current evidence separately."
+              "validate",
+              "Readiness: structural validation and the configured checks of the changed Modules."
             ],
             [
-              "concorde-init",
-              "Propose and apply initialization with a pinned Protocol, the worker model and an honest Module stub."
-            ],
-            [
-              "concorde-configure",
-              "Apply explicit Pi worker model, thinking and timeout settings; accept an installed Protocol only when requested."
-            ],
-            [
-              "concorde-validate",
-              "Record current deterministic validation evidence for a candidate."
-            ],
-            [
-              "concorde-deliver",
-              "Publish a verified delivery branch and normally remove its source worktree; merge primary only on a separate request."
+              "delivery",
+              "A commit of the task's change with its evidence bundle on the task branch."
             ]
           ]
         },
         {
-          "title": "Agents and Task subagents",
-          "description": "Agents defines each domain Agent once: tools, effects, instructions and output contract. Task subagents belong to the Pi session and receive explicit task and worktree grants. No Agent or Task subagent delegates.",
+          "title": "Commands",
+          "description": "In an installed project the command is .concorde/bin/concorde.",
           "columns": [
-            "Name",
-            "Responsibility and authority"
-          ],
-          "rows": [
-            [
-              "spec-reviewer, context-assessor",
-              "Review a Spec independently or assess whether its context suffices; read-only."
-            ],
-            [
-              "planner, task-author",
-              "Produce plans and acceptance tasks from the Spec, declared references and file names, without source contents."
-            ],
-            [
-              "programmer, code-reviewer",
-              "Write only the selected Module's listed files, or review the authorized code read-only in a fresh conversation."
-            ],
-            [
-              "issue-solver",
-              "Choose bounded work or an evidence-grounded disposition for one explicitly selected Issue."
-            ],
-            [
-              "maintenance-worker",
-              "Source-only author of verified candidate work under the user session's frozen grant; self-checks are not independent acceptance."
-            ],
-            [
-              "tester",
-              "Fresh source/consumer independent tester with read-only governing artifacts, enforced commands and retained evidence; never repairs or delegates."
-            ]
-          ]
-        },
-        {
-          "title": "Modules",
-          "description": "Dependencies point inward: Spec tooling and Observation use nothing, the Harness never uses Operations or its providers, and outer Modules use what they need.",
-          "columns": [
-            "Module",
-            "Responsibility"
-          ],
-          "rows": [
-            [
-              "Spec tooling",
-              "Load and check Specs, compute context and boundary sets, register typed values and propose the first Spec."
-            ],
-            [
-              "Harness",
-              "Admit requests, compose context, run Agent calls and workflows, run checks in the read-only boundary, manage candidate worktrees and observe timing. Native file policy is not a sandbox."
-            ],
-            [
-              "Agents",
-              "Define the seven domain Agents; the tools preflight allows come from these definitions."
-            ],
-            [
-              "Operations",
-              "Hold the Operation catalog and dispatch; its providers are Planning, Implementation, Review, Validation, Delivery and Issue solving."
-            ],
-            [
-              "Issues",
-              "Keep Issue records and the report service Agents use."
-            ],
-            [
-              "Pi session",
-              "Configure the developer's Pi session: the concorde tool, session selection, Task subagents and coordinator instructions."
-            ],
-            [
-              "Distribution",
-              "Build, check and install the package, provision the managed runtime and launch requests."
-            ],
-            [
-              "Views",
-              "Publish Module documents and Implementation documents as a navigable documentation site."
-            ]
-          ]
-        },
-        {
-          "title": "Launchers and supporting tools",
-          "description": "Source-checkout commands are shown below. Installed projects use the corresponding scripts under .concorde/framework/. Direct CLI validation is distinct from lifecycle readiness evidence.",
-          "columns": [
-            "Entry point",
+            "Command",
             "Use"
           ],
           "rows": [
             [
-              "python3 scripts/run-operation.py <operation> < invocation.json",
-              "Submit a typed request. Model-backed capabilities need the prepared native Pi transport; a bare CLI call refuses without it."
+              "concorde validate",
+              "Check every structural rule of the Specs."
             ],
             [
-              "concorde tool in a Pi session",
-              "Describe the eleven public capabilities, prepare native Agent calls and workflows, or run Host services."
+              "concorde grant --modules <ids> --type <task type>",
+              "Print the grant of a task type for some Modules."
             ],
             [
-              "python3 scripts/concorde.py <command>",
-              "build, validate, check-package, select-session, protocol-manifest, registry, docsite and status: render assets, check the project and package, verify a private Pi selection, bind the Protocol, sync the registry, scaffold a docsite and coordinate change status."
+              "concorde spec-mcp",
+              "Run the local stdio MCP server rooted at the project."
             ],
             [
-              "python3 scripts/install-concorde.py",
-              "Preview or apply the Pi-only installation; files the installer owns are removed only when unchanged, and user content is preserved."
+              "concorde task open|list|show|close",
+              "Manage tasks: branch, worktree, record and decision log."
             ],
             [
-              "python3 scripts/issues.py",
-              "List, show or check Issues from the command line."
+              "concorde run <operation> --task <task>",
+              "Run one Operation and print its result."
             ],
             [
-              "npm --prefix docsite run <script>",
-              "Start, build, validate, typecheck or test the documentation site."
+              "concorde init --propose|--apply",
+              "Propose and apply a project's first Spec."
             ],
             [
-              ".venv/bin/python -m pytest",
-              "Run deterministic Python tests in parallel without starting model-backed workers."
+              "concorde docsite --propose|--apply",
+              "Scaffold a documentation site for the project's Specs."
             ]
           ]
         }

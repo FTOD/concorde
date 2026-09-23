@@ -9,7 +9,7 @@ and read their results, keep each task's decision log, decide ordinary questions
 escalate only decisions with major impact, merge delivered tasks, and handle Issues. The guidance
 is advice to a model, not enforcement: Concorde places no permission limits on the main agent, and
 nothing here constrains what the developer may do. This Module owns the content of the guidance;
-Distribution renders and installs it. Neither the guidance nor its tests exist yet.
+Distribution renders and installs it.
 
 ## Terminology
 
@@ -120,10 +120,12 @@ decisions only the developer may make.
 
 <a id="realization.main-session.guidance"></a>
 
-The **guidance sources** will live under `prompts/main-session/`, authored with the same include
-lines as every prompt, and be rendered by Distribution's build into `generated/`; their tests,
-under `tests/concorde/main_session/`, will check that the rendered guidance states every
-[requirement](requirements.md) of this Module. Both are pending.
+The **guidance sources** live under `prompts/main-session/`: `skill.md`, the full method, installed
+as the project skill `.claude/skills/concorde/SKILL.md`, and `claude-md.md`, the short block
+installed into the project's `CLAUDE.md`. Distribution's build renders them into
+`generated/main-session/`. Their tests, under `tests/concorde/main_session/`, check that the
+rendered guidance states every rule the [scenarios](scenarios.md) describe. What a main agent then
+does is judgment that no deterministic test observes.
 
 ## Relationships
 

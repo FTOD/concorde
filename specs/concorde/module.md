@@ -83,9 +83,8 @@ promises are in [Development environment](development.md).
 
 <a id="realization.concorde.acceptance-tests"></a>
 
-Its **acceptance tests**, under `tests/concorde/acceptance/`, will exercise the root's cross-Module
-[scenarios](scenarios.md) through the `concorde` command; they are pending until the Operations
-they drive exist.
+Its **acceptance tests**, under `tests/concorde/acceptance/`, exercise the root's cross-Module
+[scenarios](scenarios.md) through the installer and the `concorde` command.
 
 ## Relationships
 

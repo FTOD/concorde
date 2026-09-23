@@ -100,9 +100,7 @@
       "entries": [
         "tests/concorde/acceptance/"
       ],
-      "pending": [
-        "tests/concorde/acceptance/"
-      ]
+      "pending": []
     }
   ],
   "relations": []

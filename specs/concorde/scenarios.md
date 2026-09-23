@@ -2,8 +2,9 @@
 
 These scenarios describe whole flows that cross several Modules, seen from the developer and the
 main agent. The precise behaviour of every step belongs to the Module that performs it; a scenario
-here promises only what the Modules achieve together. They will be verified by end-to-end
-acceptance tests that drive the `concorde` command.
+here promises only what the Modules achieve together. They are verified by end-to-end acceptance
+tests that drive the installer and the `concorde` command with a fake worker; what Claude Code
+itself enforces is verified by the Harness's live worker test.
 
 ## Adopting Concorde
 
@@ -32,8 +33,8 @@ acceptance tests that drive the `concorde` command.
 
 - GIVEN a task whose worker needs to change a file outside its grant
 - WHEN the Operation runs
-- THEN the worker's attempt to write the file is refused
-- AND the Operation result is an escalation that names the file, what the worker tried and the host's evidence
+- THEN the write does not stand: the worker's settings refuse it, and a write that slips through fails the host's audit
+- AND the Operation result is an escalation from the host that names the file with the audit as evidence
 - BUT the Operation does not retry the worker with a wider grant
 
 ### scenario.concorde.parallel-tasks — Two tasks in parallel

@@ -1,7 +1,9 @@
 # Concorde refactor design
 
-Status: accepted, 2026-09-24. Items marked **Proposed** were not decided explicitly; they are
-adopted as defaults for implementation and may still be revised. Everything else was agreed.
+Status: implemented, 2026-09-24. Milestones 0 to 8 of [section 12](#12-implementation-order) are
+committed. The Specs under `specs/concorde/` are the normative description; where they refined a
+decision below while it was implemented, they win. Items marked **Proposed** were adopted as the
+defaults.
 
 ## 1. Goals and non-goals
 
@@ -466,3 +468,22 @@ tree.
 **Proposed (M2):** autonomous Issue solving (`issue-solving`) is dropped. The main agent solves an
 Issue by running the ordinary Operations on the Issue's Module. `issues` keeps the store and its
 bookkeeping.
+
+### Where the implementation refined the design
+
+- **Worker enforcement.** `Read` deny rules also bind the Bash sandbox, so the generator hides
+  everything in the user's home except the paths to the task worktree, the run and the runtime
+  paths; a run's `TMPDIR` is a short directory under `/tmp` (see the spike results). Unused
+  pre-created pending files are removed on every exit path.
+- **Worker working directory and records.** Each worker run has its own directory
+  `.concorde/runs/w-…/` in the primary worktree; each Operation run has `.concorde/runs/r-…/` with
+  `result.json`. Task records and decision logs live in `.concorde/tasks/`, ignored by Git.
+- **Worker settings.** The optional `workers` object of the project configuration sets the model,
+  limits, rounds and runtime paths of every worker launch.
+- **Main-session guidance** is installed as the project skill `.claude/skills/concorde/SKILL.md`
+  and a delimited `CLAUDE.md` block; the installer places the runtime under `.concorde/framework/`
+  and the command `.concorde/bin/concorde`, and `concorde init` proposes and applies a first Spec.
+- **Verification.** Every scenario of every Module is declared by a test of its own Module;
+  workers are faked for the host's behaviour, and `CONCORDE_LIVE_CLAUDE=1` runs a real Claude Code
+  worker for what only Claude Code enforces. A live end-to-end run (`implement`, `validate`,
+  `delivery` with a Haiku worker) succeeded on 2026-09-24.

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Check out Concorde's vendored external references (git submodules) without their media.
 
-Concorde's Modules declare the documentation and source of LangGraph as external references
-(Spec Protocol 5.1 ``references`` of kind ``external``) that live under ``reference/`` as git
-submodules pinned to fixed revisions. A plain ``git submodule update --init`` would download the
-upstream repositories' hundreds of megabytes of images. This script performs the checkout the
+A Module may declare third-party documentation or source as an ``includes`` of kind ``external``,
+vendored under ``reference/`` as a git submodule pinned to a fixed revision. A plain
+``git submodule update --init`` would download the upstream repositories' media as well. This script performs the checkout the
 Framework expects instead: a partial clone (``--filter=blob:none``) whose sparse-checkout
 patterns, recorded in ``.gitmodules`` under ``submodule.<name>.concorde-sparse``, exclude media by
 suffix, checked out at exactly the commit the superproject records.
@@ -12,8 +11,8 @@ suffix, checked out at exactly the commit the superproject records.
     python3 scripts/development/init-references.py            # every submodule in .gitmodules
     python3 scripts/development/init-references.py --check    # report without cloning
 
-Run it once in a fresh clone (after ``python3 scripts/concorde.py build``). Host-created candidate
-worktrees do not need it: the host copies the primary worktree's checkouts into them.
+Run it once in a fresh clone (after ``python3 scripts/concorde.py build``); with no submodule in
+``.gitmodules`` it does nothing.
 """
 
 from __future__ import annotations

@@ -76,10 +76,7 @@
         "prompts/main-session/",
         "tests/concorde/main_session/"
       ],
-      "pending": [
-        "prompts/main-session/",
-        "tests/concorde/main_session/"
-      ]
+      "pending": []
     }
   ],
   "relations": [

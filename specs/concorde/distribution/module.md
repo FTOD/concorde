@@ -73,26 +73,39 @@ only reports whether the tracked manifest matches the build.
 | `docsite --propose` or `--apply` | proposes or applies the docsite scaffold | [Views](../spec-tooling/views/module.md) |
 | `grant --modules <ids> --type <task type> [--root <worktree>]` | prints a task type's grant | [Spec core](../spec-tooling/spec/module.md) |
 | `spec-mcp` | runs the stdio MCP server rooted at `CLAUDE_PROJECT_DIR` or the client's root; it prints no envelope | [Spec MCP server](../spec-tooling/spec-mcp/module.md) |
+| `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first Spec | [Spec core](../spec-tooling/spec/module.md) |
+| `task open`, `list`, `show` or `close` | opens, lists, shows or closes tasks; prints the task command's own JSON | [Tasks](../tasks/module.md) |
+| `run <operation> --task <task>` | runs one Operation; prints the Operation result | [Operations](../operations/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 
-Every command prints exactly one JSON result envelope and exits with its status; a refused command
-line or an unexpected error still prints one `failed` envelope rather than a traceback. The
-`task`, `run` and `init` commands will be added by Tasks, Operations and initialization
-respectively; Distribution only routes them.
+Every command except `spec-mcp`, `task` and `run` prints exactly one JSON result envelope and exits
+with its status; a refused command line or an unexpected error still prints one `failed` envelope
+rather than a traceback. `task` and `run` hand the rest of the command line to their owners, which
+print their own JSON and define their own exit codes; Distribution only routes them.
 
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
 
 **Installing into a project.** The **installer**, `python3 scripts/install-concorde.py <project>`,
-is designed but not implemented. It places the **Protocol copy** under `.concorde/protocol/` (the
-tracked manifest and every rendered asset it lists), the `concorde` command, and the
-[main-session guidance](../main-session/module.md#concept.main-session.guidance) as Claude Code
-guidance: a project skill and a delimited block in the project's `CLAUDE.md`. It also seeds
-Concorde-owned defaults when they are absent, such as `.concorde/issues/.gitignore`. It never
-writes Specs, the registry or the Protocol binding; initialization proposes the first Spec, and
-the developer accepts a new Protocol copy by updating the binding. It refuses to copy from a
-package whose build is stale. Until it exists, tests and `protocol-manifest --bind-project` write
-the Protocol copy with the same helper.
+refuses a package whose build is stale and then places:
+
+- the Framework runtime (`src`, `scripts`, `prompts`, `protocol` and the rendered `generated`
+  outputs) under `.concorde/framework/`, replacing an earlier copy; the runtime needs only the
+  Python standard library;
+- the `concorde` command as `.concorde/bin/concorde`, which runs the installed runtime;
+- the **Protocol copy** under `.concorde/protocol/` (the tracked manifest and every rendered asset
+  it lists) and Concorde-owned defaults when they are absent, such as `.concorde/issues/.gitignore`;
+- the [main-session guidance](../main-session/module.md#concept.main-session.guidance) as Claude
+  Code guidance: the project skill `.claude/skills/concorde/SKILL.md` and a block between
+  `<!-- concorde:start -->` and `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in
+  place on a later install and leaving the rest of the file untouched;
+- ignore rules for `.concorde/runs/`, `.concorde/tasks/` and `.concorde/framework/` in the
+  project's `.gitignore`, and a receipt `.concorde/install.json`.
+
+It never writes Specs, the registry or the project configuration. After installing,
+`concorde init --propose --name <name> [--target <module id>]` prints Spec core's initialization
+proposal, and `concorde init --apply --proposal <file>` applies exactly that proposal from a file
+outside the project; the developer accepts a new Protocol copy later by updating the binding.
 
 ## Design
 
@@ -107,7 +120,9 @@ The **build renderer** is a pure function of the source tree followed by a guard
 must be safe repository-relative Markdown paths, may not reach a Spec document, may not form a
 cycle or reach one file twice within a root, and must agree on audience; Protocol prompts include
 only Protocol text. An output is written only inside the build-owned locations
-`generated/protocol/` and `generated/build-manifest.json`, because `generated/` is shared; an owned
+`generated/protocol/`, `generated/workers/`, `generated/main-session/` and
+`generated/build-manifest.json`, because `generated/` is shared; every Markdown file directly in
+`prompts/workers/` or `prompts/main-session/` is a root of its own; an owned
 output the build no longer produces is removed only when its bytes match the previous manifest,
 and links or unknown files stop the build before anything changes. The manifest lets any consumer
 check freshness cheaply by rehashing the recorded sources instead of rebuilding. The resolver still
@@ -128,13 +143,14 @@ therefore receives exactly the Protocol the manifest names, which is what Spec c
 
 <a id="realization.distribution.installer"></a>
 
-The **installer program** will reuse the Protocol copy writer and the build, and install the
-rendered main-session guidance; it is pending.
+The **installer program** reuses the Protocol copy writer and the build's freshness check, and
+installs the rendered main-session guidance.
 
 <a id="realization.distribution.tests"></a>
 
-The **Distribution tests** will exercise the build, the command line and the installer on fixture
-projects; they are pending. The obligations they verify are in the
+The **Distribution tests** exercise the build and the Protocol manifest on built copies of the
+package, the command line, and the installer followed by initialization and validation of a fresh
+project through the installed command. The obligations they verify are in the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
 ## Relationships
