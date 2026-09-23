@@ -40,7 +40,7 @@ def _modules():
 
 
 class OperationModuleContractTests(unittest.TestCase):
-    @verifies("scenario.harness.operation-state")
+    @verifies("scenario.execution.operation-state")
     def test_one_inventory_includes_model_code_and_composed_nodes(self):
         modules = _modules()
         self.assertEqual(18, len(modules))
@@ -133,7 +133,7 @@ class OperationModuleContractTests(unittest.TestCase):
         for name in modules:
             visit(name, ())
 
-    @verifies("scenario.harness.operation-state")
+    @verifies("scenario.execution.operation-state")
     def test_model_subgraph_projects_parent_state_and_preserves_unrelated_channels(
         self,
     ):
@@ -178,21 +178,21 @@ class OperationModuleContractTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             node.graph().invoke(data)  # State cannot supply the trusted launcher.
 
-    @verifies("scenario.harness.operation-state")
+    @verifies("scenario.execution.operation-state")
     def test_arbitrary_compatibility_names_do_not_register_operations(self):
         from concorde.distribution.build import BuildError
 
         with self.assertRaises(BuildError):
             OperationNode("normalize_plan")
 
-    @verifies("scenario.harness.operation-state")
+    @verifies("scenario.execution.operation-state")
     def test_agent_has_no_retired_model_operation_alias(self):
         planner = _modules()["planner"]
         self.assertEqual(planner.KIND, "agent")
         self.assertFalse(hasattr(planner, "run"))
         self.assertFalse(hasattr(planner, "STATE"))
 
-    @verifies("scenario.harness.operation-result-state")
+    @verifies("scenario.execution.operation-result-state")
     def test_host_state_node_preserves_failure_envelope_and_runtime_context(self):
         from operations import validate
 
@@ -218,7 +218,7 @@ class OperationModuleContractTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             validate.run({"task": "Check"}, Runtime(context=None))
 
-    @verifies("scenario.harness.operation-result-state")
+    @verifies("scenario.execution.operation-result-state")
     def test_wire_adapter_rejects_wrong_identity_before_state_projection(self):
         from concorde.harness.admission import run_host_node
 

@@ -9,12 +9,19 @@
         "specs/concorde/module.md",
         "specs/concorde/vocabulary.md",
         "specs/concorde/requirements.md",
-        "specs/concorde/scenarios.md"
+        "specs/concorde/scenarios.md",
+        "specs/concorde/development.md"
       ],
       "contains": [
         {
           "target": "module.spec",
-          "meaning": "#contains-spec"
+          "meaning": "#contains-spec",
+          "relies_on": [
+            "concept.spec.registry",
+            "concept.spec.structural-check",
+            "concept.spec.boundary-set",
+            "concept.spec.typed-value"
+          ]
         },
         {
           "target": "module.harness",
@@ -24,38 +31,64 @@
           "target": "module.agents",
           "meaning": "#contains-agents",
           "relies_on": [
-            "concept.agents.agent"
+            "concept.agents.agent",
+            "concept.agents.definition"
           ]
         },
         {
           "target": "module.operations",
           "meaning": "#contains-operations",
           "relies_on": [
-            "concept.operations.operation"
+            "concept.operations.operation",
+            "concept.operations.catalog"
           ]
-        },
-        {
-          "target": "module.distribution",
-          "meaning": "#contains-distribution"
         },
         {
           "target": "module.issues",
           "meaning": "#contains-issues",
           "relies_on": [
-            "concept.issues.issue"
+            "concept.issues.issue",
+            "concept.issues.report"
+          ]
+        },
+        {
+          "target": "module.session",
+          "meaning": "#contains-session",
+          "relies_on": [
+            "concept.session.session-entry",
+            "concept.session.selection",
+            "concept.session.coordinator"
+          ]
+        },
+        {
+          "target": "module.distribution",
+          "meaning": "#contains-distribution",
+          "relies_on": [
+            "concept.distribution.package",
+            "concept.distribution.launcher",
+            "concept.distribution.protocol-copy",
+            "concept.distribution.managed-runtime"
           ]
         },
         {
           "target": "module.views",
-          "meaning": "#contains-views"
+          "meaning": "#contains-views",
+          "relies_on": [
+            "concept.views.published-site"
+          ]
         }
       ],
       "uses": [],
       "includes": [
         {
           "kind": "document",
+          "target": "document.admission.module",
+          "reason": "defines Capability declaration, which the Framework entry names"
+        },
+        {
+          "kind": "document",
           "target": "document.execution.module",
-          "reason": "defines Workflow, which the Framework entry names"
+          "reason": "defines Workflow and Graph, which the Framework entry names"
         },
         {
           "kind": "document",
@@ -77,45 +110,7 @@
         "specs/concorde/spec/contracts.md"
       ],
       "contains": [],
-      "uses": [
-        {
-          "target": "module.distribution",
-          "meaning": "#uses-distribution"
-        },
-        {
-          "target": "module.operations",
-          "meaning": "#uses-operations",
-          "relies_on": [
-            "concept.operations.operation"
-          ]
-        },
-        {
-          "target": "module.agents",
-          "meaning": "#uses-agents",
-          "relies_on": [
-            "concept.agents.agent"
-          ]
-        },
-        {
-          "target": "module.issues",
-          "meaning": "#uses-issues",
-          "relies_on": [
-            "concept.issues.issue"
-          ]
-        },
-        {
-          "target": "module.harness.worktrees",
-          "meaning": "#uses-worktrees",
-          "relies_on": [
-            "concept.worktrees.candidate",
-            "concept.worktrees.worktree"
-          ]
-        },
-        {
-          "target": "module.harness.execution",
-          "meaning": "#uses-execution"
-        }
-      ],
+      "uses": [],
       "includes": [
         {
           "kind": "document",
@@ -135,23 +130,59 @@
       "contains": [
         {
           "target": "module.harness.admission",
-          "meaning": "#contains-admission"
+          "meaning": "#contains-admission",
+          "relies_on": [
+            "concept.admission.capability-request",
+            "concept.admission.result-envelope",
+            "concept.admission.capability-declaration",
+            "concept.admission.relay"
+          ]
         },
         {
           "target": "module.harness.context",
-          "meaning": "#contains-context"
+          "meaning": "#contains-context",
+          "relies_on": [
+            "concept.context.snapshot",
+            "concept.context.capsule",
+            "concept.context.agent-binding"
+          ]
         },
         {
           "target": "module.harness.execution",
-          "meaning": "#contains-execution"
+          "meaning": "#contains-execution",
+          "relies_on": [
+            "concept.execution.agent-call",
+            "concept.execution.workflow",
+            "concept.execution.graph",
+            "concept.execution.model-selection",
+            "concept.execution.agent-hook",
+            "concept.execution.workflow-hook",
+            "concept.execution.result-gate"
+          ]
         },
         {
           "target": "module.harness.checks",
-          "meaning": "#contains-checks"
+          "meaning": "#contains-checks",
+          "relies_on": [
+            "concept.checks.configured-check",
+            "concept.checks.read-only-boundary"
+          ]
         },
         {
           "target": "module.harness.worktrees",
-          "meaning": "#contains-worktrees"
+          "meaning": "#contains-worktrees",
+          "relies_on": [
+            "concept.worktrees.candidate",
+            "concept.worktrees.change-status",
+            "concept.worktrees.run-record"
+          ]
+        },
+        {
+          "target": "module.harness.observation",
+          "meaning": "#contains-observation",
+          "relies_on": [
+            "concept.observation.diagnostic-span"
+          ]
         }
       ],
       "uses": [],
@@ -177,13 +208,6 @@
       "contains": [],
       "uses": [
         {
-          "target": "module.operations",
-          "meaning": "#uses-operations",
-          "relies_on": [
-            "concept.operations.operation"
-          ]
-        },
-        {
           "target": "module.harness.worktrees",
           "meaning": "#uses-worktrees",
           "relies_on": [
@@ -196,26 +220,34 @@
         },
         {
           "target": "module.spec",
-          "meaning": "#uses-spec"
-        },
-        {
-          "target": "module.distribution",
-          "meaning": "#uses-distribution"
-        },
-        {
-          "target": "module.issues",
-          "meaning": "#uses-issues",
+          "meaning": "#uses-spec",
           "relies_on": [
-            "concept.issues.issue"
+            "concept.spec.typed-value",
+            "concept.spec.registry",
+            "concept.spec.file-transaction",
+            "concept.spec.protocol-binding"
           ]
         },
         {
-          "target": "module.delivery",
-          "meaning": "#uses-delivery"
+          "target": "module.agents",
+          "meaning": "#uses-agents",
+          "relies_on": [
+            "concept.agents.agent"
+          ]
         },
         {
-          "target": "module.harness.execution",
-          "meaning": "#uses-execution"
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "contract.distribution.build-manifest"
+          ]
+        },
+        {
+          "target": "module.harness.observation",
+          "meaning": "#uses-observation",
+          "relies_on": [
+            "concept.observation.diagnostic-span"
+          ]
         }
       ],
       "includes": [
@@ -230,22 +262,36 @@
           "contract": "contract.admission.invocation",
           "version": 3,
           "role": "provided",
-          "peer": "external",
-          "meaning": "specs/concorde/harness/admission/contracts.md#participation-envelopes"
+          "peer": "module.session",
+          "meaning": "#participation-envelopes"
         },
         {
           "contract": "contract.admission.result",
-          "version": 3,
+          "version": 4,
           "role": "provided",
-          "peer": "external",
-          "meaning": "specs/concorde/harness/admission/contracts.md#participation-envelopes"
+          "peer": "module.session",
+          "meaning": "#participation-envelopes"
         },
         {
           "contract": "contract.admission.feedback",
           "version": 1,
           "role": "provided",
-          "peer": "external",
-          "meaning": "specs/concorde/harness/admission/contracts.md#participation-feedback"
+          "peer": "module.session",
+          "meaning": "#participation-envelopes"
+        },
+        {
+          "contract": "contract.admission.capability-declaration",
+          "version": 1,
+          "role": "required",
+          "peer": "module.operations",
+          "meaning": "#participation-declarations"
+        },
+        {
+          "contract": "contract.distribution.build-manifest",
+          "version": 1,
+          "role": "required",
+          "peer": "module.distribution",
+          "meaning": "#uses-distribution"
         }
       ]
     },
@@ -257,33 +303,49 @@
         "specs/concorde/harness/context/module.md",
         "specs/concorde/harness/context/requirements.md",
         "specs/concorde/harness/context/scenarios.md",
-        "specs/concorde/harness/context/contracts.md"
+        "specs/concorde/harness/context/records.md"
       ],
       "contains": [],
       "uses": [
         {
           "target": "module.spec",
-          "meaning": "#uses-spec"
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.boundary-set",
+            "concept.spec.impact-index",
+            "concept.spec.typed-value",
+            "concept.spec.protocol-binding"
+          ]
         },
         {
           "target": "module.harness.worktrees",
           "meaning": "#uses-worktrees",
           "relies_on": [
             "concept.worktrees.worktree",
-            "concept.worktrees.change-status",
-            "scenario.harness.workspace-inventory"
+            "concept.worktrees.workspace-facts"
           ]
         },
         {
           "target": "module.agents",
           "meaning": "#uses-agents",
           "relies_on": [
-            "concept.agents.agent"
+            "concept.agents.agent",
+            "concept.agents.definition"
           ]
         },
         {
           "target": "module.distribution",
-          "meaning": "#uses-distribution"
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "contract.distribution.build-manifest"
+          ]
+        },
+        {
+          "target": "module.harness.observation",
+          "meaning": "#uses-observation",
+          "relies_on": [
+            "concept.observation.diagnostic-span"
+          ]
         }
       ],
       "includes": [
@@ -293,7 +355,15 @@
           "reason": "shared Framework vocabulary"
         }
       ],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.distribution.build-manifest",
+          "version": 1,
+          "role": "required",
+          "peer": "module.distribution",
+          "meaning": "#uses-distribution"
+        }
+      ]
     },
     {
       "id": "module.harness.execution",
@@ -301,10 +371,9 @@
       "entry": "specs/concorde/harness/execution/module.md",
       "owns": [
         "specs/concorde/harness/execution/module.md",
-        "specs/concorde/harness/execution/requirements.md",
-        "specs/concorde/harness/execution/scenarios.md",
+        "specs/concorde/harness/execution/agent-calls.md",
         "specs/concorde/harness/execution/interfaces.md",
-        "specs/concorde/harness/execution/graphs.md"
+        "specs/concorde/harness/execution/control-flow.md"
       ],
       "contains": [],
       "uses": [
@@ -312,21 +381,40 @@
           "target": "module.agents",
           "meaning": "#uses-agents",
           "relies_on": [
-            "concept.agents.agent"
+            "concept.agents.agent",
+            "concept.agents.definition",
+            "req.agents.terminal"
           ]
         },
         {
           "target": "module.harness.context",
-          "meaning": "#uses-context"
+          "meaning": "#uses-context",
+          "relies_on": [
+            "concept.context.snapshot",
+            "concept.context.phase",
+            "concept.context.stage-input",
+            "concept.context.capsule",
+            "concept.context.agent-binding"
+          ]
         },
         {
           "target": "module.harness.admission",
-          "meaning": "#uses-admission"
+          "meaning": "#uses-admission",
+          "relies_on": [
+            "contract.admission.invocation",
+            "contract.admission.result",
+            "contract.admission.feedback",
+            "contract.admission.capability-declaration",
+            "concept.admission.relay",
+            "concept.admission.capability-declaration",
+            "concept.admission.causal-feedback"
+          ]
         },
         {
           "target": "module.harness.worktrees",
           "meaning": "#uses-worktrees",
           "relies_on": [
+            "concept.worktrees.change-status",
             "concept.worktrees.run-record"
           ]
         },
@@ -335,32 +423,33 @@
           "meaning": "#uses-checks",
           "relies_on": [
             "concept.checks.configured-check",
-            "req.checks.project-read-only"
+            "concept.checks.read-only-boundary",
+            "concept.checks.check-result"
           ]
         },
         {
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.registry"
+            "concept.spec.typed-value",
+            "concept.spec.registry",
+            "concept.spec.document"
           ]
-        },
-        {
-          "target": "module.operations",
-          "meaning": "#uses-operations",
-          "relies_on": [
-            "concept.operations.operation"
-          ]
-        },
-        {
-          "target": "module.distribution",
-          "meaning": "#uses-distribution"
         },
         {
           "target": "module.issues",
           "meaning": "#uses-issues",
           "relies_on": [
-            "concept.issues.issue"
+            "contract.issues.report",
+            "contract.issues.receipt",
+            "concept.issues.report"
+          ]
+        },
+        {
+          "target": "module.harness.observation",
+          "meaning": "#uses-observation",
+          "relies_on": [
+            "concept.observation.diagnostic-span"
           ]
         }
       ],
@@ -383,10 +472,46 @@
         {
           "kind": "external",
           "target": "reference/pi/",
-          "reason": "Pi extension API and session events used by Agent calls and passive observation"
+          "reason": "Pi extension API, tool events and sessions used by the native call extension, the child extension and the workflow registrar"
         }
       ],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.execution.host-step",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.planning",
+          "meaning": "specs/concorde/harness/execution/interfaces.md#the-protocol"
+        },
+        {
+          "contract": "contract.execution.host-step",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.review",
+          "meaning": "specs/concorde/harness/execution/interfaces.md#the-protocol"
+        },
+        {
+          "contract": "contract.execution.host-step",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.issue-solving",
+          "meaning": "specs/concorde/harness/execution/interfaces.md#the-protocol"
+        },
+        {
+          "contract": "contract.issues.report",
+          "version": 1,
+          "role": "required",
+          "peer": "module.issues",
+          "meaning": "#uses-issues"
+        },
+        {
+          "contract": "contract.issues.receipt",
+          "version": 1,
+          "role": "required",
+          "peer": "module.issues",
+          "meaning": "#uses-issues"
+        }
+      ]
     },
     {
       "id": "module.harness.checks",
@@ -394,9 +519,8 @@
       "entry": "specs/concorde/harness/checks/module.md",
       "owns": [
         "specs/concorde/harness/checks/module.md",
-        "specs/concorde/harness/checks/requirements.md",
-        "specs/concorde/harness/checks/scenarios.md",
-        "specs/concorde/harness/checks/interfaces.md"
+        "specs/concorde/harness/checks/boundary.md",
+        "specs/concorde/harness/checks/records.md"
       ],
       "contains": [],
       "uses": [
@@ -410,18 +534,18 @@
         },
         {
           "target": "module.spec",
-          "meaning": "#uses-spec"
-        },
-        {
-          "target": "module.harness.execution",
-          "meaning": "#uses-execution",
+          "meaning": "#uses-spec",
           "relies_on": [
-            "concept.execution.diagnostic-span"
+            "concept.spec.registry",
+            "concept.spec.boundary-set"
           ]
         },
         {
-          "target": "module.distribution",
-          "meaning": "#uses-distribution"
+          "target": "module.harness.observation",
+          "meaning": "#uses-observation",
+          "relies_on": [
+            "concept.observation.diagnostic-span"
+          ]
         }
       ],
       "includes": [
@@ -429,11 +553,6 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
-        },
-        {
-          "kind": "external",
-          "target": "reference/pi/",
-          "reason": "Pi extension API used by the test_command tool of the tester"
         }
       ],
       "participates": []
@@ -452,14 +571,17 @@
       "uses": [
         {
           "target": "module.spec",
-          "meaning": "#uses-spec"
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.file-transaction",
+            "concept.spec.typed-value"
+          ]
         },
         {
-          "target": "module.issues",
-          "meaning": "#uses-issues",
+          "target": "module.harness.observation",
+          "meaning": "#uses-observation",
           "relies_on": [
-            "concept.issues.issue",
-            "concept.issues.blocker"
+            "concept.observation.diagnostic-span"
           ]
         }
       ],
@@ -478,64 +600,74 @@
       "entry": "specs/concorde/agents/module.md",
       "owns": [
         "specs/concorde/agents/module.md",
-        "specs/concorde/agents/task-subagents.md",
-        "specs/concorde/agents/contracts.md",
-        "specs/concorde/agents/requirements.md",
-        "specs/concorde/agents/scenarios.md"
+        "specs/concorde/agents/definitions.md"
       ],
       "contains": [],
       "uses": [
         {
           "target": "module.harness.context",
-          "meaning": "#uses-harness-context",
+          "meaning": "#uses-context",
           "relies_on": [
-            "concept.context.grant"
+            "concept.context.agent-binding",
+            "concept.context.stage-input"
           ]
         },
         {
           "target": "module.harness.execution",
-          "meaning": "#uses-harness-execution",
+          "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.workflow"
+            "concept.execution.agent-call",
+            "concept.execution.proposal",
+            "concept.execution.agent-hook"
           ]
         },
         {
           "target": "module.harness.checks",
-          "meaning": "#uses-harness-checks"
-        },
-        {
-          "target": "module.harness.worktrees",
-          "meaning": "#uses-harness-worktrees",
+          "meaning": "#uses-checks",
           "relies_on": [
-            "concept.worktrees.candidate",
-            "concept.worktrees.worktree"
-          ]
-        },
-        {
-          "target": "module.planning",
-          "meaning": "#uses-planning",
-          "relies_on": [
-            "concept.planning.plan",
-            "concept.planning.task"
-          ]
-        },
-        {
-          "target": "module.review",
-          "meaning": "#uses-review",
-          "relies_on": [
-            "concept.review.finding"
+            "concept.checks.configured-check"
           ]
         },
         {
           "target": "module.issues",
           "meaning": "#uses-issues",
           "relies_on": [
-            "concept.issues.issue"
+            "contract.issues.report",
+            "concept.issues.report"
           ]
         },
         {
-          "target": "module.distribution",
-          "meaning": "#uses-distribution"
+          "target": "module.planning",
+          "meaning": "#uses-planning",
+          "relies_on": [
+            "concept.planning.assessment",
+            "concept.planning.plan",
+            "concept.planning.task",
+            "contract.planning.implementation-task"
+          ]
+        },
+        {
+          "target": "module.implementation",
+          "meaning": "#uses-implementation",
+          "relies_on": [
+            "concept.implementation.completion"
+          ]
+        },
+        {
+          "target": "module.review",
+          "meaning": "#uses-review",
+          "relies_on": [
+            "contract.review.result",
+            "concept.review.result",
+            "concept.review.finding"
+          ]
+        },
+        {
+          "target": "module.issue-solving",
+          "meaning": "#uses-issue-solving",
+          "relies_on": [
+            "concept.issue-solving.decision"
+          ]
         }
       ],
       "includes": [
@@ -547,7 +679,7 @@
         {
           "kind": "external",
           "target": "reference/pi/",
-          "reason": "Pi agent sessions, tools, extensions and compaction that the Agent definitions and Task subagent instructions rely on"
+          "reason": "Pi agent definitions, tools and sessions that the Agent definitions and instructions rely on"
         }
       ],
       "participates": []
@@ -558,8 +690,7 @@
       "entry": "specs/concorde/operations/module.md",
       "owns": [
         "specs/concorde/operations/module.md",
-        "specs/concorde/operations/catalog.md",
-        "specs/concorde/operations/scenarios.md"
+        "specs/concorde/operations/catalog.md"
       ],
       "contains": [
         {
@@ -581,6 +712,10 @@
         {
           "target": "module.delivery",
           "meaning": "#contains-delivery"
+        },
+        {
+          "target": "module.issue-solving",
+          "meaning": "#contains-issue-solving"
         }
       ],
       "uses": [
@@ -590,34 +725,21 @@
           "relies_on": [
             "concept.admission.capability-request",
             "concept.admission.result-envelope",
-            "concept.admission.relay",
-            "req.admission.relay-result"
-          ]
-        },
-        {
-          "target": "module.spec",
-          "meaning": "#uses-spec",
-          "relies_on": [
-            "concept.spec.registry",
-            "concept.spec.initial-proposal"
-          ]
-        },
-        {
-          "target": "module.harness.worktrees",
-          "meaning": "#uses-worktrees",
-          "relies_on": [
-            "concept.worktrees.candidate",
-            "req.worktrees.owner-preserved"
+            "concept.admission.capability-declaration",
+            "contract.admission.capability-declaration"
           ]
         },
         {
           "target": "module.harness.execution",
           "meaning": "#uses-execution",
           "relies_on": [
+            "concept.execution.agent-call",
             "concept.execution.workflow",
-            "concept.execution.terminal-agent-operation",
+            "concept.execution.graph",
+            "concept.execution.agent-hook",
+            "concept.execution.workflow-hook",
             "concept.execution.graph-spec",
-            "req.execution.graph-api-only"
+            "concept.execution.terminal-agent-operation"
           ]
         },
         {
@@ -629,10 +751,17 @@
           ]
         },
         {
-          "target": "module.issues",
-          "meaning": "#uses-issues",
+          "target": "module.harness.context",
+          "meaning": "#uses-context",
           "relies_on": [
-            "concept.issues.issue"
+            "concept.context.phase"
+          ]
+        },
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.typed-value"
           ]
         }
       ],
@@ -645,10 +774,18 @@
         {
           "kind": "external",
           "target": "reference/langgraph/",
-          "reason": "LangGraph Graph API (StateGraph, runtime context) that every Operation is built with"
+          "reason": "LangGraph Graph API (StateGraph, runtime context) that every cataloged Graph is built with"
         }
       ],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.admission.capability-declaration",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.harness.admission",
+          "meaning": "#uses-admission"
+        }
+      ]
     },
     {
       "id": "module.planning",
@@ -662,12 +799,19 @@
       "contains": [],
       "uses": [
         {
+          "target": "module.operations",
+          "meaning": "#uses-operations",
+          "relies_on": [
+            "concept.operations.operation",
+            "concept.operations.catalog"
+          ]
+        },
+        {
           "target": "module.harness.admission",
           "meaning": "#uses-admission",
           "relies_on": [
             "concept.admission.capability-request",
-            "concept.admission.result-envelope",
-            "concept.admission.relay"
+            "concept.admission.result-envelope"
           ]
         },
         {
@@ -675,20 +819,23 @@
           "meaning": "#uses-context",
           "relies_on": [
             "concept.context.snapshot",
+            "concept.context.phase",
             "concept.context.capsule",
-            "req.context.names-every-phase",
-            "req.context.recheck"
+            "concept.context.stage-input"
           ]
         },
         {
           "target": "module.harness.execution",
           "meaning": "#uses-execution",
           "relies_on": [
+            "concept.execution.agent-call",
             "concept.execution.workflow",
             "concept.execution.host-step",
-            "concept.execution.result-gate",
+            "concept.execution.agent-hook",
+            "concept.execution.workflow-hook",
             "concept.execution.proposal",
-            "req.execution.proposal-not-completion"
+            "concept.execution.result-gate",
+            "contract.execution.host-step"
           ]
         },
         {
@@ -713,7 +860,9 @@
           "meaning": "#uses-spec",
           "relies_on": [
             "concept.spec.registry",
-            "concept.spec.impact-index"
+            "concept.spec.impact-index",
+            "concept.spec.structural-check",
+            "concept.spec.typed-value"
           ]
         },
         {
@@ -721,24 +870,21 @@
           "meaning": "#uses-issues",
           "relies_on": [
             "concept.issues.issue",
+            "concept.issues.report",
             "concept.issues.blocker",
-            "req.issues.references"
+            "contract.issues.blocker"
           ]
         },
         {
           "target": "module.review",
           "meaning": "#uses-review",
           "relies_on": [
-            "concept.review.finding",
             "concept.review.required-review",
-            "req.review.repair-feedback"
-          ]
-        },
-        {
-          "target": "module.distribution",
-          "meaning": "#uses-distribution",
-          "relies_on": [
-            "req.distribution.fresh-instructions"
+            "concept.review.result",
+            "concept.review.finding",
+            "req.review.spec-gate",
+            "req.review.repair-feedback",
+            "contract.review.result"
           ]
         }
       ],
@@ -746,15 +892,39 @@
         {
           "kind": "document",
           "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
-        {
-          "kind": "external",
-          "target": "reference/pi/",
-          "reason": "Pi Agent definition, extension and tool formats that the native preparation writes and the capture extension uses"
+          "reason": "shared Framework vocabulary, including the four context kinds"
         }
       ],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.planning.implementation-task",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.implementation",
+          "meaning": "#provides-implementation-task"
+        },
+        {
+          "contract": "contract.review.result",
+          "version": 3,
+          "role": "required",
+          "peer": "module.review",
+          "meaning": "#uses-review"
+        },
+        {
+          "contract": "contract.execution.host-step",
+          "version": 1,
+          "role": "required",
+          "peer": "module.harness.execution",
+          "meaning": "#uses-execution"
+        },
+        {
+          "contract": "contract.issues.blocker",
+          "version": 1,
+          "role": "required",
+          "peer": "module.issues",
+          "meaning": "#uses-issues"
+        }
+      ]
     },
     {
       "id": "module.implementation",
@@ -762,8 +932,7 @@
       "entry": "specs/concorde/implementation/module.md",
       "owns": [
         "specs/concorde/implementation/module.md",
-        "specs/concorde/implementation/programmer.md",
-        "specs/concorde/implementation/scenarios.md"
+        "specs/concorde/implementation/programmer.md"
       ],
       "contains": [],
       "uses": [
@@ -774,7 +943,19 @@
             "concept.planning.plan",
             "concept.planning.task",
             "concept.planning.change-scope",
-            "req.planning.tasks-admission"
+            "concept.planning.pending-gap",
+            "contract.planning.implementation-task",
+            "req.planning.tasks-admission",
+            "req.planning.pending-gap-blocks",
+            "req.planning.component-request"
+          ]
+        },
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations",
+          "relies_on": [
+            "concept.operations.operation",
+            "concept.operations.catalog"
           ]
         },
         {
@@ -782,7 +963,7 @@
           "meaning": "#uses-admission",
           "relies_on": [
             "concept.admission.capability-request",
-            "concept.admission.relay"
+            "concept.admission.result-envelope"
           ]
         },
         {
@@ -790,16 +971,18 @@
           "meaning": "#uses-context",
           "relies_on": [
             "concept.context.snapshot",
-            "req.context.contents-code-phases",
-            "req.context.recheck"
+            "concept.context.phase",
+            "concept.context.stage-input"
           ]
         },
         {
           "target": "module.harness.execution",
           "meaning": "#uses-execution",
           "relies_on": [
+            "concept.execution.agent-call",
+            "concept.execution.agent-hook",
             "concept.execution.proposal",
-            "req.execution.proposal-not-completion"
+            "concept.execution.result-gate"
           ]
         },
         {
@@ -807,7 +990,8 @@
           "meaning": "#uses-checks",
           "relies_on": [
             "concept.checks.configured-check",
-            "concept.checks.read-only-boundary"
+            "concept.checks.read-only-boundary",
+            "concept.checks.check-result"
           ]
         },
         {
@@ -831,16 +1015,21 @@
           "meaning": "#uses-spec",
           "relies_on": [
             "concept.spec.registry",
-            "concept.spec.boundary-set"
+            "concept.spec.boundary-set",
+            "concept.spec.impact-index",
+            "concept.spec.structural-check"
           ]
         },
         {
           "target": "module.review",
           "meaning": "#uses-review",
           "relies_on": [
-            "concept.review.finding",
             "concept.review.required-review",
-            "req.review.repair-feedback"
+            "concept.review.finding",
+            "concept.review.result",
+            "req.review.spec-gate",
+            "req.review.repair-feedback",
+            "contract.review.result"
           ]
         }
       ],
@@ -849,14 +1038,24 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
-        },
-        {
-          "kind": "external",
-          "target": "reference/pi/",
-          "reason": "Pi Agent definition and tool formats that the programmer's native preparation writes"
         }
       ],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.planning.implementation-task",
+          "version": 1,
+          "role": "required",
+          "peer": "module.planning",
+          "meaning": "#uses-planning"
+        },
+        {
+          "contract": "contract.review.result",
+          "version": 3,
+          "role": "required",
+          "peer": "module.review",
+          "meaning": "#uses-review"
+        }
+      ]
     },
     {
       "id": "module.review",
@@ -871,32 +1070,58 @@
       "contains": [],
       "uses": [
         {
+          "target": "module.operations",
+          "meaning": "#uses-operations",
+          "relies_on": [
+            "concept.operations.operation",
+            "concept.operations.catalog"
+          ]
+        },
+        {
           "target": "module.harness.admission",
-          "meaning": "#uses-harness-admission"
+          "meaning": "#uses-harness-admission",
+          "relies_on": [
+            "concept.admission.capability-request",
+            "concept.admission.result-envelope"
+          ]
         },
         {
           "target": "module.harness.context",
-          "meaning": "#uses-harness-context"
+          "meaning": "#uses-harness-context",
+          "relies_on": [
+            "concept.context.snapshot",
+            "concept.context.phase",
+            "concept.context.stage-input"
+          ]
         },
         {
           "target": "module.harness.execution",
           "meaning": "#uses-harness-execution",
           "relies_on": [
-            "concept.execution.workflow"
+            "concept.execution.workflow",
+            "concept.execution.agent-hook",
+            "concept.execution.workflow-hook",
+            "concept.execution.host-step",
+            "concept.execution.proposal",
+            "concept.execution.result-gate",
+            "contract.execution.host-step"
           ]
         },
         {
           "target": "module.harness.worktrees",
           "meaning": "#uses-harness-worktrees",
           "relies_on": [
-            "concept.worktrees.candidate"
+            "concept.worktrees.candidate",
+            "concept.worktrees.change-status",
+            "concept.worktrees.run-record"
           ]
         },
         {
           "target": "module.agents",
           "meaning": "#uses-agents",
           "relies_on": [
-            "concept.agents.agent"
+            "concept.agents.agent",
+            "concept.agents.definition"
           ]
         },
         {
@@ -904,16 +1129,46 @@
           "meaning": "#uses-issues",
           "relies_on": [
             "concept.issues.issue",
+            "concept.issues.report",
             "concept.issues.blocker"
           ]
         },
         {
           "target": "module.spec",
-          "meaning": "#uses-spec"
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.registry",
+            "concept.spec.document",
+            "concept.spec.boundary-set",
+            "concept.spec.impact-index",
+            "concept.spec.typed-value"
+          ]
+        },
+        {
+          "target": "module.harness.checks",
+          "meaning": "#uses-checks",
+          "relies_on": [
+            "concept.checks.configured-check",
+            "concept.checks.read-only-boundary",
+            "concept.checks.check-result"
+          ]
+        },
+        {
+          "target": "module.planning",
+          "meaning": "#uses-planning",
+          "relies_on": [
+            "concept.planning.change-scope",
+            "concept.planning.pending-gap",
+            "contract.planning.implementation-task"
+          ]
         },
         {
           "target": "module.implementation",
-          "meaning": "#uses-implementation"
+          "meaning": "#uses-implementation",
+          "relies_on": [
+            "concept.implementation.component-work",
+            "concept.implementation.completion"
+          ]
         }
       ],
       "includes": [
@@ -926,10 +1181,31 @@
       "participates": [
         {
           "contract": "contract.review.result",
-          "version": 2,
+          "version": 3,
           "role": "provided",
-          "peer": "external",
+          "peer": "module.planning",
           "meaning": "#provides-review-result"
+        },
+        {
+          "contract": "contract.review.result",
+          "version": 3,
+          "role": "provided",
+          "peer": "module.implementation",
+          "meaning": "#provides-review-result"
+        },
+        {
+          "contract": "contract.review.result",
+          "version": 3,
+          "role": "provided",
+          "peer": "module.issue-solving",
+          "meaning": "#provides-review-result"
+        },
+        {
+          "contract": "contract.execution.host-step",
+          "version": 1,
+          "role": "required",
+          "peer": "module.harness.execution",
+          "meaning": "#uses-harness-execution"
         }
       ]
     },
@@ -939,44 +1215,70 @@
       "entry": "specs/concorde/validation/module.md",
       "owns": [
         "specs/concorde/validation/module.md",
+        "specs/concorde/validation/records.md",
         "specs/concorde/validation/requirements.md",
-        "specs/concorde/validation/scenarios.md",
-        "specs/concorde/validation/records.md"
+        "specs/concorde/validation/scenarios.md"
       ],
       "contains": [],
       "uses": [
         {
           "target": "module.spec",
-          "meaning": "#uses-spec"
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.registry",
+            "concept.spec.structural-check",
+            "concept.spec.impact-index",
+            "concept.spec.boundary-set",
+            "concept.spec.file-transaction"
+          ]
         },
         {
           "target": "module.harness.checks",
-          "meaning": "#uses-harness-checks"
+          "meaning": "#uses-harness-checks",
+          "relies_on": [
+            "concept.checks.configured-check",
+            "concept.checks.read-only-boundary",
+            "concept.checks.check-result"
+          ]
         },
         {
           "target": "module.harness.worktrees",
           "meaning": "#uses-harness-worktrees",
           "relies_on": [
-            "concept.worktrees.candidate"
+            "concept.worktrees.candidate",
+            "concept.worktrees.change-status"
           ]
         },
         {
           "target": "module.harness.admission",
-          "meaning": "#uses-harness-admission"
+          "meaning": "#uses-harness-admission",
+          "relies_on": [
+            "concept.admission.result-envelope",
+            "concept.admission.capability-declaration",
+            "concept.admission.relay"
+          ]
         },
         {
           "target": "module.review",
           "meaning": "#uses-review",
           "relies_on": [
-            "concept.review.required-review",
-            "req.review.required-current"
+            "concept.review.required-review"
           ]
         },
         {
           "target": "module.planning",
           "meaning": "#uses-planning",
           "relies_on": [
-            "concept.planning.task"
+            "concept.planning.task",
+            "concept.planning.plan"
+          ]
+        },
+        {
+          "target": "module.implementation",
+          "meaning": "#uses-implementation",
+          "relies_on": [
+            "concept.implementation.completion",
+            "concept.implementation.component-work"
           ]
         },
         {
@@ -994,7 +1296,15 @@
           "reason": "shared Framework vocabulary"
         }
       ],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.validation.completion",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.delivery",
+          "meaning": "#provides-completion"
+        }
+      ]
     },
     {
       "id": "module.delivery",
@@ -1002,9 +1312,9 @@
       "entry": "specs/concorde/delivery/module.md",
       "owns": [
         "specs/concorde/delivery/module.md",
+        "specs/concorde/delivery/records.md",
         "specs/concorde/delivery/requirements.md",
-        "specs/concorde/delivery/scenarios.md",
-        "specs/concorde/delivery/records.md"
+        "specs/concorde/delivery/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -1013,32 +1323,44 @@
           "meaning": "#uses-validation",
           "relies_on": [
             "concept.validation.ready",
-            "req.validation.completion-gates"
+            "contract.validation.completion"
           ]
         },
         {
           "target": "module.harness.worktrees",
           "meaning": "#uses-harness-worktrees",
           "relies_on": [
+            "concept.worktrees.worktree",
+            "concept.worktrees.primary-worktree",
             "concept.worktrees.candidate",
-            "concept.worktrees.worktree"
+            "concept.worktrees.change-status"
           ]
         },
         {
           "target": "module.harness.admission",
-          "meaning": "#uses-harness-admission"
+          "meaning": "#uses-harness-admission",
+          "relies_on": [
+            "concept.admission.capability-declaration",
+            "concept.admission.capability-request",
+            "concept.admission.result-envelope"
+          ]
         },
         {
           "target": "module.harness.checks",
-          "meaning": "#uses-harness-checks"
+          "meaning": "#uses-harness-checks",
+          "relies_on": [
+            "concept.checks.configured-check",
+            "concept.checks.read-only-boundary",
+            "concept.checks.check-result"
+          ]
         },
         {
           "target": "module.spec",
-          "meaning": "#uses-spec"
-        },
-        {
-          "target": "module.distribution",
-          "meaning": "#uses-distribution"
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.structural-check",
+            "concept.spec.file-transaction"
+          ]
         }
       ],
       "includes": [
@@ -1048,7 +1370,15 @@
           "reason": "shared Framework vocabulary"
         }
       ],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.validation.completion",
+          "version": 1,
+          "role": "required",
+          "peer": "module.validation",
+          "meaning": "#uses-validation"
+        }
+      ]
     },
     {
       "id": "module.distribution",
@@ -1057,95 +1387,37 @@
       "owns": [
         "specs/concorde/distribution/module.md",
         "specs/concorde/distribution/installation.md",
-        "specs/concorde/distribution/session.md",
+        "specs/concorde/distribution/interfaces.md",
         "specs/concorde/distribution/requirements.md",
-        "specs/concorde/distribution/scenarios.md",
-        "specs/concorde/distribution/interfaces.md"
+        "specs/concorde/distribution/scenarios.md"
       ],
       "contains": [],
       "uses": [
         {
           "target": "module.spec",
-          "meaning": "#uses-spec"
-        },
-        {
-          "target": "module.harness.admission",
-          "meaning": "#uses-admission"
-        },
-        {
-          "target": "module.harness.execution",
-          "meaning": "#uses-execution"
-        },
-        {
-          "target": "module.harness.context",
-          "meaning": "#uses-context"
-        },
-        {
-          "target": "module.harness.checks",
-          "meaning": "#uses-checks"
-        },
-        {
-          "target": "module.harness.worktrees",
-          "meaning": "#uses-worktrees",
+          "meaning": "#uses-spec",
           "relies_on": [
-            "concept.worktrees.candidate"
+            "concept.spec.protocol-binding",
+            "concept.spec.registry",
+            "concept.spec.structural-check",
+            "concept.spec.typed-value"
           ]
         },
         {
-          "target": "module.agents",
-          "meaning": "#uses-agents"
-        },
-        {
-          "target": "module.operations",
-          "meaning": "#uses-operations"
-        },
-        {
-          "target": "module.views",
-          "meaning": "#uses-views"
-        }
-      ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
-        {
-          "kind": "external",
-          "target": "reference/pi/",
-          "reason": "Pi extension, tool and agent-definition APIs used by the session extension and the Task subagent files"
-        }
-      ],
-      "participates": []
-    },
-    {
-      "id": "module.issues",
-      "title": "Issues",
-      "entry": "specs/concorde/issues/module.md",
-      "owns": [
-        "specs/concorde/issues/module.md",
-        "specs/concorde/issues/solving.md",
-        "specs/concorde/issues/interface.md",
-        "specs/concorde/issues/requirements.md",
-        "specs/concorde/issues/scenarios.md"
-      ],
-      "contains": [],
-      "uses": [
-        {
           "target": "module.harness.admission",
-          "meaning": "#uses-admission"
-        },
-        {
-          "target": "module.harness.context",
-          "meaning": "#uses-context",
+          "meaning": "#uses-admission",
           "relies_on": [
-            "concept.context.grant"
+            "concept.admission.capability-request",
+            "concept.admission.capability-declaration",
+            "contract.admission.capability-declaration",
+            "concept.admission.result-envelope"
           ]
         },
         {
           "target": "module.harness.execution",
           "meaning": "#uses-execution",
           "relies_on": [
+            "concept.execution.agent-call",
             "concept.execution.workflow"
           ]
         },
@@ -1153,35 +1425,23 @@
           "target": "module.harness.worktrees",
           "meaning": "#uses-worktrees",
           "relies_on": [
-            "concept.worktrees.candidate",
-            "concept.worktrees.worktree"
+            "concept.worktrees.change-status",
+            "concept.worktrees.primary-worktree",
+            "concept.worktrees.candidate"
           ]
         },
         {
-          "target": "module.spec",
-          "meaning": "#uses-spec",
+          "target": "module.harness.observation",
+          "meaning": "#uses-observation",
           "relies_on": [
-            "concept.spec.registry"
-          ]
-        },
-        {
-          "target": "module.review",
-          "meaning": "#uses-review",
-          "relies_on": [
-            "concept.review.finding"
-          ]
-        },
-        {
-          "target": "module.validation",
-          "meaning": "#uses-validation",
-          "relies_on": [
-            "concept.validation.ready"
+            "concept.observation.diagnostic-span"
           ]
         },
         {
           "target": "module.agents",
           "meaning": "#uses-agents",
           "relies_on": [
+            "concept.agents.definition",
             "concept.agents.agent"
           ]
         },
@@ -1189,7 +1449,28 @@
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [
+            "concept.operations.catalog",
             "concept.operations.operation"
+          ]
+        },
+        {
+          "target": "module.session",
+          "meaning": "#uses-session",
+          "relies_on": [
+            "concept.session.session-entry",
+            "concept.session.catalog",
+            "contract.session.catalog",
+            "concept.session.guidance",
+            "concept.session.selection",
+            "req.session.source-only"
+          ]
+        },
+        {
+          "target": "module.views",
+          "meaning": "#uses-views",
+          "relies_on": [
+            "concept.views.scaffold-proposal",
+            "req.views.template-inventory"
           ]
         }
       ],
@@ -1198,19 +1479,114 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
-        },
-        {
-          "kind": "external",
-          "target": "reference/pi/",
-          "reason": "Pi agent runtime and extension API that run the native solve workflow and serve the report_issue tool"
-        },
-        {
-          "kind": "external",
-          "target": "reference/langgraph/",
-          "reason": "the bookkeeping actions run as nodes of the Operations dispatch StateGraph"
         }
       ],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.distribution.build-manifest",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.harness.admission",
+          "meaning": "specs/concorde/distribution/interfaces.md#participation-build-manifest"
+        },
+        {
+          "contract": "contract.distribution.build-manifest",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.harness.context",
+          "meaning": "specs/concorde/distribution/interfaces.md#participation-build-manifest"
+        },
+        {
+          "contract": "contract.distribution.build-manifest",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.session",
+          "meaning": "specs/concorde/distribution/interfaces.md#participation-build-manifest"
+        },
+        {
+          "contract": "contract.session.catalog",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.session",
+          "meaning": "specs/concorde/distribution/interfaces.md#participation-catalog"
+        }
+      ]
+    },
+    {
+      "id": "module.issues",
+      "title": "Issues",
+      "entry": "specs/concorde/issues/module.md",
+      "owns": [
+        "specs/concorde/issues/module.md",
+        "specs/concorde/issues/interface.md",
+        "specs/concorde/issues/requirements.md",
+        "specs/concorde/issues/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.typed-value",
+            "concept.spec.file-transaction",
+            "concept.spec.registry"
+          ]
+        },
+        {
+          "target": "module.harness.worktrees",
+          "meaning": "#uses-worktrees",
+          "relies_on": [
+            "concept.worktrees.worktree",
+            "concept.worktrees.primary-worktree",
+            "concept.worktrees.run-record"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        }
+      ],
+      "participates": [
+        {
+          "contract": "contract.issues.report",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.harness.execution",
+          "meaning": "#provides-contracts"
+        },
+        {
+          "contract": "contract.issues.receipt",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.harness.execution",
+          "meaning": "#provides-contracts"
+        },
+        {
+          "contract": "contract.issues.blocker",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.planning",
+          "meaning": "#provides-contracts"
+        },
+        {
+          "contract": "contract.issues.selection",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.issue-solving",
+          "meaning": "#provides-contracts"
+        },
+        {
+          "contract": "contract.issues.context",
+          "version": 1,
+          "role": "provided",
+          "peer": "module.issue-solving",
+          "meaning": "#provides-contracts"
+        }
+      ]
     },
     {
       "id": "module.views",
@@ -1230,9 +1606,15 @@
           "meaning": "#uses-spec",
           "relies_on": [
             "concept.spec.registry",
-            "concept.spec.file-transaction",
-            "req.spec.transaction-all-or-nothing",
-            "req.spec.transaction-digest-bound"
+            "concept.spec.impact-index",
+            "concept.spec.file-transaction"
+          ]
+        },
+        {
+          "target": "module.harness.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.graph-spec"
           ]
         },
         {
@@ -1257,6 +1639,305 @@
           "role": "provided",
           "peer": "external",
           "meaning": "specs/concorde/views/contracts.md#scaffold-proposal-participation"
+        }
+      ]
+    },
+    {
+      "id": "module.harness.observation",
+      "title": "Observation",
+      "entry": "specs/concorde/harness/observation/module.md",
+      "owns": [
+        "specs/concorde/harness/observation/module.md",
+        "specs/concorde/harness/observation/spans.md"
+      ],
+      "contains": [],
+      "uses": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "external",
+          "target": "reference/pi/",
+          "reason": "Pi extension API and session events the session observer listens to"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.issue-solving",
+      "title": "Issue solving",
+      "entry": "specs/concorde/issue-solving/module.md",
+      "owns": [
+        "specs/concorde/issue-solving/module.md",
+        "specs/concorde/issue-solving/workflow.md",
+        "specs/concorde/issue-solving/requirements.md",
+        "specs/concorde/issue-solving/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issues.issue",
+            "concept.issues.report",
+            "concept.issues.disposition",
+            "contract.issues.report",
+            "contract.issues.selection",
+            "contract.issues.context",
+            "req.issues.revision-checked",
+            "scenario.issues.store-restore",
+            "scenario.issues.unknown-owner-listed"
+          ]
+        },
+        {
+          "target": "module.harness.worktrees",
+          "meaning": "#uses-worktrees",
+          "relies_on": [
+            "concept.worktrees.candidate",
+            "concept.worktrees.primary-worktree",
+            "concept.worktrees.change-status"
+          ]
+        },
+        {
+          "target": "module.harness.admission",
+          "meaning": "#uses-admission",
+          "relies_on": [
+            "concept.admission.capability-declaration",
+            "concept.admission.capability-request",
+            "concept.admission.relay",
+            "concept.admission.result-envelope"
+          ]
+        },
+        {
+          "target": "module.harness.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.workflow",
+            "concept.execution.agent-call",
+            "concept.execution.host-step",
+            "concept.execution.workflow-hook",
+            "concept.execution.agent-hook",
+            "concept.execution.result-gate",
+            "concept.execution.proposal",
+            "contract.execution.host-step"
+          ]
+        },
+        {
+          "target": "module.agents",
+          "meaning": "#uses-agents",
+          "relies_on": [
+            "concept.agents.agent",
+            "concept.agents.definition"
+          ]
+        },
+        {
+          "target": "module.review",
+          "meaning": "#uses-review",
+          "relies_on": [
+            "concept.review.spec-review",
+            "concept.review.code-review",
+            "concept.review.scope",
+            "concept.review.finding",
+            "contract.review.result"
+          ]
+        },
+        {
+          "target": "module.validation",
+          "meaning": "#uses-validation",
+          "relies_on": [
+            "concept.validation.ready"
+          ]
+        },
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.boundary-set"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "external",
+          "target": "reference/pi/",
+          "reason": "Pi agent, extension and tool formats of the solver and reviewer calls the solve workflow launches"
+        }
+      ],
+      "participates": [
+        {
+          "contract": "contract.issues.selection",
+          "version": 1,
+          "role": "required",
+          "peer": "module.issues",
+          "meaning": "#uses-issues"
+        },
+        {
+          "contract": "contract.issues.context",
+          "version": 1,
+          "role": "required",
+          "peer": "module.issues",
+          "meaning": "#uses-issues"
+        },
+        {
+          "contract": "contract.execution.host-step",
+          "version": 1,
+          "role": "required",
+          "peer": "module.harness.execution",
+          "meaning": "#uses-execution"
+        },
+        {
+          "contract": "contract.review.result",
+          "version": 3,
+          "role": "required",
+          "peer": "module.review",
+          "meaning": "#uses-review"
+        }
+      ]
+    },
+    {
+      "id": "module.session",
+      "title": "Pi session",
+      "entry": "specs/concorde/session/module.md",
+      "owns": [
+        "specs/concorde/session/module.md",
+        "specs/concorde/session/task-subagents.md",
+        "specs/concorde/session/interfaces.md",
+        "specs/concorde/session/requirements.md",
+        "specs/concorde/session/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.harness.admission",
+          "meaning": "#uses-admission",
+          "relies_on": [
+            "contract.admission.invocation",
+            "contract.admission.result",
+            "contract.admission.feedback",
+            "concept.admission.capability-request",
+            "concept.admission.result-envelope",
+            "concept.admission.causal-feedback"
+          ]
+        },
+        {
+          "target": "module.harness.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.agent-call",
+            "concept.execution.workflow",
+            "concept.execution.proposal",
+            "concept.execution.result-gate"
+          ]
+        },
+        {
+          "target": "module.harness.checks",
+          "meaning": "#uses-checks",
+          "relies_on": [
+            "concept.checks.tester-command",
+            "concept.checks.read-only-boundary",
+            "concept.checks.scratch",
+            "concept.checks.tester-evidence"
+          ]
+        },
+        {
+          "target": "module.harness.worktrees",
+          "meaning": "#uses-worktrees",
+          "relies_on": [
+            "concept.worktrees.candidate",
+            "concept.worktrees.primary-worktree",
+            "concept.worktrees.change-status"
+          ]
+        },
+        {
+          "target": "module.harness.observation",
+          "meaning": "#uses-observation",
+          "relies_on": [
+            "concept.observation.diagnostic-span"
+          ]
+        },
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "concept.distribution.launcher",
+            "concept.distribution.build-manifest",
+            "contract.distribution.build-manifest",
+            "concept.distribution.managed-runtime",
+            "concept.distribution.local-installation",
+            "concept.distribution.consumer-project"
+          ]
+        },
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issues.issue"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "external",
+          "target": "reference/pi/",
+          "reason": "Pi extension, tool, agent-definition, session-entry and compaction APIs used by the session extension, the Task subagent projections and the brief lifecycle"
+        }
+      ],
+      "participates": [
+        {
+          "contract": "contract.admission.invocation",
+          "version": 3,
+          "role": "required",
+          "peer": "module.harness.admission",
+          "meaning": "specs/concorde/session/interfaces.md#participation-admission"
+        },
+        {
+          "contract": "contract.admission.result",
+          "version": 4,
+          "role": "required",
+          "peer": "module.harness.admission",
+          "meaning": "specs/concorde/session/interfaces.md#participation-admission"
+        },
+        {
+          "contract": "contract.admission.feedback",
+          "version": 1,
+          "role": "required",
+          "peer": "module.harness.admission",
+          "meaning": "specs/concorde/session/interfaces.md#participation-admission"
+        },
+        {
+          "contract": "contract.distribution.build-manifest",
+          "version": 1,
+          "role": "required",
+          "peer": "module.distribution",
+          "meaning": "specs/concorde/session/interfaces.md#participation-build-manifest"
+        },
+        {
+          "contract": "contract.session.catalog",
+          "version": 1,
+          "role": "required",
+          "peer": "module.distribution",
+          "meaning": "specs/concorde/session/interfaces.md#participation-catalog"
+        },
+        {
+          "contract": "contract.session.selection",
+          "version": 1,
+          "role": "provided",
+          "peer": "external",
+          "meaning": "specs/concorde/session/interfaces.md#participation-selection"
         }
       ]
     }

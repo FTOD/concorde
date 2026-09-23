@@ -47,7 +47,7 @@ class DispatchTests(unittest.TestCase):
         }
         return files, git_value(self.primary, "worktree", "list", "--porcelain")
 
-    @verifies("scenario.operations.unknown-target")
+    @verifies("scenario.admission.unknown-target")
     def test_unresolved_target_or_focus_binds_nothing_and_starts_no_worker(self):
         before = self.snapshot()
         requests = (

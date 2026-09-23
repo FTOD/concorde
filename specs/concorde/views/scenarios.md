@@ -11,19 +11,33 @@ publisher's mechanics in the [pipeline](pipeline.md).
 - WHEN the publisher loads the project
 - THEN it returns one model of the Modules, their `contains` tree, the root Module and one page per owned document
 - AND loading the same unchanged inputs again gives the same model and the same source digest
-- BUT an unsafe path, a symbolic link, duplicate JSON keys, a duplicate identity, a composition cycle, an unmarked Mermaid block that is not a flowchart, a `relies_on` identity its target does not define, or a Terminology import row that does not link to its concept's defining document fails loading before anything is written
 
-The root Module is the first Module in registry order that no Module contains. The model holds
-no graph projection of its own: the Module relations it keeps serve navigation, provenance and
-admission. The publisher does not compare the registry with the entries' `module` blocks; the Spec
-validator does.
+The root Module is the first Module in registry order that no Module contains. The Module relations
+the model keeps serve navigation, provenance and admission. The publisher does not compare the
+registry with the entries' `module` blocks; the Spec validator does.
+
+### scenario.views.load-registry-refused — Inputs the publisher cannot publish are refused
+
+- GIVEN an unsafe path, a symbolic link, duplicate JSON keys, a duplicate identity, a composition cycle, an unmarked Mermaid block that is not a flowchart, a `relies_on` identity its target does not define, or a Terminology import row that does not link to its concept's defining document
+- WHEN the publisher loads the project
+- THEN loading fails with an error naming the source
+- BUT nothing is staged or promoted
 
 ### scenario.views.reject-reading-collection — A document without a valid role is refused
 
-- GIVEN a document whose metadata is not schema 3 or has no valid `role`, an entry `module.md` whose role is `implementation` or whose metadata lacks the `module` block, another document whose metadata has a `module` block, a `module`-role document containing a requirement, a scenario, a canonical contract or a Graph Spec flowchart, or an `implementation`-role document defining a concept
+- GIVEN a document whose metadata is not schema 3 or has no valid `role`, an entry `module.md` whose role is `implementation` or whose metadata lacks the `module` block, another document whose metadata has a `module` block, a `module`-role document containing a requirement, a scenario or a canonical contract, or an `implementation`-role document defining a concept
 - WHEN the publisher loads the project
 - THEN loading fails with an error naming the offending document
 - AND no candidate is staged or promoted
+
+### scenario.views.reject-graph-spec-placement — A Graph Spec on an explanatory page is refused
+
+- GIVEN a `module`-role document containing a Mermaid block with a `%% graph:` line
+- WHEN the publisher loads the project
+- THEN loading fails with an error naming the document
+- AND no candidate is staged or promoted
+
+See [req.views.graph-spec-placement](requirements.md#req.views.graph-spec-placement).
 
 ## Pages and navigation
 
@@ -40,18 +54,23 @@ validator does.
 
 - GIVEN a project in which some documents declare the role `implementation`
 - WHEN the site is built
-- THEN the navigation bar shows the Module Specs and Implementation Specs tabs
-- AND Module Specs lists every entry and `module`-role topic, and Implementation Specs lists only `implementation`-role documents under the same Module tree, omitting Modules without such documents
+- THEN the navigation bar shows the Module documents and Implementation documents tabs
+- AND Module documents lists every entry and `module`-role topic, and Implementation documents lists only `implementation`-role documents under the same Module tree, omitting Modules without such documents
 - AND an implementation page links back to its Module's entry, and the entry's pages link to the Module's implementation documents
 - AND changing only a document's role moves it between tabs without changing its route
-- BUT without any `implementation`-role document the Implementation Specs tab does not appear
+
+### scenario.views.reading-collections-single — Without implementation documents there is one tab
+
+- GIVEN a project in which no document declares the role `implementation`
+- WHEN the site is built
+- THEN the navigation bar shows only the Module documents tab
 
 ### scenario.views.publish-reference-link — A shared document is published once
 
 - GIVEN one document owned by Module A and selected by Modules B and C through `uses` or `includes`
 - WHEN the site is built
 - THEN the document has one page under A, and B and C list no copy of it in their navigation
-- AND its provenance names A as owner and lists every selecting Module with the relation that selected it
+- AND its provenance names A as owner and lists every selecting Module with the relation that selected it, exactly as Spec tooling's `selected-by` index lists them
 - AND links from B's and C's documents lead to that page and its anchors without embedding its content
 
 ### scenario.views.id-anchors — Definition titles keep their identities as anchors
@@ -81,23 +100,24 @@ anchor.
 - THEN the diagram renders in its place with a visible label saying that it is illustrative and not normative
 - AND an unmarked flowchart renders without that label
 
-### scenario.views.publish-without-graph — Diagrams appear only in their documents
+### scenario.views.inline-diagrams — Diagrams render where their documents place them
 
-- GIVEN a valid registered project
+- GIVEN a registered document containing Mermaid fences
 - WHEN the site is built and promoted
-- THEN the site has no generated graph page, graph navigation entry or graph data file
-- AND registered pages, navigation, provenance, anchors and inline Mermaid diagrams are available
-- AND the homepage and custom docs, when configured, behave as usual
+- THEN each diagram renders on that document's page at the position of its fence, from the fence's own text
+- AND the site contains no page, navigation entry or data file drawn from diagrams or relations outside the documents
+
+See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source-identity).
 
 ### scenario.views.operation-graphs-in-owner-specs — Graph Specs are read in their owners' Specs
 
 - GIVEN Concorde's own project, where every executable Graph has one Graph Spec in an implementation document of its owning Module
 - WHEN the site is built
 - THEN each Graph Spec appears once, on its owner's implementation page, with its State, Nodes and Edges before its flowchart
-- AND no tab, homepage link or route publishes a separate Operation or Graph page
 
 Building the site needs no Python Graph environment: the flowchart is ordinary reading. Whether a
-Graph Spec matches its compiled Graph is checked by the Graph Spec check, not by publication.
+Graph Spec matches its compiled Graph is checked by Agent execution's Graph Spec check, not by
+publication.
 
 ## Building and promotion
 
@@ -108,14 +128,26 @@ Graph Spec matches its compiled Graph is checked by the Graph Spec check, not by
 - THEN it replaces the staged content under `docsite/.generated/` with one Markdown page per document, carrying its route, title and reading collection, and one sidebar per reading collection
 - AND each page's table of contents lists its level-2 and level-3 headings
 - AND only after every page and sidebar is written does it write the staging identity record with the source digest
-- BUT a failure before that point leaves no identity record, so a later build refuses the partial staging
+
+### scenario.views.materialize-failure — A failed staging is never built
+
+- GIVEN a staging that fails before every page and sidebar is written
+- WHEN a later build step reads the staged content
+- THEN there is no staging identity record
+- AND the build refuses the partial staging
 
 ### scenario.views.build-site — A build runs every step before promotion
 
 - GIVEN installed site dependencies and a valid registered project
 - WHEN `npm run build` runs
 - THEN it clears the previous candidate, stages the Specs, builds the candidate, validates it and only then promotes it
-- AND a failure to start Docusaurus, a nonzero exit or a failed validation stops the build without promoting
+
+### scenario.views.build-site-failure — A failed step stops the build
+
+- GIVEN a build in which Docusaurus fails to start, exits nonzero or the validation fails
+- WHEN `npm run build` runs
+- THEN the build stops with an error
+- AND it deletes the candidate and promotes nothing
 
 ### scenario.views.validate-candidate-mismatch — A stale or incomplete candidate is rejected
 
@@ -131,22 +163,21 @@ Graph Spec matches its compiled Graph is checked by the Graph Spec check, not by
 - THEN promotion is refused and the candidate is deleted
 - AND the published site is unchanged
 
-### scenario.views.publish-repeat-without-graph — Rebuilding removes pages no longer produced
+### scenario.views.rebuild-removes-stale-pages — Rebuilding removes pages no longer produced
 
 - GIVEN a published site containing pages or files that the current sources no longer produce
 - WHEN a new build succeeds and is promoted
 - THEN the published site contains only what the new build produced
-- BUT a failed build leaves the previous published site in place
 
-### scenario.views.publish-legacy-redirect — Cross-Module links resolve to the owner's page
+### scenario.views.cross-module-link — Cross-Module links resolve to the owner's page
 
 - GIVEN a document of Module A that links, by relative source path and fragment, to a definition in a document owned by Module B
 - WHEN the site is built and validated
 - THEN the rendered link leads to the canonical page of B's document and the requested anchor exists there
-- BUT a link whose page or anchor does not exist in the built site stops promotion until it is corrected
 
-A document has only its canonical route; the publisher keeps no redirects for earlier owners or
-paths, so moving a document requires updating the links to it.
+A document has only its canonical route, so moving a document requires updating the links to it;
+a link to a page or anchor that does not exist stops promotion, as
+[validate-candidate-mismatch](#scenario.views.validate-candidate-mismatch) states.
 
 ## Site configuration
 
@@ -179,7 +210,13 @@ paths, so moving a document requires updating the links to it.
 - WHEN the site is built
 - THEN each collection and each extension item has its own navigation entry outside the Spec tabs
 - AND custom pages are not listed in the build manifest and belong to no Module
-- BUT a collection containing a registered Spec document, a route that conflicts with a Spec page, missing content or a broken internal link fails the build
+
+### scenario.views.custom-docs-refused — Invalid custom docs fail the build
+
+- GIVEN a custom docs collection containing a registered Spec document, a route that conflicts with a Spec page, missing content or a broken internal link
+- WHEN the site is built
+- THEN the build fails naming the collection or link
+- AND nothing is promoted
 
 ### scenario.views.protocol-docs-tab — Concorde publishes its Protocol as custom docs
 
@@ -206,18 +243,27 @@ paths, so moving a document requires updating the links to it.
 - WHEN `concorde.py docsite --apply --proposal PATH` runs
 - THEN it creates exactly the proposed files with the proposed bytes and returns `success` with their paths
 - AND it leaves every other file, including every Spec document, unchanged
-- AND applying the same proposal again returns `unchanged` without writing
+
+### scenario.views.scaffold-apply-repeat — Applying an applied proposal changes nothing
+
+- GIVEN a proposal whose files all already exist with the proposed bytes
+- WHEN `concorde.py docsite --apply --proposal PATH` runs
+- THEN it returns `unchanged` without writing
 
 ### scenario.views.scaffold-stale-rejected — A stale or altered proposal is refused
 
-- GIVEN a proposal that no longer matches the installed template or the project: another proposal version, a changed template digest, an altered file list or hash, or a destination that another process creates while the proposal is being applied
+- GIVEN a proposal that no longer matches the installed template: another proposal version, a changed template digest, or an altered file list or hash
 - WHEN it is applied
-- THEN the application is refused
+- THEN the result is `invalid`
+- BUT nothing is written
+
+### scenario.views.scaffold-concurrent-create — A destination created during apply rolls back
+
+- GIVEN a valid proposal whose destinations are absent when applying starts
+- WHEN another process creates one of the destinations while the proposal is being applied
+- THEN the result is `failed`
 - AND every file this application had already created is removed
 - BUT files it did not create keep their bytes
-
-A mismatch found before writing returns `invalid` and writes nothing. A destination that appears
-during writing returns `failed` after the rollback.
 
 ### scenario.views.scaffold-conflict — Existing destinations block a scaffold
 

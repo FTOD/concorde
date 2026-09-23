@@ -170,7 +170,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
 
     @verifies(
         "scenario.distribution.build-check",
-        "scenario.distribution.build-stale-blocks-execution",
+        "scenario.admission.stale-build",
     )
     def test_independent_protocol_edit_invalidates_runtime_rule_projection(self):
         write_build(self.root)
@@ -243,7 +243,7 @@ class BuildFreshnessTests(unittest.TestCase):
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
         )
 
-    @verifies("scenario.distribution.build-stale-blocks-execution")
+    @verifies("scenario.admission.stale-build")
     def test_verify_fresh_fails_closed_with_no_manifest(self):
         with self.assertRaises(BuildError) as failure:
             verify_fresh(self.root)
@@ -253,7 +253,7 @@ class BuildFreshnessTests(unittest.TestCase):
         write_build(self.root)
         verify_fresh(self.root)  # must not raise
 
-    @verifies("scenario.distribution.build-stale-blocks-execution")
+    @verifies("scenario.admission.stale-build")
     def test_verify_fresh_fails_after_editing_a_recorded_source(self):
         write_build(self.root)
         edited = self.root / "prompts/native/context-assessor.md"
@@ -264,7 +264,7 @@ class BuildFreshnessTests(unittest.TestCase):
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
 
-    @verifies("scenario.distribution.build-stale-blocks-execution")
+    @verifies("scenario.admission.stale-build")
     def test_role_and_python_contract_edits_both_invalidate_build(self):
         write_build(self.root)
         for relative in (
@@ -280,7 +280,7 @@ class BuildFreshnessTests(unittest.TestCase):
                 self.assertEqual("stale_build", failure.exception.code)
                 path.write_text(before)
 
-    @verifies("scenario.distribution.build-stale-blocks-execution")
+    @verifies("scenario.admission.stale-build")
     def test_verify_fresh_fails_when_a_recorded_source_is_gone(self):
         write_build(self.root)
         (self.root / "prompts/native/context-assessor.md").unlink()
@@ -288,7 +288,7 @@ class BuildFreshnessTests(unittest.TestCase):
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
 
-    @verifies("scenario.distribution.load-agent")
+    @verifies("scenario.context.agent-bind")
     def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
         write_build(self.root)
         prompt = load_model_instructions(self.root, "concorde-planner")
@@ -308,7 +308,7 @@ class BuildFreshnessTests(unittest.TestCase):
             load_model_instructions(self.root, "concorde-planner")
         self.assertEqual(failure.exception.code, "stale_build")
 
-    @verifies("scenario.distribution.load-agent")
+    @verifies("scenario.context.agent-bind")
     def test_worker_instruction_records_retain_every_field_and_binding_digest(self):
         from concorde.harness.worker_profile import (
             binding_digest,
@@ -381,7 +381,7 @@ class BuildFreshnessTests(unittest.TestCase):
                 with self.assertRaises(FrozenInstanceError):
                     prompt.body = "replacement"
 
-    @verifies("scenario.distribution.load-agent")
+    @verifies("scenario.context.agent-bind")
     def test_public_catalog_entries_do_not_imply_worker_instructions(self):
         write_build(self.root)
         for name in PUBLIC_OPERATIONS:
@@ -389,7 +389,7 @@ class BuildFreshnessTests(unittest.TestCase):
                 load_model_instructions(self.root, name)
             self.assertEqual("unknown_agent", failure.exception.code)
 
-    @verifies("scenario.distribution.load-agent")
+    @verifies("scenario.context.agent-bind")
     def test_load_agent_accepts_underscore_and_hyphenated_names(self):
         write_build(self.root)
         by_external = load_model_instructions(self.root, "concorde-planner")
@@ -397,7 +397,7 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertEqual(by_external.body, by_underscore.body)
         self.assertEqual(by_external.name, "concorde-planner")
 
-    @verifies("scenario.distribution.load-agent")
+    @verifies("scenario.context.agent-bind")
     def test_load_agent_accepts_a_hyphenated_multiword_agent_name(self):
         write_build(self.root)
         by_external = load_model_instructions(self.root, "concorde-code-reviewer")
@@ -412,7 +412,7 @@ class WireHelperBuildTests(unittest.TestCase):
         "scenario.distribution.build-render",
         "scenario.distribution.build-write",
         "scenario.distribution.build-check",
-        "scenario.distribution.build-stale-blocks-execution",
+        "scenario.admission.stale-build",
     )
     def test_wire_helper_change_invalidates_and_rebuilds_actual_schema_outputs(self):
         with tempfile.TemporaryDirectory() as raw:

@@ -64,7 +64,7 @@ class IssueGraphTests(unittest.TestCase):
             host_context=host,
         )
 
-    @verifies("scenario.issues.inspect", "scenario.concorde.issues")
+    @verifies("scenario.issue-solving.inspect", "scenario.concorde.issue-reported")
     def test_inspection_does_not_create_a_candidate_or_launch_a_worker(self):
         before = read_issue(self.root, self.ref["issue_id"])
         for action in ("list", "show"):
@@ -74,7 +74,7 @@ class IssueGraphTests(unittest.TestCase):
             self.assertFalse((self.root / ".concorde/status").exists())
         self.assertEqual(before, read_issue(self.root, self.ref["issue_id"]))
 
-    @verifies("scenario.issues.solve-spec-repair")
+    @verifies("scenario.issue-solving.spec-repair-handback")
     def test_every_solver_action_has_an_explicit_declared_route(self):
         from concorde.issues.graph import DECISION_ROUTES, NODES
         from concorde.spec.typed_data import DATA_SCHEMAS
@@ -87,14 +87,13 @@ class IssueGraphTests(unittest.TestCase):
         self.assertEqual("finish", DECISION_ROUTES["spec-repair"])
         self.assertEqual("finish", DECISION_ROUTES["develop"])
 
-    @verifies("scenario.issues.solve-stale")
+    @verifies("scenario.issue-solving.stale-issue")
     def test_stale_selection_is_rejected_before_any_worker_runs(self):
         result = self.call("solve", expected_revision="sha256:" + "f" * 64)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("stale_issue", result["errors"][0]["code"])
         self.assertFalse((self.root / ".concorde/status").exists())
 
-    @verifies("scenario.issues.solve-handoff")
     def test_selection_copy_preserves_uncommitted_bytes_and_no_unrelated_file(self):
         destination = self.root / "candidate"
         destination.mkdir()
@@ -119,7 +118,6 @@ class IssueGraphTests(unittest.TestCase):
                 },
             )
 
-    @verifies("scenario.issues.blocker-history")
     def test_issue_identity_outlives_task_wording_and_released_dependencies(self):
         ensure_change(self.root, allow_primary=True)
         blocker = {**self.ref, "blocked_step": "Implement transfer"}
@@ -166,7 +164,7 @@ class IssueGraphTests(unittest.TestCase):
             "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]
         )
 
-    @verifies("scenario.issues.inspect")
+    @verifies("scenario.issue-solving.inspect")
     def test_solving_an_already_closed_issue_does_not_prepare_a_worktree(self):
         from concorde.issues.store import dispose_issue
 

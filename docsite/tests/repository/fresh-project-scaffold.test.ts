@@ -178,7 +178,7 @@ describe("a project holding only initialization outputs", () => {
     ).toBe("unchanged");
   });
 
-  // verifies: scenario.views.publish-homepage-default scenario.views.publish-without-graph scenario.views.id-anchors
+  // verifies: scenario.views.publish-homepage-default scenario.views.inline-diagrams scenario.views.id-anchors
   it("builds the received adapter", async () => {
     const registryPath = resolve(root, ".concorde/specs.json");
     const registry = JSON.parse(await readFile(registryPath, "utf8"));

@@ -15,13 +15,17 @@ defined once in [Review requirements](requirements.md).
 - AND the Host returns the review coverage, the findings and the outcome, and saves the review report
 - BUT no change is created and no Spec document or implementation file changes
 
-A `describe-policy` request for the same review lists the scope and returns `described` without
-running a reviewer or saving a report.
+### scenario.review.preview — A preview lists the scope without reviewing
 
-### scenario.review.separate-entries — Each capability selects its own reviewer
+- GIVEN a review request for a Module
+- WHEN it runs in `describe-policy` mode
+- THEN the Host returns the scope's members with outcome `described`
+- BUT no reviewer runs and no report is saved
+
+### scenario.review.separate-entries — Each Operation selects its own reviewer
 
 - GIVEN an initialized project and a review task
-- WHEN the user session calls one of the two review capabilities
+- WHEN the user session calls one of the two review Operations
 - THEN `concorde-spec-review` runs only the Spec reviewer and `concorde-code-review` runs only the code reviewer
 
 ### scenario.review.terminology-consistency — Imported words are compared with their definitions
@@ -33,38 +37,47 @@ running a reviewer or saving a report.
 - AND a different wording with the same meaning is not reported
 - AND an added condition, a dropped exception or a changed obligation is reported with both locations
 - AND the coverage names the compared terms or states that there was nothing to compare
-- BUT an unfinished comparison is reported as `incomplete` instead of as consistent
+
+### scenario.review.reviewer-failure — A failed reviewer makes the review incomplete
+
+- GIVEN a prepared review scope
+- WHEN a reviewer's native run fails, is cancelled or exhausts its budget
+- THEN the workflow stops at that reviewer
+- AND polling the result returns an `incomplete` result for every member and the outcome `failed` while the scope is still current
+- BUT no member is recorded as `no_findings` and no required review is satisfied
 
 ## Scopes
 
 ### scenario.review.native-scope — A scope is accepted only as a whole
 
 - GIVEN a prepared review scope with the selected Module, a shared-file peer and a code-free parent's components
-- WHEN the native review workflow runs every reviewer and its final Host step accepts the scope
+- WHEN the review workflow runs every reviewer and its final Host step accepts the scope
 - THEN clean, advisory, blocking and incomplete results keep their distinct meanings and refer to genuine Issue receipts
 - AND each member was reviewed in its own context
 - AND a scope of more than thirty-two reviewers uses the same two Host steps
-- BUT a wrong context, mode, receipt or coverage, a changed input, or a missing or failed reviewer prevents accepting any part of the scope as complete
+
+### scenario.review.native-scope-rejected — A mismatched or changed scope is not accepted
+
+- GIVEN a review workflow whose reviewers all ran
+- WHEN a proposal names a wrong context, mode or receipt, lacks coverage, or any member's input changed before the final Host step
+- THEN the final Host step accepts no part of the scope as complete
+- AND a scope that is no longer current is reported as `stale` without saving results
 
 ### scenario.review.explicit-components — A code-free parent is reviewed through its components
 
 - GIVEN a Module that binds no files and whose change recorded completed component work
 - WHEN the user session calls `concorde-code-review` for that Module
-- THEN each recorded component that binds files receives a fresh reviewer with the task derived for it
+- THEN each recorded component that binds files receives a fresh reviewer with its component task
 - AND the parent's result aggregates only the components' typed results, without the parent's reviewer reading component code
 - AND the required code review is satisfied by the current component results without a local code review of the parent
-- BUT a changed component, a corrupt report or a different intent makes the aggregate stale, and review never marks implementation work complete
+- BUT review never marks implementation work complete
 
-## Currentness
+### scenario.review.explicit-components-stale — A changed component makes the aggregate stale
 
-### scenario.review.consumer-currentness — Owner and consumers each need current evidence
-
-- GIVEN a managed change with a required Spec review for a Module whose documents other Modules select
-- WHEN the required review is checked after a document, its metadata, a registration or the intent changed
-- THEN the Module and each consumer need their own current complete-context result under the accepted intent
-- AND a missing, corrupt, incomplete, blocking, empty-coverage or unrelated result does not satisfy the requirement
-- AND an unresolved blocker for the same scope prevents reusing an earlier result
-- BUT an explicitly requested review always runs fresh reviewers and keeps the earlier reports as history
+- GIVEN a code-free parent whose required code review was satisfied by its components' results
+- WHEN a component's code or Spec changes, a component report is corrupted, or the parent's intent changes
+- THEN the parent's required code review is no longer satisfied
+- AND validation refuses readiness with `review_required`
 
 ### scenario.review.promise-impact — Only Modules relying on a changed promise are consumers
 
@@ -83,3 +96,34 @@ running a reviewer or saving a report.
 - THEN the Spec review includes the edited Module and every Module the changed definitions concern
 - AND the code review includes every Module binding a file the candidate changed
 - BUT the Host's worktree guidance and local control records do not count as edits
+
+## Required reviews
+
+### scenario.review.consumer-currentness — A changed consumer input invalidates the required Spec review
+
+- GIVEN a managed change with a required Spec review for a Module whose documents other Modules select
+- WHEN a document, its metadata, a registration or the intent changes after the reviews were recorded
+- THEN the Module and each current consumer need their own current complete-context result under the accepted intent
+- AND a missing, corrupt, incomplete, blocking, empty-coverage or unrelated result does not satisfy the requirement
+- AND an open pending gap for the same input prevents reusing an earlier result
+
+### scenario.review.explicit-review-fresh — An explicit review always runs fresh
+
+- GIVEN a Module with a current recorded review of the same kind and intent
+- WHEN the user session requests that review again
+- THEN fresh reviewers run for every member of the scope
+- AND the earlier reports stay saved as history
+
+### scenario.review.spec-gate — Planning and implementation wait for the required Spec review
+
+- GIVEN a candidate that records a required Spec review of a Module whose latest result has a blocking finding
+- WHEN the user session requests `concorde-plan`, `concorde-tasks` or `concorde-implement` for that Module
+- THEN the Host refuses with `review_required` before any Agent starts
+- BUT `concorde-context-solve` for the same Module is not refused
+
+### scenario.review.no-downgrade — A later request keeps the requirement
+
+- GIVEN a candidate that records a required code review of a Module
+- WHEN the user session requests a code review of that Module with a different task
+- THEN the review runs and its result is saved as evidence
+- BUT the requirement stays recorded and the new result does not satisfy it

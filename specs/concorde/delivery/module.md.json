@@ -9,37 +9,55 @@
     "title": "Delivery",
     "owns": [
       "specs/concorde/delivery/module.md",
+      "specs/concorde/delivery/records.md",
       "specs/concorde/delivery/requirements.md",
-      "specs/concorde/delivery/scenarios.md",
-      "specs/concorde/delivery/records.md"
+      "specs/concorde/delivery/scenarios.md"
     ],
     "contains": [],
     "uses": [
       {
         "target": "module.validation",
         "meaning": "#uses-validation",
-        "relies_on": ["concept.validation.ready", "req.validation.completion-gates"]
+        "relies_on": [
+          "concept.validation.ready",
+          "contract.validation.completion"
+        ]
       },
       {
         "target": "module.harness.worktrees",
         "meaning": "#uses-harness-worktrees",
-        "relies_on": ["concept.worktrees.candidate", "concept.worktrees.worktree"]
+        "relies_on": [
+          "concept.worktrees.worktree",
+          "concept.worktrees.primary-worktree",
+          "concept.worktrees.candidate",
+          "concept.worktrees.change-status"
+        ]
       },
       {
         "target": "module.harness.admission",
-        "meaning": "#uses-harness-admission"
+        "meaning": "#uses-harness-admission",
+        "relies_on": [
+          "concept.admission.capability-declaration",
+          "concept.admission.capability-request",
+          "concept.admission.result-envelope"
+        ]
       },
       {
         "target": "module.harness.checks",
-        "meaning": "#uses-harness-checks"
+        "meaning": "#uses-harness-checks",
+        "relies_on": [
+          "concept.checks.configured-check",
+          "concept.checks.read-only-boundary",
+          "concept.checks.check-result"
+        ]
       },
       {
         "target": "module.spec",
-        "meaning": "#uses-spec"
-      },
-      {
-        "target": "module.distribution",
-        "meaning": "#uses-distribution"
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.structural-check",
+          "concept.spec.file-transaction"
+        ]
       }
     ],
     "includes": [
@@ -49,7 +67,15 @@
         "reason": "shared Framework vocabulary"
       }
     ],
-    "participates": []
+    "participates": [
+      {
+        "contract": "contract.validation.completion",
+        "version": 1,
+        "role": "required",
+        "peer": "module.validation",
+        "meaning": "#uses-validation"
+      }
+    ]
   },
   "defines": [
     {
@@ -77,13 +103,24 @@
       "meaning": "#concept.delivery.receipt"
     },
     {
+      "id": "concept.delivery.manual-merge",
+      "type": "concept",
+      "title": "Manual merge record",
+      "meaning": "#concept.delivery.manual-merge"
+    },
+    {
       "id": "realization.delivery.service",
       "type": "realization",
       "title": "Delivery service",
       "meaning": "#realization.delivery.service",
       "entries": [
         "operations/deliver.py",
-        "src/concorde/harness/worktree_delivery.py"
+        "prompts/operation-guidance/concorde-deliver.md",
+        "src/concorde/harness/worktree_delivery.py",
+        "src/concorde/delivery/"
+      ],
+      "pending": [
+        "src/concorde/delivery/"
       ]
     },
     {
@@ -92,8 +129,10 @@
       "title": "Delivery tests",
       "meaning": "#realization.delivery.tests",
       "entries": [
-        "tests/concorde/harness/test_host_tools.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/delivery/"
+      ],
+      "pending": [
+        "tests/concorde/delivery/"
       ]
     }
   ],
@@ -139,6 +178,12 @@
       "source": "realization.delivery.service",
       "verb": "performs",
       "target": "concept.delivery.primary-merge"
+    },
+    {
+      "type": "relates",
+      "source": "realization.delivery.service",
+      "verb": "records",
+      "target": "concept.delivery.manual-merge"
     }
   ],
   "extensions": {}

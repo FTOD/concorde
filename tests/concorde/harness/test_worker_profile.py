@@ -47,7 +47,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
         _package(self.root)
         write_build(self.root)
 
-    @verifies("scenario.harness.agent-bind")
+    @verifies("scenario.context.agent-bind")
     def test_resolve_agent_succeeds_for_every_inventory_worker(self):
         manifest = json.loads(
             (self.root / "generated/build-manifest.json").read_text(encoding="utf-8")
@@ -97,21 +97,21 @@ class ResolveAgentBuildTests(unittest.TestCase):
                 )
                 self.assertEqual(binding.digest, binding_digest(binding))
 
-    @verifies("scenario.harness.agent-bind")
+    @verifies("scenario.context.agent-bind")
     def test_resolve_agent_accepts_external_hyphenated_and_underscored_names(self):
         by_external = resolve_worker(self.root, "concorde-code-reviewer")
         self.assertEqual(by_external, resolve_worker(self.root, "code-reviewer"))
         self.assertEqual(by_external, resolve_worker(self.root, "code_reviewer"))
         self.assertEqual("code_reviewer", by_external.agent)
 
-    @verifies("scenario.harness.agent-bind")
+    @verifies("scenario.context.agent-bind")
     def test_load_agent_binding_and_effects_match_resolve_agent(self):
         prompt = load_model_instructions(self.root, "concorde-planner")
         self.assertEqual(resolve_worker(self.root, "concorde-planner"), prompt.binding)
         self.assertEqual(worker_profile("planner").contract.effects, prompt.effects)
         self.assertTrue(prompt.body.strip())
 
-    @verifies("scenario.harness.agent-bind")
+    @verifies("scenario.context.agent-bind")
     def test_changed_role_instructions_stale_the_build(self):
         before = resolve_worker(self.root, "programmer")
         role = self.root / "agents/programmer/spec.md"
@@ -124,14 +124,14 @@ class ResolveAgentBuildTests(unittest.TestCase):
             before.digest, resolve_worker(self.root, "programmer").digest
         )
 
-    @verifies("scenario.harness.agent-bind-reject")
+    @verifies("scenario.context.definition-inconsistent")
     def test_unknown_worker_name_fails_closed(self):
         for name in ("concorde-not-a-real-agent", "coordinator", "spec_engineer"):
             with self.subTest(name=name), self.assertRaises(BuildError) as failure:
                 resolve_worker(self.root, name)
             self.assertEqual("unknown_agent", failure.exception.code)
 
-    @verifies("scenario.harness.agent-bind-reject")
+    @verifies("scenario.context.definition-inconsistent")
     def test_missing_rendered_instructions_is_stale_build(self):
         (self.root / "generated/agents/planner.md").unlink()
         with self.assertRaises(BuildError) as failure:
@@ -147,7 +147,7 @@ class ProfileValidationTests(unittest.TestCase):
             validate_worker_profile(agent)
         self.assertEqual("invalid_agent_binding", failure.exception.code)
 
-    @verifies("scenario.harness.agent-bind-reject")
+    @verifies("scenario.context.definition-inconsistent")
     def test_profiles_cannot_exceed_their_contract_or_workspace(self):
         planner = worker_profile("planner")
         effects = planner.contract.effects
@@ -201,7 +201,7 @@ class ProfileValidationTests(unittest.TestCase):
         for name in profiles.load_worker_profiles():
             validate_worker_profile(worker_profile(name))
 
-    @verifies("scenario.harness.agent-bind-reject")
+    @verifies("scenario.context.definition-inconsistent")
     def test_terminal_profile_rejects_child_definitions_and_delegation_tools(self):
         planner = worker_profile("planner")
         with self.assertRaises(TypeError):
@@ -211,7 +211,7 @@ class ProfileValidationTests(unittest.TestCase):
                 dataclasses.replace(planner, tools=(*planner.tools, tool))
             )
 
-    @verifies("scenario.harness.agent-bind-reject")
+    @verifies("scenario.context.definition-inconsistent")
     def test_resolve_agent_rejects_an_inconsistent_inventory_profile(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

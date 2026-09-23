@@ -16,7 +16,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
     "explicit native roots required",
 )
 class NativeIssueTests(unittest.TestCase):
-    @verifies("scenario.issues.native-solve")
+    @verifies("scenario.issue-solving.workflow-run")
     def test_native_issue_workflow(self):
         cases = os.environ.get(
             "CONCORDE_NATIVE_ISSUE_CASES",

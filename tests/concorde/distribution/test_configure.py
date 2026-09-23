@@ -71,7 +71,7 @@ class ConfigureTests(unittest.TestCase):
         return json.loads(self.path.read_text())["operation_configuration"]
 
     @verifies(
-        "scenario.distribution.configure-apply", "scenario.concorde.configure-apply"
+        "scenario.admission.configure-apply", "scenario.concorde.configure-apply"
     )
     def test_supported_configuration_is_applied_atomically(self):
         selection = configuration(
@@ -94,7 +94,7 @@ class ConfigureTests(unittest.TestCase):
             "unchanged", apply_configuration(self.root, "accepted.json").status
         )
 
-    @verifies("scenario.distribution.configure-apply")
+    @verifies("scenario.admission.configure-apply")
     def test_unknown_fields_and_shapes_are_rejected(self):
         self.assertEqual({}, validate_typed(configuration())["data"])
         for data in (
@@ -148,7 +148,7 @@ class AcceptProtocolTests(unittest.TestCase):
             host_context=host,
         )
 
-    @verifies("scenario.distribution.accept-protocol")
+    @verifies("scenario.admission.accept-protocol")
     def test_configure_accepts_an_upgraded_protocol_only_on_explicit_request(self):
         # An installation update refreshed the copy under .concorde/protocol/ while the project's
         # binding still names the previously accepted manifest.

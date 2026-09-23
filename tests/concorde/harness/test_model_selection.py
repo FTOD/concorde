@@ -31,7 +31,7 @@ def configuration(**data) -> dict:
 
 
 class ResolutionTests(unittest.TestCase):
-    @verifies("scenario.harness.worker-selection")
+    @verifies("scenario.execution.model-selection")
     def test_worker_entry_wins_over_project_default(self):
         value = configuration(
             model="openai-codex/gpt-6-astra",
@@ -56,7 +56,7 @@ class ResolutionTests(unittest.TestCase):
         )
         validate_worker_selections(value)
 
-    @verifies("scenario.harness.worker-selection")
+    @verifies("scenario.execution.model-selection")
     def test_absent_values_keep_pi_and_profile_defaults(self):
         self.assertEqual(
             WorkerSelection(), worker_selection(configuration(), "answerer")
@@ -94,7 +94,7 @@ class AdmissionTests(unittest.TestCase):
     def stored(self) -> dict:
         return json.loads(self.path.read_text())["operation_configuration"]
 
-    @verifies("scenario.harness.worker-selection-reject")
+    @verifies("scenario.execution.model-selection-reject")
     def test_unknown_keys_child_timeouts_bad_timeouts_and_models_are_rejected(self):
         invalid = {
             "unknown worker": (
@@ -141,7 +141,7 @@ class AdmissionTests(unittest.TestCase):
                 with self.assertRaises(TypedDataError):
                     configuration(workers={"programmer": entry})
 
-    @verifies("scenario.harness.worker-selection-reject")
+    @verifies("scenario.execution.model-selection-reject")
     def test_forged_application_and_stored_invalid_selection_are_rejected(self):
         valid = configuration(
             workers={"programmer": {"model": "anthropic/claude-sonnet-5"}}

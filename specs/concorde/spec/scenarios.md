@@ -1,8 +1,8 @@
 # Spec scenarios
 
-The concrete situations the [Spec tooling](module.md) Module promises to handle. The headings group them by
-subject; each scenario belongs to the Module as a whole. The obligations they illustrate are in the
-[requirements](requirements.md).
+The concrete situations the [Spec tooling](module.md) Module promises to handle, one outcome each.
+The headings group them by subject; each scenario belongs to the Module as a whole. The obligations
+they illustrate are in the [requirements](requirements.md).
 
 ## Loading
 
@@ -19,19 +19,33 @@ subject; each scenario belongs to the Module as a whole. The obligations they il
 ### scenario.spec.reject-inconsistent-inventory — Refusing a project that cannot be admitted
 
 - GIVEN a project whose registry is not valid JSON, repeats a key, or has a `schema_version` other than 3
-- WHEN a repository is constructed
+- WHEN a repository is constructed for a consumer
 - THEN construction fails with an error naming the file and the problem
 - AND no repository is returned
-- BUT validating the same project reports the problem as an error finding instead of stopping without a result
+
+### scenario.spec.validate-unreadable-registry — Validating a project whose registry cannot be read
+
+- GIVEN a project whose registry is not valid JSON
+- WHEN the validator runs
+- THEN it returns status `invalid` with one `CONCORDE-SOURCE-008` error naming the problem
+- BUT it raises no exception and writes no file
 
 ### scenario.spec.reject-unsupported-profile — Refusing an unaccepted Protocol
 
-- GIVEN a project whose configuration binds a Protocol version or manifest digest that differs from the copy under `.concorde/protocol/`, whose installed copy has a changed asset, or whose copy differs from the installed Concorde package's Protocol
+- GIVEN a project whose configuration binds a Protocol version or manifest digest that differs from the copy under `.concorde/protocol/`, whose installed copy has a changed asset, or whose copy differs from the running package's Protocol
 - WHEN a repository is constructed
 - THEN construction fails with `protocol_mismatch`
-- BUT a project whose binding names exactly the installed, unchanged copy loads normally
+- AND no repository is returned
 
-A newer installed Protocol is adopted only when the developer accepts it with `concorde-configure`.
+A newer installed Protocol is adopted only when the developer accepts it through
+`concorde-configure`.
+
+### scenario.spec.reject-configuration-profile — Refusing another configuration profile
+
+- GIVEN a project whose configuration has a `profile_version` other than the one this Concorde supports
+- WHEN a repository is constructed
+- THEN construction fails with `unsupported_profile`
+- AND the configuration is not reinterpreted
 
 ### scenario.spec.document-roles — Explanation and precise definitions in different roles
 
@@ -39,24 +53,29 @@ A newer installed Protocol is adopted only when the developer accepts it with `c
 - WHEN the project is validated
 - THEN no role finding is reported
 - AND both roles contribute both members to the Module's Spec context
-- BUT a requirement, scenario or contract fence in a `module` document fails `CHK.defines.role`, a concept defined in an `implementation` document fails `CHK.defines.role`, and a missing or unknown role fails `CHK.document.role`
+
+### scenario.spec.document-role-misplaced — Definitions in the wrong role
+
+- GIVEN a requirement, scenario or contract fence in a `module` document, a concept defined in an `implementation` document, or a document with a missing or unknown role
+- WHEN the validator runs
+- THEN it reports `CHK.defines.role` for each misplaced definition and `CHK.document.role` for the missing or unknown role
 
 ## Checks
 
 ### scenario.spec.validate-success — A conforming project validates
 
-- GIVEN a project whose declarations satisfy every Protocol check
+- GIVEN a project whose declarations satisfy every Protocol check and every Concorde convention
 - WHEN the validator runs
 - THEN it returns status `success` with no error findings
 - AND the result carries a digest of the assessed inputs
-- BUT the result states that semantic completeness is not proven
+- AND the result states that semantic completeness is not proven
 
 ### scenario.spec.validate-structural-errors — Every violation is reported with its check
 
 - GIVEN a project with several independent violations, such as a duplicate node identity, a Module that uses itself, a file no Module binds and a link to a requirement identity that the linked document does not define
 - WHEN the validator runs
 - THEN it returns status `invalid`
-- AND reports one finding per violation, each naming its check identity, severity, file and a remediation, with `CONCORDE-LINK-001` for the broken link
+- AND reports one finding per violation, each naming its rule identity, severity, file and a remediation, with `CONCORDE-LINK-001` for the broken link
 - BUT it does not stop at the first violation and does not judge whether the described behaviour is correct
 
 ### scenario.spec.node-checks — Malformed nodes
@@ -65,7 +84,13 @@ A newer installed Protocol is adopted only when the developer accepts it with `c
 - AND a module document whose concept record has a `meaning` anchor that does not resolve, or no defining Terminology row
 - WHEN the validator runs
 - THEN it reports `CHK.requirement.statement`, `CHK.scenario.steps`, `CHK.contract.fence`, `CHK.node.meaning` and `CHK.concept.definition` as errors
-- AND an anchor group whose prose is only links or headings is reported as a `CHK.node.explained` warning
+
+### scenario.spec.node-unexplained — An anchor with no explanation
+
+- GIVEN a module document whose anchor group is followed only by links and headings
+- WHEN the validator runs
+- THEN it reports a `CHK.node.explained` warning for that anchor group
+- AND the status is not made `invalid` by it
 
 ### scenario.spec.reader-parts — A well-formed entry and topic
 
@@ -80,29 +105,59 @@ A newer installed Protocol is adopted only when the developer accepts it with `c
 - GIVEN an entry with a missing, repeated or misordered required section, a Purpose containing a list, or a Usage section holding only links
 - WHEN the validator runs
 - THEN it reports `CHK.document.sections` or `CHK.document.prose` for each problem
-- AND headings inside fences do not count as sections
+- BUT headings inside fences do not count as sections
 
-### scenario.spec.terminology-imports — Terminology rows and imports
+### scenario.spec.terminology-imports — Importing a provider's term
 
 - GIVEN a Module document whose Terminology table has a defining row for each concept it defines and a link-only row for a concept of a provider it uses
 - WHEN the validator runs
-- THEN the import is accepted and the provider's defining document is required in the Module's context
-- BUT an import row with a definition fails `CHK.terminology.import-row`, a row with no matching concept fails `CHK.terminology.rows`, an import of the document owner's own concept fails `CHK.imports.foreign`, and an import from a Module that is neither used nor an ancestor is a `CHK.imports.owner` warning
+- THEN the import is accepted without a finding
+- AND the provider's defining document is required in the Module's context
 
-### scenario.spec.composition-checks — Composition and dependency rules
+### scenario.spec.terminology-import-invalid — Malformed Terminology rows
+
+- GIVEN an import row with a definition, a defining row with no matching concept, or an import of a concept the document's own Module owns
+- WHEN the validator runs
+- THEN it reports `CHK.terminology.import-row`, `CHK.terminology.rows` or `CHK.imports.foreign` as an error for each row
+
+### scenario.spec.import-owner-warning — Importing from an unrelated Module
+
+- GIVEN a Module that imports a concept owned by a Module it neither uses, contains nor descends from
+- AND the defining document is in its context through an inclusion
+- WHEN the validator runs
+- THEN it reports a `CHK.imports.owner` warning naming the concept and its owner
+
+### scenario.spec.composition-checks — Composition and dependency errors
 
 - GIVEN a registry with a composition cycle, a Module with two parents, a Module that uses itself, or two `uses` of one provider
 - WHEN the validator runs
 - THEN it reports `CHK.contains.acyclic`, `CHK.contains.single-parent`, `CHK.uses.no-self` or `CHK.uses.unique` as errors
-- AND more than one Module without a parent is a `CHK.contains.root` warning
-- BUT mutual `uses` between two Modules is accepted
+
+### scenario.spec.multiple-roots — More than one root
+
+- GIVEN a project in which two Modules have no parent
+- WHEN the validator runs
+- THEN it reports a `CHK.contains.root` warning
+
+### scenario.spec.mutual-uses — Two Modules that use each other
+
+- GIVEN two Modules that each declare a `uses` of the other
+- WHEN the validator runs
+- THEN no composition or dependency finding is reported for them
+- AND each Module's Spec context contains the other's selected documents, one level deep
 
 ### scenario.spec.relies-on — Narrowed dependencies
 
 - GIVEN a Module that uses a provider with `relies_on` listing one requirement and one concept the provider owns
 - WHEN the Module's Spec context is resolved
-- THEN it contains the provider's entry and the documents defining those two nodes, and no other provider document
-- BUT a listed identity the provider does not own fails `CHK.relies-on.owned`, and a link from the relation's meaning section to an unlisted provider node fails `CHK.relies-on.linked`
+- THEN it contains the provider's entry and the documents defining those two nodes
+- BUT no other document of the provider
+
+### scenario.spec.relies-on-invalid — A `relies_on` that does not match its explanation
+
+- GIVEN a `uses` whose `relies_on` names a node the provider does not own, and whose meaning section links to a provider node the list omits
+- WHEN the validator runs
+- THEN it reports `CHK.relies-on.owned` for the foreign node and `CHK.relies-on.linked` for the unlisted link
 
 ### scenario.spec.reference-resolution — Only the selecting Module's own relations count
 
@@ -118,29 +173,46 @@ A newer installed Protocol is adopted only when the developer accepts it with `c
 - GIVEN an entry whose `uses` targets an unknown Module, an `includes` that names the Module itself or one of its own documents, a duplicate `includes`, or an `includes` without a reason
 - WHEN the validator runs
 - THEN it reports `CHK.relation.endpoints`, `CHK.includes.no-self`, `CHK.includes.unique` or `CHK.includes.reason` for the declaration concerned
-- AND a spec inclusion whose documents are already selected is a `CHK.includes.redundant` warning
 - BUT no document is silently added to or removed from any context
+
+### scenario.spec.includes-redundant — A redundant inclusion
+
+- GIVEN a Module that includes a document it already selects through a `uses` without `relies_on`
+- WHEN the validator runs
+- THEN it reports a `CHK.includes.redundant` warning for the inclusion
+- AND the document still appears once in the context, listing both relations
 
 ### scenario.spec.context-reconciled — A declaration requires its definition in context
 
 - GIVEN a Module that relates one of its realizations to another Module's concept, without any `uses`, `contains` or `includes` that selects the concept's defining document
 - WHEN the validator runs
 - THEN it reports `CHK.context.reconciled` naming the Module and the missing document
-- BUT adding a `uses` whose selection contains that document removes the finding
 
-### scenario.spec.meaning-relations — Relations between meanings
+### scenario.spec.meaning-relations — Invalid relations between meanings
 
 - GIVEN concepts where one narrows itself through a chain of `narrows`, a `supersedes` from a concept that is not retired, two `contrasts` for one pair, or a `relates` with an empty verb or a source the declaring document does not define
 - WHEN the validator runs
 - THEN it reports `CHK.narrows.acyclic`, `CHK.concept.retired`, `CHK.contrasts.once`, `CHK.relates.verb` or `CHK.relates.source`
-- AND a `relates` whose source is the declaring document's owning Module is accepted
+
+### scenario.spec.relates-module-source — A Module as the source of `relates`
+
+- GIVEN a document whose metadata declares a `relates` whose source is the document's owning Module and whose target's defining document is in that Module's context
+- WHEN the validator runs
+- THEN the relation is accepted without a finding
 
 ### scenario.spec.name-collision — Same-named nodes of different owners
 
-- GIVEN two concepts of different Modules whose titles differ only in case, hyphens or spacing, or a concept whose title equals another Module's title
+- GIVEN two concepts of different Modules whose titles differ only in case, hyphens or spacing, or a concept whose title equals another Module's title, with no `contrasts` between them
 - WHEN the validator runs
 - THEN it reports `CHK.contrasts.required` for the pair
-- BUT a `contrasts` between them with a reason removes the finding, and a concept is never compared with its own Module
+- BUT a concept is never compared with its own Module
+
+### scenario.spec.name-collision-contrasted — A declared contrast settles a collision
+
+- GIVEN two same-named concepts of different Modules
+- AND a `contrasts` between them with a reason
+- WHEN the validator runs
+- THEN no `CHK.contrasts.required` finding is reported for the pair
 
 ### scenario.spec.participation — Contract participation
 
@@ -150,20 +222,33 @@ A newer installed Protocol is adopted only when the developer accepts it with `c
 - AND an internal peer that does not declare the complementary role for the same version fails `CHK.participates.complementary`
 - AND a repeated contract, peer and role fails `CHK.participates.unique`
 
-### scenario.spec.validate-architecture-mismatch — Checked flowcharts assert only declarations
+### scenario.spec.checked-flowchart — A checked flowchart that asserts only declarations
 
-- GIVEN a module document with an unmarked Mermaid flowchart
+- GIVEN a module document with an unmarked Mermaid flowchart whose node labels name local concepts and realizations, Module titles and qualified `Module title / node title` labels
+- AND every edge is labelled and matches a declared `relates`, `uses` or `contains` in its direction
 - WHEN the validator runs
-- THEN every node label must resolve to one local concept or realization, one Module title, or one qualified `Module title / node title`
-- AND every edge must carry a label and match a declared `relates`, `uses` or `contains` in its direction
-- BUT an unresolved or ambiguous label fails `CHK.view.nodes`, an unmatched or unlabelled edge fails `CHK.view.edges`, and an unmarked Mermaid block that is not a flowchart fails `CHK.view.marked`
+- THEN no view finding is reported
+- AND a block marked `mermaid illustrative` in the same document is not checked
 
-A block marked `mermaid illustrative` is not checked, and a Graph Spec flowchart bound with a graph
-comment in an implementation document is checked by the Graph Spec check instead.
+### scenario.spec.validate-architecture-mismatch — A flowchart that asserts something undeclared
+
+- GIVEN a module document with an unmarked Mermaid flowchart that has an unresolved or ambiguous node label and an edge with no matching declaration, and an unmarked Mermaid block that is not a flowchart
+- WHEN the validator runs
+- THEN it reports `CHK.view.nodes` for the label, `CHK.view.edges` for the edge and `CHK.view.marked` for the unmarked block
+
+A Graph Spec flowchart in an implementation document is not a checked relationship view; the
+Graph Spec check owned by Agent execution compares it with its compiled Graph.
+
+### scenario.spec.check-input-missing — A configured check names a missing input
+
+- GIVEN a configuration whose configured check declares an input path that does not exist, or one reached through a symbolic link
+- WHEN the validator runs
+- THEN it reports `CONCORDE-CHECK-001` as an error naming the check and the path
+- BUT it runs no check and reads no input's content
 
 ### scenario.spec.registry-mirror — A stale registry is reported
 
-- GIVEN a Module whose entry gained a `uses` that its registry record does not have
+- GIVEN a Module whose entry gained a `uses`, or changed its title, without its registry record following
 - WHEN the validator runs
 - THEN it reports `CHK.registry.mirror` for that Module
 - AND a Module with no registry record, or a record with no matching entry, is reported the same way
@@ -174,9 +259,15 @@ comment in an implementation document is checked by the Graph Spec check instead
 
 - GIVEN a registry whose records are stale for some Modules
 - WHEN the developer runs the registry command with `--write`
-- THEN every record's `owns`, `contains`, `uses`, `includes` and `participates` equal its entry's `module` block
-- AND each record's identity, title and entry path, and the set of recorded Modules, are unchanged
-- BUT with `--check` instead, the command writes nothing and reports each stale record
+- THEN every record's `title`, `owns`, `contains`, `uses`, `includes` and `participates` equal its entry's `module` block
+- AND each record's identity and entry path, the record order and the set of recorded Modules are unchanged
+
+### scenario.spec.registry-check — Checking the mirror without writing
+
+- GIVEN a registry whose records are stale for some Modules
+- WHEN the developer runs the registry command with `--check`
+- THEN it reports one `CHK.registry.mirror` finding per stale record
+- BUT it writes no file
 
 ## Boundary sets
 
@@ -206,7 +297,14 @@ comment in an implementation document is checked by the Graph Spec check instead
 - GIVEN a registered Module identity or scenario identity
 - WHEN a caller queries its Spec files
 - THEN the result is the Spec context of the Module or of the scenario's owner, both members of each document, without duplicates and sorted by path
-- BUT the query reads none of the returned files' contents, and document, requirement and path identities are refused as query targets
+- BUT the query reads none of the returned files' contents
+
+### scenario.spec.query-invalid-target — Refusing an identity that has no context
+
+- GIVEN a document, requirement or concept identity, or a path
+- WHEN a caller queries its Spec files
+- THEN the query fails with `invalid_target`
+- AND no context is returned
 
 ### scenario.spec.write-sets — Spec scope and implementation scope
 
@@ -221,9 +319,8 @@ comment in an implementation document is checked by the Graph Spec check instead
 - GIVEN two Modules that each bind the same file, one exactly and one through a directory entry
 - WHEN the repository is loaded
 - THEN each Module keeps its own realization entry
-- AND the implemented-by index lists both Modules for that file, and each Module's shared files name the other Module with that file
-- AND a Spec context requested with shares adds the other Module's documents with a `shares` reason naming that file, while the plain Spec context and both write sets stay unchanged
-- BUT within one Module the file belongs to the realization with the longest covering entry
+- AND the implemented-by index lists both Modules for that file, and each Module's binding Modules name the other with that file
+- BUT neither Module's Spec context nor either write set changes because of the sharing
 
 ### scenario.spec.directory-entry — A directory entry binds a whole directory
 
@@ -231,23 +328,58 @@ comment in an implementation document is checked by the Graph Spec check instead
 - WHEN the Module's implementation files are listed
 - THEN every regular file below the directory is included except those the exclusion rule skips
 - AND a file created below it later needs no new declaration
-- BUT a longer entry of another realization in the same Module still decides which realization owns the file it covers
 
-### scenario.spec.pending-entries — Pending and missing entries
+### scenario.spec.longest-entry — The longest covering entry decides the realization
+
+- GIVEN a Module with one realization binding `src/a/` and another binding `src/a/special.py`
+- WHEN the realization of `src/a/special.py` is looked up
+- THEN it is the realization with the exact entry
+- AND every other file below `src/a/` belongs to the directory realization
+
+### scenario.spec.pending-entries — A pending entry that does not exist yet
 
 - GIVEN a realization whose `pending` lists an entry that does not exist yet
 - WHEN the validator runs
 - THEN no finding is reported for it
-- AND once the file exists, `CHK.binds.pending-subset` reports it as an error until the entry leaves `pending`
-- AND validating a candidate through the Validation Module first removes such entries from `pending`
-- BUT a non-pending entry that does not exist fails `CHK.binds.exists`, and a `pending` item missing from `entries` fails `CHK.binds.pending-subset`
+- AND the entry is part of the Module's implementation scope
+
+### scenario.spec.pending-materialized — A pending entry whose file now exists
+
+- GIVEN a realization whose `pending` lists an entry whose file now exists
+- WHEN the validator runs
+- THEN it reports `CHK.binds.pending-subset` as an error for that entry
+
+### scenario.spec.pending-confirm — Confirming pending entries
+
+- GIVEN realizations whose `pending` lists some entries whose files now exist and some that are still missing
+- WHEN a caller confirms pending entries
+- THEN the existing entries leave `pending` in one file transaction that rewrites only the affected metadata members
+- AND the result lists each confirmed entry with its Module and realization, and each still-missing entry
+- BUT no reading member and no registry byte changes
+
+### scenario.spec.missing-entry — A declared entry that does not exist
+
+- GIVEN a realization with a non-pending entry that does not exist, or a `pending` item that is not in `entries`
+- WHEN the validator runs
+- THEN it reports `CHK.binds.exists` for the missing entry and `CHK.binds.pending-subset` for the stray pending item
 
 ### scenario.spec.unbound-file — Every tracked file is bound
 
 - GIVEN a version-controlled source file that no realization covers
 - WHEN the validator runs
 - THEN it reports `CHK.binds.unbound` for that path
-- BUT document members, files under `.concorde/`, generated outputs and declared external material are never reported, and a bound document member fails `CHK.binds.no-spec`
+
+### scenario.spec.unbound-exemptions — Files that need no binding
+
+- GIVEN version-controlled document members, files under `.concorde/`, generated outputs and declared external material that no realization covers
+- WHEN the validator runs
+- THEN no `CHK.binds.unbound` finding is reported for them
+
+### scenario.spec.bound-spec-member — A realization binds a Spec document
+
+- GIVEN a realization entry that names a document member, or a directory entry that contains one
+- WHEN the validator runs
+- THEN it reports `CHK.binds.no-spec` for that entry
 
 ### scenario.spec.external-reference — Pinned external material
 
@@ -255,46 +387,119 @@ comment in an implementation document is checked by the Graph Spec check instead
 - WHEN its external context is resolved
 - THEN it contains the readable files below that directory, media and archives excluded, identified by one digest over their paths and bytes
 - AND the material enters neither the Spec context nor the implementation context
-- BUT a missing or untracked path fails `CHK.external.exists`, and a path overlapping a document member or realization entry fails `CHK.external.no-overlap`
+
+### scenario.spec.external-reference-invalid — Missing or overlapping external material
+
+- GIVEN an external inclusion whose path is missing or untracked, and another whose path overlaps a document member or a realization entry
+- WHEN the validator runs
+- THEN it reports `CHK.external.exists` for the first and `CHK.external.no-overlap` for the second
 
 ### scenario.spec.impact-indexes — Whom a change concerns
 
 - GIVEN Module A uses Module B with `relies_on` listing a requirement defined in B's requirements document
 - AND Module C includes that same B document
+- AND Modules B and D bind the same file
 - WHEN a caller asks which Modules a change concerns
 - THEN a change to that document concerns B, A and C through the selected-by index
 - AND a change to the listed requirement concerns A through the referenced-by index
-- AND a change to a file bound by two Modules concerns both through the implemented-by index
+- AND a change to the shared file concerns B and D through the implemented-by index
 - BUT the indexes add nothing to any Module's boundary sets
+
+### scenario.spec.changed-definitions — Comparing two revisions of the Specs
+
+- GIVEN two repositories of the same project at different revisions
+- AND in the later one a requirement's statement changed while its document's other definitions did not
+- WHEN a caller asks for the changed documents and the changed nodes between them
+- THEN the changed documents are the documents whose members differ
+- AND the changed nodes are exactly the nodes whose defining section, contract fence, concept record and definition row, realization record or entry `module` block differ
 
 ## Coverage
 
 ### scenario.spec.verification-declarations — Tests declare the scenarios they verify
 
-- GIVEN Python and TypeScript tests bound by Modules, some with verification declarations
+- GIVEN Python and TypeScript tests bound by the Module that owns the scenarios they declare
 - WHEN the validator reads them
-- THEN a declaration of an unknown scenario fails `CHK.verifies.resolves`
-- AND a scenario that no declaration names is a `CONCORDE-COVERAGE-001` warning, unless its Module binds no files
-- AND a declaration in a test that the scenario's owner does not bind is a `CONCORDE-COVERAGE-002` warning
-- AND a Python test that cannot be parsed, or a malformed declaration, is a `CONCORDE-COVERAGE-003` error
-- BUT test-declaration syntax in Spec reading outside a fence fails `CHK.evidence.no-spec-coverage`
+- THEN every declared scenario is covered by the declaring test, with its path, line and name
+- AND no coverage finding is reported for those scenarios
+
+### scenario.spec.verifies-unknown — A declaration names an unknown scenario
+
+- GIVEN a bound test that declares a scenario identity no Spec defines
+- WHEN the validator runs
+- THEN it reports `CHK.verifies.resolves` as an error at that declaration
+
+### scenario.spec.coverage-uncovered — A scenario no test declares
+
+- GIVEN a scenario of a Module that binds files, which no bound test declares
+- WHEN the validator runs
+- THEN it reports a `CONCORDE-COVERAGE-001` warning for the scenario
+- BUT a scenario of a Module that binds no files is not reported
+
+### scenario.spec.coverage-foreign-test — A declaration in a test the owner does not bind
+
+- GIVEN a test bound only by Module A that declares a scenario of Module B
+- WHEN the validator runs
+- THEN it reports a `CONCORDE-COVERAGE-002` warning naming the test and the scenario
+- AND the scenario still counts as declared
+
+### scenario.spec.coverage-parse-error — An unreadable test does not stop the scan
+
+- GIVEN one bound Python test file that does not parse
+- AND another bound test that declares an unknown scenario
+- WHEN the validator runs
+- THEN it reports `CONCORDE-COVERAGE-003` as an error for the unparsable file
+- AND it still reports `CHK.verifies.resolves` for the other test and computes coverage from every readable test
+
+### scenario.spec.spec-coverage-syntax — A Spec that claims its own coverage
+
+- GIVEN Spec reading that contains test-declaration syntax outside a fence
+- WHEN the validator runs
+- THEN it reports `CHK.evidence.no-spec-coverage` as an error at that line
 
 ## Typed values
 
-### scenario.spec.task-control-values — Checking task metadata values
+### scenario.spec.typed-value-accept — Checking a value of a registered type
 
-- GIVEN a `concorde-task-scope-feedback` or `concorde-task-identity-constraints` value as described in the [interface definitions](contracts.md#task-metadata-values)
-- WHEN it is checked as a typed value
-- THEN a valid version-1 value is returned unchanged
-- AND an unknown field, a malformed digest, another reason value, a blank or repeated reserved identity, a wrong type or another version is refused with an error naming its code and field
-- BUT checking reads and writes no project file and grants no authority
+- GIVEN an owner that registered a type with a version and a schema
+- WHEN a caller builds or checks a value of that type with data the schema allows
+- THEN the checked value is returned as a copy equal to the input
+- AND checking reads and writes no project file
+
+### scenario.spec.typed-value-reject — Refusing a value that does not fit
+
+- GIVEN a value naming an unregistered type, a value with another schema version, and a value whose data has a field its schema does not declare
+- WHEN each is checked
+- THEN they fail with `unknown_type`, `unsupported_version` and `invalid_field` respectively, each naming the JSON pointer of the offending field
+
+### scenario.spec.typed-register-conflict — Registering a type twice with another schema
+
+- GIVEN a type already registered with a version and a schema
+- WHEN another registration of the same identity names a different version or schema
+- THEN the registration fails
+- AND the first registration stays in force
+
+## File transactions
+
+### scenario.spec.rollback-on-failure — Restoring original bytes after a failure
+
+- GIVEN a file transaction that has written some of its files
+- WHEN a later write or the final check of the result fails
+- THEN every written file is restored to its original bytes, and files that did not exist are removed
+- AND the failure is reported, never success
+
+### scenario.spec.transaction-stale — A changed file stops a transaction before it writes
+
+- GIVEN a file transaction whose expected digest for one file no longer matches that file's bytes
+- WHEN it is applied
+- THEN it fails with `stale_proposal`
+- AND no listed file is written
 
 ## Initialization
 
 ### scenario.spec.propose-initialization — Proposing a new project
 
 - GIVEN a project where the installer has placed the Protocol copy but no configuration exists
-- WHEN the developer calls `concorde-init` with `action: "propose"`, a name and a worker configuration
+- WHEN the user session calls `concorde-init` with `action: "propose"`, a name and a worker configuration
 - THEN the result is an initial proposal with the configuration, the registry, and a root entry with its metadata
 - AND the root entry says the project's purpose, behaviour and architecture are not yet specified
 - AND its metadata binds the project's existing tracked and not-ignored files in one realization, Existing project files
@@ -304,7 +509,7 @@ comment in an implementation document is checked by the Graph Spec check instead
 ### scenario.spec.apply-initialization — Applying an accepted proposal
 
 - GIVEN a proposal returned by propose whose destinations are all still absent
-- WHEN the developer calls `concorde-init` with `action: "apply"` and that exact proposal
+- WHEN the user session calls `concorde-init` with `action: "apply"` and that exact proposal
 - THEN every proposed file is written in one file transaction and the resulting project validates
 - AND the result has status `applied` and lists the written paths
 - BUT no Protocol copy or other installer output is created
@@ -316,17 +521,30 @@ comment in an implementation document is checked by the Graph Spec check instead
 - THEN it fails with `already_initialized`
 - AND no file changes
 
-### scenario.spec.reject-stale-or-invalid-proposal — A changed or malformed proposal is refused
+### scenario.spec.reject-not-installed — A project without the installer's Protocol copy
 
-- GIVEN a proposal whose envelope is incomplete, whose Protocol binding no longer matches the installed copy, that writes outside its allowed files, or one of whose destinations now exists
+- GIVEN a project with no Protocol copy under `.concorde/protocol/`
+- WHEN initialization is proposed
+- THEN it fails with `not_installed`
+- AND no file changes
+
+### scenario.spec.reject-invalid-proposal — A malformed proposal is refused
+
+- GIVEN a proposal whose envelope is incomplete, that lacks the configuration or the registry, whose Protocol binding no longer matches the installed copy, or that has a non-null before-digest
 - WHEN apply is requested
-- THEN it fails with `invalid_proposal`, `permission_denied` or `stale_proposal`
+- THEN it fails with `invalid_proposal`
 - AND no file is written
 
-### scenario.spec.rollback-on-failure — Restoring original bytes after a failure
+### scenario.spec.reject-stale-proposal — A proposal whose destination now exists
 
-- GIVEN a file transaction that has written some of its files
-- WHEN a later write or the final check of the result fails
-- THEN every written file is restored to its original bytes, and files that did not exist are removed
-- AND the failure is reported, never success
-- BUT a failure during the restoration is itself reported as a failure, not as a completed rollback
+- GIVEN a proposal returned by propose, one of whose destinations was created afterwards
+- WHEN apply is requested
+- THEN it fails with `stale_proposal`
+- AND no file is written
+
+### scenario.spec.reject-proposal-outside-files — A proposal that writes elsewhere
+
+- GIVEN a proposal that also lists a file that is neither the configuration, the registry nor a member of a document its registry registers
+- WHEN apply is requested
+- THEN it fails with `permission_denied`
+- AND no file is written

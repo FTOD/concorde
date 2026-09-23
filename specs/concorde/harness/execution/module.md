@@ -3,123 +3,192 @@
 ## Purpose
 
 Agent execution runs Concorde's model work and decides when a model's answer counts as a result.
-It supplies the shared machinery every provider uses to call an Agent: a single native Agent call
-or a Workflow of several calls through Pi's pi-subagents extension, the Host steps and the result
-gate that turn an untrusted proposal into an accepted result, the model selection for each Agent,
-and the timing diagnostics of every run. It also owns the optional StateGraph Operation and the
-check that keeps every Graph Spec equal to its compiled Graph. Planning, Implementation,
-Review and Issues rely on it to run their Agents; Request admission and Task context rely on it
-for the invocation host. It does not choose which Agent a capability needs, what that Agent may
-read, or which capability runs next, and it does not confine a native Agent's file, network or
-credential access in the operating system: those limits are instructions to the model.
+It runs one Agent call, or one pi workflow of several Agent calls and Host steps, through Pi's
+pi-subagents extension. It supplies the generic native driver that prepares, stages and accepts
+every call, the Agent hook and workflow hook interfaces through which providers add their own
+preparation and acceptance, the Host-step protocol between a workflow script and the Host, the
+result gate, launch preflight, the pinned native runtime and each Agent's model selection. It also
+supplies Concorde's second control-flow mechanism, LangGraph: the Terminal Agent Operation, the
+State adapter and the Graph Spec format with its check. The providers under Operations rely on it
+to run their Agents and workflows, and the Pi session relies on it to launch the calls it is
+handed. It does not decide which Agent a capability needs, what that Agent may read, whether an
+accepted result is right, or which capability runs next. It never imports a provider. It does not
+confine what a running Agent reads, writes, executes or sends over the network: those limits are
+instructions to the model and are not enforced.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Agent call | One launch of one Agent by pi-subagents, in a fresh context, from an Agent definition the Host prepared for exactly this call. |
-| Workflow | An authored pi-subagents script that runs a fixed order of Agent calls and Host steps for one capability, such as reviewing every Module of a scope. |
+| Agent call | One launch of one Agent by pi-subagents, in a fresh context, from an Agent definition file the Host prepared for exactly this call. |
+| Workflow | An authored pi-subagents script that orders the Agent calls and Host steps of one capability, such as reviewing every Module of a scope. |
+| Graph | A LangGraph `StateGraph` whose State, nodes and edges are declared before it is compiled. |
 | Proposal | The one structured result an Agent call submits, which stays untrusted data until the Host accepts it. |
-| Host step | A finite, deterministic Host command run inside an Agent call or a Workflow, such as staging a proposal; it never starts a model. |
+| Host step | One finite, deterministic Host command run for an Agent call or a Workflow, such as staging a proposal; it never starts or waits for a model. |
 | Result gate | The Host service of one Agent call that stores its proposal, stages it after the run and accepts it only after independent checks of the run's outcome and the current inputs. |
+| Agent hook | The provider code, named by an entry point in an Agent definition, that prepares the stage of one call of that Agent, validates its proposal and applies an accepted one. |
+| Workflow hook | The provider code, named by an entry point in a capability declaration, that prepares a Workflow's first Agent calls and answers each of its Host steps. |
 | Model selection | The model, thinking level and time limit resolved for one Agent from the project configuration. |
-| Terminal Agent Operation | The optional LangGraph StateGraph with one node that validates typed input, calls a trusted Agent service supplied by its embedding and validates the typed result. |
+| Terminal Agent Operation | The Graph with one node that validates an Agent's typed input, calls a trusted Agent service supplied by its embedding and validates the typed result. |
 | Graph Spec | The section of an implementation document that states one compiled Graph's State, Nodes and Edges and draws it in a flowchart bound to that Graph. |
-| Diagnostic span | One bounded timing record of a piece of runtime work, with its duration, status and correlation identities and no content. |
 | [Agent](../../agents/module.md#concept.agents.agent) | |
-| [Operation](../../operations/module.md#concept.operations.operation) | |
-| [Worker](../../vocabulary.md#concept.concorde.worker) | |
+| [Agent definition](../../agents/module.md#concept.agents.definition) | |
 | [Host](../../vocabulary.md#concept.concorde.host) | |
+| [Worker](../../vocabulary.md#concept.concorde.worker) | |
 | [Capability](../../vocabulary.md#concept.concorde.capability) | |
 | [User session](../../vocabulary.md#concept.concorde.user-session) | |
+| [Capability declaration](../admission/module.md#concept.admission.capability-declaration) | |
+| [Causal feedback](../admission/module.md#concept.admission.causal-feedback) | |
+| [Context snapshot](../context/module.md#concept.context.snapshot) | |
+| [Capsule](../context/module.md#concept.context.capsule) | |
+| [Agent binding](../context/module.md#concept.context.agent-binding) | |
 | [Run record](../worktrees/module.md#concept.worktrees.run-record) | |
-| [Worker profile](../context/module.md#concept.context.worker-profile) | |
-| [Grant](../context/module.md#concept.context.grant) | |
-| [Issue](../../issues/module.md#concept.issues.issue) | |
+| [Configured check](../checks/module.md#concept.checks.configured-check) | |
+| [Issue report](../../issues/module.md#concept.issues.report) | |
 
 Read Agent call, Proposal and Result gate first: they are the path every model result takes. A
-Workflow is several Agent calls with Host steps between them. The remaining terms describe the
-configuration, the optional graph and the diagnostics around that path.
+Workflow is several Agent calls with Host steps between them. Agent hook and Workflow hook are what
+a provider writes to use that path. Graph, Terminal Agent Operation and Graph Spec concern the
+LangGraph mechanism, which no public capability currently uses.
 
 ## Usage
 
-This Module has no capability of its own. Its users are the provider Modules that run Agents,
-the user session that passes their prepared calls to Pi, and maintainers who inspect execution.
+This Module has no capability of its own. Its users are the provider Modules that run Agents
+(Planning, Implementation, Review and Issue solving), the Pi session, which hands the prepared calls
+to Pi, and maintainers who write a new provider or Graph.
 
 ### One Agent call, from request to accepted result
 
 <a id="concept.execution.agent-call"></a><a id="concept.execution.proposal"></a><a id="concept.execution.result-gate"></a><a id="concept.execution.host-step"></a>
 
-Take `concorde-code-review` of one Module. The normal path runs in six steps:
+`concorde-context-solve`, `concorde-tasks` and `concorde-implement` each run one **Agent call**.
+Take `concorde-context-solve` for Module `module.checkout` with the task "add retries to the
+client". The normal path has seven steps.
 
-1. The user session calls the capability through the Pi `concorde` tool. Request admission checks
-   the request, and the Review provider freezes the Module's context.
-2. The provider prepares the **Agent call**. In a temporary directory owned by this call it writes
-   the frozen context, an Agent definition file (the Agent's instructions, its tools, its model
-   selection, a fresh context and no inherited project context or Skills) and a small extension
-   that connects the Agent to the Host. A descriptor binds the digest of every input. The `concorde`
-   tool returns a `call` object.
-3. The user session passes that `call` unchanged to Pi's `subagent` tool. Concorde's session
-   extension intercepts the tool call: it refuses any call other than the prepared one, runs the
-   Host step `check`, and runs pi-subagents' public preflight. The launch is blocked unless
-   preflight resolved exactly the prepared Agent file, a fresh context, no inherited context or
-   Skills, no nested subagents and no tool beyond the Agent's allowed list.
-4. The Agent works and submits its result once with pi-subagents' `structured_output` tool. The
-   Concorde extension forwards that value to the Host step `submit`. The **result gate** validates
-   its shape and business identity and stores it as the **proposal**. Nothing is accepted yet.
-5. When the run ends, pi-subagents runs the call's plain gate command, the Host step `stage`. It
-   rechecks the stored proposal bytes and the current inputs and prints one small control document
-   whose `state` is `staged` and whose `accepted` is `false`.
-6. When the `subagent` tool returns, the session extension runs the Host step `accept` with the
-   tool call's identity and pi-subagents' result fields. The Host reads pi-subagents' own records
-   of the run, independently of anything the model said, and requires a successful exit, a passed
-   gate bound to this proposal and unchanged inputs. Only then does it call the provider's
-   acceptance, which writes the result and its
-   [run record](../worktrees/module.md#concept.worktrees.run-record).
+1. The user session calls the Pi `concorde` tool with action `run`. The Pi session wraps the input
+   in the invocation envelope and runs the launcher's native `prepare` step with it.
+2. The native driver re-enters Request admission with a Host that carries the driver's native
+   service. Admission checks the request and binds the worktree, Operations dispatches it to the
+   Planning provider, and the provider asks the Host's native service to run the context assessor.
+   The driver loads that Agent's definition, resolves the Agent hook its entry point names, and
+   asks the hook to **prepare** the call. The hook returns a stage plan: here no stage inputs,
+   unless a deterministic check already decides the outcome, in which case the plan carries that
+   response and no Agent runs.
+3. Task context freezes the [context snapshot](../context/module.md#concept.context.snapshot) and
+   assembles the [capsule](../context/module.md#concept.context.capsule) from the
+   [Agent binding](../context/module.md#concept.context.agent-binding). The driver writes the
+   Agent definition file pi-subagents will discover, a small child extension connecting the Agent
+   to the Host, and a descriptor that binds the digest of every input. The tool returns a `call`:
+
+   ```json
+   {"agent": "concorde-context-assessor", "cwd": "/tmp/concorde-native-context-x/context",
+    "agentScope": "project", "context": "fresh", "async": false,
+    "outputSchema": {"...": "invocation_id fixed to the issued ticket"},
+    "gate": {"command": "... --native-context stage <descriptor> <digest>"}}
+   ```
+
+4. The user session passes that `call` unchanged to Pi's `subagent` tool. The native call
+   extension intercepts it, refuses any call other than the prepared one, runs the Host step
+   `check`, and runs pi-subagents' own launch preflight. The launch is blocked unless preflight
+   resolved exactly the prepared Agent file, a fresh context, no inherited context or Skills, no
+   nested subagents and no tool outside the Agent definition's list.
+5. The Agent reads its capsule and submits its result once with pi-subagents' `structured_output`
+   tool. The child extension forwards it to the Host step `submit`. The **result gate** checks its
+   shape and identity, asks the hook to **validate** it, and stores it as the **proposal**. Nothing
+   is accepted yet.
+6. When the run ends, pi-subagents runs the call's gate command, the Host step `stage`. It
+   rechecks the stored proposal and the current inputs and prints one small control document whose
+   `state` is `staged` and whose `accepted` is `false`.
+7. When the `subagent` tool returns, the native call extension runs the Host step `accept`. The
+   driver reads pi-subagents' own records of the run, independently of anything the model said,
+   and requires a successful exit, a passed gate bound to this proposal and unchanged inputs. Only
+   then does it reserve the call's terminal record and ask the hook to **accept** the proposal,
+   which records the assessment. The driver archives the run's evidence in the primary worktree's
+   [run record](../worktrees/module.md#concept.worktrees.run-record) directory, and the tool result
+   reports `accepted: true` with the typed outcome.
 
 A **Host step** is a fixed command that calls back into the Host with the call's descriptor and
 its digest. It checks and records; it never starts a model and never waits for one. Between Host
-steps, no Python process is kept waiting for the Agent: everything that crosses the model's run is
-JSON in the call's own directory.
+steps no Python process waits for the Agent: everything that crosses the model's run is JSON in
+the call's own directory.
 
-While it works, an Agent can report an [Issue](../../issues/module.md#concept.issues.issue) through
-the `report_issue` tool. A programmer or code reviewer can run the Module's configured checks
-through `run_checks`, which Check execution runs in its read-only sandbox. A report is kept even if
-the call later fails; it never counts as the call's result.
+While it works, an Agent can file an [Issue report](../../issues/module.md#concept.issues.report)
+through the `report_issue` tool; the driver forwards it to Issues bound to this call. An Agent
+whose definition lists `run_checks` can ask the Host to run the Module's
+[configured checks](../checks/module.md#concept.checks.configured-check). A report is kept even if
+the call later fails; neither a report nor a check result counts as the call's result.
+
+In `describe-policy` mode, preparation stops after step 2 and returns the read list, intended
+write roots and tools the call would receive, without a capsule or a launch.
 
 ### Workflows
 
 <a id="concept.execution.workflow"></a>
 
-A **Workflow** is used when one capability needs several Agent calls in a fixed order. The review
-Workflow, for example, runs a Host step `bind`, then one reviewer Agent call per Module of the
-scope, each checked and staged like the single call above, and ends with one Host step `finalize`.
-That final step reads pi-subagents' status record of the whole Workflow and requires exactly one
-completed, successful, staged child for every reviewer the Host issued, before it accepts anything.
-The Workflow scripts belong to their providers (`plan`, `review` and `issues`); this Module
-supplies what they share: the Host step transport, the proposal capture, the result gate and the
-reading of pi-subagents' records.
+A **Workflow** is used when one capability needs several Agent calls in a fixed order.
+`concorde-plan`, `concorde-spec-review`, `concorde-code-review` and `concorde-issues` with action
+`solve` run as Workflows. Take `concorde-spec-review` of a scope of three Modules:
+
+1. Preparation runs as above until the driver finds that the capability's
+   [capability declaration](../admission/module.md#concept.admission.capability-declaration) names
+   a workflow hook. The Review provider's hook issues one reviewer call slot per Module, each
+   prepared exactly like a single Agent call, and returns its workflow plan: the workflow script,
+   its Host-step commands and the JSON the script is built from.
+2. The native workflow registrar registers the script under a name bound to the issued ticket,
+   reading everything from the descriptor, and the tool returns a workflow `call`. The user session
+   passes it to the `subagent` tool, which starts the Workflow asynchronously.
+3. The script's first Host step runs `check` and launch preflight for every issued slot, because
+   pi-subagents launches a Workflow's children itself. The script then runs the three reviewers.
+   Each child is staged by its own gate, and the script records a child-terminal emission for it.
+4. The final Host step asks the driver to reconcile pi-subagents' status record of the whole
+   Workflow with the slots it issued: exactly one completed, successful, staged child per slot.
+   Only then does the driver admit each proposal and the hook aggregate and record the review.
+5. The user session calls the `concorde` tool with action `result`, which reports the Workflow's
+   acceptance separately from its launch.
+
+The script, its Host-step helper and each step's meaning belong to the provider and are explained
+by a step table in the provider's own implementation document. This Module supplies what every
+Workflow shares: the [Host-step protocol](interfaces.md#contract.execution.host-step), the
+registrar, per-slot preparation, coverage, admission and acceptance, the result and stop steps.
+
+### Writing a provider
+
+<a id="concept.execution.agent-hook"></a><a id="concept.execution.workflow-hook"></a>
+
+A provider adds behaviour through hooks, never by editing the driver. Every Agent definition names
+the entry point of its **Agent hook**, such as `concorde.implementation.hooks:programmer`. The hook
+answers four questions: what stage plan this call gets (its stage inputs, an optional review input,
+an optional instruction override, a stop response that ends preparation, and whether later steps
+recheck the snapshot frozen at preparation); what else must still be current before staging and
+acceptance; whether a proposal is valid for this call; and what accepting it records. A capability
+that runs a Workflow names a **workflow hook** in its capability declaration. That hook prepares
+the Workflow's plan, answers each named Host step, and reports what a failed or stopped Workflow
+leaves behind. Both hooks call back into the driver for everything shared. The exact interfaces
+are in [Hooks](agent-calls.md#hooks).
 
 ### Stopping outcomes
 
-- A call that ends without a proposal, with two proposals or with an invalid one is an invalid
-  completion. A submission that pi-subagents rejects against the output schema can be corrected
-  within the same run. A submission the Host refuses invalidates the call; it cannot be replaced.
+- A call that ends without a proposal, with two proposals or with a refused one is an invalid
+  completion. A submission that pi-subagents rejects against the output schema is recorded and can
+  be corrected within the same run.
 - A passing gate does not rescue a failed run: acceptance reads the run's exit status itself.
-- Cancellation or failure before acceptance revokes it. It does not undo files a
-  programmer already changed; those stay in the candidate for inspection.
-- A failed or uncertain acceptance is final for that call. Another attempt needs a new request.
-- Nothing is retried automatically, and no retry ever receives a wider grant.
+- A changed input between preparation and acceptance makes the call stale; nothing is accepted.
+- Cancellation or failure before acceptance revokes it. It does not undo files a programmer already
+  changed; those stay in the candidate for inspection.
+- A failed or uncertain acceptance is final for that call; a repeated `accept` never applies the
+  hook's acceptance a second time. Another attempt is a new request.
+- Nothing is retried automatically.
 
 Every failure keeps its lower-level cause, such as a schema rejection, a Host refusal or a
-timeout, in the causal feedback record that Request admission defines.
+timeout, in the [causal feedback](../admission/module.md#concept.admission.causal-feedback) record
+that Request admission defines.
 
 ### Choosing models
 
 <a id="concept.execution.model-selection"></a>
 
-The developer sets the **model selection** with `concorde-configure`. The project configuration
-holds defaults and per-Agent overrides:
+The developer sets the **model selection** in the project configuration, with defaults and
+per-Agent overrides:
 
 ```json
 {"model": "openai-codex/gpt-6-astra", "thinking": "medium", "timeout_seconds": 1800,
@@ -127,31 +196,25 @@ holds defaults and per-Agent overrides:
 ```
 
 Each Agent takes its entry's value, else the default; a missing time limit falls back to the
-Agent's own. Models are Pi `provider/id` names and thinking levels are Pi's (`off` to `max`). A key
-that names no Agent, a nonpositive time limit or a model without a provider is rejected.
+Agent definition's own. Models are Pi `provider/id` names and thinking levels are Pi's (`off` to
+`max`). A key that names no Agent, a nonpositive time limit or a model without a provider is
+rejected. Request admission owns writing this configuration through `concorde-configure`.
 
-### Diagnostics
+### Choosing a control-flow mechanism
 
-<a id="concept.execution.diagnostic-span"></a>
+<a id="concept.execution.graph"></a><a id="concept.execution.graph-spec"></a><a id="concept.execution.terminal-agent-operation"></a>
 
-Runtime work emits **diagnostic spans**: admission, context freezing, sandbox preparation, Pi
-execution, configured checks and result validation. For an admitted run the Host stores them in
-`.concorde/runs/<invocation>/timing.json` in the primary worktree. Pi sessions that load passive
-observation store their own spans as session entries, and `scripts/development/analyze-timing.py`
-summarizes a session's events without printing message bodies.
+Concorde sanctions two control-flow mechanisms. A **Workflow** is the default for a fixed or
+simply looping order of Agent calls: it is a short script that pi-subagents runs, and its steps are
+explained by a step table in its owner's implementation document. A **Graph** is used when a flow
+needs explicit shared state and branching that a reader must inspect; it is always built with
+LangGraph's Graph API (`StateGraph`), never with the Functional API, and it is described by exactly
+one **Graph Spec**, whose State, Nodes and Edges parts and bound flowchart the configured Graph Spec
+check compares with the compiled Graph. [Control flow](control-flow.md) gives both formats.
 
-Native Agent calls write no usage record of their own; their token counts stay in pi-subagents'
-own run records. A figure that was not reported stays unknown, never zero, and a failure to record
-a diagnostic never changes the outcome of the work it describes.
-
-### The optional StateGraph Operation
-
-<a id="concept.execution.terminal-agent-operation"></a>
-
-Public capabilities do not run through LangGraph. A program that wants state-centric composition
-can embed the **Terminal Agent Operation**, a real StateGraph with one node and the only
-[Operation](../../operations/module.md#concept.operations.operation) Concorde has, and supply a
-trusted function that performs an admitted Agent call:
+The one Graph this Module compiles is the **Terminal Agent Operation**, for a program that wants
+to compose Agent calls as graph state. It has one node, and its embedding supplies a trusted
+function that performs an admitted Agent call:
 
 ```python
 operation = OperationNode("context_assessor").graph()
@@ -160,152 +223,164 @@ result = await operation.ainvoke(context["data"],
 ```
 
 The service travels in LangGraph's Runtime context, never in State, so input data cannot supply
-authority; without a service the graph compiles for inspection only and refuses to run. Its exact
-State, Nodes and Edges are its [Graph Spec](graphs.md#terminal-agent-operation).
-
-### Graph Specs and their check
-
-<a id="concept.execution.graph-spec"></a>
-
-Every Graph Concorde compiles is described once by a **Graph Spec** in its owner's implementation
-documents. The configured check `scripts/development/check-graph-specs.py` compiles every Graph of
-the Graph catalog with inert nodes and reports any Graph Spec whose diagram, parts or Nodes table
-disagree with the compiled topology, any compiled Graph without one, and any Python source that
-uses LangGraph's Functional API. A passing check shows that the Spec and the code have the same
-shape, not that the routing is right.
+authority; without a service the Graph compiles for inspection only and refuses to run. Its exact
+topology is its [Graph Spec](control-flow.md#terminal-agent-operation). A capability's State
+adapter works the same way: it runs a capability through admission with the Host found in Runtime
+context and returns the result envelope in the `result` channel.
 
 ## Design
 
-### What is enforced and what is policy
+### What is enforced and what is not
 
-The central decision is that a model's output is a proposal and the Host decides what counts. That
-part is enforced: the result gate, the independent reading of pi-subagents' records and the
-rechecks of every frozen input are Host code the model cannot influence. The same holds for the
-launch shape: native preflight must match the prepared Agent file, a fresh context and the Agent's
-tool ceiling, so a reader cannot receive `bash`, `edit` or a delegation tool it was not given.
+The central decision is that a model's output is a proposal and the Host decides what counts.
 
-What an Agent reads and writes with the tools it does have is not enforced. Native Agents run as
-the developer's user with the project on disk, the shared network and the developer's credentials.
-Their file scope, and every network and credential restriction, is written into their instructions.
-In particular a programmer's `bash` can reach any path its user can. The call's temporary directory
-and the input digests detect changes; they do not prove what an Agent read. The only
-operating-system boundary in the Harness is the read-only check sandbox of Check execution, and it
-does not apply to native Agents. This is an honest
-statement of an early Harness, not a guarantee to rely on.
+| Boundary | Mechanism | Enforced |
+| --- | --- | --- |
+| Launch shape: prepared Agent file, fresh context, no inherited context or Skills, no nested subagents, no tool outside the definition | pi-subagents preflight, checked by the native call extension or the Workflow's first Host step | Yes, before the model starts |
+| What counts as a result | Result gate, independent reading of pi-subagents' records, rechecks of every frozen input, exclusive terminal reservation | Yes, in Host code the model cannot reach |
+| Reads confined to the capsule | The capsule is the Agent's working directory | Not enforced: file tools accept any path the user can read |
+| Programmer writes and shell confined to the Module's `ImplementationScope` | The Agent's instructions | Not enforced: `bash`, `edit` and `write` reach any path the user can |
+| Network and credentials | The Agent's instructions | Not enforced: Agents run as the developer's user with the shared network |
+| Agents not calling Concorde | No delegation tool; the Agent's instructions | Not enforced for an Agent with `bash`, which could run the launcher itself |
+
+The input digests detect changes; they do not show what an Agent read. The only operating-system
+boundary in the Harness is Check execution's read-only check boundary, which applies to checks, not
+to Agents. That Agents never delegate is an obligation on their definitions,
+[req.agents.terminal](../../agents/definitions.md#req.agents.terminal); preflight is where it is
+checked at launch.
+
+### Why a generic driver with hooks
+
+<a id="realization.execution.native-driver"></a>
+
+Every Agent call follows the same safety path, but each provider decides what goes into a stage and
+what an accepted result records. Putting both in one file made that file import every provider,
+so a change to any provider touched the Harness. The **native driver** keeps only the shared path:
+admission re-entry, capsule assembly through Task context, the result gate's actions, native
+evidence, coverage, terminal reservation and archiving. Providers are reached only through hook
+entry points named in Agent definitions and capability declarations, so the driver imports no
+provider and a new provider needs no change here. The driver reads the pinned native records
+itself, which is why acceptance cannot be delegated to a hook.
+
+Staging and acceptance are separate because pi-subagents runs the gate command even after a failed
+run, and because a gate's output passes through the Workflow script. Staging therefore never
+accepts; only the acceptance step, which reads the run's outcome itself, may call the hook's
+acceptance. The terminal record is created exclusively before that call, so a repeated or
+concurrent `accept` cannot record a result twice. One finite command runs at a time per call, under
+a lock in the call directory that is never held across a model run.
+
+The context-assessment service file currently holds this driver together with provider-specific
+preparation; it is split into the native driver, Task context's capsule assembly and the
+providers' hooks.
 
 ### Why finite Host steps
 
-<a id="realization.execution.native-acceptance"></a>
+<a id="realization.execution.native-plumbing"></a>
 
-A model run can take many minutes and may be cancelled from Pi at any moment. If a Python
-provider waited for it, the provider's state would live in a process the user session cannot see
-or resume. Instead each Host step starts, checks its inputs from the call's descriptor, does one
-thing and exits. The **native acceptance services** are the shared pieces this needs: the
-staging control document and its reader, the reader of pi-subagents' records, the admission of the
-pi-subagents installation, the Host step transport, preflight and proposal capture in Pi, and the
-pinned JavaScript dependency of Concorde's Pi extensions. The per-call actions that use them
-(`submit`, `stage`, `accept` and the others) run in the shared native Host step driver, which
-currently lives in the context-assessment service file bound by Planning; see the open questions.
-
-Staging and acceptance are separate because pi-subagents runs the gate command even after a failed
-run, and because the gate's output passes through the Workflow script. Staging therefore never
-accepts; only the acceptance step (`accept` for a single call, the Workflow's final `finalize`),
-which reads the run's outcome itself, may call the provider.
+A model run can take many minutes and may be cancelled from Pi at any moment. If a Python provider
+waited for it, the provider's state would live in a process the user session cannot see or resume.
+Instead each Host step starts, checks its inputs against the call's descriptor, does one thing and
+exits. The **native Pi plumbing** is the Pi side of that design: the Host-step transport and child
+extension, proposal capture, launch preflight, the Host-step error adapter, the native call
+extension that intercepts a prepared `subagent` call, and the workflow registrar. Preflight derives
+its allowed tools from the prepared Agent definition file, never from a list of Agent names, and the
+registrar takes the workflow script and Host-step commands from the descriptor, so this plumbing
+carries no provider knowledge. The planning workflow registrar file becomes that generic registrar.
 
 ### Why the pi-subagents version is pinned
 
 Acceptance depends on the layout of pi-subagents' status and metadata files, which carry no
 version field. The Host admits only the reviewed release, `pi-subagents` 0.69.0, whose selected
-source files must match digests recorded in `pi/native-runtime-contract.json`. Any other release is
-refused rather than read under a guessed layout. This is compatibility provenance, not a signature.
+source files must match the digests recorded in the native runtime contract. Any other release is
+refused rather than read under a guessed layout. This is compatibility provenance, not a signature:
+a process running as the same user could still rewrite the records.
 
 ### The invocation host
 
 <a id="realization.execution.invocation-host"></a>
 
 The **invocation host** is the trusted object that carries one request's project and package
-roots, mode, identities and observer through admission, providers and nested invocations, together
-with the per-request invocation record providers build on and the model selection resolver. It
-exists so that trusted services never travel through data a model or a caller can write.
+roots, mode, identities, observer and native service through admission, providers and nested
+invocations, together with the per-request invocation that providers build on and the model
+selection resolver. It exists so that trusted services never travel through data a model or a
+caller can write. The invocation file also holds gap bookkeeping that belongs to Planning, and the
+host file holds nested-dispatch resolution that belongs to Operations; both move to their owners.
 
-### Why StateGraph only where it is explicit
-
-Concorde requires LangGraph's Graph API for any Graph it compiles, because nodes and edges declared
-before compilation are what a Graph Spec and its check can inspect. Public capabilities
-instead use authored Workflows, whose order is plain script code run by pi-subagents. The
-Terminal Agent Operation remains so that an embedding can compose Agent calls as graph state
-without Concorde re-creating a hidden model scheduler.
+### Why two control-flow mechanisms, and the Graph API only
 
 <a id="realization.execution.operation-graph"></a><a id="realization.execution.graph-spec-check"></a>
 
-The **operation graph** realization builds that one graph. The
-**Graph Spec check** holds every compiled Graph to its Graph Spec and every Python source to the
-Graph API.
-
-### Diagnostics never become authority
-
-<a id="realization.execution.diagnostics"></a>
-
-The **execution diagnostics** record timing without prompts, source text, tool output,
-environment values or command arguments. Clocks of different processes are never subtracted.
-Recording is best effort: a failing sink marks the telemetry incomplete and nothing else.
+Most capability flows are a fixed sequence with Host checks between Agent calls. A pi workflow
+states that sequence as a short script that pi-subagents already knows how to run, cancel and
+report, so no Concorde process has to schedule models. LangGraph remains for flows that are best
+read as state and routing, and Concorde permits only its Graph API: nodes and edges declared before
+compilation are what a Graph Spec and its check can compare, while the Functional API hides
+control flow inside ordinary Python where neither can. The **operation graph** realization builds
+the Terminal Agent Operation and the capability State adapter. The **Graph Spec check** holds every
+compiled Graph of the Graph catalog it is given to its Graph Spec and every Python source to the
+Graph API; it receives the catalog as an entry point, so it imports no catalog owner.
 
 <a id="realization.execution.tests"></a>
 
-The **execution tests** exercise these parts with fake providers and scripted pi-subagents runs.
-Their doubles show that the plumbing holds; they do not show that a model judges well.
+The **execution tests** exercise these parts with scripted pi-subagents runs, fake model providers
+and live diagnostics. Their doubles show that the plumbing holds; they do not show that a model
+judges well.
 
 ### Open questions
 
-- The shared driver of native Host steps (`execute`, the command entry and the `submit`, `stage`
-  and `accept` actions of the result gate) lives in `native_context.py`, which the Planning Module
-  binds, although every provider's Agent calls use it. This Module therefore promises the result
-  gate's behaviour without binding the file that performs most of it.
-- Workflow-level time limits are set by each Workflow script; this Module sets only the thirty
-  second limit of the Host steps an Agent call runs.
+- Workflow-level time limits are set by each workflow script; this Module sets only the default
+  thirty-second limit of the Host steps an Agent call runs.
+- Chaining Workflows across capabilities is not supported; each capability's Workflow is prepared
+  and accepted on its own.
 
 ## Relationships
 
 ```mermaid
 flowchart LR
     accTitle: How a model result is produced and accepted
-    accDescr: A Workflow orders Agent calls and Host steps. An Agent call runs one Agent and submits a proposal, which the result gate stages and accepts.
+    accDescr: The native driver prepares and accepts Agent calls through Agent hooks; a Workflow orders Agent calls and Host steps; the result gate stages and accepts each proposal.
+    driver[Native driver]
+    plumbing[Native Pi plumbing]
     workflow[Workflow]
     call[Agent call]
     agent[Agents / Agent]
+    definition[Agents / Agent definition]
     proposal[Proposal]
     gate[Result gate]
     step[Host step]
-    services[Native acceptance services]
+    hook[Agent hook]
+    whook[Workflow hook]
     selection[Model selection]
     host[Invocation host]
+    driver -->|prepares and accepts| call
+    driver -->|calls| hook
+    driver -->|calls| whook
+    plumbing -->|launches| call
+    plumbing -->|registers| workflow
     workflow -->|orders| call
     workflow -->|runs| step
     call -->|runs one| agent
-    call -->|is launched with| selection
+    hook -->|is named by| definition
     call -->|submits| proposal
     step -->|drives| gate
     gate -->|stages and accepts| proposal
-    services -->|supplies the checks of| gate
+    call -->|is launched with| selection
     host -->|resolves| selection
 ```
 
 ```mermaid
 flowchart LR
-    accTitle: Graphs and diagnostics
-    accDescr: The optional Terminal Agent Operation delegates to a trusted Agent call; the Graph Spec check compares Graph Specs; diagnostics record spans.
+    accTitle: Graphs
+    accDescr: The operation graph compiles the Terminal Agent Operation, a Graph; the Graph Spec check compares Graph Specs, which describe Graphs.
     opgraph[Operation graph]
     operation[Terminal Agent Operation]
-    call[Agent call]
+    g[Graph]
     check[Graph Spec check]
     spec[Graph Spec]
-    diagnostics[Execution diagnostics]
-    span[Diagnostic span]
     opgraph -->|compiles| operation
-    operation -->|calls a trusted service for| call
+    operation -->|calls a trusted service for| call[Agent call]
     check -->|compares| spec
-    spec -->|describes| operation
-    diagnostics -->|records| span
+    spec -->|describes| g
 ```
 
 ```mermaid
@@ -319,77 +394,92 @@ flowchart LR
     worktrees[Candidate worktrees]
     checks[Check execution]
     spec[Spec tooling]
-    operations[Operations]
-    distribution[Distribution]
     issues[Issues]
+    observation[Observation]
     me -->|uses| agents
     me -->|uses| context
     me -->|uses| admission
     me -->|uses| worktrees
     me -->|uses| checks
     me -->|uses| spec
-    me -->|uses| operations
-    me -->|uses| distribution
     me -->|uses| issues
+    me -->|uses| observation
 ```
+
+The providers under Operations and the Pi session use this Module, not the other way round. A
+provider implements the hooks and, for a Workflow, its script and step table, and it declares its
+participation in the [Host-step protocol](interfaces.md#contract.execution.host-step). The Pi session
+loads the native call extension and forwards `prepare` and `result` requests.
 
 <a id="uses-agents"></a>
 
-**Agents** defines every callable [Agent](../../agents/module.md#concept.agents.agent): its
-instructions, tools and time limit. An Agent call launches exactly that definition, and native
-preflight refuses a tool outside it. This Module never adds tools or edits instructions; an unknown
-Agent stops preparation.
+**Agents** defines every [Agent](../../agents/module.md#concept.agents.agent) once. The driver
+relies on each [Agent definition](../../agents/module.md#concept.agents.definition) for the Agent's
+tools, instructions, time limit, result type and the entry point of its Agent hook, and preflight
+refuses a launch whose tools exceed that list. This Module never adds tools or edits instructions.
+An unknown Agent, or an entry point that does not resolve, stops preparation before any capsule is
+written.
 
 <a id="uses-context"></a>
 
-[Task context](../context/module.md) freezes what a call may read, validates an Agent's typed input
-and output against its [worker profile](../context/module.md#concept.context.worker-profile). This
-Module rechecks the frozen context before staging and before acceptance, and rejects the result
-when anything changed.
+**Task context** composes what one call may read. The driver relies on it to freeze the
+[context snapshot](../context/module.md#concept.context.snapshot) for the call's
+[phase](../context/module.md#concept.context.phase) with the hook's
+[stage inputs](../context/module.md#concept.context.stage-input), to assemble the
+[capsule](../context/module.md#concept.context.capsule), and to produce the
+[Agent binding](../context/module.md#concept.context.agent-binding) whose tools, effects and
+instruction digest become the Agent definition file. The driver rechecks the snapshot before
+staging and before acceptance and rejects the call as stale when anything changed.
 
 <a id="uses-admission"></a>
 
-[Request admission](../admission/module.md) is the one entry of every capability request and
-defines the result envelope and the causal feedback record of failures. Host steps re-enter through
-its checks, and every failure here is reported as its record, keeping the lower-level cause.
+**Request admission** is the one entry of every capability request. Every Host step re-enters it
+with the call's stored [invocation](../admission/contracts.md#contract.admission.invocation), so a
+changed configuration or runtime selection is refused; each response is a
+[result envelope](../admission/contracts.md#contract.admission.result), and every failure here is
+reported as its [causal feedback](../admission/contracts.md#contract.admission.feedback) record,
+keeping the lower-level cause. When admission [relays](../admission/module.md#concept.admission.relay)
+a mutating request into a candidate, preparation runs in the candidate's own launcher. The driver
+learns whether a capability runs a Workflow, and which workflow hook, from its
+[capability declaration](../admission/contracts.md#contract.admission.capability-declaration); a
+declaration without a native entry refuses preparation.
 
 <a id="uses-worktrees"></a>
 
-[Candidate worktrees](../worktrees/module.md) keeps the
-[run record](../worktrees/module.md#concept.worktrees.run-record) and the primary worktree's run
-directory. Diagnostic timing records are written there, never into a candidate;
-when that write fails the execution outcome stands and the diagnostic is reported missing.
+**Candidate worktrees** keeps the primary worktree's run directory and each worktree's
+[change status](../worktrees/module.md#concept.worktrees.change-status). The driver binds the
+change status digest into each descriptor and treats any change to it as stale input, and it
+archives each accepted call's descriptor, proposal and native records as a
+[run record](../worktrees/module.md#concept.worktrees.run-record) in the primary worktree. When that
+write fails, the acceptance fails with the write error.
 
 <a id="uses-checks"></a>
 
-[Check execution](../checks/module.md) runs the Module's
-[configured checks](../checks/module.md#concept.checks.configured-check) behind `run_checks`, under
-its [read-only boundary](../checks/requirements.md#req.checks.project-read-only). A check that
-cannot be sandboxed fails the tool call; it is never run another way.
+**Check execution** runs a Module's [configured checks](../checks/module.md#concept.checks.configured-check)
+behind the `run_checks` tool, under its
+[read-only check boundary](../checks/module.md#concept.checks.read-only-boundary), and returns one
+[check result](../checks/module.md#concept.checks.check-result) per check. The driver offers the
+tool only to an Agent whose definition lists it; a boundary that cannot be established fails the
+tool call and is never replaced by another way of running the check.
 
 <a id="uses-spec"></a>
 
-[Spec](../../spec/module.md) supplies the typed values used for every proposal and control
-document, and the [registry](../../spec/module.md#concept.spec.registry) of documents the Graph
-Spec check reads. A Spec error stops the step that needed it.
-
-<a id="uses-operations"></a>
-
-[Operations](../../operations/module.md) owns the Graph catalog and the
-[Operation](../../operations/module.md#concept.operations.operation) inventory. The Terminal Agent
-Operation is the only Graph in that catalog, and the Graph Spec check compiles whatever the
-catalog lists.
-
-<a id="uses-distribution"></a>
-
-[Distribution](../../distribution/module.md) renders Agent instructions, installs the Pi extensions
-and their dependencies, and supplies the session extension that registers the `concorde` tool. That
-extension returns prepared calls and, around each Agent call, runs preflight and the `check` and
-`accept` Host steps. A stale build or a missing installed dependency stops a launch before any
-model runs.
+**Spec tooling** supplies the [typed values](../../spec/module.md#concept.spec.typed-value) used
+for every proposal and descriptor, and the [registry](../../spec/module.md#concept.spec.registry)
+and registered [documents](../../spec/module.md#concept.spec.document) the Graph Spec check reads.
+A Spec error stops the step that needed it.
 
 <a id="uses-issues"></a>
 
-[Issues](../../issues/module.md) persists what an Agent reports through `report_issue`. An accepted
-[Issue](../../issues/module.md#concept.issues.issue) report survives a failed call; a rejected report
-is returned to the Agent as a failed tool call.
+**Issues** persists what an Agent files through `report_issue`. The driver forwards the Agent's
+[report](../../issues/interface.md#contract.issues.report) bound to the call's invocation and
+returns the [receipt](../../issues/interface.md#contract.issues.receipt); an accepted
+[Issue report](../../issues/module.md#concept.issues.report) survives a failed call, a rejected
+report is returned to the Agent as a failed tool call, and a proposal may cite only receipts this
+call received.
+
+<a id="uses-observation"></a>
+
+**Observation** records a [diagnostic span](../observation/module.md#concept.observation.diagnostic-span)
+for admission, preparation and each Host step through the invocation host's observer. Recording
+never changes the outcome of the step it describes.

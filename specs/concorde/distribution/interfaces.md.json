@@ -6,5 +6,6 @@
     "role": "implementation"
   },
   "defines": [],
-  "relations": []
+  "relations": [],
+  "extensions": {}
 }

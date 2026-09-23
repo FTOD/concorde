@@ -25,7 +25,7 @@ from concorde.spec.verification import verifies
 
 
 class TimingTests(unittest.TestCase):
-    @verifies("scenario.harness.diagnostic-spans")
+    @verifies("scenario.observation.diagnostic-spans")
     def test_success_error_cancel_unknown_privacy(self):
         trace = Trace()
         with tracing(trace):
@@ -53,7 +53,7 @@ class TimingTests(unittest.TestCase):
             metadata({"argv": "SECRET", "env": "SECRET", "output": "SECRET"}), {}
         )
 
-    @verifies("scenario.harness.diagnostic-spans")
+    @verifies("scenario.observation.diagnostic-spans")
     def test_overlap_and_missing_are_not_wall_or_thinking(self):
         spans = [
             {"process_id": 1, "start_ns": 0, "duration_ns": 10e9, "status": "ok"},
@@ -73,7 +73,7 @@ class TimingTests(unittest.TestCase):
         self.assertIsNone(result["wall_seconds"])
         self.assertIsNone(result["server_thinking_seconds"])
 
-    @verifies("scenario.harness.diagnostic-spans")
+    @verifies("scenario.observation.diagnostic-spans")
     def test_concurrency_sink_failure_and_cap(self):
         def worker(index):
             trace = Trace(
@@ -94,7 +94,7 @@ class TimingTests(unittest.TestCase):
         self.assertEqual(trace.incomplete, 1)
 
     @verifies(
-        "scenario.harness.session-observation", "scenario.harness.diagnostic-spans"
+        "scenario.observation.session-observation", "scenario.observation.diagnostic-spans"
     )
     def test_native_analysis_omits_payloads(self):
         from concorde.harness.timing import analyze_native
@@ -119,7 +119,7 @@ class TimingTests(unittest.TestCase):
         self.assertNotIn("PRIVATE", json.dumps(result))
         self.assertFalse(analyze_native([])["complete"])
 
-    @verifies("scenario.harness.diagnostic-spans")
+    @verifies("scenario.observation.diagnostic-spans")
     def test_cancelled_root_preserves_pending_span_identity_without_persistence(self):
         from types import SimpleNamespace
         from concorde.harness.timing import traced_operation
@@ -161,7 +161,7 @@ class TimingTests(unittest.TestCase):
             ]
         )
 
-    @verifies("scenario.harness.diagnostic-spans")
+    @verifies("scenario.observation.diagnostic-spans")
     def test_standalone_diagnostics_and_disabled_fast_path(self):
         @timed("fixture.install")
         def mutation():

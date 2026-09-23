@@ -19,7 +19,7 @@ class ExternalReferenceTests(unittest.TestCase):
         self.fixture.write("reference/other/api.md", "undeclared\n")
         self.fixture.declare_reference()
 
-    @verifies("scenario.harness.external-references")
+    @verifies("scenario.context.external-references")
     def test_every_phase_sees_the_entries_and_a_byte_change_stales_them(self):
         from concorde.harness.worker_profile import worker_profile
 
@@ -63,7 +63,7 @@ class ExternalReferenceTests(unittest.TestCase):
             recheck_context(self.fixture.repository(), ask)
         self.assertEqual("stale_context", raised.exception.code)
 
-    @verifies("scenario.harness.external-references")
+    @verifies("scenario.context.external-references")
     def test_candidate_worktrees_receive_the_primary_reference_checkouts(self):
         import subprocess
         import tempfile
@@ -100,7 +100,7 @@ class SharedFileReaderTests(unittest.TestCase):
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
 
-    @verifies("scenario.harness.shared-file-readers")
+    @verifies("scenario.context.shared-file-binding")
     def test_a_programmer_also_reads_every_module_that_binds_its_files(self):
         from concorde.harness.context import context_documents
 

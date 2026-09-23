@@ -21,9 +21,15 @@
         "meaning": "#uses-spec",
         "relies_on": [
           "concept.spec.registry",
-          "concept.spec.file-transaction",
-          "req.spec.transaction-all-or-nothing",
-          "req.spec.transaction-digest-bound"
+          "concept.spec.impact-index",
+          "concept.spec.file-transaction"
+        ]
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.graph-spec"
         ]
       },
       {
@@ -123,7 +129,6 @@
       "meaning": "#realization.views.scaffold",
       "entries": [
         "src/concorde/views/",
-        "src/concorde/spec/changes.py",
         "tests/concorde/views/"
       ],
       "pending": []

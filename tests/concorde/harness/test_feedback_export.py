@@ -26,10 +26,10 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 )
 class FeedbackExportTests(unittest.TestCase):
     @verifies(
-        "scenario.harness.execution-feedback",
-        "scenario.harness.check-result",
-        "scenario.harness.native-context-public",
-        "scenario.harness.optional-operation",
+        "scenario.admission.feedback-causes",
+        "scenario.checks.command-output",
+        "scenario.planning.native-assessment-accepted",
+        "scenario.execution.operation-service",
     )
     def test_refusals_survive_registered_tester_failure_and_scratch_cleanup(self):
         source = REPOSITORY_ROOT

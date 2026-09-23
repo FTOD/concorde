@@ -78,7 +78,7 @@ def _stage_context():
 
 
 class OperationNodeTests(unittest.TestCase):
-    @verifies("scenario.harness.agent-node")
+    @verifies("scenario.execution.agent-node")
     def test_node_schemas_are_exactly_the_contract_fields(self):
         for name in (
             "context_assessor",
@@ -120,7 +120,7 @@ class OperationNodeTests(unittest.TestCase):
             set(typed_state("concorde-agent-stage-context").__annotations__),
         )
 
-    @verifies("scenario.harness.agent-node")
+    @verifies("scenario.execution.agent-node")
     def test_invocation_validates_context_in_and_result_out(self):
         node = OperationNode("planner")
         context = _stage_context()
@@ -152,7 +152,7 @@ class OperationNodeTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "inspection only"):
             node.graph().invoke(context["data"])
 
-    @verifies("scenario.harness.agent-node", "scenario.harness.graph-inspection")
+    @verifies("scenario.execution.agent-node", "scenario.execution.graph-inspection")
     def test_native_plan_has_no_shadow_graph(self):
         from concorde.operations.graph_catalog import catalog
 

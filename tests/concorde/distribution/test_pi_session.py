@@ -305,7 +305,7 @@ class SessionToolTests(unittest.TestCase):
     def envelope(text: str) -> dict:
         return json.loads(text)
 
-    @verifies("scenario.distribution.pi-session-prompt")
+    @verifies("scenario.session.prompt")
     def test_prompt_and_tool_name_every_public_operation(self):
         outcome = self.drive([])
         self.assertTrue(outcome["prompt"].startswith("BASE PROMPT\n\n## Concorde\n"))
@@ -325,7 +325,7 @@ class SessionToolTests(unittest.TestCase):
         installed = self.drive([], explicit_request_only=False)
         self.assertNotIn("explicitly asks", installed["prompt"])
 
-    @verifies("scenario.distribution.pi-session-describe")
+    @verifies("scenario.session.describe")
     def test_describe_returns_guidance_and_the_request_schema(self):
         [result] = self.drive(
             [{"params": {"operation": "concorde-validate", "action": "describe"}}]
@@ -339,7 +339,7 @@ class SessionToolTests(unittest.TestCase):
             {"operation": "concorde-validate", "action": "describe"}, result["details"]
         )
 
-    @verifies("scenario.distribution.pi-session-run")
+    @verifies("scenario.session.run-host")
     def test_run_wraps_the_input_in_the_invocation_envelope(self):
         [result] = self.drive([{"params": RUN}])["results"]
         self.assertTrue(result["ok"], result)
@@ -368,7 +368,7 @@ class SessionToolTests(unittest.TestCase):
             result["details"],
         )
 
-    @verifies("scenario.distribution.pi-session-run")
+    @verifies("scenario.session.run-host")
     def test_describe_policy_mode_missing_input_and_unknown_operation(self):
         results = self.drive(
             [
@@ -392,13 +392,13 @@ class SessionToolTests(unittest.TestCase):
         self.assertFalse(results[2]["ok"])
         self.assertIn("unknown Concorde Operation", results[2]["error"])
 
-    @verifies("scenario.distribution.pi-session-run")
+    @verifies("scenario.session.run-host")
     def test_a_blocked_result_is_an_error_carrying_the_envelope(self):
         [result] = self.drive([{"params": RUN}], scenario="blocked")["results"]
         self.assertFalse(result["ok"], result)
         self.assertEqual("blocked", self.envelope(result["error"])["status"])
 
-    @verifies("scenario.distribution.pi-session-cancel")
+    @verifies("scenario.session.cancel")
     def test_abort_terminates_the_launcher_and_returns_its_cancelled_result(self):
         [result] = self.drive(
             [{"params": RUN, "abort_after_ms": 500}], scenario="hang"
@@ -408,7 +408,7 @@ class SessionToolTests(unittest.TestCase):
         self.assertIn("execution_cancelled", result["error"])
         self.assertLess(result["elapsed_ms"], 4000)
 
-    @verifies("scenario.distribution.pi-session-cancel")
+    @verifies("scenario.session.cancel")
     def test_a_launcher_ignoring_sigterm_is_killed_after_the_grace_period(self):
         [result] = self.drive(
             [{"params": RUN, "abort_after_ms": 200}], scenario="stubborn"
@@ -418,7 +418,7 @@ class SessionToolTests(unittest.TestCase):
         self.assertGreaterEqual(result["elapsed_ms"], 5000)
         self.assertLess(result["elapsed_ms"], 30000)
 
-    @verifies("scenario.distribution.pi-session-run")
+    @verifies("scenario.session.run-host")
     def test_a_large_result_is_saved_to_a_file(self):
         [result] = self.drive([{"params": RUN}], scenario="large")["results"]
         self.assertTrue(result["ok"], result)
@@ -483,8 +483,8 @@ class RealPiSessionTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.distribution.pi-session-prompt",
-        "scenario.distribution.pi-session-describe",
+        "scenario.session.prompt",
+        "scenario.session.describe",
     )
     def drive(self, turns, *, use_selection=True, binding=False, conflict=False):
         pi = installed_pi()
@@ -557,8 +557,8 @@ class RealPiSessionTests(unittest.TestCase):
         return run, provider.requests
 
     @verifies(
-        "scenario.distribution.private-selection",
-        "scenario.distribution.pi-session-describe",
+        "scenario.session.select",
+        "scenario.session.describe",
     )
     def test_pi_advertises_the_exact_candidate_tool_and_answers_describe(self):
         run, requests = self.drive(
@@ -587,8 +587,8 @@ class RealPiSessionTests(unittest.TestCase):
         self.assertIn("concorde", [tool["function"]["name"] for tool in first["tools"]])
 
     @verifies(
-        "scenario.distribution.private-selection",
-        "scenario.distribution.pi-session-run",
+        "scenario.session.select",
+        "scenario.session.run-host",
     )
     def test_pi_calls_selected_candidate_runtime_and_preserves_rejection_envelope(self):
         run, _ = self.drive(
@@ -614,8 +614,8 @@ class RealPiSessionTests(unittest.TestCase):
         self.assertEqual("invalid_field", envelope["errors"][0]["code"])
 
     @verifies(
-        "scenario.distribution.private-selection",
-        "scenario.distribution.task-subagents",
+        "scenario.session.select",
+        "scenario.session.task-subagents",
     )
     def test_native_child_binding_loads_exact_entry_without_global_env(self):
         run, _ = self.drive(
@@ -637,7 +637,7 @@ class RealPiSessionTests(unittest.TestCase):
         self.assertIn("Conflicting private selection", raised.exception.run.stderr)
         self.assertEqual([], raised.exception.run.tool_results)
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_stale_selected_implementation_registers_no_tool(self):
         implementation = self.project / PI_SESSION_EXTENSION
         implementation.write_text(implementation.read_text() + "\n// stale\n")
@@ -649,7 +649,7 @@ class RealPiSessionTests(unittest.TestCase):
         )
         self.assertEqual([], raised.exception.run.tool_results)
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_missing_selection_cannot_load_private_entry(self):
         with self.assertRaises(PiRpcError) as raised:
             self.drive([{"text": "no operation"}], use_selection=False)

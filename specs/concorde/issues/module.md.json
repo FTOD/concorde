@@ -9,7 +9,6 @@
     "title": "Issues",
     "owns": [
       "specs/concorde/issues/module.md",
-      "specs/concorde/issues/solving.md",
       "specs/concorde/issues/interface.md",
       "specs/concorde/issues/requirements.md",
       "specs/concorde/issues/scenarios.md"
@@ -17,64 +16,21 @@
     "contains": [],
     "uses": [
       {
-        "target": "module.harness.admission",
-        "meaning": "#uses-admission"
-      },
-      {
-        "target": "module.harness.context",
-        "meaning": "#uses-context",
+        "target": "module.spec",
+        "meaning": "#uses-spec",
         "relies_on": [
-          "concept.context.grant"
-        ]
-      },
-      {
-        "target": "module.harness.execution",
-        "meaning": "#uses-execution",
-        "relies_on": [
-          "concept.execution.workflow"
+          "concept.spec.typed-value",
+          "concept.spec.file-transaction",
+          "concept.spec.registry"
         ]
       },
       {
         "target": "module.harness.worktrees",
         "meaning": "#uses-worktrees",
         "relies_on": [
-          "concept.worktrees.candidate",
-          "concept.worktrees.worktree"
-        ]
-      },
-      {
-        "target": "module.spec",
-        "meaning": "#uses-spec",
-        "relies_on": [
-          "concept.spec.registry"
-        ]
-      },
-      {
-        "target": "module.review",
-        "meaning": "#uses-review",
-        "relies_on": [
-          "concept.review.finding"
-        ]
-      },
-      {
-        "target": "module.validation",
-        "meaning": "#uses-validation",
-        "relies_on": [
-          "concept.validation.ready"
-        ]
-      },
-      {
-        "target": "module.agents",
-        "meaning": "#uses-agents",
-        "relies_on": [
-          "concept.agents.agent"
-        ]
-      },
-      {
-        "target": "module.operations",
-        "meaning": "#uses-operations",
-        "relies_on": [
-          "concept.operations.operation"
+          "concept.worktrees.worktree",
+          "concept.worktrees.primary-worktree",
+          "concept.worktrees.run-record"
         ]
       }
     ],
@@ -83,19 +39,45 @@
         "kind": "document",
         "target": "document.concorde.vocabulary",
         "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "external",
-        "target": "reference/pi/",
-        "reason": "Pi agent runtime and extension API that run the native solve workflow and serve the report_issue tool"
-      },
-      {
-        "kind": "external",
-        "target": "reference/langgraph/",
-        "reason": "the bookkeeping actions run as nodes of the Operations dispatch StateGraph"
       }
     ],
-    "participates": []
+    "participates": [
+      {
+        "contract": "contract.issues.report",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.harness.execution",
+        "meaning": "#provides-contracts"
+      },
+      {
+        "contract": "contract.issues.receipt",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.harness.execution",
+        "meaning": "#provides-contracts"
+      },
+      {
+        "contract": "contract.issues.blocker",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.planning",
+        "meaning": "#provides-contracts"
+      },
+      {
+        "contract": "contract.issues.selection",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.issue-solving",
+        "meaning": "#provides-contracts"
+      },
+      {
+        "contract": "contract.issues.context",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.issue-solving",
+        "meaning": "#provides-contracts"
+      }
+    ]
   },
   "defines": [
     {
@@ -128,10 +110,10 @@
       "title": "Issue store",
       "meaning": "#realization.issues.store",
       "entries": [
+        "src/concorde/issues/__init__.py",
         "src/concorde/issues/store.py",
         "src/concorde/spec/issue_shapes.py",
-        "scripts/issues.py",
-        "tests/concorde/issues/test_store.py"
+        "scripts/issues.py"
       ]
     },
     {
@@ -141,35 +123,18 @@
       "meaning": "#realization.issues.reporting",
       "entries": [
         "src/concorde/issues/reporting.py",
-        "src/concorde/issues/references.py",
-        "tests/concorde/issues/test_reporting.py"
+        "src/concorde/issues/references.py"
       ]
     },
     {
-      "id": "realization.issues.capability",
+      "id": "realization.issues.tests",
       "type": "realization",
-      "title": "Issues capability",
-      "meaning": "#realization.issues.capability",
+      "title": "Issues tests",
+      "meaning": "#realization.issues.tests",
       "entries": [
-        "operations/issues.py",
-        "src/concorde/issues/__init__.py",
-        "src/concorde/issues/graph.py",
-        "src/concorde/issues/solve.py",
         "tests/concorde/issues/__init__.py",
-        "tests/concorde/issues/test_graph.py",
-        "tests/concorde/harness/test_host_tools.py"
-      ]
-    },
-    {
-      "id": "realization.issues.workflow",
-      "type": "realization",
-      "title": "Native solve workflow",
-      "meaning": "#realization.issues.workflow",
-      "entries": [
-        "pi/workflows/issues.js",
-        "src/concorde/harness/native_issues.py",
-        "tests/concorde/harness/native_issue_probe.mjs",
-        "tests/concorde/harness/test_native_issues.py"
+        "tests/concorde/issues/test_store.py",
+        "tests/concorde/issues/test_reporting.py"
       ]
     }
   ],
@@ -206,69 +171,15 @@
     },
     {
       "type": "relates",
-      "source": "realization.issues.reporting",
-      "verb": "takes its limits from",
-      "target": "module.harness.context"
-    },
-    {
-      "type": "relates",
-      "source": "realization.issues.capability",
-      "verb": "reads and disposes through",
-      "target": "realization.issues.store"
-    },
-    {
-      "type": "relates",
-      "source": "realization.issues.capability",
-      "verb": "is admitted through",
-      "target": "module.harness.admission"
-    },
-    {
-      "type": "relates",
-      "source": "realization.issues.capability",
-      "verb": "records solve progress in",
-      "target": "module.harness.worktrees"
-    },
-    {
-      "type": "relates",
-      "source": "realization.issues.capability",
-      "verb": "validates the candidate through",
-      "target": "module.validation"
-    },
-    {
-      "type": "relates",
-      "source": "realization.issues.capability",
-      "verb": "is dispatched by",
-      "target": "module.operations"
-    },
-    {
-      "type": "relates",
       "source": "realization.issues.store",
-      "verb": "writes files through",
+      "verb": "writes records through",
       "target": "module.spec"
     },
     {
       "type": "relates",
-      "source": "realization.issues.workflow",
-      "verb": "calls the host steps of",
-      "target": "realization.issues.capability"
-    },
-    {
-      "type": "relates",
-      "source": "realization.issues.workflow",
-      "verb": "asks for decisions from",
-      "target": "module.agents"
-    },
-    {
-      "type": "relates",
-      "source": "realization.issues.workflow",
-      "verb": "verifies through",
-      "target": "module.review"
-    },
-    {
-      "type": "relates",
-      "source": "realization.issues.workflow",
-      "verb": "runs through",
-      "target": "module.harness.execution"
+      "source": "realization.issues.store",
+      "verb": "serializes writes with a lock in",
+      "target": "module.harness.worktrees"
     }
   ],
   "extensions": {}

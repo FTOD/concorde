@@ -40,7 +40,7 @@ class CheckExecutorTests(unittest.TestCase):
             environment=child_environment(),
         )
 
-    @verifies("scenario.harness.check-read-only")
+    @verifies("scenario.checks.read-only")
     def test_real_mutations_fail_at_the_system_call(self):
         operations = {
             "create": "(root/'new.txt').write_text('new')",
@@ -74,7 +74,7 @@ class CheckExecutorTests(unittest.TestCase):
                 )
                 self.assertEqual([], list((self.root / ".concorde/runs").iterdir()))
 
-    @verifies("scenario.harness.check-read-only")
+    @verifies("scenario.checks.read-only")
     def test_children_aliases_and_host_descriptors_do_not_restore_write_access(self):
         alias = self.parent / "alias"
         os.link(self.file, alias)
@@ -124,7 +124,7 @@ print('child denied')
         self.assertEqual("original", self.file.read_text())
         print("Process-isolation evidence:", result.stdout.decode().strip())
 
-    @verifies("scenario.harness.check-read-only")
+    @verifies("scenario.checks.read-only")
     def test_further_user_namespace_cannot_remount_project_writable(self):
         result = self.run_check("""
 import subprocess
@@ -138,7 +138,7 @@ assert Path('unlisted.txt').read_text() == 'original'
 """)
         self.assertEqual(0, result.returncode, result)
 
-    @verifies("scenario.harness.check-scratch")
+    @verifies("scenario.checks.scratch")
     def test_reads_and_private_temporary_writes_succeed_and_are_cleaned(self):
         scratch_paths = []
         for _ in range(2):
@@ -159,14 +159,14 @@ print(json.dumps(str(scratch)))
             scratch_paths.append(scratch)
         self.assertNotEqual(*scratch_paths)
 
-    @verifies("scenario.harness.check-scratch")
+    @verifies("scenario.checks.scratch")
     def test_project_tmpdir_cannot_become_a_writable_project_mount(self):
         with patch("tempfile.gettempdir", return_value=str(self.root)):
             result = self.run_check("import tempfile; print(tempfile.mkstemp()[1])")
         self.assertEqual(0, result.returncode, result)
         self.assertFalse(Path(result.stdout.decode().strip()).is_relative_to(self.root))
 
-    @verifies("scenario.harness.check-result")
+    @verifies("scenario.checks.command-output")
     def test_exit_code_and_separate_streams_are_preserved(self):
         result = self.run_check(
             "import sys; print('out'); print('err',file=sys.stderr); sys.exit(17)"
@@ -184,7 +184,7 @@ print(json.dumps(str(scratch)))
             (result.returncode, len(result.stdout), len(result.stderr)),
         )
 
-    @verifies("scenario.harness.check-unavailable")
+    @verifies("scenario.checks.unavailable")
     def test_missing_backend_and_unsupported_os_never_launch_the_command(self):
         for platform in ("darwin", "win32"):
             with self.subTest(platform=platform), patch("sys.platform", platform):
@@ -198,7 +198,7 @@ print(json.dumps(str(scratch)))
                 self.run_check("open('new.txt','w').write('unsafe')")
         self.assertFalse((self.root / "new.txt").exists())
 
-    @verifies("scenario.harness.check-result")
+    @verifies("scenario.checks.command-output")
     def test_environment_reaches_real_check_without_entering_monitor_command_line(self):
         token = "private-environment-" + uuid.uuid4().hex
         process = subprocess.Popen
@@ -222,7 +222,7 @@ print(json.dumps(str(scratch)))
         self.assertEqual((0, token + "\n"), (result.returncode, result.stdout.decode()))
         self.assertNotIn(token, json.dumps(launches))
 
-    @verifies("scenario.harness.check-unavailable")
+    @verifies("scenario.checks.unavailable")
     def test_real_bubblewrap_setup_failure_never_runs_command(self):
         # A vanished project after admission causes a genuine bwrap --chdir setup failure.
         from concorde.harness.check_executor import BubblewrapBackend
@@ -239,7 +239,7 @@ print(json.dumps(str(scratch)))
         self.assertTrue(caught.exception.stderr)
         self.assertEqual("original", self.file.read_text())
 
-    @verifies("scenario.harness.check-unavailable")
+    @verifies("scenario.checks.unavailable")
     def test_real_namespace_denial_and_missing_executable_fail_closed(self):
         code = """
 import os,sys,ctypes,ctypes.util,errno
@@ -289,7 +289,7 @@ else:
                 self.run_check("open('unlisted.txt','w').write('unsafe')")
         self.assertEqual("original", self.file.read_text())
 
-    @verifies("scenario.harness.check-lifetime")
+    @verifies("scenario.checks.descendants-end")
     def test_timeout_and_normal_exit_kill_detached_descendants(self):
         for timeout in (True, False):
             token = "concorde-descendant-" + uuid.uuid4().hex

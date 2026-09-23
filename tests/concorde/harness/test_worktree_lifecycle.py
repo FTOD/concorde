@@ -83,7 +83,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("ready", result["output"]["data"]["outcome"], result)
         return read_change(self.change, required=True)["change_id"]
 
-    @verifies("scenario.harness.worktree-guidance")
+    @verifies("scenario.worktrees.guidance-appended")
     def test_new_guidance_preserves_existing_client_content_bytes_and_modes(self):
         agents = self.change / "AGENTS.md"
         agents.write_bytes(b"# User policy\r\nKeep these bytes.\r\n")
@@ -120,7 +120,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             check=True,
         ).stdout
 
-    @verifies("scenario.harness.worktree-guidance")
+    @verifies("scenario.worktrees.guidance-appended")
     def test_new_guidance_creates_only_agents_and_excludes_its_empty_shell(self):
         (self.change / "AGENTS.md").unlink()
         state = change_worktree.ensure_change(self.change, task=self.task)
@@ -132,7 +132,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "", git_value(self.change, "ls-tree", tree, "AGENTS.md", "CLAUDE.md")
         )
 
-    @verifies("scenario.harness.worktree-guidance")
+    @verifies("scenario.worktrees.guidance-appended")
     def test_ambiguous_guidance_blocks_snapshot_without_mutation(self):
         change_worktree.ensure_change(self.change, task=self.task)
         agents = self.change / "AGENTS.md"
@@ -148,7 +148,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(saved, self.state_file().read_bytes())
         self.assertEqual(index, git_value(self.change, "write-tree"))
 
-    @verifies("scenario.harness.worktree-guidance")
+    @verifies("scenario.worktrees.guidance-appended")
     def test_guidance_and_initial_state_rollback_together(self):
         agents = self.change / "AGENTS.md"
         agents.write_bytes(b"# Existing policy\r\nKeep original newlines.\r\n")
@@ -198,7 +198,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         git(self.primary, "worktree", "remove", "--force", str(created))
         created.parent.rmdir()
 
-    @verifies("scenario.harness.worktree-relay")
+    @verifies("scenario.admission.relay")
     def test_primary_mutation_with_an_unknown_change_id_is_refused(self):
         result = self.call_operation(
             self.primary,
@@ -245,7 +245,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             ],
         )
 
-    @verifies("scenario.admission.primary-opt-in", "scenario.harness.worktree-relay")
+    @verifies("scenario.admission.primary-opt-in", "scenario.admission.relay")
     def test_configure_without_opt_in_is_relayed_into_a_candidate(self):
         selection, request = self.configure_request()
         result = self.call_operation(
@@ -287,7 +287,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual([], self.relayed)
         self.assertFalse((self.primary / ".concorde/status").exists())
 
-    @verifies("scenario.harness.change-owner")
+    @verifies("scenario.worktrees.owner-conflict")
     def test_owner_binding_missing_fields_returns_structured_error(self):
         from concorde.spec.repository import SpecError
 
@@ -301,7 +301,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             self.assertEqual(field, caught.exception.field)
         self.assertIsNone(read_change(self.change, required=True)["target_id"])
 
-    @verifies("scenario.harness.worktree-relay")
+    @verifies("scenario.admission.relay")
     def test_primary_relay_is_one_json_response_on_the_paired_cli(self):
         """The default relay runs the candidate's launcher in a subprocess; validate needs no agent."""
         operation = "concorde-validate"
@@ -635,7 +635,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, git_value(self.primary, "rev-parse", branch))
         self.assertTrue(self.change.exists())
 
-    @verifies("scenario.harness.describe-policy")
+    @verifies("scenario.admission.describe-policy")
     def test_primary_merge_preview_after_source_removal_is_read_only(self):
         change_id = self.ready_delivery()
         result = self.call_operation(

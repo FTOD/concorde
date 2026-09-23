@@ -162,7 +162,7 @@ class InitialModuleTests(unittest.TestCase):
                 before, {path: (root / path).read_bytes() for path in paths}
             )
 
-    @verifies("scenario.spec.reject-stale-or-invalid-proposal")
+    @verifies("scenario.spec.reject-invalid-proposal")
     def test_apply_rejects_an_invalid_out_of_bound_or_stale_proposal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

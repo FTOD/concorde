@@ -8,7 +8,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class NativeObservationTests(unittest.TestCase):
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-accepted")
     def test_sdk_facade_delegates_unchanged_and_observes_effective_session_without_auth(
         self,
     ):

@@ -47,7 +47,7 @@ class WorktreeBoundaryTests(unittest.TestCase):
         )
         return root
 
-    @verifies("scenario.harness.worktree-boundary")
+    @verifies("scenario.worktrees.boundary-check")
     def test_primary_worktree_requires_explicit_override(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.create_repository(Path(directory))
@@ -66,7 +66,7 @@ class WorktreeBoundaryTests(unittest.TestCase):
                 boundary,
             )
 
-    @verifies("scenario.harness.worktree-boundary")
+    @verifies("scenario.worktrees.boundary-check")
     def test_linked_worktree_uses_only_committed_base(self):
         with tempfile.TemporaryDirectory() as directory:
             parent = Path(directory)
@@ -86,7 +86,7 @@ class WorktreeBoundaryTests(unittest.TestCase):
             )
             self.assertFalse((linked / "untracked.txt").exists())
 
-    @verifies("scenario.harness.worktree-boundary")
+    @verifies("scenario.worktrees.boundary-check")
     def test_non_git_directory_has_no_mutation_boundary(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(WorktreeBoundaryError):

@@ -36,13 +36,13 @@ class CheckIntegrationTests(unittest.TestCase):
         repo = SpecRepository(self.root, PACKAGE)
         return repo, repo.module("service.transfer"), check["id"]
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_all_registered_required_check_inputs_are_available_and_safe(self):
         # This assertion needs the full checkout, not the publication-only scratch copy.
         findings = check_input_findings(SpecRepository(PACKAGE))
         self.assertEqual((), findings, "\n".join(f.message for f in findings))
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_missing_check_input_is_reported_before_execution(self):
         self.config["checks"][0]["inputs"] = ["removed-lock.json"]
         repo, target, check_id = self.configure("print('must not run')")
@@ -69,7 +69,7 @@ class CheckIntegrationTests(unittest.TestCase):
             report.result["source_digest"], restored.result["source_digest"]
         )
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_public_validation_reports_preflight_owner_without_executing_checks(self):
         self.config["checks"][0]["inputs"] = ["removed-lock.json"]
         _, target, check_id = self.configure("print('must not run')")
@@ -90,7 +90,7 @@ class CheckIntegrationTests(unittest.TestCase):
         for value in (check_id, target.id, "removed-lock.json", "missing_source"):
             self.assertIn(value, json.dumps(result))
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_regular_files_and_directories_share_revision_and_preflight_rules(self):
         directory = self.root / "check-data"
         directory.mkdir()
@@ -111,7 +111,7 @@ class CheckIntegrationTests(unittest.TestCase):
             [f for f in report.findings if f.rule_id == "CONCORDE-CHECK-001"]
         )
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_symlinks_are_unsafe_not_missing_including_excluded_directory_members(self):
         directory = self.root / "check-data"
         directory.mkdir()
@@ -144,7 +144,7 @@ class CheckIntegrationTests(unittest.TestCase):
                 finally:
                     path.unlink()
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_special_input_is_rejected_without_opening_it(self):
         import os
 
@@ -158,7 +158,7 @@ class CheckIntegrationTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertTrue(any(f.source == "pipe" for f in report.findings))
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_input_disappearing_during_hashing_still_names_its_owner(self):
         self.config["checks"][0]["inputs"] = ["app/transfer.py"]
         repo, target, check_id = self.configure("print('must not run')")
@@ -178,7 +178,7 @@ class CheckIntegrationTests(unittest.TestCase):
         for value in (check_id, target.id, "app/transfer.py"):
             self.assertIn(value, str(raised.exception))
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_unsafe_registered_spelling_keeps_owning_check_diagnostics(self):
         self.config["checks"][0]["inputs"] = ["../outside"]
         self.save_config()
@@ -192,7 +192,7 @@ class CheckIntegrationTests(unittest.TestCase):
         ):
             self.assertIn(value, message)
 
-    @verifies("scenario.validation.check-isolation")
+    @verifies("scenario.checks.command-output")
     def test_check_cannot_forge_logs_but_host_persists_private_output_and_digest(self):
         repo, target, check_id = self.configure("""
 from pathlib import Path
@@ -218,7 +218,7 @@ sys.exit(17)
         self.assertEqual(digest(log.read_bytes()), result[0]["log_digest"])
         self.assertNotIn("PRIVATE_CHECK", json.dumps(result))
 
-    @verifies("scenario.validation.check-isolation")
+    @verifies("scenario.checks.read-only")
     def test_real_project_write_fails_validation_and_never_records_ready(self):
         self.configure("open('unlisted-new.txt','w').write('unsafe')")
         result = run_operation(
@@ -237,7 +237,7 @@ sys.exit(17)
         if change is not None:
             self.assertNotEqual("ready", change["status"])
 
-    @verifies("scenario.validation.check-isolation")
+    @verifies("scenario.checks.unavailable")
     def test_unavailable_sandbox_blocks_without_leaking_private_diagnostics(self):
         repo, target, check_id = self.configure(
             "open('unlisted-new.txt','w').write('unsafe')"
@@ -256,7 +256,7 @@ sys.exit(17)
         )
         self.assertFalse((self.root / "unlisted-new.txt").exists())
 
-    @verifies("scenario.validation.check-isolation")
+    @verifies("scenario.checks.timeout")
     def test_timeout_retains_output_and_status(self):
         repo, target, check_id = self.configure(
             "import time; print('partial',flush=True); time.sleep(60)", 1
@@ -268,7 +268,7 @@ sys.exit(17)
             (self.root / f".concorde/runs/timeout/{check_id}.log").read_bytes(),
         )
 
-    @verifies("scenario.validation.blocked", "scenario.checks.stale-measurement")
+    @verifies("scenario.validation.failed-check", "scenario.checks.stale-measurement")
     def test_external_host_change_still_invalidates_post_check_digest(self):
         repo, target, check_id = self.configure("print('read-only check')")
 

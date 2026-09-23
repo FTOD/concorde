@@ -12,7 +12,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class DocsiteTypeCheckTests(unittest.TestCase):
-    @verifies('scenario.distribution.check-docsite-external')
+    @verifies('scenario.concorde.check-docsite-external')
     def test_preparation_and_dependency_installation_use_only_temporary_copy(self):
         spec = importlib.util.spec_from_file_location('check_docsite_types',
             REPOSITORY_ROOT / 'scripts/development/check-docsite-types.py')

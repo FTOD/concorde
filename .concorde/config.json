@@ -171,6 +171,48 @@
         "docsite/tsconfig.json",
         "docsite/vitest.config.ts"
       ]
+    },
+    {
+      "id": "check.distribution.package",
+      "module": "module.distribution",
+      "argv": [
+        "{python}",
+        "scripts/concorde.py",
+        "check-package"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        "agents",
+        "operations",
+        "pi/extensions",
+        "pi/workflows",
+        "pi/package.json",
+        "pi/package-lock.json",
+        "pi/native-runtime-contract.json",
+        "prompts",
+        "protocol",
+        "scripts",
+        "src",
+        "specs/concorde",
+        "concorde.json"
+      ]
+    },
+    {
+      "id": "check.issues.store",
+      "module": "module.issues",
+      "argv": [
+        "{python}",
+        "scripts/issues.py",
+        "check"
+      ],
+      "timeout_seconds": 60,
+      "inputs": [
+        ".concorde/issues",
+        ".concorde/config.json",
+        ".concorde/specs.json",
+        "scripts/issues.py",
+        "src"
+      ]
     }
   ]
 }

@@ -148,7 +148,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         self.assertEqual("described", described["status"], described)
 
     @verifies(
-        "scenario.distribution.build-stale-blocks-execution",
+        "scenario.admission.stale-build",
         "scenario.distribution.build-check",
     )
     def test_editing_a_prompt_without_rebuilding_fails_every_invocation_closed(self):

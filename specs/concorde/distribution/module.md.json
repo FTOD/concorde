@@ -10,51 +10,91 @@
     "owns": [
       "specs/concorde/distribution/module.md",
       "specs/concorde/distribution/installation.md",
-      "specs/concorde/distribution/session.md",
+      "specs/concorde/distribution/interfaces.md",
       "specs/concorde/distribution/requirements.md",
-      "specs/concorde/distribution/scenarios.md",
-      "specs/concorde/distribution/interfaces.md"
+      "specs/concorde/distribution/scenarios.md"
     ],
     "contains": [],
     "uses": [
       {
         "target": "module.spec",
-        "meaning": "#uses-spec"
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.protocol-binding",
+          "concept.spec.registry",
+          "concept.spec.structural-check",
+          "concept.spec.typed-value"
+        ]
       },
       {
         "target": "module.harness.admission",
-        "meaning": "#uses-admission"
+        "meaning": "#uses-admission",
+        "relies_on": [
+          "concept.admission.capability-request",
+          "concept.admission.capability-declaration",
+          "contract.admission.capability-declaration",
+          "concept.admission.result-envelope"
+        ]
       },
       {
         "target": "module.harness.execution",
-        "meaning": "#uses-execution"
-      },
-      {
-        "target": "module.harness.context",
-        "meaning": "#uses-context"
-      },
-      {
-        "target": "module.harness.checks",
-        "meaning": "#uses-checks"
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.agent-call",
+          "concept.execution.workflow"
+        ]
       },
       {
         "target": "module.harness.worktrees",
         "meaning": "#uses-worktrees",
         "relies_on": [
+          "concept.worktrees.change-status",
+          "concept.worktrees.primary-worktree",
           "concept.worktrees.candidate"
         ]
       },
       {
+        "target": "module.harness.observation",
+        "meaning": "#uses-observation",
+        "relies_on": [
+          "concept.observation.diagnostic-span"
+        ]
+      },
+      {
         "target": "module.agents",
-        "meaning": "#uses-agents"
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.definition",
+          "concept.agents.agent"
+        ]
       },
       {
         "target": "module.operations",
-        "meaning": "#uses-operations"
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.catalog",
+          "concept.operations.operation"
+        ]
+      },
+      {
+        "target": "module.session",
+        "meaning": "#uses-session",
+        "relies_on": [
+          "concept.session.session-entry",
+          "concept.session.catalog",
+          "contract.session.catalog",
+          "concept.session.guidance",
+          "concept.session.selection",
+          "req.session.source-only"
+        ]
       },
       {
         "target": "module.views",
-        "meaning": "#uses-views"
+        "meaning": "#uses-views",
+        "relies_on": [
+          "concept.views.scaffold-proposal",
+          "req.views.template-inventory"
+        ]
       }
     ],
     "includes": [
@@ -62,14 +102,38 @@
         "kind": "document",
         "target": "document.concorde.vocabulary",
         "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "external",
-        "target": "reference/pi/",
-        "reason": "Pi extension, tool and agent-definition APIs used by the session extension and the Task subagent files"
       }
     ],
-    "participates": []
+    "participates": [
+      {
+        "contract": "contract.distribution.build-manifest",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.harness.admission",
+        "meaning": "specs/concorde/distribution/interfaces.md#participation-build-manifest"
+      },
+      {
+        "contract": "contract.distribution.build-manifest",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.harness.context",
+        "meaning": "specs/concorde/distribution/interfaces.md#participation-build-manifest"
+      },
+      {
+        "contract": "contract.distribution.build-manifest",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.session",
+        "meaning": "specs/concorde/distribution/interfaces.md#participation-build-manifest"
+      },
+      {
+        "contract": "contract.session.catalog",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.session",
+        "meaning": "specs/concorde/distribution/interfaces.md#participation-catalog"
+      }
+    ]
   },
   "defines": [
     {
@@ -77,24 +141,6 @@
       "type": "concept",
       "title": "Package",
       "meaning": "#concept.distribution.package"
-    },
-    {
-      "id": "concept.distribution.guidance",
-      "type": "concept",
-      "title": "Capability guidance",
-      "meaning": "#concept.distribution.guidance"
-    },
-    {
-      "id": "concept.distribution.catalog",
-      "type": "concept",
-      "title": "Capability catalog",
-      "meaning": "#concept.distribution.catalog"
-    },
-    {
-      "id": "concept.distribution.session-entry",
-      "type": "concept",
-      "title": "Session entry",
-      "meaning": "#concept.distribution.session-entry"
     },
     {
       "id": "concept.distribution.build-manifest",
@@ -139,12 +185,6 @@
       "meaning": "#concept.distribution.local-installation"
     },
     {
-      "id": "concept.distribution.session-selection",
-      "type": "concept",
-      "title": "Session selection",
-      "meaning": "#concept.distribution.session-selection"
-    },
-    {
       "id": "realization.distribution.build",
       "type": "realization",
       "title": "Build renderer",
@@ -152,54 +192,24 @@
       "entries": [
         "src/concorde/distribution/build.py",
         "src/concorde/distribution/prompt_resolver.py",
-        "operations/__init__.py",
         "tests/concorde/distribution/test_build.py",
         "tests/concorde/distribution/test_prompt_resolver.py",
         "tests/concorde/distribution/test_fresh_clone_bootstrap.py",
         "tests/concorde/fixtures/build/golden/pi/concorde-session.ts",
         "tests/concorde/support/build_fixture.py"
-      ]
+      ],
+      "pending": []
     },
     {
-      "id": "realization.distribution.build-checks",
+      "id": "realization.distribution.package-check",
       "type": "realization",
-      "title": "Package validation",
-      "meaning": "#realization.distribution.build-checks",
+      "title": "Package check",
+      "meaning": "#realization.distribution.package-check",
       "entries": [
         "src/concorde/distribution/package_validation.py",
         "tests/concorde/distribution/test_package_validation.py"
-      ]
-    },
-    {
-      "id": "realization.distribution.guidance",
-      "type": "realization",
-      "title": "Guidance sources",
-      "meaning": "#realization.distribution.guidance",
-      "entries": [
-        "prompts/operation-guidance/",
-        "prompts/workflow-host/candidate-worktree.md",
-        "prompts/workflow-host/init-request-and-no-flags.md",
-        "prompts/workflow-host/invoke-operation-opener.md",
-        "prompts/workflow-host/lifecycle-no-cognition.md",
-        "prompts/workflow-host/target-identity-opener.md",
-        "prompts/workflow-host/task-request-fields.md"
-      ]
-    },
-    {
-      "id": "realization.distribution.task-subagent-projector",
-      "type": "realization",
-      "title": "Task subagent projector",
-      "meaning": "#realization.distribution.task-subagent-projector",
-      "entries": [
-        "src/concorde/distribution/task_subagents.py",
-        "tests/concorde/distribution/test_task_subagents.py",
-        "tests/concorde/distribution/test_role_isolation.py",
-        "tests/concorde/distribution/test_coordinator_status.py",
-        "tests/concorde/distribution/test_user_session_todos.py",
-        "tests/concorde/distribution/brief_lifecycle_fixture.mjs",
-        "tests/concorde/distribution/user_session_brief_fixture.mjs",
-        "tests/concorde/support/task_subagents_preflight.mjs"
-      ]
+      ],
+      "pending": []
     },
     {
       "id": "realization.distribution.launcher",
@@ -209,32 +219,8 @@
       "entries": [
         "scripts/run-operation.py",
         "tests/concorde/distribution/test_launcher_termination.py"
-      ]
-    },
-    {
-      "id": "realization.distribution.session-extension",
-      "type": "realization",
-      "title": "Session extension code",
-      "meaning": "#realization.distribution.session-extension",
-      "entries": [
-        "pi/extensions/concorde-session.ts",
-        "pi/extensions/concorde-native-context.ts",
-        "pi/extensions/concorde-native-plan.ts",
-        "pi/extensions/concorde-native-child.ts",
-        "pi/native-preflight.ts",
-        "pi/native-plan-host.mjs",
-        "pi/native-review-host.mjs",
-        "pi/native-issue-host.mjs",
-        "pi/issue-call.mjs",
-        "pi/issue-call.d.mts",
-        "pi/workflows/issues.js",
-        "pi/workflows/plan.js",
-        "pi/workflows/review.js",
-        "tests/concorde/distribution/test_pi_session.py",
-        "tests/concorde/support/fake_launcher.py",
-        "tests/concorde/support/pi_session_harness.mts",
-        "tests/concorde/support/session_observer_harness.mts"
-      ]
+      ],
+      "pending": []
     },
     {
       "id": "realization.distribution.cli",
@@ -247,20 +233,10 @@
         "src/concorde/distribution/cli.py",
         "scripts/concorde.py",
         "scripts/concorde.sh",
-        "scripts/concorde.ps1"
-      ]
-    },
-    {
-      "id": "realization.distribution.configure",
-      "type": "realization",
-      "title": "Configure service",
-      "meaning": "#realization.distribution.configure",
-      "entries": [
-        "operations/configure.py",
-        "src/concorde/spec/project.py",
-        "tests/concorde/distribution/test_configure.py",
-        "tests/concorde/harness/test_host_tools.py"
-      ]
+        "scripts/concorde.ps1",
+        "tests/concorde/distribution/__init__.py"
+      ],
+      "pending": []
     },
     {
       "id": "realization.distribution.installer",
@@ -271,15 +247,25 @@
         "src/concorde/distribution/installation.py",
         "src/concorde/distribution/protocol_guidance.py",
         "src/concorde/distribution/project_defaults.py",
-        "src/concorde/distribution/local_installation.py",
         "scripts/install-concorde.py",
         "concorde.json",
         "tests/concorde/distribution/test_install_concorde.py",
         "tests/concorde/distribution/test_protocol_guidance.py",
-        "tests/concorde/distribution/test_local_installation.py",
         "tests/concorde/distribution/test_consumer_install_end_to_end.py",
         "tests/concorde/distribution/test_manifests.py"
-      ]
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.distribution.local-installation-service",
+      "type": "realization",
+      "title": "Local installation service",
+      "meaning": "#realization.distribution.local-installation-service",
+      "entries": [
+        "src/concorde/distribution/local_installation.py",
+        "tests/concorde/distribution/test_local_installation.py"
+      ],
+      "pending": []
     },
     {
       "id": "realization.distribution.runtime-provisioner",
@@ -289,53 +275,20 @@
       "entries": [
         "src/concorde/distribution/managed_runtime.py",
         "scripts/requirements.lock",
+        "pi/package.json",
+        "pi/package-lock.json",
+        "pi/.npmrc",
         "tests/concorde/support/managed_runtime.py"
-      ]
-    },
-    {
-      "id": "realization.distribution.selection",
-      "type": "realization",
-      "title": "Selection and tester bridge",
-      "meaning": "#realization.distribution.selection",
-      "entries": [
-        "src/concorde/distribution/session_selection.py",
-        "src/concorde/distribution/tester_check.py",
-        "tests/concorde/distribution/test_session_selection.py",
-        "tests/concorde/distribution/test_install_output_handoff.py",
-        "tests/concorde/distribution/installed_output_probe.py",
-        "tests/concorde/support/install_output_handoff.py"
-      ]
-    },
-    {
-      "id": "realization.distribution.development",
-      "type": "realization",
-      "title": "Development environment",
-      "meaning": "#realization.distribution.development",
-      "entries": [
-        "pyproject.toml",
-        "uv.lock",
-        "conftest.py",
-        "tests/concorde/support/pytest_timing.py",
-        "tests/concorde/support/environment.py",
-        "scripts/development/init-references.py",
-        "scripts/development/check-docsite-types.py",
-        "tests/concorde/distribution/test_check_docsite_types.py",
-        "tests/concorde/distribution/__init__.py"
-      ]
+      ],
+      "pending": []
     }
   ],
   "relations": [
     {
-      "type": "relates",
-      "source": "concept.distribution.guidance",
-      "verb": "is rendered into",
-      "target": "concept.distribution.catalog"
-    },
-    {
-      "type": "relates",
-      "source": "realization.distribution.build",
-      "verb": "renders",
-      "target": "concept.distribution.session-entry"
+      "type": "contrasts",
+      "source": "concept.distribution.receipt",
+      "target": "concept.delivery.receipt",
+      "reason": "an installation receipt records which files the installer owns in a consumer project; a delivery receipt records what one delivery of a candidate did"
     },
     {
       "type": "relates",
@@ -345,27 +298,39 @@
     },
     {
       "type": "relates",
-      "source": "concept.distribution.session-entry",
-      "verb": "carries",
-      "target": "concept.distribution.catalog"
+      "source": "realization.distribution.build",
+      "verb": "renders",
+      "target": "concept.session.session-entry"
     },
     {
       "type": "relates",
-      "source": "realization.distribution.session-extension",
-      "verb": "runs",
-      "target": "concept.distribution.launcher"
+      "source": "realization.distribution.build",
+      "verb": "renders instructions from",
+      "target": "module.agents"
     },
     {
       "type": "relates",
-      "source": "realization.distribution.session-extension",
-      "verb": "prepares native calls through",
-      "target": "module.harness.execution"
+      "source": "realization.distribution.build",
+      "verb": "reads capabilities from",
+      "target": "module.operations"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.package-check",
+      "verb": "compares outputs with",
+      "target": "concept.distribution.build-manifest"
     },
     {
       "type": "relates",
       "source": "concept.distribution.launcher",
-      "verb": "hands each invocation to",
+      "verb": "hands each capability request to",
       "target": "module.harness.admission"
+    },
+    {
+      "type": "relates",
+      "source": "concept.distribution.launcher",
+      "verb": "resolves capabilities through",
+      "target": "module.operations"
     },
     {
       "type": "relates",
@@ -405,27 +370,16 @@
     },
     {
       "type": "relates",
-      "source": "realization.distribution.selection",
-      "verb": "records",
-      "target": "concept.distribution.session-selection"
+      "source": "realization.distribution.local-installation-service",
+      "verb": "verifies",
+      "target": "concept.distribution.local-installation"
     },
     {
       "type": "relates",
-      "source": "realization.distribution.selection",
-      "verb": "runs tester commands through",
-      "target": "module.harness.checks"
-    },
-    {
-      "type": "relates",
-      "source": "realization.distribution.task-subagent-projector",
-      "verb": "renders definitions from",
-      "target": "module.agents"
-    },
-    {
-      "type": "relates",
-      "source": "realization.distribution.configure",
-      "verb": "rebinds the project to",
-      "target": "concept.distribution.protocol-copy"
+      "source": "realization.distribution.cli",
+      "verb": "routes docsite to",
+      "target": "module.views"
     }
-  ]
+  ],
+  "extensions": {}
 }

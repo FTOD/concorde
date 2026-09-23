@@ -1313,27 +1313,6 @@ def validate_repository(
         for path, unit in sorted(repository.units.items()):
             inputs.extend((member.path, member.digest) for member in unit.sources)
         findings.extend(spec_findings(repository))
-        from ..issues.store import issue_path, list_issues
-
-        try:
-            inputs.extend(
-                (issue_path(item["id"]), item["revision"])
-                for item in list_issues(repository.root)
-            )
-        except (ValueError, OSError) as problem:
-            findings.append(
-                Finding(
-                    "CONCORDE-ISSUE-001",
-                    "error",
-                    ".concorde/issues",
-                    str(problem),
-                    "Repair the Issue records.",
-                )
-            )
-        if (repository.root / "concorde.json").is_file():
-            from ..distribution.package_validation import validate_package
-
-            findings.extend(validate_package(repository.root))
         inputs.append(
             (
                 ".concorde/config.json",

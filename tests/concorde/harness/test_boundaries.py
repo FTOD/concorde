@@ -58,7 +58,7 @@ class BoundaryTests(unittest.TestCase):
             host_context=self.host,
         )
 
-    @verifies("scenario.harness.context-freeze")
+    @verifies("scenario.context.freeze")
     def test_shared_physical_markdown_is_one_hop_context_not_entity_expansion(self):
         update_module(
             self.root,
@@ -153,7 +153,7 @@ class BoundaryTests(unittest.TestCase):
             "CHK.defines.once", {finding.rule_id for finding in report.findings}
         )
 
-    @verifies("scenario.harness.context-freeze")
+    @verifies("scenario.context.freeze")
     def test_code_is_digest_only_and_only_in_implementation_snapshot(self):
         repo = SpecRepository(self.root)
         plain = resolve_context(repo, "service.transfer").value
@@ -162,7 +162,7 @@ class BoundaryTests(unittest.TestCase):
         self.assertTrue(impl["implementation_artifacts"])
         self.assertNotIn("def transfer", json.dumps(impl))
 
-    @verifies("scenario.harness.context-invalid-input")
+    @verifies("scenario.context.invalid-input")
     def test_unsupported_phase_or_blank_task_yields_no_snapshot(self):
         repo = SpecRepository(self.root)
         snapshots = []
@@ -228,7 +228,7 @@ class BoundaryTests(unittest.TestCase):
         )
         self.assertEqual("configuration_mismatch", result["errors"][0]["code"])
 
-    @verifies("scenario.harness.typed-reject")
+    @verifies("scenario.admission.typed-reject")
     def test_wrong_version_and_extra_fields_are_rejected(self):
         for value in [
             dict(

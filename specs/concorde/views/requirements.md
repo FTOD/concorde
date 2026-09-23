@@ -27,8 +27,8 @@ The Spec navigation SHALL nest one Module under another only where the other dec
 
 Publication SHALL place each document in the reading collection named by its declared role without changing its route, owner or selecting Modules.
 
-A document with role `module` is listed in Module Specs and one with role `implementation` in
-Implementation Specs. The role is read from metadata and never inferred from a file name, a heading
+A document with role `module` is listed in Module documents and one with role `implementation` in
+Implementation documents. The role is read from metadata and never inferred from a file name, a heading
 or the presence of definitions.
 
 ## Rendering
@@ -56,16 +56,21 @@ Publication SHALL render each Mermaid diagram from its fence in the containing d
 The publisher produces no separate diagram files or records, so a diagram changes only when the
 document containing it changes.
 
-### req.views.no-docsite-graph-view — No generated graph pages
+### req.views.graph-spec-placement — Graph Specs stay in implementation documents
 
-Publication SHALL NOT generate pages that draw Modules, scenarios or Graphs outside the documents that contain those drawings.
+Publication SHALL refuse a `module`-role document that contains a Graph Spec flowchart.
 
-Each Operation's Graph Spec is published as part of its owner's implementation documents, like any
-other reading.
+The rule that a [Graph Spec](../harness/execution/module.md#concept.execution.graph-spec) belongs to
+its owner's implementation documents is Agent execution's; the publisher only refuses to publish a
+document that breaks it.
 
 ### req.views.custom-docs — Custom docs stay outside the Specs
 
 Publication SHALL publish custom docs only in their own tabs and routes, never as Spec pages or inside a Spec collection.
+
+### req.views.provenance-selection — Provenance agrees with Spec tooling
+
+The selecting Modules that publication shows for a document SHALL equal Spec tooling's `selected-by` index for that document.
 
 ### req.views.no-agent-context-grant — Pages grant no context
 

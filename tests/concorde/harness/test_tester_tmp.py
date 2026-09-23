@@ -28,7 +28,7 @@ from tests.concorde.support.managed_runtime import (
 
 
 class PrivateTemporaryBoundaryTests(unittest.TestCase):
-    @verifies("scenario.harness.check-scratch")
+    @verifies("scenario.checks.scratch")
     def test_bridge_policy_is_not_a_task_parameter(self):
         import io
         from unittest.mock import patch
@@ -74,7 +74,7 @@ class PrivateTemporaryBoundaryTests(unittest.TestCase):
                 self.assertEqual(0, tester_check.main())
                 self.assertIs(True, execute.call_args.kwargs["private_tmp"])
 
-    @verifies("scenario.harness.check-scratch", "scenario.harness.check-read-only")
+    @verifies("scenario.checks.scratch", "scenario.checks.read-only")
     def test_default_unchanged_private_namespace_and_readonly_input_view(self):
         from concorde.harness import check_executor
 
@@ -349,7 +349,7 @@ class RegisteredTesterTemporaryTests(unittest.TestCase):
             for stream in (process.stdin, process.stdout, process.stderr):
                 stream.close()
 
-    @verifies("scenario.harness.check-lifetime", "scenario.harness.check-result")
+    @verifies("scenario.checks.descendants-end", "scenario.checks.command-output")
     def test_exit_timeout_cancel_reap_descendants_before_private_tmp_cleanup(self):
         for mode in ("exit", "timeout", "cancel"):
             token = "concorde-tester-descendant-" + uuid.uuid4().hex

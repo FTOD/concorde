@@ -33,7 +33,7 @@ class TerminalBoundaryTests(unittest.TestCase):
                 self.assertEqual("permission_denied", result["errors"][0]["code"])
                 self.assertEqual([], list(root.iterdir()))
 
-    @verifies("scenario.harness.worker-selection-reject")
+    @verifies("scenario.execution.model-selection-reject")
     def test_configuration_v1_is_not_reinterpreted(self):
         current = typed("concorde-operation-configuration", {"thinking": "high"})
         self.assertEqual(2, current["schema_version"])

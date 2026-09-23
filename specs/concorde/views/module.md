@@ -9,7 +9,7 @@ into pages, checks the result and only then replaces the previous site. The scaf
 that same publisher into another Concorde project. Concorde publishes its own Specs with it. A
 published page is only a view of the Specs: it grants no agent any context, never changes a Spec,
 and proves nothing about whether the code keeps the promises it shows. Views does not define the
-Spec format, which belongs to the Spec Module, does not install Node dependencies, and deploys
+Spec format, which belongs to Spec tooling, does not install Node dependencies, and deploys
 nothing unless a project opts into the GitHub Pages workflow the scaffold can add.
 
 ## Terminology
@@ -20,7 +20,7 @@ nothing unless a project opts into the GitHub Pages workflow the scaffold can ad
 | Publication candidate | A complete new build, generated apart from the published site, that must pass every check before it may replace it. |
 | Promotion | The directory swap that makes a checked publication candidate the new published site. |
 | Canonical page | The single page at which one registered Spec document is published. |
-| Reading collection | One of the two Spec tabs of the site, Module Specs or Implementation Specs, chosen for each document by its declared role. |
+| Reading collection | One of the two Spec tabs of the site, Module documents or Implementation documents, chosen for each document by its declared role. |
 | Custom docs | Project-owned documentation that the site publishes in its own tab, beside the Specs and outside them. |
 | Site identity | The project-owned file `docsite/site.json` that names the site and configures its optional homepage and custom docs. |
 | Scaffold proposal | The exact list of files, with their digests, that the scaffold command would create in a project. |
@@ -30,6 +30,9 @@ nothing unless a project opts into the GitHub Pages workflow the scaffold can ad
 | [Spec](../vocabulary.md#concept.concorde.spec) | |
 | [Context](../vocabulary.md#concept.concorde.context) | |
 | [Registry](../spec/module.md#concept.spec.registry) | |
+| [Impact index](../spec/module.md#concept.spec.impact-index) | |
+| [File transaction](../spec/module.md#concept.spec.file-transaction) | |
+| [Graph Spec](../harness/execution/module.md#concept.execution.graph-spec) | |
 
 A reader of the site meets canonical pages and reading collections. Someone who builds the site
 meets the candidate, promotion and the build manifest. Someone who adds a site to a project meets
@@ -41,12 +44,14 @@ the scaffold proposal and the site identity.
 
 <a id="concept.views.canonical-page"></a><a id="concept.views.reading-collection"></a>
 
-The navigation bar has a **Module Specs** tab and, when any document has the role
-`implementation`, an **Implementation Specs** tab. Both show the same tree of Modules, built from
-the `contains` relations: the root Module at the top, and under each Module its child Modules. In
-Module Specs, clicking a Module's name opens its entry `module.md`; its explanatory topics and child
-Modules are listed beneath it. Implementation Specs shows only the precise documents
-(requirements, scenarios, contracts) under the same tree. The role declared in each document's
+The navigation bar has a **Module documents** tab and, when any document has the role
+`implementation`, an **Implementation documents** tab; the names are the Protocol's two document
+roles. Both show the same tree of Modules, built from the `contains` relations: the root Module at
+the top, and under each Module its child Modules. In Module documents, clicking a Module's name
+opens its entry `module.md`; its explanatory topics and child Modules are listed beneath it.
+Implementation documents shows only the precise documents (requirements, scenarios, contracts)
+under the same tree. Both tabs belong to one Module specification: an implementation document is
+not a separate kind of Spec. The role declared in each document's
 metadata decides the tab. Moving a document from one role to the other moves it between tabs and
 changes nothing else: its route, owner and the Modules that read it stay the same.
 
@@ -56,10 +61,10 @@ comes from its source path: `specs/concorde/views/scenarios.md` is published at
 `includes`, the site does not copy it; links from that Module lead to the same page. So a shared
 contract always has one page and one owner.
 
-Each page starts with a short provenance bar: whether it is a Module Spec or an Implementation
-Spec, its source path, links between the entry and the Module's implementation documents, and a
-"Spec metadata" disclosure with the document identity, its owner, the Modules whose context selects
-it and why, and the digests of its reading and metadata files.
+Each page starts with a short provenance bar: whether it is a Module document or an
+Implementation document, its source path, links between the entry and the Module's implementation
+documents, and a "Spec metadata" disclosure with the document identity, its owner, the Modules whose
+context selects it and why, and the digests of its reading and metadata files.
 
 Every stable identity is an anchor on its page: the Module on its entry, the document, and every
 concept, realization, requirement, scenario and contract the document defines. A link written in a Spec as
@@ -176,7 +181,22 @@ correctly, such as a document without a valid role, a requirement in a `module`-
 unmarked Mermaid block that is not a flowchart or an unresolved link; the
 [pipeline](pipeline.md#loading-and-admission) lists them all. It is not the Protocol validator:
 the registry mirror, checked flowcharts, realization bindings and contract examples are checked by
-the Spec Module's `concorde validate`, and a site that builds proves nothing more.
+Spec tooling's `concorde validate`, and a site that builds proves nothing more.
+
+One of these refusals applies a rule of Concorde rather than of the Protocol. A
+[Graph Spec](../harness/execution/module.md#concept.execution.graph-spec), the documented form of an
+executable LangGraph Graph, belongs in an implementation document of its owner, because it is
+executable topology. The publisher recognizes a Graph Spec by the `%% graph:` line of its flowchart
+and refuses a `module`-role document that contains one, so a Graph Spec is always published on its
+owner's implementation page and never on an explanatory page. Whether a Graph Spec matches its
+compiled Graph is not checked here; Agent execution's Graph Spec check does that.
+
+**Provenance is computed twice and must agree.** The publisher is TypeScript and does not call Spec
+tooling. It recomputes the one-level Spec context of every Module from the registry records to show,
+on each page, which Modules select the document and through which relation. That recomputation must
+equal Spec tooling's `selected-by` [impact index](../spec/module.md#concept.spec.impact-index) for
+the same inputs; a difference is a defect of the publisher, never a second definition of context. A
+published provenance bar grants no reader any context either way.
 
 **Preview and production do not disturb each other.** The preview keeps Docusaurus's generated
 files in `docsite/.docusaurus`, a production build in `docsite/.generated/docusaurus-production`,
@@ -186,10 +206,11 @@ so building the site does not break a running preview.
 
 **The scaffold only creates.** The Docsite scaffold computes the template inventory with the same
 rule the installer uses to ship `docsite/`, so a project receives exactly the adapter Concorde runs
-itself. The proposal binds that inventory by digest. Applying it goes through the Spec Module's file
-transactions: every destination must be absent before staging and again before each write, and a
-concurrent change rolls back the files already written. Because the scaffold can neither replace
-nor delete, accepting a proposal can never damage an existing site or a project Spec.
+itself. The proposal binds that inventory by digest. Applying it goes through Spec tooling's
+[file transactions](../spec/module.md#concept.spec.file-transaction), which Views uses and does not
+own: every destination must be absent before staging and again before each write, and a concurrent
+change rolls back the files already written. Because the scaffold can neither replace nor delete,
+accepting a proposal can never damage an existing site or a project Spec.
 
 <a id="realization.views.concorde-site"></a>
 
@@ -204,7 +225,7 @@ a scaffolded project never receives Concorde's homepage or Protocol chapters.
 ```mermaid
 flowchart LR
     accTitle: Views collaboration
-    accDescr: The publisher reads the registry and builds candidates that replace the published site; the scaffold copies the publisher through the Spec Module's file transactions.
+    accDescr: The publisher reads the registry and builds candidates that replace the published site; the scaffold copies the publisher through Spec tooling's file transactions.
     registry[Spec tooling / Registry]
     publisher[Docsite publisher]
     candidate[Publication candidate]
@@ -241,18 +262,26 @@ registered Spec document.
 
 <a id="uses-spec"></a>
 
-**Spec.** The Spec Module defines the Protocol formats and owns the project [Registry](../spec/module.md#concept.spec.registry),
-the Python loading of Specs and the [file transactions](../spec/module.md#concept.spec.file-transaction).
-The publisher relies on the registry records to know which Modules and documents exist, which
-Module contains which, and which Modules select a document. It parses the registry and metadata
-itself in TypeScript and refuses any input it cannot publish, which fails the build and keeps the
-published site; it leaves full structural conformance to the Spec validator. The scaffold relies
-on the Spec Module to find the root Module's title for the default site title, to report findings
-in the common result shape, and to apply its files through a transaction that
-[writes everything or nothing](../spec/requirements.md#req.spec.transaction-all-or-nothing) and
-[stops on stale input](../spec/requirements.md#req.spec.transaction-digest-bound), a null digest
-meaning the file must still be absent. When the project has no readable Spec configuration, the
-scaffold returns `invalid` and asks for project initialization first.
+**Spec tooling** defines the Protocol formats and owns the project
+[registry](../spec/module.md#concept.spec.registry), the Python loading of Specs, the derived
+[impact indexes](../spec/module.md#concept.spec.impact-index) and the
+[file transactions](../spec/module.md#concept.spec.file-transaction). The publisher relies on the
+registry records to know which Modules and documents exist and which Module contains which, and on
+the meaning of the `selected-by` index for the provenance it shows. It parses the registry and
+metadata itself in TypeScript and refuses any input it cannot publish, which fails the build and
+keeps the published site; it leaves full structural conformance to the Spec validator. The scaffold
+relies on Spec tooling to find the root Module's title for the default site title, to report
+findings in the common result shape, and to apply its files through a file transaction that writes
+everything or nothing and stops on stale input, a null digest meaning the file must still be
+absent. When the project has no readable Spec configuration, the scaffold returns `invalid` and
+asks for project initialization first.
+
+<a id="uses-execution"></a>
+
+**Agent execution** defines the [Graph Spec](../harness/execution/module.md#concept.execution.graph-spec)
+and its placement in the owner's implementation documents. The publisher relies on that definition
+only to refuse a `module`-role document that contains a Graph Spec flowchart; such a refusal fails
+the build and keeps the published site. Views neither runs nor checks Graphs.
 
 <a id="uses-distribution"></a>
 

@@ -14,7 +14,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class NativeOutputSchemaTests(unittest.TestCase):
-    @verifies("scenario.harness.native-result-gate")
+    @verifies("scenario.execution.stage-proposal")
     def test_supported_payloads_are_reference_free_closed_and_independent(self):
         for kind in ("concorde-agent-stage-result", "concorde-review-stage-result"):
             before = copy.deepcopy(DATA_SCHEMAS[kind])
@@ -40,7 +40,7 @@ class NativeOutputSchemaTests(unittest.TestCase):
         and os.environ.get("CONCORDE_NATIVE_PI"),
         "explicit native SDK roots required",
     )
-    @verifies("scenario.harness.native-result-gate")
+    @verifies("scenario.execution.stage-proposal")
     def test_actual_sdk_double_wrapping_valid_values_and_preserved_live_rejections(
         self,
     ):

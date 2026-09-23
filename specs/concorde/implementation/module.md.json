@@ -9,8 +9,7 @@
     "title": "Implementation",
     "owns": [
       "specs/concorde/implementation/module.md",
-      "specs/concorde/implementation/programmer.md",
-      "specs/concorde/implementation/scenarios.md"
+      "specs/concorde/implementation/programmer.md"
     ],
     "contains": [],
     "uses": [
@@ -21,7 +20,19 @@
           "concept.planning.plan",
           "concept.planning.task",
           "concept.planning.change-scope",
-          "req.planning.tasks-admission"
+          "concept.planning.pending-gap",
+          "contract.planning.implementation-task",
+          "req.planning.tasks-admission",
+          "req.planning.pending-gap-blocks",
+          "req.planning.component-request"
+        ]
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.operation",
+          "concept.operations.catalog"
         ]
       },
       {
@@ -29,7 +40,7 @@
         "meaning": "#uses-admission",
         "relies_on": [
           "concept.admission.capability-request",
-          "concept.admission.relay"
+          "concept.admission.result-envelope"
         ]
       },
       {
@@ -37,16 +48,18 @@
         "meaning": "#uses-context",
         "relies_on": [
           "concept.context.snapshot",
-          "req.context.contents-code-phases",
-          "req.context.recheck"
+          "concept.context.phase",
+          "concept.context.stage-input"
         ]
       },
       {
         "target": "module.harness.execution",
         "meaning": "#uses-execution",
         "relies_on": [
+          "concept.execution.agent-call",
+          "concept.execution.agent-hook",
           "concept.execution.proposal",
-          "req.execution.proposal-not-completion"
+          "concept.execution.result-gate"
         ]
       },
       {
@@ -54,7 +67,8 @@
         "meaning": "#uses-checks",
         "relies_on": [
           "concept.checks.configured-check",
-          "concept.checks.read-only-boundary"
+          "concept.checks.read-only-boundary",
+          "concept.checks.check-result"
         ]
       },
       {
@@ -78,16 +92,21 @@
         "meaning": "#uses-spec",
         "relies_on": [
           "concept.spec.registry",
-          "concept.spec.boundary-set"
+          "concept.spec.boundary-set",
+          "concept.spec.impact-index",
+          "concept.spec.structural-check"
         ]
       },
       {
         "target": "module.review",
         "meaning": "#uses-review",
         "relies_on": [
-          "concept.review.finding",
           "concept.review.required-review",
-          "req.review.repair-feedback"
+          "concept.review.finding",
+          "concept.review.result",
+          "req.review.spec-gate",
+          "req.review.repair-feedback",
+          "contract.review.result"
         ]
       }
     ],
@@ -96,14 +115,24 @@
         "kind": "document",
         "target": "document.concorde.vocabulary",
         "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "external",
-        "target": "reference/pi/",
-        "reason": "Pi Agent definition and tool formats that the programmer's native preparation writes"
       }
     ],
-    "participates": []
+    "participates": [
+      {
+        "contract": "contract.planning.implementation-task",
+        "version": 1,
+        "role": "required",
+        "peer": "module.planning",
+        "meaning": "#uses-planning"
+      },
+      {
+        "contract": "contract.review.result",
+        "version": 3,
+        "role": "required",
+        "peer": "module.review",
+        "meaning": "#uses-review"
+      }
+    ]
   },
   "defines": [
     {
@@ -119,12 +148,25 @@
       "meaning": "#concept.implementation.component-work"
     },
     {
-      "id": "realization.implementation.capability",
+      "id": "realization.implementation.declaration",
       "type": "realization",
-      "title": "Implementation capability declaration",
-      "meaning": "#realization.implementation.capability",
+      "title": "Implementation declaration",
+      "meaning": "#realization.implementation.declaration",
       "entries": [
-        "operations/implement.py"
+        "operations/implement.py",
+        "prompts/operation-guidance/concorde-implement.md"
+      ]
+    },
+    {
+      "id": "realization.implementation.hook",
+      "type": "realization",
+      "title": "Programmer hook",
+      "meaning": "#realization.implementation.hook",
+      "entries": [
+        "src/concorde/implementation/hooks.py"
+      ],
+      "pending": [
+        "src/concorde/implementation/hooks.py"
       ]
     },
     {
@@ -137,33 +179,17 @@
       ]
     },
     {
-      "id": "realization.implementation.native",
-      "type": "realization",
-      "title": "Native programmer preparation",
-      "meaning": "#realization.implementation.native",
-      "entries": [
-        "src/concorde/harness/native_context.py"
-      ]
-    },
-    {
       "id": "realization.implementation.tests",
       "type": "realization",
       "title": "Implementation tests",
       "meaning": "#realization.implementation.tests",
       "entries": [
         "tests/concorde/harness/native_programmer_probe.mjs",
-        "tests/concorde/harness/test_native_implementation_review.py",
-        "tests/concorde/operations/test_change_scope.py"
+        "tests/concorde/harness/test_native_implementation_review.py"
       ]
     }
   ],
   "relations": [
-    {
-      "type": "relates",
-      "source": "realization.implementation.capability",
-      "verb": "hands requests to",
-      "target": "module.harness.admission"
-    },
     {
       "type": "relates",
       "source": "realization.implementation.admission",
@@ -196,13 +222,13 @@
     },
     {
       "type": "relates",
-      "source": "realization.implementation.native",
+      "source": "realization.implementation.hook",
       "verb": "prepares the programmer from",
       "target": "module.agents"
     },
     {
       "type": "relates",
-      "source": "realization.implementation.native",
+      "source": "realization.implementation.hook",
       "verb": "runs checks through",
       "target": "module.harness.checks"
     }

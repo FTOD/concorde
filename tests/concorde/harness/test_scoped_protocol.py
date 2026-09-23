@@ -25,7 +25,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.registry = project(self.root)
 
-    @verifies("scenario.harness.context-freeze")
+    @verifies("scenario.context.freeze")
     def test_module_dependencies_and_complete_arbitrary_collections(self):
         repo = SpecRepository(self.root)
         target = repo.module("service.transfer", "scenario.transfer.debit")
@@ -122,14 +122,14 @@ class ScopedProtocolTests(unittest.TestCase):
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
         self.assertEqual("module.ledger", SpecRepository(self.root).root_module)
 
-    @verifies("scenario.harness.typed-reject")
+    @verifies("scenario.admission.typed-reject")
     def test_internal_stage_operation_requires_target_id_at_the_top_level(self):
         with self.assertRaises(TypedDataError) as caught:
             typed("concorde-plan-request", {"task": "Plan the transfer promise"})
         self.assertEqual("invalid_field", caught.exception.code)
         self.assertIn("target_id", caught.exception.field)
 
-    @verifies("scenario.harness.context-stale-recheck")
+    @verifies("scenario.context.stale-recheck")
     def test_selected_context_rechecks_registered_document_bytes_and_membership(self):
         repository = SpecRepository(self.root)
         snapshot = resolve_context(
@@ -169,7 +169,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 task="Explain architecture",
             )
 
-    @verifies("scenario.harness.context-stale-recheck")
+    @verifies("scenario.context.stale-recheck")
     def test_membership_changes_invalidate_snapshot(self):
         repo = SpecRepository(self.root)
         snapshot = resolve_context(repo, "service.transfer")
@@ -178,7 +178,7 @@ class ScopedProtocolTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "changed"):
             recheck_context(repo, snapshot)
 
-    @verifies("scenario.harness.context-stale-recheck")
+    @verifies("scenario.context.stale-recheck")
     def test_another_targets_reference_does_not_change_provider_context(self):
         repo = SpecRepository(self.root)
         snapshot = resolve_context(repo, "service.transfer")

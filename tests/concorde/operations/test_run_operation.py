@@ -146,7 +146,7 @@ class RunOperationLauncherTests(unittest.TestCase):
                 error["code"], {"unknown_operation", "incompatible_handoff"}
             )
 
-    @verifies("scenario.harness.typed-reject")
+    @verifies("scenario.admission.typed-reject")
     def test_invalid_payload_retains_the_admitted_mode_without_execution(self):
         for mode in ("execute", "describe-policy"):
             with self.subTest(mode=mode):
@@ -175,7 +175,7 @@ class RunOperationLauncherTests(unittest.TestCase):
                 self.assertIsNone(result["output"])
                 self.assertIsNone(result["workspace"])
 
-    @verifies("scenario.review.standalone", "scenario.harness.describe-policy")
+    @verifies("scenario.review.standalone", "scenario.admission.describe-policy")
     def test_public_review_launcher_previews_scoped_code_authority(self):
         invocation = {
             "type_id": "concorde-operation-invocation",

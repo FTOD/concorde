@@ -169,8 +169,8 @@ class HandoffPolicyTests(unittest.TestCase):
         "explicit native roots required",
     )
     @verifies(
-        "scenario.harness.native-context-public",
-        "scenario.harness.check-read-only",
+        "scenario.planning.native-assessment-accepted",
+        "scenario.checks.read-only",
         "scenario.distribution.install-local-worktree",
     )
     def test_readonly_tester_installs_selected_output_and_runs_native_smoke(self):

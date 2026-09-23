@@ -417,7 +417,7 @@ class OperationModuleRuleTests(unittest.TestCase):
             findings,
         )
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_deterministic_requires_an_explicit_boolean(self) -> None:
         for declaration in (
             "",
@@ -438,7 +438,7 @@ class OperationModuleRuleTests(unittest.TestCase):
                     findings,
                 )
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_deterministic_matches_direct_model_calls_from_direct_model_calls(
         self,
     ) -> None:
@@ -461,7 +461,7 @@ class OperationModuleRuleTests(unittest.TestCase):
                         invalid, deterministic != (profile == "None"), findings
                     )
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_transitive_model_calls_do_not_trust_a_childs_false_deterministic_claim(
         self,
     ) -> None:
@@ -492,7 +492,7 @@ class OperationModuleRuleTests(unittest.TestCase):
             findings,
         )
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_deterministic_composition_without_agents_is_valid(self) -> None:
         init = VALID_OPERATION_INIT.replace('("alpha",)', '("alpha", "beta")')
         pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
@@ -505,7 +505,7 @@ class OperationModuleRuleTests(unittest.TestCase):
         (self.root / "operations/beta.py").write_text(pure, encoding="utf-8")
         self.assertEqual([], package_validation._validate_operation_modules(self.root))
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_removed_discovery_selection_is_rejected(self) -> None:
         pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
@@ -520,7 +520,7 @@ class OperationModuleRuleTests(unittest.TestCase):
             findings,
         )
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_no_context_selection_cannot_admit_model_calls(self) -> None:
         source = VALID_ALPHA.replace(
             'CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "none"'
@@ -885,7 +885,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
             findings,
         )
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_spec_deterministic_must_be_a_matching_boolean(self) -> None:
         _operations_package(self.root)
         for value in (False, True, "false", 0, 1, None, "missing"):
@@ -983,7 +983,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
         )
         self.assertEqual([], findings)
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_public_name_is_code_identity_not_a_skill_prerequisite(self) -> None:
         _operations_package(
             self.root,
@@ -1000,7 +1000,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_retired_skill_metadata_and_wrong_public_names_are_rejected(self) -> None:
         _operations_package(
             self.root,
@@ -1027,7 +1027,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
                     findings,
                 )
 
-    @verifies("scenario.distribution.operation-determinism")
+    @verifies("scenario.operations.invalid-declaration")
     def test_private_operation_has_no_public_name(self) -> None:
         _operations_package(self.root)
         expected = package_validation._operation_code_inventory(self.root)["alpha"]

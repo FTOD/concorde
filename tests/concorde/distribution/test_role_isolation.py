@@ -141,7 +141,7 @@ def replacement_prompts(argv, project, env, session):
 
 
 class ConsumerInstallRoleTests(unittest.TestCase):
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_consumer_install_update_preserve_user_append_bytes_and_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -355,8 +355,8 @@ class EffectiveRolePromptTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.distribution.task-subagents",
-        "scenario.distribution.user-session-todo-collection",
+        "scenario.session.task-subagents",
+        "scenario.session.todo-collection",
     )
     def test_source_user_session_and_child_effective_prompts_fresh_and_resumed(self):
         identities = {
@@ -398,7 +398,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 self.assertEqual(ids[0], ids[2])
                 self.assertNotEqual(ids[0], ids[1])
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_installed_user_session_generic_and_tester_isolated_with_user_append(self):
         consumer = self.root / "consumer"
         consumer.mkdir()
@@ -421,7 +421,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 else:
                     self.assertIn("# Independent tester", system)
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_rpc_new_and_switch_session_reload_role_safe_resources(self):
         for role in ("user-session", "maintenance-worker", "tester"):
             self.run_role(
@@ -437,7 +437,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
             replacements=True,
         )
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_negative_control_reproduces_unconditional_append_leak(self):
         (self.source / APPEND).write_text(
             resolve_role_prompt(
@@ -455,9 +455,9 @@ class EffectiveRolePromptTests(unittest.TestCase):
         self.assertNotIn(IDENTITY, system)
 
     @verifies(
-        "scenario.distribution.private-selection",
-        "scenario.distribution.task-subagents",
-        "scenario.agents.tester-independent",
+        "scenario.session.select",
+        "scenario.session.task-subagents",
+        "scenario.session.tester-independent",
     )
     def test_missing_binding_still_blocks_private_entry_loading(self):
         with self.assertRaises(PiRpcError) as raised:

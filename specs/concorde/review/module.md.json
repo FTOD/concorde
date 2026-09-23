@@ -16,32 +16,58 @@
     "contains": [],
     "uses": [
       {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.operation",
+          "concept.operations.catalog"
+        ]
+      },
+      {
         "target": "module.harness.admission",
-        "meaning": "#uses-harness-admission"
+        "meaning": "#uses-harness-admission",
+        "relies_on": [
+          "concept.admission.capability-request",
+          "concept.admission.result-envelope"
+        ]
       },
       {
         "target": "module.harness.context",
-        "meaning": "#uses-harness-context"
+        "meaning": "#uses-harness-context",
+        "relies_on": [
+          "concept.context.snapshot",
+          "concept.context.phase",
+          "concept.context.stage-input"
+        ]
       },
       {
         "target": "module.harness.execution",
         "meaning": "#uses-harness-execution",
         "relies_on": [
-          "concept.execution.workflow"
+          "concept.execution.workflow",
+          "concept.execution.agent-hook",
+          "concept.execution.workflow-hook",
+          "concept.execution.host-step",
+          "concept.execution.proposal",
+          "concept.execution.result-gate",
+          "contract.execution.host-step"
         ]
       },
       {
         "target": "module.harness.worktrees",
         "meaning": "#uses-harness-worktrees",
         "relies_on": [
-          "concept.worktrees.candidate"
+          "concept.worktrees.candidate",
+          "concept.worktrees.change-status",
+          "concept.worktrees.run-record"
         ]
       },
       {
         "target": "module.agents",
         "meaning": "#uses-agents",
         "relies_on": [
-          "concept.agents.agent"
+          "concept.agents.agent",
+          "concept.agents.definition"
         ]
       },
       {
@@ -49,16 +75,46 @@
         "meaning": "#uses-issues",
         "relies_on": [
           "concept.issues.issue",
+          "concept.issues.report",
           "concept.issues.blocker"
         ]
       },
       {
         "target": "module.spec",
-        "meaning": "#uses-spec"
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.registry",
+          "concept.spec.document",
+          "concept.spec.boundary-set",
+          "concept.spec.impact-index",
+          "concept.spec.typed-value"
+        ]
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks",
+        "relies_on": [
+          "concept.checks.configured-check",
+          "concept.checks.read-only-boundary",
+          "concept.checks.check-result"
+        ]
+      },
+      {
+        "target": "module.planning",
+        "meaning": "#uses-planning",
+        "relies_on": [
+          "concept.planning.change-scope",
+          "concept.planning.pending-gap",
+          "contract.planning.implementation-task"
+        ]
       },
       {
         "target": "module.implementation",
-        "meaning": "#uses-implementation"
+        "meaning": "#uses-implementation",
+        "relies_on": [
+          "concept.implementation.component-work",
+          "concept.implementation.completion"
+        ]
       }
     ],
     "includes": [
@@ -71,10 +127,31 @@
     "participates": [
       {
         "contract": "contract.review.result",
-        "version": 2,
+        "version": 3,
         "role": "provided",
-        "peer": "external",
+        "peer": "module.planning",
         "meaning": "#provides-review-result"
+      },
+      {
+        "contract": "contract.review.result",
+        "version": 3,
+        "role": "provided",
+        "peer": "module.implementation",
+        "meaning": "#provides-review-result"
+      },
+      {
+        "contract": "contract.review.result",
+        "version": 3,
+        "role": "provided",
+        "peer": "module.issue-solving",
+        "meaning": "#provides-review-result"
+      },
+      {
+        "contract": "contract.execution.host-step",
+        "version": 1,
+        "role": "required",
+        "peer": "module.harness.execution",
+        "meaning": "#uses-harness-execution"
       }
     ]
   },
@@ -121,19 +198,30 @@
       "title": "Review service",
       "meaning": "#realization.review.service",
       "entries": [
-        "operations/code_review.py",
-        "operations/spec_review.py",
         "src/concorde/review/"
       ]
     },
     {
       "id": "realization.review.workflow",
       "type": "realization",
-      "title": "Native review workflow",
+      "title": "Review workflow",
       "meaning": "#realization.review.workflow",
       "entries": [
         "pi/workflows/review.js",
+        "pi/native-review-host.mjs",
         "src/concorde/harness/native_reviews.py"
+      ]
+    },
+    {
+      "id": "realization.review.declarations",
+      "type": "realization",
+      "title": "Review declarations",
+      "meaning": "#realization.review.declarations",
+      "entries": [
+        "operations/spec_review.py",
+        "operations/code_review.py",
+        "prompts/operation-guidance/concorde-spec-review.md",
+        "prompts/operation-guidance/concorde-code-review.md"
       ]
     },
     {
@@ -143,10 +231,7 @@
       "meaning": "#realization.review.tests",
       "entries": [
         "tests/concorde/harness/native_review_probe.mjs",
-        "tests/concorde/harness/test_native_implementation_review.py",
-        "tests/concorde/operations/test_change_scope.py",
-        "tests/concorde/operations/test_operation_modules.py",
-        "tests/concorde/operations/test_run_operation.py"
+        "tests/concorde/operations/test_change_scope.py"
       ]
     }
   ],
@@ -204,6 +289,12 @@
       "source": "realization.review.service",
       "verb": "records required reviews on",
       "target": "concept.worktrees.candidate"
+    },
+    {
+      "type": "relates",
+      "source": "realization.review.service",
+      "verb": "computes scopes from",
+      "target": "module.spec"
     }
   ],
   "extensions": {}

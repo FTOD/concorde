@@ -16,7 +16,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class StructuredDiagnosticTests(unittest.TestCase):
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-accepted")
     def test_codec_limits_whitelist_and_native_record_shapes_without_models(self):
         code = r"""
 import assert from 'node:assert/strict';import crypto from 'node:crypto';
@@ -50,7 +50,7 @@ console.log('Selected arguments/errors roundtrip; secret sources excluded; sourc
         "explicit native roots required",
     )
     @verifies(
-        "scenario.harness.native-context-public", "scenario.harness.native-result-gate"
+        "scenario.planning.native-assessment-accepted", "scenario.execution.stage-proposal"
     )
     def test_real_structured_tool_errors_survive_os_scratch_cleanup(self):
         temporary = tempfile.TemporaryDirectory(prefix="concorde-diagnostic-governing-")

@@ -89,7 +89,7 @@ class NativeContextTests(unittest.TestCase):
             ),
         }
 
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-accepted")
     def test_prepared_not_accepted_and_no_model_service(self):
         prepared = self.prepare()
         self.assertEqual(prepared["state"], "prepared", prepared)
@@ -111,7 +111,7 @@ class NativeContextTests(unittest.TestCase):
             (Path(prepared["descriptor"]).parent / "terminal.json").exists()
         )
 
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-accepted")
     def test_duplicate_or_foreign_submission_invalidates(self):
         for foreign in (False, True):
             with self.subTest(foreign=foreign):
@@ -130,7 +130,7 @@ class NativeContextTests(unittest.TestCase):
                     self.command(prepared, "stage", {})["state"], "rejected"
                 )
 
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-accepted")
     def test_configuration_registry_and_spec_changes_reject_currentness(self):
         for relative in (
             ".concorde/config.json",
@@ -160,7 +160,7 @@ class NativeContextTests(unittest.TestCase):
                 finally:
                     file.write_bytes(original)
 
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-accepted")
     def test_policy_description_has_no_capsule_or_child(self):
         self.envelope["mode"] = "describe-policy"
         value = self.prepare()

@@ -15,45 +15,7 @@
       "specs/concorde/spec/contracts.md"
     ],
     "contains": [],
-    "uses": [
-      {
-        "target": "module.distribution",
-        "meaning": "#uses-distribution"
-      },
-      {
-        "target": "module.operations",
-        "meaning": "#uses-operations",
-        "relies_on": [
-          "concept.operations.operation"
-        ]
-      },
-      {
-        "target": "module.agents",
-        "meaning": "#uses-agents",
-        "relies_on": [
-          "concept.agents.agent"
-        ]
-      },
-      {
-        "target": "module.issues",
-        "meaning": "#uses-issues",
-        "relies_on": [
-          "concept.issues.issue"
-        ]
-      },
-      {
-        "target": "module.harness.worktrees",
-        "meaning": "#uses-worktrees",
-        "relies_on": [
-          "concept.worktrees.candidate",
-          "concept.worktrees.worktree"
-        ]
-      },
-      {
-        "target": "module.harness.execution",
-        "meaning": "#uses-execution"
-      }
-    ],
+    "uses": [],
     "includes": [
       {
         "kind": "document",
@@ -131,20 +93,40 @@
       "meaning": "#realization.spec.model",
       "entries": [
         "src/concorde/__init__.py",
-        "src/concorde/spec/"
+        "src/concorde/spec/__init__.py",
+        "src/concorde/spec/boundaries.py",
+        "src/concorde/spec/content_model.py",
+        "src/concorde/spec/content_repository.py",
+        "src/concorde/spec/impact.py",
+        "src/concorde/spec/model.py",
+        "src/concorde/spec/repository.py",
+        "src/concorde/spec/repository_base.py",
+        "src/concorde/spec/syntax.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.spec.validator",
+      "type": "realization",
+      "title": "Validator",
+      "meaning": "#realization.spec.validator",
+      "entries": [
+        "src/concorde/spec/diagnostics.py",
+        "src/concorde/spec/registry.py",
+        "src/concorde/spec/validation.py",
+        "src/concorde/spec/verification.py"
       ],
       "pending": []
     },
     {
       "id": "realization.spec.typed-values",
       "type": "realization",
-      "title": "Wire types and schemas",
+      "title": "Typed values",
       "meaning": "#realization.spec.typed-values",
       "entries": [
         "src/concorde/spec/contract_shapes.py",
         "src/concorde/spec/contracts.py",
         "src/concorde/spec/frontmatter.py",
-        "src/concorde/spec/issue_shapes.py",
         "src/concorde/spec/schema.py",
         "src/concorde/spec/typed_data.py",
         "src/concorde/spec/wire_shapes.py"
@@ -157,7 +139,8 @@
       "title": "Transaction writer",
       "meaning": "#realization.spec.transactions",
       "entries": [
-        "src/concorde/spec/changes.py"
+        "src/concorde/spec/changes.py",
+        "src/concorde/spec/content_changes.py"
       ],
       "pending": []
     },
@@ -168,6 +151,7 @@
       "meaning": "#realization.spec.initializer",
       "entries": [
         "operations/init.py",
+        "prompts/operation-guidance/concorde-init.md",
         "src/concorde/spec/initialize.py",
         "src/concorde/spec/project.py"
       ],
@@ -200,13 +184,16 @@
       "title": "Spec tests",
       "meaning": "#realization.spec.tests",
       "entries": [
-        "tests/__init__.py",
-        "tests/concorde/__init__.py",
-        "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/operations/test_structured_results.py",
-        "tests/concorde/spec/",
-        "tests/concorde/support/__init__.py",
-        "tests/concorde/support/paths.py"
+        "tests/concorde/spec/__init__.py",
+        "tests/concorde/spec/support.py",
+        "tests/concorde/spec/test_checks.py",
+        "tests/concorde/spec/test_context_selection.py",
+        "tests/concorde/spec/test_distribution.py",
+        "tests/concorde/spec/test_initialize.py",
+        "tests/concorde/spec/test_module_model.py",
+        "tests/concorde/spec/test_requirements_and_verification.py",
+        "tests/concorde/spec/test_typed_data.py"
       ],
       "pending": []
     }
@@ -233,8 +220,8 @@
     {
       "type": "relates",
       "source": "realization.spec.model",
-      "verb": "runs",
-      "target": "concept.spec.structural-check"
+      "verb": "checks the installed copy against",
+      "target": "realization.spec.protocol-assets"
     },
     {
       "type": "relates",
@@ -250,27 +237,39 @@
     },
     {
       "type": "relates",
-      "source": "realization.spec.model",
+      "source": "realization.spec.validator",
+      "verb": "runs",
+      "target": "concept.spec.structural-check"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.validator",
+      "verb": "checks the Specs loaded by",
+      "target": "realization.spec.model"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.validator",
       "verb": "reads",
       "target": "concept.spec.verification-declaration"
     },
     {
       "type": "relates",
-      "source": "realization.spec.model",
-      "verb": "checks the installed copy against",
-      "target": "realization.spec.protocol-assets"
+      "source": "realization.spec.validator",
+      "verb": "regenerates the mirror of",
+      "target": "concept.spec.registry"
     },
     {
       "type": "relates",
-      "source": "realization.spec.model",
-      "verb": "validates records of",
-      "target": "module.issues"
+      "source": "realization.spec.typed-values",
+      "verb": "checks",
+      "target": "concept.spec.typed-value"
     },
     {
       "type": "relates",
-      "source": "realization.spec.model",
-      "verb": "runs package validation of",
-      "target": "module.distribution"
+      "source": "realization.spec.transactions",
+      "verb": "applies",
+      "target": "concept.spec.file-transaction"
     },
     {
       "type": "relates",
@@ -288,43 +287,7 @@
       "type": "relates",
       "source": "realization.spec.initializer",
       "verb": "validates the result with",
-      "target": "realization.spec.model"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec.initializer",
-      "verb": "runs as a Host tool through",
-      "target": "module.harness.execution"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec.transactions",
-      "verb": "applies",
-      "target": "concept.spec.file-transaction"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec.typed-values",
-      "verb": "checks",
-      "target": "concept.spec.typed-value"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec.typed-values",
-      "verb": "collects request and response schemas from",
-      "target": "module.operations"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec.typed-values",
-      "verb": "collects request and response schemas from",
-      "target": "module.agents"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec.typed-values",
-      "verb": "resolves run artifacts in",
-      "target": "module.harness.worktrees"
+      "target": "realization.spec.validator"
     },
     {
       "type": "relates",

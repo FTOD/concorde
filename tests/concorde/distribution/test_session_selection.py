@@ -37,8 +37,8 @@ class SessionSelectionTests(unittest.TestCase):
         self.runtime = self.root / "scripts/run-operation.py"
 
     @verifies(
-        "scenario.distribution.private-selection",
-        "scenario.distribution.build-checkout-skills-user-invoked",
+        "scenario.session.select",
+        "scenario.distribution.private-session-entry",
     )
     def test_source_build_has_no_ambient_registration_and_selection_is_exact(self):
         for relative in (".agents", ".claude", ".pi/extensions/concorde-session.ts"):
@@ -73,7 +73,7 @@ class SessionSelectionTests(unittest.TestCase):
             ".pi/extensions/concorde-session.ts", [o.path for o in installed.outputs]
         )
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_selection_never_falls_back(self):
         for path in (
             "concorde-context-solve",
@@ -109,7 +109,7 @@ class SessionSelectionTests(unittest.TestCase):
                 runtime=self.runtime,
             )
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_aliased_entry_and_empty_tester_selection_are_rejected(self):
         with self.assertRaises(BuildError):
             select_session(self.root, mode="test", pi_entry=None, runtime=self.runtime)
@@ -132,7 +132,7 @@ class SessionSelectionTests(unittest.TestCase):
         )
         self.assertIsNone(selected["pi_entry"])
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_saved_selection_is_reverified_before_runtime_use(self):
         import json
         from concorde.distribution.session_selection import load_selection
@@ -149,7 +149,7 @@ class SessionSelectionTests(unittest.TestCase):
         with self.assertRaises(BuildError):
             load_selection(self.root, path)
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_cli_failure_keeps_selection_identity(self):
         import io
         import json
@@ -174,7 +174,7 @@ class SessionSelectionTests(unittest.TestCase):
         self.assertNotEqual(0, code)
         self.assertEqual("select-session", json.loads(output.getvalue())["tool"])
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_private_runtime_can_target_disposable_project_data_without_moving_code(
         self,
     ):
@@ -226,7 +226,7 @@ class SessionSelectionTests(unittest.TestCase):
             str(self.root), observed["host"].session_provenance["candidate"]
         )
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_transitive_runtime_sources_and_entire_catalog_are_bound(self):
         import json
         from concorde.distribution.session_selection import (
@@ -271,7 +271,7 @@ class SessionSelectionTests(unittest.TestCase):
         with self.assertRaises(BuildError):
             load_selection(self.root, path)
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_scratch_only_legacy_and_unknown_selection_fields_fail_closed(self):
         import json
         from concorde.distribution.cli import create_parser
@@ -324,7 +324,7 @@ class SessionSelectionTests(unittest.TestCase):
         with self.assertRaises(BuildError):
             save_selection(self.root, path, selected)
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_source_symlink_ancestors_and_foreign_runtime_are_refused(self):
         with self.assertRaises(BuildError):
             select_session(
@@ -342,7 +342,7 @@ class SessionSelectionTests(unittest.TestCase):
                 self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
             )
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_linked_source_redirect_is_refused_before_runner(self):
         import io
         import json
@@ -384,7 +384,7 @@ class SessionSelectionTests(unittest.TestCase):
         )
         runner.assert_not_called()
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_run_archive_keeps_pi_bytes_without_loading_claim(self):
         import json
         from concorde.harness.host import OperationHost
@@ -409,7 +409,7 @@ class SessionSelectionTests(unittest.TestCase):
             [p.read_bytes() for p in (directory / "pi").glob("*.ts")],
         )
 
-    @verifies("scenario.distribution.private-selection")
+    @verifies("scenario.session.select")
     def test_cli_saves_and_reverifies_without_primary_or_discovery_mutation(self):
         import io
         import json

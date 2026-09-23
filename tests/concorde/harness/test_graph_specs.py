@@ -69,7 +69,7 @@ def section(*parts: str, role: str = "implementation") -> GraphSpec:
 
 
 class GraphSpecTests(unittest.TestCase):
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_every_compiled_graph_has_one_matching_spec_in_this_repository(self):
         repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
         with patch("concorde.harness.context.resolve_context") as resolve:
@@ -79,7 +79,7 @@ class GraphSpecTests(unittest.TestCase):
         bound = {item.graph for item in graph_specs(repository)}
         self.assertEqual(set(catalog()), bound)
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_catalog_compiles_every_graph_without_a_repository_or_agent(self):
         with (
             patch("concorde.harness.invocation.SpecRepository") as bound,
@@ -94,7 +94,7 @@ class GraphSpecTests(unittest.TestCase):
             for repository in (bound, dispatched):
                 repository.assert_not_called()
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_comparison_reports_missing_nodes_edges_conditions_and_state(self):
         compiled = topology(
             (
@@ -170,7 +170,7 @@ class GraphSpecTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_parts_require_state_nodes_and_edges_in_order(self):
         compiled = topology(
             (
@@ -217,7 +217,7 @@ class GraphSpecTests(unittest.TestCase):
             problems(STATE, NODES, EDGES, role="module"),
         )
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_nodes_table_names_every_compiled_node_with_its_diagram_state(self):
         compiled = topology(
             (
@@ -272,7 +272,7 @@ class GraphSpecTests(unittest.TestCase):
             problems("**Nodes.** Two nodes.\n\n"),
         )
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_owner_reading_links_the_exact_graph_spec(self):
         body = (
             "#### Sequential work items Graph (`batch_graph`) {#host-batch}\n\n"
@@ -318,7 +318,7 @@ class GraphSpecTests(unittest.TestCase):
             link_problems(section(STATE, NODES, EDGES), [linking]),
         )
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_unknown_duplicate_and_missing_bindings_are_findings(self):
         repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
         limited = {
@@ -361,7 +361,7 @@ class GraphSpecTests(unittest.TestCase):
             ).is_file()
         )
 
-    @verifies("scenario.harness.graph-api-only")
+    @verifies("scenario.execution.functional-api-refused")
     def test_a_graph_outside_the_graph_api_is_a_finding(self):
         from langgraph.func import entrypoint
 
@@ -387,7 +387,7 @@ class GraphSpecTests(unittest.TestCase):
             [(finding.rule_id, finding.message) for finding in findings],
         )
 
-    @verifies("scenario.harness.graph-api-only")
+    @verifies("scenario.execution.functional-api-refused")
     def test_functional_api_imports_are_found_by_parsing_not_running(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

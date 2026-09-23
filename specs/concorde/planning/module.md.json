@@ -15,12 +15,19 @@
     "contains": [],
     "uses": [
       {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.operation",
+          "concept.operations.catalog"
+        ]
+      },
+      {
         "target": "module.harness.admission",
         "meaning": "#uses-admission",
         "relies_on": [
           "concept.admission.capability-request",
-          "concept.admission.result-envelope",
-          "concept.admission.relay"
+          "concept.admission.result-envelope"
         ]
       },
       {
@@ -28,20 +35,23 @@
         "meaning": "#uses-context",
         "relies_on": [
           "concept.context.snapshot",
+          "concept.context.phase",
           "concept.context.capsule",
-          "req.context.names-every-phase",
-          "req.context.recheck"
+          "concept.context.stage-input"
         ]
       },
       {
         "target": "module.harness.execution",
         "meaning": "#uses-execution",
         "relies_on": [
+          "concept.execution.agent-call",
           "concept.execution.workflow",
           "concept.execution.host-step",
-          "concept.execution.result-gate",
+          "concept.execution.agent-hook",
+          "concept.execution.workflow-hook",
           "concept.execution.proposal",
-          "req.execution.proposal-not-completion"
+          "concept.execution.result-gate",
+          "contract.execution.host-step"
         ]
       },
       {
@@ -66,7 +76,9 @@
         "meaning": "#uses-spec",
         "relies_on": [
           "concept.spec.registry",
-          "concept.spec.impact-index"
+          "concept.spec.impact-index",
+          "concept.spec.structural-check",
+          "concept.spec.typed-value"
         ]
       },
       {
@@ -74,24 +86,21 @@
         "meaning": "#uses-issues",
         "relies_on": [
           "concept.issues.issue",
+          "concept.issues.report",
           "concept.issues.blocker",
-          "req.issues.references"
+          "contract.issues.blocker"
         ]
       },
       {
         "target": "module.review",
         "meaning": "#uses-review",
         "relies_on": [
-          "concept.review.finding",
           "concept.review.required-review",
-          "req.review.repair-feedback"
-        ]
-      },
-      {
-        "target": "module.distribution",
-        "meaning": "#uses-distribution",
-        "relies_on": [
-          "req.distribution.fresh-instructions"
+          "concept.review.result",
+          "concept.review.finding",
+          "req.review.spec-gate",
+          "req.review.repair-feedback",
+          "contract.review.result"
         ]
       }
     ],
@@ -99,15 +108,39 @@
       {
         "kind": "document",
         "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "external",
-        "target": "reference/pi/",
-        "reason": "Pi Agent definition, extension and tool formats that the native preparation writes and the capture extension uses"
+        "reason": "shared Framework vocabulary, including the four context kinds"
       }
     ],
-    "participates": []
+    "participates": [
+      {
+        "contract": "contract.planning.implementation-task",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.implementation",
+        "meaning": "#provides-implementation-task"
+      },
+      {
+        "contract": "contract.review.result",
+        "version": 3,
+        "role": "required",
+        "peer": "module.review",
+        "meaning": "#uses-review"
+      },
+      {
+        "contract": "contract.execution.host-step",
+        "version": 1,
+        "role": "required",
+        "peer": "module.harness.execution",
+        "meaning": "#uses-execution"
+      },
+      {
+        "contract": "contract.issues.blocker",
+        "version": 1,
+        "role": "required",
+        "peer": "module.issues",
+        "meaning": "#uses-issues"
+      }
+    ]
   },
   "defines": [
     {
@@ -135,25 +168,45 @@
       "meaning": "#concept.planning.change-scope"
     },
     {
-      "id": "realization.planning.capabilities",
+      "id": "concept.planning.pending-gap",
+      "type": "concept",
+      "title": "Pending gap",
+      "meaning": "#concept.planning.pending-gap"
+    },
+    {
+      "id": "realization.planning.declarations",
       "type": "realization",
-      "title": "Planning capability declarations",
-      "meaning": "#realization.planning.capabilities",
+      "title": "Planning declarations",
+      "meaning": "#realization.planning.declarations",
       "entries": [
         "operations/context_solve.py",
         "operations/plan.py",
-        "operations/tasks.py"
+        "operations/tasks.py",
+        "prompts/operation-guidance/concorde-context-solve.md",
+        "prompts/operation-guidance/concorde-plan.md",
+        "prompts/operation-guidance/concorde-tasks.md"
       ]
     },
     {
-      "id": "realization.planning.native",
+      "id": "realization.planning.hooks",
       "type": "realization",
-      "title": "Native planning preparation",
-      "meaning": "#realization.planning.native",
+      "title": "Planning Agent hooks",
+      "meaning": "#realization.planning.hooks",
       "entries": [
-        "pi/native-plan-host.mjs",
+        "src/concorde/planning/hooks.py"
+      ],
+      "pending": [
+        "src/concorde/planning/hooks.py"
+      ]
+    },
+    {
+      "id": "realization.planning.workflow",
+      "type": "realization",
+      "title": "Plan workflow",
+      "meaning": "#realization.planning.workflow",
+      "entries": [
         "pi/workflows/plan.js",
-        "src/concorde/harness/native_context.py",
+        "pi/native-plan-host.mjs",
         "src/concorde/harness/native_planning.py"
       ]
     },
@@ -176,51 +229,34 @@
         "tests/concorde/harness/native_planning_probe.mjs",
         "tests/concorde/harness/test_native_context.py",
         "tests/concorde/harness/test_native_context_public.py",
-        "tests/concorde/harness/test_native_planning_public.py",
-        "tests/concorde/operations/test_change_scope.py",
-        "tests/concorde/distribution/test_install_output_handoff.py",
-        "tests/concorde/harness/test_feedback_export.py",
-        "tests/concorde/harness/test_native_observation.py",
-        "tests/concorde/harness/test_structured_diagnostic.py"
+        "tests/concorde/harness/test_native_planning_public.py"
       ]
     }
   ],
   "relations": [
     {
       "type": "relates",
-      "source": "realization.planning.capabilities",
-      "verb": "hands requests to",
-      "target": "module.harness.admission"
+      "source": "realization.planning.workflow",
+      "verb": "runs as a workflow of",
+      "target": "module.harness.execution"
     },
     {
       "type": "relates",
-      "source": "realization.planning.native",
+      "source": "realization.planning.hooks",
       "verb": "freezes context through",
       "target": "module.harness.context"
     },
     {
       "type": "relates",
-      "source": "realization.planning.native",
+      "source": "realization.planning.hooks",
       "verb": "prepares calls for",
       "target": "module.agents"
     },
     {
       "type": "relates",
-      "source": "realization.planning.native",
-      "verb": "verifies native runs with",
-      "target": "module.harness.execution"
-    },
-    {
-      "type": "relates",
-      "source": "realization.planning.native",
+      "source": "realization.planning.hooks",
       "verb": "accepts",
       "target": "concept.planning.assessment"
-    },
-    {
-      "type": "relates",
-      "source": "realization.planning.native",
-      "verb": "reports gaps to",
-      "target": "module.issues"
     },
     {
       "type": "relates",
@@ -237,13 +273,31 @@
     {
       "type": "relates",
       "source": "realization.planning.records",
+      "verb": "keeps",
+      "target": "concept.planning.pending-gap"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.records",
       "verb": "stores records in",
       "target": "module.harness.worktrees"
     },
     {
       "type": "relates",
       "source": "realization.planning.records",
-      "verb": "requires a current Spec review from",
+      "verb": "computes the change scope from",
+      "target": "module.spec"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.records",
+      "verb": "records blockers citing",
+      "target": "module.issues"
+    },
+    {
+      "type": "relates",
+      "source": "realization.planning.records",
+      "verb": "checks the required Spec review with",
       "target": "module.review"
     }
   ]

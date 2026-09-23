@@ -39,6 +39,9 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--allow-primary-worktree", action="store_true")
     docsite.add_argument("--format", choices=["json"], default="json")
 
+    check_package = subparsers.add_parser("check-package")
+    check_package.add_argument("--format", choices=["json"], default="json")
+
     build = subparsers.add_parser("build")
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
@@ -76,6 +79,19 @@ def create_parser() -> argparse.ArgumentParser:
 
 def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
+    if arguments.tool == "check-package":
+        from collections import Counter
+
+        from .package_validation import validate_package
+
+        findings = tuple(validate_package(root))
+        counts = Counter(finding.severity for finding in findings)
+        return ToolResult(
+            "check-package",
+            ".",
+            "invalid" if counts["error"] else "success",
+            findings=findings,
+        )
     if arguments.tool == "status":
         from ..harness.change_worktree import ensure_change
         from ..harness.status_store import (
@@ -374,6 +390,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "registry",
                 "docsite",
                 "build",
+                "check-package",
                 "protocol-manifest",
                 "status",
                 "select-session",

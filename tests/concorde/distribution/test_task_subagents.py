@@ -20,7 +20,7 @@ from concorde.spec.verification import verifies
 
 
 class TaskSubagentsTests(unittest.TestCase):
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_projection_membership_and_installed_prompt_separation(self):
         source = {o.path: o for o in build(REPOSITORY_ROOT).outputs}
         installed = {
@@ -77,7 +77,7 @@ class TaskSubagentsTests(unittest.TestCase):
             ".concorde/framework/src/concorde/distribution/tester_check.py", outputs
         )
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_missing_source_and_modified_projection_fail_closed(self):
         from concorde.distribution.task_subagents import render
         from tests.concorde.support.build_fixture import build_package_copy
@@ -97,7 +97,7 @@ class TaskSubagentsTests(unittest.TestCase):
                 write_build(root)
             self.assertEqual(path.read_text(), "local edit")
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_installer_collision_is_not_adopted(self):
         package = installation.Package(
             REPOSITORY_ROOT, json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
@@ -113,7 +113,7 @@ class TaskSubagentsTests(unittest.TestCase):
             self.assertEqual(path.read_text(), "user-owned tester")
 
     @verifies(
-        "scenario.distribution.task-subagents", "scenario.agents.tester-independent"
+        "scenario.session.task-subagents", "scenario.session.tester-independent"
     )
     def test_actual_project_discovery_and_effective_tools(self):
         subagents = Path(
@@ -220,9 +220,9 @@ class TaskSubagentsTests(unittest.TestCase):
             )
 
     @verifies(
-        "scenario.harness.session-observation",
-        "scenario.distribution.task-subagents",
-        "scenario.agents.tester-independent",
+        "scenario.observation.session-observation",
+        "scenario.session.task-subagents",
+        "scenario.session.tester-independent",
     )
     def test_native_hook_observation_and_readonly_commands(self):
         if not shutil.which("node"):
@@ -247,7 +247,7 @@ class TaskSubagentsTests(unittest.TestCase):
             self.assertFalse((Path(directory) / "governing-canary").exists())
 
     @verifies(
-        "scenario.harness.brief-lifecycle", "scenario.distribution.task-subagents"
+        "scenario.session.brief-lifecycle", "scenario.session.task-subagents"
     )
     def test_actual_sdk_compaction_and_current_brief(self):
         from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
@@ -294,7 +294,7 @@ class TaskSubagentsTests(unittest.TestCase):
             print(result.stdout)
 
     @verifies(
-        "scenario.harness.brief-lifecycle", "scenario.distribution.task-subagents"
+        "scenario.session.brief-lifecycle", "scenario.session.task-subagents"
     )
     def test_source_main_sdk_brief_tool_and_latest_compacted_memory(self):
         pi = shutil.which("pi")
@@ -326,7 +326,7 @@ class TaskSubagentsTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             print(result.stdout)
 
-    @verifies("scenario.distribution.test-timing")
+    @verifies("scenario.concorde.test-timing")
     def test_runner_fingerprints_and_default_cli(self):
         from tests.concorde.support import pytest_timing as runner
 

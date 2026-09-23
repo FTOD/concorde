@@ -27,7 +27,7 @@ class LocalExecutionTests(unittest.TestCase):
         self.candidate.mkdir()
         self.host = OperationHost(self.primary, self.primary / ".concorde/framework")
 
-    @verifies("scenario.harness.local-installation")
+    @verifies("scenario.admission.candidate-installation")
     def test_relay_uses_only_verified_local_paths_and_explicit_bootstrap(self):
         source = object()
         local = SimpleNamespace(
@@ -55,7 +55,7 @@ class LocalExecutionTests(unittest.TestCase):
             relay_launcher(self.host, self.candidate, bootstrap=True)
             self.assertTrue(ensure.call_args.kwargs["bootstrap"])
 
-    @verifies("scenario.harness.local-installation-failure")
+    @verifies("scenario.admission.candidate-installation-failure")
     def test_failed_install_preserves_candidate_and_blocks_before_spawn(self):
         host = OperationHost(
             self.primary,
@@ -93,7 +93,7 @@ class LocalExecutionTests(unittest.TestCase):
             process.assert_not_called()
             self.assertTrue(self.candidate.is_dir())
 
-    @verifies("scenario.harness.local-installation-failure")
+    @verifies("scenario.admission.candidate-installation-failure")
     def test_foreign_framework_and_missing_local_receipt_never_use_primary(self):
         with patch(
             "concorde.distribution.local_installation.verify_installation"
@@ -120,7 +120,7 @@ class LocalExecutionTests(unittest.TestCase):
             with self.assertRaises(SpecError):
                 relay_launcher(self.host, self.candidate)
 
-    @verifies("scenario.harness.local-installation-failure")
+    @verifies("scenario.admission.candidate-installation-failure")
     def test_verified_receipt_cannot_attest_a_foreign_executing_interpreter(self):
         local = SimpleNamespace(python=self.candidate / ".concorde/.venv/bin/python")
         with patch(
@@ -136,7 +136,7 @@ class LocalExecutionTests(unittest.TestCase):
                     )
                 )
 
-    @verifies("scenario.harness.local-installation")
+    @verifies("scenario.admission.candidate-installation")
     def test_source_private_mode_never_installs_ambient_integration(self):
         (self.candidate / "concorde.json").write_text("{}")
         (self.candidate / "src/concorde").mkdir(parents=True)

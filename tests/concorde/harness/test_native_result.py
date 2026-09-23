@@ -8,7 +8,7 @@ from concorde.spec.verification import verifies
 
 
 class ControlValueTests(unittest.TestCase):
-    @verifies("scenario.harness.native-result-gate")
+    @verifies("scenario.execution.stage-proposal")
     def test_control_dto_is_not_truncated(self):
         with self.assertRaises(SpecError):
             control_value({"answer": "x" * MAX_CONTROL_BYTES})
@@ -16,7 +16,7 @@ class ControlValueTests(unittest.TestCase):
 
 
 class StagingControlTests(unittest.TestCase):
-    @verifies("scenario.harness.native-result-gate")
+    @verifies("scenario.execution.stage-proposal")
     def test_closed_bounded_host_control_not_model_prose(self):
         from concorde.harness.native_result import staging_control
         from concorde.spec.typed_data import canonical

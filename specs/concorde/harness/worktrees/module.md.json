@@ -17,14 +17,17 @@
     "uses": [
       {
         "target": "module.spec",
-        "meaning": "#uses-spec"
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.file-transaction",
+          "concept.spec.typed-value"
+        ]
       },
       {
-        "target": "module.issues",
-        "meaning": "#uses-issues",
+        "target": "module.harness.observation",
+        "meaning": "#uses-observation",
         "relies_on": [
-          "concept.issues.issue",
-          "concept.issues.blocker"
+          "concept.observation.diagnostic-span"
         ]
       }
     ],
@@ -63,10 +66,22 @@
       "meaning": "#concept.worktrees.change-status"
     },
     {
+      "id": "concept.worktrees.provider-section",
+      "type": "concept",
+      "title": "Provider section",
+      "meaning": "#concept.worktrees.provider-section"
+    },
+    {
       "id": "concept.worktrees.run-record",
       "type": "concept",
       "title": "Run record",
       "meaning": "#concept.worktrees.run-record"
+    },
+    {
+      "id": "concept.worktrees.workspace-facts",
+      "type": "concept",
+      "title": "Workspace facts",
+      "meaning": "#concept.worktrees.workspace-facts"
     },
     {
       "id": "realization.worktrees.lifecycle",
@@ -104,8 +119,7 @@
         "tests/concorde/harness/test_change_worktree.py",
         "tests/concorde/harness/test_status_store.py",
         "tests/concorde/harness/test_worktree_boundary.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/harness/test_check_evidence.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py"
       ]
     }
   ],
@@ -121,6 +135,18 @@
       "source": "realization.worktrees.lifecycle",
       "verb": "registers",
       "target": "concept.worktrees.change-status"
+    },
+    {
+      "type": "relates",
+      "source": "realization.worktrees.lifecycle",
+      "verb": "computes",
+      "target": "concept.worktrees.workspace-facts"
+    },
+    {
+      "type": "relates",
+      "source": "realization.worktrees.lifecycle",
+      "verb": "appends guidance through",
+      "target": "module.spec"
     },
     {
       "type": "relates",
@@ -142,15 +168,21 @@
     },
     {
       "type": "relates",
-      "source": "realization.worktrees.boundary",
-      "verb": "inspects",
-      "target": "concept.worktrees.worktree"
+      "source": "realization.worktrees.status-store",
+      "verb": "times its writes with",
+      "target": "module.harness.observation"
     },
     {
       "type": "relates",
       "source": "concept.worktrees.change-status",
-      "verb": "references blockers of",
-      "target": "module.issues"
+      "verb": "holds",
+      "target": "concept.worktrees.provider-section"
+    },
+    {
+      "type": "relates",
+      "source": "realization.worktrees.boundary",
+      "verb": "inspects",
+      "target": "concept.worktrees.worktree"
     }
   ],
   "extensions": {}

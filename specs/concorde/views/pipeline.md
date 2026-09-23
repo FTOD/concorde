@@ -32,9 +32,11 @@ Loading fails with an `Error` naming the source when:
 - an entry's metadata lacks the `module` block, or any other document's metadata has one;
 - an entry has role `implementation`, or its first level-2 headings are not Purpose, Terminology,
   Usage, Design and Relationships, once each and in order;
-- a `module`-role document contains a requirement or scenario heading, a `concorde-contract` fence
-  or a Graph Spec flowchart (a Mermaid block with a `%% graph:` line), or an `implementation`-role
-  document defines a concept;
+- a `module`-role document contains a requirement or scenario heading or a `concorde-contract`
+  fence, or an `implementation`-role document defines a concept;
+- a `module`-role document contains a Graph Spec flowchart, recognized as a Mermaid block with a
+  line matching `%% graph:`; Graph Specs belong to their owners' implementation documents, as
+  Agent execution defines;
 - an unmarked Mermaid block does not start with `flowchart` or `graph`;
 - a concept or realization `meaning` anchor has no readable prose;
 - a `concorde-contract` fence has no valid identity or no positive integer version (the publisher
@@ -45,7 +47,7 @@ Loading fails with an `Error` naming the source when:
 - two documents would share a route.
 
 These are the checks the publisher needs to produce correct pages. Checked flowcharts, realization
-bindings, the registry mirror and contract examples are left to the Spec Module's validator.
+bindings, the registry mirror and contract examples are left to Spec tooling's validator.
 Loading never fetches anything and never reads implementation files.
 
 The **root Module** is the first Module in registry order that no Module contains. The loaded model
@@ -57,9 +59,13 @@ role), whether it is its Module's entry, and the selecting Modules.
 **Selecting Modules.** For each Module the publisher computes its one-level Spec context: its own
 documents (`owns`), and for every `contains` and `uses` the target's documents, or only the target's
 entry and the documents defining the `relies_on` identities when that list is present, and the
-documents of every `module` or `document` inclusion. A page lists every Module whose context holds
-it, in registry order, each with the sorted `{kind, id}` reasons, `kind` being `owns`, `contains`,
-`uses` or `includes`.
+documents of every `module` or `document` inclusion. This is the Protocol's context selection, and
+the resulting per-document list must equal Spec tooling's `selected-by` index for the same registry
+and documents. A page lists every Module whose context holds it, in registry order, each with its
+reasons. A reason is `{relation, id}`, where `relation` is `owns`, `contains` or `uses` and `id` is
+the owning or target Module; an inclusion reason is `{relation: "includes", kind, id}`, where `kind`
+is `module` or `document` and `id` is the included Module or document. Reasons are sorted by
+`relation`, then `kind`, then `id`.
 
 ## Source digest {#source-digest}
 
@@ -106,8 +112,8 @@ no other route.
      relationship.";
    - **page anchors**: the Module identity (on its entry) and the document identity are inserted
      as anchors after the level-1 title, unless the reading already carries them.
-3. It writes `specs-sidebar.json` with `moduleSpecsSidebar` and, when any page has the
-   `implementation` collection, `implementationSpecsSidebar`.
+3. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` and, when any page has the
+   `implementation` collection, `implementationDocumentsSidebar`.
 4. Last, it writes the staging identity record `scoped-materialization.json`:
    `{"schema_version": 2, "sourceDigest": "<source digest>"}`.
 
@@ -126,11 +132,11 @@ other's files.
 Both sidebars follow the `contains` tree, starting from the uncontained Modules in registry order;
 children follow the parent's `contains` order.
 
-- **Module Specs.** A Module with `module`-role topics or children is a category whose label is the
+- **Module documents.** A Module with `module`-role topics or children is a category whose label is the
   Module title and whose link opens its entry; its items are its `module`-role topics in `owns`
   order, then its children. A Module with neither is a single link to its entry. The entry is
   never listed twice.
-- **Implementation Specs.** A Module is a category labelled with its title, holding its
+- **Implementation documents.** A Module is a category labelled with its title, holding its
   `implementation`-role documents in `owns` order and then its children; a Module with no such
   document anywhere below it is omitted. Categories below the top level start collapsed.
 

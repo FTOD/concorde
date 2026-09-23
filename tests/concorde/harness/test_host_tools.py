@@ -48,7 +48,7 @@ class HostToolTests(unittest.TestCase):
         return result
 
     @verifies(
-        "scenario.spec.propose-initialization", "scenario.harness.host-tools-direct"
+        "scenario.spec.propose-initialization", "scenario.admission.deterministic-no-model"
     )
     def test_initialization_proposal_without_graph(self):
         root = self.root / "new-project"
@@ -62,13 +62,13 @@ class HostToolTests(unittest.TestCase):
         self.assertEqual(result["status"], "succeeded", result)
         self.assertEqual(result["output"]["data"]["status"], "proposed")
 
-    @verifies("scenario.distribution.configure-apply")
+    @verifies("scenario.admission.configure-apply")
     def test_configuration_without_graph(self):
         result = self.call("concorde-configure", {"configuration": CONFIGURATION})
         self.assertEqual(result["status"], "succeeded", result)
 
     @verifies(
-        "scenario.issues.inspect",
+        "scenario.issue-solving.inspect",
         "scenario.issues.store-report",
         "scenario.issues.store-disposition",
     )
@@ -113,7 +113,7 @@ class HostToolTests(unittest.TestCase):
         self.assertEqual(result["status"], "succeeded", result)
         self.assertEqual(result["output"]["data"]["issues"][0]["status"], "open")
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.failed-check")
     def test_validation_gates_without_graph(self):
         result = self.call(
             "concorde-validate",

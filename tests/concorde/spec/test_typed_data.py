@@ -30,7 +30,7 @@ from tests.concorde.support.operation_json import CONFIGURATION
 
 
 class TypedDataTests(unittest.TestCase):
-    @verifies("scenario.spec.task-control-values")
+    @verifies("scenario.planning.task-control-values")
     def test_task_control_values_validate_shape_without_rewriting_input(self):
         examples = {
             "concorde-task-scope-feedback": {
@@ -176,7 +176,7 @@ class TypedDataTests(unittest.TestCase):
             with self.assertRaisesRegex(TypedDataError, "symlink"):
                 verify_artifacts(root, reference)
 
-    @verifies("scenario.harness.typed-reject")
+    @verifies("scenario.admission.typed-reject")
     def test_json_rejects_duplicate_fields_and_non_finite_numbers(self):
         for value in ('{"x":1,"x":2}', '{"x":NaN}', '{"x":Infinity}'):
             with self.subTest(value=value), self.assertRaises(TypedDataError):

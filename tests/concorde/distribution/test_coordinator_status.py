@@ -29,8 +29,8 @@ class CoordinatorStatusTests(unittest.TestCase):
         ).body
 
     @verifies(
-        "scenario.agents.coordinator-ownership",
-        "scenario.distribution.task-subagents",
+        "scenario.session.coordinator-ownership",
+        "scenario.session.task-subagents",
     )
     def test_canonical_lifecycle_is_rendered_only_for_source_user_session(self):
         prompt = self.source_prompt()
@@ -79,7 +79,7 @@ class CoordinatorStatusTests(unittest.TestCase):
             any("Register before launch" in item.content.decode() for item in installed)
         )
 
-    @verifies("scenario.distribution.stage-continuity")
+    @verifies("scenario.session.stage-continuity")
     def test_stage_reuse_fresh_handoff_and_native_steps(self):
         prompt = self.source_prompt()
         for text in (
@@ -104,7 +104,7 @@ class CoordinatorStatusTests(unittest.TestCase):
             ).read_text(),
         )
 
-    @verifies("scenario.agents.coordinator-ownership")
+    @verifies("scenario.session.coordinator-ownership")
     def test_documented_cli_registers_two_candidates_and_hands_off_exact_owner(self):
         commands = re.findall(
             r"^\.venv/bin/python scripts/concorde.py (status[^\n]*)$",
@@ -171,7 +171,7 @@ class CoordinatorStatusTests(unittest.TestCase):
             self.assertEqual(bound["child"], resumed["child"])
             self.assertEqual(states[0], read_status(primary, states[0]["change_id"]))
 
-    @verifies("scenario.agents.coordinator-ownership")
+    @verifies("scenario.session.coordinator-ownership")
     def test_cleanup_flag_is_never_silently_ignored(self):
         with tempfile.TemporaryDirectory() as directory:
             primary = Path(directory) / "primary"

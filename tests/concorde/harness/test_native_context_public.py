@@ -17,7 +17,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 )
 class NativeContextPublicTests(unittest.TestCase):
     @verifies(
-        "scenario.harness.native-context-public",
+        "scenario.planning.native-assessment-accepted",
         "scenario.planning.assessment-sufficient",
         "scenario.planning.assessment-gap",
     )

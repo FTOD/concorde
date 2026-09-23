@@ -6,5 +6,6 @@
     "role": "module"
   },
   "defines": [],
-  "relations": []
+  "relations": [],
+  "extensions": {}
 }
