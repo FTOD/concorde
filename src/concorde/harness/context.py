@@ -1,4 +1,12 @@
-"""Immutable cognitive inputs, separate from host-only execution grants."""
+"""Task context: the frozen context snapshot of one Agent call and its recheck.
+
+A snapshot records the four context kinds of one call as Spec tooling computes them, with byte
+digests: the Spec context of every bound Module, the Protocol files, the selected Module's
+implementation names (and contents when the Agent definition reads implementation), its external
+context, the Agent binding, the task and the admitted stage inputs, and the workspace facts. What the
+bound Agent definition says decides the phase, the admitted stage inputs, whether implementation
+contents are recorded and whether the call is bound to the Modules sharing its files.
+"""
 
 from __future__ import annotations
 
@@ -8,14 +16,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..spec.repository import (
-    REFERENCE_SKIPPED_SUFFIXES,
     SpecError,
     SpecRepository,
     digest,
-    expand_entry,
-    is_directory_entry,
     most_specific,
     read_file,
+    is_directory_entry,
 )
 from ..spec.content_repository import LISTING_ENTRY, context_record_schema
 from ..spec.typed_data import (
@@ -28,45 +34,36 @@ from ..spec.typed_data import (
     obj,
     register,
     typed_schema,
+    validate_typed,
 )
 from .status_store import WORKSPACE_CONTEXT
-from .worker_profile import WorkerProfile, validate_worker_artifacts
+from .worker_profile import (
+    AgentBinding,
+    agent_definition,
+    bind_agent,
+    phase_agent,
+    validate_stage_inputs,
+)
 
 RepositoryCore = SpecRepository
 
-PHASES = frozenset(
-    {
-        "plan",
-        "tasks",
-        "implementation",
-        "spec-review",
-        "code-review",
-        "validate",
-        "deliver",
-        "context-solve",
-        "issue-solve",
-    }
-)
-CODE_PHASES = frozenset({"implementation", "code-review"})
-# The Protocol copy the installer places in the project and the configuration binds, granted in
-# place like any other project file.
+SNAPSHOT_VERSION = 8
+# The Protocol copy the installer places in the project and the configuration binds.
 PROTOCOL_PATHS = (
     ".concorde/protocol/principles.md",
     ".concorde/protocol/kinds/module.md",
 )
 
-
-# The stage inputs a snapshot may carry; each type is registered by its owning provider.
-STAGE_INPUT_TYPES = (
-    "concorde-plan-artifact",
-    "concorde-task-identity-constraints",
-    "concorde-implementation-task",
-    "concorde-task-scope-feedback",
-    "concorde-issue-selection",
-    "concorde-issue-context",
-    "concorde-review-result",
-)
 NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
+# A stage input is a typed value of a type its owner registered; the bound definition decides
+# which types a snapshot admits, and freezing validates each against its registration.
+STAGE_INPUT = obj(
+    {
+        "type_id": STRING,
+        "schema_version": {"type": "integer", "minimum": 1},
+        "data": {"type": "object", "additionalProperties": {}},
+    }
+)
 IMPLEMENTATION_ENTRY = obj(
     {
         "path": LISTING_ENTRY,
@@ -81,28 +78,57 @@ IMPLEMENTATION_FILE = obj(
 EXTERNAL_REFERENCE = obj(
     {"path": LISTING_ENTRY, "directory": {"type": "boolean"}, "digest": DIGEST}
 )
+AGENT_BINDING = obj(
+    {
+        "agent": STRING,
+        "spec_path": PATH,
+        "spec_digest": DIGEST,
+        "instructions_path": PATH,
+        "instructions_digest": DIGEST,
+        "definition_digest": DIGEST,
+        "build_manifest_digest": DIGEST,
+        "tools": array(STRING, unique=True),
+        "effects": obj(
+            {
+                "reads": array(STRING, unique=True),
+                "writes": array(STRING, unique=True),
+                "network": {"type": "boolean"},
+                "credentials": STRING,
+            }
+        ),
+        "workspace": {"enum": ["capsule", "project"]},
+        "timeout_seconds": {"type": "integer", "minimum": 1},
+        "digest": DIGEST,
+    }
+)
+SHARED_BINDING = obj(
+    {
+        "module_id": STRING,
+        "files": array(LISTING_ENTRY, unique=True),
+        "spec_resolution": context_record_schema(),
+    }
+)
 CONTEXT_SNAPSHOT = obj(
     {
         "context_id": DIGEST,
-        "schema_version": {"const": 7},
+        "schema_version": {"const": SNAPSHOT_VERSION},
         "target_id": STRING,
         "kind": {"const": "module"},
         "focus_id": NULLABLE_ID,
         "phase": STRING,
         "task": STRING,
         "constraints": array(STRING),
+        "agent_binding": AGENT_BINDING,
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "protocol": array(obj({"path": PATH, "digest": DIGEST})),
         "spec_resolution": context_record_schema(),
-        "instructions": {"type": "string"},
-        "stage_inputs": array(
-            {"anyOf": [typed_schema(name) for name in STAGE_INPUT_TYPES]}
-        ),
+        "shared_bindings": array(SHARED_BINDING),
         "implementation_entries": array(IMPLEMENTATION_ENTRY),
         "implementation_files": array(IMPLEMENTATION_FILE),
         "implementation_artifacts": array(ARTIFACT),
         # The Module's external inclusions, one tree digest per entry.
         "external_references": array(EXTERNAL_REFERENCE),
+        "stage_inputs": array(STAGE_INPUT),
         "workspace": WORKSPACE_CONTEXT,
     }
 )
@@ -114,7 +140,7 @@ AGENT_STAGE_CONTEXT = obj(
     }
 )
 
-register("concorde-context-snapshot", 7, CONTEXT_SNAPSHOT)
+register("concorde-context-snapshot", SNAPSHOT_VERSION, CONTEXT_SNAPSHOT)
 register("concorde-agent-stage-context", 5, AGENT_STAGE_CONTEXT)
 
 
@@ -202,75 +228,64 @@ def _external_references(repository: SpecRepository, target) -> list[dict]:
     return [entry.record() for entry in entries]
 
 
-def materialize_references(
-    repository: SpecRepository, destination: Path, records: list[dict]
-) -> None:
-    """Copy a snapshot's external references into a capsule at their project-relative paths.
+def _shared_bindings(repository: SpecRepository, target) -> list[dict]:
+    """Every other Module binding a file of the selected Module's scope, with its Spec context."""
+    return [
+        {
+            "module_id": module_id,
+            "files": list(files),
+            "spec_resolution": repository.spec_context(module_id).value,
+        }
+        for module_id, files in sorted(repository.shared_files(target).items())
+    ]
 
-    Only the readable files that the entry digest covers are copied, so a capsule receives the
-    same bytes the snapshot identifies and none of the excluded media.
+
+def context_sources(value: dict) -> list[dict]:
+    """The Spec document source records of every Module a snapshot is bound to."""
+    return [
+        *value["spec_resolution"]["sources"],
+        *(
+            source
+            for shared in value["shared_bindings"]
+            for source in shared["spec_resolution"]["sources"]
+        ),
+    ]
+
+
+def context_documents(repository: RepositoryCore, value: dict) -> dict[str, bytes]:
+    """The exact bytes of every Protocol and Spec context file a snapshot delivers, by path.
+
+    Each file is verified against the digest the snapshot recorded; a changed one is
+    ``stale_context``.
     """
-    from ..spec.typed_data import checked_path
-
-    for item in records:
-        for path in expand_entry(
-            repository.root, item["path"], skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES
-        ):
-            copy = checked_path(destination, path)
-            copy.parent.mkdir(parents=True, exist_ok=True)
-            copy.write_bytes(read_file(repository.root, path))
-
-
-def _index_documents(value: dict) -> list[dict]:
-    """Complete paired source records for the selected Module."""
-    return value["spec_resolution"]["sources"]
-
-
-def context_documents(
-    repository: RepositoryCore,
-    value: dict,
-    *,
-    candidate_repository: RepositoryCore | None = None,
-) -> dict[str, bytes]:
-    """The exact bytes of every granted context file, keyed by path and verified by digest.
-
-    A capsule receives these bytes at the same paths; a project workspace is granted the paths in
-    place, and this verification proves they still hold the frozen bytes. A candidate repository
-    supplies the bytes of documents it overrides for deterministic validation.
-    """
-    (candidate_repository or repository).validate_source_records(
-        _index_documents(value)
-    )
+    repository.validate_source_records(value["spec_resolution"]["sources"])
+    for shared in value["shared_bindings"]:
+        repository.validate_source_records(shared["spec_resolution"]["sources"])
     expected = {
         item["path"]: item["digest"]
-        for item in (*value["protocol"], *_index_documents(value))
+        for item in (*value["protocol"], *context_sources(value))
     }
     result: dict[str, bytes] = {}
     for path, expected_digest in expected.items():
-        if path in repository.protocol_assets:
-            raw = repository.protocol_assets[path]
-        else:
-            source = (
-                candidate_repository
-                if candidate_repository is not None
-                and candidate_repository.source_is_overridden(path)
-                else repository
-            )
-            raw = source.source_bytes(path)
+        raw = (
+            repository.protocol_assets[path]
+            if path in repository.protocol_assets
+            else repository.source_bytes(path)
+        )
         if digest(raw) != expected_digest:
             raise SpecError(f"granted context file changed: {path}", "stale_context")
         result[path] = raw
     return result
 
 
-def materialize_documents(destination: Path, documents: dict[str, bytes]) -> None:
-    """Copy granted context files into a capsule at their project-relative paths, byte for byte."""
-    from ..spec.typed_data import checked_path
-
-    for path, raw in documents.items():
-        copy = checked_path(destination, path)
-        copy.parent.mkdir(parents=True, exist_ok=True)
-        copy.write_bytes(raw)
+def _binding(repository: SpecRepository, agent, phase: str | None) -> AgentBinding:
+    if isinstance(agent, AgentBinding):
+        return agent
+    if agent is None:
+        name = phase_agent(phase).name if phase else "context_assessor"
+    else:
+        name = agent
+    return bind_agent(repository.package_root, name)
 
 
 @timed("context.resolve")
@@ -278,76 +293,71 @@ def resolve_context(
     repository: SpecRepository,
     target_id: str,
     *,
-    phase: str = "context-solve",
+    agent: str | AgentBinding | None = None,
+    phase: str | None = None,
     task: str = "Understand this Spec",
     focus_id: str | None = None,
     constraints: tuple[str, ...] = (),
-    instructions: str = "",
     stage_inputs: tuple[dict, ...] = (),
     workspace: dict | None = None,
-    agent: WorkerProfile | None = None,
+    require_inputs: bool = False,
 ) -> ContextSnapshot:
-    if phase not in PHASES:
+    """Freeze the context snapshot of one Agent call.
+
+    ``agent`` names the Agent (or is its binding); without it the Agent whose definition names
+    ``phase`` is bound. A given ``phase`` must be the bound definition's. ``require_inputs`` also
+    requires every stage input the definition requires; a policy preview omits it.
+    """
+    if phase is not None and phase not in {d for d in _phases()}:
         raise SpecError("unsupported context phase", "invalid_phase")
+    binding = _binding(repository, agent, phase)
+    definition = agent_definition(binding.agent)
+    if phase is not None and phase != definition.phase:
+        raise SpecError(
+            "the phase is not the bound Agent definition's phase", "invalid_phase"
+        )
     if not isinstance(task, str) or not task.strip():
         raise SpecError("task intent is required", "invalid_input")
-    if agent is not None:
-        contract = agent.contract
-        if contract.phase != phase or (
-            phase in CODE_PHASES and "implementation" not in contract.effects.reads
-        ):
-            raise SpecError(
-                "context phase exceeds the selected worker's contract",
-                "permission_denied",
-            )
-        try:
-            # Policy previews can omit not-yet-authored prerequisites; launches require them all.
-            validate_worker_artifacts(agent, stage_inputs, require_all=False)
-        except ValueError as error:
-            raise SpecError(str(error), "incompatible_handoff") from error
-    target = repository.module(target_id, focus_id)
-    from ..spec.typed_data import validate_typed
-
+    validate_stage_inputs(definition, stage_inputs, require_all=require_inputs)
     for item in stage_inputs:
-        if phase != "tasks" and item.get("type_id") in {
-            "concorde-task-identity-constraints",
-            "concorde-task-scope-feedback",
-        }:
-            raise SpecError(
-                "task-control stage inputs require the tasks phase",
-                "incompatible_handoff",
-            )
-        if item.get("type_id") not in STAGE_INPUT_TYPES:
-            raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
+    target = repository.module(target_id, focus_id)
     resolution = repository.spec_context(focus_id or target.id).value
-    # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
 
     manifest = {
-        "schema_version": 7,
+        "schema_version": SNAPSHOT_VERSION,
         "target_id": target.id,
         "kind": target.kind,
         "focus_id": focus_id,
-        "phase": phase,
+        "phase": definition.phase,
         "task": task,
         "constraints": list(constraints),
+        "agent_binding": binding.record(),
         "protocol_binding": repository.config["protocol"],
         "protocol": _protocol(repository),
         "spec_resolution": resolution,
-        "instructions": instructions,
-        "stage_inputs": list(stage_inputs),
+        "shared_bindings": _shared_bindings(repository, target)
+        if definition.writes_implementation
+        else [],
         "implementation_entries": _implementation_entries(repository, target),
         "implementation_files": _implementation_files(repository, target),
         "implementation_artifacts": _implementation_artifacts(repository, target)
-        if phase in CODE_PHASES
+        if definition.reads_implementation
         else [],
         "external_references": _external_references(repository, target),
+        "stage_inputs": list(stage_inputs),
         "workspace": workspace
         if workspace is not None
         else workspace_context(repository.root, target_id=target.id, task=task),
     }
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
+
+
+def _phases() -> frozenset[str]:
+    from .worker_profile import phases
+
+    return phases()
 
 
 def _stale_on_resolution_error(check):
@@ -372,14 +382,19 @@ def _stale_on_resolution_error(check):
     return checked
 
 
+def writes_implementation(value: dict) -> bool:
+    """Whether a snapshot's bound Agent writes implementation."""
+    return "implementation" in value["agent_binding"]["effects"]["writes"]
+
+
 @_stale_on_resolution_error
 @timed("context.recheck")
-def recheck_context(
-    repository: SpecRepository,
-    snapshot: ContextSnapshot,
-    *,
-    check_implementation: bool = True,
-) -> None:
+def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot) -> None:
+    """Fail with ``stale_context`` when any rechecked input differs from the snapshot.
+
+    For an Agent that writes implementation, its own bound file names and bytes are exempt,
+    because changing them is the purpose of the call.
+    """
     value = snapshot.value
     declared = value.pop("context_id")
     if digest(value) != declared:
@@ -406,26 +421,31 @@ def recheck_context(
             "context ownership, references, provenance or bytes changed",
             "stale_context",
         )
+    writer = writes_implementation(value)
+    if (_shared_bindings(current, target) if writer else []) != value[
+        "shared_bindings"
+    ]:
+        raise SpecError("the Modules sharing the files changed", "stale_context")
     if _implementation_entries(current, target) != value["implementation_entries"]:
         raise SpecError(
             "listed implementation entries or their entities changed", "stale_context"
         )
-    if (
-        check_implementation
-        and _implementation_files(current, target) != value["implementation_files"]
-    ):
-        raise SpecError("implementation file names changed", "stale_context")
-    if (
-        check_implementation
-        and value["phase"] in CODE_PHASES
-        and _implementation_artifacts(current, target)
-        != value["implementation_artifacts"]
-    ):
-        raise SpecError(
-            "implementation input membership or bytes changed", "stale_context"
-        )
+    if not writer:
+        if _implementation_files(current, target) != value["implementation_files"]:
+            raise SpecError("implementation file names changed", "stale_context")
+        if (
+            "implementation" in value["agent_binding"]["effects"]["reads"]
+            and _implementation_artifacts(current, target)
+            != value["implementation_artifacts"]
+        ):
+            raise SpecError(
+                "implementation input membership or bytes changed", "stale_context"
+            )
     if _external_references(current, target) != value["external_references"]:
         raise SpecError("external references or their bytes changed", "stale_context")
+    binding = value["agent_binding"]
+    if bind_agent(repository.package_root, binding["agent"]).record() != binding:
+        raise SpecError("the Agent binding changed", "stale_context")
 
 
 def _recheck_workspace(
@@ -442,42 +462,3 @@ def _recheck_workspace(
             raise SpecError(
                 "current worktree identity or lifecycle changed", "stale_context"
             )
-
-
-def assess_result(snapshot: ContextSnapshot, assessment: dict) -> dict:
-    """Validate a task-specific judgment; no code or external document lookup occurs here."""
-    from ..issues.shapes import BLOCKER
-    from ..spec.schema import validate
-
-    validate(
-        assessment,
-        {
-            "type": "object",
-            "additionalProperties": False,
-            "required": ["context_id", "outcome", "answer", "blockers"],
-            "properties": {
-                "context_id": {"const": snapshot.id},
-                "outcome": {
-                    "enum": [
-                        "sufficient",
-                        "spec_incomplete",
-                        "unsupported",
-                        "conflicting",
-                    ]
-                },
-                "answer": {"type": "string", "minLength": 1},
-                "blockers": {"type": "array", "items": BLOCKER},
-            },
-        },
-    )
-    if (assessment["outcome"] == "spec_incomplete" and not assessment["blockers"]) or (
-        assessment["outcome"] == "sufficient" and assessment["blockers"]
-    ):
-        raise SpecError(
-            "assessment outcome contradicts its Issue blockers", "invalid_assessment"
-        )
-    return {
-        "type_id": "concorde-context-assessment",
-        "schema_version": 1,
-        "data": {"target_id": snapshot.value["target_id"], **assessment},
-    }

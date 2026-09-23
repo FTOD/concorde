@@ -9,7 +9,9 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from inspect import isawaitable
-from typing import Any, TypedDict
+from typing import Any
+
+from typing_extensions import TypedDict
 
 from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
@@ -19,9 +21,9 @@ from ..spec.typed_data import data_schema, typed, validate_typed
 from .execution_error import exception_feedback, failure
 from .operation_state import OperationRuntimeContext
 from .worker_profile import (
-    validate_worker_input,
-    validate_worker_output,
-    worker_profile,
+    agent_definition,
+    validate_agent_input,
+    validate_agent_result,
 )
 
 
@@ -50,24 +52,19 @@ class OperationNode:
     name: str
 
     def __post_init__(self):
-        object.__setattr__(self, "name", worker_profile(self.name).name)
+        object.__setattr__(self, "name", agent_definition(self.name).name)
 
     @property
     def definition(self):
-        from importlib import import_module
-
-        from agents import DOMAIN_AGENTS
-
-        namespace = "agents" if self.name in DOMAIN_AGENTS else "operations"
-        return import_module(namespace + "." + self.name)
+        return agent_definition(self.name)
 
     @property
     def input_type(self):
-        return worker_profile(self.name).contract.context
+        return self.definition.context
 
     @property
     def result_type(self):
-        return worker_profile(self.name).contract.result
+        return self.definition.result
 
     @property
     def input_schema(self):
@@ -78,7 +75,7 @@ class OperationNode:
         return typed_state(self.result_type)
 
     def graph(self, launcher=None):
-        profile = worker_profile(self.name)
+        definition = self.definition
 
         def prepare(state, runtime):
             data = {
@@ -87,7 +84,7 @@ class OperationNode:
                 if k in data_schema(self.input_type)["properties"]
             }
             value = typed(self.input_type, data)
-            validate_worker_input(profile, value, phase=profile.contract.phase)
+            validate_agent_input(definition, value)
             context = runtime.context if runtime else None
             selected = launcher or (
                 context.launcher
@@ -107,7 +104,7 @@ class OperationNode:
                 if isinstance(value, dict) and value.get("type_id")
                 else typed(self.result_type, value)
             )
-            validate_worker_output(profile, result)
+            validate_agent_result(definition, result)
             return validate_typed(result, self.result_type)["data"]
 
         def annotate(error):

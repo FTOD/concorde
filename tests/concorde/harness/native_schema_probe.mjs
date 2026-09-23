@@ -24,7 +24,7 @@ const schemas = JSON.parse(
     path.join(source, ".venv/bin/python"),
     [
       "-c",
-      `import json;from concorde.harness.native_context import native_output_schema;print(json.dumps({k:native_output_schema(k) for k in ['concorde-agent-stage-result','concorde-review-stage-result']}))`,
+      `import json;from concorde.harness.native_driver import native_output_schema;print(json.dumps({k:native_output_schema(k) for k in ['concorde-agent-stage-result','concorde-review-stage-result']}))`,
     ],
     {
       env: { ...process.env, PYTHONPATH: path.join(source, "src") },
@@ -110,7 +110,7 @@ assert.match(
 const root = {
   ticket: "issued",
   directory: "/fixture",
-  gatePrefix: "host-only",
+  slot_gate: "host-only",
   stageSchema: schemas["concorde-agent-stage-result"],
   reviewSchema: schemas["concorde-review-stage-result"],
 };

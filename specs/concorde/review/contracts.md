@@ -247,7 +247,8 @@ it changed.
 **Prepare.** The Operation's run prepares every member: it freezes the member's context, computes
 its reviewer input and issues a ticket and a native call. It saves the scope, including the
 configuration, the members, their prepared descriptors and a digest of the candidate's inputs, and
-returns the named workflow `concorde.review.<ticket>` built from `pi/workflows/review.js`.
+returns the named workflow `concorde.spec-review.<ticket>` or `concorde.code-review.<ticket>` built
+from `pi/workflows/review.js`.
 `describe-policy` returns the member list with outcome `described` and prepares nothing. A scope
 without an executable member is refused with `unsupported_target`.
 
@@ -258,7 +259,7 @@ descriptor and its digest. Every Host step speaks the
 
 | Step | Kind | What happens | Time limit |
 | --- | --- | --- | --- |
-| `bind` | Host | Waits up to 15 seconds for the workflow's launch binding, runs the Host's `workflow-check` service, which verifies that the configuration, members, selected Module's Spec context, candidate inputs and every member descriptor are unchanged, then preflights every member's call | 30 min |
+| `bind` | Host | Waits up to 15 seconds for the workflow's launch binding, runs the Host's `workflow-bind` service, which verifies that the configuration, members, selected Module's Spec context, candidate inputs and every member descriptor are unchanged, then preflights every member's call | 30 min |
 | `review-<i>` | Agent | One fresh reviewer per member, in order; its output schema requires the member's own ticket, and its staging gate records the proposal as staged and not accepted | the Agent's own limit |
 | `finalize` | Host | Runs the Host's `workflow-finalize` service: verifies every reviewer's native terminal records, admits each member's proposal independently, rechecks the whole scope and every member's context and input, accepts each result as described under [Acceptance](#acceptance), aggregates them and saves a workflow receipt | 30 min |
 

@@ -16,6 +16,8 @@ execFileSync(python, [
   "-c",
   `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.insert(0,${JSON.stringify(candidate)})
 from pathlib import Path
+from concorde.operations.catalog import register_types
+register_types()
 from tests.concorde.spec.support import project
 project(Path(${JSON.stringify(root)}))
 import json
@@ -145,7 +147,9 @@ if (
   const dataRoot = path.join(root, "candidate");
   execFileSync(python, [
     "-c",
-    `from pathlib import Path
+    `from concorde.operations.catalog import register_types
+register_types()
+from pathlib import Path
 from concorde.harness.change_worktree import ensure_change,bind_owner,read_change,save_change
 from concorde.harness.host import OperationHost
 from concorde.harness.invocation import Invocation
@@ -160,8 +164,8 @@ if ${JSON.stringify(scenario)}=='prior-gap':
  from concorde.issues.store import report_issue
  from concorde.harness.change_worktree import record_task_gaps
  from concorde.harness.revisions import target_revision
- from concorde.harness.native_context import assessment_context
- context_id=assessment_context(run)[2].id
+ from concorde.harness.context import resolve_context
+ context_id=resolve_context(run.repository,run.target.id,agent='context_assessor',task=task['task']).id
  receipt=report_issue(r,{'report_key':'prior-gap','type':'gap','subtype':'missing-contract','title':'Prior promise','description':'Prior missing promise','impact':'Blocked planning','basis':'Fixture prior contract','owner_target_id':'service.transfer','evidence':[]},{'invocation_id':'fixture-prior','agent':'host','operation':'concorde-context-solve','phase':'context-solve','target_id':'service.transfer','context_id':context_id,'change_id':run.change_id,'head':None})
  record_task_gaps(r,'service.transfer',task['task'],'context-solve',[{**receipt,'blocked_step':'Assess contract'}],target_revision(run.repository,run.target),spec_resolution=run.repository.spec_context(run.target.id).value)
  file=r/'specs/transfer/module.md';file.write_text(file.read_text()+chr(10)+'The previously missing promise is now explicit.'+chr(10))
@@ -526,7 +530,7 @@ setChildSessionFactory({
           if (scenario === "stale-intent")
             execFileSync(python, [
               "-c",
-              "from pathlib import Path; from concorde.harness.change_worktree import read_change,save_change; r=Path(" +
+              "from concorde.operations.catalog import register_types;register_types();from pathlib import Path; from concorde.harness.change_worktree import read_change,save_change; r=Path(" +
                 JSON.stringify(slot.project_root) +
                 "); c=read_change(r); c['constraints']=['changed intent']; save_change(r,c)",
             ]);
@@ -620,7 +624,7 @@ if (
 ) {
   assert(
     scenario === "assessor-gap"
-      ? result.result.status === "blocked"
+      ? result.accepted && result.output.data.outcome === "spec_incomplete"
       : !result.accepted,
     JSON.stringify(result),
   );
@@ -641,7 +645,7 @@ if (
       python,
       [
         "-c",
-        "from pathlib import Path;from concorde.harness.change_worktree import read_change;print(read_change(Path(" +
+        "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;print(read_change(Path(" +
           JSON.stringify(prepared.binding.root) +
           "))['targets']['service.transfer']['plan'])",
       ],
@@ -670,7 +674,8 @@ if (
   }
 } else {
   assert(result.accepted, JSON.stringify(result));
-  assert.equal(result.result.status, "succeeded", JSON.stringify(result));
+  assert.equal(result.state, "accepted", JSON.stringify(result));
+  assert.equal(result.output.data.outcome, "completed", JSON.stringify(result));
   const projectRoot = prepared.binding.root;
   if (scenario === "stale-plan") {
     fs.appendFileSync(
@@ -687,7 +692,7 @@ if (
             input: {
               target_id: "service.transfer",
               task: "Assess the transfer contract",
-              change_id: result.result.output.data.change_id,
+              change_id: result.output.data.change_id,
             },
           },
           undefined,
@@ -710,7 +715,7 @@ if (
         input: {
           target_id: "service.transfer",
           task: "Assess the transfer contract",
-          change_id: result.result.output.data.change_id,
+          change_id: result.output.data.change_id,
         },
       },
       undefined,
@@ -735,7 +740,7 @@ if (
         python,
         [
           "-c",
-          "import json; from pathlib import Path; from concorde.harness.change_worktree import read_change; print(json.dumps(read_change(Path(" +
+          "from concorde.operations.catalog import register_types;register_types();import json; from pathlib import Path; from concorde.harness.change_worktree import read_change; print(json.dumps(read_change(Path(" +
             JSON.stringify(projectRoot) +
             "))))",
         ],
@@ -819,7 +824,7 @@ if (
       python,
       [
         "-c",
-        "import json; from concorde.spec.repository import digest; from concorde.spec.typed_data import canonical; print(digest(canonical(json.loads(" +
+        "from concorde.operations.catalog import register_types;register_types();import json; from concorde.spec.repository import digest; from concorde.spec.typed_data import canonical; print(digest(canonical(json.loads(" +
           JSON.stringify(JSON.stringify(tasks)) +
           ")).encode()))",
       ],

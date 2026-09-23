@@ -196,9 +196,7 @@
       "entries": [
         "src/concorde/planning/hooks.py"
       ],
-      "pending": [
-        "src/concorde/planning/hooks.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.planning.workflow",
@@ -207,8 +205,7 @@
       "meaning": "#realization.planning.workflow",
       "entries": [
         "pi/workflows/plan.js",
-        "pi/native-plan-host.mjs",
-        "src/concorde/harness/native_planning.py"
+        "pi/native-plan-host.mjs"
       ]
     },
     {

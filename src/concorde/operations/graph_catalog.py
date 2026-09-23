@@ -4,7 +4,7 @@ Every Graph Concorde runs is a LangGraph ``StateGraph`` built by a factory in th
 Harness package or the Issues package. This catalog names each factory by its compiled graph
 name and builds it with stub node functions, so inspection, publication and the Graph Spec check
 all look at exactly the topology execution compiles: the same nodes, the same edges, the same
-conditional routing. Building a catalog entry never resolves a context or starts an WorkerProfile.
+conditional routing. Building a catalog entry never resolves a context or starts an Agent.
 """
 
 from __future__ import annotations

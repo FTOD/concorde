@@ -9,6 +9,7 @@ from ..harness.change_worktree import (
     target_state,
 )
 from ..review.review import repair_feedback, require_spec_review
+from .gaps import record_gaps
 from .scope import change_scope
 from ..spec.repository import SpecError, digest
 from ..harness.status_store import record_artifact
@@ -16,11 +17,6 @@ from ..spec.typed_data import (
     canonical,
     typed,
 )
-
-
-def tasks(run) -> dict:
-    """Agent hook of the task author; only the native driver prepares and accepts it."""
-    raise SpecError("Task authoring requires its native Pi Agent", "native_required")
 
 
 def prepare_tasks(run):
@@ -148,7 +144,7 @@ def persist_tasks(run, result, state, repair, scope_repair):
         status="active",
     )
     save_target_state(run.repository.root, state)
-    run.record_gaps("tasks", [])
+    record_gaps(run, "tasks", [])
     return run.response(
         answer=result["answer"],
         artifacts=[

@@ -166,9 +166,7 @@
         "src/concorde/issues/solve.py",
         "src/concorde/issue_solving/"
       ],
-      "pending": [
-        "src/concorde/issue_solving/"
-      ]
+      "pending": []
     },
     {
       "id": "realization.issue-solving.workflow",
@@ -180,7 +178,7 @@
         "pi/native-issue-host.mjs",
         "pi/issue-call.mjs",
         "pi/issue-call.d.mts",
-        "src/concorde/harness/native_issues.py"
+        "src/concorde/issue_solving/native.py"
       ]
     },
     {

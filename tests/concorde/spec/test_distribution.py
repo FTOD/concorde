@@ -7,10 +7,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.distribution.build import load_model_instructions
 from concorde.distribution.package_validation import validate_package
 from concorde.spec.boundaries import scope_roots
-from agents import DOMAIN_AGENTS
+from agents import AGENTS
+from concorde.harness.worker_profile import bind_agent, load_instructions
 from concorde.operations.catalog import OPERATION_NAMES
 from concorde.spec.repository import SpecRepository
 from concorde.spec.typed_data import typed
@@ -23,17 +23,17 @@ from .support import PACKAGE, project
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([], validate_package(PACKAGE))
-        agents = tuple("concorde-" + name.replace("_", "-") for name in DOMAIN_AGENTS)
+        agents = tuple("concorde-" + name.replace("_", "-") for name in AGENTS)
         self.assertEqual(11, len(OPERATION_NAMES))
         self.assertEqual(7, len(agents))
         self.assertIn("concorde-context-solve", OPERATION_NAMES)
         self.assertNotIn("concorde-ask", OPERATION_NAMES)
         self.assertNotIn("concorde-planner", OPERATION_NAMES)
         for role in agents:
-            prompt = load_model_instructions(PACKAGE, role)
-            self.assertEqual(role, prompt.name)
-            self.assertTrue(prompt.body.strip())
-            self.assertIsNotNone(prompt.effects)
+            binding = bind_agent(PACKAGE, role)
+            self.assertEqual(role, "concorde-" + binding.agent.replace("_", "-"))
+            self.assertTrue(load_instructions(PACKAGE, binding).strip())
+            self.assertIsNotNone(binding.effects)
 
     @verifies(
         "scenario.spec.admit-inventory",

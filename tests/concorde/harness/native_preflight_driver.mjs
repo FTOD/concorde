@@ -28,6 +28,37 @@ const { nativePreflight } = await import(
 );
 
 const cwd = path.join(root, "capsule");
+// The allowlist comes from the prepared Agent definition file, never from the Agent's name.
+const definition = (agent, tools) => {
+  const file = path.join(cwd, ".pi/agents", agent + ".md");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(
+    file,
+    "---\nname: " +
+      agent +
+      "\ntools: " +
+      tools.join(", ") +
+      "\n---\nInstructions\n",
+  );
+};
+definition("concorde-context-assessor", [
+  "read",
+  "grep",
+  "find",
+  "ls",
+  "report_issue",
+]);
+definition("concorde-programmer", [
+  "read",
+  "grep",
+  "find",
+  "ls",
+  "edit",
+  "write",
+  "bash",
+  "run_checks",
+  "report_issue",
+]);
 const contract = (agent, change = {}) => ({
   agent: {
     source: "project",
@@ -76,7 +107,7 @@ await refused(
     ok: true,
     contract: { ...programmerTools, agent: contract(assessor).agent },
   },
-  /exceeds its terminal read policy/,
+  /exceeds its definition's tool list/,
 );
 
 // pi-subagents' own refusal is a Host refusal that keeps its reasons as causes.

@@ -115,8 +115,8 @@ author and the plan workflow.
 
 <a id="realization.planning.workflow"></a>
 
-The **plan workflow** is the authored pi workflow script, its Host-step script and the Host services
-behind those steps, which are moving from the Harness package into Planning's own package.
+The **plan workflow** is the authored pi workflow script and its Host-step script; the Host services
+behind those steps are the plan workflow hook.
 
 <a id="realization.planning.records"></a>
 

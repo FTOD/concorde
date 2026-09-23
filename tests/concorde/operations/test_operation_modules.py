@@ -46,7 +46,7 @@ class CatalogTests(unittest.TestCase):
     def test_the_catalog_holds_every_operation_and_no_agent(self):
         self.assertEqual(11, len(CATALOG))
         self.assertEqual(OPERATION_NAMES, PUBLIC_OPERATIONS)
-        agent_names = {"concorde-" + n.replace("_", "-") for n in agents.DOMAIN_AGENTS}
+        agent_names = {"concorde-" + n.replace("_", "-") for n in agents.AGENTS}
         self.assertFalse(agent_names & set(CATALOG))
         for name, operation in CATALOG.items():
             with self.subTest(operation=name):
@@ -114,9 +114,9 @@ class CatalogTests(unittest.TestCase):
                 "AGENTS",
             ),
             (
-                'ENTRY_POINT = "concorde.planning.tasks:tasks"',
-                'ENTRY_POINT = "concorde.planning.tasks:missing"',
-                "/entry_point",
+                'ENTRY_POINT = "concorde.planning.hooks:task_author"',
+                'ENTRY_POINT = "concorde.planning.hooks:planner"',
+                "ENTRY_POINT",
             ),
             ("USES = ()", 'USES = ("concorde-tasks",)', "USES"),
         )
@@ -215,10 +215,23 @@ class DispatchTests(unittest.TestCase):
 
     def test_an_agent_call_goes_to_the_native_driver(self):
         seen = []
-        request = self.request("concorde-tasks", native_assessment=seen.append)
-        with patch("concorde.harness.invocation.Invocation") as bound:
-            dispatch(request)
-        self.assertEqual([bound.return_value], seen)
+
+        class Driver:
+            def agent_call(self, request, agent):
+                seen.append(("agent-call", request.operation, agent))
+
+            def workflow(self, request, entry):
+                seen.append(("workflow", request.operation, entry))
+
+        for name in ("concorde-tasks", "concorde-plan"):
+            dispatch(self.request(name, native_driver=Driver()))
+        self.assertEqual(
+            [
+                ("agent-call", "concorde-tasks", "task_author"),
+                ("workflow", "concorde-plan", "concorde.planning.hooks:plan_workflow"),
+            ],
+            seen,
+        )
 
 
 class ChildRequestTests(unittest.TestCase):
@@ -305,10 +318,9 @@ class TerminalAgentGraphTests(unittest.TestCase):
 
     @verifies("scenario.execution.operation-state")
     def test_arbitrary_compatibility_names_do_not_register_operations(self):
-        from concorde.distribution.build import BuildError
-
-        with self.assertRaises(BuildError):
+        with self.assertRaises(SpecError) as refused:
             OperationNode("normalize_plan")
+        self.assertEqual("unknown_agent", refused.exception.code)
 
 
 if __name__ == "__main__":

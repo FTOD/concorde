@@ -80,7 +80,7 @@ AgentBinding(agent, spec_path, spec_digest, instructions_path, instructions_dige
 ```
 
 `spec_path` is `agents/<name>/spec.md`; `instructions_path` is
-`generated/agents/<hyphenated name>.md`; `digest` is the SHA-256 digest of the canonical JSON of
+`generated/native/<hyphenated name>.md`; `digest` is the SHA-256 digest of the canonical JSON of
 every other field. Binding verifies build freshness as the build manifest contract defines it,
 requires the manifest to record the instruction source with `spec_digest` and requires the rendered
 instructions to exist. Names are normalized by removing a `concorde-` prefix and replacing hyphens
@@ -94,8 +94,8 @@ inputs; result fields are among `documents`, `plan`, `tasks` and `issue_decision
 among `spec-context`, `implementation` and `references`; every written role is also read; network
 is off and credentials are `none`; implementation reads use a `project` workspace; tools are
 distinct, drawn from `read`, `grep`, `find`, `ls`, `edit`, `write`, `bash` and `run_checks`,
-include `read`, and include `edit` or `write` only with a write role; and the time limit is a
-positive integer.
+include `read`, and include `edit`, `write` or `bash` only with a write role; the hook is a
+`module:attribute` entry point; and the time limit is a positive integer.
 
 ## Revision identities
 
@@ -109,7 +109,7 @@ realization entries that neither exist nor are declared pending.
 | Function | Behaviour |
 | --- | --- |
 | `bind_agent(package_root, name)` | the Agent binding, or `unknown_agent`, `stale_build`, `invalid_agent_binding` |
-| `resolve_context(repository, target_id, *, binding, task, focus_id, constraints, stage_inputs, workspace)` | freeze a snapshot |
+| `resolve_context(repository, target_id, *, agent, phase, task, focus_id, constraints, stage_inputs, workspace, require_inputs)` | freeze a snapshot; `agent` is an Agent name or binding, else the Agent whose definition names `phase` is bound; `require_inputs` also requires the definition's required stage inputs |
 | `recheck_context(repository, snapshot)` | the recheck; the implementation exemption follows from the snapshot's binding |
 | `assemble_capsule(repository, snapshot, directory, review=None)` | write the capsule and return the digests it wrote |
 | `verify_capsule(repository, snapshot, directory, digests)` | recompute and compare before acceptance |

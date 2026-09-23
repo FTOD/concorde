@@ -13,10 +13,7 @@ import re
 from pathlib import Path
 from types import ModuleType
 
-from ..harness.worker_profile import (
-    WorkerProfile,
-    validate_worker_profile,
-)
+from ..harness.worker_profile import AgentDefinition, validate_definition
 from ..operations.catalog import (
     OPERATION_NAMES,
     CatalogError,
@@ -122,7 +119,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
             _finding(
                 "CONCORDE-PROMPT-UNREACHABLE-001",
                 relative,
-                "No operation guidance source, WorkerProfile Spec, or Agent prompt root reaches this prompt file.",
+                "No operation guidance source, Agent instructions, or Agent prompt root reaches this prompt file.",
                 "Include it from a root, or delete the dead prompt text.",
             )
         )
@@ -167,7 +164,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
                     _finding(
                         "CONCORDE-PROMPT-NAME-001",
                         relative,
-                        f"'{token}' names no operation, WorkerProfile, or exported type.",
+                        f"'{token}' names no operation, Agent, or exported type.",
                         "Correct the identifier, or export/declare it if it is genuinely new.",
                     )
                 )
@@ -208,7 +205,7 @@ def _agent_modules(root: Path) -> dict[str, ModuleType | None]:
     modules: dict[str, ModuleType | None] = {}
     if inventory is None:
         return modules
-    for name in inventory.DOMAIN_AGENTS:
+    for name in inventory.AGENTS:
         try:
             modules[name] = importlib.import_module(f"{inventory.__name__}.{name}")
         except Exception:  # noqa: BLE001 - reported as a finding, not a crash
@@ -282,31 +279,31 @@ _AGENT_SPEC_HEADINGS: tuple[str, ...] = (
 )
 
 
-def _validate_agent_profile(
-    root: Path, agent: WorkerProfile, source: str
+def _validate_agent_definition(
+    root: Path, agent: AgentDefinition, source: str
 ) -> list[Finding]:
-    """Validate terminal profiles and their exported contracts."""
+    """Validate one Agent definition and the types it names."""
 
     findings: list[Finding] = []
     try:
-        validate_worker_profile(agent)
+        validate_definition(agent)
     except ValueError as error:
         findings.append(
             _finding(
                 "CONCORDE-AGENT-PROFILE-001",
                 source,
                 str(error),
-                "Declare a consistent worker profile: contract, workspace, tools and timeout.",
+                "Declare a consistent Agent definition: phase, types, effects, tools and hook.",
             )
         )
     exported = frozenset(exported_types())
-    unknown = sorted({agent.contract.context, agent.contract.result} - exported)
+    unknown = sorted({agent.context, agent.result} - exported)
     if unknown:
         findings.append(
             _finding(
                 "CONCORDE-AGENT-PROFILE-001",
                 source,
-                f"agent {agent.name!r} contract references unexported types: {unknown}.",
+                f"agent {agent.name!r} names unexported types: {unknown}.",
                 "Reference only registered types.",
             )
         )
@@ -323,14 +320,12 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
                 "CONCORDE-OPERATION-INVENTORY-001",
                 "agents/__init__.py",
                 "Missing Agents inventory.",
-                "Declare the single DOMAIN_AGENTS inventory.",
+                "Declare the single AGENTS inventory.",
             )
         ]
     modules = _agent_modules(root)
     findings: list[Finding] = []
-    if agents is not None and len(agents.DOMAIN_AGENTS) != len(
-        set(agents.DOMAIN_AGENTS)
-    ):
+    if agents is not None and len(agents.AGENTS) != len(set(agents.AGENTS)):
         findings.append(
             _finding(
                 "CONCORDE-OPERATION-INVENTORY-001",
@@ -350,29 +345,27 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
                 )
             )
             continue
-        agent = getattr(module, "PROFILE", None)
-        if agent is None:
-            continue
+        agent = getattr(module, "DEFINITION", None)
         source = f"agents/{name}/__init__.py"
         spec_source = f"agents/{name}/spec.md"
-        if not isinstance(agent, WorkerProfile) or agent.name != name:
+        if not isinstance(agent, AgentDefinition) or agent.name != name:
             findings.append(
                 _finding(
                     "CONCORDE-AGENT-SPEC-001",
                     source,
-                    f"PROFILE must belong to operation {name!r}.",
-                    "Use this operation's identity.",
+                    f"DEFINITION must be the AgentDefinition of {name!r}.",
+                    "Export exactly this Agent's DEFINITION.",
                 )
             )
             continue
         expected_spec = f"agents/{name}/spec.md"
-        if agent.spec != expected_spec:
+        if agent.instructions != expected_spec:
             findings.append(
                 _finding(
                     "CONCORDE-AGENT-SPEC-001",
                     source,
-                    f"agent {name!r} declares spec {agent.spec!r}, expected {expected_spec!r}.",
-                    "Point WorkerProfile.spec at agents/<name>/spec.md.",
+                    f"agent {name!r} names instructions {agent.instructions!r}, expected {expected_spec!r}.",
+                    "Point the definition's instructions at agents/<name>/spec.md.",
                 )
             )
         else:
@@ -395,7 +388,7 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
                             error.rule_id,
                             spec_source,
                             str(error),
-                            "Repair the WorkerProfile Spec source or its @path.md references.",
+                            "Repair the Agent instructions or their @path.md references.",
                         )
                     )
                 else:
@@ -407,7 +400,7 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
                                 "CONCORDE-AGENT-SPEC-001",
                                 spec_source,
                                 f"cannot read {expected_spec}: {error}",
-                                "Repair the WorkerProfile Spec source.",
+                                "Repair the Agent instructions.",
                             )
                         )
                     else:
@@ -436,7 +429,7 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
                                 )
                             )
 
-        findings.extend(_validate_agent_profile(root, agent, source))
+        findings.extend(_validate_agent_definition(root, agent, source))
     return findings
 
 
@@ -717,42 +710,31 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
             )
         ]
     expected = []
-    for name in inventory.DOMAIN_AGENTS:
+    for name in inventory.AGENTS:
         try:
-            module = importlib.import_module(f"{inventory.__name__}.{name}")
-            profile = module.PROFILE
-            validate_worker_profile(profile)
+            definition = importlib.import_module(
+                f"{inventory.__name__}.{name}"
+            ).DEFINITION
+            validate_definition(definition)
         except (ImportError, AttributeError, ValueError) as error:
             return [
                 _finding(
                     rule,
                     f"agents/{name}/__init__.py",
                     str(error),
-                    "Restore the canonical domain profile.",
+                    "Restore the Agent definition.",
                 )
             ]
         expected.append(
             {
                 "id": name.replace("_", "-"),
-                "family": "domain",
-                "scope": "distributed",
-                "registration": "invocation",
-                "source": profile.spec,
-            }
-        )
-    for profile in inventory.TASK_SUBAGENT_PROFILES:
-        expected.append(
-            {
-                "id": profile.name,
-                "family": "task",
-                "scope": "source-only" if profile.source_only else "distributed",
-                "registration": "project",
-                "source": profile.prompt,
+                "source": definition.instructions,
+                "hook": definition.hook,
             }
         )
     path, raw = matches[0]
     entries = json.loads(raw)
-    fields = {"id", "family", "scope", "registration", "source"}
+    fields = {"id", "source", "hook"}
     if not isinstance(entries, list) or any(
         not isinstance(e, dict)
         or set(e) != fields
@@ -767,18 +749,18 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
                 "Use the exact Agent inventory fields.",
             )
         ]
-    if sorted(entries, key=lambda e: e.get("id", "")) != sorted(
-        expected, key=lambda e: e["id"]
-    ):
+    if len({e["id"] for e in entries}) != len(entries) or sorted(
+        entries, key=lambda e: e["id"]
+    ) != sorted(expected, key=lambda e: e["id"]):
         return [
             _finding(
                 rule,
                 path,
-                "Agents metadata differs from canonical Agent definitions.",
-                "Reconcile all Agent identities, families, scopes and sources.",
+                "Agents metadata differs from the Agent definitions.",
+                "Reconcile every Agent identity, instruction source and hook.",
             )
         ]
-    declared = set(inventory.DOMAIN_AGENTS)
+    declared = set(inventory.AGENTS)
     actual = {
         p.parent.name
         for p in (root / "agents").glob("*/__init__.py")

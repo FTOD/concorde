@@ -1,6 +1,9 @@
 import { errorFeedback, failure, nativeFeedback } from "../execution-error.mjs";
 import { errorDisplay } from "../error-display.mjs";
-/** One prepared, foreground native context-assessor; no workflow or model scheduler. */
+/** The native call extension: one prepared Agent call or one registered Workflow at a time.
+ *
+ * Whether a preparation is a single call or a Workflow, and which Agent a call launches, come from
+ * the Host's prepared answer; the extension knows no Agent. */
 import { nativePreflight } from "../native-preflight.ts";
 import { nativePlan } from "./concorde-native-plan.ts";
 import type {
@@ -9,11 +12,6 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { nativeCommand, type NativeBinding } from "./concorde-native-child.ts";
 
-const AGENTS = new Set([
-  "concorde-context-assessor",
-  "concorde-task-author",
-  "concorde-programmer",
-]);
 function canonical(value: any): string {
   if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
   if (value && typeof value === "object")
@@ -51,9 +49,13 @@ export function nativeContext(
     };
   pi.on("tool_call", async (event, ctx) => {
     if (planning?.matches(event)) return planning.before(event);
+    // A subagent call naming a Concorde Agent (every Agent's call name is `concorde-` plus its
+    // name) or the prepared call's Agent concerns this extension; a Task subagent does not.
+    const agent = (event.input as any).agent;
     if (
       event.toolName !== "subagent" ||
-      !AGENTS.has((event.input as any).agent)
+      typeof agent !== "string" ||
+      (!agent.startsWith("concorde-") && agent !== pending?.call?.agent)
     )
       return;
     let reserved = false;
@@ -241,12 +243,12 @@ export function nativeContext(
   ) => {
     if (active || preparing)
       throw new Error(
-        "One native context assessment is still active; finish or cancel it before preparing another",
+        "One native Agent call is still active; finish or cancel it before preparing another",
       );
     if (planning) {
       const previous = await planning.result();
       if (previous.native_state === "running")
-        throw new Error("Native planning workflow is still running");
+        throw new Error("The prepared native Workflow is still running");
       await planning.dispose();
       planning = undefined;
     }
@@ -279,11 +281,7 @@ export function nativeContext(
         },
         signal,
       );
-      if (
-        value.state === "prepared" &&
-        ((invocation as any).operation_id === "concorde-plan" ||
-          ["review", "issue"].includes(value.workflow_kind))
-      ) {
+      if (value.state === "prepared" && value.workflow) {
         planning = await nativePlan(pi, value, ctx, options.verify);
         return planning.prepared;
       }

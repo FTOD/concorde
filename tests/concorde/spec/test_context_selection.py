@@ -349,13 +349,13 @@ class ContextSelectionTests(unittest.TestCase):
             {"target_id": "service.transfer", "task": "Inspect transfer"},
             host,
         )
-        before, _ = inputs(run, "code")
+        before = inputs(run, "code")
         snapshot = resolve_context(
             self.repository(), "service.transfer", phase="code-review"
         )
         path = self.root / "specs/ledger/module.md"
         path.write_text(path.read_text() + "\nClarified provider guarantee.\n")
-        after, _ = inputs(run, "code")
+        after = inputs(run, "code")
         self.assertNotEqual(before["input_digest"], after["input_digest"])
         self.assertNotEqual(
             before["revision"]["spec_digest"], after["revision"]["spec_digest"]
@@ -446,8 +446,8 @@ class ContextSelectionTests(unittest.TestCase):
             "concorde-context-snapshot",
             resolve_context(self.repository(), "scope.bank").value,
         )
-        self.assertEqual(7, value["schema_version"])
-        for old in (1, 2, 3, 4, 5, 6):
+        self.assertEqual(8, value["schema_version"])
+        for old in (1, 2, 3, 4, 5, 6, 7):
             with self.assertRaises(TypedDataError):
                 validate_typed({**value, "schema_version": old})
 

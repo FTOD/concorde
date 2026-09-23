@@ -29,4 +29,4 @@ WORKSPACE = "none"
 TARGET = {"selection": "bound-module", "hook": None}
 DEFAULT_TASK = None
 CONFIGURATION = "stored"
-ENTRY_POINT = "concorde.review.review:review_workflow"
+ENTRY_POINT = "concorde.review.native:review_workflow"

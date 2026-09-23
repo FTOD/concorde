@@ -14,6 +14,8 @@ execFileSync(python, [
   "-c",
   `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.insert(0,${JSON.stringify(candidate)})
 from pathlib import Path
+from concorde.operations.catalog import register_types
+register_types()
 from tests.concorde.spec.support import project
 project(Path(${JSON.stringify(root)}))
 import json
@@ -26,8 +28,10 @@ if ${JSON.stringify(scenario)} in ('shared','many','missing','budget'):
 if (scenario.startsWith("code") || scenario === "managed") {
   execFileSync(python, [
     "-c",
-    `from pathlib import Path
-import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")})
+    `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")})
+from concorde.operations.catalog import register_types
+register_types()
+from pathlib import Path
 import json,subprocess
 r=Path(${JSON.stringify(root)})
 if ${JSON.stringify(scenario)}=='code-shared':

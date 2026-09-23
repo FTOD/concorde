@@ -132,7 +132,6 @@
         "agents/task_author/",
         "prompts/native/",
         "prompts/workflow-host/review-scope-and-result.md",
-        "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/fixtures/build/golden/native/"
       ],
       "pending": []

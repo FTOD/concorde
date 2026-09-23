@@ -252,7 +252,7 @@ class SessionSelectionTests(unittest.TestCase):
             "scripts/requirements.lock",
             "src/concorde/harness/entry.py",
             "prompts/operation-guidance/concorde-plan.md",
-            "generated/agents/planner.md",
+            "generated/native/planner.md",
             "generated/session/pi/concorde-session.ts",
         ):
             source = self.root / relative

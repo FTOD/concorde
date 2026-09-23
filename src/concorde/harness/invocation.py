@@ -1,24 +1,16 @@
-"""One operation invocation bound to a selected Module, and its model-backed stages.
+"""One capability request bound to its selected Module: the invocation a provider works with.
 
-``Invocation`` binds a task to its owning Module and change. ``stage`` freezes that Module's
-complete context, compiles the worker's grant and launches the bound worker. Retained providers
-consume these stages under explicit caller selection; no stage authors project Specs.
+``Invocation`` binds a request's task to its Module and change and builds the capability's typed
+response. Model-backed stages are run by the native driver; Planning keeps the pending-gap records.
 """
 
 from __future__ import annotations
 
-from ..spec.repository import SpecError, SpecRepository, digest
+from ..spec.repository import SpecError, SpecRepository
 from ..spec.typed_data import data_schema, typed
-from ..spec.validation import MISSING_PROMISES, module_dependency_findings
-from .change_worktree import WORK_PATH, blocker_scope, read_change
+from .change_worktree import WORK_PATH, read_change
 from .host import AdmittedRequest, OperationHost
-from .revisions import implementation_digest, target_revision
-
-
-# The capabilities whose own gaps are recorded only for a tracked or required step.
-READ_ONLY_STAGES = frozenset(
-    {"concorde-context-solve", "concorde-spec-review", "concorde-code-review"}
-)
+from .revisions import target_revision
 
 
 def bind(request: AdmittedRequest) -> Invocation:
@@ -26,17 +18,6 @@ def bind(request: AdmittedRequest) -> Invocation:
     return Invocation(
         request.operation, request.configuration, request.data, request.host
     )
-
-
-def native_call(request: AdmittedRequest) -> dict:
-    """Hand an admitted Agent call or workflow to the native driver the Pi session supplied."""
-    driver = request.host.native_assessment
-    if driver is None:
-        raise SpecError(
-            f"{request.operation} runs only through the native preparation the Pi session supplies",
-            "native_required",
-        )
-    return driver(bind(request))
 
 
 class Invocation:
@@ -79,6 +60,7 @@ class Invocation:
         checks=(),
         artifacts=(),
         reviews=(),
+        components=(),
     ) -> dict:
         data = {
             "target_id": self.target.id,
@@ -98,199 +80,9 @@ class Invocation:
             data["reviews"] = list(reviews)
         if "issues" in fields:
             data.update(issues=[], decision=None)
+        if "components" in fields:
+            data["components"] = list(components)
         return typed(response_type, data)
-
-    def blocker_revision(self, phase):
-        spec = target_revision(self.repository, self.target)
-        return (
-            digest(
-                {
-                    "spec": spec,
-                    "code": implementation_digest(self.repository, self.target),
-                }
-            )
-            if phase in {"implementation", "code-review"}
-            else spec
-        )
-
-    def record_gaps(self, phase, blockers, *, review_input_digest=None):
-        if self.host.mode != "execute":
-            return
-        change = read_change(self.repository.root)
-        required_review = bool(
-            phase in {"spec-review", "code-review"}
-            and change
-            and change.get("review_requirements", {})
-            .get(self.target.id, {})
-            .get(phase.split("-")[0])
-            and change.get("review_intents", {}).get(self.target.id)
-            == {
-                "task": self.task["task"],
-                "focus_id": self.task.get("focus_id"),
-                "constraints": self.task.get("constraints", []),
-            }
-        )
-        assessment_intent = False
-        if phase == "context-solve" and change:
-            intent = {
-                "task": self.task["task"],
-                "focus_id": self.task.get("focus_id"),
-                "constraints": self.task.get("constraints", []),
-            }
-            records = [
-                change if change.get("target_id") == self.target.id else {},
-                change.get("targets", {}).get(self.target.id, {}),
-                change.get("review_intents", {}).get(self.target.id, {}),
-            ]
-            for name in ("shared_spec_reviews", "shared_implementation_reviews"):
-                records.extend(
-                    consumers.get(self.target.id, {})
-                    for consumers in change.get(name, {}).values()
-                )
-            assessment_intent = any(
-                {
-                    key: record.get(key, [] if key == "constraints" else None)
-                    for key in intent
-                }
-                == intent
-                for record in records
-            )
-            if not assessment_intent:
-                return
-        if (
-            self.host.track_gaps
-            or assessment_intent
-            or required_review
-            or self.operation not in READ_ONLY_STAGES
-        ):
-            from .change_worktree import record_task_gaps
-
-            record_task_gaps(
-                self.repository.root,
-                self.target.id,
-                self.task["task"],
-                phase,
-                blockers,
-                self.blocker_revision(phase),
-                review_input_digest=review_input_digest,
-                spec_resolution=self.repository.spec_context(self.target.id).value,
-            )
-
-    def pending_gaps(
-        self,
-        phase,
-        snapshot=None,
-        *,
-        include_prerequisites=True,
-        review_input_digest=None,
-    ):
-        from .change_worktree import unchanged_task_gaps
-
-        if self.host.mode != "execute":
-            return []
-        blockers = unchanged_task_gaps(
-            self.repository.root,
-            self.target.id,
-            self.task["task"],
-            phase,
-            self.blocker_revision(phase),
-            review_input_digest=review_input_digest,
-        )
-        if include_prerequisites:
-            order = (
-                "spec-review",
-                "context-solve",
-                "plan",
-                "tasks",
-                "implementation",
-                "code-review",
-            )
-            prerequisites = (
-                set(order[: order.index(phase)]) if phase in order else set()
-            )
-            change = read_change(self.repository.root)
-            blockers.extend(
-                dict(item["blocker"])
-                for item in (change or {}).get("issue_blockers", [])
-                if item["status"] == "open"
-                and item["target_id"] == self.target.id
-                and item["scope_id"]
-                == blocker_scope(change or {}, self.target.id, self.task["task"])
-                and item["phase"] in prerequisites
-            )
-        # No reviewer ran again. Retain the actual observation's provenance.
-        return blockers
-
-    def assessment_dependencies(self, snapshot, operation="concorde-context-solve"):
-        """Shared deterministic context-assessment stops, before any model launch."""
-        participant_findings = module_dependency_findings(
-            self.repository, self.target.id
-        )
-        if participant_findings:
-            self.completed.append(operation)
-            conflicts = [
-                finding
-                for finding in participant_findings
-                if not finding.message.startswith(MISSING_PROMISES)
-            ]
-            if conflicts:
-                return {
-                    "context_id": snapshot.id,
-                    "outcome": "conflicting",
-                    "answer": "Module dependency promises conflicts with its registered topology: "
-                    + "; ".join(finding.message for finding in conflicts),
-                    "blockers": [],
-                    "documents": [],
-                    "plan": "",
-                    "tasks": [],
-                }
-            from ..issues.store import report_issue
-
-            blockers = []
-            for finding in participant_findings:
-                receipt = report_issue(
-                    self.repository.root,
-                    {
-                        "report_key": digest(
-                            [self.target.id, finding.rule_id, finding.message]
-                        ),
-                        "type": "gap",
-                        "subtype": "missing-contract",
-                        "title": "Missing dependency promise",
-                        "description": finding.message,
-                        "impact": "Context assessment cannot admit planning.",
-                        "basis": finding.remediation,
-                        "owner_target_id": self.target.id,
-                        "evidence": [],
-                    },
-                    {
-                        "invocation_id": self.host.invocation_id,
-                        "agent": "host",
-                        "operation": operation,
-                        "phase": "context-solve",
-                        "target_id": self.target.id,
-                        "context_id": snapshot.id,
-                        "change_id": self.change_id,
-                        "head": None,
-                    },
-                )
-                blockers.append(
-                    {
-                        **receipt,
-                        "blocked_step": "Assess context sufficiency before Module planning",
-                    }
-                )
-            self.record_gaps("context-solve", blockers)
-            return {
-                "context_id": snapshot.id,
-                "outcome": "spec_incomplete",
-                "answer": "Module dependency promises is incomplete or inconsistent.",
-                "blockers": blockers,
-                "documents": [],
-                "plan": "",
-                "tasks": [],
-            }
-        return None
 
     def check_state(self, state: dict) -> None:
         if state.get("spec_digest") != target_revision(self.repository, self.target):

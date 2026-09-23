@@ -219,33 +219,6 @@ def select_target(root: Path, package: Path, data: dict) -> tuple[dict, bool]:
     return bind_module_target(root, package, task, mutates=mutates), mutates
 
 
-def issues(request) -> dict:
-    """Workflow hook of ``concorde-issues``: bookkeeping in place, solving as a native workflow."""
-    from ..harness.invocation import bind, native_call
-
-    task = request.data
-    if task["action"] == "solve" and (
-        request.host.native_assessment is not None or not task.get("_issue_closed")
-    ):
-        return native_call(request)
-    run = bind(request)
-    if request.host.mode == "describe-policy":
-        return run.response(
-            "described", "Host bookkeeping only; no worker is launched."
-        )
-    if task["action"] == "solve":
-        value = run.response(
-            "completed", "Issue is already disposed; no work replayed."
-        )
-        value["data"].update(
-            issues=[read_issue(run.repository.root, task["issue_id"])[0]],
-            decision="already-closed",
-        )
-        return value
-    nodes = issue_nodes(run)
-    return nodes[nodes["select_operation"]({})["route"]]({})["output"]
-
-
 def issue_nodes(run):
     """Finite bookkeeping only. Solve preparation is a separate native service."""
     root, task = run.repository.root, run.task

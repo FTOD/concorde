@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from .prompt_resolver import resolve_role_prompt
-from agents import TASK_SUBAGENT_PROFILES
+from agents.task_subagent import TASK_SUBAGENT_PROFILES
 
 TESTER = next(p.prompt for p in TASK_SUBAGENT_PROFILES if p.name == "tester")
 COORDINATOR = "prompts/user-session/source/coordinator.md"

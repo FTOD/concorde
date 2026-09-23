@@ -1,4 +1,4 @@
-"""Planning: context assessment followed by one revision-bound plan."""
+"""The plan record: an accepted plan, bound to the Spec revision and task it was written for."""
 
 from __future__ import annotations
 
@@ -9,24 +9,11 @@ from ..harness.change_worktree import (
     target_state,
     work_path,
 )
-from ..harness.invocation import native_call
 from ..harness.revisions import target_revision
 from ..spec.changes import apply_files, file_change
 from ..spec.repository import SpecError
 from ..spec.typed_data import artifact
-
-
-def plan(request) -> dict:
-    """Workflow hook of ``concorde-plan``: planning always runs as a prepared native workflow."""
-    return native_call(request)
-
-
-def context_solve(run) -> dict:
-    """Agent hook of the context assessor; only the native driver prepares and accepts it."""
-    raise SpecError(
-        "Context assessment requires the native Pi prepare/Agent boundary",
-        "native_required",
-    )
+from .gaps import record_gaps
 
 
 def persist_plan_result(run, result):
@@ -71,7 +58,7 @@ def persist_plan_result(run, result):
         {path},
     )
     save_target_state(run.repository.root, state)
-    run.record_gaps("plan", [])
+    record_gaps(run, "plan", [])
     return run.response(
         answer=result["answer"],
         artifacts=[artifact(run.repository.root, "plan", path)],

@@ -160,14 +160,6 @@ flowchart LR
     spec -->|describes| g
 ```
 
-## Files in transition
-
-The context-assessment service file currently holds the driver together with provider-specific
-preparation; it is split into the native driver, Task context's capsule assembly and the
-providers' hooks. The planning workflow registrar file becomes the generic registrar. The
-invocation file also holds gap bookkeeping that belongs to Planning, and the host file holds
-nested-dispatch resolution that belongs to Operations; both move to their owners.
-
 ## Open questions
 
 - Workflow-level time limits are set by each workflow script; this Module sets only the default

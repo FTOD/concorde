@@ -134,10 +134,11 @@ layer `native-preflight` and category `host-refusal`, keeping pi-subagents' reas
 The result gate is a set of driver actions over files in the call's directory, run by the Host-step
 command `--native-context <action> <descriptor> <digest>`. Each action takes the command lock,
 checks the descriptor digest, re-admits the stored invocation (so a changed configuration or
-runtime selection is refused), refuses a call whose `invalid` marker or terminal record exists
-(except `invalidate` and `observe-error`), and rechecks that the snapshot, configuration,
-instructions, registry, change status, delivered capsule files and definition assets are unchanged
-and that the Agent hook's `recheck` passes.
+runtime selection is refused), refuses a call whose `invalid` marker or terminal record exists,
+and rechecks that the snapshot, configuration, instructions, registry, change status, delivered
+capsule files and definition assets are unchanged and that the Agent hook's `recheck` passes.
+`invalidate` and `observe-error` only record, so they skip the refusals and rechecks: a call whose
+inputs changed can still be invalidated.
 
 | Action | Behaviour |
 | --- | --- |
@@ -238,7 +239,8 @@ class WorkflowPlan:
     script: str                           # package-relative workflow script
     host: str                             # package-relative Host-step helper
     steps: tuple[str, ...]                # the Host-step names the script may run
-    expansion: dict                       # JSON substituted into the script
+    expansion: dict                       # JSON substituted into the script; the driver adds
+                                          # ticket, commands (each step's quoted command) and slot_gate
     helpers: tuple[str, ...] = ()         # package-relative modules inlined before the script
     stop: dict | None = None              # a result envelope that ends preparation; no Workflow runs
     stop_accepted: bool = False
@@ -249,23 +251,44 @@ class WorkflowHook(Protocol):
     def on_failure(self, run: Invocation, driver: WorkflowDriver, native_state: str) -> dict | None: ...
 
 class WorkflowDriver(Protocol):
-    def issue_slot(self, key: str, agent: str, task: dict, *, stage_inputs: tuple[dict, ...] = ()) -> dict: ...
+    directory: Path                       # the Workflow's own directory
+    ticket: str                           # the Workflow's ticket; a slot's ticket is ticket:key
+    slot_gate: str                        # a slot's gate command is this plus a space and its key
+    def issue_slot(self, key: str, agent: str, task: dict, *, stage_inputs: tuple[dict, ...] = (),
+                   operation: str | None = None, call: dict | None = None) -> dict: ...
     def check(self, key: str) -> None: ...
     def coverage(self, keys: Sequence[str]) -> None: ...
     def admit(self, key: str) -> dict: ...
     def accept(self, key: str) -> dict: ...
+    def slot(self, key: str) -> dict | None: ...
+    def terminal(self, key: str) -> dict: ...
+    def state(self, name: str, default=None): ...
+    def save(self, name: str, value) -> None: ...
+    def reserve(self, name: str) -> None: ...
     def receipt(self, value: dict) -> None: ...
     def stopped(self) -> bool: ...
 ```
 
 `issue_slot` prepares one Agent call exactly as a single call, through that Agent's hook, in a slot
-directory under the Workflow's directory, and returns its `call`; a key can be issued once. `check`
-runs the slot's `check` action. `coverage` performs [Workflow coverage](#native-evidence) for the
-given keys. `admit` returns a slot's independently verified proposal without acceptance; `accept`
-applies the slot Agent's hook acceptance once. `receipt` writes the Workflow's result receipt,
-which ends it. A step name must be one of the plan's `steps`; the driver refuses a step after the
-Workflow was stopped or finished. `on_failure` is called once when the result step first observes a
-failed or stopped Workflow without a receipt, and returns the receipt to record, if any.
+directory under the Workflow's directory, and returns its `call`; a key can be issued once. The
+slot's request is the Workflow's capability unless `operation` names another; `stage_inputs` are
+handed to the hook's `prepare` as admitted inputs; a `call` built by the workflow script itself is
+used verbatim when its Agent, directory and gate (`slot_gate` and the key) are the prepared ones.
+`check` runs the slot's `check` action. `coverage` performs [Workflow coverage](#native-evidence)
+for the given keys. `admit` returns a slot's independently verified proposal without acceptance;
+`accept` applies the slot Agent's hook acceptance once and returns the accepted step's result.
+`slot` and `terminal` read an issued slot's descriptor and terminal record; `state` and `save` keep
+a provider's own JSON records in the Workflow directory, and `reserve` creates one exclusively.
+`receipt` writes the Workflow's result receipt, `{state, accepted, output}` with the capability's
+response as `output`, which ends it. A step name must be one of the plan's `steps`; the driver
+refuses a step after the Workflow was stopped or finished, or while pi-subagents does not report it
+running. `on_failure` is called once when the result step first observes a failed or stopped
+Workflow without a receipt, and returns the receipt to record, if any; a `SpecError` it raises is
+reported as `stale`.
+
+A workflow hook may also provide `serve_in_place(request) -> dict | None`: without the native
+driver, dispatch asks it to answer a request that needs no Workflow, such as an Issue bookkeeping
+action; `None` refuses with `native_required`.
 
 ## Model selection
 

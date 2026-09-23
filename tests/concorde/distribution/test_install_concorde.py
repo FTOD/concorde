@@ -119,7 +119,8 @@ class NativeInstallerTests(unittest.TestCase):
             "prompts/native/context-assessor.md",
             "pi/extensions/concorde-native-context.ts",
             "pi/extensions/concorde-native-child.ts",
-            "src/concorde/harness/native_context.py",
+            "src/concorde/harness/native_driver.py",
+            "pi/native-host-step.mjs",
         ):
             self.assertIn(".concorde/framework/" + relative, outputs)
         self.assertNotIn(".pi/agents/concorde-context-assessor.md", outputs)

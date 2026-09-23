@@ -64,8 +64,10 @@ class OperationHost:
     package_root: Path
     mode: str = "execute"
     services: AdmissionServices | None = None
-    # Finite native context preparation/acceptance only; never a suspended model callback.
-    native_assessment: Any = None
+    # The native driver of the one finite native step this request runs, supplied by the Pi
+    # session's native entry; never a suspended model callback. Dispatch hands it every Agent
+    # call (``agent_call(request, agent)``) and Workflow (``workflow(request, entry)``).
+    native_driver: Any = None
     native_transport: bool = False
     allow_primary_worktree: bool = False
     outer_sandbox: str | None = None

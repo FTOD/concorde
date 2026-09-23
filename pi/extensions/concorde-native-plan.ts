@@ -1,13 +1,17 @@
-/** Register one invocation-bound authored native plan resource; no model execution here. */
+/** The generic workflow registrar: registers one prepared Workflow exactly as its plan says.
+ *
+ * Which script runs, which helpers it inlines, which Host-step commands exist and what they print
+ * all come from the prepared workflow plan; the registrar knows no provider. */
 import { errorFeedback, failure, nativeFeedback } from "../execution-error.mjs";
 import { errorDisplay } from "../error-display.mjs";
 import fs from "node:fs";
-import { issueCall, issueLayout } from "../issue-call.mjs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { nativeCommand } from "./concorde-native-child.ts";
 const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
+const PLACEHOLDER = "__CONCORDE_WORKFLOW__";
+const unexported = (text: string) => text.replace(/^export /gm, "");
 export async function nativePlan(
   pi: ExtensionAPI,
   prepared: any,
@@ -15,103 +19,31 @@ export async function nativePlan(
   verify: () => void,
 ) {
   const descriptor = JSON.parse(fs.readFileSync(prepared.descriptor, "utf8"));
-  const root = descriptor.runtime.package_root;
-  const require = createRequire(path.join(root, "package.json"));
+  const plan = prepared.workflow;
+  const packageRoot = descriptor.package_root;
+  const require = createRequire(
+    path.join(descriptor.runtime.package_root, "package.json"),
+  );
   const { registerWorkflowResource } = await import(
     require.resolve("pi-subagents/workflow-resources")
   );
-  const review = prepared.workflow_kind === "review";
-  const issue = prepared.workflow_kind === "issue";
-  const helper = path.join(
-    descriptor.package_root,
-    issue
-      ? "pi/native-issue-host.mjs"
-      : review
-        ? "pi/native-review-host.mjs"
-        : "pi/native-plan-host.mjs",
+  const read = (relative: string) =>
+    fs.readFileSync(path.join(packageRoot, relative), "utf8");
+  const commands: Record<string, string> = Object.fromEntries(
+    Object.entries(plan.commands).map(([step, argv]) => [
+      step,
+      (argv as string[]).map(quote).join(" "),
+    ]),
   );
-  const commands: any = {};
-  for (const action of issue
-    ? Array.from({ length: 6 }, (_, i) => [
-        "next-" + i,
-        "decision-" + i,
-        "verified-" + i,
-      ]).flat()
-    : review
-      ? ["bind", "finalize"]
-      : ["bind", "advance", "finalize"])
-    commands[action] = [
-      process.execPath,
-      helper,
-      action,
-      prepared.descriptor,
-      prepared.digest,
-    ]
-      .map(quote)
-      .join(" ");
-  let expansion: any = {
-    ticket: prepared.ticket,
-    assessor: prepared.call,
-    ...commands,
-  };
-  if (review) {
-    const scope = JSON.parse(
-      fs.readFileSync(
-        path.join(descriptor.directory, "review-scope.json"),
-        "utf8",
-      ),
-    );
-    expansion = {
-      ticket: prepared.ticket,
-      ...commands,
-      schema: scope.slots[0].call.outputSchema,
-      members: scope.slots.map((slot: any) => {
-        const { outputSchema, ...call } = slot.call;
-        return { ticket: slot.ticket, call };
-      }),
-    };
-  }
-  if (issue)
-    expansion = {
-      ...issueLayout(descriptor, prepared.descriptor, prepared.digest),
-      commands,
-    };
-  const errorHelpers = fs
-    .readFileSync(
-      path.join(descriptor.package_root, "pi/execution-error.mjs"),
-      "utf8",
-    )
-    .replace(/^export /gm, "");
-  const script =
-    errorHelpers +
-    "\n" +
-    fs
-      .readFileSync(
-        path.join(
-          descriptor.package_root,
-          issue
-            ? "pi/workflows/issues.js"
-            : review
-              ? "pi/workflows/review.js"
-              : "pi/workflows/plan.js",
-        ),
-        "utf8",
-      )
-      .replace(
-        issue
-          ? "__CONCORDE_ISSUE__"
-          : review
-            ? "__CONCORDE_REVIEW__"
-            : "__CONCORDE_PLAN__",
-        JSON.stringify(expansion),
-      )
-      .replace("__ISSUE_CALL__", "(" + issueCall.toString() + ")");
-  const name =
-    (issue
-      ? "concorde.issue."
-      : review
-        ? "concorde.review."
-        : "concorde.plan.") + prepared.ticket;
+  const body = read(plan.script);
+  if (body.split(PLACEHOLDER).length !== 2)
+    throw new Error("A workflow script has exactly one " + PLACEHOLDER);
+  const script = [
+    unexported(read("pi/execution-error.mjs")),
+    ...plan.helpers.map((helper: string) => unexported(read(helper))),
+    body.replace(PLACEHOLDER, JSON.stringify(plan.expansion)),
+  ].join("\n");
+  const name = plan.name;
   const registration = registerWorkflowResource({
     sessionId: ctx.sessionManager.getSessionId(),
     definition: {
@@ -119,7 +51,7 @@ export async function nativePlan(
       version: 1,
       resolve(args: any) {
         if (Object.keys(args).length !== 1 || args.ticket !== prepared.ticket)
-          return { error: "Use the exact issued planning ticket" };
+          return { error: "Use the exact issued workflow ticket" };
         return {
           script,
           hostCommands: Object.entries(commands).map(([key, command]) => ({
@@ -175,7 +107,8 @@ export async function nativePlan(
       if (tool || canonical(event.input) !== canonical(call))
         return {
           block: true,
-          reason: "Native plan call is single-use and cannot be overridden",
+          reason:
+            "The prepared workflow call is single-use and cannot be overridden",
         };
       tool = event.toolCallId;
     },

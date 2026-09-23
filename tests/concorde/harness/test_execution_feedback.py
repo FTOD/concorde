@@ -16,7 +16,7 @@ from concorde.harness.execution_error import (
     safe_text,
     workflow_feedback,
 )
-from concorde.harness.native_context import _remember_failure, _slot_failure
+from concorde.harness.native_driver import _remember_failure, _slot_failure
 from concorde.harness.operation_node import OperationNode
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies

@@ -126,7 +126,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         self.assertIsNotNone(match)
         catalog = json.loads(match.group(1))
         self.assertEqual(
-            expected_operations, [o["name"] for o in catalog["operations"]]
+            expected_operations, sorted(o["name"] for o in catalog["operations"])
         )
         self.assertTrue(catalog["explicit_request_only"])
         self.assertEqual("scripts/run-operation.py", catalog["launcher"])
@@ -137,7 +137,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             ".pi/extensions/concorde-session.ts",
         ):
             self.assertFalse((self.clone / relative).exists(), relative)
-        self.assertEqual(7, len(list((self.clone / "generated/agents").glob("*.md"))))
+        self.assertEqual(7, len(list((self.clone / "generated/native").glob("*.md"))))
 
         described = self._issues_invocation()
         self.assertEqual("described", described["status"], described)

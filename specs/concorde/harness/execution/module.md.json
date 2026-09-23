@@ -226,15 +226,12 @@
       "meaning": "#realization.execution.native-driver",
       "entries": [
         "src/concorde/harness/native_driver.py",
-        "src/concorde/harness/native_context.py",
         "src/concorde/harness/native_result.py",
         "src/concorde/harness/native_evidence.py",
         "src/concorde/harness/native_runtime.py",
         "pi/native-runtime-contract.json"
       ],
-      "pending": [
-        "src/concorde/harness/native_driver.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.execution.native-plumbing",
@@ -250,9 +247,7 @@
         "pi/extensions/concorde-native-context.ts",
         "pi/extensions/concorde-native-plan.ts"
       ],
-      "pending": [
-        "pi/native-host-step.mjs"
-      ]
+      "pending": []
     },
     {
       "id": "realization.execution.invocation-host",

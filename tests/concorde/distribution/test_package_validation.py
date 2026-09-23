@@ -65,34 +65,34 @@ def _guidance(root: Path, *, name: str = "concorde-alpha") -> None:
     )
 
 
-VALID_AGENT_INIT = """DOMAIN_AGENTS = ("alpha",)
+VALID_AGENT_INIT = """AGENTS = ("alpha",)
 
 
 def external_name(name):
     return "concorde-" + name.replace("_", "-")
 """
 
-VALID_AGENT_ALPHA_MODULE = """from concorde.harness.worker_profile import WorkerProfile, Contract
-from concorde.harness.effects import EffectDeclaration
+VALID_AGENT_ALPHA_MODULE = """from concorde.harness.worker_profile import AgentDefinition
 
-PROFILE = WorkerProfile(
+DEFINITION = AgentDefinition(
     name="alpha",
-    spec="agents/alpha/spec.md",
+    instructions="agents/alpha/spec.md",
     workspace="capsule",
-    contract=Contract(
-        phase="plan",
-        context="concorde-agent-stage-context",
-        result="concorde-agent-stage-result",
-        effects=EffectDeclaration(("spec-context",), (), False, "none"),
-        output_fields=("plan",),
-    ),
+    phase="plan",
+    context="concorde-agent-stage-context",
+    result="concorde-agent-stage-result",
+    reads=("spec-context",),
+    writes=(),
+    network=False,
+    output_fields=("plan",),
     tools=("read", "grep", "find", "ls"),
+    hook="fixture.hooks:alpha",
 )
 """
 
 VALID_AGENT_ALPHA_SPEC = """# concorde-alpha
 
-Fixture WorkerProfile summary.
+Fixture Agent summary.
 
 ## Responsibilities
 
@@ -288,7 +288,7 @@ class OperationModuleRuleTests(unittest.TestCase):
 
 
 class AgentRuleTests(unittest.TestCase):
-    """New rules: WorkerProfile inventory, WorkerProfile Spec structure, worker profile and child definitions."""
+    """Agent inventory, Agent instruction structure and Agent definition consistency."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -309,7 +309,7 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_inventory_mismatch_is_reported(self) -> None:
         init = VALID_AGENT_INIT.replace(
-            'DOMAIN_AGENTS = ("alpha",)', 'DOMAIN_AGENTS = ("alpha", "missing")'
+            'AGENTS = ("alpha",)', 'AGENTS = ("alpha", "missing")'
         )
         _agents_package(self.root, init_source=init)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -320,7 +320,7 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_duplicate_agent_name_is_reported(self) -> None:
         init = VALID_AGENT_INIT.replace(
-            'DOMAIN_AGENTS = ("alpha",)', 'DOMAIN_AGENTS = ("alpha", "alpha")'
+            'AGENTS = ("alpha",)', 'AGENTS = ("alpha", "alpha")'
         )
         _agents_package(self.root, init_source=init)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -339,7 +339,8 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_wrong_spec_path_is_reported(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'spec="agents/alpha/spec.md",', 'spec="agents/alpha/wrong.md",'
+            'instructions="agents/alpha/spec.md",',
+            'instructions="agents/alpha/wrong.md",',
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -369,8 +370,8 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_network_effect_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'effects=EffectDeclaration(("spec-context",), (), False, "none"),',
-            'effects=EffectDeclaration(("spec-context",), (), True, "none"),',
+            "network=False,",
+            "network=True,",
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -380,8 +381,8 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_write_effect_outside_read_effect_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'effects=EffectDeclaration(("spec-context",), (), False, "none"),',
-            'effects=EffectDeclaration(("spec-context",), ("implementation",), False, "none"),',
+            "writes=(),",
+            'writes=("implementation",),',
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -487,7 +488,7 @@ class BuildOutputRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_drifted_output_is_reported(self) -> None:
         write_build(self.root)
-        target = self.root / "generated/agents/planner.md"
+        target = self.root / "generated/native/planner.md"
         target.write_text(
             target.read_text(encoding="utf-8") + "\ntampered\n", encoding="utf-8"
         )
@@ -517,7 +518,7 @@ class BuildOutputRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_unexpected_file_in_an_owned_directory_is_reported(self) -> None:
         write_build(self.root)
-        (self.root / "generated/agents/extra.md").write_text(
+        (self.root / "generated/native/extra.md").write_text(
             "not a build output\n", encoding="utf-8"
         )
         findings = package_validation._validate_build_outputs(self.root)

@@ -1,27 +1,17 @@
 """Review one Module's complete Spec collection against representative tasks."""
 
-from concorde.harness.effects import EffectDeclaration
-from concorde.harness.worker_profile import Contract, WorkerProfile
+from concorde.harness.worker_profile import AgentDefinition
 
-from .. import external_name
-
-PROFILE = WorkerProfile(
+DEFINITION = AgentDefinition(
     name="spec_reviewer",
-    spec="agents/spec_reviewer/spec.md",
+    instructions="agents/spec_reviewer/spec.md",
     workspace="capsule",
-    contract=Contract(
-        phase="spec-review",
-        context="concorde-review-stage-context",
-        result="concorde-review-stage-result",
-        effects=EffectDeclaration(("spec-context",), (), False, "none"),
-    ),
+    phase="spec-review",
+    context="concorde-review-stage-context",
+    result="concorde-review-stage-result",
+    reads=("spec-context",),
+    writes=(),
     tools=("read", "grep", "find", "ls"),
     timeout_seconds=1800,
+    hook="concorde.review.native:spec_reviewer",
 )
-
-PUBLIC = False
-CONTEXT_SELECTION = "bound"
-DETERMINISTIC = False
-USES = ()
-EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
-KIND = "agent"

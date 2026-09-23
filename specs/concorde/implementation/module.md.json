@@ -166,9 +166,7 @@
       "entries": [
         "src/concorde/implementation/hooks.py"
       ],
-      "pending": [
-        "src/concorde/implementation/hooks.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.implementation.admission",

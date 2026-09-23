@@ -89,10 +89,7 @@ meaning of "changed": one digest over a Module's registry record, Protocol bindi
 The reference version check is a configured check rather than part of freezing, because it compares
 the installed LangGraph with the pinned reference checkout, which is not a Spec input.
 
-## Code that moves and open questions
+## Open questions
 
-Capsule assembly lives in Agent execution's `native_context.py` and moves into
-`src/concorde/harness/capsule.py`. `context.py` still holds the context assessor's result check,
-which belongs to Planning's Agent hook, and a fixed list of admitted stage input types, which Agent
-definitions declare instead. A snapshot lists a fixed pair of Protocol files; which chapters of the
-installed Protocol bundle an Agent should receive is not decided.
+A snapshot lists a fixed pair of Protocol files; which chapters of the installed Protocol bundle an
+Agent should receive is not decided.

@@ -12,8 +12,7 @@ function stop(message, child, key) {
       key,
   );
 }
-const root = __CONCORDE_ISSUE__;
-const call = __ISSUE_CALL__;
+const root = __CONCORDE_WORKFLOW__;
 function control(text, iteration) {
   if (
     typeof text !== "string" ||
@@ -47,7 +46,7 @@ function host(kind, i) {
     .then((result) => control(result.stdout, i));
 }
 function leaf(key) {
-  return runs.run(key, call(root, key)).then((child) => {
+  return runs.run(key, issueCall(root, key)).then((child) => {
     if (
       !child.ok ||
       child.detached ||

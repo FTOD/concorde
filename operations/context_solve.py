@@ -21,4 +21,4 @@ WORKSPACE = "none"
 TARGET = {"selection": "bound-module", "hook": None}
 DEFAULT_TASK = None
 CONFIGURATION = "stored"
-ENTRY_POINT = "concorde.planning.plan:context_solve"
+ENTRY_POINT = "concorde.planning.hooks:context_assessor"

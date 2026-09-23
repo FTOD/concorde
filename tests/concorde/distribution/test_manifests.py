@@ -77,7 +77,7 @@ class ManifestContractTests(unittest.TestCase):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
         sys.path.insert(0, str(REPOSITORY_ROOT))
         try:
-            from concorde.harness.worker_profile import load_worker_profiles
+            from concorde.harness.worker_profile import agent_names
             from concorde.operations.catalog import PUBLIC_OPERATIONS
         finally:
             sys.path.pop(0)
@@ -96,7 +96,7 @@ class ManifestContractTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                len(load_worker_profiles()),
+                len(agent_names()),
                 len(operations.OPERATIONS),
                 len(PUBLIC_OPERATIONS),
             ),

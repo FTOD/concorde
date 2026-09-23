@@ -20,6 +20,8 @@ execFileSync(python, [
   "-c",
   `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.append(${JSON.stringify(fixtureSource)})
 from pathlib import Path
+from concorde.operations.catalog import register_types
+register_types()
 from tests.concorde.spec import support
 support.PACKAGE=Path(${JSON.stringify(candidate)})
 project=support.project

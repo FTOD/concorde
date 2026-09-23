@@ -1,14 +1,12 @@
-"""Canonical callable Pi Agent inventory. The user session is external, not a tenth Agent.
+"""The Agents inventory: the seven Agents and their definitions.
 
-Domain Agent profiles use Harness WorkerProfile contracts; Task subagent profiles have task
-grants instead. Rendering/registration belongs to Distribution, execution and admission to Harness.
+Each package ``agents/<name>/`` exports exactly ``DEFINITION``, written in the record format Task
+context's Agent binding reads, and keeps the Agent's own instructions ``spec.md``.
 """
 
-from pathlib import Path
+import importlib
 
-from .task_subagent import PROFILES as DISTRIBUTED_TASK_SUBAGENT_PROFILES
-
-DOMAIN_AGENTS = (
+AGENTS = (
     "spec_reviewer",
     "context_assessor",
     "planner",
@@ -17,18 +15,26 @@ DOMAIN_AGENTS = (
     "code_reviewer",
     "issue_solver",
 )
-# Source profiles are excluded from installed packages, not registered then hidden.
-if Path(__file__).with_name("source").is_dir():
-    from .source.maintenance_worker import PROFILE as _maintenance
-
-    TASK_SUBAGENT_PROFILES = (*DISTRIBUTED_TASK_SUBAGENT_PROFILES, _maintenance)
-else:
-    TASK_SUBAGENT_PROFILES = DISTRIBUTED_TASK_SUBAGENT_PROFILES
-
-TASK_SUBAGENTS = tuple(profile.name for profile in TASK_SUBAGENT_PROFILES)
-AGENTS = (*tuple(name.replace("_", "-") for name in DOMAIN_AGENTS), *TASK_SUBAGENTS)
 
 
-def external_name(module_name: str) -> str:
-    """Preserved domain wire identity; Task subagent names have no concorde prefix."""
-    return "concorde-" + module_name.replace("_", "-")
+def _key(name: str) -> str:
+    return name.removeprefix("concorde-").replace("-", "_")
+
+
+def definition(name: str):
+    """The checked ``DEFINITION`` of one Agent; a bare, hyphenated or prefixed name."""
+    from concorde.harness.worker_profile import validate_definition
+
+    key = _key(name)
+    if key not in AGENTS:
+        raise KeyError(f"unknown Agent: {name!r}")
+    value = importlib.import_module(f"{__name__}.{key}").DEFINITION
+    if getattr(value, "name", None) != key:
+        raise ValueError(f"agents.{key} does not define DEFINITION with name={key!r}")
+    validate_definition(value)
+    return value
+
+
+def external_name(name: str) -> str:
+    """``concorde-`` plus the hyphenated name: the Agent definition file a call launches."""
+    return "concorde-" + _key(name).replace("_", "-")

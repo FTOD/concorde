@@ -93,8 +93,7 @@ instructions and the Host's review code, so a change to any of them makes it sta
 The **review workflow** has exactly two Host steps whatever the scope size: one checks that every
 prepared member is current, and one accepts the whole scope after rechecking every input; between
 them one fresh reviewer per member runs in order, and the workflow stops at the first that fails. A
-partially run scope is never accepted as complete. Its Host services are moving from the Harness
-package into Review's own package.
+partially run scope is never accepted as complete. Its Host services are the review workflow hook.
 
 <a id="realization.review.declarations"></a>
 

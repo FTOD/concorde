@@ -178,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
         return runtime_selection(package_root)
 
     if arguments[:1] == ["--native-context"]:
-        from concorde.harness.native_context import main as native_context_main
+        from concorde.harness.native_driver import main as native_context_main
 
         return native_context_main(
             package_root,

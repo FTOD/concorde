@@ -210,7 +210,7 @@
       "entries": [
         "pi/workflows/review.js",
         "pi/native-review-host.mjs",
-        "src/concorde/harness/native_reviews.py"
+        "src/concorde/review/native.py"
       ]
     },
     {

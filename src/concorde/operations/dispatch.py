@@ -1,9 +1,9 @@
 """Dispatch of an admitted request to the entry point its declaration names, and child requests.
 
 Dispatch imports no provider: it reads the declaration and calls the entry point it names. A Host
-service's entry point runs to its end; an Agent call goes to the native driver the Pi session
-supplied; a pi workflow's hook answers what needs no workflow and hands the rest to the native
-driver. Target, workspace and configuration checks happen in admission before dispatch, stage
+service's entry point runs to its end; an Agent call and a pi workflow go, with the Agent the
+declaration names or the workflow hook its entry point names, to the native driver the Pi session
+supplied. Target, workspace and configuration checks happen in admission before dispatch, stage
 rules in the provider after it.
 """
 
@@ -19,17 +19,38 @@ from ..harness.host import (
     InstallationService,
     OperationHost,
 )
-from ..harness.invocation import native_call
 from ..spec.repository import SpecError
 from .catalog import CATALOG, declarations
+
+
+def _native_required(request: AdmittedRequest) -> SpecError:
+    return SpecError(
+        f"{request.operation} runs only through the native preparation the Pi session supplies",
+        "native_required",
+    )
 
 
 def dispatch(request: AdmittedRequest) -> dict:
     """Run one admitted request by its declared kind; return the capability's response."""
     operation = CATALOG[request.operation]
+    entry = operation.declaration["entry_point"]
+    if operation.kind == "host":
+        return resolve_entry(entry)(request)
+    driver = request.host.native_driver
     if operation.kind == "agent-call":
-        return native_call(request)
-    return resolve_entry(operation.declaration["entry_point"])(request)
+        if driver is None:
+            raise _native_required(request)
+        return driver.agent_call(request, operation.agents[0][0])
+    if driver is None:
+        # A workflow hook may serve a request that needs no Workflow in place.
+        serve = getattr(
+            resolve_entry(entry, callable_required=False), "serve_in_place", None
+        )
+        served = serve(request) if serve is not None else None
+        if served is None:
+            raise _native_required(request)
+        return served
+    return driver.workflow(request, entry)
 
 
 def services(installation: InstallationService | None = None) -> AdmissionServices:

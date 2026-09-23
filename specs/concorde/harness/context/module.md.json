@@ -139,9 +139,7 @@
       "entries": [
         "src/concorde/harness/capsule.py"
       ],
-      "pending": [
-        "src/concorde/harness/capsule.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.context.reference-check",

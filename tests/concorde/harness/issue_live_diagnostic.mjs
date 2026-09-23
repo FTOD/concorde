@@ -251,13 +251,8 @@ try {
   assert.equal(prepared.state, "prepared");
   const root = json(prepared.descriptor);
   // Exercise actual issued schema/transport roundtrip BEFORE any child model execution.
-  const { issueCall, issueLayout } = await import(
-    path.join(C, "pi/issue-call.mjs")
-  );
-  const issued = issueCall(
-    issueLayout(root, prepared.descriptor, prepared.digest),
-    "d-0",
-  );
+  const { issueCall } = await import(path.join(C, "pi/issue-call.mjs"));
+  const issued = issueCall(prepared.workflow.expansion, "d-0");
   preflight(issued.outputSchema, prepared.ticket + ":d-0");
   const launched = await tool("subagent", prepared.call);
   assert(!launched.isError, "native launch refused");

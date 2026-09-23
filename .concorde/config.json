@@ -19,7 +19,9 @@
       "module": "module.harness.execution",
       "argv": [
         "{python}",
-        "scripts/development/check-graph-specs.py"
+        "scripts/development/check-graph-specs.py",
+        "--catalog",
+        "concorde.operations.graph_catalog:catalog"
       ],
       "timeout_seconds": 120,
       "inputs": [

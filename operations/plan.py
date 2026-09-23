@@ -21,4 +21,4 @@ WORKSPACE = "candidate"
 TARGET = {"selection": "bound-module", "hook": None}
 DEFAULT_TASK = None
 CONFIGURATION = "stored"
-ENTRY_POINT = "concorde.planning.plan:plan"
+ENTRY_POINT = "concorde.planning.hooks:plan_workflow"

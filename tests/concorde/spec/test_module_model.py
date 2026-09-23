@@ -505,7 +505,8 @@ class ModuleImplementationTests(unittest.TestCase):
         coding = resolve_context(repository, "module.a", phase="implementation")
         planned = resolve_context(repository, "module.a", phase="plan")
         self.write("source/added.py", "def added():\n    return 1\n")
-        recheck_context(repository, coding, check_implementation=False)
+        # The programmer's own files may change during its call.
+        recheck_context(repository, coding)
         with self.assertRaisesRegex(SpecError, "implementation file names changed"):
             recheck_context(repository, planned)
         report = validate_repository(self.root, package_root=PACKAGE)
@@ -805,14 +806,17 @@ class ModuleImplementationTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertIn("CHK.contains.acyclic", rule_ids(report))
 
-    def test_file_only_change_invalidates_writers_not_planner_context(self):
+    def test_file_only_change_invalidates_readers_not_planner_context(self):
         repository = self.repository()
         planned = resolve_context(repository, "module.a", phase="plan")
+        reviewed = resolve_context(repository, "module.a", phase="code-review")
         coding = resolve_context(repository, "module.a", phase="implementation")
         self.write("source/shared.py", "def value():\n    return 43\n")
         recheck_context(repository, planned)
+        # The programmer's own file bytes are exempt; changing them is the purpose of its call.
+        recheck_context(repository, coding)
         with self.assertRaisesRegex(SpecError, "implementation input"):
-            recheck_context(repository, coding)
+            recheck_context(repository, reviewed)
 
     def test_shared_change_invalidates_each_implementation_revision(self):
         before = self.repository()

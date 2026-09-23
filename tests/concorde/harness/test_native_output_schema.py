@@ -6,7 +6,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from concorde.harness.native_context import native_output_schema
+from concorde.harness.native_driver import native_output_schema
 from concorde.spec.typed_data import data_schema
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT

@@ -102,7 +102,7 @@ fresh solve.
 
 ## Workflow
 
-The workflow script `pi/workflows/issues.js` is named `concorde.issue.<ticket>` and runs up to six
+The workflow script `pi/workflows/issues.js` is named `concorde.issues.<ticket>` and runs up to six
 iterations `i` (0 to 5):
 
 | Step | Kind | What it does | Next |
@@ -134,7 +134,7 @@ the [Host-step protocol](../harness/execution/interfaces.md#contract.execution.h
 command:
 
 1. for `next-0`, waits up to 15 seconds for the workflow's launch binding to exist;
-2. runs the Python step `workflow-issue-<step>` under the workflow's Host lock; the step refuses a
+2. runs the Python step `workflow-<step>` under the workflow's Host lock; the step refuses a
    workflow that is stopped or not running (`execution_cancelled`), a foreign run
    (`incompatible_handoff`), and a step whose name or iteration does not match the saved session
    state (`invalid_completion`), and re-reads the Issue, the solve state and the inputs
@@ -164,7 +164,7 @@ call for a key, used both by the Host's preflight and by the workflow script:
 | `agentScope`, `context`, `async`, `mission`, `artifacts`, `artifactDir` | `project`, `fresh`, `false`, `false`, `true`, `session` |
 | `intercomBridge`, `agentContract` | `{mode: off}`, `{version: 1}` |
 | `outputSchema` | the stage result schema for the solver, the review stage result schema for reviewers, with `invocation_id` fixed to `<ticket>:<key>` |
-| `gate` | the command running the Host's `issue-gate` for this slot, which stages the child's proposal |
+| `gate` | the Workflow's slot gate command followed by the key: the Host's `slot-gate` for this slot, which stages the child's proposal |
 
 A slot is issued at most once; issuing it again fails with `invalid_completion`.
 

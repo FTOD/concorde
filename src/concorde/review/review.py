@@ -11,9 +11,8 @@ import hashlib
 import json
 import subprocess
 import uuid
-from dataclasses import asdict, replace
+from dataclasses import replace
 
-from ..distribution.build import ModelInstructions, load_model_instructions
 from ..harness.change_worktree import (
     git,
     git_value,
@@ -23,11 +22,17 @@ from ..harness.change_worktree import (
     snapshot_tree,
     workspace_identity,
 )
-from ..harness.invocation import Invocation, native_call
+from ..harness.invocation import Invocation
 from ..harness.revisions import implementation_digest, target_revision
 from ..harness.execution_error import OperationExecutionError
-from ..harness.worker_profile import ContractError
+from ..harness.worker_profile import (
+    ContractError,
+    agent_definition,
+    bind_agent,
+    load_instructions,
+)
 from ..spec.boundaries import scope_roots
+from ..planning.gaps import pending_gaps, record_gaps
 from ..planning.scope import change_scope
 from .impact import review_impact
 from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
@@ -117,7 +122,8 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
     return changes
 
 
-def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
+def inputs(run, mode: str) -> dict:
+    """The review input of one reviewer: mode, input digest, revision and scoped changes."""
     repository = SpecRepository(run.repository.root, run.host.package_root)
     target = repository.module(run.target.id, run.task.get("focus_id"))
     if mode not in {"spec", "code"}:
@@ -127,16 +133,9 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
             "code review requires a Module whose entities list implementation files",
             "unsupported_target",
         )
-    role = "concorde-" + review_agent(mode).replace("_", "-")
-    prompt = load_model_instructions(run.host.package_root, role)
-    native = run.host.package_root / (
-        "generated/native/" + role.replace("_", "-") + ".md"
-    )
-    if prompt.binding is None or prompt.effects is None:
-        raise SpecError(
-            "review requires a bound WorkerProfile with explicit effects",
-            "permission_denied",
-        )
+    agent = review_agent(mode)
+    binding = bind_agent(run.host.package_root, agent)
+    instructions = load_instructions(run.host.package_root, binding)
     change = read_change(repository.root)
     _, current = workspace_identity(repository.root)
     head = current["head"] if current else None
@@ -161,49 +160,12 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
         "review_mode": mode,
         "revision": revision,
         "changes": changes,
-        "instructions": {
-            "canonical_agent": prompt.body,
-            "native": native.read_text() if native.is_file() else None,
-        },
-        "role_effects": asdict(prompt.effects),
-        "agent_binding_digest": prompt.binding.digest,
+        "instructions": instructions,
+        "role_effects": agent_definition(agent).effects,
+        "agent_binding_digest": binding.digest,
         "host_runtime": {
             path: digest(read_file(run.host.package_root, path))
-            for path in (
-                "src/concorde/review/review.py",
-                "src/concorde/harness/native_reviews.py",
-                "src/concorde/harness/native_context.py",
-                "src/concorde/harness/native_evidence.py",
-                "src/concorde/harness/native_result.py",
-                "pi/workflows/review.js",
-                "pi/native-review-host.mjs",
-                "pi/extensions/concorde-native-plan.ts",
-                "pi/extensions/concorde-native-child.ts",
-                "src/concorde/harness/host.py",
-                "src/concorde/harness/invocation.py",
-                "src/concorde/harness/admission.py",
-                "src/concorde/harness/entry.py",
-                "src/concorde/harness/relay.py",
-                "src/concorde/harness/checks.py",
-                "src/concorde/harness/revisions.py",
-                "src/concorde/operations/dispatch.py",
-                "src/concorde/operations/catalog.py",
-                "src/concorde/planning/plan.py",
-                "src/concorde/planning/tasks.py",
-                "src/concorde/implementation/implement.py",
-                "src/concorde/validation/validate.py",
-                "src/concorde/spec/project.py",
-                "src/concorde/spec/impact.py",
-                "src/concorde/planning/scope.py",
-                "src/concorde/review/impact.py",
-                "src/concorde/review/records.py",
-                "src/concorde/issues/reporting.py",
-                "src/concorde/issues/references.py",
-                "src/concorde/issues/store.py",
-                "src/concorde/issues/shapes.py",
-                "src/concorde/harness/change_worktree.py",
-                "src/concorde/harness/context.py",
-            )
+            for path in HOST_RUNTIME
         },
         "configuration": run.configuration,
     }
@@ -212,7 +174,50 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
         "input_digest": digest(identity),
         "revision": revision,
         "changes": changes,
-    }, prompt
+    }
+
+
+# The Host runtime files that take part in a review: the review service's own realizations and
+# the Host code it runs through. A change to any of them makes a recorded review stale.
+HOST_RUNTIME = (
+    "src/concorde/review/review.py",
+    "src/concorde/review/native.py",
+    "src/concorde/review/impact.py",
+    "src/concorde/review/records.py",
+    "pi/workflows/review.js",
+    "pi/native-review-host.mjs",
+    "pi/native-host-step.mjs",
+    "pi/extensions/concorde-native-plan.ts",
+    "pi/extensions/concorde-native-child.ts",
+    "src/concorde/harness/native_driver.py",
+    "src/concorde/harness/native_evidence.py",
+    "src/concorde/harness/native_result.py",
+    "src/concorde/harness/capsule.py",
+    "src/concorde/harness/context.py",
+    "src/concorde/harness/worker_profile.py",
+    "src/concorde/harness/host.py",
+    "src/concorde/harness/invocation.py",
+    "src/concorde/harness/admission.py",
+    "src/concorde/harness/entry.py",
+    "src/concorde/harness/relay.py",
+    "src/concorde/harness/checks.py",
+    "src/concorde/harness/revisions.py",
+    "src/concorde/harness/change_worktree.py",
+    "src/concorde/operations/dispatch.py",
+    "src/concorde/operations/catalog.py",
+    "src/concorde/planning/gaps.py",
+    "src/concorde/planning/plan.py",
+    "src/concorde/planning/tasks.py",
+    "src/concorde/planning/scope.py",
+    "src/concorde/implementation/implement.py",
+    "src/concorde/validation/validate.py",
+    "src/concorde/spec/project.py",
+    "src/concorde/spec/impact.py",
+    "src/concorde/issues/reporting.py",
+    "src/concorde/issues/references.py",
+    "src/concorde/issues/store.py",
+    "src/concorde/issues/shapes.py",
+)
 
 
 def _empty(run, info, status, answer) -> dict:
@@ -334,7 +339,7 @@ def accept_review_result(run, snapshot, info, data):
 
     blockers = review_blockers(data["issues"])
     if data["status"] != "incomplete":
-        run.record_gaps(phase, blockers, review_input_digest=info["input_digest"])
+        record_gaps(run, phase, blockers, review_input_digest=info["input_digest"])
     run.completed.append(f"concorde-{mode}-review")
     outcome = (
         "failed"
@@ -631,11 +636,6 @@ def review_agent(mode: str) -> str:
     return operation(f"concorde-{mode}-review").agents[0][0]
 
 
-def review_workflow(request):
-    """Workflow hook of both reviews: every review runs as a prepared native workflow."""
-    return native_call(request)
-
-
 def scope_members(run, mode, *, initialize=False):
     change = read_change(run.repository.root)
     if initialize and change and run.host.mode == "execute":
@@ -794,7 +794,7 @@ def repair_feedback(run, reference: dict) -> dict:
     )
     data = value["data"]
     if (
-        data["input_digest"] != inputs(run, "code")[0]["input_digest"]
+        data["input_digest"] != inputs(run, "code")["input_digest"]
         or record.get("input_digest") != data["input_digest"]
     ):
         raise SpecError(
@@ -839,7 +839,7 @@ def _current_artifact(run, mode: str, reference: dict) -> dict | None:
         for judgment in data["issues"]:
             resolve_report(run.repository.root, receipt(judgment))
         if (
-            data["input_digest"] != inputs(run, mode)[0]["input_digest"]
+            data["input_digest"] != inputs(run, mode)["input_digest"]
             or data["target_id"] != run.target.id
             or data["review_mode"] != mode
             or data["focus_id"] != run.task.get("focus_id")
@@ -853,7 +853,9 @@ def _current_artifact(run, mode: str, reference: dict) -> dict | None:
             return None
         # Cached evidence must pass the same attributed prerequisite admission as a
         # fresh reviewer, including authoring gaps recorded after this artifact.
-        if run.pending_gaps(mode + "-review", review_input_digest=data["input_digest"]):
+        if pending_gaps(
+            run, mode + "-review", review_input_digest=data["input_digest"]
+        ):
             return None
         return value
     except (ValueError, OSError, KeyError, TypeError):

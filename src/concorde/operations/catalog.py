@@ -136,12 +136,11 @@ def _inventory(root: Path) -> ModuleType:
     return module
 
 
-def _agent_phases() -> tuple[set[str], frozenset[str]]:
-    import agents
+def _agent_definitions() -> dict:
+    """Every Agent definition by name; a phase is valid only as its Agent's own."""
+    from ..harness.worker_profile import agent_definition, agent_names
 
-    from ..harness.context import PHASES
-
-    return set(agents.DOMAIN_AGENTS), PHASES
+    return {name: agent_definition(name) for name in agent_names()}
 
 
 def _load(name: str, module: ModuleType) -> Operation:
@@ -158,7 +157,7 @@ def _load(name: str, module: ModuleType) -> Operation:
         raise _refused(name, "KIND", f"{kind!r} is not a routed kind")
     if module.DETERMINISTIC != (kind == "host"):
         raise _refused(name, "DETERMINISTIC", "must be true exactly for kind host")
-    agents, phases = _agent_phases()
+    definitions = _agent_definitions()
     steps = module.AGENTS
     for step in steps:
         if (
@@ -167,16 +166,24 @@ def _load(name: str, module: ModuleType) -> Operation:
             or not all(isinstance(item, str) for item in step)
         ):
             raise _refused(name, "AGENTS", "each step is (agent, phase)")
-        if step[0] not in agents:
+        if step[0] not in definitions:
             raise _refused(name, "AGENTS", f"no Agent definition for {step[0]!r}")
-        if step[1] not in phases:
-            raise _refused(name, "AGENTS", f"{step[1]!r} is not a phase")
+        if step[1] != definitions[step[0]].phase:
+            raise _refused(
+                name, "AGENTS", f"{step[1]!r} is not the phase of {step[0]!r}"
+            )
     if kind == "host" and steps:
         raise _refused(name, "AGENTS", "a host Operation runs no Agent")
     if kind == "agent-call" and len(steps) != 1:
         raise _refused(name, "AGENTS", "an agent-call Operation runs exactly one Agent")
     if kind == "pi-workflow" and not steps:
         raise _refused(name, "AGENTS", "a pi-workflow Operation runs Agents")
+    if kind == "agent-call" and module.ENTRY_POINT != definitions[steps[0][0]].hook:
+        raise _refused(
+            name,
+            "ENTRY_POINT",
+            "an agent-call entry point is the hook its Agent's definition names",
+        )
     if not all(isinstance(item, str) for item in module.USES) or len(
         set(module.USES)
     ) != len(module.USES):

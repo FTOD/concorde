@@ -8,10 +8,11 @@ from pathlib import Path
 
 import agents
 import operations
-from concorde.distribution.build import build, load_model_instructions
+from concorde.distribution.build import build
 from concorde.distribution.installation import Package, _package_files
 from concorde.distribution.package_validation import _validate_spec_agents_block
-from concorde.harness.worker_profile import WorkerProfile, load_worker_profiles
+from agents.task_subagent import TASK_SUBAGENT_PROFILES
+from concorde.harness.worker_profile import AgentDefinition, bind_agent
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from tests.concorde.support.build_fixture import build_package_copy
@@ -47,8 +48,7 @@ class AgentInventoryTests(unittest.TestCase):
             {path for path, source in sources.items() if source["role"] == "reading"},
             selected,
         )
-        self.assertEqual(9, len(agents.AGENTS))
-        self.assertEqual(7, len(load_worker_profiles()))
+        self.assertEqual(7, len(agents.AGENTS))
         self.assertNotIn("main", agents.AGENTS)
         self.assertNotIn("user-session", agents.AGENTS)
         for name in ("planner", "task_author"):
@@ -59,13 +59,19 @@ class AgentInventoryTests(unittest.TestCase):
             spec_text = (REPOSITORY_ROOT / "agents" / name / "spec.md").read_text()
             self.assertNotIn("`concorde-dependencies`", spec_text)
             self.assertIn("`uses`", spec_text)
-        self.assertFalse(set(agents.DOMAIN_AGENTS) & set(operations.OPERATIONS))
-        for name in agents.DOMAIN_AGENTS:
+        self.assertFalse(set(agents.AGENTS) & set(operations.OPERATIONS))
+        for name in agents.AGENTS:
             module = importlib.import_module("agents." + name)
-            self.assertIsInstance(module.PROFILE, WorkerProfile)
+            self.assertIsInstance(module.DEFINITION, AgentDefinition)
+            self.assertEqual(
+                ["DEFINITION"],
+                [
+                    key
+                    for key in vars(module)
+                    if key.isupper() and not key.startswith("_")
+                ],
+            )
             self.assertFalse((REPOSITORY_ROOT / "operations" / name).exists())
-            self.assertFalse(hasattr(module, "STATE"))
-            self.assertFalse(hasattr(module, "run"))
         package = Package(
             REPOSITORY_ROOT, json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         )
@@ -74,15 +80,20 @@ class AgentInventoryTests(unittest.TestCase):
         self.assertTrue(
             any(p.endswith("/agents/task_subagent.py") for p in installed_files)
         )
-        for profile in agents.TASK_SUBAGENT_PROFILES:
-            self.assertNotIsInstance(profile, WorkerProfile)
+        for profile in TASK_SUBAGENT_PROFILES:
+            self.assertNotIsInstance(profile, AgentDefinition)
+            self.assertNotIn(profile.name, agents.AGENTS)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             build_package_copy(root)
-            for name in agents.DOMAIN_AGENTS:
-                admitted = load_model_instructions(root, name)
-                self.assertEqual(f"agents/{name}/spec.md", admitted.source_path)
-                self.assertEqual(name, admitted.binding.agent)
+            for name in agents.AGENTS:
+                binding = bind_agent(root, name)
+                self.assertEqual(f"agents/{name}/spec.md", binding.spec_path)
+                self.assertEqual(name, binding.agent)
+                self.assertEqual(
+                    agents.definition(name).hook,
+                    agents.definition("concorde-" + name.replace("_", "-")).hook,
+                )
             source = {o.path: o.content for o in build(root).outputs}
             consumer = {
                 o.path: o.content
@@ -96,7 +107,7 @@ class AgentInventoryTests(unittest.TestCase):
 
     @verifies("scenario.agents.inventory")
     def test_metadata_drift_refuses_instead_of_creating_another_authority(self):
-        path = "specs/concorde/agents/contracts.md"
+        path = "specs/concorde/agents/definitions.md"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             build_package_copy(root)
@@ -113,7 +124,7 @@ class AgentInventoryTests(unittest.TestCase):
 
     @verifies("scenario.agents.inventory")
     def test_missing_agent_and_malformed_metadata_are_findings(self):
-        path = "specs/concorde/agents/contracts.md"
+        path = "specs/concorde/agents/definitions.md"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             build_package_copy(root)
@@ -125,3 +136,29 @@ class AgentInventoryTests(unittest.TestCase):
             self.assertTrue(_validate_spec_agents_block(root, {path: "reading"}))
             (root / "agents/planner/__init__.py").unlink()
             self.assertTrue(_validate_spec_agents_block(root, {path: "reading"}))
+
+    @verifies("scenario.agents.invalid-definition")
+    def test_a_definition_outside_the_rules_refuses_loading(self):
+        import dataclasses
+        from unittest import mock
+
+        planner = importlib.import_module("agents.planner").DEFINITION
+        for label, definition in {
+            "delegating tool": dataclasses.replace(
+                planner, tools=(*planner.tools, "subagent")
+            ),
+            "unknown tool": dataclasses.replace(planner, tools=(*planner.tools, "web")),
+            "bash without writes": dataclasses.replace(
+                planner, tools=(*planner.tools, "bash")
+            ),
+            "no hook": dataclasses.replace(planner, hook=""),
+        }.items():
+            with (
+                self.subTest(label),
+                mock.patch.object(
+                    importlib.import_module("agents.planner"), "DEFINITION", definition
+                ),
+                self.assertRaises(ValueError) as failure,
+            ):
+                agents.definition("planner")
+            self.assertIn("planner", str(failure.exception))

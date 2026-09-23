@@ -165,7 +165,10 @@ export function nativeObservation(directory) {
     }
     const children = names.map((name, index) => {
       const issued = json(path.join(root.directory, "bindings", name));
-      const descriptor = json(issued.descriptor),
+      // A slot descriptor a fault removed is observed as absent, not as a crash.
+      const descriptor = fs.existsSync(issued.descriptor)
+          ? json(issued.descriptor)
+          : { directory: path.dirname(issued.descriptor), snapshot: {} },
         key = issued.key;
       const steps = (status.steps ?? []).filter((s) => s.workflowKey === key);
       if (steps.length > 1) throw new Error("Ambiguous observed slot");
@@ -181,9 +184,9 @@ export function nativeObservation(directory) {
         save(`slot-${index}.json`, {
           issued,
           agentProfile: {
-            role: descriptor.role,
+            agent: descriptor.agent,
             phase: descriptor.phase,
-            promptDigest: descriptor.prompt_digest,
+            instructionsDigest: descriptor.instructions_digest,
             assets: descriptor.assets,
           },
           agentDefinition: fs.readFileSync(
@@ -226,7 +229,7 @@ export function nativeObservation(directory) {
         schema: issued.call.outputSchema,
         expected: {
           contextId: descriptor.snapshot.context_id,
-          role: descriptor.role,
+          agent: descriptor.agent,
           phase: descriptor.phase,
           descriptorDigest: issued.digest,
         },

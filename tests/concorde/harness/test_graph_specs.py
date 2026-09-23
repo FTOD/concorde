@@ -1,6 +1,8 @@
 """Graph Specs are node, edge and state diagrams kept equal to the compiled LangGraph Graphs."""
 
 import tempfile
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -73,7 +75,7 @@ class GraphSpecTests(unittest.TestCase):
     def test_every_compiled_graph_has_one_matching_spec_in_this_repository(self):
         repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
         with patch("concorde.harness.context.resolve_context") as resolve:
-            findings = graph_spec_findings(repository)
+            findings = graph_spec_findings(repository, catalog())
             resolve.assert_not_called()
         self.assertEqual((), findings, [finding.message for finding in findings])
         bound = {item.graph for item in graph_specs(repository)}
@@ -351,11 +353,31 @@ class GraphSpecTests(unittest.TestCase):
                 for finding in none
             )
         )
-        self.assertTrue(
-            (
-                Path(REPOSITORY_ROOT) / "scripts/development/check-graph-specs.py"
-            ).is_file()
+        script = Path(REPOSITORY_ROOT) / "scripts/development/check-graph-specs.py"
+        checked = subprocess.run(
+            [
+                sys.executable,
+                str(script),
+                "--catalog",
+                "concorde.operations.graph_catalog:catalog",
+            ],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
         )
+        self.assertEqual(0, checked.returncode, checked.stdout + checked.stderr)
+        self.assertIn("0 Graph Spec finding(s)", checked.stdout)
+        refused = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        self.assertNotEqual(0, refused.returncode)
 
     @verifies("scenario.execution.functional-api-refused")
     def test_a_graph_outside_the_graph_api_is_a_finding(self):

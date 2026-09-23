@@ -29,14 +29,14 @@ def _narrow(selection: WorkerSelection, entry: dict) -> WorkerSelection:
 
 def worker_selection(configuration: dict, agent: str) -> WorkerSelection:
     """Resolve one worker's selection; ``agent`` may be bare, hyphenated or external."""
-    from .worker_profile import worker_key
+    from .worker_profile import agent_key
 
     data = configuration["data"]
     selection = WorkerSelection(
         data.get("model"), data.get("thinking"), data.get("timeout_seconds")
     )
     workers = data.get("workers", {})
-    name = worker_key(agent)
+    name = agent_key(agent)
     if name in workers:
         selection = _narrow(selection, workers[name])
     return selection
@@ -50,9 +50,9 @@ def validate_worker_selections(
     configuration: dict, field: str = "/configuration"
 ) -> None:
     """Reject keys naming no worker, bad timeouts and non-Pi model names."""
-    from .worker_profile import load_worker_profiles
+    from .worker_profile import agent_names
 
-    agents = load_worker_profiles()
+    agents = agent_names()
     data = configuration["data"]
     workers = data.get("workers", {})
     for key, entry in workers.items():

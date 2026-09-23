@@ -242,18 +242,9 @@ def workflow_feedback(base, status, binding):
         ):
             feedback["causes"].append(emission["feedback"])
     files = list(directory.glob("host-failure-*.json"))
-    slots = [base]
+    slots = []
     try:
-        if (directory / "planner.json").is_file():
-            slots.append(
-                _record(Path(_record(directory / "planner.json")["descriptor"]))
-            )
-        if (directory / "review-scope.json").is_file():
-            slots.extend(
-                _record(Path(row["descriptor"]))
-                for row in _record(directory / "review-scope.json")["slots"]
-            )
-        for file in (directory / "bindings").glob("*.json"):
+        for file in sorted((directory / "bindings").glob("*.json")):
             slots.append(_record(Path(_record(file)["descriptor"])))
         files.extend(
             Path(slot["directory"]) / "failure.json"
@@ -264,7 +255,7 @@ def workflow_feedback(base, status, binding):
             files.extend(Path(slot["directory"]).glob("submission-error-*.json"))
         for slot in slots:
             if (
-                slot.get("role")
+                slot.get("agent")
                 and slot.get("snapshot")
                 and not (Path(slot["directory"]) / "proposal.json").exists()
                 and not (Path(slot["directory"]) / "failure.json").exists()

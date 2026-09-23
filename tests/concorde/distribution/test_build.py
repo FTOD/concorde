@@ -6,7 +6,6 @@ import shutil
 import sys
 import tempfile
 import unittest
-from dataclasses import FrozenInstanceError, asdict
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,10 +16,8 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.distribution.build import (
     MODEL_ROOTS,
     BuildError,
-    ModelInstructions,
     build,
     check_build,
-    load_model_instructions,
     verify_fresh,
     write_build,
 )
@@ -35,7 +32,6 @@ from concorde.operations.dispatch import run_operation  # noqa: E402
 from concorde.spec.typed_data import typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 from concorde.harness.host import OperationHost  # noqa: E402
-from concorde.operations.catalog import PUBLIC_OPERATIONS  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
 
@@ -51,7 +47,7 @@ class BuildGoldenTests(unittest.TestCase):
         expected = {
             path.removeprefix("generated/")
             for path in self.by_path
-            if path.startswith(("generated/agents/", "generated/native/"))
+            if path.startswith("generated/native/")
         }
         expected.add("pi/concorde-session.ts")
         actual = {
@@ -64,7 +60,7 @@ class BuildGoldenTests(unittest.TestCase):
     @verifies("scenario.distribution.build-render")
     def test_agent_bodies_match_golden_bytes_exactly(self):
         for path, output in self.by_path.items():
-            if path.startswith(("generated/agents/", "generated/native/")):
+            if path.startswith("generated/native/"):
                 with self.subTest(path=path):
                     golden = (GOLDEN / path.removeprefix("generated/")).read_bytes()
                     self.assertEqual(output.content, golden)
@@ -75,7 +71,7 @@ class BuildGoldenTests(unittest.TestCase):
             p for p in self.by_path if p.startswith("generated/session/")
         ]
         agent_outputs = [
-            path for path in self.by_path if path.startswith("generated/agents/")
+            path for path in self.by_path if path.startswith("generated/native/")
         ]
         self.assertEqual(session_outputs, [PI_SESSION_SHIM])
         self.assertEqual(len(agent_outputs), 7)
@@ -84,7 +80,7 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertTrue(all(path.count("/") == 2 for path in agent_outputs))
         self.assertEqual(
             set(agent_outputs),
-            {f"generated/agents/{agent}.md" for agent in MODEL_ROOTS},
+            {f"generated/native/{agent}.md" for agent in MODEL_ROOTS},
         )
 
     def test_manifest_has_sorted_keys_and_trailing_newline(self):
@@ -208,23 +204,23 @@ class BuildCheckLifecycleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_check_reports_an_unexpected_file_in_an_owned_directory(self):
         write_build(self.root)
-        (self.root / "generated/agents/extra.md").write_text(
+        (self.root / "generated/native/extra.md").write_text(
             "not a build output\n", encoding="utf-8"
         )
         current, differences = check_build(self.root)
         self.assertFalse(current)
-        self.assertIn("generated/agents/extra.md", differences)
+        self.assertIn("generated/native/extra.md", differences)
 
     @verifies("scenario.distribution.build-check")
     def test_check_reports_a_modified_owned_file(self):
         write_build(self.root)
-        target = self.root / "generated/agents/planner.md"
+        target = self.root / "generated/native/planner.md"
         target.write_text(
             target.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8"
         )
         current, differences = check_build(self.root)
         self.assertFalse(current)
-        self.assertIn("generated/agents/planner.md", differences)
+        self.assertIn("generated/native/planner.md", differences)
 
 
 class BuildFreshnessTests(unittest.TestCase):
@@ -286,124 +282,6 @@ class BuildFreshnessTests(unittest.TestCase):
         with self.assertRaises(BuildError) as failure:
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
-
-    @verifies("scenario.context.agent-bind")
-    def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
-        write_build(self.root)
-        prompt = load_model_instructions(self.root, "concorde-planner")
-        self.assertEqual(prompt.name, "concorde-planner")
-        self.assertIs(type(prompt), ModelInstructions)
-        self.assertIsNotNone(prompt.effects)
-        self.assertTrue(prompt.body.strip())
-        self.assertIsNotNone(prompt.binding)
-        self.assertEqual(prompt.binding.agent, "planner")
-        self.assertEqual(prompt.binding.spec_path, "agents/planner/spec.md")
-
-        edited = self.root / "agents/planner/spec.md"
-        edited.write_text(
-            edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8"
-        )
-        with self.assertRaises(BuildError) as failure:
-            load_model_instructions(self.root, "concorde-planner")
-        self.assertEqual(failure.exception.code, "stale_build")
-
-    @verifies("scenario.context.agent-bind")
-    def test_worker_instruction_records_retain_every_field_and_binding_digest(self):
-        from concorde.harness.worker_profile import (
-            binding_digest,
-            profile_digest,
-            worker_profile,
-        )
-
-        def digest(content):
-            return "sha256:" + hashlib.sha256(content).hexdigest()
-
-        write_build(self.root)
-        for name in MODEL_ROOTS:
-            with self.subTest(worker=name):
-                prompt = load_model_instructions(self.root, name)
-                profile = worker_profile(name)
-                binding = prompt.binding
-                self.assertIs(type(prompt), ModelInstructions)
-                self.assertEqual(
-                    {
-                        "name",
-                        "description",
-                        "source_path",
-                        "body",
-                        "effects",
-                        "binding",
-                    },
-                    set(asdict(prompt)),
-                )
-                self.assertEqual("concorde-" + name, prompt.name)
-                self.assertEqual(f"Concorde {name} agent.", prompt.description)
-                self.assertEqual(profile.spec, prompt.source_path)
-                self.assertEqual(profile.contract.effects, prompt.effects)
-                self.assertEqual(profile.name, binding.agent)
-                self.assertEqual(profile.spec, binding.spec_path)
-                self.assertEqual(
-                    f"generated/agents/{name}.md", binding.instructions_path
-                )
-                self.assertEqual(
-                    (self.root / binding.instructions_path).read_text(), prompt.body
-                )
-                self.assertEqual(
-                    digest((self.root / profile.spec).read_bytes()), binding.spec_digest
-                )
-                self.assertEqual(
-                    digest(prompt.body.encode()), binding.instructions_digest
-                )
-                self.assertEqual(
-                    profile_digest(self.root, profile), binding.profile_digest
-                )
-                self.assertEqual(
-                    digest((self.root / "generated/build-manifest.json").read_bytes()),
-                    binding.build_manifest_digest,
-                )
-                self.assertEqual(profile.timeout_seconds, binding.timeout_seconds)
-                self.assertEqual(binding_digest(binding), binding.digest)
-                self.assertEqual(
-                    {
-                        "agent",
-                        "spec_path",
-                        "spec_digest",
-                        "instructions_path",
-                        "instructions_digest",
-                        "profile_digest",
-                        "build_manifest_digest",
-                        "timeout_seconds",
-                        "digest",
-                    },
-                    set(asdict(binding)),
-                )
-                with self.assertRaises(FrozenInstanceError):
-                    prompt.body = "replacement"
-
-    @verifies("scenario.context.agent-bind")
-    def test_public_catalog_entries_do_not_imply_worker_instructions(self):
-        write_build(self.root)
-        for name in PUBLIC_OPERATIONS:
-            with self.subTest(operation=name), self.assertRaises(BuildError) as failure:
-                load_model_instructions(self.root, name)
-            self.assertEqual("unknown_agent", failure.exception.code)
-
-    @verifies("scenario.context.agent-bind")
-    def test_load_agent_accepts_underscore_and_hyphenated_names(self):
-        write_build(self.root)
-        by_external = load_model_instructions(self.root, "concorde-planner")
-        by_underscore = load_model_instructions(self.root, "planner")
-        self.assertEqual(by_external.body, by_underscore.body)
-        self.assertEqual(by_external.name, "concorde-planner")
-
-    @verifies("scenario.context.agent-bind")
-    def test_load_agent_accepts_a_hyphenated_multiword_agent_name(self):
-        write_build(self.root)
-        by_external = load_model_instructions(self.root, "concorde-code-reviewer")
-        by_underscore = load_model_instructions(self.root, "code_reviewer")
-        self.assertEqual(by_external.body, by_underscore.body)
-        self.assertEqual(by_external.name, "concorde-code-reviewer")
-        self.assertEqual(by_external.binding.agent, "code_reviewer")
 
 
 class WireHelperBuildTests(unittest.TestCase):
@@ -602,7 +480,7 @@ class StaleOutputRemovalTests(unittest.TestCase):
                     other.unlink()
                     other.symlink_to(old)
                 elif defect == "unknown":
-                    (root / "generated/agents/unknown.md").write_text("user data")
+                    (root / "generated/native/unknown.md").write_text("user data")
                 else:
                     dest = root / PI_SESSION_SHIM
                     dest.unlink()

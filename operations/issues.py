@@ -46,4 +46,4 @@ WORKSPACE = "candidate"
 TARGET = {"selection": "provider-hook", "hook": "concorde.issues.graph:select_target"}
 DEFAULT_TASK = None
 CONFIGURATION = "stored"
-ENTRY_POINT = "concorde.issues.graph:issues"
+ENTRY_POINT = "concorde.issue_solving.native:issues_workflow"

@@ -16,6 +16,8 @@ execFileSync(python, [
   "-c",
   `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.insert(0,${JSON.stringify(candidate)})
 from pathlib import Path
+from concorde.operations.catalog import register_types
+register_types()
 from tests.concorde.spec.support import project
 project(Path(${JSON.stringify(root)}))
 import subprocess
@@ -39,7 +41,7 @@ if ${JSON.stringify(scenario)} in ('feedback','tampered-feedback'):
  from concorde.review.review import inputs,_persist
  from concorde.spec.typed_data import typed
  from concorde.issues.store import report_issue
- info,_=inputs(run,'code')
+ info=inputs(run,'code')
  receipt=report_issue(r,{'report_key':'repair','type':'bug','subtype':None,'title':'Repair input','description':'Fixture repair finding','impact':'Task repair','basis':'Selected contract','owner_target_id':'service.transfer','evidence':[]},{'invocation_id':'fixture-review','agent':'code_reviewer','operation':'concorde-code-review','phase':'code-review','target_id':'service.transfer','context_id':'sha256:'+'a'*64,'change_id':run.change_id,'head':None})
  value=typed('concorde-review-result',{'context_id':'sha256:'+'a'*64,'input_digest':info['input_digest'],'review_mode':'code','status':'findings','representative_tasks':['Transfer repair'],'issues':[{**receipt,'severity':'blocking','affected_task':'Transfer repair'}],'answer':'Repair required','target_id':'service.transfer','focus_id':None,'revision':info['revision'],'semantic_completeness':'not_proven'})
  reference=_persist(run,value)
@@ -151,7 +153,7 @@ if (
   const projectRoot = path.join(root, "candidate");
   execFileSync(python, [
     "-c",
-    "from pathlib import Path;from concorde.harness.change_worktree import read_change,save_change;r=Path(" +
+    "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change,save_change;r=Path(" +
       JSON.stringify(projectRoot) +
       ");s=read_change(r);t=s['targets']['service.transfer'];" +
       (scenario === "missing-components"
@@ -385,7 +387,7 @@ setChildSessionFactory({
         ) {
           execFileSync(python, [
             "-c",
-            "from pathlib import Path;from concorde.harness.change_worktree import read_change,save_change;r=Path(" +
+            "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change,save_change;r=Path(" +
               JSON.stringify(snapshot.native_workspace) +
               ");s=read_change(r);t=s['targets']['service.transfer'];" +
               (scenario === "stale-plan"
@@ -406,7 +408,7 @@ setChildSessionFactory({
           if (scenario === "tampered-feedback")
             execFileSync(python, [
               "-c",
-              "from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.harness.status_store import run_path;r=Path(" +
+              "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.harness.status_store import run_path;r=Path(" +
                 JSON.stringify(snapshot.native_workspace) +
                 ");p=run_path(r,read_change(r)['targets']['service.transfer']['repair_review']['path']);p.write_bytes(p.read_bytes()+b' ')",
             ]);

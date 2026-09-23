@@ -1,6 +1,21 @@
 import { errorFeedback, executionError } from "./execution-error.mjs";
+import * as fs from "node:fs";
 import { createRequire } from "node:module";
 import * as path from "node:path";
+
+/** The `tools` of a prepared Agent definition file's front matter. */
+export function definitionTools(file: string): string[] {
+	const [, header] = fs.readFileSync(file, "utf8").split("---", 3);
+	const line = (header ?? "")
+		.split("\n")
+		.find((entry) => entry.startsWith("tools: "));
+	if (!line) throw new Error("The prepared Agent definition file lists no tools");
+	return line
+		.slice("tools: ".length)
+		.split(",")
+		.map((tool) => tool.trim())
+		.filter(Boolean);
+}
 
 export async function nativePreflight(
 	root: string,
@@ -24,35 +39,24 @@ export async function nativePreflight(
 				category: "host-refusal",
 			}),
 		);
+	const agentFile = path.join(call.cwd, ".pi/agents/" + call.agent + ".md");
 	if (
 		preflight.contract.agent.source !== "project" ||
-		preflight.contract.agent.filePath !==
-			path.join(call.cwd, ".pi/agents/" + call.agent + ".md") ||
+		preflight.contract.agent.filePath !== agentFile ||
 		!preflight.contract.tools.disableAmbientExtensions ||
 		preflight.contract.tools.fanoutAuthorized
 	)
 		throw new Error(
 			"Native Agent discovery did not resolve the exact capsule role",
 		);
-	const allowed = [
-		"read",
-		"grep",
-		"find",
-		"ls",
-		"report_issue",
-		"structured_output",
-		...(call.agent === "concorde-programmer"
-			? ["edit", "write", "bash", "run_checks"]
-			: call.agent === "concorde-code-reviewer"
-				? ["run_checks"]
-				: []),
-	];
+	// The allowlist is the prepared Agent definition file's own tool list plus structured output.
+	const allowed = [...definitionTools(agentFile), "structured_output"];
 	if (
 		preflight.contract.tools.effectiveAllowlist.some(
 			(tool: string) => !allowed.includes(tool),
 		)
 	)
-		throw new Error("Native assessor launch exceeds its terminal read policy");
+		throw new Error("Native Agent launch exceeds its definition's tool list");
 	if (
 		preflight.contract.context !== "fresh" ||
 		preflight.contract.inheritProjectContext ||
@@ -61,6 +65,6 @@ export async function nativePreflight(
 		preflight.contract.skills.resolved.length ||
 		preflight.contract.intercomBridge.active
 	)
-		throw new Error("Native assessor inherited ungranted context or Skills");
+		throw new Error("Native Agent inherited ungranted context or Skills");
 	return preflight.contract;
 }

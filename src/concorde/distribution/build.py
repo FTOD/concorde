@@ -16,14 +16,8 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from ..harness.effects import EffectDeclaration
-from ..harness.worker_profile import (
-    load_worker_profiles,
-    resolve_worker,
-    worker_profile,
-)
+from ..harness.worker_profile import agent_definition, agent_names
 from ..spec.frontmatter import FrontMatterError, parse_document
 from . import task_subagents
 from .prompt_resolver import (
@@ -33,25 +27,6 @@ from .prompt_resolver import (
     resolve_operation_guidance,
     resolve_role_prompt,
 )
-
-if TYPE_CHECKING:
-    from ..harness.worker_profile import WorkerBinding
-
-
-@dataclass(frozen=True)
-class ModelInstructions:
-    """One admitted worker's instructions, effect ceiling and current build binding.
-
-    This in-process record is not a public Operation catalog entry or a wire envelope.
-    The host narrows its effects to the actual grant and reverifies its WorkerBinding.
-    """
-
-    name: str
-    description: str
-    source_path: str
-    body: str
-    effects: EffectDeclaration
-    binding: WorkerBinding
 
 
 class BuildError(ValueError):
@@ -68,9 +43,10 @@ PI_SESSION_SHIM = ".pi/extensions/concorde-session.ts"
 PRIVATE_PI_SESSION_SHIM = "generated/session/pi/concorde-session.ts"
 CONSUMER_RUNTIME_VENV = ".concorde/.venv"
 
+# Each Agent's hyphenated name and its instruction source, from its definition.
 MODEL_ROOTS: dict[str, str] = {
-    agent.name.replace("_", "-"): agent.spec
-    for agent in load_worker_profiles().values()
+    name.replace("_", "-"): agent_definition(name).instructions
+    for name in agent_names()
 }
 
 # The Pi session catalog's name for each routed Operation kind.
@@ -98,7 +74,6 @@ PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 # and check_build must never judge locations it does not own.
 GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/native",
-    "generated/agents",
     "generated/protocol",
     "generated/docs",
     "generated/session",
@@ -164,29 +139,15 @@ def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
     return metadata
 
 
-def render_model_instructions(project_root: Path, agent: str) -> BuildOutput:
-    """The same canonical native Agent bytes under the worker instructions path."""
-    native = render_native_context_agent(project_root, agent)
-    return BuildOutput(
-        path=f"generated/agents/{agent}.md",
-        content=native.content,
-        sources=native.sources,
-    )
-
-
-def render_native_context_agent(
-    project_root: Path, name="context-assessor"
-) -> BuildOutput:
-    """Native transport instructions: the Agent's rules followed by its Agent Spec."""
+def render_native_context_agent(project_root: Path, name: str) -> BuildOutput:
+    """An Agent's rendered instructions: its native rules followed by its own instructions."""
     try:
         rules = resolve_role_prompt(project_root, f"prompts/native/{name}.md")
         role = resolve_model_instructions(
             project_root, f"agents/{name.replace(chr(45), chr(95))}/spec.md"
         )
     except PromptResolverError as error:
-        raise BuildError(
-            f"native context-assessor: {error.rule_id}: {error}"
-        ) from error
+        raise BuildError(f"native {name}: {error.rule_id}: {error}") from error
     return BuildOutput(
         path=f"generated/native/{name}.md",
         content=(rules.body.rstrip() + "\n\n" + role.body).encode(),
@@ -362,7 +323,7 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     all_sources: set[str] = set()
     for output in outputs:
         all_sources.update(output.sources)
-    # WorkerProfile declarations and operation wire metadata are authored build inputs too.
+    # Agent definitions and Operation declarations are authored build inputs too.
     for directory in ("agents", "operations", "src/concorde"):
         all_sources.update(
             path.relative_to(project_root).as_posix()
@@ -425,17 +386,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     root = Path(project_root)
 
     outputs: list[BuildOutput] = []
-    for agent in sorted(MODEL_ROOTS):
-        outputs.append(render_model_instructions(root, agent))
-    for name in (
-        "context-assessor",
-        "planner",
-        "task-author",
-        "programmer",
-        "spec-reviewer",
-        "code-reviewer",
-        "issue-solver",
-    ):
+    for name in sorted(MODEL_ROOTS):
         outputs.append(render_native_context_agent(root, name))
     outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
     outputs.extend(task_subagents.render(root, framework_prefix))
@@ -446,18 +397,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
 
     roots = (
         list(MODEL_ROOTS.values())
-        + [
-            f"prompts/native/{name}.md"
-            for name in (
-                "context-assessor",
-                "planner",
-                "task-author",
-                "programmer",
-                "spec-reviewer",
-                "code-reviewer",
-                "issue-solver",
-            )
-        ]
+        + [f"prompts/native/{name}.md" for name in sorted(MODEL_ROOTS)]
         + list(task_subagents.prompt_roots(root))
         + list(guidance_sources().values())
         + ["prompts/protocol/principles.md"]
@@ -687,31 +627,3 @@ def verify_fresh(project_root: str | Path) -> None:
             raise BuildError(
                 f"build source changed since the last build: {relative}", "stale_build"
             )
-
-
-def load_model_instructions(package_root: str | Path, name: str) -> ModelInstructions:
-    """Load one worker's rendered instructions and complete binding from the build.
-
-    Verifies freshness first (via ``resolve_worker``). ``name`` accepts either the external
-    ``concorde-<hyphenated>`` identity used throughout the host (for example
-    ``concorde-code-reviewer``) or the bare hyphenated/underscored WorkerProfile name.
-    """
-
-    binding = resolve_worker(package_root, name)
-    root = Path(package_root)
-    try:
-        body = (root / binding.instructions_path).read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as error:
-        raise BuildError(
-            f"cannot read rendered agent {binding.instructions_path}: {error}",
-            "stale_build",
-        ) from error
-    hyphenated = binding.agent.replace("_", "-")
-    return ModelInstructions(
-        name=f"concorde-{hyphenated}",
-        description=f"Concorde {hyphenated} agent.",
-        source_path=binding.spec_path,
-        body=body,
-        effects=worker_profile(binding.agent).contract.effects,
-        binding=binding,
-    )

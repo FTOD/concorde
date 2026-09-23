@@ -427,9 +427,9 @@ class NativeLocalInstallationTests(unittest.TestCase):
                         "-I",
                         "-c",
                         "import sys,json; sys.path[:0]=sys.argv[1:]; "
-                        "import agents; from concorde.harness.worker_profile import load_worker_profiles; "
-                        "print(json.dumps({'agents':agents.AGENTS,'task':agents.TASK_SUBAGENTS,"
-                        "'domain':list(load_worker_profiles()),'source':agents.__file__}))",
+                        "import agents; from agents.task_subagent import TASK_SUBAGENTS; "
+                        "print(json.dumps({'agents':agents.AGENTS,'task':TASK_SUBAGENTS,"
+                        "'source':agents.__file__}))",
                         str(local.framework),
                         str(local.framework / "src"),
                     ],
@@ -439,9 +439,8 @@ class NativeLocalInstallationTests(unittest.TestCase):
                     cwd=target,
                 )
                 discovered = json.loads(role_probe.stdout)
-                self.assertEqual(8, len(discovered["agents"]))
+                self.assertEqual(7, len(discovered["agents"]))
                 self.assertEqual(["tester"], discovered["task"])
-                self.assertEqual(7, len(discovered["domain"]))
                 self.assertNotIn("main", discovered["agents"])
                 self.assertNotIn("user-session", discovered["agents"])
                 self.assertNotIn("maintenance-worker", discovered["agents"])

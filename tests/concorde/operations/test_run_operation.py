@@ -200,7 +200,8 @@ class RunOperationLauncherTests(unittest.TestCase):
         value = json.loads(process.stdout)
         self.assertEqual("described", value["state"])
         self.assertNotIn("call", value)
-        self.assertIn("module.operations", value["scope"])
+        self.assertNotIn("workflow", value)
+        self.assertIn("module.operations", value["result"]["output"]["data"]["answer"])
         self.assertEqual(
             "concorde-code-review-response", value["result"]["output"]["type_id"]
         )

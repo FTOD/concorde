@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.native_context import execute
+from concorde.harness.native_driver import execute
 from concorde.harness.native_runtime import FORMAT, NativeRuntimeBinding
 from concorde.operations.dispatch import services
 from concorde.spec.repository import digest
@@ -38,7 +38,7 @@ class NativeContextTests(unittest.TestCase):
             ),
         }
         self.patch = patch(
-            "concorde.harness.native_context.admit_native_runtime",
+            "concorde.harness.native_driver.admit_native_runtime",
             return_value=NativeRuntimeBinding(
                 FORMAT, str(self.root), "sha256:" + "0" * 64
             ),

@@ -91,8 +91,14 @@ CAPABILITY_DECLARATION = {
 BUILD_MANIFEST = "generated/build-manifest.json"
 
 
-def resolve_entry(reference: str, field: str = "entry_point"):
-    """The callable a ``package.module:function`` reference names, or ``invalid_input``."""
+def resolve_entry(
+    reference: str, field: str = "entry_point", *, callable_required: bool = True
+):
+    """What a ``package.module:attribute`` reference names, or ``invalid_input``.
+
+    A Host service or target hook must be callable; an entry point may also name a provider's
+    Agent or workflow hook, whose methods the native driver checks.
+    """
     module_name, separator, attribute = reference.partition(":")
     if not separator or not module_name or not attribute:
         raise SpecError(f"{reference!r} is not module:function", "invalid_input", field)
@@ -102,7 +108,7 @@ def resolve_entry(reference: str, field: str = "entry_point"):
         raise SpecError(
             f"{reference!r} does not resolve: {error}", "invalid_input", field
         ) from error
-    if not callable(value):
+    if callable_required and not callable(value):
         raise SpecError(f"{reference!r} is not callable", "invalid_input", field)
     return value
 
@@ -135,7 +141,7 @@ def check_declaration(declaration) -> dict:
             "invalid_input",
             "/target/hook",
         )
-    resolve_entry(declaration["entry_point"], "/entry_point")
+    resolve_entry(declaration["entry_point"], "/entry_point", callable_required=False)
     if target["hook"] is not None:
         resolve_entry(target["hook"], "/target/hook")
     return declaration
@@ -145,8 +151,8 @@ def _digest(data: bytes) -> str:
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
-def verify_build(package_root: Path) -> None:
-    """Refuse with ``stale_build`` unless the build manifest says the build is fresh.
+def verify_build(package_root: Path) -> tuple[dict, str]:
+    """The fresh build manifest and the digest of its bytes, or ``stale_build``.
 
     Freshness is exactly as contract.distribution.build-manifest defines it: the manifest exists
     and parses, and every recorded source is a regular file reached through no symbolic link
@@ -159,7 +165,8 @@ def verify_build(package_root: Path) -> None:
             raise ValueError(
                 "no build manifest; run the build before using this package"
             )
-        manifest = json.loads(path.read_text(encoding="utf-8"))
+        raw = path.read_bytes()
+        manifest = json.loads(raw.decode("utf-8"))
         if (
             not isinstance(manifest, dict)
             or set(manifest) != {"schema_version", "sources", "outputs"}
@@ -180,6 +187,7 @@ def verify_build(package_root: Path) -> None:
                 raise ValueError(f"build source changed since the build: {relative}")
     except (OSError, UnicodeError, ValueError) as error:
         raise SpecError(f"stale build at {root}: {error}", "stale_build") from error
+    return manifest, _digest(raw)
 
 
 def bind_module_target(

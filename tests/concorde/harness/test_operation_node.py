@@ -1,9 +1,9 @@
-"""A worker invocation is a LangGraph node whose typed state is the worker's task contract."""
+"""An Agent call is a LangGraph node whose typed state is the Agent definition's input and result."""
 
 import unittest
 
 from concorde.harness.operation_node import OperationNode, state_schema, typed_state
-from concorde.harness.worker_profile import worker_profile
+from concorde.harness.worker_profile import agent_definition
 from concorde.spec.typed_data import TypedDataError, data_schema, typed
 from concorde.spec.verification import verifies
 
@@ -15,13 +15,32 @@ def _stage_context():
 
     snapshot = {
         "context_id": "sha256:" + "3" * 64,
-        "schema_version": 7,
+        "schema_version": 8,
         "target_id": "service.fixture",
         "kind": "module",
         "focus_id": None,
         "phase": "plan",
         "task": "Plan",
         "constraints": [],
+        "agent_binding": {
+            "agent": "planner",
+            "spec_path": "agents/planner/spec.md",
+            "spec_digest": "sha256:" + "5" * 64,
+            "instructions_path": "generated/native/planner.md",
+            "instructions_digest": "sha256:" + "6" * 64,
+            "definition_digest": "sha256:" + "7" * 64,
+            "build_manifest_digest": "sha256:" + "8" * 64,
+            "tools": ["read", "grep", "find", "ls"],
+            "effects": {
+                "reads": ["spec-context", "references"],
+                "writes": [],
+                "network": False,
+                "credentials": "none",
+            },
+            "workspace": "capsule",
+            "timeout_seconds": 1800,
+            "digest": "sha256:" + "9" * 64,
+        },
         "protocol_binding": {"version": "7.0.0", "digest": "sha256:" + "4" * 64},
         "protocol": [],
         "spec_resolution": {
@@ -45,7 +64,7 @@ def _stage_context():
             "references": [],
             "sources": [],
         },
-        "instructions": "Fixture.",
+        "shared_bindings": [],
         "stage_inputs": [],
         "implementation_entries": [],
         "implementation_files": [],
@@ -89,10 +108,10 @@ class OperationNodeTests(unittest.TestCase):
             "issue_solver",
         ):
             with self.subTest(worker=name):
-                agent = worker_profile(name)
+                agent = agent_definition(name)
                 node = OperationNode(agent.name)
                 self.assertEqual(
-                    (agent.contract.context, agent.contract.result),
+                    (agent.context, agent.result),
                     (node.input_type, node.result_type),
                 )
                 self.assertEqual(

@@ -12,10 +12,10 @@ function stop(message, child, key) {
       key,
   );
 }
-const request = __CONCORDE_REVIEW__;
+const request = __CONCORDE_WORKFLOW__;
 await runs.host("bind", {
   kind: "command",
-  command: request.bind,
+  command: request.commands.bind,
   timeoutMs: 1800000,
 });
 for (let index = 0; index < request.members.length; index++) {
@@ -102,7 +102,7 @@ return JSON.parse(
   (
     await runs.host("finalize", {
       kind: "command",
-      command: request.finalize,
+      command: request.commands.finalize,
       timeoutMs: 1800000,
     })
   ).stdout,
