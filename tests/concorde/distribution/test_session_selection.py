@@ -241,7 +241,6 @@ class SessionSelectionTests(unittest.TestCase):
         save_selection(self.root, path, selected)
         for relative in (
             "pi/extensions/concorde-session.ts",
-            "pi/extensions/concorde-worker.ts",
             "pi/package-lock.json",
             "scripts/requirements.lock",
             "src/concorde/harness/entry.py",

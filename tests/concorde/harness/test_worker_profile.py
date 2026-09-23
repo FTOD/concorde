@@ -24,8 +24,6 @@ from concorde.distribution.build import (  # noqa: E402
 from concorde.harness import worker_profile as profiles  # noqa: E402
 from concorde.harness.worker_profile import (  # noqa: E402
     binding_digest,
-    binding_from_json,
-    binding_json,
     profile_digest,
     resolve_worker,
     validate_worker_profile,
@@ -98,7 +96,6 @@ class ResolveAgentBuildTests(unittest.TestCase):
                     binding.profile_digest, profile_digest(self.root, agent)
                 )
                 self.assertEqual(binding.digest, binding_digest(binding))
-                self.assertEqual(binding, binding_from_json(binding_json(binding)))
 
     @verifies("scenario.harness.agent-bind")
     def test_resolve_agent_accepts_external_hyphenated_and_underscored_names(self):
@@ -150,7 +147,7 @@ class ProfileValidationTests(unittest.TestCase):
             validate_worker_profile(agent)
         self.assertEqual("invalid_agent_binding", failure.exception.code)
 
-    @verifies("scenario.harness.agent-bind-reject", "scenario.harness.worker-contract")
+    @verifies("scenario.harness.agent-bind-reject")
     def test_profiles_cannot_exceed_their_contract_or_workspace(self):
         planner = worker_profile("planner")
         effects = planner.contract.effects
@@ -204,9 +201,7 @@ class ProfileValidationTests(unittest.TestCase):
         for name in profiles.load_worker_profiles():
             validate_worker_profile(worker_profile(name))
 
-    @verifies(
-        "scenario.harness.agent-bind-reject", "scenario.harness.pi-worker-delegation"
-    )
+    @verifies("scenario.harness.agent-bind-reject")
     def test_terminal_profile_rejects_child_definitions_and_delegation_tools(self):
         planner = worker_profile("planner")
         with self.assertRaises(TypeError):

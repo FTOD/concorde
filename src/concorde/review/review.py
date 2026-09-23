@@ -25,7 +25,7 @@ from ..harness.change_worktree import (
 )
 from ..harness.invocation import Invocation
 from ..harness.revisions import implementation_digest, target_revision
-from ..harness.worker_executor import OperationExecutionError, WorkerOutcome
+from ..harness.execution_error import OperationExecutionError
 from ..harness.worker_profile import ContractError
 from ..spec.boundaries import scope_roots
 from ..spec.contracts import REVIEW_STAGES
@@ -196,9 +196,6 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
                 "src/concorde/issues/store.py",
                 "src/concorde/spec/issue_shapes.py",
                 "src/concorde/harness/change_worktree.py",
-                "src/concorde/harness/worker_executor.py",
-                "src/concorde/harness/pi_worker.py",
-                "src/concorde/harness/permissions.py",
                 "src/concorde/harness/context.py",
             )
         },
@@ -231,7 +228,7 @@ def _empty(run, info, status, answer) -> dict:
     )
 
 
-def _persist(run, value, *, execution=None, failure=None) -> dict:
+def _persist(run, value, *, failure=None) -> dict:
     """Host run records are separate from the reviewer's empty write grant."""
     mode = value["data"]["review_mode"]
     path = f".concorde/runs/{run.host.invocation_id}/review-{run.target.id}-{mode}-{uuid.uuid4()}.json"
@@ -240,15 +237,10 @@ def _persist(run, value, *, execution=None, failure=None) -> dict:
     destination = run_path(run.repository.root, path)
     write_run(run.repository.root, path, (canonical(value) + "\n").encode())
     reference = artifact(run.repository.root, f"review.{run.target.id}.{mode}", path)
-    if execution is not None or failure is not None:
-        # The worker's reported usage and any execution failure stay host records beside the review.
+    if failure is not None:
+        # An execution failure stays a host record beside the review.
         private = destination.with_suffix(".execution.json")
-        private.write_text(
-            canonical(
-                {"usage": asdict(execution) if execution else None, "failure": failure}
-            )
-            + "\n"
-        )
+        private.write_text(canonical({"failure": failure}) + "\n")
     state = read_change(run.repository.root)
     if state is not None:
         intent = {
@@ -315,7 +307,7 @@ def _validate(run, snapshot, info, data):
         raise SpecError("review Issue requires an affected task", "invalid_completion")
 
 
-def accept_review_result(run, snapshot, info, data, *, execution=None):
+def accept_review_result(run, snapshot, info, data):
     _validate(run, snapshot, info, data)
     phase = info["review_mode"] + "-review"
     mode = info["review_mode"]
@@ -329,7 +321,7 @@ def accept_review_result(run, snapshot, info, data, *, execution=None):
             "semantic_completeness": "not_proven",
         },
     )
-    reference = _persist(run, reviewed, execution=execution)
+    reference = _persist(run, reviewed)
     from ..issues.references import requires_contract_repair, review_blockers
 
     blockers = review_blockers(data["issues"])
@@ -354,7 +346,7 @@ def accept_review_result(run, snapshot, info, data, *, execution=None):
     )
 
 
-def _failed_review(run, info, result, error):
+def _failed_review(run, info, error):
     """Preserve execution failure without retracting already acknowledged Issue observations."""
     if isinstance(error, OperationExecutionError):
         code = error.code or (
@@ -390,12 +382,7 @@ def _failed_review(run, info, result, error):
     failure = {"code": code, "message": str(error)}
     if run.host.lifecycle.get("persistence_error"):
         failure["persistence"] = run.host.lifecycle["persistence_error"]
-    usage = (
-        result.usage
-        if isinstance(result, WorkerOutcome)
-        else getattr(error, "usage", None)
-    )
-    reference = _persist(run, reviewed, execution=usage, failure=failure)
+    reference = _persist(run, reviewed, failure=failure)
     return run.response(
         "failed", reviewed["data"]["answer"], artifacts=[reference], reviews=[reviewed]
     )

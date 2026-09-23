@@ -99,7 +99,7 @@ class GraphSpecTests(unittest.TestCase):
         compiled = topology(
             (
                 lambda: __import__(
-                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    "tests.concorde.support.sample_graph",
                     fromlist=["build_batch_graph"],
                 ).build_batch_graph(
                     lambda name: lambda state: {},
@@ -175,7 +175,7 @@ class GraphSpecTests(unittest.TestCase):
         compiled = topology(
             (
                 lambda: __import__(
-                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    "tests.concorde.support.sample_graph",
                     fromlist=["build_batch_graph"],
                 ).build_batch_graph(
                     lambda name: lambda state: {},
@@ -222,7 +222,7 @@ class GraphSpecTests(unittest.TestCase):
         compiled = topology(
             (
                 lambda: __import__(
-                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    "tests.concorde.support.sample_graph",
                     fromlist=["build_batch_graph"],
                 ).build_batch_graph(
                     lambda name: lambda state: {},
@@ -324,7 +324,7 @@ class GraphSpecTests(unittest.TestCase):
         limited = {
             "batch_graph": (
                 lambda: __import__(
-                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    "tests.concorde.support.sample_graph",
                     fromlist=["build_batch_graph"],
                 ).build_batch_graph(
                     lambda name: lambda state: {},

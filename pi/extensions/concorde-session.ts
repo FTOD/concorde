@@ -135,24 +135,6 @@ function interpreter(
   return process.platform === "win32" ? "python" : "python3";
 }
 
-function usageLine(stderr: string): string | null {
-  for (const line of stderr.split("\n")) {
-    if (!line.startsWith('{"usage":')) continue;
-    try {
-      const total = JSON.parse(line).usage?.total ?? {};
-      const figure = (key: string) =>
-        typeof total[key] === "number" ? total[key] : "?";
-      return (
-        `usage: input ${figure("input_tokens")}, output ${figure("output_tokens")}, ` +
-        `cost ${figure("cost_usd")} USD, ${figure("wall_seconds")} s`
-      );
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
 interface LauncherRun {
   code: number | null;
   stdout: string;
@@ -251,8 +233,7 @@ function launcherFailure(run: LauncherRun, operation: string) {
   const error = executionError(feedback);
   error.message =
     (run.aborted ? `${operation} was cancelled\n` : "") +
-    errorDisplay(response ? { ...response, failure: feedback } : feedback) +
-    (usageLine(run.stderr) ? `\n${usageLine(run.stderr)}` : "");
+    errorDisplay(response ? { ...response, failure: feedback } : feedback);
   return error;
 }
 
@@ -569,7 +550,6 @@ export function concordeSession(
           finishLauncher(signal?.aborted ? "cancelled" : "error");
           throw error;
         }
-        const usage = usageLine(run.stderr);
         let response: any;
         try {
           response = JSON.parse(run.stdout);
@@ -585,9 +565,7 @@ export function concordeSession(
           content: [
             {
               type: "text",
-              text:
-                bounded(run.stdout.trim(), operation.name) +
-                (usage ? `\n${usage}` : ""),
+              text: bounded(run.stdout.trim(), operation.name),
             },
           ],
           details: {

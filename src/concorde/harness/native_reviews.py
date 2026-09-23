@@ -143,7 +143,7 @@ def _failure(run, scope, error):
             replace(run.host, coordinated=True),
         )
         info, _ = inputs(child, scope["mode"])
-        outputs.append(_failed_review(child, info, None, error)["data"])
+        outputs.append(_failed_review(child, info, error)["data"])
     return aggregate_scope(
         run, scope["mode"], scope["components"], scope["scope_identity"], outputs
     )

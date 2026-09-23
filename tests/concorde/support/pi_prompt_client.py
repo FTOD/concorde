@@ -1,29 +1,39 @@
-"""A strict JSONL client for one Pi process in RPC mode.
+"""A minimal JSONL client that drives one real or fake Pi process in RPC mode from a test.
 
 Pi's RPC mode reads commands from stdin and writes responses and events to stdout, one JSON object
 per LF-terminated record. Records are split on ``\\n`` only (never on other Unicode line
 separators, which may occur inside JSON strings) and an optional trailing ``\\r`` is dropped.
 
 ``run_prompt`` sends one ``prompt`` command, collects every event until ``agent_settled``, reads
-the session statistics and ends the process. It knows nothing about Concorde contracts: the caller
-interprets the collected tool results.
+the session statistics and ends the process. Concorde itself no longer launches Pi this way; the
+tests use it only to observe how Pi loads the extensions and roles Concorde installs.
 """
 
 from __future__ import annotations
 
+import glob
 import json
+import os
 import queue
+import shutil
 import subprocess
 import threading
 from dataclasses import dataclass, field
 from time import monotonic
 from typing import Any, Mapping, Sequence
 
-from .timing import Span, observe_pi_event, timed
+
+def installed_pi() -> str | None:
+    """The pi executable on PATH, or a Node version manager installation of it."""
+    found = shutil.which("pi")
+    if found:
+        return found
+    candidates = sorted(glob.glob(os.path.expanduser("~/.nvm/versions/node/*/bin/pi")))
+    return candidates[-1] if candidates else None
 
 
 class PiRpcError(RuntimeError):
-    """A safe failure summary with the completed run retained for host-only diagnostics."""
+    """A failed run, with what the process reported retained for assertions."""
 
     def __init__(self, message: str, run: PiRun | None = None):
         super().__init__(message)
@@ -34,20 +44,13 @@ class PiRpcTimeout(PiRpcError):
     """The run did not settle before its deadline; the process has been killed."""
 
 
-class PiRpcCancelled(PiRpcError):
-    """The host interrupted the run; the process has been killed."""
-
-
 @dataclass
 class PiRun:
     events: list[dict[str, Any]] = field(default_factory=list)
     tool_results: list[dict[str, Any]] = field(default_factory=list)
     stats: dict[str, Any] | None = None
     stderr: str = ""
-    stderr_bytes: int | None = None
-    stderr_complete: bool = True
     exit_code: int | None = None
-    wall_seconds: float = 0.0
 
     def results_of(self, tool_name: str) -> list[dict[str, Any]]:
         return [item for item in self.tool_results if item.get("toolName") == tool_name]
@@ -56,7 +59,8 @@ class PiRun:
 _DIALOG_METHODS = frozenset({"select", "confirm", "input", "editor"})
 
 
-def _records(stream, sink: queue.Queue) -> None:
+def read_records(stream, sink: queue.Queue) -> None:
+    """Split a byte stream into LF-terminated records and put them on ``sink``."""
     buffer = b""
     try:
         while True:
@@ -75,7 +79,6 @@ def _records(stream, sink: queue.Queue) -> None:
         sink.put(("eof", None))
 
 
-@timed("pi.rpc_total")
 def run_prompt(
     argv: Sequence[str],
     *,
@@ -83,41 +86,28 @@ def run_prompt(
     env: Mapping[str, str],
     message: str,
     timeout: float,
-    popen=None,
 ) -> PiRun:
-    """Run one prompt to settlement and return everything the process reported.
-
-    ``popen`` is the injectable process seam; ``None`` resolves ``subprocess.Popen`` at call
-    time, so whatever is bound when the prompt runs is used, not what was bound at import.
-    """
-    if popen is None:
-        popen = subprocess.Popen
-    started = monotonic()
-    deadline = started + timeout
-    with Span("pi.process_start"):
-        process = popen(
-            list(argv),
-            cwd=cwd,
-            env=dict(env),
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            bufsize=0,
-        )
-    intervals = {}
+    """Run one prompt to settlement and return everything the process reported."""
+    deadline = monotonic() + timeout
+    process = subprocess.Popen(
+        list(argv),
+        cwd=cwd,
+        env=dict(env),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=0,
+    )
     records: queue.Queue = queue.Queue()
     stderr_tail = bytearray()
-    stderr_bytes = 0
 
     def read_stderr() -> None:
-        nonlocal stderr_bytes
         while chunk := process.stderr.read(65536):
-            stderr_bytes += len(chunk)
             stderr_tail.extend(chunk)
             del stderr_tail[:-20000]
 
     threading.Thread(
-        target=_records, args=(process.stdout, records), daemon=True
+        target=read_records, args=(process.stdout, records), daemon=True
     ).start()
     stderr_reader = threading.Thread(target=read_stderr, daemon=True)
     stderr_reader.start()
@@ -142,15 +132,7 @@ def run_prompt(
             except OSError:
                 pass
         run.stderr = bytes(stderr_tail).decode("utf-8", "replace")
-        run.stderr_bytes = stderr_bytes
-        run.stderr_complete = not stderr_reader.is_alive() and stderr_bytes <= len(
-            stderr_tail
-        )
         run.exit_code = process.returncode
-        run.wall_seconds = monotonic() - started
-        for span in intervals.values():
-            span.finish("incomplete")
-        intervals.clear()
         return run
 
     def next_record() -> dict[str, Any]:
@@ -162,8 +144,6 @@ def run_prompt(
         except queue.Empty as error:
             raise PiRpcTimeout(f"Pi run did not settle within {timeout}s") from error
         if kind == "eof":
-            # EOF can precede process reaping. Keep a natural startup exit status when
-            # available, but never wait indefinitely for a process that only closed stdout.
             try:
                 process.wait(timeout=max(0.0, min(0.1, deadline - monotonic())))
             except subprocess.TimeoutExpired:
@@ -192,9 +172,8 @@ def run_prompt(
     def observe(record: dict[str, Any]) -> None:
         nonlocal settled
         kind = record.get("type")
-        observe_pi_event(record, intervals)
         if kind == "extension_ui_request" and record.get("method") in _DIALOG_METHODS:
-            # A worker has no human at the other end: every dialog is answered as cancelled.
+            # No human is at the other end: every dialog is answered as cancelled.
             send(
                 {
                     "type": "extension_ui_response",
@@ -211,8 +190,7 @@ def run_prompt(
 
     try:
         send({"id": "prompt", "type": "prompt", "message": message})
-        with Span("pi.rpc_accept", context_bytes=len(message.encode("utf-8"))):
-            await_response("prompt")
+        await_response("prompt")
         while not settled:
             observe(next_record())
         send({"id": "stats", "type": "get_session_stats"})
@@ -222,9 +200,6 @@ def run_prompt(
             process.wait(timeout=max(0.1, min(10.0, deadline - monotonic())))
         except subprocess.TimeoutExpired:
             stop()
-    except KeyboardInterrupt as error:
-        stop()
-        raise PiRpcCancelled("Pi run cancelled by the host", run=finish()) from error
     except PiRpcError as error:
         stop()
         error.run = finish()

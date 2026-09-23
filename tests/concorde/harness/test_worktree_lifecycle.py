@@ -20,14 +20,13 @@ from concorde.harness.change_worktree import (
     read_change,
 )
 from tests.concorde.support.environment import child_environment
-from tests.concorde.support.native_planning import OperationHost
+from concorde.harness.host import OperationHost
 from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
     CONFIGURATION,
     PACKAGE,
-    ModelProcessDouble,
     project,
 )
 
@@ -66,32 +65,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         git(root, "commit", "-qm", message)
         return git_value(root, "rev-parse", "HEAD")
 
-    def call_operation(
-        self, root, name, data, callback=None, *, host=None, mode="execute"
-    ):
-        double = ModelProcessDouble(callback)
-        self.last_double = double
-        host = host or OperationHost(root, PACKAGE, executor=double.executor, mode=mode)
+    def call_operation(self, root, name, data, *, host=None, mode="execute"):
+        host = host or OperationHost(root, PACKAGE, mode=mode)
         return run_operation(
             name, CONFIGURATION, typed(name + "-request", data), host_context=host
         )
-
-    def ready(self, callback=None, task=None):
-        # Explicit caller-selected setup; no discovery, authoring or automatic child work.
-        selected = task or self.task
-        for operation in (
-            "concorde-plan",
-            "concorde-tasks",
-            "concorde-implement",
-            "concorde-validate",
-        ):
-            result = self.call_operation(self.change, operation, selected, callback)
-            self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"], result)
-        state = read_change(self.change, required=True)
-        self.assertEqual("ready", state["status"])
-        return state["change_id"]
 
     def ready_delivery(self):
         """A directly validated candidate for tests focused on Git delivery transactions."""
@@ -104,152 +82,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"], result)
         return read_change(self.change, required=True)["change_id"]
-
-    @verifies("scenario.harness.workspace-inventory")
-    def test_main_sees_primary_inventory_and_secondary_draft_identity(self):
-        result = self.call_operation(
-            self.change,
-            "concorde-context-solve",
-            {"target_id": "scope.bank", "task": "Explain transfer"},
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        observed = self.last_double.calls[0]["snapshot"]["workspace"]
-        self.assertEqual("change", observed["kind"])
-        self.assertEqual(str(self.primary), observed["primary_worktree"])
-        self.assertEqual("integration", observed["primary_branch"])
-        self.assertIsNotNone(observed["change_id"])
-        state = read_change(self.change, required=True)
-        text = (self.change / "AGENTS.md").read_text()
-        self.assertIn("initial working directory", text)
-        self.assertIn(str(self.primary), text)
-        self.assertEqual(1, text.count(GUIDANCE_START))
-        self.assertEqual({"AGENTS.md": {"created": False}}, state["guidance"])
-        self.assertFalse((self.change / "CLAUDE.md").exists())
-        unmanaged = self.directory / "unmanaged"
-        git(self.primary, "worktree", "add", "-b", "another-change", str(unmanaged))
-        result = self.call_operation(
-            self.primary,
-            "concorde-context-solve",
-            {"target_id": "scope.bank", "task": "Explain transfer"},
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        workspace = self.last_double.calls[0]["snapshot"]["workspace"]
-        self.assertEqual("primary", workspace["kind"])
-        self.assertEqual(
-            {"candidate", "another-change"},
-            {x["branch"] for x in workspace["active_worktrees"]},
-        )
-        managed = next(
-            x for x in workspace["active_worktrees"] if x["branch"] == "candidate"
-        )
-        self.assertEqual(state["change_id"], managed["change_id"])
-        self.assertTrue(managed["managed"])
-        self.assertEqual(
-            (state["phase"], state["status"]), (managed["phase"], managed["status"])
-        )
-        other = next(
-            x for x in workspace["active_worktrees"] if x["branch"] == "another-change"
-        )
-        self.assertEqual(
-            (False, "unmanaged", None),
-            (other["managed"], other["status"], other["change_id"]),
-        )
-        self.assertEqual(
-            state["change_id"], read_change(self.change, required=True)["change_id"]
-        )
-        self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
-
-    @verifies("scenario.harness.invocation-worktree-binding")
-    def test_invocation_binds_to_the_worktree_at_its_working_directory(self):
-        marker = "DRAFT_PROMISE_ONLY_IN_CANDIDATE"
-        entry = self.change / "specs/bank/module.md"
-        entry.write_text(entry.read_text() + f"\n{marker}\n")
-        result = self.call_operation(
-            self.change,
-            "concorde-context-solve",
-            {"target_id": "scope.bank", "task": "Explain transfer"},
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        candidate = self.last_double.calls[0]["snapshot"]
-        self.assertEqual("change", candidate["workspace"]["kind"])
-        self.assertEqual(str(self.change), candidate["workspace"]["current_worktree"])
-        # The index carries the candidate document's digest; the double verified the granted copy.
-        from concorde.spec.repository import digest as digest_bytes
-
-        candidate_bank = next(
-            d
-            for d in candidate["spec_resolution"]["sources"]
-            if d["path"] == "specs/bank/module.md"
-        )
-        self.assertEqual(digest_bytes(entry.read_bytes()), candidate_bank["digest"])
-        self.assertNotIn(marker, json.dumps(candidate))
-        result = self.call_operation(
-            self.primary,
-            "concorde-context-solve",
-            {"target_id": "scope.bank", "task": "Explain transfer"},
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        primary = self.last_double.calls[0]["snapshot"]
-        self.assertEqual("primary", primary["workspace"]["kind"])
-        self.assertEqual(str(self.primary), primary["workspace"]["current_worktree"])
-        primary_bank = next(
-            d
-            for d in primary["spec_resolution"]["sources"]
-            if d["path"] == "specs/bank/module.md"
-        )
-        self.assertEqual(
-            digest_bytes((self.primary / "specs/bank/module.md").read_bytes()),
-            primary_bank["digest"],
-        )
-        self.assertNotEqual(candidate_bank["digest"], primary_bank["digest"])
-        result = self.call_operation(
-            self.primary / "app",
-            "concorde-context-solve",
-            {"target_id": "scope.bank", "task": "Explain transfer"},
-        )
-        self.assertNotEqual("succeeded", result["status"], result)
-        self.assertEqual(
-            ["workspace_mismatch"], [error["code"] for error in result["errors"]]
-        )
-        self.assertEqual([], self.last_double.calls)
-        unversioned = self.directory / "unversioned"
-        unversioned.mkdir()
-        project(unversioned)
-        result = self.call_operation(
-            unversioned,
-            "concorde-context-solve",
-            {"target_id": "scope.bank", "task": "Explain transfer"},
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(
-            "unversioned", self.last_double.calls[0]["snapshot"]["workspace"]["kind"]
-        )
-
-    def test_failed_delivery_preserves_visible_unresolved_task_gaps(self):
-        def missing(stage, snapshot, data, cwd):
-            if stage == "plan":
-                data.update(
-                    outcome="spec_incomplete",
-                    blockers=[
-                        {
-                            "question": "Who owns transfer admission?",
-                            "blocked_step": "Plan admission",
-                            "needed_contract": "Transfer admission owner",
-                        }
-                    ],
-                )
-
-        blocked = self.call_operation(self.change, "concorde-plan", self.task, missing)
-        self.assertEqual("blocked", blocked["status"], blocked)
-        before = read_change(self.change, required=True)
-        rejected = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": before["change_id"]}
-        )
-        self.assertEqual("blocked", rejected["status"], rejected)
-        after = read_change(self.change, required=True)
-        self.assertEqual(before["issue_blockers"], after["issue_blockers"])
-        self.assertEqual(before["blockers"], after["blockers"])
-        self.assertTrue(after["blockers"])
 
     @verifies("scenario.harness.worktree-guidance")
     def test_new_guidance_preserves_existing_client_content_bytes_and_modes(self):
@@ -338,15 +170,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertFalse((self.change / "CLAUDE.md").exists())
         self.assertFalse(self.state_file().exists())
 
-    def relay_in_process(self, callback=None):
-        """A trusted relay running the candidate in this process with the same worker double."""
+    def relay_in_process(self):
+        """A trusted relay running the candidate in this process."""
         self.relayed = []
 
         def relay(host, operation, invocation, candidate):
-            double = ModelProcessDouble(callback)
-            inner = OperationHost(
-                candidate, PACKAGE, executor=double.executor, mode=invocation["mode"]
-            )
+            inner = OperationHost(candidate, PACKAGE, mode=invocation["mode"])
             result = run_operation(
                 operation, CONFIGURATION, invocation["input"], host_context=inner
             )
@@ -355,7 +184,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     "operation": operation,
                     "invocation": invocation,
                     "candidate": candidate,
-                    "calls": double.calls,
                     "result": result,
                 }
             )
@@ -364,55 +192,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
         return relay
 
     def primary_host(self, relay):
-        self.outer_double = ModelProcessDouble()
-        return OperationHost(
-            self.primary, PACKAGE, executor=self.outer_double.executor, relay=relay
-        )
+        return OperationHost(self.primary, PACKAGE, relay=relay)
 
     def remove_candidate(self, created):
         git(self.primary, "worktree", "remove", "--force", str(created))
         created.parent.rmdir()
-
-    @verifies("scenario.harness.worktree-relay")
-    def test_primary_mutation_runs_in_a_host_created_candidate(self):
-        result = self.call_operation(
-            self.primary,
-            "concorde-plan",
-            self.task,
-            host=self.primary_host(self.relay_in_process()),
-        )
-        [relayed] = self.relayed
-        created = relayed["candidate"]
-        self.addCleanup(self.remove_candidate, created)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("completed", result["output"]["data"]["outcome"], result)
-        self.assertEqual(str(created), result["workspace"]["path"], result)
-        self.assertEqual(str(self.primary), result["workspace"]["primary_worktree"])
-        self.assertEqual("concorde-plan", relayed["operation"])
-        invocation = relayed["invocation"]
-        self.assertEqual(
-            ("concorde-operation-invocation", 3, "concorde-plan", "execute", None),
-            (
-                invocation["type_id"],
-                invocation["schema_version"],
-                invocation["operation_id"],
-                invocation["mode"],
-                invocation["configuration"],
-            ),
-        )
-        state = read_change(created, required=True)
-        self.assertEqual(state["change_id"], invocation["input"]["data"]["change_id"])
-        self.assertEqual(state["change_id"], result["workspace"]["change_id"])
-        self.assertEqual(self.task["task"], invocation["input"]["data"]["task"])
-        self.assertEqual("active", state["status"])
-        # No agent ran in the primary worktree and nothing was recorded there.
-        self.assertEqual([], self.outer_double.calls)
-        self.assertTrue(relayed["calls"])
-        self.assertEqual(
-            "# TRANSFER_IMPLEMENTATION_CODE\ndef transfer(balance, amount):\n    return balance\n",
-            (self.primary / "app/transfer.py").read_text(),
-        )
-        self.assertEqual(result, json.loads(json.dumps(result)))
 
     @verifies("scenario.harness.worktree-relay")
     def test_primary_mutation_with_an_unknown_change_id_is_refused(self):
@@ -503,216 +287,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual([], self.relayed)
         self.assertFalse((self.primary / ".concorde/status").exists())
 
-    @verifies(
-        "scenario.harness.change-owner",
-        "scenario.harness.worktree-relay",
-    )
-    def test_primary_resume_by_change_id_relays_into_the_recorded_candidate(self):
-        task = {
-            "task": self.task["task"],
-            "constraints": ["Keep the API"],
-            "target_id": self.task["target_id"],
-        }
-        prepared = []
-
-        def prepare_only(host, operation, invocation, candidate, prepared=prepared):
-            # An interrupted first run: the candidate exists and records the
-            # change, but nothing was routed or executed in it.
-            prepared.append(candidate)
-            return {
-                "type_id": "concorde-operation-result",
-                "schema_version": 3,
-                "operation_id": operation,
-                "invocation_id": "relay-interrupted",
-                "mode": "execute",
-                "status": "failed",
-                "workspace": None,
-                "output": None,
-                "errors": [
-                    {
-                        "code": "execution_cancelled",
-                        "field": "",
-                        "message": "interrupted",
-                    }
-                ],
-            }, ""
-
-        initial = self.call_operation(
-            self.primary,
-            "concorde-plan",
-            task,
-            host=self.primary_host(prepare_only),
-        )
-        self.assertEqual("failed", initial["status"], initial)
-        self.assertEqual("execution_cancelled", initial["errors"][0]["code"])
-        [created] = prepared
-        try:
-            state = read_change(created, required=True)
-            self.assertIsNone(state["target_id"])
-            self.assertEqual({}, state["targets"])
-            resumed = self.call_operation(
-                self.primary,
-                "concorde-plan",
-                {**task, "change_id": state["change_id"]},
-                host=self.primary_host(self.relay_in_process()),
-            )
-            [relayed] = self.relayed
-            self.assertEqual(created, relayed["candidate"])
-            self.assertEqual("succeeded", resumed["status"], resumed)
-            self.assertEqual("completed", resumed["output"]["data"]["outcome"])
-            stages = [call["stage"] for call in relayed["calls"]]
-            self.assertEqual(["context-solve", "plan"], stages)
-            owner = read_change(created, required=True)
-            self.assertEqual("service.transfer", owner["target_id"])
-            self.assertEqual(task["task"], owner["task"])
-            self.assertEqual(task["constraints"], owner["constraints"])
-        finally:
-            git(self.primary, "worktree", "remove", "--force", str(created))
-            created.parent.rmdir()
-
-    @verifies("scenario.harness.change-owner")
-    def test_bound_resume_restores_focus_and_constraints_and_rejects_conflicts(self):
-        task = {
-            **self.task,
-            "constraints": ["Keep API"],
-            "focus_id": "scenario.transfer.debit",
-        }
-        change_id = self.ready(task=task)
-        resumed_task = {
-            "target_id": task["target_id"],
-            "change_id": change_id,
-            "task": task["task"],
-        }
-        result = self.call_operation(self.change, "concorde-plan", resumed_task)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertNotIn("route", [call["stage"] for call in self.last_double.calls])
-        self.assertEqual(task["focus_id"], result["output"]["data"]["focus_id"])
-        for field, value in (
-            ("target_id", "module.ledger"),
-            ("task", "Different task"),
-            ("constraints", []),
-            ("focus_id", "scenario.transfer.reject"),
-        ):
-            with self.subTest(field=field):
-                before = self.state_file().read_bytes()
-                result = self.call_operation(
-                    self.change, "concorde-plan", {**resumed_task, field: value}
-                )
-                self.assertEqual("blocked", result["status"], result)
-                self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
-                self.assertEqual(field, result["errors"][0]["field"])
-                self.assertEqual([], self.last_double.calls)
-                self.assertEqual(before, self.state_file().read_bytes())
-
-    @verifies("scenario.harness.change-owner")
-    def test_unbound_resume_retains_explicit_selection_and_refuses_changed_intent(self):
-        task = {
-            **self.task,
-            "constraints": ["Keep API"],
-            "focus_id": "scenario.transfer.debit",
-        }
-        state = change_worktree.ensure_change(self.change, task=task)
-        for field, value in (
-            ("task", "Different task"),
-            ("constraints", []),
-            ("focus_id", "scenario.transfer.reject"),
-        ):
-            with self.subTest(field=field):
-                before = self.state_file().read_bytes()
-                result = self.call_operation(
-                    self.change,
-                    "concorde-plan",
-                    {**task, "change_id": state["change_id"], field: value},
-                )
-                self.assertEqual(
-                    "incompatible_handoff", result["errors"][0]["code"], result
-                )
-                self.assertEqual([], self.last_double.calls)
-                self.assertEqual(before, self.state_file().read_bytes())
-        result = self.call_operation(
-            self.change,
-            "concorde-plan",
-            {
-                "target_id": task["target_id"],
-                "task": task["task"],
-                "change_id": state["change_id"],
-            },
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(
-            [],
-            [
-                call["stage"]
-                for call in self.last_double.calls
-                if call["stage"] == "route"
-            ],
-        )
-        self.assertEqual(task["focus_id"], result["output"]["data"]["focus_id"])
-
-    @verifies("scenario.harness.change-owner")
-    def test_resume_rejects_missing_wrong_and_malformed_worktree_state(self):
-        task = {
-            "target_id": self.task["target_id"],
-            "task": self.task["task"],
-            "change_id": "change.absent",
-        }
-        result = self.call_operation(self.change, "concorde-plan", task)
-        self.assertEqual("missing_change", result["errors"][0]["code"], result)
-        self.assertFalse(self.state_file().exists())
-        state = change_worktree.ensure_change(self.change, task=self.task)
-        before = self.state_file().read_bytes()
-        result = self.call_operation(self.change, "concorde-plan", task)
-        self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
-        self.assertEqual(before, self.state_file().read_bytes())
-        # From the primary worktree the recorded change is relayed into its candidate.
-        result = self.call_operation(
-            self.primary,
-            "concorde-plan",
-            {**task, "change_id": state["change_id"]},
-            host=self.primary_host(self.relay_in_process()),
-        )
-        [relayed] = self.relayed
-        self.assertEqual(self.change.resolve(), Path(relayed["candidate"]).resolve())
-        self.assertEqual(
-            self.change.resolve(), Path(result["workspace"]["path"]).resolve(), result
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        for field, value, code in (
-            ("path", str(self.primary), "missing_change"),
-            ("primary_worktree", str(self.change), "workspace_mismatch"),
-            ("target_id", [], "invalid_worktree_state"),
-            ("target_id", "module.absent", "invalid_worktree_state"),
-            ("base_commit", 42, "invalid_worktree_state"),
-            ("constraints", None, "invalid_worktree_state"),
-            ("task", 42, "invalid_worktree_state"),
-            ("targets", {"service.transfer": {}}, "invalid_worktree_state"),
-        ):
-            with self.subTest(field=field, value=value):
-                corrupted = {**state, field: value}
-                self.state_file().write_text(json.dumps(corrupted))
-                damaged = self.state_file().read_bytes()
-                result = self.call_operation(
-                    self.change,
-                    "concorde-plan",
-                    {**task, "change_id": state["change_id"]},
-                )
-                self.assertEqual(code, result["errors"][0]["code"], result)
-                self.assertEqual([], self.last_double.calls)
-                self.assertEqual(damaged, self.state_file().read_bytes())
-        self.state_file().write_bytes(before)
-        for field in ("target_id", "task", "focus_id", "base_commit"):
-            with self.subTest(missing=field):
-                corrupted = {key: value for key, value in state.items() if key != field}
-                self.state_file().write_text(json.dumps(corrupted))
-                result = self.call_operation(
-                    self.change,
-                    "concorde-plan",
-                    {**task, "change_id": state["change_id"]},
-                )
-                self.assertEqual(
-                    "invalid_worktree_state", result["errors"][0]["code"], result
-                )
-
     @verifies("scenario.harness.change-owner")
     def test_owner_binding_missing_fields_returns_structured_error(self):
         from concorde.spec.repository import SpecError
@@ -726,41 +300,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
             self.assertEqual("invalid_input", caught.exception.code)
             self.assertEqual(field, caught.exception.field)
         self.assertIsNone(read_change(self.change, required=True)["target_id"])
-
-    @verifies("scenario.harness.change-owner")
-    def test_independent_component_review_keeps_root_owner_and_rejects_foreign_focus(
-        self,
-    ):
-        change_id = self.ready()
-        owner = read_change(self.change, required=True)
-        double = ModelProcessDouble()
-        host = OperationHost(
-            self.change,
-            PACKAGE,
-            executor=double.executor,
-        )
-        task = {
-            "target_id": "module.ledger",
-            "task": "Review the admitted ledger component",
-            "change_id": change_id,
-        }
-        result = self.call_operation(
-            self.change, "concorde-code-review", task, host=host
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertNotIn("route", [call["stage"] for call in double.calls])
-        current = read_change(self.change, required=True)
-        for field in ("target_id", "task", "constraints", "focus_id"):
-            self.assertEqual(owner[field], current[field])
-        double.calls.clear()
-        result = self.call_operation(
-            self.change,
-            "concorde-code-review",
-            {**task, "focus_id": "scenario.transfer.debit"},
-            host=host,
-        )
-        self.assertEqual("invalid_focus", result["errors"][0]["code"], result)
-        self.assertEqual([], double.calls)
 
     @verifies("scenario.harness.worktree-relay")
     def test_primary_relay_is_one_json_response_on_the_paired_cli(self):
@@ -803,44 +342,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         for line in process.stderr.splitlines():
             if line.strip():
                 json.loads(line)
-
-    def test_second_top_level_task_cannot_share_the_same_change_worktree(self):
-        self.ready()
-        result = self.call_operation(
-            self.change,
-            "concorde-plan",
-            {
-                "target_id": "module.ledger",
-                "task": "Implement an unrelated ledger change",
-            },
-        )
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
-        self.assertEqual("ready", read_change(self.change, required=True)["status"])
-
-    @verifies("scenario.delivery.branch", "scenario.concorde.deliver-stage")
-    def test_source_delivery_removes_active_worktree_and_retry_does_not_republish(self):
-        change_id = self.ready()
-        before = git_value(self.primary, "rev-parse", "HEAD")
-        result = self.call_operation(
-            self.change, "concorde-deliver", {"change_id": change_id}
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertFalse(self.change.exists())
-        branch = "concorde/delivered/" + change_id
-        delivered = git_value(self.primary, "rev-parse", branch)
-        with patch.object(
-            worktree_delivery,
-            "_verify_merged_tree",
-            side_effect=AssertionError("duplicate checks"),
-        ):
-            again = self.call_operation(
-                self.primary, "concorde-deliver", {"change_id": change_id}
-            )
-        self.assertEqual("succeeded", again["status"], again)
-        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertEqual(delivered, git_value(self.primary, "rev-parse", branch))
-        self.assertIn(branch, again["output"]["data"]["answer"])
 
     def declare_pending_files(self):
         """Declare two files the plan intends to create, before any of them exists."""
@@ -1214,168 +715,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         )
         self.assertFalse((self.primary / ".concorde/deliveries").exists())
 
-    @verifies("scenario.delivery.session-rejected")
-    def test_third_worktree_redirected_runtime_and_nested_delivery_are_rejected(self):
-        change_id = self.ready()
-        third = self.directory / "third"
-        git(self.primary, "worktree", "add", "-b", "unrelated", str(third))
-        third_package = third / ".concorde/framework"
-        third_package.mkdir(parents=True, exist_ok=True)
-        old_head = git_value(self.primary, "rev-parse", "HEAD")
-        hosts = [
-            OperationHost(third, PACKAGE),
-            OperationHost(self.primary, PACKAGE, session_root=third),
-            OperationHost(self.primary, third_package),
-            OperationHost(self.primary, PACKAGE, depth=1),
-        ]
-        for host in hosts:
-            with self.subTest(
-                root=host.project_root, origin=host.session_root, depth=host.depth
-            ):
-                result = self.call_operation(
-                    host.project_root,
-                    "concorde-deliver",
-                    {"change_id": change_id},
-                    host=host,
-                )
-                # A foreign installed Framework now fails at common local-install admission,
-                # before delivery's distinct participating-session gate. Neither permits effects.
-                expected = (
-                    "local_installation_required"
-                    if host.package_root == third_package
-                    else "delivery_session_required"
-                )
-                self.assertEqual(expected, result["errors"][0]["code"], result)
-                self.assertEqual("blocked", result["status"], result)
-        self.assertEqual(old_head, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertTrue(self.change.exists())
-
-    @verifies("scenario.delivery.branch")
-    def test_primary_delivery_can_explicitly_retain_source(self):
-        change_id = self.ready()
-        result = self.call_operation(
-            self.primary,
-            "concorde-deliver",
-            {"change_id": change_id, "keep_worktree": True},
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertTrue(self.change.exists())
-        self.assertEqual("delivered", read_change(self.change, required=True)["status"])
-
-    @verifies(
-        "scenario.delivery.branch",
-        "scenario.delivery.merge-primary",
-        "scenario.harness.execute-operation",
-    )
-    def test_paired_cli_delivers_from_source_and_primary_can_clean_up(self):
-        change_id = self.ready()
-        invocation = {
-            "type_id": "concorde-operation-invocation",
-            "schema_version": 3,
-            "operation_id": "concorde-deliver",
-            "mode": "execute",
-            "configuration": None,
-            "input": typed("concorde-deliver-request", {"change_id": change_id}),
-        }
-        command = [
-            sys.executable,
-            str(PACKAGE / "scripts/run-operation.py"),
-            "concorde-deliver",
-        ]
-        secondary = subprocess.run(
-            command,
-            input=json.dumps(invocation),
-            capture_output=True,
-            text=True,
-            cwd=self.change,
-        )
-        self.assertEqual(0, secondary.returncode, secondary.stdout + secondary.stderr)
-        self.assertEqual(
-            "delivered", json.loads(secondary.stdout)["output"]["data"]["outcome"]
-        )
-        self.assertFalse(self.change.exists())
-        invocation["input"]["data"]["merge_primary"] = True
-        primary = subprocess.run(
-            command,
-            input=json.dumps(invocation),
-            capture_output=True,
-            text=True,
-            cwd=self.primary,
-        )
-        self.assertEqual(0, primary.returncode, primary.stdout + primary.stderr)
-        self.assertEqual(
-            "delivered", json.loads(primary.stdout)["output"]["data"]["outcome"]
-        )
-        self.assertFalse(self.change.exists())
-
-    @verifies("scenario.delivery.branch")
-    def test_primary_delivery_stages_separate_branch_and_removes_only_transient_guidance(
-        self,
-    ):
-        original = (self.primary / "AGENTS.md").read_text()
-        self.call_operation(
-            self.change,
-            "concorde-context-solve",
-            {"target_id": "scope.bank", "task": "Explain transfer"},
-        )
-        path = self.change / "AGENTS.md"
-        path.write_text(path.read_text() + "\nA deliberately authored convention.\n")
-        change_id = self.ready()
-        result = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": change_id}
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("delivered", result["output"]["data"]["outcome"])
-        self.assertEqual(
-            "integration", git_value(self.primary, "branch", "--show-current")
-        )
-        self.assertFalse(self.change.exists())
-        self.assertEqual(original, (self.primary / "AGENTS.md").read_text())
-        delivered_branch = "concorde/delivered/" + change_id
-        self.assertEqual(
-            original + "\nA deliberately authored convention.\n",
-            git(self.primary, "show", delivered_branch + ":AGENTS.md").stdout,
-        )
-        self.assertFalse((self.primary / "CLAUDE.md").exists())
-        self.assertEqual(
-            [],
-            change_worktree.refresh_registry(self.primary, persist=False)["worktrees"],
-        )
-        self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
-        tracked = git_value(
-            self.primary, "ls-tree", "-r", "--name-only", delivered_branch
-        )
-        self.assertNotIn(".concorde/work/", tracked)
-        self.assertNotIn(".concorde/runs/", tracked)
-        receipt = json.loads(
-            (
-                self.primary / result["output"]["data"]["artifacts"][0]["path"]
-            ).read_text()
-        )["delivery"]
-        self.assertEqual(delivered_branch, receipt["target_branch"])
-        self.assertEqual("integration", receipt["primary_branch"])
-        self.assertIsNone(receipt["primary_merge"])
-        self.assertEqual("delivered", receipt["status"])
-        self.assertTrue(all(c["status"] == "passed" for c in receipt["checks"]))
-
-    @verifies("scenario.harness.describe-policy")
-    def test_delivery_preview_does_not_merge_or_change_state(self):
-        change_id = self.ready()
-        primary_head = git_value(self.primary, "rev-parse", "HEAD")
-        source_head = git_value(self.change, "rev-parse", "HEAD")
-        before = self.state_file().read_bytes()
-        result = self.call_operation(
-            self.primary,
-            "concorde-deliver",
-            {"change_id": change_id},
-            mode="describe-policy",
-        )
-        self.assertEqual("described", result["status"], result)
-        self.assertEqual(primary_head, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertEqual(source_head, git_value(self.change, "rev-parse", "HEAD"))
-        self.assertEqual(before, self.state_file().read_bytes())
-        self.assertEqual([], self.last_double.calls)
-
     @verifies(
         "scenario.validation.ready",
         "scenario.delivery.branch",
@@ -1411,96 +750,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
             ),
         )
         self.assertFalse(self.change.exists())
-
-    @verifies("scenario.validation.blocked")
-    def test_validation_does_not_bypass_an_unfinished_authored_plan(self):
-        result = self.call_operation(self.change, "concorde-plan", self.task)
-        self.assertEqual("succeeded", result["status"], result)
-        state = read_change(self.change, required=True)
-        result = self.call_operation(
-            self.change,
-            "concorde-validate",
-            {**self.task, "change_id": state["change_id"]},
-        )
-        self.assertNotEqual("ready", result["output"]["data"]["outcome"])
-        result = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": state["change_id"]}
-        )
-        self.assertEqual("incomplete_change", result["errors"][0]["code"], result)
-
-    def test_stale_candidate_and_dirty_primary_are_preserved(self):
-        change_id = self.ready()
-        (self.change / "late.txt").write_text("Unverified candidate work\n")
-        before = git_value(self.primary, "rev-parse", "HEAD")
-        result = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": change_id}
-        )
-        self.assertEqual("stale_evidence", result["errors"][0]["code"], result)
-        self.assertTrue((self.change / "late.txt").exists())
-        (self.change / "late.txt").unlink()
-        (self.primary / "local.txt").write_text("Primary user work\n")
-        (self.primary / "shared.txt").write_text("Staged primary work\n")
-        git(self.primary, "add", "shared.txt")
-        index_before = git_value(self.primary, "diff", "--cached", "--binary")
-        result = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": change_id}
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        result = self.call_operation(
-            self.primary,
-            "concorde-deliver",
-            {"change_id": change_id, "merge_primary": True},
-        )
-        self.assertEqual("dirty_primary", result["errors"][0]["code"], result)
-        self.assertEqual(
-            "Primary user work\n", (self.primary / "local.txt").read_text()
-        )
-        self.assertEqual(
-            "Staged primary work\n", (self.primary / "shared.txt").read_text()
-        )
-        self.assertEqual(
-            index_before, git_value(self.primary, "diff", "--cached", "--binary")
-        )
-        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertFalse(self.change.exists())
-
-    @verifies("scenario.delivery.branch")
-    def test_primary_can_advance_before_a_clean_verified_merge(self):
-        change_id = self.ready()
-        # Every version-controlled file is bound; the Workspace Module binds AGENTS.md.
-        (self.primary / "AGENTS.md").write_text("Accepted independent change\n")
-        advanced = self.commit(self.primary, "Independent accepted change")
-        result = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": change_id}
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(
-            "Accepted independent change\n", (self.primary / "AGENTS.md").read_text()
-        )
-        self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertEqual(
-            advanced,
-            git_value(
-                self.primary, "rev-parse", "concorde/delivered/" + change_id + "^1"
-            ),
-        )
-
-    @verifies("scenario.delivery.conflict")
-    def test_merge_conflict_does_not_change_primary_or_discard_candidate(self):
-        (self.change / "shared.txt").write_text("candidate\n")
-        change_id = self.ready()
-        (self.primary / "shared.txt").write_text("accepted\n")
-        advanced = self.commit(self.primary, "Conflicting accepted change")
-        result = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": change_id}
-        )
-        self.assertEqual("merge_conflict", result["errors"][0]["code"], result)
-        self.assertEqual("blocked", read_change(self.change, required=True)["status"])
-        self.assertEqual(
-            "merge_conflict", read_change(self.change, required=True)["outcome"]
-        )
-        self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertEqual("candidate\n", (self.change / "shared.txt").read_text())
 
     def test_self_hosted_integration_builds_its_exact_checkout_before_validation(self):
         from concorde.distribution.build import verify_fresh
@@ -1575,91 +824,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertTrue(checks)
         self.assertTrue(all(check["status"] == "passed" for check in checks))
         self.assertFalse((self.primary / "generated").exists())
-
-    @verifies("scenario.delivery.conflict")
-    def test_actual_integration_checks_run_after_primary_advances(self):
-        change_id = self.ready()
-        path = self.primary / "checks/transfer_check.py"
-        path.write_text(path.read_text() + "\nassert transfer(100, 20) == 40\n")
-        advanced = self.commit(self.primary, "Changed acceptance")
-        result = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": change_id}
-        )
-        self.assertEqual("failed_merge_checks", result["errors"][0]["code"], result)
-        self.assertEqual(
-            "failed_merge_checks", read_change(self.change, required=True)["outcome"]
-        )
-        self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertTrue(self.state_file().exists())
-
-    @verifies("scenario.delivery.branch", "scenario.delivery.retry")
-    def test_cleanup_failure_resumes_without_a_second_merge_or_check_run(self):
-        change_id = self.ready()
-        actual_git = worktree_delivery.git
-
-        def fail_cleanup(root, *args, **kwargs):
-            if args == ("worktree", "remove", "--force", str(self.change)):
-                return subprocess.CompletedProcess(
-                    args, 1, "", "fixture cleanup failure"
-                )
-            return actual_git(root, *args, **kwargs)
-
-        with patch.object(worktree_delivery, "git", side_effect=fail_cleanup):
-            result = self.call_operation(
-                self.primary, "concorde-deliver", {"change_id": change_id}
-            )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("delivered", result["output"]["data"]["outcome"])
-        self.assertEqual(
-            "pending", read_change(self.change, required=True)["cleanup"]["status"]
-        )
-        merged = git_value(self.primary, "rev-parse", "HEAD")
-        with patch.object(
-            worktree_delivery,
-            "_verify_merged_tree",
-            side_effect=AssertionError("duplicate verification"),
-        ):
-            result = self.call_operation(
-                self.primary, "concorde-deliver", {"change_id": change_id}
-            )
-            self.assertEqual("succeeded", result["status"], result)
-            repeated = self.call_operation(
-                self.primary, "concorde-deliver", {"change_id": change_id}
-            )
-            self.assertEqual("succeeded", repeated["status"], repeated)
-        self.assertEqual(merged, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertFalse(self.change.exists())
-
-    @verifies("scenario.delivery.branch")
-    def test_cleanup_can_finish_after_files_were_removed_but_git_registration_remains(
-        self,
-    ):
-        change_id = self.ready()
-        actual_git = worktree_delivery.git
-
-        def remove_files_then_fail(root, *args, **kwargs):
-            if args == ("worktree", "remove", "--force", str(self.change)):
-                shutil.rmtree(self.change)
-                return subprocess.CompletedProcess(
-                    args, 1, "", "fixture metadata cleanup failure"
-                )
-            return actual_git(root, *args, **kwargs)
-
-        with patch.object(worktree_delivery, "git", side_effect=remove_files_then_fail):
-            result = self.call_operation(
-                self.primary, "concorde-deliver", {"change_id": change_id}
-            )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("delivered", result["output"]["data"]["outcome"])
-        merged = git_value(self.primary, "rev-parse", "HEAD")
-        result = self.call_operation(
-            self.primary, "concorde-deliver", {"change_id": change_id}
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(merged, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertNotIn(
-            str(self.change), git_value(self.primary, "worktree", "list", "--porcelain")
-        )
 
 
 if __name__ == "__main__":

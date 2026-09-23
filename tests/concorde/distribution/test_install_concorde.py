@@ -523,7 +523,6 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn('".concorde/framework/scripts/run-operation.py"', shim)
         self.assertIn('"explicit_request_only": false', shim)
         self.assertIn(".concorde/framework/pi/extensions/concorde-session.ts", outputs)
-        self.assertIn(".concorde/framework/pi/extensions/concorde-worker.ts", outputs)
         self.assertEqual("protocol-guidance", outputs["AGENTS.md"][1])
         self.assertIn(b"Read and follow", outputs["AGENTS.md"][0])
 

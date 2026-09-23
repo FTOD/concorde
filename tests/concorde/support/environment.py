@@ -8,8 +8,7 @@ not inherit them: the private entry verifies a selection against its own workspa
 foreign one, and a terminal-worker policy refuses every Operation. Every test that derives a
 child environment from ``os.environ`` starts from :func:`scrub_selection`.
 
-This is a denylist on purpose. ``concorde.harness.harness.SAFE_ENVIRONMENT`` is the runtime's
-allowlist for terminal workers; fixtures still need PATH additions, package caches, wheelhouses,
+This is a denylist on purpose: fixtures still need PATH additions, package caches, wheelhouses,
 scratch directories and other test variables that an allowlist would drop.
 """
 

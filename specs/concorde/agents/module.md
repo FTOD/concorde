@@ -149,11 +149,6 @@ maintenance-worker its session tools, and the brief-lifecycle extension injects 
 brief once after Pi has actually compacted a source user session or maintenance-worker. The tester
 loads neither.
 
-**Open questions.** `prompts/workers/common.md` states rules for the diagnostic Pi RPC worker path
-(a `submit_result` tool), and the build keeps it as a checked prompt root, but no rendered
-instruction file currently includes it; whether any worker still receives it could not be
-determined.
-
 ## Relationships
 
 ```mermaid

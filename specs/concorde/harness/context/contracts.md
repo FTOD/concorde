@@ -132,24 +132,6 @@ requires the instruction source's digest to be recorded in `generated/build-mani
 rendered instructions `generated/agents/<hyphenated name>.md` to exist. The binding digest covers every other
 field of the binding.
 
-## Grant
-
-`compile_policy(effects, binding, role_paths, *, deny_paths=())` returns a frozen
-`NormalizedPolicy` with the bound operation, stage, occurrence, role and Agent, sorted
-`read_paths`, `write_paths` and `deny_paths`, `default_deny: true`, `network_enabled`,
-`credentials`, and a digest. The path roles that carry paths today are:
-
-| Role | Paths |
-| --- | --- |
-| `spec-context` | `context.json` and every `protocol` and `spec_resolution` path of the snapshot |
-| `implementation` | the Module's bound files, or its realization entries for a writer |
-| `references` | the external inclusion roots; may be absent when the Module declares none |
-
-A launch check additionally requires exactly one `context.json` and exactly the snapshot's listed
-files in `spec-context`, implementation grants inside the selected Module (and, for a read-only
-profile, inside the frozen files), and reference grants inside the snapshot's external inclusions.
-`.env`, `.aws`, `.config/gcloud`, `.npmrc`, `.pypirc` and `.ssh` are always denied.
-
 ## Revision identities
 
 `target_revision(repository, module)` digests the Module's registry record, the Protocol binding

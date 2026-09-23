@@ -12,7 +12,6 @@ from ..spec.repository import SpecError
 from ..spec.typed_data import canonical, decode
 from .admission import run_host_node
 from .host import OperationHost
-from .usage import read_usage, summarize_usage
 
 
 def validate_invocation(value: Any, operation: str | None = None) -> dict:
@@ -164,29 +163,5 @@ def json_main(package_root: Path, operation: str, runner) -> int:
         # Pre-host and invalid-mode failures retain the null pre-admission value.
         if host is not None and host.mode in {"execute", "describe-policy"}:
             result["mode"] = host.mode
-    if host and host.descriptions:
-        print(canonical({"policies": host.descriptions}), file=sys.stderr)
-    if host is not None and result.get("invocation_id"):
-        records = read_usage(
-            host.archive_root or host.project_root, result["invocation_id"]
-        )
-        if records:
-            summary = summarize_usage(records)
-            print(
-                canonical(
-                    {
-                        "usage": {
-                            "root_invocation_id": result["invocation_id"],
-                            "schema_version": summary["schema_version"],
-                            "complete": summary["complete"],
-                            "historical_records": summary["historical_records"],
-                            "unsupported_records": summary["unsupported_records"],
-                            "total": summary["total"],
-                            "by_step": summary["by_step"],
-                        }
-                    }
-                ),
-                file=sys.stderr,
-            )
     print(canonical(result))
     return 0 if result["status"] in {"succeeded", "described"} else 3

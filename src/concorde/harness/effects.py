@@ -1,9 +1,8 @@
-"""Shared effect-declaration vocabulary for roles and permission compilation.
+"""Shared effect-declaration vocabulary of Agent profiles.
 
 ``EffectDeclaration`` names the exact path roles one launchable agent identity may read or write,
 plus its network/credential posture. ``PATH_ROLES`` is the closed vocabulary those declarations draw
-from. This module has no dependency on the old package-loading machinery: it is pure data shared by
-``roles.py`` (role authority) and ``permissions.py`` (policy compilation).
+from. This module is pure data shared by the worker profiles and the build.
 """
 
 from __future__ import annotations

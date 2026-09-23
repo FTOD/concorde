@@ -4,7 +4,7 @@ A prompt is a Markdown file with YAML front matter declaring ``audience: worker 
 shared``. A prompt body may reference other prompts through an explicit ``@path.md`` reference
 that occupies a whole line starting at column one:
 
-    @prompts/workflow-host/gap-reporting.md
+    @prompts/workflow-host/lifecycle-no-cognition.md
     @prompts/workflow-host/invoke-operation-opener.md ACTION=validate
 
 Resolution is a pure function of the source tree: given a root (a role root prompt or an operation guidance

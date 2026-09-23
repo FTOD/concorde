@@ -25,8 +25,8 @@ Agent may correct it within the same run and deadline.
 
 ### req.execution.settling-not-completion — Ending a run is not completing it
 
-An Agent call or RPC diagnostic worker that ends without exactly one valid submitted result SHALL
-NOT be treated as completed.
+An Agent call that ends without exactly one valid submitted result SHALL NOT be treated as
+completed.
 
 ### req.execution.no-retry — No automatic retry
 
@@ -49,9 +49,8 @@ This bounds which tools exist; it does not bound which files those tools reach.
 
 An Agent SHALL NOT delegate a task, create a subagent or invoke a Concorde capability.
 
-For Agent calls this is enforced by the tool ceiling and preflight above; for the RPC diagnostic
-worker, by its tool gate. A shell command that starts another program is prohibited by the
-Agent's instructions only.
+For Agent calls this is enforced by the tool ceiling and preflight above. A shell command that
+starts another program is prohibited by the Agent's instructions only.
 
 ### req.execution.producer-pinned — Read only the reviewed native producer
 
@@ -90,25 +89,8 @@ through Runtime context or the graph factory, never through State.
 
 ### req.execution.diagnostics-passive — Diagnostics never change outcomes
 
-Recording usage or timing SHALL NOT change the outcome, the retry behaviour or the authority of the
+Recording timing SHALL NOT change the outcome, the retry behaviour or the authority of the
 work it describes.
 
 Values that were not reported are recorded as unknown, not zero. Records contain no prompts,
 source text, tool output, environment values or command arguments.
-
-## The RPC diagnostic worker
-
-### req.execution.rpc-sandbox — RPC workers run inside their sandbox
-
-Every RPC diagnostic worker launch SHALL run its Pi process inside the Linux sandbox derived from
-its grant, or not start at all.
-
-### req.execution.rpc-gate — RPC tool calls are gated
-
-Every tool call of an RPC diagnostic worker SHALL be checked against the launch's compiled grant
-before it executes.
-
-### req.execution.rpc-closed-inputs — RPC workers receive closed inputs
-
-An RPC diagnostic worker process SHALL receive only the allowlisted environment, its Host-built Pi
-configuration, its system prompt and its single typed context message.

@@ -26,11 +26,10 @@ from ..spec.typed_data import (
 )
 from .change_worktree import progress, read_change, resume_owner, workspace_identity
 from .configuration import load_configuration
-from .execution_error import error_entry
+from .execution_error import OperationExecutionError, error_entry
 from .host import OperationHost, resolve_child_operation
 from .relay import bind_worktree, verify_local_execution
 from .timing import timed, traced_operation
-from .worker_executor import OperationExecutionError
 from .worker_profile import ContractError
 
 

@@ -383,7 +383,7 @@
         {
           "kind": "external",
           "target": "reference/pi/",
-          "reason": "Pi RPC mode, extension API and session events used by Agent calls, the RPC diagnostic worker and passive observation"
+          "reason": "Pi extension API and session events used by Agent calls and passive observation"
         }
       ],
       "participates": []

@@ -91,7 +91,7 @@
       {
         "kind": "external",
         "target": "reference/pi/",
-        "reason": "Pi RPC mode, extension API and session events used by Agent calls, the RPC diagnostic worker and passive observation"
+        "reason": "Pi extension API and session events used by Agent calls and passive observation"
       }
     ],
     "participates": []
@@ -146,22 +146,10 @@
       "meaning": "#concept.execution.graph-spec"
     },
     {
-      "id": "concept.execution.usage-record",
-      "type": "concept",
-      "title": "Usage record",
-      "meaning": "#concept.execution.usage-record"
-    },
-    {
       "id": "concept.execution.diagnostic-span",
       "type": "concept",
       "title": "Diagnostic span",
       "meaning": "#concept.execution.diagnostic-span"
-    },
-    {
-      "id": "concept.execution.rpc-worker",
-      "type": "concept",
-      "title": "RPC diagnostic worker",
-      "meaning": "#concept.execution.rpc-worker"
     },
     {
       "id": "realization.execution.native-acceptance",
@@ -219,25 +207,9 @@
       "title": "Execution diagnostics",
       "meaning": "#realization.execution.diagnostics",
       "entries": [
-        "src/concorde/harness/usage.py",
         "src/concorde/harness/timing.py",
         "scripts/development/analyze-timing.py",
         "pi/extensions/concorde-observe.ts"
-      ]
-    },
-    {
-      "id": "realization.execution.rpc-worker",
-      "type": "realization",
-      "title": "RPC diagnostic worker path",
-      "meaning": "#realization.execution.rpc-worker",
-      "entries": [
-        "src/concorde/harness/launch.py",
-        "src/concorde/harness/worker_executor.py",
-        "src/concorde/harness/pi_worker.py",
-        "src/concorde/harness/pi_rpc.py",
-        "src/concorde/harness/worker_sandbox.py",
-        "pi/extensions/concorde-worker.ts",
-        "src/concorde/harness/harness.py"
       ]
     },
     {
@@ -261,7 +233,6 @@
         "tests/concorde/harness/run_issue_diagnostic.py",
         "tests/concorde/harness/structured_diagnostic.mjs",
         "tests/concorde/harness/test_graph_specs.py",
-        "tests/concorde/harness/test_installed_worker_runtime.py",
         "tests/concorde/harness/test_model_selection.py",
         "tests/concorde/harness/test_native_evidence.py",
         "tests/concorde/harness/test_native_observation.py",
@@ -273,31 +244,19 @@
         "tests/concorde/harness/test_native_runtime.py",
         "tests/concorde/harness/test_operation_node.py",
         "tests/concorde/harness/test_optional_operation.py",
-        "tests/concorde/harness/test_pi_worker.py",
-        "tests/concorde/harness/test_rpc_diagnostics.py",
-        "tests/concorde/harness/test_runtime_mounts.py",
         "tests/concorde/harness/test_structured_diagnostic.py",
         "tests/concorde/harness/test_terminal_workers.py",
         "tests/concorde/harness/test_timing.py",
-        "tests/concorde/harness/test_usage.py",
-        "tests/concorde/harness/test_worker_executor.py",
-        "tests/concorde/harness/test_worker_result_schema.py",
-        "tests/concorde/harness/test_worker_sandbox.py",
         "tests/concorde/operations/test_operation_modules.py",
         "tests/concorde/support/fake_openai_provider.py",
-        "tests/concorde/support/fake_pi_rpc.py",
-        "tests/concorde/support/installed_legacy_driver.py",
-        "tests/concorde/support/legacy_graphs/",
-        "tests/concorde/support/legacy_review.py",
-        "tests/concorde/support/legacy_stage.py",
         "tests/concorde/distribution/test_task_subagents.py",
         "tests/concorde/harness/test_check_evidence.py",
         "tests/concorde/harness/test_execution_feedback.py",
         "tests/concorde/harness/test_feedback_export.py",
         "tests/concorde/harness/test_tester_tmp.py",
-        "tests/concorde/harness/test_worker_binding.py",
         "tests/concorde/harness/test_worker_profile.py",
-        "tests/concorde/operations/test_review.py"
+        "tests/concorde/support/pi_prompt_client.py",
+        "tests/concorde/support/sample_graph.py"
       ]
     }
   ],
@@ -305,11 +264,6 @@
     {
       "type": "narrows",
       "source": "concept.execution.agent-call",
-      "target": "concept.concorde.worker"
-    },
-    {
-      "type": "narrows",
-      "source": "concept.execution.rpc-worker",
       "target": "concept.concorde.worker"
     },
     {
@@ -399,25 +353,7 @@
       "type": "relates",
       "source": "realization.execution.diagnostics",
       "verb": "records",
-      "target": "concept.execution.usage-record"
-    },
-    {
-      "type": "relates",
-      "source": "realization.execution.diagnostics",
-      "verb": "records",
       "target": "concept.execution.diagnostic-span"
-    },
-    {
-      "type": "relates",
-      "source": "realization.execution.rpc-worker",
-      "verb": "runs",
-      "target": "concept.execution.rpc-worker"
-    },
-    {
-      "type": "relates",
-      "source": "realization.execution.rpc-worker",
-      "verb": "runs each worker through",
-      "target": "concept.execution.terminal-agent-operation"
     }
   ]
 }

@@ -1,16 +1,12 @@
-"""The trusted host of one operation invocation and the launch of its bound workers.
+"""The trusted host of one operation invocation.
 
 An ``OperationHost`` carries the project and package roots, the execution mode and the trusted
-services one invocation shares with its nested invocations. The worker helpers below bind one
-model-backed launch to its frozen context, compiled policy, worker binding and model selection,
-and admit its single typed result.
+services one invocation shares with its nested invocations.
 """
 
 from __future__ import annotations
 
 import importlib
-import json
-import tempfile
 import uuid
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -19,13 +15,6 @@ from typing import Any
 
 from ..spec.contracts import load_operation_inventory
 from ..spec.repository import SpecError
-from ..spec.typed_data import canonical, validate_typed
-from .model_selection import worker_selection
-from .timing import Span
-from .usage import record_usage
-from .worker_executor import WorkerOutcome, build_worker_invocation, worker_instructions
-from .worker_profile import binding_json, external_worker_name, worker_profile
-from .worker_sandbox import WORKER_SANDBOX_POLICY
 
 
 @dataclass(frozen=True)
@@ -33,7 +22,6 @@ class OperationHost:
     project_root: Path
     package_root: Path
     mode: str = "execute"
-    executor: Any = None
     # Finite native context preparation/acceptance only; never a suspended model callback.
     native_assessment: Any = None
     native_transport: bool = False
@@ -55,9 +43,8 @@ class OperationHost:
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     # The top-level operation invocation's identity, inherited by every nested invocation so one
-    # Graph run keeps one usage record under .concorde/runs/<root_invocation_id>/.
+    # Graph run keeps one run directory under .concorde/runs/<root_invocation_id>/.
     root_invocation_id: str | None = None
-    descriptions: list[dict] = field(default_factory=list)
     evidence: list[Any] = field(default_factory=list)
     lifecycle: dict = field(default_factory=dict)
     observer: Any = None
@@ -80,218 +67,6 @@ class OperationHost:
 
 def _operation_key(operation: str) -> str:
     return operation[len("concorde-") :].replace("-", "_")
-
-
-def protocol_documents(
-    value: dict, granted: dict[str, bytes]
-) -> list[tuple[str, bytes]]:
-    """The Protocol files a context index lists, in its order, with their verified bytes."""
-    return [(record["path"], granted[record["path"]]) for record in value["protocol"]]
-
-
-def worker_invocation(
-    configuration: dict,
-    *,
-    operation: str,
-    stage: str,
-    prompt,
-    workspace: Path,
-    context_value: dict,
-    receipt: dict,
-    policy,
-    protocol: list[tuple[str, bytes]],
-):
-    """Bind one worker launch: its frozen context, policy, binding, instructions and model selection."""
-    agent = worker_profile(prompt.binding.agent)
-    resolve_child_operation(operation, external_worker_name(agent.name))
-    return build_worker_invocation(
-        operation=operation,
-        stage=stage,
-        agent=agent.name,
-        invocation_id=str(uuid.uuid4()),
-        workspace=str(workspace),
-        context_json=canonical(context_value),
-        receipt_json=canonical(receipt),
-        policy=policy,
-        binding_json=binding_json(prompt.binding),
-        instructions=worker_instructions(prompt.body, protocol),
-        selection=worker_selection(configuration, agent.name),
-    )
-
-
-def worker_description(prompt, invocation, policy, **labels) -> dict:
-    """The describe-policy record of one worker launch: its grant, profile and model selection."""
-    agent = worker_profile(prompt.binding.agent)
-    return {
-        **labels,
-        "read_paths": list(policy.read_paths),
-        "write_paths": list(policy.write_paths),
-        "network": False,
-        "fresh_session": True,
-        "sandbox": WORKER_SANDBOX_POLICY,
-        "policy_digest": policy.digest,
-        "agent": external_worker_name(agent.name),
-        "agent_binding_digest": prompt.binding.digest,
-        "profile_digest": prompt.binding.profile_digest,
-        "instructions_digest": prompt.binding.instructions_digest,
-        "workspace": agent.workspace,
-        "tools": list(agent.tools),
-        "model": invocation.selection.model,
-        "thinking": invocation.selection.thinking,
-        "timeout_seconds": invocation.selection.timeout_seconds
-        or prompt.binding.timeout_seconds,
-    }
-
-
-def _record_worker_failure(host, invocation, error) -> str | None:
-    """Keep bounded stderr in a private run artifact, never in events or public State.
-
-    No prompts, RPC events, tool results or credential files are serialized. A diagnostic
-    write failure must not replace the original execution failure or cause a retry.
-    """
-    if error.run is None:
-        return None
-    try:
-        from .status_store import primary_root, run_path
-
-        directory = run_path(
-            host.project_root,
-            f".concorde/runs/{host.root_invocation_id or host.invocation_id}",
-        )
-        directory.mkdir(parents=True, exist_ok=True)
-        record = {
-            "launch_invocation_id": invocation.invocation_id,
-            "agent": invocation.agent,
-            "outcome": error.outcome,
-            "exit_code": error.run.exit_code,
-            "wall_seconds": error.run.wall_seconds,
-            "stderr_bytes": error.run.stderr_bytes,
-            "stderr_complete": error.run.stderr_complete
-            and len(error.run.stderr.encode("utf-8")) <= 20000,
-            "stderr_tail": error.run.stderr.encode("utf-8")[-20000:].decode(
-                "utf-8", "ignore"
-            ),
-        }
-        # Exclusive creation with mode 0600 avoids exposing diagnostics through umask
-        # defaults, existing files or symlink aliases. These are not worker grants.
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            prefix="worker-",
-            suffix=".json",
-            dir=directory,
-            delete=False,
-        ) as stream:
-            json.dump(record, stream, sort_keys=True)
-            stream.write("\n")
-            return (
-                Path(stream.name)
-                .relative_to(primary_root(host.project_root))
-                .as_posix()
-            )
-    except (OSError, ValueError) as observation_error:
-        error.diagnostic_failure = observation_error
-        return None
-
-
-def run_worker(
-    host,
-    invocation,
-    prompt,
-    *,
-    operation: str,
-    stage: str,
-    target_id: str | None,
-    result_type: str,
-    change_id: str | None = None,
-    checks=None,
-) -> tuple[WorkerOutcome, dict]:
-    """Run a bound worker with report-only issue authority; retain reports even on failure."""
-    from ..issues.reporting import reporter_for_invocation
-    from .worker_executor import OperationExecutionError, WorkerExecutor
-
-    executor = host.executor or WorkerExecutor(host.package_root)
-    reporter = reporter_for_invocation(
-        host.project_root, invocation, target_id=target_id, change_id=change_id
-    )
-    try:
-        with Span(
-            "worker.host",
-            operation=operation,
-            stage=stage,
-            target_id=target_id,
-            change_id=change_id,
-            invocation_id=host.invocation_id,
-            launch_invocation_id=invocation.invocation_id,
-            context_id=invocation.context_id,
-            prompt_bytes=len(invocation.instructions.encode()),
-            context_bytes=len(invocation.context_json.encode()),
-        ):
-            outcome = executor(invocation, checks=checks, report_issue=reporter)
-    except OperationExecutionError as error:
-        from .execution_error import exception_feedback
-
-        feedback = exception_feedback(
-            error, layer="worker", attempt=invocation.invocation_id
-        )
-        diagnostic = _record_worker_failure(host, invocation, error)
-        feedback["diagnostics"]["references"] = [diagnostic] if diagnostic else []
-        feedback["diagnostics"]["complete"] = bool(
-            diagnostic and error.run and error.run.stderr_complete
-        )
-        if getattr(error, "diagnostic_failure", None) is not None:
-            feedback["causes"].append(
-                exception_feedback(
-                    error.diagnostic_failure,
-                    layer="failure-observation",
-                    attempt=invocation.invocation_id,
-                )
-            )
-        error.feedback = feedback
-        if diagnostic is not None:
-            raise OperationExecutionError(
-                f"{error}; see host diagnostic {diagnostic}",
-                outcome=error.outcome,
-                code=error.code,
-                usage=error.usage,
-                run=error.run,
-            ) from error
-        raise
-    finally:
-        # Already accepted observations survive invalid completion, cancellation and time limits.
-        for receipt in reporter.receipts:
-            host.observe(
-                "issue_reported",
-                **receipt,
-                launch_invocation_id=invocation.invocation_id,
-            )
-    if (
-        not isinstance(outcome, WorkerOutcome)
-        or outcome.invocation_digest != invocation.digest
-        or outcome.binding_digest != prompt.binding.digest
-    ):
-        raise SpecError(
-            "worker outcome is not bound to this invocation", "invalid_completion"
-        )
-    record_usage(
-        host,
-        operation=operation,
-        stage=stage,
-        target_id=target_id,
-        agent=external_worker_name(invocation.agent),
-        invocation=invocation,
-        result=outcome,
-        change_id=change_id,
-    )
-    data = validate_typed(outcome.value, result_type)["data"]
-    from ..issues.references import validate_references
-
-    validate_references(
-        host.project_root,
-        data.get("blockers", data.get("issues", [])),
-        admitted=[*reporter.receipts, *reporter.admitted_receipts],
-    )
-    return outcome, data
 
 
 def resolve_child_operation(parent_operation: str, child_operation: str):

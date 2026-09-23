@@ -82,9 +82,6 @@ def guarded(name,*args,**kwargs):
  if name=='langgraph' or name.startswith('langgraph.'): raise AssertionError('Native path imported LangGraph')
  return original(name,*args,**kwargs)
 builtins.__import__=guarded
-from concorde.harness.worker_executor import WorkerExecutor
-def forbidden(*a,**k): raise AssertionError('Native path launched a hidden Pi-RPC worker')
-WorkerExecutor.__call__=forbidden
 `,
 );
 process.env.PYTHONPATH = guard + path.delimiter + path.join(candidate, "src");

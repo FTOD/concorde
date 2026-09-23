@@ -12,7 +12,6 @@ from ..spec.repository import (
     SpecError,
     SpecRepository,
     digest,
-    entry_base,
     expand_entry,
     is_directory_entry,
     most_specific,
@@ -132,11 +131,6 @@ def _external_references(repository: SpecRepository, target) -> list[dict]:
     return [entry.record() for entry in entries]
 
 
-def reference_grants(records: list[dict]) -> tuple[str, ...]:
-    """The read-only authority roots for a snapshot's external references."""
-    return tuple(dict.fromkeys(entry_base(item["path"]) for item in records))
-
-
 def materialize_references(
     repository: SpecRepository, destination: Path, records: list[dict]
 ) -> None:
@@ -159,22 +153,6 @@ def materialize_references(
 def _index_documents(value: dict) -> list[dict]:
     """Complete paired source records for the selected Module."""
     return value["spec_resolution"]["sources"]
-
-
-def context_grants(value: dict) -> tuple[str, ...]:
-    """The read-only paths a context index grants: every listed document and the Protocol files.
-
-    Every grant is project-relative: selected Spec members and the installed Protocol copy.
-    Bodies are never embedded; source identity and inclusion remain byte-bound.
-    """
-    return tuple(
-        sorted(
-            {
-                *(item["path"] for item in value["protocol"]),
-                *(item["path"] for item in _index_documents(value)),
-            }
-        )
-    )
 
 
 def context_documents(

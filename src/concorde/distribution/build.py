@@ -76,8 +76,6 @@ MODEL_ROOTS: dict[str, str] = {
     agent.name.replace("_", "-"): agent.spec
     for agent in load_worker_profiles().values()
 }
-# The tier-one rules every worker follows, rendered before each worker's own Agent Spec.
-WORKER_RULES = "prompts/workers/common.md"
 
 OPERATION_GUIDANCE: dict[str, str] = {
     name: f"prompts/operation-guidance/{name}.md" for name in PUBLIC_OPERATIONS
@@ -505,19 +503,16 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     roots = (
         list(MODEL_ROOTS.values())
         + [
-            WORKER_RULES,
-            *[
-                f"prompts/native/{name}.md"
-                for name in (
-                    "context-assessor",
-                    "planner",
-                    "task-author",
-                    "programmer",
-                    "spec-reviewer",
-                    "code-reviewer",
-                    "issue-solver",
-                )
-            ],
+            f"prompts/native/{name}.md"
+            for name in (
+                "context-assessor",
+                "planner",
+                "task-author",
+                "programmer",
+                "spec-reviewer",
+                "code-reviewer",
+                "issue-solver",
+            )
         ]
         + list(task_subagents.prompt_roots(root))
         + list(OPERATION_GUIDANCE.values())

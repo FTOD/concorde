@@ -47,9 +47,6 @@ def main() -> int:
         signal.signal(signal.SIGTERM, cancelled if scenario == "hang" else signal.SIG_IGN)
         time.sleep(60)
         return 0
-    print(json.dumps({"policies": []}), file=sys.stderr)
-    print(json.dumps({"usage": {"total": {"input_tokens": 120, "output_tokens": 30,
-                                          "cost_usd": 0.0125, "wall_seconds": 4.5}}}), file=sys.stderr)
     if scenario == "blocked":
         print(json.dumps(result(operation, envelope, status="blocked", output=None,
                                 errors=[{"code": "invalid_input", "field": "/task",

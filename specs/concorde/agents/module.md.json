@@ -127,7 +127,6 @@
         "agents/spec_reviewer/",
         "agents/task_author/",
         "prompts/native/",
-        "prompts/workers/common.md",
         "prompts/workflow-host/review-scope-and-result.md",
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/fixtures/build/golden/native/"

@@ -7,8 +7,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from concorde.harness.invocation import Invocation
-from tests.concorde.support.native_planning import OperationHost
+from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.context import resolve_context
 from concorde.spec.boundaries import scope_roots
@@ -17,11 +16,9 @@ from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.schema import ContractError, admit
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.verification import verifies
-from concorde.validation.validate import verify_completion
 from tests.concorde.spec.support import (
     CONFIGURATION,
     PACKAGE,
-    ModelProcessDouble,
     project,
     set_realization,
     sync_registry,
@@ -47,13 +44,10 @@ class BoundaryTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         return {f.rule_id for f in report.findings if f.severity == "error"}
 
-    def call_operation(self, name, data=None, callback=None, mode="execute"):
-        double = ModelProcessDouble(callback)
-        self.double = double
+    def call_operation(self, name, data=None, mode="execute"):
         self.host = OperationHost(
             self.root,
             PACKAGE,
-            executor=double.executor,
             allow_primary_worktree=True,
             mode=mode,
         )
@@ -62,16 +56,6 @@ class BoundaryTests(unittest.TestCase):
             CONFIGURATION,
             typed(name + "-request", data or self.task),
             host_context=self.host,
-        )
-
-    def change(self):
-        result = self.call_operation("concorde-plan")
-        self.assertEqual("succeeded", result["status"], result)
-        return {**self.task, "change_id": result["output"]["data"]["change_id"]}
-
-    def completion(self, task):
-        return verify_completion(
-            Invocation("concorde-validate", CONFIGURATION, task, self.host)
         )
 
     @verifies("scenario.harness.context-freeze")
@@ -260,130 +244,6 @@ class BoundaryTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(TypedDataError):
                 validate_typed(value, "concorde-context-solve-request")
 
-    def test_unsupported_is_not_spec_incomplete(self):
-        def cb(stage, snapshot, data, cwd):
-            if stage == "context-solve":
-                data.update(
-                    outcome="unsupported", answer="The Spec prohibits this use."
-                )
-
-        result = self.call_operation("concorde-plan", callback=cb)
-        self.assertEqual("unsupported", result["output"]["data"]["outcome"])
-        self.assertEqual([], result["output"]["data"]["blockers"])
-
-    def assertSpecOnlyReads(self, read_paths):
-        # A Spec-only phase reads the frozen index plus the granted Spec documents and the accepted
-        # Protocol copy it lists, and no implementation file.
-        self.assertIn("context.json", [Path(p).name for p in read_paths])
-        others = [p for p in read_paths if Path(p).name != "context.json"]
-        self.assertTrue(others, read_paths)
-        self.assertTrue(
-            all(p.startswith(("specs/", ".concorde/protocol/")) for p in others),
-            read_paths,
-        )
-
-    def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
-        result = self.call_operation("concorde-plan", mode="describe-policy")
-        self.assertEqual("described", result["status"])
-        self.assertEqual([], self.double.calls)
-        for policy in self.host.descriptions:
-            if policy["phase"] not in {"implementation", "code-review"}:
-                self.assertSpecOnlyReads(policy["read_paths"])
-                self.assertEqual([], policy["write_paths"])
-
-    def test_assessment_policy_describes_only_its_bound_phase_without_launching(self):
-        result = self.call_operation(
-            "concorde-context-solve",
-            {"task": "Explain transfer", "target_id": "service.transfer"},
-            mode="describe-policy",
-        )
-        self.assertEqual("described", result["status"])
-        self.assertEqual([], self.double.calls)
-        self.assertEqual(
-            ["context-solve"], [item["phase"] for item in self.host.descriptions]
-        )
-        self.assertSpecOnlyReads(self.host.descriptions[0]["read_paths"])
-        self.assertIn(
-            "specs/transfer/module.md.json", self.host.descriptions[0]["read_paths"]
-        )
-        # uses selects the provider's documents; Audit is not selected.
-        self.assertIn("specs/ledger/module.md", self.host.descriptions[0]["read_paths"])
-        self.assertNotIn(
-            "specs/audit/module.md", self.host.descriptions[0]["read_paths"]
-        )
-        self.assertTrue(
-            all(item["write_paths"] == [] for item in self.host.descriptions)
-        )
-
-    def test_changed_spec_requires_replanning_the_change(self):
-        task = self.change()
-        p = self.root / "specs/transfer/module.md"
-        p.write_text(p.read_text() + "\nChanged obligations.\n")
-        self.assertEqual(
-            "blocked", self.call_operation("concorde-tasks", task)["status"]
-        )
-        self.assertEqual([], self.double.calls)
-
-    def test_changed_intent_cannot_reuse_the_worktree_change(self):
-        task = self.change()
-        task["task"] = "Different behavior"
-        self.assertEqual(
-            "blocked", self.call_operation("concorde-tasks", task)["status"]
-        )
-
-    @verifies("scenario.harness.permission-reject", "scenario.context.contract-checks")
-    def test_planner_cannot_emit_spec_metadata_provider_or_registry_replacements(self):
-        paths = (
-            "specs/transfer/module.md",
-            "specs/transfer/module.md.json",
-            "specs/ledger/module.md",
-            ".concorde/specs.json",
-        )
-        before = {path: (self.root / path).read_bytes() for path in paths}
-        for path in paths:
-
-            def cb(stage, snap, data, cwd, path=path):
-                if stage == "plan":
-                    data["documents"] = [{"path": path, "content": "Changed"}]
-
-            with self.subTest(path=path):
-                result = self.call_operation("concorde-plan", callback=cb)
-                self.assertEqual("blocked", result["status"], result)
-                self.assertEqual("permission_denied", result["errors"][0]["code"])
-                self.assertEqual(
-                    before, {item: (self.root / item).read_bytes() for item in paths}
-                )
-
-    def test_delivery_requires_real_current_checks(self):
-        task = self.change()
-        self.call_operation("concorde-tasks", task)
-        self.call_operation("concorde-implement", task)
-        with self.assertRaises(SpecError):
-            self.completion(task)
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-validate", task)["status"]
-        )
-        self.completion(task)
-        (self.root / "checks/transfer_check.py").write_text(
-            'raise AssertionError("new expectation")'
-        )
-        with self.assertRaisesRegex(SpecError, "changed|stale"):
-            self.completion(task)
-
-    def test_separate_check_inputs_invalidate_evidence(self):
-        path = self.root / ".concorde/config.json"
-        config = json.loads(path.read_text())
-        config["checks"][0]["inputs"] = ["acceptance.json"]
-        path.write_text(json.dumps(config))
-        (self.root / "acceptance.json").write_text("{}")
-        task = self.change()
-        self.call_operation("concorde-tasks", task)
-        self.call_operation("concorde-implement", task)
-        self.call_operation("concorde-validate", task)
-        (self.root / "acceptance.json").write_text('{"revision":2}')
-        with self.assertRaisesRegex(SpecError, "stale"):
-            self.completion(task)
-
     def test_atomic_replacements_rollback_after_failed_verification(self):
         original = (self.root / "specs/transfer/module.md").read_bytes()
         changes = [
@@ -440,4 +300,3 @@ class BoundaryTests(unittest.TestCase):
         self.downgrade_to_profile7()
         result = self.call_operation("concorde-context-solve")
         self.assertEqual("blocked", result["status"])
-        self.assertEqual([], self.double.calls)

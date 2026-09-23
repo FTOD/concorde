@@ -1,4 +1,4 @@
-"""Sequential bounded composition of independently admitted work items."""
+"""A small sample LangGraph Graph API graph used to exercise the Graph Spec check."""
 
 from typing import Any, TypedDict
 
@@ -27,24 +27,3 @@ def build_batch_graph(node_factory, *, name: str, item_node: str):
         [END, "select_item"],
     )
     return graph.compile(name=name, checkpointer=False)
-
-
-def run_batch_graph(items, operation, *, name: str, item_node: str):
-    """A non-None item result stops the Graph; None advances to the next item."""
-    items = tuple(items)
-
-    def select(state):
-        return {"stop": state["index"] >= len(items)}
-
-    def execute(state):
-        output = operation(items[state["index"]])
-        return {
-            "index": state["index"] + 1,
-            "output": output,
-            "stop": output is not None,
-        }
-
-    nodes = {"select_item": select, item_node: execute}
-    return build_batch_graph(nodes.__getitem__, name=name, item_node=item_node).invoke(
-        {"index": 0, "output": None}, {"recursion_limit": 2 * len(items) + 3}
-    )["output"]

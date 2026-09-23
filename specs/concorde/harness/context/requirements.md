@@ -63,16 +63,9 @@ A recheck of a snapshot SHALL fail with `stale_context` when any selected docume
 declaration, realization entry, bound file name, code-phase file byte, external reference digest,
 Protocol binding or the current worktree's own status differs from the snapshot.
 
-## Profiles and grants
+## Profiles
 
 ### req.context.profile-consistent — A worker profile is consistent with its contract
 
 The host SHALL refuse with `invalid_agent_binding` a worker profile whose tools, workspace kind,
 path roles, stage inputs or result fields are inconsistent with its contract.
-
-### req.context.grant-within-profile — A grant never exceeds the profile
-
-A compiled grant SHALL be a subset of both the worker profile's declared effects and the narrowing
-binding the host issued for the step.
-
-A refused grant is reported as an error and never retried with a wider binding.

@@ -72,7 +72,7 @@ A reference is a whole line that starts in column one with `@`, followed by a pr
 token and optional bindings:
 
 ```text
-@prompts/workflow-host/gap-reporting.md
+@prompts/workflow-host/lifecycle-no-cognition.md
 @prompts/workflow-host/invoke-operation-opener.md ACTION="plan work for the explicitly selected Module"
 ```
 

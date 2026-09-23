@@ -210,65 +210,6 @@ def diagnostic_sink(directory):
     return save
 
 
-def observe_pi_event(record, intervals):
-    """Best-effort native RPC timing; malformed diagnostic fields never change execution."""
-    try:
-        kind = record.get("type")
-        message = record.get("message") or {}
-        is_start = kind in {"turn_start", "tool_execution_start", "message_start"}
-        is_end = kind in {"turn_end", "tool_execution_end", "message_end"}
-        if not (is_start or is_end):
-            return
-        if kind.startswith("message_") and message.get("role") != "assistant":
-            return
-        key = (
-            "tool:" + str(record.get("toolCallId"))
-            if kind.startswith("tool_")
-            else "turn"
-            if kind.startswith("turn_")
-            else "model"
-        )
-        if is_start:
-            if key in intervals:
-                intervals.pop(key).finish("incomplete")
-            if len(intervals) >= 1024:
-                mark_incomplete()
-                return
-            span = Span(
-                "pi."
-                + (
-                    "tool"
-                    if key.startswith("tool:")
-                    else "round"
-                    if key == "turn"
-                    else "model_roundtrip"
-                )
-            )
-            parent = intervals.get("turn")
-            if key != "turn" and span.record is not None and parent and parent.record:
-                span.record["parent_id"] = parent.record["span_id"]
-            intervals[key] = span
-        else:
-            span = intervals.pop(key, None)
-            if span is None:
-                mark_incomplete()
-                return
-            usage = message.get("usage") or {}
-            span.finish(
-                "error"
-                if record.get("isError") or message.get("stopReason") == "error"
-                else "cancelled"
-                if message.get("stopReason") == "aborted"
-                else "ok",
-                input_tokens=usage.get("input"),
-                output_tokens=usage.get("output"),
-                cache_read_tokens=usage.get("cacheRead"),
-                cache_write_tokens=usage.get("cacheWrite"),
-            )
-    except Exception:
-        mark_incomplete()
-
-
 def mark_incomplete():
     trace = _CURRENT.get()
     if trace is not None:

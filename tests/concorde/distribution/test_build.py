@@ -32,12 +32,11 @@ from concorde.distribution.build import (
 
 # Imported eagerly: the wire-helper test below patches ``subprocess.Popen`` while it invokes an
 # Operation, and a module first imported under that patch would keep the mock in any
-# definition-time default (``pi_rpc.run_prompt`` once did), leaking into every later test of the
-# same process.
+# definition-time default, leaking into every later test of the same process.
 from concorde.harness.admission import run_operation  # noqa: E402
 from concorde.spec.typed_data import typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
-from tests.concorde.support.native_planning import OperationHost  # noqa: E402
+from concorde.harness.host import OperationHost  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
 
@@ -313,8 +312,6 @@ class BuildFreshnessTests(unittest.TestCase):
     def test_worker_instruction_records_retain_every_field_and_binding_digest(self):
         from concorde.harness.worker_profile import (
             binding_digest,
-            binding_from_json,
-            binding_json,
             profile_digest,
             worker_profile,
         )
@@ -367,7 +364,6 @@ class BuildFreshnessTests(unittest.TestCase):
                 )
                 self.assertEqual(profile.timeout_seconds, binding.timeout_seconds)
                 self.assertEqual(binding_digest(binding), binding.digest)
-                self.assertEqual(binding, binding_from_json(binding_json(binding)))
                 self.assertEqual(
                     {
                         "agent",
@@ -441,12 +437,7 @@ class WireHelperBuildTests(unittest.TestCase):
             def invoke_model_backed_operation():
                 # The fixture is this invocation's package root: a top-level model-backed
                 # operation verifies the fixture build before admitting anything else.
-                def launched(launch):
-                    raise AssertionError("an WorkerProfile launched on a stale build")
-
-                host = OperationHost(
-                    root, root, mode="describe-policy", executor=launched
-                )
+                host = OperationHost(root, root, mode="describe-policy")
                 return run_operation(
                     "concorde-spec-review",
                     None,

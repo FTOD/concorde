@@ -98,7 +98,6 @@
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/issues/test_graph.py",
-        "tests/concorde/operations/test_review.py",
         "tests/concorde/spec/test_initialize.py"
       ]
     }

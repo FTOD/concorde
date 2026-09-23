@@ -96,27 +96,9 @@ class TimingTests(unittest.TestCase):
     @verifies(
         "scenario.harness.session-observation", "scenario.harness.diagnostic-spans"
     )
-    def test_native_analysis_and_malformed_rpc_diagnostics(self):
-        from concorde.harness.timing import analyze_native, observe_pi_event
+    def test_native_analysis_omits_payloads(self):
+        from concorde.harness.timing import analyze_native
 
-        trace = Trace()
-        intervals = {}
-        with tracing(trace):
-            observe_pi_event({"type": "turn_start"}, intervals)
-            observe_pi_event(
-                {"type": "message_start", "message": {"role": "assistant"}}, intervals
-            )
-            observe_pi_event(
-                {
-                    "type": "message_end",
-                    "message": {"role": "assistant", "usage": None},
-                },
-                intervals,
-            )
-            observe_pi_event({"type": "turn_end"}, intervals)
-            observe_pi_event({"type": "message_start", "message": 42}, intervals)
-        self.assertEqual(trace.incomplete, 1)
-        self.assertEqual(trace.records[0]["parent_id"], trace.records[1]["span_id"])
         native = [
             {
                 "type": "tool_execution_start",

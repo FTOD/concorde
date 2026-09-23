@@ -96,23 +96,7 @@ See [profile consistent](requirements.md#req.context.profile-consistent).
 - BUT a planner and a reviewer of the same Module receive different snapshots and share no stage inputs or write grant
 
 These checks use only the profile and the typed values, never the prompt text. Native result
-acceptance applies the result check; the input check is applied by the RPC diagnostic executor
-and the optional StateGraph Operation, while native preparation relies on freezing the snapshot
-for the profile, which applies the same stage input rules.
+acceptance applies the result check; the input check is applied by the optional StateGraph
+Operation, while native preparation relies on freezing the snapshot for the profile, which applies
+the same stage input rules.
 
-### scenario.harness.permission-compile — Compile a grant within the profile and the host binding
-
-- GIVEN a worker profile's declared effects, a narrowing binding issued by the host and the concrete paths of each role
-- WHEN the host compiles the grant
-- THEN it returns a digest-bound policy whose read and write paths, network and credential posture are each within both the profile and the binding
-- AND common credential paths are denied by default
-- BUT only the Pi RPC diagnostic worker path enforces this policy with a tool gate; a native Agent does not receive it as an operating-system limit
-
-See [grant within profile](requirements.md#req.context.grant-within-profile).
-
-### scenario.harness.permission-reject — Reject unknown roles, unsafe paths or widened grants
-
-- GIVEN an unknown or duplicate role, an unsafe path, a write not covered by a read, or a binding that widens reads, writes, network or credentials
-- WHEN the host compiles the grant, or checks a launch's grant against the profile
-- THEN it fails with `PermissionPolicyError` before any worker starts
-- BUT the step is never retried with a wider binding

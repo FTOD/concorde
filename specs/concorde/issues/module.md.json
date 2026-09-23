@@ -142,10 +142,7 @@
       "entries": [
         "src/concorde/issues/reporting.py",
         "src/concorde/issues/references.py",
-        "tests/concorde/issues/test_reporting.py",
-        "tests/concorde/issues/test_scope.py",
-        "tests/concorde/harness/test_pi_worker.py",
-        "tests/concorde/operations/test_review.py"
+        "tests/concorde/issues/test_reporting.py"
       ]
     },
     {
@@ -160,7 +157,6 @@
         "src/concorde/issues/solve.py",
         "tests/concorde/issues/__init__.py",
         "tests/concorde/issues/test_graph.py",
-        "tests/concorde/issues/test_disposition_recovery.py",
         "tests/concorde/harness/test_host_tools.py"
       ]
     },

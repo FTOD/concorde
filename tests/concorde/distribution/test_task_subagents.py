@@ -354,7 +354,7 @@ class TaskSubagentsTests(unittest.TestCase):
                 "-n",
                 "2",
                 "tests/concorde/harness/test_timing.py",
-                "tests/concorde/harness/test_rpc_diagnostics.py",
+                "tests/concorde/harness/test_scoped_protocol.py",
             ]
             report = Path(directory) / "report.json"
             # A caller may pass no reason, scope, phase or attempt.
@@ -404,20 +404,21 @@ class TaskSubagentsTests(unittest.TestCase):
                 self.assertEqual(
                     {"setup", "call", "teardown"}, set(unit["phase_seconds"])
                 )
-            rpc = units[
-                "tests/concorde/harness/test_rpc_diagnostics.py::RpcDiagnosticsTests::"
-                "test_rejected_response_keeps_details_private"
+            traced = units[
+                "tests/concorde/harness/test_scoped_protocol.py::ScopedProtocolTests::"
+                "test_membership_changes_invalidate_snapshot"
             ]
-            self.assertTrue(rpc["telemetry_complete"])
+            self.assertTrue(traced["telemetry_complete"])
             self.assertEqual(
-                {"pi.rpc_total", "pi.process_start", "pi.rpc_accept"},
-                {span["name"] for span in rpc["runtime_spans"]},
+                {"context.resolve", "context.recheck"},
+                {span["name"] for span in traced["runtime_spans"]},
             )
-            self.assertTrue(all(s["layer"] == "B" for s in rpc["runtime_spans"]))
+            self.assertTrue(all(s["layer"] == "B" for s in traced["runtime_spans"]))
             self.assertEqual(
-                {rpc["process_id"]}, {s["process_id"] for s in rpc["runtime_spans"]}
+                {traced["process_id"]},
+                {s["process_id"] for s in traced["runtime_spans"]},
             )
-            self.assertIn(rpc["worker"], {"gw0", "gw1"})
+            self.assertIn(traced["worker"], {"gw0", "gw1"})
             # An explicitly scoped rerun recognizes unchanged declared inputs.
             # Values are joined with "=": an existing prior path as a separate argument would
             # be taken for a test path while pytest decides its rootdir.

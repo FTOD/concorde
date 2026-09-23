@@ -103,7 +103,6 @@ freezes those sets exactly, but enforces them only partly:
 | Network and credentials of a worker | — | not restricted |
 | What counts as a result | independent Host acceptance with a recheck of the snapshot | — |
 | Configured checks and tester commands | an operating-system read-only filesystem with private scratch | reads, network and credentials |
-| Pi RPC diagnostic workers | a tool gate and a Linux sandbox built from the compiled grant | network |
 
 A worker that ignores its instructions can therefore read or write more than its grant, but its
 result is still refused if any input it was given changed, and every change stays inside a
@@ -150,7 +149,7 @@ to reject any result whose snapshot no longer matches the repository.
 
 **Agent execution** prepares and runs the native Pi workers and workflows, selects their models,
 and accepts their results independently of what the model claims. It also owns the optional
-LangGraph Graph boundary and the Pi RPC diagnostic worker path. The Harness relies on it to make
+LangGraph Graph boundary. The Harness relies on it to make
 every model step a fresh, terminal worker whose submission is a proposal.
 
 <a id="contains-checks"></a>

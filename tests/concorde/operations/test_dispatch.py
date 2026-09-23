@@ -9,13 +9,7 @@ from concorde.harness.change_worktree import git, git_value, read_change
 from concorde.harness.host import OperationHost as RealHost
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import (
-    CONFIGURATION,
-    PACKAGE,
-    ModelProcessDouble,
-    project,
-)
-from tests.concorde.support.native_planning import OperationHost
+from tests.concorde.spec.support import CONFIGURATION, PACKAGE, project
 
 TARGET = {"target_id": "service.transfer", "task": "Implement the transfer contract"}
 
@@ -68,13 +62,11 @@ class DispatchTests(unittest.TestCase):
             ):
                 for data, code in zip(requests, ("unknown_target", "invalid_focus")):
                     with self.subTest(root=root.name, operation=name, code=code):
-                        double = ModelProcessDouble()
-                        host = OperationHost(root, PACKAGE, executor=double.executor)
+                        host = RealHost(root, PACKAGE)
                         result = self.call(root, name, data, host)
                         self.assertEqual("blocked", result["status"], result)
                         self.assertEqual(code, result["errors"][0]["code"], result)
                         self.assertIsNone(result["output"])
-                        self.assertEqual([], double.calls)
                         self.assertEqual(before, self.snapshot())
 
     @verifies("scenario.operations.native-without-pi")

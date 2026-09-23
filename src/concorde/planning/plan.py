@@ -23,17 +23,9 @@ def context_solve(run, operation: str) -> dict:
     """One context-assessor stage; a sufficient assessment completes the operation."""
     if run.host.native_assessment is not None:
         return run.host.native_assessment(run)
-    if run.host.executor is None:
-        raise SpecError(
-            "Context assessment requires the native Pi prepare/Agent boundary",
-            "native_required",
-        )
-    # Explicit injected legacy executors remain a regression-test adapter, not fallback.
-    result = run.stage(operation)
-    return run.response(
-        "completed" if result["outcome"] == "sufficient" else result["outcome"],
-        result["answer"],
-        blockers=result["blockers"],
+    raise SpecError(
+        "Context assessment requires the native Pi prepare/Agent boundary",
+        "native_required",
     )
 
 

@@ -155,26 +155,6 @@ pointer of the entry, a key naming no Agent, a `timeout_seconds` that is not pos
 without a `provider/` part. Thinking levels are `off`, `minimal`, `low`, `medium`, `high`, `xhigh`
 and `max`.
 
-## Usage records
-
-One line per RPC diagnostic worker launch in `.concorde/runs/<root invocation>/usage.jsonl` of the
-primary worktree, written under the repository lock:
-
-| Field | Meaning |
-| --- | --- |
-| `schema_version` | `2` |
-| `time` | UTC timestamp of the record |
-| `root_invocation_id`, `invocation_id`, `depth` | The top-level invocation, the launching invocation and its nesting depth |
-| `operation`, `stage`, `target_id`, `agent`, `change_id`, `iteration` | Labels of the step |
-| `launch_invocation_id`, `context_id`, `model` | The launch and its frozen context |
-| `usage` | `model`, `thinking`, `input_tokens`, `cached_input_tokens`, `output_tokens`, `total_tokens`, `cost_usd`, `turns`, `wall_seconds`, `prompt_bytes`, `context_bytes`; `null` for any figure not reported, or `null` as a whole |
-
-The Host observer receives the same record as event `agent_usage`. `summarize_usage` returns
-schema 2 totals and groupings `by_step` (operation, stage, target), `by_stage`, `by_target`,
-`by_agent` and `by_run`, with `complete`, `historical_records` (unversioned lines labelled
-`capability`, counted but never rewritten) and `unsupported_records` (anything else, excluded from
-totals and making the summary incomplete). A write failure is ignored.
-
 ## Diagnostic spans
 
 A span has `schema_version` 1, `trace_id`, `span_id`, nullable `parent_id`, `layer` (`A`, `B` or
@@ -222,54 +202,3 @@ Each public capability module also exposes a State adapter: `run_host(name, stat
 `operation_state.py` wraps the State as the capability's typed request, runs it through admission
 with the host and configuration from `OperationRuntimeContext`, and returns `{"result": envelope}`;
 it refuses when no host was supplied.
-
-## RPC diagnostic worker
-
-**Launch record.** `WorkerLaunch(worker, workspace, system_prompt, message, result_schema, tools,
-read_paths=(), write_paths=(), model=None, thinking=None, timeout_seconds=1800,
-report_schema=None)`. Paths are relative to the absolute workspace. Tools are Pi's `read`, `grep`,
-`find`, `ls`, `edit`, `write` and `bash` and Concorde's `submit_result` (always), `run_checks`
-(requires the Host check service) and `report_issue` (requires a Host reporter and a report schema);
-`edit` and `write` require a write grant. An inconsistent launch is refused before any process.
-
-**Run directory.** A fresh directory under `/tmp` holds `agent/` (Pi's configuration directory,
-with Concorde's settings and copies of the developer's `auth.json` and `models.json`),
-`policy.json` (schema 2: worker, workspace, grants, tools, prompt path, result and report schemas,
-socket and the credential variables to scrub), `system-prompt.md`, `tmp/`, `home/` and, when a
-Host tool is granted, `host.sock`. A refreshed `auth.json` is copied back only while the
-developer's file still holds the issued bytes.
-
-**Command.** `pi --mode rpc --no-session --no-context-files --no-skills --no-prompt-templates
---no-themes --no-extensions -e pi/extensions/concorde-worker.ts --no-approve --offline --tools
-<tools> [--model <model>] [--thinking <level>]`, with an environment made of the Host allowlist,
-Pi's documented provider credential variables, `PI_CODING_AGENT_DIR`, `CONCORDE_WORKER_POLICY`,
-`PI_OFFLINE=1`, `PI_SKIP_VERSION_CHECK=1`, `PI_TELEMETRY=0`, and `HOME`, `TMPDIR`, `TMP` and `TEMP`
-inside the run directory. The Host sends one `prompt`, reads records until `agent_settled`,
-answers every dialog as cancelled and reads the session statistics.
-
-**Tool gate.** The worker extension replaces the system prompt, registers the granted Concorde
-tools and refuses any other tool, any read-family call outside the read or write grants (paths
-resolved through symlinks, a missing path meaning the workspace), and any `edit` or `write` outside
-the write grant. Each `bash` command first unsets the provider credential variables. Policy schema 1
-and the fields `children`, `child_tools` and `extension_path` are refused.
-
-**Host tool socket.** One newline-terminated JSON request of at most 128 KiB, received within ten
-seconds: `{"tool": "run_checks"}` or `{"tool": "report_issue", "report": ...}`, each only when
-granted. A failure returns an `error` and a causal `feedback` record, which the extension raises as
-a failed tool call.
-
-**Sandbox.** The mount plan (`worker-mounts-v1`) binds the host read-only with fresh `/proc` and
-`/dev` and private tmpfs on `/tmp` and `/dev/shm`; masks the listed secret locations under the
-developer's home and every other worktree of the repository, re-binding the shared Git directory
-read-only; binds the workspace read-only and each write entry and the run directory writable;
-re-binds the worker extension and its TypeBox dependency read-only; unshares user, PID, IPC and UTS
-namespaces, drops all capabilities and dies with the Host. The network is shared. A pending write
-entry gets an empty placeholder before launch, removed afterwards if still empty.
-
-**Outcomes.** `failed` (refused preflight, a process that exits or breaks the protocol before
-settling), `cancelled` (Host interrupt, process killed), `limit_exhausted` (deadline passed,
-process killed) and `invalid_completion` (no, several or an invalid submission). A contract
-rejection keeps its code in `code`. For a failed launch the Host writes a mode-0600 `worker-*.json`
-diagnostic under `.concorde/runs/<root invocation>/` with the launch identity, Agent, outcome, exit
-status, wall time and at most the last 20,000 bytes of standard error; prompts, events, tool
-results and credentials are never written there.

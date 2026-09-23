@@ -10,6 +10,7 @@ import asyncio
 import re
 import subprocess
 from copy import deepcopy
+from typing import Literal
 
 from ..spec.repository import SpecError
 
@@ -110,6 +111,24 @@ def error_entry(error, *, code=None, layer="host", attempt=None):
         "message": safe_text(error),
         "feedback": exception_feedback(error, layer=layer, attempt=attempt),
     }
+
+
+class OperationExecutionError(RuntimeError):
+    """An Agent call was refused, failed, was cancelled, ran out of time or returned an invalid
+    result. ``outcome`` classifies why; ``code`` preserves a contract rejection class. The host maps
+    these to distinct result error codes, and none retries automatically."""
+
+    def __init__(
+        self,
+        message: str,
+        outcome: Literal[
+            "failed", "cancelled", "limit_exhausted", "invalid_completion"
+        ] = "failed",
+        code: str | None = None,
+    ):
+        super().__init__(message)
+        self.outcome = outcome
+        self.code = code
 
 
 class ExecutionFailure(SpecError):

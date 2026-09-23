@@ -110,9 +110,7 @@ def dispatch_graph_nodes(operation, configuration, task, host):
             and host.native_assessment is not None
         ):
             return host.native_assessment(bound_run())
-        if operation == "concorde-context-solve" and host.executor is None:
-            if host.native_assessment is not None:
-                return host.native_assessment(bound_run())
+        if operation == "concorde-context-solve":
             from ..harness.native_context import assessment_context
 
             assessment_context(bound_run())
@@ -127,7 +125,10 @@ def dispatch_graph_nodes(operation, configuration, task, host):
                 "described", "Host bookkeeping only; no worker is launched."
             )
         if operation in MODEL_STAGES:
-            bound_run().stage(operation)
+            raise SpecError(
+                "Native Agents require the prepared Pi boundary; no legacy worker fallback",
+                "native_required",
+            )
         return bound_run().response("described")
 
     def deliver():

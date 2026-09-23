@@ -178,7 +178,6 @@
       "entries": [
         "prompts/operation-guidance/",
         "prompts/workflow-host/candidate-worktree.md",
-        "prompts/workflow-host/gap-reporting.md",
         "prompts/workflow-host/init-request-and-no-flags.md",
         "prompts/workflow-host/invoke-operation-opener.md",
         "prompts/workflow-host/lifecycle-no-cognition.md",

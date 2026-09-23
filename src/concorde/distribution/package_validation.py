@@ -67,10 +67,7 @@ def _prompt_roots(root: Path) -> tuple[str, ...]:
         + tuple(build.OPERATION_GUIDANCE.values())
         + tuple(build.MODEL_ROOTS.values())
         + tuple(f"prompts/native/{name}.md" for name in build.MODEL_ROOTS)
-        + (
-            build.WORKER_RULES,
-            "prompts/protocol/principles.md",
-        )
+        + ("prompts/protocol/principles.md",)
         + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS)
     )
 

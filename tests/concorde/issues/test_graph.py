@@ -1,4 +1,4 @@
-"""End-to-end Issue operations with real host gates and a deterministic model-process double."""
+"""Issue operations through the real host gates, without a model."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.native_planning import OperationHost
+from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.change_worktree import (
     ensure_change,
@@ -23,7 +23,6 @@ from tests.concorde.issues.test_store import report, source
 from tests.concorde.spec.support import (
     CONFIGURATION,
     PACKAGE,
-    ModelProcessDouble,
     project,
 )
 
@@ -47,12 +46,10 @@ class IssueGraphTests(unittest.TestCase):
             source(target_id="service.transfer"),
         )
 
-    def call(self, action, callback=None, **extra):
-        self.model = ModelProcessDouble(callback)
+    def call(self, action, **extra):
         host = OperationHost(
             self.root,
             PACKAGE,
-            executor=self.model.executor,
             allow_primary_worktree=True,
         )
         payload = {
@@ -74,39 +71,8 @@ class IssueGraphTests(unittest.TestCase):
             result = self.call(action)
             self.assertEqual("succeeded", result["status"], result)
             self.assertEqual([before[0]], result["output"]["data"]["issues"])
-            self.assertEqual([], self.model.calls)
             self.assertFalse((self.root / ".concorde/status").exists())
         self.assertEqual(before, read_issue(self.root, self.ref["issue_id"]))
-
-    @verifies("scenario.issues.solve-ready")
-    def test_caller_work_then_solve_verifies_disposition_before_ready(self):
-        returned = self.call("solve")
-        self.assertEqual("blocked", returned["status"], returned)
-        self.assertEqual("develop", returned["output"]["data"]["decision"])
-        self.assertEqual("unsupported", returned["output"]["data"]["outcome"])
-        self.assertEqual(["issue-solve"], [call["stage"] for call in self.model.calls])
-        self.assertEqual(
-            "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]
-        )
-        self.healthy_implementation()
-        result = self.call("solve", self.resolved)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
-        self.assertEqual("resolved", result["output"]["data"]["decision"])
-        record, revision = read_issue(self.root, self.ref["issue_id"])
-        self.assertEqual("closed", record["status"])
-        change = read_change(self.root, required=True)
-        self.assertEqual("ready", change["status"])
-        self.assertEqual(
-            revision, change["issue_solutions"][record["id"]]["closed_revision"]
-        )
-        stages = [call["stage"] for call in self.model.calls]
-        self.assertNotIn("implementation", stages)
-        self.assertGreaterEqual(stages.count("code-review"), 2)
-        self.assertFalse((self.root / ".concorde/deliveries").exists())
-        repeated = self.call("solve")
-        self.assertEqual("succeeded", repeated["status"], repeated)
-        self.assertEqual([], self.model.calls)
 
     @verifies("scenario.issues.solve-spec-repair")
     def test_every_solver_action_has_an_explicit_declared_route(self):
@@ -121,125 +87,12 @@ class IssueGraphTests(unittest.TestCase):
         self.assertEqual("finish", DECISION_ROUTES["spec-repair"])
         self.assertEqual("finish", DECISION_ROUTES["develop"])
 
-    @staticmethod
-    def resolved(stage, snapshot, data, cwd):
-        if stage == "issue-solve":
-            data["issue_decision"]["action"] = "resolved"
-
-    @verifies("scenario.issues.solve-spec-repair")
-    def test_needed_work_returns_without_automatic_authoring_or_development(self):
-        before = {
-            p.relative_to(self.root): p.read_bytes()
-            for directory in ("specs", "app")
-            for p in (self.root / directory).rglob("*")
-            if p.is_file()
-        }
-        registry = (self.root / ".concorde/specs.json").read_bytes()
-        for action in ("spec-repair", "develop"):
-            with self.subTest(action=action):
-
-                def choose(stage, snapshot, data, cwd):
-                    if stage == "issue-solve":
-                        data["issue_decision"].update(
-                            action=action, intent="Clarify the transfer promise."
-                        )
-
-                result = self.call("solve", choose)
-                self.assertEqual("blocked", result["status"], result)
-                self.assertEqual("unsupported", result["output"]["data"]["outcome"])
-                self.assertEqual(action, result["output"]["data"]["decision"])
-                self.assertIn(
-                    "Clarify the transfer promise.", result["output"]["data"]["answer"]
-                )
-                self.assertIn("service.transfer", result["output"]["data"]["answer"])
-                self.assertEqual(
-                    ["issue-solve"], [c["stage"] for c in self.model.calls]
-                )
-                self.assertEqual(
-                    before, {p: (self.root / p).read_bytes() for p in before}
-                )
-                self.assertEqual(
-                    registry, (self.root / ".concorde/specs.json").read_bytes()
-                )
-                self.assertEqual(
-                    "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]
-                )
-                solution = read_change(self.root, required=True)["issue_solutions"][
-                    self.ref["issue_id"]
-                ]
-                self.assertIsNone(solution["verified_inputs"])
-                self.assertEqual(action, solution["history"][-1]["decision"]["action"])
-
-    @verifies("scenario.issues.solve-spec-repair")
-    def test_code_free_direct_spec_edit_continues_to_fresh_verification(self):
-        self.healthy_implementation()
-        self.ref = report_issue(
-            self.root,
-            report(owner_target_id="scope.audit", evidence=[]),
-            source(target_id="scope.audit", invocation_id="spec-only-repair"),
-        )
-
-        def choose(stage, snapshot, data, cwd):
-            if stage == "issue-solve":
-                data["issue_decision"]["action"] = "spec-repair"
-
-        returned = self.call("solve", choose)
-        self.assertEqual("unsupported", returned["output"]["data"]["outcome"])
-        spec = self.root / "specs/audit/module.md"
-        spec.write_text(
-            spec.read_text() + "\nAudit observes the specified transfer behavior.\n"
-        )
-        result = self.call("solve", self.resolved)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
-        stages = [call["stage"] for call in self.model.calls]
-        self.assertIn("spec-review", stages)
-        self.assertNotIn("code-review", stages)
-        self.assertNotIn("implementation", stages)
-        self.assertNotIn("specify", stages)
-        self.assertEqual({}, read_change(self.root, required=True)["targets"])
-
-    @verifies("scenario.issues.solve-decision")
-    def test_unsettled_design_stays_open_without_a_human_approval_gate_for_every_issue(
-        self,
-    ):
-        def decision(stage, snapshot, data, cwd):
-            if stage == "issue-solve":
-                data["issue_decision"].update(
-                    action="needs-decision",
-                    rationale="Should transfers allow overdrafts?",
-                )
-
-        result = self.call("solve", decision)
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual("needs-decision", result["output"]["data"]["decision"])
-        self.assertEqual(
-            "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]
-        )
-        self.assertEqual(["issue-solve"], [call["stage"] for call in self.model.calls])
-
     @verifies("scenario.issues.solve-stale")
     def test_stale_selection_is_rejected_before_any_worker_runs(self):
         result = self.call("solve", expected_revision="sha256:" + "f" * 64)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("stale_issue", result["errors"][0]["code"])
-        self.assertEqual([], self.model.calls)
         self.assertFalse((self.root / ".concorde/status").exists())
-
-    @verifies("scenario.issues.solve-stale")
-    def test_failed_final_validation_restores_only_the_own_disposition(self):
-        def reject_disposition(stage, snapshot, data, cwd):
-            if stage == "issue-solve":
-                data["issue_decision"].update(
-                    action="not-actionable", rationale="Controlled disposition fixture."
-                )
-
-        # The initial fixture's transfer check fails. It must not produce a ready disposed candidate.
-        before = read_issue(self.root, self.ref["issue_id"])
-        result = self.call("solve", reject_disposition)
-        self.assertEqual("failed", result["status"], result)
-        self.assertEqual(before, read_issue(self.root, self.ref["issue_id"]))
-        self.assertNotEqual("ready", read_change(self.root, required=True)["status"])
 
     @verifies("scenario.issues.solve-handoff")
     def test_selection_copy_preserves_uncommitted_bytes_and_no_unrelated_file(self):
@@ -312,119 +165,6 @@ class IssueGraphTests(unittest.TestCase):
         self.assertEqual(
             "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]
         )
-
-    @verifies("scenario.issues.reference")
-    def test_fabricated_blocker_reference_is_refused(self):
-        def forged(stage, snapshot, data, cwd):
-            if stage == "issue-solve":
-                data.update(
-                    outcome="spec_incomplete",
-                    blockers=[{**self.ref, "blocked_step": "Unadmitted reference"}],
-                )
-
-        result = self.call("solve", forged)
-        self.assertEqual("blocked", result["status"], result)
-        self.assertEqual("permission_denied", result["errors"][0]["code"])
-        self.assertEqual(
-            "open", read_issue(self.root, self.ref["issue_id"])[0]["status"]
-        )
-
-    def healthy_implementation(self):
-        (self.root / "app/transfer.py").write_text(
-            "def transfer(balance, amount):\n"
-            '    if amount <= 0 or amount > balance: raise ValueError("invalid")\n'
-            "    return balance - amount\n"
-        )
-
-    @verifies("scenario.issues.solve-ready")
-    def test_duplicate_is_disposed_without_human_gate_and_keeps_the_canonical_issue(
-        self,
-    ):
-        self.healthy_implementation()
-        original, _ = read_issue(self.root, self.ref["issue_id"])
-        duplicate = report_issue(
-            self.root,
-            original["reports"][0]["report"],
-            source(target_id="service.transfer", invocation_id="duplicate-fixture"),
-        )
-
-        def choose(stage, snapshot, data, cwd):
-            if stage == "issue-solve":
-                self.assertIn(
-                    duplicate["issue_id"],
-                    [
-                        row["issue_id"]
-                        for row in snapshot["stage_inputs"][0]["data"]["duplicates"]
-                    ],
-                )
-                data["issue_decision"].update(
-                    action="duplicate",
-                    duplicate_of=duplicate["issue_id"],
-                    rationale="Both selected reports describe the same transfer observation.",
-                )
-
-        result = self.call("solve", choose)
-        self.assertEqual("succeeded", result["status"], result)
-        record, _ = read_issue(self.root, self.ref["issue_id"])
-        self.assertEqual("duplicate", record["dispositions"][-1]["reason"])
-        self.assertEqual(
-            "open", read_issue(self.root, duplicate["issue_id"])[0]["status"]
-        )
-        self.assertEqual(["issue-solve"], [item["stage"] for item in self.model.calls])
-
-    @verifies("scenario.issues.solve-ready")
-    def test_contract_grounded_non_actionable_disposition_needs_no_manual_approval(
-        self,
-    ):
-        self.healthy_implementation()
-        self.ref = report_issue(
-            self.root,
-            report(
-                owner_target_id="service.transfer",
-                evidence=[],
-                description="The transfer contract is alleged to be absent.",
-            ),
-            source(target_id="service.transfer", invocation_id="contract-report"),
-        )
-
-        def choose(stage, snapshot, data, cwd):
-            if stage == "issue-solve":
-                data["issue_decision"].update(
-                    action="not-actionable",
-                    rationale="The admitted transfer Spec supplies that contract.",
-                )
-
-        result = self.call("solve", choose)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("not-actionable", result["output"]["data"]["decision"])
-        self.assertEqual(["issue-solve"], [item["stage"] for item in self.model.calls])
-
-    @verifies("scenario.issues.solve-decision")
-    def test_explicit_clarification_resumes_a_waiting_solve(self):
-        def wait(stage, snapshot, data, cwd):
-            if stage == "issue-solve":
-                data["issue_decision"].update(
-                    action="needs-decision",
-                    rationale="Which transfer behavior is intended?",
-                )
-
-        self.assertEqual("blocked", self.call("solve", wait)["status"])
-
-        self.healthy_implementation()
-
-        def observe(stage, snapshot, data, cwd):
-            if stage == "issue-solve":
-                data["issue_decision"]["action"] = "resolved"
-                self.assertIn(
-                    "Use the existing pure-transfer contract.",
-                    snapshot["stage_inputs"][0]["data"]["feedback"],
-                )
-
-        result = self.call(
-            "solve", observe, note="Use the existing pure-transfer contract."
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("ready", result["output"]["data"]["outcome"])
 
     @verifies("scenario.issues.inspect")
     def test_solving_an_already_closed_issue_does_not_prepare_a_worktree(self):

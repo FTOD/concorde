@@ -63,8 +63,8 @@ Because the files travel with Git, a candidate worktree and the primary worktree
 own copy: closing an Issue in a candidate says nothing about the primary branch until the candidate
 is delivered.
 
-**How workers report.** Every worker the Host launches for a Module, whether a native terminal
-Agent or a diagnostic Pi RPC worker, receives a `report_issue` tool. It sends only
+**How workers report.** Every native terminal Agent the Host launches for a Module receives a
+`report_issue` tool. It sends only
 the report; the Host adds who reported it (invocation, Agent, capability, phase, Module, context
 identity, change and Git HEAD) and saves the record before answering with a receipt and the
 record's current revision. The worker then keeps working. Reporting is limited to what the worker

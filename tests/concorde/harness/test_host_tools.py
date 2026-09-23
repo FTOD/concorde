@@ -31,9 +31,6 @@ class HostToolTests(unittest.TestCase):
                 raise AssertionError("Host tool imported LangGraph: " + module)
             return original(module, *args, **kwargs)
 
-        def no_model(*args, **kwargs):
-            raise AssertionError("Host tool attempted model execution")
-
         with patch("builtins.__import__", without_graph):
             result = run_operation(
                 name,
@@ -43,7 +40,6 @@ class HostToolTests(unittest.TestCase):
                     root or self.root,
                     PACKAGE,
                     allow_primary_worktree=True,
-                    executor=no_model,
                 ),
             )
         self.assertNotIn(

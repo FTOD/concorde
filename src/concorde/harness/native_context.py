@@ -38,6 +38,7 @@ from .context import (
 from .entry import invocation_failure, runtime_selection, validate_invocation
 from .execution_error import (
     ExecutionFailure,
+    OperationExecutionError,
     exception_feedback,
     failure,
     native_feedback,
@@ -804,8 +805,6 @@ def _execute(
                 or rows[0].get("stopped")
                 or rows[0].get("exitCode") != 0
             ):
-                from .worker_executor import OperationExecutionError
-
                 error = OperationExecutionError(
                     "native worker did not complete",
                     outcome="limit_exhausted"

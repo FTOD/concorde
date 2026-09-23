@@ -42,7 +42,6 @@
         "-n",
         "8",
         "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_check_execution.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
@@ -84,7 +83,6 @@
         "4",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_boundaries.py",
-        "tests/concorde/harness/test_worker_binding.py",
         "tests/concorde/harness/test_check_executor.py"
       ],
       "timeout_seconds": 180,

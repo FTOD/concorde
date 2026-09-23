@@ -107,15 +107,6 @@
       ]
     },
     {
-      "id": "realization.context.permissions",
-      "type": "realization",
-      "title": "Permission compiler",
-      "meaning": "#realization.context.permissions",
-      "entries": [
-        "src/concorde/harness/permissions.py"
-      ]
-    },
-    {
       "id": "realization.context.reference-check",
       "type": "realization",
       "title": "Reference version check",
@@ -133,11 +124,8 @@
         "tests/concorde/harness/test_boundaries.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_external_references.py",
-        "tests/concorde/harness/test_permissions.py",
         "tests/concorde/harness/test_worker_profile.py",
-        "tests/concorde/harness/test_worker_binding.py",
-        "tests/concorde/harness/test_check_evidence.py",
-        "tests/concorde/harness/test_worker_executor.py"
+        "tests/concorde/harness/test_check_evidence.py"
       ]
     }
   ],
@@ -183,12 +171,6 @@
       "source": "realization.context.profiles",
       "verb": "validates",
       "target": "concept.context.worker-profile"
-    },
-    {
-      "type": "relates",
-      "source": "realization.context.permissions",
-      "verb": "compiles",
-      "target": "concept.context.grant"
     },
     {
       "type": "relates",

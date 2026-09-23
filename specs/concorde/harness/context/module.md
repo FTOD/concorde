@@ -6,8 +6,7 @@ Task context decides what one worker may know and touch for one step of a task. 
 Module and step it freezes a context snapshot: the boundary sets that the Spec Module computes from
 the Specs, the task itself, the accepted results of earlier steps and the facts about the current
 worktree. It then delivers those sets to the worker and derives the paths the worker is granted.
-It also holds the worker profiles that say what each kind of worker is, and the permission
-compiler that turns a profile and a snapshot into a grant. Agent execution, Planning,
+It also holds the worker profiles that say what each kind of worker is. Agent execution, Planning,
 Implementation, Review and Issues rely on it whenever they start a model step. It does not compute
 the boundary sets itself, does not launch workers, and today does not confine a native worker's
 file access at the operating-system level; the Design section says exactly what is enforced.
@@ -121,9 +120,7 @@ the Harness is at an early stage and does not yet confine native Agents to them:
 
 What is enforced is the Agent's tool list, fixed by its profile and native definition, and the
 independent acceptance of its result by the host. Operating-system isolation exists only for
-configured checks and tester commands in [Check execution](../checks/module.md), and on the Pi RPC
-diagnostic worker path of [Agent execution](../execution/module.md), which applies the compiled
-grant with a tool gate and a sandbox.
+configured checks and tester commands in [Check execution](../checks/module.md).
 
 <a id="concept.context.worker-profile"></a><a id="realization.context.profiles"></a>
 
@@ -137,15 +134,6 @@ reads need a project workspace. Binding a profile to the current build checks th
 source is recorded in the build manifest and that the rendered instructions exist, and produces a
 reproducible binding digest.
 
-<a id="realization.context.permissions"></a>
-
-**Permission compiler.** A grant is compiled from a profile's declared effects, a host-issued
-binding that may only narrow them, and the concrete paths of each role taken from the snapshot:
-`spec-context` is `context.json` plus every listed document and Protocol file, `implementation` is
-the Module's implementation files, and `references` is the external inclusion roots. The result is
-a digest-bound policy that denies common credential paths by default. Anything wider than the
-profile is refused, and a refused grant is never retried with a wider one.
-
 <a id="realization.context.reference-check"></a>
 
 External context is only useful if it describes the code that actually runs. A maintenance script
@@ -156,7 +144,7 @@ older or newer than the library.
 <a id="realization.context.tests"></a>
 
 The tests of this Module build small fixture projects and check freezing, recheck, external
-references, profile validation and binding, and policy compilation.
+references, profile validation and binding.
 
 **Open questions.** The Protocol files a snapshot lists are a fixed pair of paths under
 `.concorde/protocol/` chosen in code; how they should follow the Protocol's own chapter layout is
@@ -169,14 +157,13 @@ invocation code of Agent execution.
 ```mermaid
 flowchart LR
     accTitle: Task context relationships
-    accDescr: Context freezing reads boundary sets from Spec and workspace facts from Candidate worktrees into a snapshot; worker profiles come from Agents; the permission compiler derives a grant.
+    accDescr: Context freezing reads boundary sets from Spec and workspace facts from Candidate worktrees into a snapshot; worker profiles come from Agents and bound a grant.
     freezing[Context freezing]
     snapshot[Context snapshot]
     stage[Stage input]
     capsule[Capsule]
     profiles[Worker profiles]
     profile[Worker profile]
-    compiler[Permission compiler]
     grant[Grant]
     spec[Spec tooling]
     worktrees[Candidate worktrees]
@@ -188,7 +175,6 @@ flowchart LR
     snapshot -->|is copied into| capsule
     profiles -->|loads profiles from| agents
     profiles -->|validates| profile
-    compiler -->|compiles| grant
     profile -->|bounds| grant
 ```
 

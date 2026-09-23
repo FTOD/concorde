@@ -71,12 +71,6 @@ def create_parser() -> argparse.ArgumentParser:
     status.add_argument("--manual-merge")
     status.add_argument("--cleanup", choices=["pending", "retained", "removed"])
 
-    usage = subparsers.add_parser("usage")
-    usage.add_argument(
-        "--run",
-        help="root invocation id of one operation run; default: every recorded run",
-    )
-    usage.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
@@ -169,43 +163,6 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             if arguments.output:
                 save_selection(root, arguments.output, selected)
         return ToolResult("select-session", ".", "success", result=selected)
-    if arguments.tool == "usage":
-        from ..harness.usage import read_usage, summarize_usage
-
-        records = read_usage(root, arguments.run)
-        if arguments.run and not records:
-            return ToolResult(
-                "usage",
-                ".",
-                "invalid",
-                findings=(
-                    Finding(
-                        "CONCORDE-USAGE-001",
-                        "error",
-                        f".concorde/runs/{arguments.run}/usage.jsonl",
-                        "no usage records exist for this run",
-                        "Pass the root invocation id printed by the operation result, or omit --run.",
-                    ),
-                ),
-            )
-        return ToolResult(
-            "usage",
-            ".",
-            "success",
-            result={
-                "runs": sorted(
-                    {
-                        run_id
-                        for r in records
-                        if isinstance(r, dict)
-                        and isinstance(run_id := r.get("root_invocation_id"), str)
-                        and run_id
-                    }
-                ),
-                "records": len(records),
-                **summarize_usage(records),
-            },
-        )
     if arguments.tool == "docsite":
         from ..views.docsite_scaffold import apply_docsite, propose_docsite
 
@@ -418,7 +375,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "docsite",
                 "build",
                 "protocol-manifest",
-                "usage",
                 "status",
                 "select-session",
             }

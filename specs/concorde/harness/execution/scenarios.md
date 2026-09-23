@@ -44,7 +44,7 @@ rewrite them.
 ### scenario.harness.worker-selection — Launch each Agent on its configured selection
 
 - GIVEN a project configuration with a default model, thinking level and time limit and per-Agent overrides
-- WHEN the Host prepares an Agent call or binds an RPC diagnostic worker
+- WHEN the Host prepares an Agent call
 - THEN each value comes from the Agent's entry, else the default, and a missing time limit falls back to the Agent's own
 - AND the selection reaches Pi as the model, the thinking level and the deadline of the launch
 - BUT an unset model or thinking level keeps Pi's own default
@@ -126,16 +126,6 @@ rewrite them.
 
 ## Diagnostics
 
-### scenario.harness.usage-accounting — Record what each RPC worker launch consumed
-
-- GIVEN an RPC diagnostic worker that settled and reported its session statistics
-- WHEN the Host accepts its outcome
-- THEN the outcome carries the reported input, cached, output and total tokens, cost and turns, the model and thinking level, the measured wall time and the prompt and context sizes
-- AND the Host appends one schema-2 line, labelled with operation, stage, target, Agent, change and launch identity, to the root invocation's `usage.jsonl` in the primary worktree
-- AND `concorde usage` and the entry's summary aggregate those lines per step, stage, target, Agent and run
-- AND unversioned older lines are counted separately without being rewritten, and unknown formats make the summary incomplete instead of being totalled
-- BUT an unreported figure is unknown rather than zero, and a failed write never fails the launch
-
 ### scenario.harness.diagnostic-spans — Timing does not change execution
 
 - GIVEN nested or concurrent runtime work, or a failing timing sink
@@ -152,81 +142,3 @@ rewrite them.
 - THEN it records measured intervals and the reported context, usage, cache, reserve and compaction figures as session entries, keeping unknown values unknown
 - AND observation adds no tool, prompt change, setting, child session or network telemetry
 - AND reasons the user session supplies for a handoff or a test stay diagnostic facts, not grants
-
-## The RPC diagnostic worker
-
-### scenario.harness.execute-success — Run a bound RPC worker and accept its typed result
-
-- GIVEN a Host-built worker invocation with a verified Agent binding, frozen context, compiled grant and model selection
-- WHEN the worker executor runs it
-- THEN it first reverifies the binding against the current build, the instructions against the rendered Agent and the context and grant against the Agent's contract, before any process starts
-- AND it launches one Pi worker whose `submit_result` tool takes exactly the result schema this Agent may populate
-- AND it returns an outcome bound to the invocation and binding digests only for one submitted result that satisfies the result type and the contract
-
-### scenario.harness.execute-failure — Distinguish failed, cancelled, timed-out and invalid runs
-
-- GIVEN a refused preflight or a Pi process that fails before settling, a Host interrupt, a run past its deadline, or a run whose submitted result is missing, repeated or outside the contract
-- WHEN the worker executor runs it
-- THEN it raises an execution error with outcome `failed`, `cancelled`, `limit_exhausted` or `invalid_completion` respectively
-- AND a contract rejection keeps its code, `permission_denied` for fields this Agent may not populate
-- AND the caller stops instead of retrying
-
-### scenario.harness.worker-contract — An RPC worker runs only its own contract
-
-- GIVEN an RPC diagnostic worker for one Agent and one selected Module
-- WHEN the Host binds it and the executor admits its launch and its result
-- THEN its prompt is the Agent's rendered instructions followed by the Protocol files its context lists
-- AND a mismatched phase, context or result type, missing required stage artifacts, implementation contents for an Agent without implementation reads and a grant wider than the contract are rejected before a process starts
-- AND the submission tool omits optional fields the Agent may not populate and allows only empty values for such required fields
-- AND a refused submission does not end the run, so a corrected one can succeed within the same deadline
-- AND the Host independently rejects a result with an outcome or a populated field its contract does not permit
-- BUT two workers of the same Module never share an invocation, a context identity, a conversation or a write grant
-
-### scenario.harness.pi-rpc-client — Read one Pi RPC run to settlement
-
-- GIVEN a process speaking Pi's RPC protocol
-- WHEN the Host runs one prompt through it
-- THEN records are split on line feed only, so U+2028 and U+2029 inside a JSON string stay inside it, and a trailing carriage return is dropped
-- AND every extension dialog is answered as cancelled, every tool result is collected and the session statistics are read after `agent_settled`
-- BUT a process that closes its output before settling raises an RPC error, and a run past its deadline is killed and raises a timeout
-
-### scenario.harness.pi-worker-launch — Launch an RPC worker and admit its single result
-
-- GIVEN a launch with a workspace, grants, tools, a system prompt, a message, a result schema and a Pi model
-- WHEN the Pi worker runtime runs it
-- THEN Pi starts in RPC mode with sessions, context files, Skills, prompt templates, themes and discovered extensions disabled, the Concorde worker extension loaded and the Host-rendered system prompt in place
-- AND the returned value is the details of the single successful `submit_result` call, with usage from Pi's session statistics
-- AND a `run_checks` call is answered by the Host's configured-check service
-- BUT a run without a submission fails as `invalid_completion`, a run past its deadline as `limit_exhausted`, and an inconsistent launch is refused before any process starts
-
-### scenario.harness.pi-worker-gate — Refuse tool calls outside the grant
-
-- GIVEN an RPC diagnostic worker with read and write grants and a tool list
-- WHEN its model reads, searches or writes a path outside the grants, or calls a tool it was not granted
-- THEN the worker extension refuses the call with an error naming the policy, and the file is neither read nor changed
-- AND calls inside the grants run normally
-- AND each `bash` command runs with the provider credential variables unset
-
-### scenario.harness.worker-sandbox — Confine the RPC worker process to its grant
-
-- GIVEN a launch with a workspace, write entries including a pending file and a pending directory, and a run directory
-- WHEN the runtime derives the mount plan and starts the Pi process inside it
-- THEN the process can write exactly the write entries, the pending placeholders and its run directory, while the rest of the workspace and the host filesystem are read-only
-- AND the listed secret locations read as empty, other worktrees of the repository are hidden while its shared Git directory stays readable, the host's temporary directory is private, and the process starts in the workspace with its own home and PID namespace
-- AND a pending placeholder left empty is removed after the run, while a written one stays
-- BUT a write entry that is a symlink or leaves the workspace is refused before any process starts
-
-### scenario.harness.worker-sandbox-unavailable — An unenforceable sandbox refuses the launch
-
-- GIVEN a host without a trusted bubblewrap installation, or a platform other than Linux
-- WHEN an RPC diagnostic worker launch is requested
-- THEN it is refused as `worker sandbox unavailable` before any Pi process starts
-- BUT this says nothing about native Agent calls, which never use this sandbox
-
-### scenario.harness.pi-worker-delegation — Workers cannot delegate
-
-- GIVEN an RPC diagnostic worker with its tool and file grants
-- WHEN it is launched, with or without delegation-depth environment variables
-- THEN its Pi catalog contains only the declared non-delegating tools and no ambient Skills, instructions, extensions or child catalogs
-- AND a request for a subagent tool, the `concorde` tool, a child definition or a child selection fails instead of starting another worker
-- AND depth variables are neither read nor forwarded, so they cannot block or widen the launch

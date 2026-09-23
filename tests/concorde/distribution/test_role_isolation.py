@@ -18,7 +18,12 @@ from concorde.distribution import installation
 from concorde.distribution.build import write_build
 from concorde.distribution.prompt_resolver import resolve_role_prompt
 from concorde.distribution.session_selection import save_selection, select_session
-from concorde.harness.pi_rpc import PiRpcError, PiRun, _records, run_prompt
+from tests.concorde.support.pi_prompt_client import (
+    PiRpcError,
+    PiRun,
+    read_records,
+    run_prompt,
+)
 from concorde.spec.verification import verifies
 from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -64,7 +69,7 @@ def replacement_prompts(argv, project, env, session):
     )
     records = queue.Queue()
     threading.Thread(
-        target=_records, args=(process.stdout, records), daemon=True
+        target=read_records, args=(process.stdout, records), daemon=True
     ).start()
     events = []
 

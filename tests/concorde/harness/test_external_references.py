@@ -6,7 +6,7 @@ from concorde.harness.context import recheck_context, resolve_context
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import source_pairs
-from tests.concorde.spec.test_module_model import PACKAGE, ModuleImplementationTests
+from tests.concorde.spec.test_module_model import ModuleImplementationTests
 
 
 class ExternalReferenceTests(unittest.TestCase):
@@ -62,71 +62,6 @@ class ExternalReferenceTests(unittest.TestCase):
         with self.assertRaises(SpecError) as raised:
             recheck_context(self.fixture.repository(), ask)
         self.assertEqual("stale_context", raised.exception.code)
-
-    @verifies("scenario.harness.external-references")
-    def test_reading_modes_are_granted_the_declared_references_only(self):
-        from tests.concorde.support.native_planning import OperationHost
-        from concorde.harness.admission import run_operation
-        from concorde.spec.typed_data import typed
-        from tests.concorde.spec.support import ModelProcessDouble
-
-        seen = {}
-
-        def inspect(stage, snapshot, result, cwd):
-            seen[stage] = {
-                "copy": (cwd / "reference/lib/api.md").read_text()
-                if (cwd / "reference/lib/api.md").exists()
-                else None,
-                "media": (cwd / "reference/lib/diagram.png").exists(),
-                "undeclared": (cwd / "reference/other/api.md").exists(),
-                "entries": [item["path"] for item in snapshot["external_references"]],
-            }
-            if stage == "plan":
-                result["plan"] = "Use connect(url) as documented."
-
-        double = ModelProcessDouble(inspect)
-        host = OperationHost(
-            self.fixture.root,
-            PACKAGE,
-            executor=double.executor,
-            allow_primary_worktree=True,
-        )
-        result = run_operation(
-            "concorde-plan",
-            self.fixture.configuration,
-            typed(
-                "concorde-plan-request",
-                {"target_id": "module.a", "task": "Adapt the value"},
-            ),
-            host_context=host,
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(
-            {
-                "copy": None,
-                "media": False,
-                "undeclared": False,
-                "entries": ["reference/lib/"],
-            },
-            seen["context-solve"],
-        )
-        self.assertEqual(
-            {
-                "copy": "## connect(url)\n",
-                "media": False,
-                "undeclared": False,
-                "entries": ["reference/lib/"],
-            },
-            seen["plan"],
-        )
-        policies = {item["phase"]: item for item in host.descriptions}
-        self.assertIn("reference/lib", policies["plan"]["read_paths"])
-        self.assertNotIn("reference/lib", policies["context-solve"]["read_paths"])
-        self.assertTrue(
-            all(
-                "reference/other" not in path for path in policies["plan"]["read_paths"]
-            )
-        )
 
     @verifies("scenario.harness.external-references")
     def test_candidate_worktrees_receive_the_primary_reference_checkouts(self):

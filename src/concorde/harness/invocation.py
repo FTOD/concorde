@@ -269,12 +269,6 @@ class Invocation:
             }
         return None
 
-    def stage(self, *args, **kwargs):
-        raise SpecError(
-            "Native Agents require the prepared Pi boundary; no legacy worker fallback",
-            "native_required",
-        )
-
     def check_state(self, state: dict) -> None:
         if state.get("spec_digest") != target_revision(self.repository, self.target):
             raise SpecError(
@@ -291,7 +285,7 @@ class Invocation:
 
 
 def validate_stage_identity(data: dict, context_id: str) -> None:
-    """Shared identity/outcome predicates for legacy stages and native assessment."""
+    """Shared identity/outcome predicates of native assessment."""
     if data["context_id"] != context_id:
         raise SpecError(
             "agent returned a different context identity", "incompatible_handoff"

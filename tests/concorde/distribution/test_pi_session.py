@@ -27,11 +27,14 @@ from concorde.distribution.build import (
 from concorde.distribution.build import (
     PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
 )
-from concorde.harness.pi_rpc import PiRpcError, run_prompt
 from concorde.spec.contracts import PUBLIC_OPERATIONS
 from concorde.spec.typed_data import json_schema
 from concorde.spec.verification import verifies
-from tests.concorde.harness.test_pi_worker import installed_pi
+from tests.concorde.support.pi_prompt_client import (
+    PiRpcError,
+    installed_pi,
+    run_prompt,
+)
 from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden/pi/concorde-session.ts"
@@ -300,9 +303,7 @@ class SessionToolTests(unittest.TestCase):
 
     @staticmethod
     def envelope(text: str) -> dict:
-        body, _, usage = text.rpartition("\n")
-        assert usage.startswith("usage: "), text
-        return json.loads(body)
+        return json.loads(text)
 
     @verifies("scenario.distribution.pi-session-prompt")
     def test_prompt_and_tool_name_every_public_operation(self):
@@ -339,7 +340,7 @@ class SessionToolTests(unittest.TestCase):
         )
 
     @verifies("scenario.distribution.pi-session-run")
-    def test_run_wraps_the_input_in_the_invocation_envelope_and_reports_usage(self):
+    def test_run_wraps_the_input_in_the_invocation_envelope(self):
         [result] = self.drive([{"params": RUN}])["results"]
         self.assertTrue(result["ok"], result)
         self.assertEqual(
@@ -356,11 +357,6 @@ class SessionToolTests(unittest.TestCase):
                 },
             },
             self.envelope(result["text"])["output"]["echo"],
-        )
-        self.assertTrue(
-            result["text"].endswith(
-                "usage: input 120, output 30, cost 0.0125 USD, 4.5 s"
-            )
         )
         self.assertEqual(
             {

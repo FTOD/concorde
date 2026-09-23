@@ -6,9 +6,8 @@ Agent execution runs Concorde's model work and decides when a model's answer cou
 It supplies the shared machinery every provider uses to call an Agent: a single native Agent call
 or a Workflow of several calls through Pi's pi-subagents extension, the Host steps and the result
 gate that turn an untrusted proposal into an accepted result, the model selection for each Agent,
-and the usage and timing diagnostics of every run. It also owns the optional StateGraph Operation,
-the check that keeps every Graph Spec equal to its compiled Graph, and a retained Pi RPC worker used
-only by tests and diagnostics. Planning, Implementation,
+and the timing diagnostics of every run. It also owns the optional StateGraph Operation and the
+check that keeps every Graph Spec equal to its compiled Graph. Planning, Implementation,
 Review and Issues rely on it to run their Agents; Request admission and Task context rely on it
 for the invocation host. It does not choose which Agent a capability needs, what that Agent may
 read, or which capability runs next, and it does not confine a native Agent's file, network or
@@ -26,9 +25,7 @@ credential access in the operating system: those limits are instructions to the 
 | Model selection | The model, thinking level and time limit resolved for one Agent from the project configuration. |
 | Terminal Agent Operation | The optional LangGraph StateGraph with one node that validates typed input, calls a trusted Agent service supplied by its embedding and validates the typed result. |
 | Graph Spec | The section of an implementation document that states one compiled Graph's State, Nodes and Edges and draws it in a flowchart bound to that Graph. |
-| Usage record | One line recording what an Agent run consumed: tokens, cost, turns, wall time and the sizes of its prompt and context. |
 | Diagnostic span | One bounded timing record of a piece of runtime work, with its duration, status and correlation identities and no content. |
-| RPC diagnostic worker | A worker run as a Pi process in RPC mode inside Concorde's own Linux sandbox and tool gate, used only by tests and diagnostics. |
 | [Agent](../../agents/module.md#concept.agents.agent) | |
 | [Operation](../../operations/module.md#concept.operations.operation) | |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
@@ -135,7 +132,7 @@ that names no Agent, a nonpositive time limit or a model without a provider is r
 
 ### Diagnostics
 
-<a id="concept.execution.usage-record"></a><a id="concept.execution.diagnostic-span"></a>
+<a id="concept.execution.diagnostic-span"></a>
 
 Runtime work emits **diagnostic spans**: admission, context freezing, sandbox preparation, Pi
 execution, configured checks and result validation. For an admitted run the Host stores them in
@@ -143,11 +140,9 @@ execution, configured checks and result validation. For an admitted run the Host
 observation store their own spans as session entries, and `scripts/development/analyze-timing.py`
 summarizes a session's events without printing message bodies.
 
-A **usage record** is written for every RPC diagnostic worker launch, to
-`.concorde/runs/<root invocation>/usage.jsonl`, and `concorde usage` summarizes those lines per
-step, Agent and run. Native Agent calls write no usage record today; their token counts stay in
-pi-subagents' own run records. A figure that was not reported stays unknown, never zero, and a
-failure to record a diagnostic never changes the outcome of the work it describes.
+Native Agent calls write no usage record of their own; their token counts stay in pi-subagents'
+own run records. A figure that was not reported stays unknown, never zero, and a failure to record
+a diagnostic never changes the outcome of the work it describes.
 
 ### The optional StateGraph Operation
 
@@ -179,17 +174,6 @@ disagree with the compiled topology, any compiled Graph without one, and any Pyt
 uses LangGraph's Functional API. A passing check shows that the Spec and the code have the same
 shape, not that the routing is right.
 
-### The RPC diagnostic worker
-
-<a id="concept.execution.rpc-worker"></a>
-
-The **RPC diagnostic worker** is a second way to run a worker, kept for the test suite, which uses
-it to exercise domain logic and sandbox behaviour. The Host starts `pi --mode rpc` itself, with ambient
-discovery disabled, a Concorde extension that gates every tool call against the compiled grant, and
-a Linux bubblewrap sandbox around the process. Each such worker runs as the one node of a Terminal
-Agent Operation, with the RPC launch as its Agent service. No capability uses this path, and it is
-never a fallback when a native Agent call fails.
-
 ## Design
 
 ### What is enforced and what is policy
@@ -205,8 +189,8 @@ the developer's user with the project on disk, the shared network and the develo
 Their file scope, and every network and credential restriction, is written into their instructions.
 In particular a programmer's `bash` can reach any path its user can. The call's temporary directory
 and the input digests detect changes; they do not prove what an Agent read. The only
-operating-system boundaries in the Harness are the read-only check sandbox of Check execution and
-the RPC diagnostic worker's sandbox, and neither applies to native Agents. This is an honest
+operating-system boundary in the Harness is the read-only check sandbox of Check execution, and it
+does not apply to native Agents. This is an honest
 statement of an early Harness, not a guarantee to rely on.
 
 ### Why finite Host steps
@@ -262,21 +246,9 @@ Graph API.
 
 <a id="realization.execution.diagnostics"></a>
 
-The **execution diagnostics** record usage and timing without prompts, source text, tool output,
+The **execution diagnostics** record timing without prompts, source text, tool output,
 environment values or command arguments. Clocks of different processes are never subtracted.
 Recording is best effort: a failing sink marks the telemetry incomplete and nothing else.
-
-### The RPC diagnostic worker path
-
-<a id="realization.execution.rpc-worker"></a>
-
-The **RPC diagnostic worker path** keeps a fully Host-controlled launch: an environment allowlist,
-a Pi configuration directory built for the run, the tool gate extension and a bubblewrap mount
-plan in which the host is read-only, only the write grant and the run directory are writable, and
-the developer's listed secret files and other worktrees are masked. It refuses to start when that
-sandbox is unavailable. Its limits: the network is shared and the provider credentials copied into
-the run directory are readable inside it. Production code still imports its error and outcome
-types to classify failures.
 
 <a id="realization.execution.tests"></a>
 
@@ -320,26 +292,20 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    accTitle: Graphs, diagnostics and the RPC diagnostic worker
-    accDescr: The optional Terminal Agent Operation delegates to a trusted Agent call; the Graph Spec check compares Graph Specs; diagnostics record usage and spans.
+    accTitle: Graphs and diagnostics
+    accDescr: The optional Terminal Agent Operation delegates to a trusted Agent call; the Graph Spec check compares Graph Specs; diagnostics record spans.
     opgraph[Operation graph]
     operation[Terminal Agent Operation]
     call[Agent call]
     check[Graph Spec check]
     spec[Graph Spec]
     diagnostics[Execution diagnostics]
-    usage[Usage record]
     span[Diagnostic span]
-    rpcpath[RPC diagnostic worker path]
-    rpc[RPC diagnostic worker]
     opgraph -->|compiles| operation
     operation -->|calls a trusted service for| call
     check -->|compares| spec
     spec -->|describes| operation
-    diagnostics -->|records| usage
     diagnostics -->|records| span
-    rpcpath -->|runs| rpc
-    rpcpath -->|runs each worker through| operation
 ```
 
 ```mermaid
@@ -377,8 +343,7 @@ Agent stops preparation.
 <a id="uses-context"></a>
 
 [Task context](../context/module.md) freezes what a call may read, validates an Agent's typed input
-and output against its [worker profile](../context/module.md#concept.context.worker-profile), and
-compiles the [grant](../context/module.md#concept.context.grant) of an RPC diagnostic worker. This
+and output against its [worker profile](../context/module.md#concept.context.worker-profile). This
 Module rechecks the frozen context before staging and before acceptance, and rejects the result
 when anything changed.
 
@@ -392,7 +357,7 @@ its checks, and every failure here is reported as its record, keeping the lower-
 
 [Candidate worktrees](../worktrees/module.md) keeps the
 [run record](../worktrees/module.md#concept.worktrees.run-record) and the primary worktree's run
-directory. Usage records and failed-launch diagnostics are written there, never into a candidate;
+directory. Diagnostic timing records are written there, never into a candidate;
 when that write fails the execution outcome stands and the diagnostic is reported missing.
 
 <a id="uses-checks"></a>

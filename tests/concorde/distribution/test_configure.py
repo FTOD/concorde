@@ -17,7 +17,7 @@ from concorde.harness.configuration import (
     load_configuration,
     propose_configuration,
 )  # noqa: E402
-from tests.concorde.support.native_planning import OperationHost  # noqa: E402
+from concorde.harness.host import OperationHost  # noqa: E402
 from concorde.harness.admission import run_operation  # noqa: E402
 from concorde.distribution.project_defaults import (
     PROTOCOL_MANIFEST_PATH,
@@ -34,7 +34,6 @@ from concorde.spec.typed_data import (  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 from tests.concorde.spec.support import (  # noqa: E402
     PACKAGE,
-    ModelProcessDouble,
     project,
 )
 from tests.concorde.support.operation_json import CONFIGURATION  # noqa: E402
@@ -140,7 +139,6 @@ class AcceptProtocolTests(unittest.TestCase):
         host = OperationHost(
             self.root,
             PACKAGE,
-            executor=ModelProcessDouble().executor,
             allow_primary_worktree=True,
         )
         return run_operation(

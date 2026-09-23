@@ -104,11 +104,6 @@ def worker_key(name: str) -> str:
     return key.replace("-", "_")
 
 
-def external_worker_name(name: str) -> str:
-    """The ``concorde-<hyphenated>`` identity of one bare WorkerProfile name."""
-    return "concorde-" + name.replace("_", "-")
-
-
 def validate_worker_profile(agent: WorkerProfile) -> None:
     """Reject a profile whose contract, workspace or tools are inconsistent."""
     contract = agent.contract
@@ -253,70 +248,6 @@ def validate_worker_output(agent: WorkerProfile, value: dict) -> None:
         raise ContractError("review result does not match the contract")
 
 
-def context_role(agent: WorkerProfile) -> str:
-    """The read role that carries a worker's frozen context index and granted documents."""
-    return "spec-context"
-
-
-def validate_worker_policy(
-    agent: WorkerProfile, value: dict, policy, receipt: dict
-) -> None:
-    """Recompile the concrete grant against the contract's effects, including code path membership."""
-    from .context import context_grants
-    from .permissions import PolicyBinding, compile_policy, verify_effective_subset
-
-    contract = agent.contract
-    role_paths = {key: tuple(paths) for key, paths in receipt["role_paths"].items()}
-    capsule_paths = role_paths.get(context_role(agent), ())
-    snapshot = value["data"].get("snapshot", {}).get("data", value["data"])
-    indexes = [path for path in capsule_paths if Path(path).name == "context.json"]
-    if len(indexes) != 1 or set(capsule_paths) - {indexes[0]} != set(
-        context_grants(snapshot)
-    ):
-        raise ValueError(
-            "a launch requires one frozen context index and the grant of exactly its listed files"
-        )
-    entries = [
-        item["path"].rstrip("/") for item in snapshot.get("implementation_entries", [])
-    ]
-    names = [item["path"] for item in snapshot.get("implementation_files", [])]
-    directories = [
-        item["path"]
-        for item in snapshot.get("implementation_entries", [])
-        if item["directory"]
-    ]
-    artifacts = {item["path"] for item in snapshot.get("implementation_artifacts", [])}
-    for path in role_paths.get("implementation", ()):
-        if "implementation" not in contract.effects.reads:
-            raise ValueError(
-                "this WorkerProfile cannot be granted implementation reads"
-            )
-        if not contract.effects.writes and path not in artifacts:
-            raise ValueError(
-                "a read-only grant exceeds the frozen implementation files"
-            )
-        if path not in entries + names and not any(
-            path.startswith(directory) for directory in directories
-        ):
-            raise ValueError("implementation grant is outside the selected Module")
-    references = {
-        item["path"].rstrip("/") for item in snapshot.get("external_references", [])
-    }
-    for path in role_paths.get("references", ()):
-        if "references" not in contract.effects.reads:
-            raise ValueError(
-                "this WorkerProfile cannot be granted external reference reads"
-            )
-        if path not in references:
-            raise ValueError(
-                "reference grant exceeds the snapshot's external references"
-            )
-    bound = PolicyBinding(
-        policy.operation, policy.stage, policy.occurrence, policy.role, policy.agent
-    )
-    verify_effective_subset(compile_policy(contract.effects, bound, role_paths), policy)
-
-
 def profile_digest(package_root: str | Path, agent: WorkerProfile) -> str:
     """Identity of the terminal worker profile."""
     return _sha256_json({"agent": dataclasses.asdict(agent)})
@@ -331,20 +262,6 @@ def canonical_binding(binding: WorkerBinding) -> str:
 
 def binding_digest(binding: WorkerBinding) -> str:
     return _sha256_bytes(canonical_binding(binding).encode("utf-8"))
-
-
-def binding_json(binding: WorkerBinding) -> str:
-    """Canonical JSON of the complete binding, digest included: the wire form a launch carries."""
-    return json.dumps(
-        dataclasses.asdict(binding), sort_keys=True, separators=(",", ":")
-    )
-
-
-def binding_from_json(text: str) -> WorkerBinding:
-    try:
-        return WorkerBinding(**json.loads(text))
-    except (ValueError, TypeError) as error:
-        raise ValueError("malformed WorkerProfile binding JSON") from error
 
 
 def resolve_worker(package_root: str | Path, name: str) -> WorkerBinding:
