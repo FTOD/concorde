@@ -37,7 +37,11 @@ import { selectionPath as explicitSelectionPath } from "./concorde-selection.ts"
 export interface SessionOperation {
   /** The public Operation's external name, for example `concorde-plan`. */
   name: string;
+  /** host: run starts the launcher; agent-entry: run prepares one native Agent call; workflow: run
+   * prepares a named asynchronous native workflow that `result` polls. */
   kind: "host" | "agent-entry" | "workflow";
+  /** The `input.action` values for which a host capability's run is prepared as a workflow. */
+  native_actions: string[];
   description: string;
   /** The rendered Operation guidance for this Operation, without launcher mechanics. */
   guidance: string;
@@ -48,7 +52,7 @@ export interface SessionOperation {
 }
 
 export interface SessionCatalog {
-  schema_version: 2;
+  schema_version: 3;
   /** Project-relative path of the launcher, `scripts/run-operation.py` in a checkout. */
   launcher: string;
   /** Project-relative interpreters tried in order; private selection has no ambient fallback.
@@ -97,8 +101,8 @@ export function sessionPrompt(catalog: SessionCatalog): string {
   }
   lines.push(
     "",
-    "Context-solve/tasks/implement action run PREPARES an exact native Agent call; plan, Spec/code reviews and Issue solving PREPARE named async native workflows. " +
-      "Call subagent with its exact returned call object. Direct Agent results expose details.concorde_native.accepted; plan action result exposes details.accepted " +
+    "A model-backed Operation's action run PREPARES either an exact native Agent call or a named async native workflow. " +
+      "Call subagent with its exact returned call object. Direct Agent results expose details.concorde_native.accepted; a workflow's action result exposes details.accepted " +
       "after independent Host reconciliation means acceptance. Poll the same workflow operation with action result. Native structured output and gate success are proposals/staging only.",
   );
   lines.push("", "Operations:");
@@ -260,9 +264,7 @@ export function concordeSession(
   entryPath?: string,
 ) {
   root = path.resolve(root);
-  if (process.env.CONCORDE_WORKER_POLICY)
-    throw new Error("terminal workers cannot load the Concorde session tool");
-  if (catalog.schema_version !== 2)
+  if (catalog.schema_version !== 3)
     throw new Error("unsupported Concorde session catalog version");
   // Selection is launch provenance, not permission or proof that a model used this tool.
   // Capture it once: replacing/rebuilding selection during this session requires a fresh tester.
@@ -307,7 +309,7 @@ export function concordeSession(
       );
     const selected = JSON.parse(result.stdout).result;
     if (
-      selected.mode === "maintenance" ||
+      selected.mode !== "test" ||
       selected.candidate !== root ||
       selected.pi_entry?.path !== entryPath ||
       JSON.stringify(JSON.parse(selected.pi_entry.catalog.content)) !==
@@ -386,7 +388,7 @@ export function concordeSession(
       description:
         'Run a public Concorde Operation or describe one. Action "describe" returns the ' +
         'Operation\'s guidance and the JSON Schema of its request. Action "run" sends `input`, ' +
-        "the request data, to the Operation and returns its typed result envelope. Context-solve/tasks/implement prepare exact native Agent calls; plan and reviews prepare async native workflows and exposes action result. Inspect Host accepted plus the typed business outcome, not proposals or launch receipts. `mode` " +
+        "the request data, to the Operation and returns its typed result envelope; a model-backed Operation prepares an exact native Agent call or an async native workflow whose state action result returns. Inspect Host accepted plus the typed business outcome, not proposals or launch receipts. `mode` " +
         '"describe-policy" previews the context and permissions an execute run would use ' +
         "without running an agent. A run may take a long time and blocks this turn; aborting " +
         "it cancels the running worker. Results larger than 48 KiB are saved to a file.",
@@ -450,15 +452,11 @@ export function concordeSession(
         }
         if (params.action === "result") {
           if (
-            ![
-              "concorde-plan",
-              "concorde-spec-review",
-              "concorde-code-review",
-              "concorde-issues",
-            ].includes(operation.name)
+            operation.kind !== "workflow" &&
+            operation.native_actions.length === 0
           )
             throw new Error(
-              "Result polling is only for the native planning workflow",
+              `${operation.name} prepares no native workflow; result polling is only for workflows`,
             );
           const value = await prepareContext.result(operation.name);
           return {
@@ -501,15 +499,8 @@ export function concordeSession(
           },
         };
         if (
-          [
-            "concorde-context-solve",
-            "concorde-plan",
-            "concorde-tasks",
-            "concorde-implement",
-            "concorde-spec-review",
-            "concorde-code-review",
-          ].includes(operation.name) ||
-          (operation.name === "concorde-issues" && input.action === "solve")
+          operation.kind !== "host" ||
+          operation.native_actions.includes(String(input.action))
         ) {
           const value = await prepareContext(envelope, ctx, signal);
           if (value.state === "rejected") throw new Error(errorDisplay(value));

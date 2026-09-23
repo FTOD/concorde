@@ -5,7 +5,8 @@ errors of [Delivery](module.md).
 
 ## Request
 
-`concorde-deliver` takes `change_id` and optionally `target_id`, `task`, `focus_id`,
+The request and response are the typed values `concorde-deliver-request@1` and
+`concorde-deliver-response@3`. `concorde-deliver` takes `change_id` and optionally `target_id`, `task`, `focus_id`,
 `constraints`, `keep_worktree` and `merge_primary`. A `target_id` that differs from the change's
 Module is refused with `incompatible_handoff`. The response is the common capability response with
 outcome `delivered`, the checks of the last verification and one artifact: the change status holding

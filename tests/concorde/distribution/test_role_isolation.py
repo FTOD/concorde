@@ -194,7 +194,6 @@ class EffectiveRolePromptTests(unittest.TestCase):
             self.selection,
             select_session(
                 self.source,
-                mode="test",
                 pi_entry=self.source / "generated/session/pi/concorde-session.ts",
                 runtime=self.source / "scripts/run-operation.py",
             ),

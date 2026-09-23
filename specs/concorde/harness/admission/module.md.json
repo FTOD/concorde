@@ -176,9 +176,6 @@
         "operations/configure.py",
         "prompts/operation-guidance/concorde-configure.md",
         "src/concorde/harness/configure.py"
-      ],
-      "pending": [
-        "src/concorde/harness/configure.py"
       ]
     },
     {
@@ -205,7 +202,7 @@
         "tests/concorde/harness/test_feedback_export.py",
         "tests/concorde/harness/feedback_export_driver.py",
         "tests/concorde/support/operation_json.py",
-        "tests/concorde/distribution/test_configure.py"
+        "tests/concorde/harness/test_configure.py"
       ]
     }
   ],

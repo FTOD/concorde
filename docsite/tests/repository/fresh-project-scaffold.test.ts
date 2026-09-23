@@ -71,6 +71,8 @@ sys.path.insert(0,sys.argv[1]+'/src')
 from concorde.spec.initialize import project_proposal,apply_project_proposal
 from concorde.distribution.project_defaults import install_project_defaults
 from concorde.spec.typed_data import typed
+from concorde.operations.catalog import register_types
+register_types()
 root=Path(sys.argv[2]);package=Path(sys.argv[1])
 config=typed('concorde-operation-configuration',{'model':'openai-codex/gpt-6-astra','thinking':'medium'})
 install_project_defaults(root,package)  # what the installer places before initialization
@@ -288,7 +290,7 @@ describe("a project holding only initialization outputs", () => {
     expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain(
       "Spec Protocol",
     );
-    expect(mainPage).toContain("Implementation Specs");
+    expect(mainPage).toContain("Implementation documents");
     expect(mainPage).not.toContain("<iframe");
     expect(mainPage).toContain('id="purpose"');
     expect(mainPage).not.toContain('id="requirements"');

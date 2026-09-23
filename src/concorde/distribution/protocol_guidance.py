@@ -24,11 +24,7 @@ def digest(content: bytes) -> str:
 
 def entry() -> bytes:
     reference = f"Read and follow `{PROTOCOL}` before Concorde workflow actions.\n"
-    return (
-        START
-        + ("## Concorde Spec Protocol and Framework rules\n\n" + reference).encode()
-        + END
-    )
+    return START + ("## Concorde Spec Protocol\n\n" + reference).encode() + END
 
 
 def split(content: bytes) -> tuple[bytes, bytes, bytes]:

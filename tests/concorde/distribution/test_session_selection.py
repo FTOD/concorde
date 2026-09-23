@@ -58,7 +58,7 @@ class SessionSelectionTests(unittest.TestCase):
             },
         )
         selected = select_session(
-            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+            self.root, pi_entry=self.pi_entry, runtime=self.runtime
         )
         self.assertEqual(self.pi_entry.read_text(), selected["pi_entry"]["content"])
         self.assertTrue(selected["fresh_context"])
@@ -81,21 +81,11 @@ class SessionSelectionTests(unittest.TestCase):
             str(self.root / "missing/SKILL.md"),
         ):
             with self.subTest(path=path), self.assertRaises(BuildError):
-                select_session(
-                    self.root, mode="test", pi_entry=Path(path), runtime=self.runtime
-                )
-        with self.assertRaises(BuildError):
-            select_session(
-                self.root,
-                mode="maintenance",
-                pi_entry=self.pi_entry,
-                runtime=self.runtime,
-            )
+                select_session(self.root, pi_entry=Path(path), runtime=self.runtime)
         self.pi_entry.write_text("modified")
         with self.assertRaises(BuildError):
             select_session(
                 self.root,
-                mode="test",
                 pi_entry=self.pi_entry,
                 runtime=self.runtime,
             )
@@ -104,7 +94,6 @@ class SessionSelectionTests(unittest.TestCase):
         with self.assertRaises(BuildError):
             select_session(
                 self.root,
-                mode="test",
                 pi_entry=self.pi_entry,
                 runtime=self.runtime,
             )
@@ -112,7 +101,7 @@ class SessionSelectionTests(unittest.TestCase):
     @verifies("scenario.session.select")
     def test_aliased_entry_and_empty_tester_selection_are_rejected(self):
         with self.assertRaises(BuildError):
-            select_session(self.root, mode="test", pi_entry=None, runtime=self.runtime)
+            select_session(self.root, pi_entry=None, runtime=self.runtime)
         content = self.pi_entry.read_bytes()
         self.pi_entry.unlink()
         other = self.root / "other.md"
@@ -121,16 +110,9 @@ class SessionSelectionTests(unittest.TestCase):
         with self.assertRaises(BuildError):
             select_session(
                 self.root,
-                mode="test",
                 pi_entry=self.pi_entry,
                 runtime=self.runtime,
             )
-        self.pi_entry.unlink()
-        write_build(self.root)
-        selected = select_session(
-            self.root, mode="maintenance", pi_entry=None, runtime=self.runtime
-        )
-        self.assertIsNone(selected["pi_entry"])
 
     @verifies("scenario.session.select")
     def test_saved_selection_is_reverified_before_runtime_use(self):
@@ -138,7 +120,7 @@ class SessionSelectionTests(unittest.TestCase):
         from concorde.distribution.session_selection import load_selection
 
         selected = select_session(
-            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+            self.root, pi_entry=self.pi_entry, runtime=self.runtime
         )
         path = self.root / ".concorde/work/selection.json"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -186,7 +168,7 @@ class SessionSelectionTests(unittest.TestCase):
         from concorde.spec.typed_data import typed
 
         selection = select_session(
-            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+            self.root, pi_entry=self.pi_entry, runtime=self.runtime
         )
         path = self.root / ".concorde/work/selection.json"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -242,7 +224,7 @@ class SessionSelectionTests(unittest.TestCase):
         )
 
         selected = select_session(
-            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+            self.root, pi_entry=self.pi_entry, runtime=self.runtime
         )
         path = self.root / ".concorde/work/selection.json"
         save_selection(self.root, path, selected)
@@ -288,7 +270,7 @@ class SessionSelectionTests(unittest.TestCase):
         )
 
         selected = select_session(
-            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+            self.root, pi_entry=self.pi_entry, runtime=self.runtime
         )
         for relative in (
             "selection.json",
@@ -325,7 +307,7 @@ class SessionSelectionTests(unittest.TestCase):
                 ]
             )
         with self.assertRaises(TypeError):
-            select_session(self.root, mode="test", skill_paths=[], runtime=self.runtime)
+            select_session(self.root, skill_paths=[], runtime=self.runtime)
         path.unlink()
         path.symlink_to(self.pi_entry)
         with self.assertRaises(BuildError):
@@ -336,7 +318,6 @@ class SessionSelectionTests(unittest.TestCase):
         with self.assertRaises(BuildError):
             select_session(
                 self.root,
-                mode="test",
                 pi_entry=self.pi_entry,
                 runtime=REPOSITORY_ROOT / "scripts/run-operation.py",
             )
@@ -345,9 +326,7 @@ class SessionSelectionTests(unittest.TestCase):
         source.rename(moved)
         source.symlink_to(moved, target_is_directory=True)
         with self.assertRaises(BuildError):
-            select_session(
-                self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
-            )
+            select_session(self.root, pi_entry=self.pi_entry, runtime=self.runtime)
 
     @verifies("scenario.session.select")
     def test_linked_source_redirect_is_refused_before_runner(self):
@@ -383,7 +362,7 @@ class SessionSelectionTests(unittest.TestCase):
         from concorde.harness.status_store import record_run
 
         selection = select_session(
-            self.root, mode="test", pi_entry=self.pi_entry, runtime=self.runtime
+            self.root, pi_entry=self.pi_entry, runtime=self.runtime
         )
         host = OperationHost(self.root, self.root, session_provenance=selection)
         record_run(host, operation="concorde-plan")

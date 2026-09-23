@@ -66,10 +66,31 @@ class HostToolTests(unittest.TestCase):
         self.assertEqual(result["status"], "succeeded", result)
         self.assertEqual(result["output"]["data"]["status"], "proposed")
 
-    @verifies("scenario.admission.configure-apply")
+    @verifies(
+        "scenario.admission.configure-propose", "scenario.admission.configure-apply"
+    )
     def test_configuration_without_graph(self):
-        result = self.call("concorde-configure", {"configuration": CONFIGURATION})
+        changed = typed(
+            "concorde-operation-configuration",
+            {**CONFIGURATION["data"], "thinking": "high"},
+        )
+        result = self.call(
+            "concorde-configure", {"action": "propose", "configuration": changed}
+        )
         self.assertEqual(result["status"], "succeeded", result)
+        proposed = result["output"]["data"]
+        self.assertEqual("proposed", proposed["status"])
+        result = self.call(
+            "concorde-configure",
+            {
+                "action": "apply",
+                "proposal": proposed["proposal"],
+                "proposal_digest": proposed["proposal_digest"],
+            },
+        )
+        self.assertEqual(result["status"], "succeeded", result)
+        self.assertEqual("applied", result["output"]["data"]["status"])
+        self.assertEqual(changed, result["output"]["data"]["configuration"])
 
     @verifies(
         "scenario.issue-solving.inspect",

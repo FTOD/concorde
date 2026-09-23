@@ -100,13 +100,6 @@ live in the Modules that own them, such as the verification declarations here an
 convention in Agent execution. Keeping the text and its distributed copy apart lets a project keep
 working under the rules it accepted while a newer Protocol is being written.
 
-## Transitional files
-
-The catalog module and the capability-specific shapes among the typed values move to their owners,
-which register them. The change-scope, review-impact and edited-Module policies in the impact code
-move to Planning, Review and Validation. The configure service that shares the initializer's code
-moves to Request admission, which owns `concorde-configure`.
-
 ## Open questions
 
 The `concorde-init` declaration follows the Operation catalog's format, which Operations defines,

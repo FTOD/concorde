@@ -15,8 +15,8 @@ scans directories for Markdown or follows links to find documents.
   source path: `specs/project/module.md` becomes `/specs/project/module` (the leading `specs/` is
   dropped when every document lies under it). A document read by other Modules through `uses` or
   `includes` is not copied; their links lead to its owner's page.
-- **Two reading collections.** The **Module Specs** tab shows entries and `module`-role topics; the
-  **Implementation Specs** tab, present when any document has role `implementation`, shows
+- **Two reading collections.** The **Module documents** tab shows entries and `module`-role topics;
+  the **Implementation documents** tab, present when any document has role `implementation`, shows
   requirements, scenarios and contracts. The role in each document's metadata decides the tab.
 - **Navigation follows composition.** Both tabs follow the `contains` tree from the root Module, in
   the parent's `contains` order. A Module's name opens its `module.md`; its topics (in `owns`

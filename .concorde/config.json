@@ -106,8 +106,7 @@
         "no:cacheprovider",
         "-n",
         "4",
-        "tests/concorde/spec/test_module_model.py",
-        "tests/concorde/spec/test_module_architecture.py"
+        "tests/concorde/spec/test_module_model.py"
       ],
       "timeout_seconds": 120,
       "inputs": [

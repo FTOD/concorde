@@ -15,6 +15,3 @@
 	shallow = true
 	concorde-sparse = /* !*.gif !*.png !*.jpg !*.jpeg !*.webp !*.mp4 !*.webm !*.ico !*.woff !*.woff2 !*.ttf !*.otf !*.pdf !*.zip
 	branch = v0.85.1
-[submodule "reference/Understand-Anything"]
-	path = reference/Understand-Anything
-	url = https://github.com/Egonex-AI/Understand-Anything.git

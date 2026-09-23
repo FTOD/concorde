@@ -12,11 +12,6 @@ from tests.concorde.support.paths import RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.harness.configuration import (
-    apply_configuration,
-    load_configuration,
-    propose_configuration,
-)
 from concorde.spec.typed_data import (
     STRING,
     TypedDataError,
@@ -32,7 +27,6 @@ from concorde.spec.typed_data import (
     verify_artifacts,
 )
 from concorde.spec.verification import verifies
-from tests.concorde.support.operation_json import CONFIGURATION
 
 
 class TypedDataTests(unittest.TestCase):
@@ -276,42 +270,6 @@ class TypedDataTests(unittest.TestCase):
         for value in ('{"x":1,"x":2}', '{"x":NaN}', '{"x":Infinity}'):
             with self.subTest(value=value), self.assertRaises(TypedDataError):
                 decode(value)
-
-    def test_existing_configuration_migration_preserves_fields_and_rejects_stale_proposal(
-        self,
-    ):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            path = root / ".concorde/config.json"
-            path.parent.mkdir()
-            original = {
-                "profile_version": 13,
-                "registry": ".concorde/specs.json",
-                "project_setting": {"keep": True},
-            }
-            path.write_text(json.dumps(original))
-            with self.assertRaises(TypedDataError):
-                load_configuration(root)
-            proposed = propose_configuration(root, CONFIGURATION)
-            self.assertEqual(json.loads(path.read_text()), original)
-            (root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]))
-            path.write_text(json.dumps({**original, "new_setting": True}))
-            self.assertEqual(
-                apply_configuration(root, "accepted.json").status, "invalid"
-            )
-            proposed = propose_configuration(root, CONFIGURATION)
-            (root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]))
-            self.assertEqual(
-                apply_configuration(root, "accepted.json").status, "success"
-            )
-            self.assertEqual(
-                json.loads(path.read_text())["project_setting"], {"keep": True}
-            )
-            self.assertTrue(json.loads(path.read_text())["new_setting"])
-            self.assertEqual(load_configuration(root), CONFIGURATION)
-            self.assertEqual(
-                apply_configuration(root, "accepted.json").status, "unchanged"
-            )
 
 
 if __name__ == "__main__":

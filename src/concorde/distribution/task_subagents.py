@@ -1,10 +1,19 @@
 """Checked project-discovery projections for Task subagents, never Operation workers."""
 
+import importlib
 import json
+import sys
 from pathlib import Path
 
 from .prompt_resolver import resolve_role_prompt
-from agents.task_subagent import TASK_SUBAGENT_PROFILES
+
+# The Task subagent definitions live in the package root's ``agents/``, next to ``src/``.
+_PACKAGE_ROOT = str(Path(__file__).resolve().parents[3])
+if _PACKAGE_ROOT not in sys.path:
+    sys.path.append(_PACKAGE_ROOT)
+TASK_SUBAGENT_PROFILES = importlib.import_module(
+    "agents.task_subagent"
+).TASK_SUBAGENT_PROFILES
 
 TESTER = next(p.prompt for p in TASK_SUBAGENT_PROFILES if p.name == "tester")
 COORDINATOR = "prompts/user-session/source/coordinator.md"

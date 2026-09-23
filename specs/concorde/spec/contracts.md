@@ -328,6 +328,7 @@ are registered by their owners; Spec tooling registers only its own.
 ```python
 register(type_id: str, version: int, schema: dict) -> None
 registered_types() -> tuple[str, ...]
+registration_module(type_id: str) -> str
 typed_schema(type_id: str) -> dict
 typed(type_id: str, data: dict) -> dict
 validate_typed(value, expected: str | None = None, field: str = "") -> dict
@@ -338,7 +339,9 @@ json_schema(type_id: str) -> dict
 positive integer and `schema` a schema admitted by the offline subset below, describing `data`.
 Registering an identity already registered with the same version and an equal schema changes
 nothing; with another version or schema it fails with `duplicate_type` and leaves the existing
-registration in force. Owners call `register` when their own code is loaded. Spec tooling never
+registration in force. `registration_module` returns the name of the Python module whose code made
+the registration in force, so a check can find the type's owner through the Module that binds that
+file. Owners call `register` when their own code is loaded. Spec tooling never
 imports an owner, so a caller that checks a value must have loaded the code of the value's owner;
 Distribution's build loads every owner before it exports the schemas.
 
@@ -436,7 +439,7 @@ a repository loaded with overrides, because only files on disk can be confirmed.
 `concorde-init` is a deterministic capability; it runs no model and selects no context. Spec tooling
 registers its request and response types and the proposal type.
 
-`concorde-init-request` version 3 has closed data with `action` (`"propose"` or `"apply"`) and
+`concorde-init-request@3` has closed data with `action` (`"propose"` or `"apply"`) and
 optional `name`, `target_id`, `configuration`, `proposal` and `run_in_primary` (Request admission's
 opt-in to apply in the primary worktree):
 
@@ -444,11 +447,11 @@ opt-in to apply in the primary worktree):
   that Request admission registers as `concorde-operation-configuration`) and accepts `target_id`,
   default `module.project`. It fails with `already_initialized` when `.concorde/config.json` exists
   and with `not_installed` when the installer's Protocol copy is missing.
-- `apply` requires `proposal`, the complete `concorde-project-proposal` version-1 value that propose
+- `apply` requires `proposal`, the complete `concorde-project-proposal@1` value that propose
   returned, with closed data `{action: "initialize", base_digest: null, files: [{path,
   before_digest, content}]}`.
 
-It returns `concorde-init-response` version 1 with closed data `{status, proposal, files}`:
+It returns `concorde-init-response@1` with closed data `{status, proposal, files}`:
 `proposed` with the typed proposal and its ordered paths, or `applied` with `proposal: null` and the
 written paths. A preview request is refused with `use_proposal`, because the proposal is already
 the preview.

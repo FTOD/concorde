@@ -18,11 +18,11 @@ interface GlobalData {
 
 const contractParts = [
   [
-    "Module Specs",
+    "Module documents",
     "Purpose, terminology, correct use, design and relationships for one responsibility.",
   ],
   [
-    "Implementation Specs",
+    "Implementation documents",
     "Precise requirements, scenarios and contracts owned by the same Module.",
   ],
 ];
@@ -101,7 +101,7 @@ export default function Home() {
         <nav className={styles.explore} aria-label="Explore documentation">
           <span>Go deeper</span>
           <Link to={root.route}>
-            Module Specs <span aria-hidden="true">↗</span>
+            Module documents <span aria-hidden="true">↗</span>
           </Link>
           {page.links?.map((link) => (
             <Link key={link.to} to={link.to}>

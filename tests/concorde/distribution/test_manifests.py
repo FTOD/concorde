@@ -53,16 +53,8 @@ class ManifestContractTests(unittest.TestCase):
         for relative in (
             "protocol/templates/module.md",
             "protocol/templates/scenario.md",
-            "agents/planner/plan-template.md",
-            "agents/task_author/tasks-template.md",
         ):
             self.assertTrue((REPOSITORY_ROOT / relative).is_file(), relative)
-        for owner, template in (
-            ("planner", "plan-template.md"),
-            ("task_author", "tasks-template.md"),
-        ):
-            readme = (REPOSITORY_ROOT / "agents" / owner / "README.md").read_text()
-            self.assertIn(f"]({template})", readme)
 
     def test_runtime_reads_version_from_the_single_manifest(self):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))

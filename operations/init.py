@@ -24,4 +24,4 @@ WORKSPACE = "primary-opt-in"
 TARGET = {"selection": "none", "hook": None}
 DEFAULT_TASK = "Initialize the project Spec"
 CONFIGURATION = "request"
-ENTRY_POINT = "concorde.spec.project:initialize"
+ENTRY_POINT = "concorde.spec.initialize:run"

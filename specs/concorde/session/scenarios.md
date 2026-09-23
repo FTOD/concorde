@@ -80,14 +80,6 @@ See [req.session.failure-is-error](requirements.md#req.session.failure-is-error)
 - WHEN the model calls `concorde` with action `result` for that capability
 - THEN the tool returns the workflow's current state as reconciled by the Host
 
-### scenario.session.worker-refused — A worker process cannot load the tool
-
-- GIVEN a process whose environment marks it as a worker
-- WHEN it loads a session entry
-- THEN loading fails and no `concorde` tool is registered
-
-See [req.session.no-worker-entry](requirements.md#req.session.no-worker-entry).
-
 ## Selection
 
 ### scenario.session.select — Selecting a candidate's exact build

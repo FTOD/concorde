@@ -123,7 +123,7 @@ class TimingTests(unittest.TestCase):
     @verifies("scenario.observation.diagnostic-spans")
     def test_cancelled_root_preserves_pending_span_identity_without_persistence(self):
         from types import SimpleNamespace
-        from concorde.harness.timing import traced_operation
+        from concorde.harness.timing import name_trace, traced_operation
 
         events = []
         with tempfile.TemporaryDirectory() as directory:
@@ -143,6 +143,8 @@ class TimingTests(unittest.TestCase):
             @traced_operation(sink_for)
             def cancelled(*, host_context):
                 Span("unfinished.prepare")
+                # The request names its trace by its own run once it has one.
+                name_trace("bound-root")
                 return {
                     "invocation_id": "bound-root",
                     "status": "failed",

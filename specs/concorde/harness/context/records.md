@@ -5,7 +5,7 @@ The exact records, layouts and entry points of [Task context](module.md). Its ob
 
 ## Context snapshot
 
-The snapshot is the data of the private typed value `concorde-context-snapshot`, schema version 8.
+The snapshot is the data of the private typed value `concorde-context-snapshot@8`.
 It never crosses the public result boundary. All fields are required and unknown fields are
 rejected.
 
@@ -54,6 +54,11 @@ tooling by its owning provider, for example `concorde-plan-artifact`,
 admits a stage input only when its type is in the bound definition's admitted list, at most one per
 type, and requires every type in the definition's required list. A failure is
 `incompatible_handoff`. A policy preview may omit required inputs that do not exist yet.
+
+Every Agent except the reviewers receives its context as the typed value
+`concorde-agent-stage-context@5` with data `{snapshot, change_id, expected_artifacts}`: the snapshot
+as a `concorde-context-snapshot` value, the change identity or null, and extra expected artifact
+paths, which no Agent admits, so the list is always empty. The reviewers' stage context is Review's.
 
 ## Capsule {#capsule}
 

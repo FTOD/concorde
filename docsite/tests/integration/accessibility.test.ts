@@ -15,8 +15,8 @@ describe("accessible presentation contract", () => {
         "utf8",
       ),
     ]);
-    expect(config).toMatch(/label:\s*["']Module Specs["']/);
-    expect(config).toMatch(/label:\s*["']Implementation Specs["']/);
+    expect(config).toMatch(/label:\s*["']Module documents["']/);
+    expect(config).toMatch(/label:\s*["']Implementation documents["']/);
     expect(config).not.toMatch(/label:\s*["']Graph["']/);
     expect(rootPage).toContain('httpEquiv="refresh"');
     expect(rootPage).toContain("<Link to={root.route}>");

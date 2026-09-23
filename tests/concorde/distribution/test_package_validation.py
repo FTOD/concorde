@@ -695,15 +695,15 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
 
 
 class SpecAlignmentTypesRuleTests(unittest.TestCase):
-    """Rule 4b: every concorde-...@N token in the workflow-host boundary document is an exported
-    identity with that exact version, and every exported identity appears there at least once."""
+    """Every concorde-...@N token in a registered document is an exported identity with that exact
+    version, and every exported identity appears at its version in a document of its owner."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
-    def test_missing_boundary_document_is_reported(self) -> None:
+    def test_types_without_owner_documents_are_reported(self) -> None:
         _document(self.root, "specs/other.md", "document.other", "Nothing relevant.")
         _registry(self.root, documents=["specs/other.md"])
         findings = package_validation._validate_spec_types(
@@ -755,9 +755,18 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         findings = package_validation._validate_spec_types(
             self.root, _required_documents(self.root)
         )
+        # The fixture registers none of the owners: a capability's request names its declared
+        # owner, a record type the Module binding its registering file (here none).
         self.assertTrue(
-            any("does not appear in this document" in f.message for f in findings),
+            any(
+                "concorde-plan-request@1 is not described in a document of its owner "
+                "module.planning" in f.message
+                for f in findings
+            ),
             findings,
+        )
+        self.assertTrue(
+            any("has no owner Module" in f.message for f in findings), findings
         )
 
     def test_the_real_boundary_document_has_no_findings(self) -> None:

@@ -59,7 +59,6 @@ class HandoffPolicyTests(unittest.TestCase):
         ambient = {
             "CONCORDE_SESSION_SELECTION": "/elsewhere/selection.json",
             "CONCORDE_NATIVE_PROJECT_ROOT": "/elsewhere",
-            "CONCORDE_WORKER_POLICY": "/elsewhere/policy.json",
             "PI_SUBAGENT_EXTENSION_BINDINGS": json.dumps(
                 {"concorde/1": {"selection": "/elsewhere/selection.json"}}
             ),
@@ -92,7 +91,6 @@ class HandoffPolicyTests(unittest.TestCase):
             self.assertNotIn("PI_SUBAGENT_EXTENSION_BINDINGS", child)
             with scrubbed_process_environment(EXTRA="1"):
                 self.assertNotIn("CONCORDE_SESSION_SELECTION", os.environ)
-                self.assertNotIn("CONCORDE_WORKER_POLICY", os.environ)
                 self.assertEqual("1", os.environ["EXTRA"])
                 self.assertEqual("kept", os.environ["PATH"])
             self.assertEqual(

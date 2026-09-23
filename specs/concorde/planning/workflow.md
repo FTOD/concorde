@@ -108,14 +108,22 @@ not combined with a review repair. Otherwise the request is refused with `incomp
 ## Record shapes
 
 Planning registers these typed values with Spec tooling. Each is a `{"type_id", "schema_version",
-"data"}` value at version 1.
+"data"}` value.
 
 | Type | `data` |
 | --- | --- |
-| `concorde-plan-artifact` | `plan`: the accepted plan text |
-| `concorde-task-identity-constraints` | `reserved_task_ids`: sorted unique strings |
-| `concorde-task-scope-feedback` | `tasks_digest`: the SHA-256 digest of the canonical current task list; `reason`: `implementation_boundary` |
-| `concorde-planning-records` | `targets`: the progress entry of every Module worked on in the change, by Module; `gaps`: the pending-gap history |
+| `concorde-plan-artifact@1` | `plan`: the accepted plan text |
+| `concorde-task-identity-constraints@1` | `reserved_task_ids`: sorted unique strings |
+| `concorde-task-scope-feedback@1` | `tasks_digest`: the SHA-256 digest of the canonical current task list; `reason`: `implementation_boundary` |
+| `concorde-planning-records@1` | `targets`: the progress entry of every Module worked on in the change, by Module; `gaps`: the pending-gap history |
+| `concorde-implementation-task@1` | the [implementation task contract](#contract.planning.implementation-task) |
+
+The capabilities Planning declares take the common task request and return the common capability
+response: `concorde-context-solve-request@1` and `concorde-context-solve-response@3`,
+`concorde-plan-request@1` and `concorde-plan-response@3`, and `concorde-tasks-request@2` and
+`concorde-tasks-response@3`, whose request adds the optional repair fields `repair_review` (the
+artifact reference of the blocking code review) and `repair_task_scope` (`{tasks_digest}` of the
+current task list) described above.
 
 Planning keeps its records in its provider section `planning` of the change status, a
 `concorde-planning-records@1` value. A progress entry carries the change and worktree incarnation

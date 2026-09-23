@@ -39,7 +39,7 @@ from .configuration import load_configuration
 from .execution_error import OperationExecutionError, error_entry
 from .host import AdmittedRequest, OperationHost
 from .relay import bind_worktree, relay_operation
-from .timing import notice_incomplete, timed, traced_operation
+from .timing import name_trace, notice_incomplete, timed, traced_operation
 
 # contract.admission.capability-declaration, version 1.
 _NAME = {"type": "string", "minLength": 1}
@@ -306,6 +306,10 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
     # cancelled/limit_exhausted outcome keeps propagating to its parent.
     lifecycle = {} if host_context.depth == 0 else host_context.lifecycle
     invocation_id = str(uuid.uuid4())
+    if host_context.depth == 0:
+        # The trace of a top-level request is kept under its own run, also when it relays and
+        # returns the candidate's envelope.
+        name_trace(invocation_id)
     host = replace(
         host_context,
         invocation_id=invocation_id,

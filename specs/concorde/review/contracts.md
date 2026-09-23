@@ -9,7 +9,10 @@ are recorded and checked.
 
 Every accepted or failed review of one Module produces one review result. The Operation's response
 carries all results of the scope in its `reviews` array, and the Host saves each one as a review
-report under the invocation's run directory.
+report under the invocation's run directory. The two review capabilities take the common task
+request and return the common capability response with that array: `concorde-spec-review-request@2`
+and `concorde-spec-review-response@3`, and `concorde-code-review-request@2` and
+`concorde-code-review-response@3`. Each result is a `concorde-review-result@3` value.
 
 ```concorde-contract
 {
@@ -123,8 +126,8 @@ the contract and name locations. They do not copy raw code, patches or logs.
 
 ## Reviewer input
 
-Each reviewer receives one `concorde-review-stage-context`: the frozen context snapshot of its
-Module plus one `concorde-review-input` with these fields.
+Each reviewer receives one `concorde-review-stage-context@5`: the frozen context snapshot of its
+Module plus one `concorde-review-input@1` with these fields.
 
 | Field | Meaning |
 | --- | --- |
@@ -144,7 +147,7 @@ The baseline is the change's recorded `base_commit` in a managed change, the cur
 unmanaged Git checkout, and null in a directory without Git, where every current file is new.
 History is read only from Git objects of the reviewed worktree's repository.
 
-A reviewer answers with one `concorde-review-stage-result`: `context_id`, `input_digest`,
+A reviewer answers with one `concorde-review-stage-result@2`: `context_id`, `input_digest`,
 `review_mode`, `status` (`no_findings`, `findings` or `incomplete`), `representative_tasks`,
 `issues` and `answer`, with the same field types as the review result, except that `context_id` is
 never null. The Host adds `target_id`, `focus_id`, `revision` and `semantic_completeness` when it

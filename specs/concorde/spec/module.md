@@ -121,7 +121,7 @@ One loader serves every query and check, and it refuses, for consumers, any proj
 structure cannot support a trustworthy boundary, while the validator collects the same problems as
 findings. Spec tooling uses nothing: other Modules' schemas arrive through registration, their
 file locations as arguments, and their concerns (Issue records, package consistency) as their own
-configured checks. The reasons and the transitional files are in [How Spec tooling works](design.md).
+configured checks. The reasons are in [How Spec tooling works](design.md).
 
 <a id="realization.spec.model"></a>
 

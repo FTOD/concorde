@@ -51,10 +51,6 @@ class AgentInventoryTests(unittest.TestCase):
         self.assertEqual(7, len(agents.AGENTS))
         self.assertNotIn("main", agents.AGENTS)
         self.assertNotIn("user-session", agents.AGENTS)
-        for name in ("planner", "task_author"):
-            readme = (REPOSITORY_ROOT / "agents" / name / "README.md").read_text()
-            self.assertIn("distributed with `agents/`", readme)
-            self.assertNotIn("worker Operation", readme)
         for name in ("context_assessor", "task_author"):
             spec_text = (REPOSITORY_ROOT / "agents" / name / "spec.md").read_text()
             self.assertNotIn("`concorde-dependencies`", spec_text)

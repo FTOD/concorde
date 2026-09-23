@@ -25,11 +25,9 @@ and saved whole to a private temporary file whose path the reply names.
 
 Every check that matters, the typed request, the configuration, the worktree, the permissions and
 the acceptance of a result, belongs to the Host, because the model can call the tool with anything.
-The same reasoning makes an entry refuse to load in a worker process: a worker must not gain a
-second way to call capabilities through Pi. The refusal keys on the worker marker in the process
-environment. The catalog carries each capability's path, including which actions of a mixed
-capability are workflows, so the tool never needs its own list of provider capabilities, and the
-installed entry and the private entry come from one build.
+The catalog carries each capability's path, including which actions of a mixed capability are
+workflows, so the tool never needs its own list of provider capabilities, and the installed entry
+and the private entry come from one build.
 
 ## Selecting a candidate in detail
 
@@ -62,7 +60,7 @@ session actually did is observed elsewhere.
 | One writer per candidate, register before launch, bind and release | The status commands refuse conflicting ownership; the sequence itself is an instruction to the source user session |
 | A running child keeps its launch instructions | Holds because Pi loads a child's instructions and extensions once at launch |
 | TODO notes change no implementation or Spec | Not enforced; an instruction to the source user session |
-| A worker cannot call capabilities | The session entry refuses to load in a worker process; a worker with a shell can still start the launcher directly, which is not enforced |
+| A worker cannot call capabilities | Agents are launched without the session entry, and the tester's and maintenance worker's guards block the `concorde` tool; a worker with a shell can still start the launcher directly, which is not enforced |
 
 Several scenarios of this Module are instruction contracts: a check of the rendered instructions
 shows what a session is told, not that a live model always complies.

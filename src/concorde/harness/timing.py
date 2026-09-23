@@ -242,6 +242,19 @@ def timed(name):
     return decorate
 
 
+def name_trace(trace_id):
+    """Give the open trace, and every span it holds, the identity ``trace_id``.
+
+    A top-level request names its trace once it knows its own run identity.
+    """
+    trace = _CURRENT.get()
+    if trace is None:
+        return
+    trace.trace_id = trace_id
+    for record in [*trace.records, *trace.pending.values()]:
+        record["trace_id"] = trace_id
+
+
 @contextmanager
 def operation_trace(trace_id, sink):
     """Open a trace for one top-level unit of work with the caller's ``sink``.
@@ -282,10 +295,6 @@ def traced_operation(sink_for):
                         else "error",
                         invocation_id=result.get("invocation_id"),
                     )
-                if host.depth == 0:
-                    trace.trace_id = result["invocation_id"]
-                    for record in [*trace.records, *trace.pending.values()]:
-                        record["trace_id"] = trace.trace_id
                 return result
 
         return call

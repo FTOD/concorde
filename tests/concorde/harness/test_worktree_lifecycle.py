@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from concorde.delivery import deliver as delivery_service
 from concorde.delivery.records import receipt as delivery_receipt
-from concorde.harness import change_worktree
+from concorde.harness import change_worktree, configure
 from concorde.planning.records import targets
 from concorde.validation.records import direct_evidence
 from concorde.operations.dispatch import run_operation
@@ -252,7 +252,13 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "concorde-operation-configuration",
             {"model": "openai-codex/gpt-6-astra", "thinking": "high"},
         )
-        return selection, {"configuration": selection, **extra}
+        proposed = configure.propose(self.primary, PACKAGE, selection)["data"]
+        return selection, {
+            "action": "apply",
+            "proposal": proposed["proposal"],
+            "proposal_digest": proposed["proposal_digest"],
+            **extra,
+        }
 
     def stored_configuration(self, root):
         value = json.loads((root / ".concorde/config.json").read_text())
@@ -398,7 +404,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
         # Whatever the candidate's launcher wrote to stderr is forwarded as it was: JSON lines.
         for line in process.stderr.splitlines():
             if line.strip():
-                json.loads(line)
+                try:
+                    json.loads(line)
+                except ValueError:
+                    self.fail(f"stderr line is not JSON: {line!r}")
 
     def declare_pending_files(self):
         """Declare two files the plan intends to create, before any of them exists."""

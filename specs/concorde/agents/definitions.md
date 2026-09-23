@@ -14,8 +14,9 @@ them.
 | `agents.external_name(name)` | `concorde-` plus the hyphenated name, for example `concorde-task-author`; the name of the Agent definition file a call launches |
 
 Each package `agents/<name>/` holds `__init__.py`, which exports exactly `DEFINITION`, and the
-Agent's own instructions `spec.md`; the planner and task author also keep the templates their
-instructions refer to. A directory under `agents/` that the inventory does not list is a finding.
+Agent's own instructions `spec.md`. A directory under `agents/` that holds a `spec.md` but is not
+listed by the inventory is a finding. The Task subagent definitions that Pi session keeps under
+`agents/` (`agents/task_subagent.py` and `agents/source/`) have no `spec.md` and are not Agents.
 
 ### Inventory metadata
 

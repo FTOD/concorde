@@ -6,7 +6,7 @@ The exact request, response, solve state, closing journal, workflow step table a
 
 ## Request and response
 
-`concorde-issues-request` carries:
+`concorde-issues-request@1` carries:
 
 | Field | Type | Used by |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ The exact request, response, solve state, closing journal, workflow step table a
 | `expected_revision` | SHA-256 digest | `show`, `reopen`, `solve`; refused with `stale_issue` when it differs from the file |
 | `note` | nonblank string | `reopen` (required rationale); `solve` (developer clarification) |
 
-`concorde-issues-response` is the common capability response plus:
+`concorde-issues-response@2` is the common capability response plus:
 
 | Field | Meaning |
 | --- | --- |

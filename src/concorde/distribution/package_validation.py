@@ -497,11 +497,13 @@ _CODE_SHAPE = re.compile(r"^[a-z][a-z0-9_]*$")
 # The wire envelope types are validated ad hoc (never registered,
 # see _PROTOCOL_VOCABULARY above) but are still real versioned identities the boundary document must
 # describe; their versions are not derivable from schemas() the way every other type's is.
+# The two envelopes of a capability request carry a type_id and schema_version but are checked
+# against their contracts, not registered as typed values; the entry module validates them.
 _ENVELOPE_VERSIONS = {
     "concorde-operation-invocation": 3,
-    "concorde-operation-configuration": 2,
     "concorde-operation-result": 3,
 }
+_ENVELOPE_MODULE = "concorde.harness.entry"
 
 _OPERATION_HOST_BOUNDARY_ID = "document.admission.contracts"
 
@@ -761,11 +763,9 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
             )
         ]
     declared = set(inventory.AGENTS)
-    actual = {
-        p.parent.name
-        for p in (root / "agents").glob("*/__init__.py")
-        if p.parent.name != "source"
-    }
+    # An Agent package holds its instructions ``spec.md``; the Task subagent definitions under
+    # ``agents/`` are Pi session's and have none.
+    actual = {p.parent.name for p in (root / "agents").glob("*/spec.md")}
     if declared != actual or len(inventory.AGENTS) != len(set(inventory.AGENTS)):
         return [
             _finding(
@@ -778,71 +778,140 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
     return []
 
 
-def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]:
-    """Rule 4b: every ``concorde-…@N`` token in the boundary document is an exported identity with
-    that exact version, and every exported identity appears there at least once."""
+def _module_records(root: Path) -> dict[str, list[str]]:
+    """The reading paths every registered Module owns, by Module identity."""
+    try:
+        registry = json.loads(
+            (root / ".concorde/specs.json").read_text(encoding="utf-8")
+        )
+        return {
+            record["id"]: [path for path in record["owns"] if isinstance(path, str)]
+            for record in registry["modules"]
+        }
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+        return {}
 
-    boundary = _find_boundary_document(root, documents)
-    if boundary is None:
-        return [
-            _finding(
-                "CONCORDE-SPEC-TYPES-001",
-                ".concorde/specs.json",
-                f"no registered document declares id {_OPERATION_HOST_BOUNDARY_ID}.",
-                "Register the Harness admission document with that document id.",
+
+def _binding_modules(root: Path, documents: dict[str, str]) -> list[tuple[str, str]]:
+    """Every ``(module, realization entry)`` the registered documents' metadata declares."""
+    from ..spec.repository_base import read_file
+
+    bindings = []
+    for path in documents:
+        try:
+            metadata = json.loads(read_file(root, path + ".json").decode())
+            owner = metadata["document"]["owner"]
+            for item in metadata.get("defines", []):
+                if item.get("type") == "realization":
+                    bindings.extend((owner, entry) for entry in item["entries"])
+        except (ValueError, OSError, KeyError, TypeError, AttributeError):
+            continue  # The document-unit validator reports invalid metadata.
+    return bindings
+
+
+def _type_owners(root: Path, documents: dict[str, str]) -> dict[str, set[str]]:
+    """The owner Modules of every exported type identity and envelope.
+
+    A capability's request and response belong to the Module its declaration names as owner;
+    every other type belongs to the Modules that bind the file of the Python module that
+    registered it.
+    """
+    import sys
+
+    from ..operations.catalog import CATALOG, PACKAGE_ROOT
+    from ..spec.repository_base import bound_by
+    from ..spec.typed_data import registration_module
+
+    bindings = _binding_modules(root, documents)
+
+    def binders(module_name: str) -> set[str]:
+        try:
+            module = sys.modules.get(module_name) or importlib.import_module(
+                module_name
             )
-        ]
-    path, text = boundary
+        except ImportError:
+            return set()
+        location = getattr(module, "__file__", None)
+        if location is None:
+            return set()
+        try:
+            relative = Path(location).resolve().relative_to(PACKAGE_ROOT).as_posix()
+        except ValueError:
+            return set()
+        return {owner for owner, entry in bindings if bound_by(entry, relative)}
+
+    declared = {}
+    for operation in CATALOG.values():
+        declared[operation.request_type] = operation.owner
+        declared[operation.response_type] = operation.owner
+    owners = {}
+    for name in exported_types():
+        owners[name] = (
+            {declared[name]} if name in declared else binders(registration_module(name))
+        )
+    for name in _ENVELOPE_VERSIONS:
+        owners.setdefault(name, binders(_ENVELOPE_MODULE))
+    return owners
+
+
+def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]:
+    """Every ``concorde-…@N`` token in a registered document names an exported identity at that
+    exact version, and every exported identity appears at its version in a document its owner
+    Module owns."""
+
+    rule = "CONCORDE-SPEC-TYPES-001"
     findings: list[Finding] = []
     from ..spec.typed_data import type_version
 
     expected: dict[str, int] = {name: type_version(name) for name in exported_types()}
     expected.update(_ENVELOPE_VERSIONS)
-    found: dict[str, set[int]] = {}
-    for token in _SPEC_TYPE_TOKEN.findall(text):
-        name, _, version_text = token.rpartition("@")
-        try:
+    for path, text in documents.items():
+        for token in sorted(set(_SPEC_TYPE_TOKEN.findall(text))):
+            name, _, version_text = token.rpartition("@")
             version = int(version_text)
-        except ValueError:
-            findings.append(
-                _finding(
-                    "CONCORDE-SPEC-TYPES-001",
-                    path,
-                    "type version exceeds the supported integer representation",
-                    "Use the exported type version.",
-                )
-            )
-            continue
-        found.setdefault(name, set()).add(version)
-    for name in sorted(found):
-        for version in sorted(found[name]):
             if name not in expected:
                 findings.append(
                     _finding(
-                        "CONCORDE-SPEC-TYPES-001",
+                        rule,
                         path,
                         f"{name}@{version} names no exported identity.",
-                        "Correct the identifier, or export it from the wire contracts.",
+                        "Correct the identifier, or register the type in its owner's code.",
                     )
                 )
             elif version != expected[name]:
                 findings.append(
                     _finding(
-                        "CONCORDE-SPEC-TYPES-001",
+                        rule,
                         path,
                         f"{name}@{version} does not match its exported version @{expected[name]}.",
                         f"Use {name}@{expected[name]}, the version the host actually exports.",
                     )
                 )
-    for name in sorted(set(expected) - set(found)):
-        findings.append(
-            _finding(
-                "CONCORDE-SPEC-TYPES-001",
-                path,
-                f"exported identity {name}@{expected[name]} does not appear in this document.",
-                "Describe every exported identity's promise in the Wire contracts section.",
+    modules = _module_records(root)
+    for name, owners in sorted(_type_owners(root, documents).items()):
+        token = f"{name}@{expected[name]}"
+        if not owners:
+            findings.append(
+                _finding(
+                    rule,
+                    ".concorde/specs.json",
+                    f"exported identity {token} has no owner Module: no Module binds the code "
+                    "that registers it.",
+                    "Bind the registering file to the Module that owns the type.",
+                )
             )
-        )
+            continue
+        owned = [path for owner in sorted(owners) for path in modules.get(owner, [])]
+        if not any(token in documents.get(path, "") for path in owned):
+            findings.append(
+                _finding(
+                    rule,
+                    owned[0] if owned else ".concorde/specs.json",
+                    f"exported identity {token} is not described in a document of its owner "
+                    f"{', '.join(sorted(owners))}.",
+                    "Describe the type at its exported version in its owner Module's Spec.",
+                )
+            )
     return findings
 
 

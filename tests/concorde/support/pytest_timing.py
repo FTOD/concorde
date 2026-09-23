@@ -175,8 +175,6 @@ def fingerprint(tests: list[str]) -> dict:
         "concorde.json",
         "pyproject.toml",
         "uv.lock",
-        "package.json",
-        "package-lock.json",
         ".concorde/config.json",
         ".concorde/specs.json",
         ".pi/APPEND_SYSTEM.md",

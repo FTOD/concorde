@@ -89,8 +89,8 @@ it("publishes both reading collections with links between entry and implementati
     registry.pages.find((p) => p.primaryOf === registry.rootModule)!.route,
   );
   const navbar = entryHtml.match(/<nav\b[\s\S]*?<\/nav>/)![0];
-  expect(navbar).toContain("Module Specs");
-  expect(navbar).toContain("Implementation Specs");
+  expect(navbar).toContain("Module documents");
+  expect(navbar).toContain("Implementation documents");
   expect(navbar).toContain("Spec Protocol");
   const base = loadSiteIdentity(site).baseUrl.replace(/\/$/, "");
   for (const module of registry.modules) {
@@ -231,5 +231,5 @@ it("a second checked build preserves absence and reading", async () => {
   const entry = registry.pages.find(
     (p) => p.primaryOf === registry.rootModule,
   )!;
-  expect(await html(entry.route)).toContain("Module Specs");
+  expect(await html(entry.route)).toContain("Module documents");
 }, 240000);

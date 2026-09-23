@@ -11,6 +11,7 @@ from unittest import mock
 
 from concorde.distribution import installation as installer
 from concorde.distribution import managed_runtime  # noqa: E402
+from concorde.operations.catalog import PUBLIC_OPERATIONS
 from concorde.spec.verification import verifies  # noqa: E402
 from tests.concorde.support.managed_runtime import (
     create_langgraph_index,
@@ -158,8 +159,6 @@ class NativeInstallerTests(unittest.TestCase):
             for relative in (
                 "protocol/templates/module.md",
                 "protocol/templates/scenario.md",
-                "agents/planner/plan-template.md",
-                "agents/task_author/tasks-template.md",
             ):
                 self.assertEqual(
                     (framework / relative).read_bytes(),
@@ -180,7 +179,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
             self.assertEqual(
                 receipt["runtime"]["verified_operations"],
-                list(installer.concorde_build.PUBLIC_OPERATIONS),
+                list(PUBLIC_OPERATIONS),
             )
             self.assertTrue(
                 (target / ".concorde/.venv/.concorde-runtime.json").is_file()
@@ -607,7 +606,7 @@ class NativeInstallerTests(unittest.TestCase):
             python = managed_runtime.runtime_python(target / ".concorde/.venv")
             self.assertEqual(
                 [command[2] for command in checks],
-                list(installer.concorde_build.PUBLIC_OPERATIONS),
+                list(PUBLIC_OPERATIONS),
             )
             # The check exercises the runtime being verified, never the installer's interpreter.
             self.assertEqual({command[0] for command in checks}, {str(python)})

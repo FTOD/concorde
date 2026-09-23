@@ -213,7 +213,6 @@ HOST_RUNTIME = (
     "src/concorde/planning/scope.py",
     "src/concorde/implementation/implement.py",
     "src/concorde/validation/validate.py",
-    "src/concorde/spec/project.py",
     "src/concorde/spec/impact.py",
     "src/concorde/issues/reporting.py",
     "src/concorde/issues/references.py",

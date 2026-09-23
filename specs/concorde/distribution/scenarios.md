@@ -264,7 +264,7 @@ See [req.distribution.no-surrounding-text-rewrite](requirements.md#req.distribut
 
 - GIVEN the current package
 - WHEN installation previews and applies it
-- THEN the Module and Scenario starters ship under the Framework's `protocol/templates/` and the plan and task starters inside their Agents' packages
+- THEN the Module and Scenario starters ship under the Framework's `protocol/templates/`
 - AND the package declares no separate templates root
 
 ### scenario.distribution.install-pi-session — The session entry is the only client integration

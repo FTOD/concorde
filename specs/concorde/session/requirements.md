@@ -20,10 +20,6 @@ are limited to an unknown capability, a missing `input` and a selection that fai
 
 The `concorde` tool SHALL return a tool error for every run whose launcher was cancelled, exited non-zero, printed no envelope, or printed an envelope with status `blocked` or `failed`.
 
-### req.session.no-worker-entry — Workers cannot load the tool
-
-A session entry SHALL refuse to load in a process whose environment marks it as a worker.
-
 ## Selection
 
 ### req.session.private-selection — Selections name exact current bytes

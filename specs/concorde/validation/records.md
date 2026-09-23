@@ -5,9 +5,9 @@ of [Validation](module.md).
 
 ## Request and workspace
 
-`concorde-validate` takes `target_id` and `task`, and optionally `focus_id`, `constraints`,
-`change_id` and `run_checks` (boolean, default `true`). Its response is the common capability
-response; `checks` holds the check results of this run and `outcome` is `failed`, `ready` or
+`concorde-validate` takes, as `concorde-validate-request@1`, `target_id` and `task`, and optionally
+`focus_id`, `constraints`, `change_id` and `run_checks` (boolean, default `true`). Its response
+`concorde-validate-response@3` is the common capability response; `checks` holds the check results of this run and `outcome` is `failed`, `ready` or
 `completed`.
 
 The capability declaration states that the request mutates the change status, needs an existing

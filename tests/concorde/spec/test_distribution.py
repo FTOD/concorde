@@ -62,26 +62,24 @@ class DistributionTests(unittest.TestCase):
             for paths in repo.shared_files(module).values()
             for path in paths
         }
-        self.assertTrue(
-            shared,
-            "the self-hosted project shares implementation files between Modules",
-        )
+        # A shared file, where the project has one, is implemented by every Module binding it.
         for path in shared:
             self.assertLess(1, len(repo.implemented_by(path)), path)
             self.assertEqual(
                 sorted(repo.implemented_by(path)), list(repo.impact(paths=[path]))
             )
-        self.assertTrue(
-            {"module.planning", "module.review"}
-            <= set(
-                repo.impact(paths=["tests/concorde/operations/test_change_scope.py"])
-            )
+        test = "tests/concorde/operations/test_change_scope.py"
+        self.assertEqual(
+            sorted(repo.implemented_by(test)), list(repo.impact(paths=[test]))
         )
-        text = "\n".join(
-            repo.source_bytes(path).decode()
-            for path in repo.spec_context("module.harness").paths
-        )
+        # Every capability's request is described in the Spec of the Module that owns it.
+        from concorde.operations.catalog import CATALOG
+
         for op in OPERATION_NAMES:
+            text = "\n".join(
+                repo.source_bytes(path).decode()
+                for path in repo.spec_context(CATALOG[op].owner).paths
+            )
             self.assertIn(op + "-request", text)
 
     def test_launcher_refuses_a_nonpublic_operation_name_and_accepts_a_public_operation(

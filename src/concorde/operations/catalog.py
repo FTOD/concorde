@@ -303,6 +303,7 @@ def declarations() -> dict[str, dict]:
 RECORD_MODULES = (
     "..spec.initialize",
     "..harness.configuration",
+    "..harness.configure",
     "..harness.context",
     "..harness.native_result",
     "..issues.shapes",

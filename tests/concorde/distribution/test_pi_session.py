@@ -98,7 +98,7 @@ class ShimRenderingTests(unittest.TestCase):
         self.assertIn('from "../../../pi/extensions/concorde-session.ts"', text)
         self.assertIn('new URL("../../../", import.meta.url)', text)
         catalog = shim_catalog(content)
-        self.assertEqual(2, catalog["schema_version"])
+        self.assertEqual(3, catalog["schema_version"])
         self.assertTrue(catalog["explicit_request_only"])
         self.assertEqual("scripts/run-operation.py", catalog["launcher"])
         self.assertEqual(
@@ -122,6 +122,26 @@ class ShimRenderingTests(unittest.TestCase):
                 self.assertNotIn("stdin", operation["guidance"])
                 self.assertNotIn("{OPERATION}", operation["guidance"])
                 self.assertNotIn("\n\n\n", operation["guidance"])
+        # The session path of every capability comes from the Operation catalog and hooks.
+        self.assertEqual(
+            {
+                "concorde-context-solve": ("agent-entry", []),
+                "concorde-plan": ("workflow", []),
+                "concorde-tasks": ("agent-entry", []),
+                "concorde-implement": ("agent-entry", []),
+                "concorde-spec-review": ("workflow", []),
+                "concorde-code-review": ("workflow", []),
+                "concorde-issues": ("host", ["solve"]),
+                "concorde-validate": ("host", []),
+                "concorde-deliver": ("host", []),
+                "concorde-init": ("host", []),
+                "concorde-configure": ("host", []),
+            },
+            {
+                o["name"]: (o["kind"], o["native_actions"])
+                for o in catalog["operations"]
+            },
+        )
 
     @verifies("scenario.distribution.build-pi-session")
     def test_public_descriptions_name_execution_kinds_not_generic_operations(self):
@@ -254,13 +274,15 @@ class SessionToolTests(unittest.TestCase):
     @staticmethod
     def catalog(**changes) -> dict:
         catalog = {
-            "schema_version": 2,
+            "schema_version": 3,
             "launcher": FAKE_LAUNCHER,
             "interpreters": [sys.executable],
             "explicit_request_only": True,
             "operations": [
                 {
                     "name": "concorde-validate",
+                    "kind": "host",
+                    "native_actions": [],
                     "description": "Run checks.",
                     "guidance": "# concorde-validate\n\nGuidance.\n",
                     "request_version": 1,
@@ -268,6 +290,8 @@ class SessionToolTests(unittest.TestCase):
                 },
                 {
                     "name": "concorde-plan",
+                    "kind": "workflow",
+                    "native_actions": [],
                     "description": "Ask.",
                     "guidance": "# concorde-main\n",
                     "request_version": 1,
@@ -465,7 +489,6 @@ class RealPiSessionTests(unittest.TestCase):
         self.selection_path = self.project / ".concorde/work/pi-selection.json"
         self.selection = select_session(
             self.project,
-            mode="test",
             pi_entry=self.project / PI_SESSION_SHIM,
             runtime=self.project / "scripts/run-operation.py",
         )

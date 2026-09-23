@@ -82,9 +82,9 @@ example.
 
 Errors are tool errors carrying the envelope and a causal feedback record: a `blocked` or `failed`
 envelope, a launcher that exits non-zero or prints no envelope, and a cancelled run. An unknown
-capability or a missing `input` is refused before the launcher starts. An entry refuses to load in
-a worker process, and the private entry without a valid selection or the candidate's interpreter; a
-selection that changes mid-session refuses later calls. Aborting a turn sends the launcher SIGTERM.
+capability or a missing `input` is refused before the launcher starts. The private entry refuses to
+load without a valid selection or the candidate's interpreter, and a selection that changes
+mid-session refuses later calls. Aborting a turn sends the launcher SIGTERM.
 
 ## Design
 

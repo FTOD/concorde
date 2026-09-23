@@ -114,8 +114,6 @@
         ".gitignore",
         ".gitmodules",
         ".python-version",
-        "package.json",
-        "package-lock.json",
         "docs/",
         ".github/workflows/validate-source-checkout.yml"
       ],

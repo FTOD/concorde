@@ -24,6 +24,7 @@ from .typed_data import (
     decode,
     obj,
     register,
+    typed,
     typed_schema,
 )
 from .validation import validate_repository
@@ -349,3 +350,55 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         "profile_version": PROFILE_VERSION,
         "protocol": installed_protocol_binding(root),
     }
+
+
+def run(request) -> dict:
+    """Entry point of ``concorde-init``: propose or apply the first Spec of a project."""
+    host, data = request.host, request.data
+    if host.mode == "describe-policy":
+        raise SpecError(
+            "the initialization proposal is the preview of concorde-init",
+            "use_proposal",
+        )
+    if data["action"] == "apply":
+        if "proposal" not in data:
+            raise SpecError(
+                "apply requires the complete typed proposal", "invalid_input"
+            )
+        proposal = data["proposal"]
+        value = apply_project_proposal(
+            host.project_root,
+            host.package_root,
+            {
+                "type_id": proposal["type_id"],
+                "schema_version": proposal["schema_version"],
+                **proposal["data"],
+            },
+        )
+        return typed(
+            "concorde-init-response",
+            {"status": "applied", "proposal": None, "files": value["files"]},
+        )
+    if not {"name", "configuration"} <= set(data):
+        raise SpecError(
+            "initialization proposal requires name and configuration", "invalid_input"
+        )
+    value = project_proposal(
+        host.project_root,
+        host.package_root,
+        data["name"],
+        data["configuration"],
+        data.get("target_id", "module.project"),
+    )
+    proposal = typed(
+        "concorde-project-proposal",
+        {key: value[key] for key in ("action", "base_digest", "files")},
+    )
+    return typed(
+        "concorde-init-response",
+        {
+            "status": "proposed",
+            "proposal": proposal,
+            "files": [item["path"] for item in value["files"]],
+        },
+    )

@@ -104,17 +104,7 @@ Feedback is diagnostic only.
 ## Not enforced
 
 Admission cannot tell who started the launcher: an Agent with a shell, such as the programmer, can
-run `scripts/run-operation.py` itself, and admission treats that request like any other. The code
-still checks an environment variable meant to mark Agent processes, which nothing sets; that check
-is removed.
-
-## Code that moves
-
-`admission.py` still imports Delivery, Issues and the Operations dispatch, hardcodes which
-capabilities mutate and verifies the local installation itself, and `entry.py` still loads the Pi
-session selection; these are replaced by the declarations, the launcher-supplied dispatcher and
-installation service, and provenance passed in by the launcher. The configure step still performed
-by Spec tooling's project service moves into `src/concorde/harness/configure.py`.
+run `scripts/run-operation.py` itself, and admission treats that request like any other.
 
 ## Open questions
 

@@ -150,8 +150,7 @@
       "entries": [
         "operations/init.py",
         "prompts/operation-guidance/concorde-init.md",
-        "src/concorde/spec/initialize.py",
-        "src/concorde/spec/project.py"
+        "src/concorde/spec/initialize.py"
       ],
       "pending": []
     },

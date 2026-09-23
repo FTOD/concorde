@@ -87,8 +87,8 @@ const config: Config = {
       items: [
         {
           type: "docSidebar",
-          sidebarId: "moduleSpecsSidebar",
-          label: "Module Specs",
+          sidebarId: "moduleDocumentsSidebar",
+          label: "Module documents",
           position: "left",
         },
         ...(registry.pages.some(
@@ -97,8 +97,8 @@ const config: Config = {
           ? [
               {
                 type: "docSidebar" as const,
-                sidebarId: "implementationSpecsSidebar",
-                label: "Implementation Specs",
+                sidebarId: "implementationDocumentsSidebar",
+                label: "Implementation documents",
                 position: "left" as const,
               },
             ]

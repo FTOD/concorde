@@ -102,9 +102,13 @@ build that did not complete.
 
 Distribution provides Pi session's [capability catalog](../session/interfaces.md#contract.session.catalog)
 at version 1: the build renders one catalog per session entry, listing the public Operations of the
-Operation catalog in catalog order, each with the session path its catalog entry states, the
-resolved guidance of `prompts/operation-guidance/<name>.md` and the registered schema of
-`<name>-request` with its version. Guidance whose front matter is wrong, whose resolved text keeps a
+Operation catalog in catalog order, each with its session kind, native actions, the resolved
+guidance of `prompts/operation-guidance/<name>.md` and the registered schema of `<name>-request`
+with its version. The kind is `host` for a `host` Operation, `agent-entry` for an `agent-call`
+Operation and `workflow` for a `pi-workflow` Operation, except that a `pi-workflow` Operation whose
+workflow hook serves requests in place is `host` with the `action` values its hook declares in
+`NATIVE_ACTIONS` as native actions; a hook that serves in place without declaring them fails the
+build. Every other Operation has no native actions. Guidance whose front matter is wrong, whose resolved text keeps a
 reserved token, or a capability without a registered request schema fails the build.
 
 ## Prompt references
@@ -193,6 +197,10 @@ isolated worktree unless `--allow-primary-worktree` is given.
 | `CONCORDE-PACKAGE-MANIFEST-001` | A `concorde.json` that breaks the package manifest rules, or a symbolic link in the package |
 | `CONCORDE-BUILD-FRESH-001` | A build that is not fresh under the build manifest contract |
 | `CONCORDE-BUILD-DRIFT-001` | An owned output that differs from a fresh render, or a Protocol manifest digest that differs from the rendered asset |
+| `CONCORDE-SPEC-OPERATIONS-001` | Not exactly one registered document carries the `concorde.operations` mirror, or a mirror record is missing, unknown or different from the record the loaded Operation catalog yields |
+| `CONCORDE-SPEC-AGENTS-001` | Not exactly one registered document carries the `concorde.agents` inventory, an inventory entry differs from its Agent definition, or a directory under `agents/` holding a `spec.md` is not a listed Agent |
+| `CONCORDE-SPEC-TYPES-001` | A `concorde-<name>@<version>` token in a registered document names no exported identity or another version, or an exported typed value or capability envelope does not appear as `<identity>@<version>` in a document its owner Module owns: for a capability's request and response the Operation's declared owner, otherwise the Module that binds the file of the code that registered the type |
+| `CONCORDE-SPEC-ERRORS-001` | An advisory finding for an error code raised under `src/concorde` that is missing from Request admission's error table |
 
 Concorde's own configuration lists it as the configured check `check.distribution.package`, with
 argv `{python} scripts/concorde.py check-package` and inputs `agents`, `operations`, `pi`,

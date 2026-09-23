@@ -66,6 +66,8 @@ def _needs_workflow(task: dict) -> bool:
 class IssuesWorkflowHook:
     """The solve workflow of ``concorde-issues``."""
 
+    # The actions whose request may need the solve Workflow; every other action is served in place.
+    NATIVE_ACTIONS = ("solve",)
     SCRIPT = "pi/workflows/issues.js"
     HOST = "pi/native-issue-host.mjs"
     HELPERS = ("pi/issue-call.mjs",)

@@ -14,6 +14,7 @@ import copy
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -60,6 +61,8 @@ ARTIFACT = obj({"id": STRING, "path": PATH, "digest": DIGEST})
 
 # type_id -> (schema_version, data schema). Owners fill it through ``register``.
 _TYPES: dict[str, tuple[int, dict]] = {}
+# The Python module whose code registered each type.
+_ORIGINS: dict[str, str] = {}
 
 
 def _admissible(value: Any) -> Any:
@@ -121,10 +124,17 @@ def register(type_id: str, version: int, schema: dict) -> None:
             f"{type_id} is already registered with another version or schema",
         )
     _TYPES[type_id] = (version, copy.deepcopy(schema))
+    _ORIGINS[type_id] = sys._getframe(1).f_globals.get("__name__", "")
 
 
 def registered_types() -> tuple[str, ...]:
     return tuple(sorted(_TYPES))
+
+
+def registration_module(type_id: str) -> str:
+    """The name of the Python module whose code registered ``type_id``."""
+    _registration(type_id)
+    return _ORIGINS[type_id]
 
 
 def _registration(type_id: str, field: str = "") -> tuple[int, dict]:

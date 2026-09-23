@@ -22,18 +22,18 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 class CheckEvidenceTests(unittest.TestCase):
     @verifies("scenario.context.freeze")
-    def test_distribution_includes_complete_tester_contract_pair_once(self):
+    def test_session_includes_complete_tester_contract_pair_once(self):
         from concorde.spec.repository import SpecRepository
 
         sources = (
             SpecRepository(REPOSITORY_ROOT)
-            .spec_context("module.distribution")
+            .spec_context("module.session")
             .value["sources"]
         )
         paths = [source["path"] for source in sources]
         for suffix in ("", ".json"):
             self.assertEqual(
-                1, paths.count("specs/concorde/harness/checks/interfaces.md" + suffix)
+                1, paths.count("specs/concorde/harness/checks/module.md" + suffix)
             )
 
     def setUp(self):

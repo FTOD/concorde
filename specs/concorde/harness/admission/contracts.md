@@ -7,19 +7,24 @@ The schemas below use an offline JSON Schema subset: `type`, `properties`, `requ
 `additionalProperties`, `items`, `enum`, `const`, `anyOf` and `minLength` have their ordinary
 meanings, and no schema loads another document.
 
-## Typed values of admission
+## Values of admission
 
 Admission owns these registered typed values; every other capability's request, response and
 stage values are specified by the Module that owns them.
 
 | Identity | What it carries |
 | --- | --- |
-| `concorde-operation-invocation@3` | one capability request on the launcher's standard input |
-| `concorde-operation-result@3` | the one result envelope on standard output |
 | `concorde-operation-configuration@2` | the stored Agent models, thinking levels and time limits |
 | `concorde-configure-request@4` | a `concorde-configure` proposal or apply request |
 | `concorde-configure-response@3` | the outcome of a `concorde-configure` request |
 | `concorde-configuration-proposal@1` | a configuration proposal bound to its source digest |
+
+The two envelopes, `concorde-operation-invocation@3` (one capability request on the launcher's
+standard input) and `concorde-operation-result@3` (the one result envelope on standard output),
+carry a `type_id` and a `schema_version` but are not registered typed values: their fields sit at
+the top level instead of under `data`, and the entry checks them against the
+[capability request](#contract.admission.invocation) and [result envelope](#contract.admission.result)
+contracts below.
 
 ## Launcher input
 

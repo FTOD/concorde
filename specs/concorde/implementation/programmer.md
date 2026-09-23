@@ -65,7 +65,8 @@ updates the `implementation` step's pending gaps with no blockers.
 
 ## Response
 
-The response of `concorde-implement` is the common Operation response plus one field:
+The request of `concorde-implement` is `concorde-implement-request@1`, the common task request. Its
+response `concorde-implement-response@4` is the common Operation response plus one field:
 
 | Field | Meaning |
 | --- | --- |

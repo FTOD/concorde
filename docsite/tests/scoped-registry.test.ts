@@ -503,19 +503,19 @@ it("stages every page with front matter and writes both sidebars", async () => {
     read(project, "docsite/.generated/content/specs/" + path);
   expect(staged("transfer/module.md")).toContain("title: Transfer\n");
   expect(staged("transfer/module.md")).toContain(
-    "displayed_sidebar: moduleSpecsSidebar",
+    "displayed_sidebar: moduleDocumentsSidebar",
   );
   expect(staged("transfer/requirements.md")).toContain("title: requirements\n");
   expect(staged("transfer/requirements.md")).toContain(
-    "displayed_sidebar: implementationSpecsSidebar",
+    "displayed_sidebar: implementationDocumentsSidebar",
   );
   for (const page of registry.pages)
     expect(staged(page.stagedPath)).toContain("toc_max_heading_level: 3\n");
   // Realization bindings stay in metadata; reading gains no file inventory.
   expect(staged("ledger/module.md")).not.toContain("src/ledger.ts");
   const sidebars = readJson(project, "docsite/.generated/specs-sidebar.json");
-  expect(sidebars.moduleSpecsSidebar).toEqual(scopedSidebar(registry));
-  expect(sidebars.implementationSpecsSidebar).toEqual(
+  expect(sidebars.moduleDocumentsSidebar).toEqual(scopedSidebar(registry));
+  expect(sidebars.implementationDocumentsSidebar).toEqual(
     scopedSidebar(registry, "implementation"),
   );
   expect(
@@ -532,7 +532,7 @@ it("omits the implementation sidebar when no document has that role", async () =
   await materializeScoped(load());
   expect(
     readJson(project, "docsite/.generated/specs-sidebar.json"),
-  ).not.toHaveProperty("implementationSpecsSidebar");
+  ).not.toHaveProperty("implementationDocumentsSidebar");
 });
 
 it("binds source identity to both members, the registry and the owns order", () => {

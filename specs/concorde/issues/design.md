@@ -61,6 +61,8 @@ removed fails the check because it can no longer be solved; a closed one is only
 
 ## Typed values
 
-The report, receipt, Blocker, selection and context shapes are registered with Spec tooling's
-typed-value registry by this Module; Spec tooling does not know them. The shapes live in
+The report, receipt, selection and context shapes are registered with Spec tooling's typed-value
+registry by this Module as `concorde-issue-report@1`, `concorde-issue-receipt@1`,
+`concorde-issue-selection@1` and `concorde-issue-context@1`; the Blocker is a shape other types
+embed. Spec tooling does not know them. The shapes live in
 `src/concorde/issues/shapes.py`.

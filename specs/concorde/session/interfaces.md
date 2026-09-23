@@ -18,8 +18,8 @@ promised about them.
 An entry imports `concordeSession` from the tracked extension `pi/extensions/concorde-session.ts`
 (installed under `.concorde/framework/`), embeds `const CATALOG: SessionCatalog = {...};` and
 exports `concordeSession(<project root>, CATALOG, <entry path>)` as its default. Loading refuses
-when `CONCORDE_WORKER_POLICY` is set, when the catalog's `schema_version` is not the one below, and
-for an explicit-request-only catalog when no selection transport is present.
+when the catalog's `schema_version` is not the one below, and for an explicit-request-only catalog
+when no selection transport is present.
 
 ## Capability catalog
 
@@ -354,9 +354,8 @@ selection)`. It requires `CONCORDE_CHECK_TMPDIR`, a canonical `target` strictly 
 that is absent or empty, and `CONCORDE_SESSION_SELECTION` equal to `selection`, which must load as a
 test selection of the source. It admits the source package, runs the source installer into `target`
 with an environment from which `CONCORDE_SESSION_SELECTION`, the `concorde/1` binding,
-`CONCORDE_NATIVE_PROJECT_ROOT`, `CONCORDE_WORKER_POLICY`, `PYTHONPATH` and `PYTHONHOME` are removed,
-verifies the installation with the installed interpreter, and requires the installed package
-identity to equal the admitted one and the selection and source to be unchanged afterwards. It
+`CONCORDE_NATIVE_PROJECT_ROOT`, `PYTHONPATH` and `PYTHONHOME` are removed, verifies the
+installation with the installed interpreter, and requires the installed package identity to equal the admitted one and the selection and source to be unchanged afterwards. It
 writes `installed-output-provenance.json` (schema 1, smaller than 8,000 bytes) into the scratch and
 returns that record with the separated environment.
 

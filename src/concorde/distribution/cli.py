@@ -53,7 +53,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     selection = subparsers.add_parser("select-session")
     selection_mode = selection.add_mutually_exclusive_group(required=True)
-    selection_mode.add_argument("--mode", choices=["maintenance", "test", "task"])
+    selection_mode.add_argument("--mode", choices=["test"])
     selection_mode.add_argument("--verify", type=Path)
     selection.add_argument("--pi-entry", type=Path)
     selection.add_argument("--runtime", type=Path)
@@ -159,13 +159,10 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                 )
             selected = load_selection(root, arguments.verify)
         else:
-            if arguments.runtime is None:
-                raise BuildError("selection requires --runtime")
+            if arguments.runtime is None or arguments.pi_entry is None:
+                raise BuildError("selection requires --pi-entry and --runtime")
             selected = select_session(
-                root,
-                mode=arguments.mode,
-                pi_entry=arguments.pi_entry,
-                runtime=arguments.runtime,
+                root, pi_entry=arguments.pi_entry, runtime=arguments.runtime
             )
             if arguments.output:
                 save_selection(root, arguments.output, selected)

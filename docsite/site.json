@@ -16,7 +16,7 @@
       "items": [
         {
           "title": "Read complete Module specifications.",
-          "description": "Module Specs explain purpose, terminology, correct use, design and relationships for a reader who does not know the code. Implementation Specs hold the precise requirements, scenarios and contracts. Paired metadata binds entities to the files that realize them, and tests declare the scenarios they verify."
+          "description": "Module documents explain purpose, terminology, correct use, design and relationships for a reader who does not know the code. Implementation documents hold the precise requirements, scenarios and contracts. Paired metadata binds entities to the files that realize them, and tests declare the scenarios they verify."
         },
         {
           "title": "Give each domain worker one Module's context.",
@@ -193,7 +193,7 @@
             ],
             [
               "Views",
-              "Publish Module Specs and Implementation Specs as a navigable documentation site."
+              "Publish Module documents and Implementation documents as a navigable documentation site."
             ]
           ]
         },

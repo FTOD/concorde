@@ -130,7 +130,7 @@ like any other caller.
 <a id="realization.admission.tests"></a>
 
 The **admission tests** run admission end to end in fixture projects. The [design topic](design.md)
-covers the rest, including code that moves and open questions.
+covers the rest, including open questions.
 
 ## Relationships
 

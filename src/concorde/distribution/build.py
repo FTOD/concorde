@@ -1,8 +1,8 @@
-"""Deterministic worker instructions, Protocol assets and Pi Operation catalog.
+"""The build: Agent instructions, Protocol assets, exported schemas and the Pi session files.
 
-Source builds write only private generated/session/pi integration output. Consumer
-installation renders the same catalog with an explicit framework prefix; it owns deployment.
-No standalone Skill publishing or client-selection interface remains.
+A source build writes the private session entry under generated/session/pi, never into Pi's
+discovery directories. Consumer installation renders the same outputs with an explicit framework
+prefix and performs its own writes.
 """
 
 from __future__ import annotations
@@ -53,6 +53,32 @@ MODEL_ROOTS: dict[str, str] = {
 SESSION_KINDS = {"host": "host", "agent-call": "agent-entry", "pi-workflow": "workflow"}
 
 
+def session_route(operation) -> tuple[str, list[str]]:
+    """The session catalog ``kind`` and ``native_actions`` of one cataloged Operation.
+
+    A pi workflow whose workflow hook serves some requests in place without a Workflow is a
+    ``host`` capability for the session, prepared natively only for the ``action`` values its hook
+    declares in ``NATIVE_ACTIONS``.
+    """
+    from ..harness.native_driver import WORKFLOW_HOOK_METHODS, resolve_hook
+
+    if operation.kind == "pi-workflow":
+        hook = resolve_hook(operation.declaration["entry_point"], WORKFLOW_HOOK_METHODS)
+        if getattr(hook, "serve_in_place", None) is not None:
+            actions = getattr(hook, "NATIVE_ACTIONS", None)
+            if (
+                not isinstance(actions, tuple)
+                or not actions
+                or not all(isinstance(item, str) and item for item in actions)
+            ):
+                raise BuildError(
+                    f"operation {operation.public_name}: a workflow hook that serves requests "
+                    "in place must declare NATIVE_ACTIONS"
+                )
+            return "host", list(actions)
+    return SESSION_KINDS[operation.kind], []
+
+
 def guidance_sources() -> dict[str, str]:
     """The guidance source of every public capability of the Operation catalog, in catalog order."""
     from ..operations.catalog import PUBLIC_OPERATIONS
@@ -75,7 +101,6 @@ PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/native",
     "generated/protocol",
-    "generated/docs",
     "generated/session",
 )
 GENERATED_OWNED_FILES: tuple[str, ...] = (
@@ -196,10 +221,12 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
             raise BuildError(
                 f"request schema {request_type} declares no constant schema_version"
             ) from error
+        kind, native_actions = session_route(operation(name))
         operations.append(
             {
                 "name": name,
-                "kind": SESSION_KINDS[operation(name).kind],
+                "kind": kind,
+                "native_actions": native_actions,
                 "description": str(metadata["description"]),
                 "guidance": guidance,
                 "request_version": version,
@@ -209,7 +236,7 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
         sources.update(resolved.sources)
         sources.add(guidance_source(name))
     catalog = {
-        "schema_version": 2,
+        "schema_version": 3,
         "launcher": (
             f"{prefix}/scripts/run-operation.py"
             if prefix

@@ -154,7 +154,8 @@ inputs changed can still be invalidated.
 
 **Validating a proposal.** The proposal is exactly `{invocation_id, result}` with the issued ticket;
 its stored bytes equal their canonical form and are at most 1 MiB; `result` satisfies the Agent's
-result type and only the output fields its definition may populate; every Issue it cites was
+result type (`concorde-agent-stage-result@3` for every Agent except the reviewers, whose result type
+Review owns) and only the output fields its definition may populate; every Issue it cites was
 received by this call's reporter; and the Agent hook's `validate` passes, which checks the stage
 identity and the provider's own predicate. A missing proposal fails with category `no-submission`;
 an invalidated call fails with its recorded causes.
@@ -290,7 +291,10 @@ A workflow hook may also provide `serve_in_place(request) -> dict | None`, which
 that needs no Workflow, such as an Issue bookkeeping action, as a Host result. Dispatch without the
 native driver, and the native driver's preparation, offer the request to it before anything else; a
 value is the answer, recorded by the driver as not run and accepted, and `None` means the request
-needs the Workflow, which without the native driver is refused with `native_required`.
+needs the Workflow, which without the native driver is refused with `native_required`. A hook that
+provides it also declares `NATIVE_ACTIONS`, the tuple of request `action` values that may need the
+Workflow; every other action is always answered in place, so the Pi session prepares only those
+actions natively.
 
 ## Model selection
 
