@@ -12,7 +12,7 @@ from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import (
+from tests.concorde.support.spec_project import (
     CONFIGURATION,
     PACKAGE,
     block,
@@ -37,7 +37,7 @@ def uses(target, meaning="#uses-extra", **extra):
 
 class ContextSelectionTests(unittest.TestCase):
     def setUp(self):
-        from tests.concorde.spec.support import project
+        from tests.concorde.support.spec_project import project
 
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -179,7 +179,7 @@ class ContextSelectionTests(unittest.TestCase):
 
     @verifies("scenario.spec.impact-indexes")
     def test_impact_indexes_name_whom_a_change_concerns(self):
-        from tests.concorde.spec.support import set_realization
+        from tests.concorde.support.spec_project import set_realization
 
         self.audit_uses_transfer(relies_on=["req.transfer.pure"])
         update_module(

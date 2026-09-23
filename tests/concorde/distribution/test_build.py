@@ -25,13 +25,7 @@ from concorde.distribution.build import (
     PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
 )
 
-# Imported eagerly: the schema-source test below patches ``subprocess.Popen`` while it invokes an
-# Operation, and a module first imported under that patch would keep the mock in any
-# definition-time default, leaking into every later test of the same process.
-from concorde.operations.dispatch import run_operation  # noqa: E402
-from concorde.spec.typed_data import typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
-from concorde.harness.host import OperationHost  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
 
@@ -163,10 +157,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertFalse(current)
         self.assertTrue(differences)
 
-    @verifies(
-        "scenario.distribution.build-check",
-        "scenario.admission.stale-build",
-    )
+    @verifies("scenario.distribution.build-check")
     def test_independent_protocol_edit_invalidates_runtime_rule_projection(self):
         write_build(self.root)
         chapter = self.root / "protocol/principles.md"
@@ -238,7 +229,6 @@ class BuildFreshnessTests(unittest.TestCase):
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
         )
 
-    @verifies("scenario.admission.stale-build")
     def test_verify_fresh_fails_closed_with_no_manifest(self):
         with self.assertRaises(BuildError) as failure:
             verify_fresh(self.root)
@@ -248,7 +238,6 @@ class BuildFreshnessTests(unittest.TestCase):
         write_build(self.root)
         verify_fresh(self.root)  # must not raise
 
-    @verifies("scenario.admission.stale-build")
     def test_verify_fresh_fails_after_editing_a_recorded_source(self):
         write_build(self.root)
         edited = self.root / "prompts/native/context-assessor.md"
@@ -259,7 +248,6 @@ class BuildFreshnessTests(unittest.TestCase):
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
 
-    @verifies("scenario.admission.stale-build")
     def test_role_and_python_contract_edits_both_invalidate_build(self):
         write_build(self.root)
         for relative in (
@@ -275,7 +263,6 @@ class BuildFreshnessTests(unittest.TestCase):
                 self.assertEqual("stale_build", failure.exception.code)
                 path.write_text(before)
 
-    @verifies("scenario.admission.stale-build")
     def test_verify_fresh_fails_when_a_recorded_source_is_gone(self):
         write_build(self.root)
         (self.root / "prompts/native/context-assessor.md").unlink()
@@ -289,7 +276,6 @@ class WireHelperBuildTests(unittest.TestCase):
         "scenario.distribution.build-render",
         "scenario.distribution.build-write",
         "scenario.distribution.build-check",
-        "scenario.admission.stale-build",
     )
     def test_a_schema_source_change_invalidates_until_rebuilt(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -311,23 +297,6 @@ class WireHelperBuildTests(unittest.TestCase):
                     if p.is_file()
                 }
 
-            def invoke_model_backed_operation():
-                # The fixture is this invocation's package root: a top-level model-backed
-                # operation verifies the fixture build before admitting anything else.
-                host = OperationHost(root, root, mode="describe-policy")
-                return run_operation(
-                    "concorde-spec-review",
-                    None,
-                    typed(
-                        "concorde-spec-review-request",
-                        {
-                            "target_id": "module.fixture",
-                            "task": "Review",
-                        },
-                    ),
-                    host_context=host,
-                )
-
             with (
                 patch(
                     "subprocess.Popen", side_effect=AssertionError("build process I/O")
@@ -338,10 +307,6 @@ class WireHelperBuildTests(unittest.TestCase):
                 verify_fresh(root)
                 self.assertEqual((True, ()), check_build(root))
                 self.assertEqual(first, build(root))
-                admitted = invoke_model_backed_operation()
-                self.assertNotEqual(
-                    "stale_build", (admitted["errors"] or [{}])[0].get("code"), admitted
-                )
                 helper = root / "src/concorde/spec/typed_data.py"
                 before = contents()
                 helper.write_text(
@@ -354,12 +319,6 @@ class WireHelperBuildTests(unittest.TestCase):
                 with self.assertRaises(BuildError) as failure:
                     verify_fresh(root)
                 self.assertEqual("stale_build", failure.exception.code)
-                before_invocation = contents()
-                refused = invoke_model_backed_operation()
-                self.assertEqual("blocked", refused["status"], refused)
-                self.assertEqual("stale_build", refused["errors"][0]["code"], refused)
-                self.assertIsNone(refused["output"])
-                self.assertEqual(before_invocation, contents())
                 before_check = contents()
                 current, differences = check_build(root)
                 self.assertFalse(current)

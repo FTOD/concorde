@@ -7,7 +7,7 @@ from concorde.harness.operation_node import OperationNode
 from concorde.harness.operation_state import OperationRuntimeContext
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.harness.test_operation_node import _stage_context
+from tests.concorde.support.stage_context import stage_context as _stage_context
 
 
 class OptionalOperationTests(unittest.TestCase):

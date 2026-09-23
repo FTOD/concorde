@@ -16,7 +16,7 @@ from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.schema import ContractError, admit
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import (
+from tests.concorde.support.spec_project import (
     CONFIGURATION,
     PACKAGE,
     project,
@@ -228,7 +228,6 @@ class BoundaryTests(unittest.TestCase):
         )
         self.assertEqual("configuration_mismatch", result["errors"][0]["code"])
 
-    @verifies("scenario.admission.typed-reject")
     def test_wrong_version_and_extra_fields_are_rejected(self):
         for value in [
             dict(

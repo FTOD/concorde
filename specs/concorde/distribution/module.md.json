@@ -197,7 +197,8 @@
         "tests/concorde/distribution/test_prompt_resolver.py",
         "tests/concorde/distribution/test_fresh_clone_bootstrap.py",
         "tests/concorde/fixtures/build/golden/pi/concorde-session.ts",
-        "tests/concorde/support/build_fixture.py"
+        "tests/concorde/support/build_fixture.py",
+        "tests/concorde/distribution/test_session_entry_rendering.py"
       ],
       "pending": []
     },

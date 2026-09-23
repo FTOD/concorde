@@ -142,10 +142,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         described = self._issues_invocation()
         self.assertEqual("described", described["status"], described)
 
-    @verifies(
-        "scenario.admission.stale-build",
-        "scenario.distribution.build-check",
-    )
+    @verifies("scenario.distribution.build-check")
     def test_editing_a_prompt_without_rebuilding_fails_every_invocation_closed(self):
         build = _run([sys.executable, "scripts/concorde.py", "build"], self.clone)
         self.assertEqual(0, build.returncode, build.stderr)

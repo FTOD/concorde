@@ -11,11 +11,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import agents
-from langgraph.graph import END, START, StateGraph
 
 from concorde.harness.host import AdmittedRequest, OperationHost
-from concorde.harness.operation_node import OperationNode
-from concorde.harness.operation_state import OperationRuntimeContext
 from concorde.operations.catalog import (
     CATALOG,
     OPERATION_NAMES,
@@ -69,22 +66,6 @@ class CatalogTests(unittest.TestCase):
             (REPOSITORY_ROOT / "specs/concorde/operations/catalog.md.json").read_text()
         )
         self.assertEqual(document["extensions"]["concorde.operations"], mirror())
-
-    @verifies("scenario.review.separate-entries")
-    def test_each_review_entry_uses_only_its_own_reviewer(self):
-        for kind in ("spec", "code"):
-            with self.subTest(kind=kind):
-                operation = CATALOG[f"concorde-{kind}-review"]
-                self.assertEqual(
-                    ((f"{kind}_reviewer", f"{kind}-review"),), operation.agents
-                )
-                self.assertEqual(
-                    {"target_id", "task"}, set(operation.request["required"])
-                )
-                typed(
-                    f"concorde-{kind}-review-request",
-                    {"target_id": "module.example", "task": "Inspect"},
-                )
 
     def test_only_issue_solving_composes_other_operations(self):
         composing = {name: item.uses for name, item in CATALOG.items() if item.uses}
@@ -268,59 +249,6 @@ class ChildRequestTests(unittest.TestCase):
         self.assertIs(envelope, result)
         self.assertEqual(("concorde-validate", {}, self.payload), admit.call_args.args)
         self.assertIsNotNone(admit.call_args.kwargs["host_context"].services)
-
-
-class TerminalAgentGraphTests(unittest.TestCase):
-    @verifies("scenario.execution.operation-state")
-    def test_model_subgraph_projects_parent_state_and_preserves_unrelated_channels(
-        self,
-    ):
-        from tests.concorde.harness.test_operation_node import _stage_context
-
-        node = OperationNode("planner")
-        seen = []
-
-        def launcher(value):
-            seen.append(value)
-            return {
-                "context_id": value["data"]["snapshot"]["data"]["context_id"],
-                "outcome": "completed",
-                "answer": "Planned",
-                "blockers": [],
-                "documents": [],
-                "plan": "The plan",
-                "tasks": [],
-            }
-
-        from typing import TypedDict, cast
-
-        class ParentState(TypedDict, total=False):
-            snapshot: dict
-            change_id: str | None
-            expected_artifacts: list[str]
-            plan: str
-            private_parent_channel: str
-
-        graph = StateGraph(ParentState, context_schema=OperationRuntimeContext)
-        graph.add_node("plan", node.graph())
-        graph.add_edge(START, "plan")
-        graph.add_edge("plan", END)
-        data = _stage_context()["data"]
-        result = graph.compile().invoke(
-            cast(ParentState, {**data, "private_parent_channel": "not admitted"}),
-            context=OperationRuntimeContext(launcher=launcher),
-        )
-        self.assertEqual("The plan", result["plan"])
-        self.assertEqual("not admitted", result["private_parent_channel"])
-        self.assertEqual([typed(node.input_type, data)], seen)
-        with self.assertRaises(RuntimeError):
-            node.graph().invoke(data)  # State cannot supply the trusted launcher.
-
-    @verifies("scenario.execution.operation-state")
-    def test_arbitrary_compatibility_names_do_not_register_operations(self):
-        with self.assertRaises(SpecError) as refused:
-            OperationNode("normalize_plan")
-        self.assertEqual("unknown_agent", refused.exception.code)
 
 
 if __name__ == "__main__":

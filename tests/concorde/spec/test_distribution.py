@@ -17,7 +17,7 @@ from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 
-from .support import PACKAGE, project
+from tests.concorde.support.spec_project import PACKAGE, project
 
 
 class DistributionTests(unittest.TestCase):

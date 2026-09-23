@@ -75,7 +75,7 @@ HEAVY: tuple[str, ...] = (
     "test_source_and_installed_provider_supply_independent_git_worktree_installs",
     "tests/concorde/harness/test_tester_tmp.py::",
     "tests/concorde/spec/test_distribution.py::",
-    "tests/concorde/harness/test_worktree_lifecycle.py::",
+    "tests/concorde/delivery/test_deliver.py::",
     "tests/concorde/distribution/test_install_concorde.py::",
     "tests/concorde/spec/test_module_model.py::",
 )

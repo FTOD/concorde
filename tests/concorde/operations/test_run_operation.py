@@ -146,66 +146,6 @@ class RunOperationLauncherTests(unittest.TestCase):
                 error["code"], {"unknown_operation", "incompatible_handoff"}
             )
 
-    @verifies("scenario.admission.typed-reject")
-    def test_invalid_payload_retains_the_admitted_mode_without_execution(self):
-        for mode in ("execute", "describe-policy"):
-            with self.subTest(mode=mode):
-                value = {
-                    "type_id": "concorde-operation-invocation",
-                    "schema_version": 3,
-                    "operation_id": "concorde-context-solve",
-                    "mode": mode,
-                    "configuration": None,
-                    "input": {
-                        "type_id": "concorde-context-solve-request",
-                        "schema_version": 1,
-                        "data": {
-                            "target_id": "module.harness",
-                            "task": "Assess",
-                            "unknown": True,
-                        },
-                    },
-                }
-                process = _run(["concorde-context-solve"], json.dumps(value))
-                result = json.loads(process.stdout)
-                self.assertEqual(3, process.returncode)
-                self.assertEqual(mode, result["mode"])
-                self.assertEqual("blocked", result["status"])
-                self.assertEqual("invalid_field", result["errors"][0]["code"])
-                self.assertIsNone(result["output"])
-                self.assertIsNone(result["workspace"])
-
-    @verifies("scenario.review.standalone", "scenario.admission.describe-policy")
-    def test_public_review_launcher_previews_scoped_code_authority(self):
-        invocation = {
-            "type_id": "concorde-operation-invocation",
-            "schema_version": 3,
-            "operation_id": "concorde-code-review",
-            "mode": "describe-policy",
-            "configuration": None,
-            "input": {
-                "type_id": "concorde-code-review-request",
-                "schema_version": 2,
-                "data": {
-                    "task": "Review the operation dispatch",
-                    "target_id": "module.operations",
-                },
-            },
-        }
-        process = _run(
-            ["--native-context", "prepare"],
-            json.dumps({"invocation": invocation, "session_id": "policy-preview"}),
-        )
-        self.assertEqual(0, process.returncode, process.stdout + process.stderr)
-        value = json.loads(process.stdout)
-        self.assertEqual("described", value["state"])
-        self.assertNotIn("call", value)
-        self.assertNotIn("workflow", value)
-        self.assertIn("module.operations", value["result"]["output"]["data"]["answer"])
-        self.assertEqual(
-            "concorde-code-review-response", value["result"]["output"]["type_id"]
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

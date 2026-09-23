@@ -22,7 +22,7 @@ execFileSync(python, [
 from pathlib import Path
 from concorde.operations.catalog import register_types
 register_types()
-from tests.concorde.spec import support
+from tests.concorde.support import spec_project as support
 support.PACKAGE=Path(${JSON.stringify(candidate)})
 project=support.project
 if not (Path(${JSON.stringify(root)})/".concorde/specs.json").exists(): project(Path(${JSON.stringify(root)}))`,

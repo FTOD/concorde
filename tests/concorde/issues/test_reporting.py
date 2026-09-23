@@ -11,7 +11,7 @@ from concorde.issues.store import list_issues, read_issue
 from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import TypedDataError
 from concorde.spec.verification import verifies
-from tests.concorde.issues.test_store import report, source
+from tests.concorde.support.issue_reports import report, source
 
 
 class ReportingBoundaryTests(unittest.TestCase):

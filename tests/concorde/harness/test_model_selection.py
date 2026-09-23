@@ -25,7 +25,7 @@ from concorde.harness.model_selection import (
 )  # noqa: E402
 from concorde.spec.typed_data import TypedDataError, typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
-from tests.concorde.spec.support import PACKAGE, project  # noqa: E402
+from tests.concorde.support.spec_project import PACKAGE, project  # noqa: E402
 
 
 def configuration(**data) -> dict:

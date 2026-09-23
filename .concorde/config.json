@@ -43,20 +43,68 @@
         "no:cacheprovider",
         "-n",
         "8",
-        "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/operations/test_check_execution.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/operations"
       ],
       "timeout_seconds": 180,
       "inputs": [
         "pyproject.toml",
         "conftest.py",
-        "tests/concorde/support/pytest_timing.py",
+        "tests/concorde/support",
         "agents",
         "src",
         "protocol",
-        "tests/concorde/harness",
+        "operations",
         "tests/concorde/operations"
+      ]
+    },
+    {
+      "id": "check.delivery.runtime",
+      "module": "module.delivery",
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "8",
+        "tests/concorde/delivery"
+      ],
+      "timeout_seconds": 180,
+      "inputs": [
+        "pyproject.toml",
+        "conftest.py",
+        "tests/concorde/support",
+        "agents",
+        "src",
+        "protocol",
+        "operations",
+        "tests/concorde/delivery"
+      ]
+    },
+    {
+      "id": "check.validation.runtime",
+      "module": "module.validation",
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "8",
+        "tests/concorde/validation"
+      ],
+      "timeout_seconds": 180,
+      "inputs": [
+        "pyproject.toml",
+        "conftest.py",
+        "tests/concorde/support",
+        "agents",
+        "src",
+        "protocol",
+        "operations",
+        "tests/concorde/validation"
       ]
     },
     {
@@ -82,13 +130,18 @@
         "-p",
         "no:cacheprovider",
         "-n",
-        "4",
+        "8",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_boundaries.py",
-        "tests/concorde/harness/test_check_executor.py"
+        "tests/concorde/harness/test_check_executor.py",
+        "tests/concorde/harness/test_configured_checks.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "timeout_seconds": 180,
       "inputs": [
+        "pyproject.toml",
+        "conftest.py",
+        "tests/concorde/support",
         "agents",
         "src",
         "protocol",

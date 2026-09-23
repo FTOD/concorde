@@ -2,95 +2,15 @@
 
 import unittest
 
+from langgraph.graph import END, START, StateGraph
+
 from concorde.harness.operation_node import OperationNode, state_schema, typed_state
+from concorde.harness.operation_state import OperationRuntimeContext
 from concorde.harness.worker_profile import agent_definition
+from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import TypedDataError, data_schema, typed
 from concorde.spec.verification import verifies
-
-
-def _stage_context():
-    from concorde.harness.context import (
-        PROTOCOL_PATHS,  # noqa: F401  (import keeps the fixture honest)
-    )
-
-    snapshot = {
-        "context_id": "sha256:" + "3" * 64,
-        "schema_version": 8,
-        "target_id": "service.fixture",
-        "kind": "module",
-        "focus_id": None,
-        "phase": "plan",
-        "task": "Plan",
-        "constraints": [],
-        "agent_binding": {
-            "agent": "planner",
-            "spec_path": "agents/planner/spec.md",
-            "spec_digest": "sha256:" + "5" * 64,
-            "instructions_path": "generated/native/planner.md",
-            "instructions_digest": "sha256:" + "6" * 64,
-            "definition_digest": "sha256:" + "7" * 64,
-            "build_manifest_digest": "sha256:" + "8" * 64,
-            "tools": ["read", "grep", "find", "ls"],
-            "effects": {
-                "reads": ["spec-context", "references"],
-                "writes": [],
-                "network": False,
-                "credentials": "none",
-            },
-            "workspace": "capsule",
-            "timeout_seconds": 1800,
-            "digest": "sha256:" + "9" * 64,
-        },
-        "protocol_binding": {"version": "7.0.0", "digest": "sha256:" + "4" * 64},
-        "protocol": [],
-        "spec_resolution": {
-            "schema_version": 3,
-            "registration": {
-                "id": "service.fixture",
-                "kind": "module",
-                "title": "Fixture",
-                "documents": ["specs/module.md"],
-                "references": [],
-                "parent": None,
-                "uses": [],
-                "files": [],
-                "checks": [],
-            },
-            "query_id": "service.fixture",
-            "query_kind": "module",
-            "module_id": "service.fixture",
-            "reading_entry": "specs/module.md",
-            "documents": ["specs/module.md"],
-            "references": [],
-            "sources": [],
-        },
-        "shared_bindings": [],
-        "stage_inputs": [],
-        "implementation_entries": [],
-        "implementation_files": [],
-        "implementation_artifacts": [],
-        "external_references": [],
-        "workspace": {
-            "kind": "unversioned",
-            "current_worktree": "/fixture",
-            "current_branch": None,
-            "primary_worktree": None,
-            "primary_branch": None,
-            "change_id": None,
-            "phase": None,
-            "status": None,
-            "outcome": None,
-            "active_worktrees": [],
-        },
-    }
-    return typed(
-        "concorde-agent-stage-context",
-        {
-            "snapshot": typed("concorde-context-snapshot", snapshot),
-            "change_id": None,
-            "expected_artifacts": [],
-        },
-    )
+from tests.concorde.support.stage_context import stage_context as _stage_context
 
 
 class OperationNodeTests(unittest.TestCase):
@@ -173,6 +93,56 @@ class OperationNodeTests(unittest.TestCase):
         from concorde.operations.graph_catalog import catalog
 
         self.assertNotIn("plan_graph", catalog())
+
+
+class TerminalAgentGraphTests(unittest.TestCase):
+    @verifies("scenario.execution.operation-state")
+    def test_model_subgraph_projects_parent_state_and_preserves_unrelated_channels(
+        self,
+    ):
+        node = OperationNode("planner")
+        seen = []
+
+        def launcher(value):
+            seen.append(value)
+            return {
+                "context_id": value["data"]["snapshot"]["data"]["context_id"],
+                "outcome": "completed",
+                "answer": "Planned",
+                "blockers": [],
+                "documents": [],
+                "plan": "The plan",
+                "tasks": [],
+            }
+
+        from typing import TypedDict, cast
+
+        class ParentState(TypedDict, total=False):
+            snapshot: dict
+            change_id: str | None
+            expected_artifacts: list[str]
+            plan: str
+            private_parent_channel: str
+
+        graph = StateGraph(ParentState, context_schema=OperationRuntimeContext)
+        graph.add_node("plan", node.graph())
+        graph.add_edge(START, "plan")
+        graph.add_edge("plan", END)
+        data = _stage_context()["data"]
+        result = graph.compile().invoke(
+            cast(ParentState, {**data, "private_parent_channel": "not admitted"}),
+            context=OperationRuntimeContext(launcher=launcher),
+        )
+        self.assertEqual("The plan", result["plan"])
+        self.assertEqual("not admitted", result["private_parent_channel"])
+        self.assertEqual([typed(node.input_type, data)], seen)
+        with self.assertRaises(RuntimeError):
+            node.graph().invoke(data)  # State cannot supply the trusted launcher.
+
+    def test_arbitrary_compatibility_names_do_not_register_operations(self):
+        with self.assertRaises(SpecError) as refused:
+            OperationNode("normalize_plan")
+        self.assertEqual("unknown_agent", refused.exception.code)
 
 
 if __name__ == "__main__":

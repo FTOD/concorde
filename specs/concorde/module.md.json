@@ -136,7 +136,16 @@
         "tests/concorde/support/pytest_timing.py",
         "scripts/development/init-references.py",
         "scripts/development/check-docsite-types.py",
-        "tests/concorde/distribution/test_check_docsite_types.py"
+        "tests/concorde/support/contract_project.py",
+        "tests/concorde/support/issue_reports.py",
+        "tests/concorde/support/native_probe.py",
+        "tests/concorde/support/pi_session_project.py",
+        "tests/concorde/support/session_catalog.py",
+        "tests/concorde/support/shared_file_project.py",
+        "tests/concorde/support/spec_project.py",
+        "tests/concorde/support/stage_context.py",
+        "tests/concorde/support/worktree_project.py",
+        "tests/concorde/development/"
       ],
       "pending": []
     },
@@ -148,9 +157,7 @@
       "entries": [
         "tests/concorde/acceptance/"
       ],
-      "pending": [
-        "tests/concorde/acceptance/"
-      ]
+      "pending": []
     }
   ],
   "relations": []

@@ -17,8 +17,8 @@ from concorde.issues.store import read_issue, report_issue
 from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.issues.test_store import report, source
-from tests.concorde.spec.support import (
+from tests.concorde.support.issue_reports import report, source
+from tests.concorde.support.spec_project import (
     CONFIGURATION,
     PACKAGE,
     project,
@@ -62,7 +62,7 @@ class IssueGraphTests(unittest.TestCase):
             host_context=host,
         )
 
-    @verifies("scenario.issue-solving.inspect", "scenario.concorde.issue-reported")
+    @verifies("scenario.issue-solving.inspect")
     def test_inspection_does_not_create_a_candidate_or_launch_a_worker(self):
         before = read_issue(self.root, self.ref["issue_id"])
         for action in ("list", "show"):

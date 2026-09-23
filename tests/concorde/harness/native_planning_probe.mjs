@@ -18,14 +18,14 @@ execFileSync(python, [
 from pathlib import Path
 from concorde.operations.catalog import register_types
 register_types()
-from tests.concorde.spec.support import project
+from tests.concorde.support.spec_project import project
 project(Path(${JSON.stringify(root)}))
 import json
 if ${JSON.stringify(scenario)} in ('references','stale-reference'):
  r=Path(${JSON.stringify(root)})
  (r/'reference/lib').mkdir(parents=True);(r/'reference/lib/api.md').write_text('ADMITTED_LIBRARY_API')
  (r/'reference/foreign').mkdir();(r/'reference/foreign/api.md').write_text('UNGRANTED_LIBRARY_API')
- from tests.concorde.spec.support import include_external
+ from tests.concorde.support.spec_project import include_external
  include_external(r,'service.transfer','reference/lib/')
 import subprocess
 r=Path(${JSON.stringify(root)})

@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.verification import scan_declarations, verifies
-from tests.concorde.spec.support import (
+from tests.concorde.support.spec_project import (
     DocumentSource,
     SpecProject,
     module_document,

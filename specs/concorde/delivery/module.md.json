@@ -128,9 +128,7 @@
       "entries": [
         "tests/concorde/delivery/"
       ],
-      "pending": [
-        "tests/concorde/delivery/"
-      ]
+      "pending": []
     }
   ],
   "relations": [

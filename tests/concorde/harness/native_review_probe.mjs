@@ -16,12 +16,12 @@ execFileSync(python, [
 from pathlib import Path
 from concorde.operations.catalog import register_types
 register_types()
-from tests.concorde.spec.support import project
+from tests.concorde.support.spec_project import project
 project(Path(${JSON.stringify(root)}))
 import json
 r=Path(${JSON.stringify(root)})
 if ${JSON.stringify(scenario)} in ('shared','many','missing','budget'):
- from tests.concorde.spec.support import add_consumers
+ from tests.concorde.support.spec_project import add_consumers
  add_consumers(r, 39 if ${JSON.stringify(scenario)}=='many' else 2)
 `,
 ]);
@@ -36,7 +36,7 @@ import json,subprocess
 r=Path(${JSON.stringify(root)})
 if ${JSON.stringify(scenario)}=='code-shared':
  sys.path.insert(0,${JSON.stringify(candidate)})
- from tests.concorde.spec.support import set_realization
+ from tests.concorde.support.spec_project import set_realization
  set_realization(r,'realization.ledger.store',entries=['app/transfer.py'])
 def git(*a):subprocess.run(['git',*a],cwd=r,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 git('init');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');git('add','.');git('commit','-m','Fixture');git('worktree','add','-b','review',str(r/'candidate'))

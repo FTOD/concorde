@@ -106,7 +106,7 @@ class PreservedProjectTests(unittest.TestCase):
         self.assertEqual("unchanged", self.apply())
         self.assertEqual(b"only the project's own rules\n", agents.read_bytes())
 
-    @verifies("scenario.session.task-subagents")
+    @verifies("scenario.distribution.install-conflict-rejected")
     def test_tester_owned_update_protects_edits(self):
         self.apply()
         tester = self.target / ".pi/agents/tester.md"

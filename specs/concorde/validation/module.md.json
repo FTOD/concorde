@@ -157,9 +157,7 @@
       "entries": [
         "tests/concorde/validation/"
       ],
-      "pending": [
-        "tests/concorde/validation/"
-      ]
+      "pending": []
     }
   ],
   "relations": [

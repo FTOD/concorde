@@ -18,7 +18,7 @@ execFileSync(python, [
 from pathlib import Path
 from concorde.operations.catalog import register_types
 register_types()
-from tests.concorde.spec.support import project
+from tests.concorde.support.spec_project import project
 project(Path(${JSON.stringify(root)}))
 import subprocess
 r=Path(${JSON.stringify(root)})

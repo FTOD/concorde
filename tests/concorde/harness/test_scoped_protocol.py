@@ -11,7 +11,7 @@ from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.typed_data import TypedDataError, typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import (
+from tests.concorde.support.spec_project import (
     project,
     update_document_declaration,
     update_module,
@@ -122,7 +122,6 @@ class ScopedProtocolTests(unittest.TestCase):
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
         self.assertEqual("module.ledger", SpecRepository(self.root).root_module)
 
-    @verifies("scenario.admission.typed-reject")
     def test_internal_stage_operation_requires_target_id_at_the_top_level(self):
         with self.assertRaises(TypedDataError) as caught:
             typed("concorde-plan-request", {"task": "Plan the transfer promise"})

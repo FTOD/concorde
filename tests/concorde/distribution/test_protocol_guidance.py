@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.concorde.distribution.test_install_concorde import installer
+from concorde.distribution import installation as installer
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from concorde.distribution import protocol_guidance as guidance
 from concorde.spec.repository import PROTOCOL_VERSION
@@ -122,10 +122,7 @@ class ProtocolGuidanceTests(InstallerTestCase):
         self.install(cleanup=True)
         self.assertEqual(b"My own rules\n", agents.read_bytes())
 
-    @verifies(
-        "scenario.distribution.install-conflict-rejected",
-        "scenario.concorde.adopt-conflict",
-    )
+    @verifies("scenario.distribution.install-conflict-rejected")
     def test_markers_symlinks_and_modified_owned_blocks_conflict_without_writes(self):
         name = self.root / "AGENTS.md"
         cases = [

@@ -238,7 +238,7 @@ class OperationModuleRuleTests(unittest.TestCase):
                 _guidance(self.root)
                 self.assertEqual({"CONCORDE-OPERATION-INVENTORY-001"}, self.rules())
 
-    @verifies("scenario.operations.invalid-declaration")
+    @verifies("scenario.distribution.package-check-drift")
     def test_a_declaration_the_loader_refuses_is_reported_with_its_source(self) -> None:
         for before, after in (
             ('KIND = "host"', 'KIND = "graph"'),
@@ -639,7 +639,7 @@ class SpecAlignmentOperationsRuleTests(unittest.TestCase):
         )
         self.assertEqual([], self.findings([_mirror_entry()]))
 
-    @verifies("scenario.operations.invalid-declaration")
+    @verifies("scenario.distribution.package-check-drift")
     def test_a_mirror_record_differing_from_its_declaration_is_reported(self) -> None:
         for changes in (
             {"deterministic": False},

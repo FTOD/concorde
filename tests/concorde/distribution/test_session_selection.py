@@ -36,10 +36,7 @@ class SessionSelectionTests(unittest.TestCase):
         self.pi_entry = self.root / "generated/session/pi/concorde-session.ts"
         self.runtime = self.root / "scripts/run-operation.py"
 
-    @verifies(
-        "scenario.session.select",
-        "scenario.distribution.private-session-entry",
-    )
+    @verifies("scenario.session.select")
     def test_source_build_has_no_ambient_registration_and_selection_is_exact(self):
         for relative in (".agents", ".claude", ".pi/extensions/concorde-session.ts"):
             self.assertFalse((self.root / relative).exists())

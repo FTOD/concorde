@@ -232,7 +232,7 @@
       "meaning": "#realization.review.tests",
       "entries": [
         "tests/concorde/harness/native_review_probe.mjs",
-        "tests/concorde/operations/test_change_scope.py"
+        "tests/concorde/review/"
       ]
     }
   ],

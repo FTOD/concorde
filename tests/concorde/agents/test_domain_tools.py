@@ -14,7 +14,7 @@ from concorde.harness.native_runtime import FORMAT, NativeRuntimeBinding
 from concorde.harness.worker_profile import agent_definition
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import PACKAGE, project
+from tests.concorde.support.spec_project import PACKAGE, project
 
 DOMAIN_AGENTS = (
     "context_assessor",

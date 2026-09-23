@@ -20,7 +20,7 @@ from concorde.harness.native_driver import _remember_failure, _slot_failure
 from concorde.harness.operation_node import OperationNode
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
-from tests.concorde.harness.test_operation_node import _stage_context
+from tests.concorde.support.stage_context import stage_context as _stage_context
 
 
 class ExecutionFeedbackTests(unittest.TestCase):
@@ -117,9 +117,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
                 self.assertEqual(feedback["causes"][0]["code"], 5)
                 self.assertIn("disk read failed", feedback["causes"][0]["message"])
 
-    @verifies(
-        "scenario.admission.feedback-causes", "scenario.execution.operation-service"
-    )
+    @verifies("scenario.admission.feedback-causes")
     def test_optional_graph_sync_async_refusal_preserves_cause(self):
         context = _stage_context()
         cause = SpecError("exact plan identity refused", "stale_context")
@@ -149,9 +147,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
             self.assertEqual(detail["causes"][0]["code"], "stale_context")
             self.assertEqual(detail["causes"][0]["message"], str(cause))
 
-    @verifies(
-        "scenario.admission.feedback-causes", "scenario.execution.operation-service"
-    )
+    @verifies("scenario.admission.feedback-causes")
     def test_optional_graph_cancellation_is_not_an_ordinary_failure(self):
         async def cancel(_):
             raise asyncio.CancelledError("caller cancelled native service")

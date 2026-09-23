@@ -10,7 +10,7 @@ from pathlib import Path
 from concorde.spec.registry import registry_command
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import (
+from tests.concorde.support.spec_project import (
     DocumentSource,
     SpecProject,
     block,

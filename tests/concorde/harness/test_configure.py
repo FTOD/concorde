@@ -27,7 +27,7 @@ from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.repository import digest as digest_bytes
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import PACKAGE, project
+from tests.concorde.support.spec_project import PACKAGE, project
 from tests.concorde.support.operation_json import CONFIGURATION
 
 
@@ -96,7 +96,7 @@ class ConfigureTests(unittest.TestCase):
             ),
         )
 
-    @verifies("scenario.admission.configure-apply", "scenario.concorde.configure-apply")
+    @verifies("scenario.admission.configure-apply")
     def test_apply_writes_exactly_the_reviewed_proposal(self):
         original = self.document()
         result = self.request({"action": "propose", "configuration": SELECTION})
@@ -142,9 +142,7 @@ class ConfigureTests(unittest.TestCase):
         self.assertEqual("invalid_proposal", raised.exception.code)
         self.assertEqual(before, self.path.read_bytes())
 
-    @verifies(
-        "scenario.admission.configure-invalid", "scenario.concorde.configure-reject"
-    )
+    @verifies("scenario.admission.configure-invalid")
     def test_an_invalid_configuration_leaves_the_file_unchanged(self):
         before = self.path.read_bytes()
         self.assertEqual({}, validate_typed(configuration())["data"])
@@ -211,7 +209,6 @@ class AcceptProtocolTests(unittest.TestCase):
     @verifies(
         "scenario.admission.accept-protocol",
         "scenario.admission.protocol-not-accepted",
-        "scenario.concorde.protocol-upgrade-accepted",
     )
     def test_configure_accepts_an_upgraded_protocol_only_on_explicit_request(self):
         # An installation update refreshed the copy under .concorde/protocol/ while the project's

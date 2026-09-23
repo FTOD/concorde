@@ -166,11 +166,7 @@ class HandoffPolicyTests(unittest.TestCase):
         and os.environ.get("CONCORDE_NATIVE_PI"),
         "explicit native roots required",
     )
-    @verifies(
-        "scenario.planning.native-assessment-accepted",
-        "scenario.checks.read-only",
-        "scenario.distribution.install-local-worktree",
-    )
+    @verifies("scenario.session.installed-output-handoff")
     def test_readonly_tester_installs_selected_output_and_runs_native_smoke(self):
         with tempfile.TemporaryDirectory(
             prefix="concorde-install-handoff-input-"

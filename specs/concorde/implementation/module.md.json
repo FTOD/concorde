@@ -184,7 +184,7 @@
       "meaning": "#realization.implementation.tests",
       "entries": [
         "tests/concorde/harness/native_programmer_probe.mjs",
-        "tests/concorde/harness/test_native_implementation_review.py"
+        "tests/concorde/harness/test_native_programmer.py"
       ]
     }
   ],

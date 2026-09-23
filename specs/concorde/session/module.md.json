@@ -227,8 +227,7 @@
       "entries": [
         "src/concorde/distribution/session_selection.py",
         "pi/extensions/concorde-selection.ts",
-        "tests/concorde/distribution/test_session_selection.py",
-        "tests/concorde/support/environment.py"
+        "tests/concorde/distribution/test_session_selection.py"
       ],
       "pending": []
     }

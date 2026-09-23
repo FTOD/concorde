@@ -12,7 +12,7 @@ from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import CONFIGURATION, PACKAGE
+from tests.concorde.support.spec_project import CONFIGURATION, PACKAGE
 
 
 class InitialModuleTests(unittest.TestCase):
@@ -20,7 +20,6 @@ class InitialModuleTests(unittest.TestCase):
         "scenario.spec.propose-initialization",
         "scenario.spec.apply-initialization",
         "scenario.spec.rollback-on-failure",
-        "scenario.concorde.adopt-initialize",
     )
     def test_initialization_is_honest_and_rolls_back_a_bad_reading_entry(self):
         with tempfile.TemporaryDirectory() as directory:

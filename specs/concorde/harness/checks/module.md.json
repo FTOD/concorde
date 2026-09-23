@@ -127,7 +127,7 @@
         "tests/concorde/harness/test_tester_tmp.py",
         "tests/concorde/harness/structured_failure_driver.mjs",
         "tests/concorde/harness/tester_command_driver.mjs",
-        "tests/concorde/operations/test_check_execution.py"
+        "tests/concorde/harness/test_configured_checks.py"
       ],
       "pending": []
     }

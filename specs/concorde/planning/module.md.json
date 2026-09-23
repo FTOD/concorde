@@ -227,7 +227,8 @@
         "tests/concorde/harness/native_planning_probe.mjs",
         "tests/concorde/harness/test_native_context.py",
         "tests/concorde/harness/test_native_context_public.py",
-        "tests/concorde/harness/test_native_planning_public.py"
+        "tests/concorde/harness/test_native_planning_public.py",
+        "tests/concorde/planning/"
       ]
     }
   ],

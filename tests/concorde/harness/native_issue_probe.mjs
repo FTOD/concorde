@@ -20,12 +20,12 @@ execFileSync(python, [
 from pathlib import Path
 from concorde.operations.catalog import register_types
 register_types()
-from tests.concorde.spec.support import project
+from tests.concorde.support.spec_project import project
 project(Path(${JSON.stringify(root)}))
 import json
 r=Path(${JSON.stringify(root)})
 if ${JSON.stringify(scenario)} in ('shared','many','missing','budget'):
- from tests.concorde.spec.support import add_consumers
+ from tests.concorde.support.spec_project import add_consumers
  add_consumers(r, 19 if ${JSON.stringify(scenario)}=='many' else 2)
 `,
 ]);

@@ -18,7 +18,7 @@ from pathlib import Path
 
 from concorde.harness.check_executor import CheckSandboxError, execute_check
 from concorde.spec.verification import verifies
-from tests.concorde.distribution import test_pi_session as session_fixtures
+from tests.concorde.support.pi_session_project import set_up_selected_project
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
 from tests.concorde.support.pi_prompt_client import PiRun, read_records, run_prompt
@@ -193,7 +193,7 @@ else:
 @unittest.skipUnless(shutil.which("pi"), "real Pi required")
 class RegisteredTesterTemporaryTests(unittest.TestCase):
     # Reuse the source-private fixture construction, not its tests or a task launcher.
-    setUp = session_fixtures.RealPiSessionTests.setUp
+    setUp = set_up_selected_project
 
     def drive(self, command, *, timeout=150, cancel=False):
         pi = shutil.which("pi")

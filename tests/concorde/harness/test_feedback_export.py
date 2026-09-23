@@ -25,12 +25,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
     "explicit admitted native and SDK roots required",
 )
 class FeedbackExportTests(unittest.TestCase):
-    @verifies(
-        "scenario.admission.feedback-causes",
-        "scenario.checks.command-output",
-        "scenario.planning.native-assessment-accepted",
-        "scenario.execution.operation-service",
-    )
+    @verifies("scenario.admission.feedback-causes")
     def test_refusals_survive_registered_tester_failure_and_scratch_cleanup(self):
         source = REPOSITORY_ROOT
         native = Path(os.environ["CONCORDE_NATIVE_SUBAGENTS"])

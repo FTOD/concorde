@@ -181,16 +181,15 @@
       "title": "Spec tests",
       "meaning": "#realization.spec.tests",
       "entries": [
-        "tests/concorde/operations/test_structured_results.py",
         "tests/concorde/spec/__init__.py",
-        "tests/concorde/spec/support.py",
         "tests/concorde/spec/test_checks.py",
         "tests/concorde/spec/test_context_selection.py",
         "tests/concorde/spec/test_distribution.py",
         "tests/concorde/spec/test_initialize.py",
         "tests/concorde/spec/test_module_model.py",
         "tests/concorde/spec/test_requirements_and_verification.py",
-        "tests/concorde/spec/test_typed_data.py"
+        "tests/concorde/spec/test_typed_data.py",
+        "tests/concorde/spec/test_structured_results.py"
       ],
       "pending": []
     }

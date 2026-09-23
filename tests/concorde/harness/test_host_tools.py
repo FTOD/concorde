@@ -14,8 +14,8 @@ from concorde.harness.host import OperationHost
 from concorde.issues.store import dispose_issue, read_issue
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.issues.test_store import report
-from tests.concorde.spec.support import CONFIGURATION, PACKAGE, project
+from tests.concorde.support.issue_reports import report
+from tests.concorde.support.spec_project import CONFIGURATION, PACKAGE, project
 
 
 class HostToolTests(unittest.TestCase):
@@ -49,10 +49,7 @@ class HostToolTests(unittest.TestCase):
         )
         return result
 
-    @verifies(
-        "scenario.spec.propose-initialization",
-        "scenario.admission.deterministic-no-model",
-    )
+    @verifies("scenario.admission.deterministic-no-model")
     def test_initialization_proposal_without_graph(self):
         root = self.root / "new-project"
         root.mkdir()
@@ -92,11 +89,7 @@ class HostToolTests(unittest.TestCase):
         self.assertEqual("applied", result["output"]["data"]["status"])
         self.assertEqual(changed, result["output"]["data"]["configuration"])
 
-    @verifies(
-        "scenario.issue-solving.inspect",
-        "scenario.issues.store-report",
-        "scenario.issues.store-disposition",
-    )
+    @verifies("scenario.admission.deterministic-no-model")
     def test_issue_bookkeeping_without_graph(self):
         result = self.call(
             "concorde-issues",
@@ -138,7 +131,7 @@ class HostToolTests(unittest.TestCase):
         self.assertEqual(result["status"], "succeeded", result)
         self.assertEqual(result["output"]["data"]["issues"][0]["status"], "open")
 
-    @verifies("scenario.validation.failed-check")
+    @verifies("scenario.admission.deterministic-no-model")
     def test_validation_gates_without_graph(self):
         result = self.call(
             "concorde-validate",
@@ -150,7 +143,7 @@ class HostToolTests(unittest.TestCase):
         )
         self.assertIn(result["status"], {"succeeded", "blocked"}, result)
 
-    @verifies("scenario.delivery.session-rejected")
+    @verifies("scenario.admission.deterministic-no-model")
     def test_delivery_rejection_without_graph(self):
         result = self.call("concorde-deliver", {"change_id": "change.not-present"})
         self.assertEqual(result["status"], "blocked", result)

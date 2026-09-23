@@ -6,15 +6,14 @@ from concorde.harness.context import recheck_context, resolve_context
 from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import source_pairs
-from tests.concorde.spec.test_module_model import ModuleImplementationTests
+from tests.concorde.support.spec_project import source_pairs
+from tests.concorde.support.shared_file_project import SharedFileFixture
 
 
 class ExternalReferenceTests(unittest.TestCase):
     def setUp(self):
-        self.fixture = ModuleImplementationTests()
+        self.fixture = SharedFileFixture(self)
         self.fixture.setUp()
-        self.addCleanup(self.fixture.doCleanups)
         self.fixture.write("reference/lib/api.md", "## connect(url)\n")
         self.fixture.write("reference/lib/diagram.png", "binary")
         self.fixture.write("reference/other/api.md", "undeclared\n")
@@ -97,9 +96,8 @@ class SharedFileReaderTests(unittest.TestCase):
     """A and B both bind ``source/shared.py``; neither selects the other's documents."""
 
     def setUp(self):
-        self.fixture = ModuleImplementationTests()
+        self.fixture = SharedFileFixture(self)
         self.fixture.setUp()
-        self.addCleanup(self.fixture.doCleanups)
 
     @verifies("scenario.context.shared-file-binding")
     def test_a_programmer_also_reads_every_module_that_binds_its_files(self):

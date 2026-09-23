@@ -21,7 +21,6 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class CheckEvidenceTests(unittest.TestCase):
-    @verifies("scenario.context.freeze")
     def test_session_includes_complete_tester_contract_pair_once(self):
         from concorde.spec.repository import SpecRepository
 
@@ -314,7 +313,7 @@ main()
         self.assertTrue(result["evidence"]["complete"])
         self.assertEqual(0, self.manifest(result)["returncode"])
 
-    @verifies("scenario.worktrees.primary-status", "scenario.checks.tester-evidence")
+    @verifies("scenario.checks.tester-no-primary")
     def test_missing_primary_authority_never_creates_a_replacement_archive(self):
         missing = self.root / "missing"
         evidence = CheckEvidence(missing, (), command="true", timeout=1)
@@ -337,7 +336,7 @@ main()
         self.assertFalse((self.project / "unsafe").exists())
         self.assertIn("scratch/report unavailable", str(self.manifest(result)))
 
-    @verifies("scenario.worktrees.primary-status")
+    @verifies("scenario.checks.tester-evidence-incomplete")
     def test_export_refusal_keeps_original_failure_and_has_no_destination_fallback(
         self,
     ):
@@ -353,7 +352,9 @@ main()
         self.assertTrue(result["evidence"]["errors"])
         self.assertEqual([], list(outside.iterdir()))
 
-    @verifies("scenario.worktrees.primary-status", "scenario.checks.tester-evidence")
+    @verifies(
+        "scenario.checks.tester-evidence", "scenario.checks.tester-evidence-incomplete"
+    )
     def test_partial_export_is_recorded_with_successful_artifacts_still_retrievable(
         self,
     ):
@@ -382,7 +383,7 @@ main()
             b"cause", Path(m["artifacts"][0]["artifact"]["path"]).read_bytes()
         )
 
-    @verifies("scenario.worktrees.primary-status")
+    @verifies("scenario.checks.tester-evidence-incomplete")
     def test_manifest_export_failure_retains_successful_artifact_references(self):
         from concorde.harness import check_evidence
 
@@ -405,7 +406,7 @@ main()
             Path(summary["artifacts"][0]["artifact"]["path"]).read_bytes(),
         )
 
-    @verifies("scenario.worktrees.primary-status", "scenario.checks.tester-evidence")
+    @verifies("scenario.checks.tester-evidence")
     def test_linked_fixture_uses_only_primary_authority_and_retains_input_identity(
         self,
     ):
@@ -515,7 +516,7 @@ class RegisteredToolEvidenceTests(unittest.TestCase):
         self.assertEqual(0, actual["response"]["returncode"])
         self.assertFalse(self.manifest(actual["response"])["complete"])
 
-    @verifies("scenario.checks.command-output", "scenario.execution.stage-proposal")
+    @verifies("scenario.checks.command-output")
     def test_real_sdk_registered_test_command_specific_failure_is_retrievable(self):
         command = shlex.join(
             [

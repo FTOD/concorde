@@ -106,13 +106,13 @@ this checkout.
 <a id="realization.concorde.development-environment"></a>
 
 It binds the **development environment** of this checkout, the Python project, test roots, shared
-test support, reference initializer and docsite type check, whose promises are in
-[Development environment](development.md).
+test support, reference initializer and docsite type check, and the tests of that environment,
+whose promises are in [Development environment](development.md).
 
 <a id="realization.concorde.acceptance-tests"></a>
 
-Its **acceptance tests**, under the still pending `tests/concorde/acceptance/`, will exercise the
-root's cross-Module [scenarios](scenarios.md).
+Its **acceptance tests**, under `tests/concorde/acceptance/`, exercise the root's cross-Module
+[scenarios](scenarios.md) through the public capabilities.
 
 ## Relationships
 

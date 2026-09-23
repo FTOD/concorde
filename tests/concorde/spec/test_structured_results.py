@@ -16,7 +16,9 @@ class StructuredResultTests(unittest.TestCase):
             Finding("CONCORDE-REF-002", "warning", "z.md", "z", "fix z"),
             Finding("CONCORDE-REF-001", "error", "a.md", "a", "fix a"),
         ]
-        result = envelope("validate", "module.example", "invalid", ["z.md", "a.md"], findings, {})
+        result = envelope(
+            "validate", "module.example", "invalid", ["z.md", "a.md"], findings, {}
+        )
         encoded = canonical_json(result)
         decoded = json.loads(encoded)
         self.assertEqual(decoded["schema_version"], 2)
@@ -36,11 +38,34 @@ class StructuredResultTests(unittest.TestCase):
 
     def test_validation_result_matches_normative_envelope_fields(self):
         actual = validate_repository(REPOSITORY_ROOT)
-        payload = envelope(actual.tool, actual.target, actual.status, actual.artifacts, actual.findings, dict(actual.result))
-        self.assertEqual(set(payload), {"schema_version", "tool", "target", "status", "artifacts", "findings", "result"})
+        payload = envelope(
+            actual.tool,
+            actual.target,
+            actual.status,
+            actual.artifacts,
+            actual.findings,
+            dict(actual.result),
+        )
+        self.assertEqual(
+            set(payload),
+            {
+                "schema_version",
+                "tool",
+                "target",
+                "status",
+                "artifacts",
+                "findings",
+                "result",
+            },
+        )
         self.assertEqual(payload["schema_version"], 2)
-        self.assertEqual(set(payload["result"]), {"summary", "source_digest", "claims", "semantic_completeness"})
-        self.assertFalse(any("\\" in item or item.startswith("/") for item in payload["artifacts"]))
+        self.assertEqual(
+            set(payload["result"]),
+            {"summary", "source_digest", "claims", "semantic_completeness"},
+        )
+        self.assertFalse(
+            any("\\" in item or item.startswith("/") for item in payload["artifacts"])
+        )
 
 
 if __name__ == "__main__":
