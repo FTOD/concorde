@@ -9,25 +9,22 @@ through a temporary file under the repository lock.
 | Path | Where | Content |
 | --- | --- | --- |
 | `.concorde/status/<change_id>.json` | primary only | the change status |
-| `.concorde/status/migration.json` | primary only | the journal of an interrupted `migrate-status --apply` |
 | `.concorde/runs/<run_id>/run.json` | primary only | one run record |
 | `.concorde/runs/<root_run_id>/builds/<digest>.json` | primary only | a copy of the build manifest a run used |
 | `.concorde/runs/<root_run_id>/pi/<digest>.ts` | primary only | a copy of the Pi entry a run was selected through |
-| `.concorde/runs/legacy-migration/` | primary only | archived bytes of migrated earlier data |
 | `.concorde/work/` | any worktree | scratch files of the current change; never evidence |
 | `<git-dir>/concorde-incarnation` | Git administrative directory of each registered worktree | a canonical UUID, the worktree's incarnation token |
 
 The host appends these control paths to the repository's shared `info/exclude` file:
-`.concorde/worktree.json`, `.concorde/worktrees.json`, `.concorde/status`, `.concorde/work`,
-`.concorde/deliveries`, `.concorde/runs`, `.concorde/topology-proposals` and
-`.concorde/*.legacy-archive`. The same list is removed from every deliverable snapshot. A status or
+`.concorde/status`, `.concorde/work` and `.concorde/runs`. The same list is removed from every
+deliverable snapshot. A status or
 run write stops with `invalid_worktree_state` when Git tracks any file below `.concorde/status` or
 `.concorde/runs`.
 
 ## Change status
 
 A change ID has the form `change.<uuid>` when the host chooses it; a caller may supply another valid
-identifier. `change_id` may not be `migration`. Schema version 2 has these fields:
+identifier. Schema version 2 has these fields:
 
 | Field | Meaning |
 | --- | --- |
@@ -50,10 +47,6 @@ identifier. `change_id` may not be `migration`. Schema version 2 has these field
 | `manual_merge` | null, or the observed ordinary-Git merge `{commit, ...}` |
 | `delivery` | null, or the delivery record kept by Delivery |
 | `cleanup` | `{status}` with `pending`, `retained`, `removed` or `not_needed` |
-
-Schema-1 worktree records are refused with `unsupported_worktree_version`. A worktree that still
-contains `.concorde/worktree.json` or legacy `.concorde/attempts/` data is refused with
-`migration_required` or `legacy_attempt` until it is migrated or cleaned explicitly.
 
 ## Run record
 
@@ -97,7 +90,6 @@ that a model ran.
 | `record_run(host, operation=, result=, task=)` | start or finish a run record |
 | `coordinate_child(root, change_id, child_id=, phase=, release=)` | record or release the Task subagent that owns a change; primary only, phase `maintenance`, `test` or `task` |
 | `record_manual_merge(root, change_id, commit=, cleanup=)` | record an observed ordinary-Git merge and cleanup outcome |
-| `migrate_legacy(root, apply=)` | preview or apply the import of earlier lifecycle data |
 | `inspect_worktree(root)` / `require_isolated_worktree(root, allow_primary_worktree=)` | the isolation check; failures raise `WorktreeBoundaryError` |
 
 ## Error codes
@@ -111,8 +103,6 @@ that a model ran.
 | `stale_status` | the status changed since it was read |
 | `incompatible_handoff` | a request conflicts with the recorded owner or change ID |
 | `invalid_worktree_state` | a malformed status, owner, incarnation token or guidance marker |
-| `unsupported_worktree_version` | schema-1 worktree data |
-| `migration_required`, `migration_conflict`, `legacy_attempt` | earlier lifecycle data that needs explicit migration or cleanup |
 | `primary_session_required` | a coordination command was run outside the primary |
 | `unknown_change` | a coordination command names no recorded change |
 | `stale_evidence` | a cleanup-only update without a recorded manual merge |

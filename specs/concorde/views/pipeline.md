@@ -85,10 +85,11 @@ no other route.
    title (the Module's title for an entry, otherwise the file name without `.md`), the sidebar of
    its reading collection and a table of contents of level-2 and level-3 headings. The body is
    the reading with these rewrites, applied outside fenced code only:
-   - **links**: a relative Markdown link or image whose target path resolves, relative to
-     the source file, to a registered document is replaced by that page's route; the query and
-     fragment are kept in order. A path that resolves to no registered document fails staging.
-     URLs with a scheme or starting with `/`, and bare `#fragment` links, are left unchanged;
+   - **links**: a relative Markdown link `[label](path)` or image `![label](path)` whose target
+     path resolves, relative to the source file, to a registered document is replaced by that
+     page's route; the query and fragment are kept in order. A path that resolves to no
+     registered document fails staging. URLs with a scheme or starting with `/`, bare
+     `#fragment` links and links inside inline code spans are left unchanged;
    - **imported definitions** (in `module`-role documents): the empty definition cell of each
      Terminology import row is filled with the definition from the defining row, its links
      addressed from the defining page, followed by *Imported from [Owner](entry route)*. A cell

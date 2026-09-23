@@ -9,7 +9,8 @@ Concorde centers on complete architecture-aware Specs. Native Pi Agents and auth
 workflows perform cognition; finite Host services retain admission, evidence, checks and lifecycle
 authority. LangGraph Operations are explicitly selected StateGraph boundaries, not mirrors or mandatory
 schedulers for native capabilities. Native file/network/credential policy is prompt-level; tester and
-configured-check subprocess isolation remains enforced. See the [current API](../scripts/development/STUDIO.md)
+configured-check subprocess isolation remains enforced. See the
+[Terminal Agent Operation](../specs/concorde/harness/execution/module.md#concept.execution.terminal-agent-operation)
 and [public capability examples](../README.md#choose-an-entry-point).
 
 A Module is a responsibility, not an executable kind. The [Agents Module](../specs/concorde/agents/module.md)
@@ -54,13 +55,12 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The Pi-only installer distributes eleven compatibility public capability entries, seven Domain
+The Pi-only installer distributes eleven public capability entries, seven Domain
 Agents, the consumer tester Task subagent and authored plan/review/Issue workflows. Source-only maintenance and
 coordinator instructions are not consumer assets. Canonical Domain Agent definitions and native preludes
 render into owned `generated/native/` assets. The user session prepares with `concorde`, invokes the exact returned
 native call, and separately observes Host acceptance. Host tools run without a model. Internal wire
-spellings do not assert LangGraph execution. No standalone Skills or client-selector installation is
-supported. npm remains required for actual Pi extension dependencies.
+spellings do not assert LangGraph execution. npm is required for the Pi extension dependencies.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project and commit project inputs, root guidance and the complete Protocol bundle, then invoke the
@@ -114,7 +114,7 @@ local development environment and explicit private Pi selection; they receive no
     },
     "input": {
         "type_id": "concorde-init-request",
-        "schema_version": 2,
+        "schema_version": 3,
         "data": {
             "action": "propose",
             "name": "My project",
@@ -190,11 +190,10 @@ controls entry availability independently of these guarantees.
 `concorde-spec-review` reviews the specification itself, including every imported terminology
 restatement's semantic consistency with its canonical definition. Different wording is allowed.
 `concorde-code-review` reviews or diagnoses the admitted implementation against its Spec. Each
-separate native review workflow accepts an explicit `target_id` and `task`, with optional local `focus_id`
-and no review_mode selector. Each binds the selected Module and starts its own fresh read-only reviewer in the current
+separate native review workflow accepts an explicit `target_id` and `task`, with optional local `focus_id`.
+Each binds the selected Module and starts its own fresh read-only reviewer in the current
 worktree, without requiring a development change or preexisting Issue. The host returns structured
-findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline. The former combined
-review entry is removed, not retained as an alias; callers must select one of these two capabilities.
+findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline.
 
 No public capability returns a context manifest; where supported, `describe-policy` mode previews
 its stage grants without launching an Agent or mutating project state. Initialization and
@@ -281,10 +280,9 @@ An explicit solve request selects one Issue and its current revision. The bounde
 read-only verification or return needed development/Spec repair intent to the caller.
 Caller-performed edits require fresh verification before supported disposition and final candidate checks. Unresolved choices return needs-decision; an explicit solve note supplies developer
 clarification. A successful candidate-local close is not a claim about primary. See the
-[Issue lifecycle](../specs/concorde/issues/lifecycle.md). Legacy data can be preserved explicitly with
-`scripts/issues.py archive-reflections`; it is never automatically classified or approved.
+[Issue lifecycle](../specs/concorde/issues/lifecycle.md).
 
-Concorde uses Pi-only Package Manifest 4, installation receipt 2, Architecture Profile 15 with
+Concorde uses Pi-only Package Manifest 5, installation receipt 2, Architecture Profile 16 with
 Spec Protocol 11, registry schema 3, Workspace Protocol 16 and Delivery Proposal 10. Other formats
 are refused; normal execution never reinterprets them, and there is no migration path from Spec
 Protocol 10.
@@ -317,11 +315,8 @@ are installed locally as described above, not inherited from primary at runtime.
 Runtime `concorde-change-worktree` blocks remain local and are stripped at delivery; the
 `concorde-protocol` entry remains part of the project.
 The installer preserves root bytes outside its block, including later user edits and file mode.
-Reinstall is idempotent. A legacy receipt upgrade to Pi removes only unchanged receipt-owned
-retired outputs and exact owned root blocks, including the old `CLAUDE.md` entry. External
-CLI-owned Skills in `.agents/skills` or `.claude/skills` and `skills-lock.json` remain untouched.
-The installer reports manual retirement in text and JSON: remove only retired Concorde entries
-you own, never whole directories or locks. Empty legacy directories may remain.
+Reinstall is idempotent. An upgrade removes only unchanged receipt-owned outputs the new package
+no longer ships; a receipt of an earlier schema is refused.
 Modified/unowned blocks, ambiguous markers, symlinks and non-file roots conflict without replacement.
 To preview removal of root entries during uninstall, run:
 
@@ -366,11 +361,6 @@ checkout's existing binding unchanged.
 
 ## Development
 
-[LangGraph Studio setup and usage](../scripts/development/STUDIO.md) covers the genuine optional
-StateGraph Operation, typed Runtime service injection and inspection-only default export. Native
-capabilities are not forwarded through Studio. Host JSON services need no server; native cognition
-uses the prepared Pi Agent/workflow boundary.
-
 Run Python tests with `.venv/bin/python -m pytest`, the single test entry configured in
 `pyproject.toml`: it collects every `unittest.TestCase` under `tests/concorde` and runs them on
 16 pytest-xdist worker processes by default (`-n 0` runs in-process, `-n <N>` changes the worker
@@ -406,8 +396,7 @@ the missing input named rather than falling back to the network.
 Canonical Agent definitions, `prompts/` (including public capability guidance under
 `prompts/operation-guidance/`) and `pi/extensions/` produce this checkout's Agent surfaces. Never edit
 `generated/`, the private `generated/session/pi/` entry or generated worker instructions directly;
-they are untracked build output. Build never installs into ambient discovery. No standalone
-`skills/` product, private Codex/Claude projection or independent publishing command remains.
+they are untracked build output. Build never installs into ambient discovery.
 After changing their sources, run the build and the deterministic checks in the same primary or
 linked worktree:
 
@@ -439,8 +428,9 @@ native terminal evidence and current inputs; closure remains journaled and final
 
 The public catalog preserves eleven compatibility entry names; it is not the inventory of Agents. `kind`
 distinguishes Agent entry, Workflow and Host actions; StateGraph Operations are a separate optional
-boundary with an explicitly supplied trusted native service. No native flow has a fake Studio mirror.
-See the [Operation API](../scripts/development/STUDIO.md) and [current examples](../README.md).
+boundary with an explicitly supplied trusted native service. See the
+[Terminal Agent Operation](../specs/concorde/harness/execution/module.md#concept.execution.terminal-agent-operation)
+and [current examples](../README.md).
 
 Concorde source maintenance defaults to a new candidate and a fresh Concorde-catalog-free writer.
 The user session stays in its initial worktree. Its high-level decomposition into work packages, ownership,
@@ -460,7 +450,7 @@ exact `-e` entry and all returned discovery-disable flags. Missing/stale artifac
 candidate Python environment block without ambient fallback. Selection is not proof of extension
 loading, tool use or model execution, and never widens the actual task/file/tool grant. The
 private extension reverifies before registration and every tool call; the launcher independently
-reverifies. Private selection rejects Studio and linked-source-worktree redirects, while explicitly
+reverifies. Private selection rejects linked-source-worktree redirects, while explicitly
 scoped disposable consumer data remains allowed. `--skill` and schema-1 selections are rejected.
 
 Consumers may delegate complete tasks one layer deep or edit simple authorized tasks directly in
@@ -469,8 +459,7 @@ Task-authorized edits may include `.concorde` files in the owned workspace; pres
 evidence, task scope and concurrency safety. Primary-only `.concorde/status/<change_id>.json`
 records stable task coordination, delivery or manual merge and separate cleanup. Durable runs,
 including candidate executions, remain primary-only in `.concorde/runs/`. Terminal status remains
-after candidate deletion. Preview legacy migration with `migrate-status`; accept explicitly with
-`--apply` only after inspecting collisions and preserving backups. No live migration is automatic.
+after candidate deletion.
 
 ## Source-selected installation testing and failed native observation
 

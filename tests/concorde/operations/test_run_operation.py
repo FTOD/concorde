@@ -90,16 +90,6 @@ class RunOperationLauncherTests(unittest.TestCase):
         output = json.loads(process.stdout)
         self.assertEqual("unknown_operation", output["errors"][0]["code"])
 
-    @verifies("scenario.review.separate-entries")
-    def test_retired_review_launcher_has_no_alias(self):
-        for argv in (["concorde-review"], ["concorde-review", "--runtime-check"]):
-            with self.subTest(argv=argv):
-                process = _run(argv)
-                self.assertEqual(3, process.returncode)
-                self.assertEqual(
-                    "unknown_operation", json.loads(process.stdout)["errors"][0]["code"]
-                )
-
     def test_refuses_zero_or_multiple_arguments(self):
         for argv in ([], ["concorde-context-solve", "concorde-init"]):
             with self.subTest(argv=argv):

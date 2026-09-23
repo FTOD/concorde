@@ -19,7 +19,6 @@ first re-executes itself in the worktree's managed runtime. The environment vari
 `CONCORDE_WORKER_POLICY` marks a worker process, and its presence refuses the request with
 `permission_denied`. `CONCORDE_SESSION_SELECTION` pins the Concorde code to an explicitly selected
 private session build; a selection in `maintenance` mode is refused with `fresh_session_required`.
-`CONCORDE_STUDIO_URL` is refused with `native_required`.
 
 ## Capability request
 
@@ -235,9 +234,9 @@ Most responses carry `target_id`, `focus_id`, `change_id`, `context_id`, `outcom
 | `concorde-validate-request@1`, `concorde-validate-response@3` | deterministic validation and optional configured checks | Validation |
 | `concorde-deliver-request@1`, `concorde-deliver-response@3` | delivery of a change, optionally keeping the worktree or merging into the primary | Delivery |
 | `concorde-issues-request@1`, `concorde-issues-response@2` | list, show, report, reopen or solve an Issue; the response adds Issue records and a decision | Issues |
-| `concorde-init-request@2`, `concorde-init-response@1` | propose or apply the first Spec of a project; the response has `status`, `proposal` and `files` | Spec |
+| `concorde-init-request@3`, `concorde-init-response@1` | propose or apply the first Spec of a project, optionally opting in to apply in the primary worktree; the response has `status`, `proposal` and `files` | Spec |
 | `concorde-project-proposal@1` | the files of an initialization proposal with their base digests | Spec |
-| `concorde-configure-request@2`, `concorde-configure-response@2` | a new operation configuration; the response has `configuration` and `status` | Distribution |
+| `concorde-configure-request@3`, `concorde-configure-response@2` | a new operation configuration, optionally opting in to apply in the primary worktree; the response has `configuration` and `status` | Distribution |
 
 ### Step inputs and results
 
@@ -304,11 +303,8 @@ through the result envelope. The last column names the Module where it arises.
 | `invalid_target` | a context query names no registered Module or scenario | Spec |
 | `invalid_worktree_state` | a change status, owner, incarnation token or guidance marker is malformed | Candidate worktrees |
 | `issue_key_conflict` | a report key was reused with different content | Issues |
-| `legacy_attempt` | a worktree holds unsupported earlier attempt state | Candidate worktrees |
 | `local_installation_required` | the worktree's own installation is missing, stale, foreign or not the running one | Request admission |
 | `merge_conflict` | the candidate conflicts with the primary branch | Delivery |
-| `migration_conflict` | earlier lifecycle data collides with different current data | Candidate worktrees |
-| `migration_required` | earlier lifecycle data needs explicit `migrate-status` | Candidate worktrees |
 | `missing_change` | no managed change or live candidate exists for the request | Candidate worktrees, Planning, Implementation |
 | `missing_plan` | task authoring was requested without a plan | Planning |
 | `missing_runtime` | no usable interpreter, environment or native runtime was found | Request admission, Agent execution |
@@ -331,8 +327,6 @@ through the result envelope. The last column names the Module where it arises.
 | `stale_reference` | an artifact reference's digest does not match the file | Spec |
 | `stale_status` | a change status changed since it was read | Candidate worktrees |
 | `state_persistence_failed` | status or run evidence could not be written after a final outcome | Request admission, Delivery |
-| `studio_run_failed` | a Studio-driven run did not complete | Agent execution |
-| `studio_transport_failed` | the Studio client could not reach the Studio server | Agent execution |
 | `undeclared_operation` | an Operation composed another it does not declare | Agent execution |
 | `unknown_agent` | no Agent has this name | Task context |
 | `unknown_change` | a change ID has no status or delivery record | Candidate worktrees, Delivery |
@@ -341,10 +335,8 @@ through the result envelope. The last column names the Module where it arises.
 | `unknown_target` | the target Module is not registered | Spec |
 | `unknown_type` | a typed value names no registered type | Spec |
 | `unsafe_path` | a path escapes the project, aliases a control path or crosses a symlink | Spec, Candidate worktrees |
-| `unsupported_issue_version` | an older Issue record cannot be changed | Issues |
 | `unsupported_profile` | the registry declares an unsupported profile | Spec |
 | `unsupported_target` | the Module has no implementation for the requested behaviour | Implementation, Review |
 | `unsupported_version` | a request or typed value has an unsupported version | Request admission, Spec |
-| `unsupported_worktree_version` | a worktree record uses an unsupported schema | Candidate worktrees |
 | `use_proposal` | `describe-policy` cannot preview initialization or configuration; use their proposals | Operations |
-| `workspace_mismatch` | the entry directory, worktree or incarnation is not the one the request requires | Request admission, Candidate worktrees |
+| `workspace_mismatch` | the entry directory, worktree or incarnation is not the one the request requires, or `run_in_primary` was set outside the primary worktree | Request admission, Candidate worktrees |

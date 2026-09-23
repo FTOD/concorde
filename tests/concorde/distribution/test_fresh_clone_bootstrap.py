@@ -93,7 +93,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             [sys.executable, launcher, "concorde-validate"],
             self.clone,
             input=json.dumps(invocation),
-            env=child_environment(CONCORDE_STUDIO_URL=""),
+            env=child_environment(),
         )
         self.assertTrue(process.stdout.strip(), process.stderr)
         return json.loads(process.stdout)

@@ -25,14 +25,6 @@ Concrete situations for context assessment, planning and task authoring in the
 
 See [report necessary gaps as Issues](workflow.md#req.planning.assessment-gap).
 
-### scenario.planning.historical-author-gap — A fresh assessment supersedes a removed step's blocker
-
-- GIVEN a candidate still holds an open blocker that the removed Spec-authoring step recorded for the same target and task
-- WHEN the user session edits the Spec as needed and obtains an accepted `sufficient` context assessment for that target, task, focus and constraints
-- THEN the Host marks only that blocker superseded, recording the new assessment's context, the Spec revision and the reason `retired_author_prerequisite`
-- AND it keeps the original blocker, its Issue and their history
-- BUT an edit alone, an insufficient, failed or stale assessment, or a blocker whose attribution is ambiguous supersedes nothing, and no Issue is closed
-
 ### scenario.harness.native-context-public — A prepared native assessment is accepted independently
 
 - GIVEN a selected Module with a current frozen context and the candidate's own Pi entry

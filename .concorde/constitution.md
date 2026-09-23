@@ -1,8 +1,8 @@
 # Concorde source-checkout rule sources
 
 This file is a navigation index, not a second rule bundle or a separate specification language.
-The current checkout accepts Spec Protocol **10.0.0**, Framework **Profile 15** and registry schema
-**5**. Workspace Protocol **16** and Delivery Proposal **10** remain separate compatibility gates.
+The current checkout accepts Spec Protocol **11.0.0**, Framework **Profile 16** and registry schema
+**3**. Workspace Protocol **16** and Delivery Proposal **10** remain separate compatibility gates.
 The exact accepted Protocol version and manifest digest are recorded in `.concorde/config.json`.
 
 ## Canonical authorities

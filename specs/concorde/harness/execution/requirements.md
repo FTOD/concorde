@@ -71,7 +71,7 @@ Every Graph that Concorde compiles SHALL be built with LangGraph's Graph API as 
 
 No Python source under `src/`, `scripts/`, `agents/` or `operations/` imports LangGraph's
 Functional API (`langgraph.func`), because a Graph written with it hides its control flow inside
-ordinary Python where no Graph Spec, check or Studio can inspect it. The Graph Spec check parses
+ordinary Python where no Graph Spec or check can inspect it. The Graph Spec check parses
 these files without running them.
 
 ### req.execution.graph-spec-agreement — Every Graph has one matching Graph Spec

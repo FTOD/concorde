@@ -117,12 +117,6 @@ matches the file, appends to a closed Issue, reuses a report key for different c
 owner or evidence path outside the reporter's context is refused, and nothing is written. Repeating
 an identical report returns the same receipt instead of a second copy.
 
-**Older records.** Records written with schema version 1 remain readable byte for byte, but they
-cannot be appended to, disposed or solved; continuing such a problem means reporting a new Issue
-that cites the old record as evidence. `python3 scripts/issues.py archive-reflections` moves a
-project's old `.concorde/reflections/` queue unchanged into `.concorde/archive/reflections/`; it
-creates no Issues, and an explicit developer report may cite archived files as evidence.
-
 ## Design
 
 <a id="realization.issues.store"></a>
@@ -156,7 +150,7 @@ planning.
 
 **The Issues capability** declares `concorde-issues` and holds its Host steps. Before any
 worktree is chosen, it binds the request: it reads the selected Issue and its revision, refuses
-a changed selection or a schema-1 record for `reopen` and `solve`, and resolves the Module the
+a changed selection for `reopen` and `solve`, and resolves the Module the
 Issue is about — the owner named by its latest report, or the reporting Module when the owner is
 unknown. A request cannot redirect an
 Issue to a different Module, so selecting an Issue never widens anyone's Grant. For `solve` it

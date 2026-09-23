@@ -58,9 +58,9 @@ python3 scripts/concorde.py build           # render every output and write it
 python3 scripts/concorde.py build --check   # render in memory and compare, writing nothing
 ```
 
-The build writes Agent instructions, the private session entry, the Studio configuration and the
-Protocol assets under `generated/`, and the Task subagent files that this checkout's own Pi sessions
-discover under `.pi/agents/` and `.pi/extensions/`. All of them are generated outputs listed in the
+The build writes Agent instructions, the private session entry and the Protocol assets under
+`generated/`, and the Task subagent files that this checkout's own Pi sessions discover under
+`.pi/agents/` and `.pi/extensions/`. All of them are generated outputs listed in the
 build manifest and are never edited by hand; [Interfaces](interfaces.md#build-outputs-and-ownership)
 lists them. A build only ever writes into the checkout that holds its sources.
 
@@ -130,13 +130,16 @@ per-worker overrides, in `.concorde/config.json`. Its request is:
 With `accept_protocol: true` it also rebinds the project to the installed Protocol copy. It answers
 `status: applied`, or leaves the previous configuration in place when the value is invalid, the
 project is not initialized, the Protocol copy does not match without acceptance, or the write fails.
+From the primary worktree the request is relayed into a candidate, so the new configuration takes
+effect when that candidate is delivered; `run_in_primary: true` applies it to the primary directly,
+as [Request admission](../harness/admission/module.md) describes.
 
 ### The command line
 
 `scripts/concorde.py` (with `concorde.sh` and `concorde.ps1` wrappers) is the command line of both
 this checkout and an installed Framework. Besides `build`, `protocol-manifest` and
-`select-session`, it routes `validate` to Spec, `status` and `migrate-status` to Candidate
-worktrees, `usage` to Agent execution and `docsite` to Views. Every subcommand prints one JSON
+`select-session`, it routes `validate` to Spec, `status` to Candidate worktrees, `usage` to Agent
+execution and `docsite` to Views. Every subcommand prints one JSON
 envelope and exits non-zero unless it succeeded; see [Interfaces](interfaces.md#command-line).
 
 ### When something goes wrong
@@ -351,9 +354,8 @@ the invocation envelope that admission defines. Distribution adds no check of it
 
 <a id="uses-execution"></a>
 
-**Agent execution** runs native Agents and workflows and owns the native preparation steps, the
-Studio graph that `generated/langgraph.json` points to, and usage and timing records. Distribution
-relies on it for the model-backed capability paths of the session tool, for the timing spans the
+**Agent execution** runs native Agents and workflows and owns the native preparation steps and
+usage and timing records. Distribution relies on it for the model-backed capability paths of the session tool, for the timing spans the
 installer and provisioner emit, and for the `usage` subcommand. A preparation failure is returned
 to the user session as a tool error.
 
@@ -371,9 +373,8 @@ request and bounds the output it returns, and never runs a command outside that 
 
 <a id="uses-worktrees"></a>
 
-**Candidate worktrees** owns candidate registration and the durable status store. The `status` and
-`migrate-status` subcommands only route to it, and saving a session selection uses its atomic
-scratch writer. Distribution creates no worktree itself.
+**Candidate worktrees** owns candidate registration and the durable status store. The `status`
+subcommand only routes to it, and saving a session selection uses its atomic scratch writer. Distribution creates no worktree itself.
 
 <a id="uses-agents"></a>
 

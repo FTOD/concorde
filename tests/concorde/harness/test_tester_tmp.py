@@ -217,7 +217,7 @@ trace_dir = scratch/'traces'; trace_dir.mkdir()
 os.environ['CONCORDE_DIAGNOSTIC_TIMING_DIR'] = str(trace_dir)
 # The parent bridge already verified its private source selection. The separately installed
 # fixture has its own complete local provenance; do not redirect it into source-private mode.
-for key in ('CONCORDE_SESSION_SELECTION','PI_SUBAGENT_EXTENSION_BINDINGS','CONCORDE_STUDIO_URL'):
+for key in ('CONCORDE_SESSION_SELECTION','PI_SUBAGENT_EXTENSION_BINDINGS'):
     os.environ.pop(key,None)
 wheel_path = Path(wheels)
 if wheel_path.is_relative_to('/tmp'):

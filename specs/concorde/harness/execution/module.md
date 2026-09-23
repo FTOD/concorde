@@ -6,9 +6,9 @@ Agent execution runs Concorde's model work and decides when a model's answer cou
 It supplies the shared machinery every provider uses to call an Agent: a single native Agent call
 or a Workflow of several calls through Pi's pi-subagents extension, the Host steps and the result
 gate that turn an untrusted proposal into an accepted result, the model selection for each Agent,
-and the usage and timing diagnostics of every run. It also owns the optional StateGraph Operation
-that LangGraph Studio can inspect, the check that keeps every Graph Spec equal to its compiled
-Graph, and a retained Pi RPC worker used only by tests and diagnostics. Planning, Implementation,
+and the usage and timing diagnostics of every run. It also owns the optional StateGraph Operation,
+the check that keeps every Graph Spec equal to its compiled Graph, and a retained Pi RPC worker used
+only by tests and diagnostics. Planning, Implementation,
 Review and Issues rely on it to run their Agents; Request admission and Task context rely on it
 for the invocation host. It does not choose which Agent a capability needs, what that Agent may
 read, or which capability runs next, and it does not confine a native Agent's file, network or
@@ -149,7 +149,7 @@ step, Agent and run. Native Agent calls write no usage record today; their token
 pi-subagents' own run records. A figure that was not reported stays unknown, never zero, and a
 failure to record a diagnostic never changes the outcome of the work it describes.
 
-### The optional StateGraph Operation and Studio
+### The optional StateGraph Operation
 
 <a id="concept.execution.terminal-agent-operation"></a>
 
@@ -165,10 +165,8 @@ result = await operation.ainvoke(context["data"],
 ```
 
 The service travels in LangGraph's Runtime context, never in State, so input data cannot supply
-authority; without a service the graph refuses to run. LangGraph Studio can display the same
-compiled graph (`scripts/development/STUDIO.md` explains how to start it); the Studio export is
-inspection-only. Its exact State, Nodes and Edges are its
-[Graph Spec](graphs.md#terminal-agent-operation).
+authority; without a service the graph compiles for inspection only and refuses to run. Its exact
+State, Nodes and Edges are its [Graph Spec](graphs.md#terminal-agent-operation).
 
 ### Graph Specs and their check
 
@@ -249,14 +247,14 @@ exists so that trusted services never travel through data a model or a caller ca
 ### Why StateGraph only where it is explicit
 
 Concorde requires LangGraph's Graph API for any Graph it compiles, because nodes and edges declared
-before compilation are what a Graph Spec, its check and Studio can inspect. Public capabilities
+before compilation are what a Graph Spec and its check can inspect. Public capabilities
 instead use authored Workflows, whose order is plain script code run by pi-subagents. The
 Terminal Agent Operation remains so that an embedding can compose Agent calls as graph state
 without Concorde re-creating a hidden model scheduler.
 
 <a id="realization.execution.operation-graph"></a><a id="realization.execution.graph-spec-check"></a>
 
-The **operation graph and Studio** realization builds that one graph and its Studio export. The
+The **operation graph** realization builds that one graph. The
 **Graph Spec check** holds every compiled Graph to its Graph Spec and every Python source to the
 Graph API.
 
@@ -291,10 +289,6 @@ Their doubles show that the plumbing holds; they do not show that a model judges
   and `accept` actions of the result gate) lives in `native_context.py`, which the Planning Module
   binds, although every provider's Agent calls use it. This Module therefore promises the result
   gate's behaviour without binding the file that performs most of it.
-- `NativeResultGate` in `native_result.py` states the same gate as one class, but no production
-  path constructs it; only its tests do. Production uses the module's control-document helpers.
-- `studio_client.py`, a client that submits a request to a local Studio server, has no caller
-  outside its own test.
 - Workflow-level time limits are set by each Workflow script; this Module sets only the thirty
   second limit of the Host steps an Agent call runs.
 
@@ -328,7 +322,7 @@ flowchart LR
 flowchart LR
     accTitle: Graphs, diagnostics and the RPC diagnostic worker
     accDescr: The optional Terminal Agent Operation delegates to a trusted Agent call; the Graph Spec check compares Graph Specs; diagnostics record usage and spans.
-    opgraph[Operation graph and Studio]
+    opgraph[Operation graph]
     operation[Terminal Agent Operation]
     call[Agent call]
     check[Graph Spec check]

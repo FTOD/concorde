@@ -2,7 +2,7 @@
 
 from concorde.harness.operation_state import StateContract, run_host
 from concorde.spec import contract_shapes as shapes
-from concorde.spec.issue_shapes import ISSUE_ID, LEGACY_RECORD, RECORD, REPORT
+from concorde.spec.issue_shapes import ISSUE_ID, RECORD, REPORT
 
 from . import external_name
 
@@ -36,7 +36,7 @@ BASE = shapes.operation_response()
 RESPONSE = shapes.obj(
     {
         **BASE["properties"],
-        "issues": shapes.array({"anyOf": [RECORD, LEGACY_RECORD]}),
+        "issues": shapes.array(RECORD),
         "decision": {"anyOf": [shapes.STRING, {"type": "null"}]},
     }
 )

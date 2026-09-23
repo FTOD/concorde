@@ -154,6 +154,8 @@
       "meaning": "#realization.operations.tests",
       "entries": [
         "tests/concorde/operations/__init__.py",
+        "tests/concorde/operations/test_dispatch.py",
+        "tests/concorde/operations/test_graph_catalog.py",
         "tests/concorde/operations/test_operation_modules.py",
         "tests/concorde/operations/test_run_operation.py"
       ]

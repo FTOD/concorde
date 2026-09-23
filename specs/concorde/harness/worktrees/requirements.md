@@ -11,8 +11,7 @@ The host SHALL write change status and run records only below `.concorde/status/
 `.concorde/runs/` of the primary worktree.
 
 The primary is found through Git's shared repository directory. If it cannot be found, the write
-stops with `primary_unavailable`; a candidate never receives a replacement record. A candidate that
-already holds its own `.concorde/runs/` directory is refused with `migration_required`.
+stops with `primary_unavailable`; a candidate never receives a replacement record.
 
 ### req.worktrees.revision-checked-write — Status writes never overwrite newer status
 

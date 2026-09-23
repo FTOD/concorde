@@ -1,7 +1,7 @@
 # Agent execution Graphs
 
 This document holds the Graph Spec of the one Graph that Agent execution compiles. The
-[entry](module.md#the-optional-stategraph-operation-and-studio) explains when to use it; the
+[entry](module.md#concept.execution.terminal-agent-operation) explains when to use it; the
 requirements it satisfies are
 [req.execution.operation-service-explicit](requirements.md#req.execution.operation-service-explicit)
 and [req.execution.graph-api-only](requirements.md#req.execution.graph-api-only).

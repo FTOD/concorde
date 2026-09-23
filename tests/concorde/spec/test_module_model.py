@@ -169,7 +169,7 @@ class ModuleImplementationTests(unittest.TestCase):
             ".concorde/config.json",
             json.dumps(
                 {
-                    "profile_version": 15,
+                    "profile_version": 16,
                     "registry": ".concorde/specs.json",
                     "protocol": protocol_binding(PACKAGE),
                     "operation_configuration": self.configuration,
@@ -308,9 +308,9 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("invalid_focus", raised.exception.code)
 
     @verifies("scenario.spec.reject-unsupported-profile")
-    def test_only_profile_15_with_the_installed_protocol_binding_is_admitted(self):
+    def test_only_profile_16_with_the_installed_protocol_binding_is_admitted(self):
         config = json.loads((self.root / ".concorde/config.json").read_text())
-        for profile in (13, 14, 16):
+        for profile in (14, 15, 17):
             with self.subTest(profile=profile):
                 self.write(
                     ".concorde/config.json",

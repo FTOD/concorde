@@ -38,7 +38,8 @@ rewrite them.
 - GIVEN a prepared Agent call
 - WHEN native preflight resolves a different Agent file, an inherited project or global context, a Skill, a nested subagent permission or a tool outside the Agent's allowed list
 - THEN the Host refuses the launch before the model starts
-- AND the refusal is reported as a Host refusal with its lower-level cause
+- AND the refusal is reported in the `native-preflight` layer of the causal feedback record
+- AND a refusal by pi-subagents' own preflight is a Host refusal that keeps pi-subagents' reasons as its causes
 
 ### scenario.harness.worker-selection — Launch each Agent on its configured selection
 
@@ -55,7 +56,7 @@ rewrite them.
 - THEN it is rejected with a typed field error naming the offending entry
 - AND a rejected proposal or application leaves the stored configuration unchanged
 
-## The Terminal Agent Operation and Studio
+## The Terminal Agent Operation
 
 ### scenario.harness.agent-node — The Operation is typed by the Agent's contract
 
@@ -75,7 +76,7 @@ rewrite them.
 
 ### scenario.harness.graph-inspection — Inspect the graph without gaining authority
 
-- GIVEN the Graph catalog and the Studio export
+- GIVEN the Graph catalog
 - WHEN a viewer requests the Terminal Agent Operation's nodes, edges and schemas
 - THEN it sees the real `terminal_agent` node without running an Agent or reading a project context
 - AND State holds only declared data while trusted services stay in Runtime context
@@ -85,7 +86,7 @@ rewrite them.
 
 - GIVEN a Terminal Agent Operation with a trusted Agent service
 - WHEN an embedding executes it
-- THEN the same compiled graph that Studio inspects runs its one node
+- THEN the same compiled graph that the Graph catalog builds for inspection runs its one node
 - AND a failed service or a rejected result stops the graph without an output update
 - BUT public capabilities keep running as Agent calls and Workflows, not through this graph
 

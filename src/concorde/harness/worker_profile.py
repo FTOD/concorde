@@ -1,7 +1,7 @@
 """Canonical native Agent profiles and their byte-bound context/result contracts.
 
-The WorkerProfile class name is a compatibility spelling. Roles are Agents, not private model-backed
-LangGraph Operation aliases. Native transports narrow the profile to exact invocation tools/inputs.
+A WorkerProfile describes one Domain Agent's execution profile. Roles are Agents, not private
+model-backed LangGraph Operation aliases. Native transports narrow the profile to exact invocation tools/inputs.
 """
 
 from __future__ import annotations

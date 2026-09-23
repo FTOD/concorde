@@ -35,9 +35,6 @@ FRAMEWORK_ROOT = ".concorde/framework"
 PROTOCOL_ROOT = ".concorde/protocol"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 2
-# Schema 1 used the same exact-byte output and bounded root-block ownership records.
-# Only its client selection/delegation metadata is retired; never adopt CLI-owned files.
-SUPPORTED_RECEIPT_SCHEMAS = {1, INSTALL_SCHEMA}
 PACKAGE_ROOTS = [
     "agents",
     "operations",
@@ -55,13 +52,6 @@ RUNTIME = {
     "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv",
 }
-LEGACY_SKILLS_NOTICE = (
-    "Concorde now supports only Pi. Skills installed by the external Agent Skills CLI "
-    "are not installer-owned and are left untouched, including skills-lock.json. "
-    "Inspect .agents/skills and .claude/skills and manually remove only the retired "
-    "Concorde entries you own; preserve unrelated Skills, links and user files. "
-    "Do not delete either directory or the CLI lock wholesale."
-)
 
 
 class InstallError(ValueError):
@@ -131,18 +121,14 @@ def load_package(root: Path) -> Package:
             "Concorde manifest must declare schema_version 5 and name 'concorde'"
         )
     if (
-        manifest.get("architecture_profile") != 15
+        manifest.get("architecture_profile") != 16
         or manifest.get("workspace_protocol") != 16
     ):
         raise InstallError(
-            "Concorde package must declare Architecture Profile 15 and Workspace Protocol 16"
+            "Concorde package must declare Architecture Profile 16 and Workspace Protocol 16"
         )
     if manifest.get("delivery_proposal") != 10:
         raise InstallError("Concorde package must declare Delivery Proposal 10")
-    if "skill_namespace" in manifest or "integrations" in manifest:
-        raise InstallError("retired multi-client package fields are not supported")
-    if "templates" in manifest:
-        raise InstallError("retired top-level template inventory is not supported")
     install = manifest.get("install")
     if (
         not isinstance(install, dict)
@@ -153,9 +139,7 @@ def load_package(root: Path) -> Package:
             "Concorde manifest declares an unsupported installation layout"
         )
     if set(install) != {"framework_root", "receipt"}:
-        raise InstallError(
-            "Concorde install configuration must not select a Skills CLI"
-        )
+        raise InstallError("Concorde install configuration declares unsupported fields")
     if manifest.get("client") != "pi":
         raise InstallError("Concorde supports only the Pi client")
     if manifest.get("package_roots") != PACKAGE_ROOTS:
@@ -175,11 +159,6 @@ def load_package(root: Path) -> Package:
         path = root / required_root
         if path.is_symlink() or not path.is_dir():
             raise InstallError(f"Concorde package root is missing: {required_root}")
-    for legacy_root in ("commands", "examples"):
-        if (root / legacy_root).exists() or (root / legacy_root).is_symlink():
-            raise InstallError(
-                f"Concorde package contains removed legacy root: {legacy_root}"
-            )
     try:
         concorde_build.build(root, framework_prefix=FRAMEWORK_ROOT)
     except concorde_build.BuildError as error:
@@ -338,7 +317,7 @@ def _load_receipt(target: Path) -> dict[str, Any]:
     value = _read_json(path, "Concorde installation receipt")
     if (
         type(value.get("schema_version")) is not int
-        or value["schema_version"] not in SUPPORTED_RECEIPT_SCHEMAS
+        or value["schema_version"] != INSTALL_SCHEMA
         or not isinstance(value.get("outputs"), list)
     ):
         raise InstallError(f"unsupported Concorde installation receipt: {path}")
@@ -357,8 +336,6 @@ def _prior_outputs(receipt: Mapping[str, Any]) -> dict[str, str]:
                 "Concorde installation receipt contains an invalid output"
             )
         relative = _safe_relative(item["path"], "receipt output")
-        if relative == "skills-lock.json":
-            raise InstallError("external Skills CLI locks are never installer-owned")
         if relative in outputs:
             raise InstallError(
                 f"Concorde installation receipt repeats output: {relative}"
@@ -938,7 +915,6 @@ def _print_plan(
     print("Concorde installation plan")
     print(f"  version: {package.version}")
     print("  client: pi")
-    print(f"  migration: {LEGACY_SKILLS_NOTICE}")
     print(f"  status: {status}")
     print(
         "  actions: "
@@ -1006,7 +982,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             "status": status,
             "version": package.version,
             "client": "pi",
-            "migration_notes": [LEGACY_SKILLS_NOTICE],
             "target": str(target),
             "receipt": RECEIPT_PATH,
             "preserve_project": arguments.preserve_project,

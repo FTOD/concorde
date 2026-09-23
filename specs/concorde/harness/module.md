@@ -150,8 +150,8 @@ to reject any result whose snapshot no longer matches the repository.
 
 **Agent execution** prepares and runs the native Pi workers and workflows, selects their models,
 and accepts their results independently of what the model claims. It also owns the optional
-LangGraph Graph boundary and its Studio view, and the Pi RPC diagnostic worker path. The Harness
-relies on it to make every model step a fresh, terminal worker whose submission is a proposal.
+LangGraph Graph boundary and the Pi RPC diagnostic worker path. The Harness relies on it to make
+every model step a fresh, terminal worker whose submission is a proposal.
 
 <a id="contains-checks"></a>
 

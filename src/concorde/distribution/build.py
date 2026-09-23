@@ -71,21 +71,6 @@ PI_SESSION_EXTENSION = "pi/extensions/concorde-session.ts"
 PI_SESSION_SHIM = ".pi/extensions/concorde-session.ts"
 PRIVATE_PI_SESSION_SHIM = "generated/session/pi/concorde-session.ts"
 CONSUMER_RUNTIME_VENV = ".concorde/.venv"
-# Explicit historical identities are retirement inventory, not supported clients/Skills.
-LEGACY_OPERATION_NAMES = (
-    *PUBLIC_OPERATIONS,
-    "concorde-reflections-triage",
-    "concorde-review",
-    "concorde-main",
-    "concorde-dev-loop",
-    "concorde-specify-loop",
-)
-LEGACY_PROJECTION_ROOTS = (
-    "generated/session/codex",
-    "generated/session/claude",
-    ".agents/skills",
-    ".claude/skills",
-)
 
 MODEL_ROOTS: dict[str, str] = {
     agent.name.replace("_", "-"): agent.spec
@@ -112,10 +97,7 @@ GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/docs",
     "generated/session",
 )
-GENERATED_OWNED_FILES: tuple[str, ...] = (
-    "generated/build-manifest.json",
-    "generated/langgraph.json",
-)
+GENERATED_OWNED_FILES: tuple[str, ...] = ("generated/build-manifest.json",)
 
 
 @dataclass(frozen=True)
@@ -178,7 +160,7 @@ def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
 
 
 def render_model_instructions(project_root: Path, agent: str) -> BuildOutput:
-    """Compatibility output path for the SAME canonical native Agent bytes, not a legacy backend."""
+    """The same canonical native Agent bytes under the worker instructions path."""
     native = render_native_context_agent(project_root, agent)
     return BuildOutput(
         path=f"generated/agents/{agent}.md",
@@ -190,7 +172,7 @@ def render_model_instructions(project_root: Path, agent: str) -> BuildOutput:
 def render_native_context_agent(
     project_root: Path, name="context-assessor"
 ) -> BuildOutput:
-    """Native transport instructions, never the legacy sandbox/Graph worker prelude."""
+    """Native transport instructions: the Agent's rules followed by its Agent Spec."""
     try:
         rules = resolve_role_prompt(project_root, f"prompts/native/{name}.md")
         role = resolve_model_instructions(
@@ -301,22 +283,6 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
         ");\n"
     ).encode("utf-8")
     return BuildOutput(path=shim_path, content=content, sources=tuple(sorted(sources)))
-
-
-def render_langgraph(project_root: Path) -> BuildOutput:
-    payload = {
-        "$schema": "https://langgra.ph/schema.json",
-        "dependencies": ["."],
-        "env": {"LANGSMITH_TRACING": "false"},
-        "graphs": {
-            "terminal-agent-operation": "./src/concorde/harness/studio.py:terminal_agent_operation"
-        },
-    }
-    return BuildOutput(
-        path="generated/langgraph.json",
-        content=(json.dumps(payload, sort_keys=True, indent=2) + "\n").encode(),
-        sources=("operations/__init__.py",),
-    )
 
 
 def render_protocol_principles(project_root: Path) -> BuildOutput:
@@ -512,7 +478,7 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
 
 
 def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResult:
-    """Render every WorkerProfile, Pi catalog and Studio-graph projection; raise BuildError on any failure."""
+    """Render every WorkerProfile and the Pi catalog projection; raise BuildError on any failure."""
 
     root = Path(project_root)
 
@@ -531,7 +497,6 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
         outputs.append(render_native_context_agent(root, name))
     outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
     outputs.extend(task_subagents.render(root, framework_prefix))
-    outputs.append(render_langgraph(root))
     outputs.append(render_protocol_principles(root))
     for kind in PROTOCOL_KINDS:
         outputs.append(render_protocol_kind(root, kind))
@@ -634,58 +599,28 @@ def _owned_generated_tree(root: Path) -> dict[str, bytes]:
     return contents
 
 
-def _legacy_outputs(root: Path) -> dict[str, bytes]:
-    """Inspect exact historical names only; neighboring external CLI content is not ours."""
-    contents = {}
-    for prefix in LEGACY_PROJECTION_ROOTS:
-        for name in LEGACY_OPERATION_NAMES:
-            relative = f"{prefix}/{name}/SKILL.md"
-            path = _checked_output(root, relative)
-            directory = path.parent
-            if directory.exists():
-                children = list(directory.iterdir())
-                if any(child != path for child in children):
-                    raise BuildError(
-                        f"unexpected retired projection content: {directory}"
-                    )
-                if path.exists():
-                    contents[relative] = path.read_bytes()
-    path = _checked_output(root, PI_SESSION_SHIM)
-    if path.exists():
-        contents[PI_SESSION_SHIM] = path.read_bytes()
-    # The old source coordinator append bypassed child context-file inheritance controls.
-    # Only the previous build's exact ownership record admits retirement. User append files
-    # without that record remain outside our ownership (including in consumer projects).
-    retired_append = ".pi/APPEND_SYSTEM.md"
-    if retired_append in _recorded_outputs(root):
-        path = _checked_output(root, retired_append)
-        if path.exists():
-            contents[retired_append] = path.read_bytes()
-    return contents
-
-
 def write_build(project_root: str | Path) -> BuildResult:
     """Write only into the named source root after whole-plan safety preflight.
 
     Installation uses the pure build renderer and its own receipt transaction. There is no
-    alternate output root. Retired files require exact old manifest ownership; unknown files,
-    extra retired contents, modified retired bytes and links block before any output changes.
+    alternate output root. An owned output the render no longer produces is removed only when
+    its bytes match the previous manifest; unknown files, modified bytes and links block before
+    any output changes.
     """
     root = Path(project_root)
     result = build(root)
     recorded = _recorded_outputs(root)
     expected = {output.path for output in result.outputs}
     current = _owned_generated_tree(root)
-    current.update(_legacy_outputs(root))
-    retired = []
+    stale = []
     for relative, content in current.items():
         if relative in expected or relative == "generated/build-manifest.json":
             continue
         if recorded.get(relative, {}).get("sha256") != _sha256_bytes(content):
             raise BuildError(
-                f"unowned or modified retired output; explicitly archive it: {relative}"
+                f"unowned or modified output the build no longer produces: {relative}"
             )
-        retired.append(_checked_output(root, relative))
+        stale.append(_checked_output(root, relative))
     targets = [
         (output, _checked_output(root, output.path)) for output in result.outputs
     ]
@@ -698,7 +633,7 @@ def write_build(project_root: str | Path) -> BuildResult:
                 raise BuildError(
                     f"unowned or modified project agent projection: {output.path}"
                 )
-    for path in retired:
+    for path in stale:
         path.unlink()
         # Prune only this now-empty output ancestry, never unknown neighboring content.
         parent = path.parent
@@ -725,7 +660,6 @@ def check_build(project_root: str | Path) -> tuple[bool, tuple[str, ...]]:
     fresh = {output.path: output.content for output in result.outputs}
     fresh["generated/build-manifest.json"] = result.manifest
     current = _owned_generated_tree(root)
-    current.update(_legacy_outputs(root))
     for relative in fresh:
         if relative.startswith(".pi/"):
             path = _checked_output(root, relative)

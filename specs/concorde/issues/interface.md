@@ -22,8 +22,7 @@ are rejected.
 Binding happens before a worktree is chosen. For `show`, `reopen` and `solve` the Host reads the
 record and its revision, sets `target_id` to the latest report's `owner_target_id`, or to its
 reporting `target_id` when the owner is `null`, and refuses a different supplied `target_id` with
-`permission_denied`. `reopen` and `solve` refuse a schema-1 record with
-`unsupported_issue_version`. When `task` is absent for `solve`, the Host writes one from the
+`permission_denied`. When `task` is absent for `solve`, the Host writes one from the
 latest report's title, description and impact.
 
 `concorde-issues-response` is the common capability response plus:
@@ -86,10 +85,6 @@ A record is valid only when:
 - dispositions alternate from open: a closing reason only while open, `reopened` only while
   closed, and `status` equals the state after the last disposition.
 
-A schema-1 record is identical except that provenance carries `capability` in place of
-`operation`. It is readable with its exact bytes; every write to it fails with
-`unsupported_issue_version`.
-
 ## Store operations
 
 These are Host library operations. None launches a model or runs Git.
@@ -123,7 +118,7 @@ starts:
 A report naming an owner outside the admitted owners, or evidence outside the evidence paths, or
 appending to an Issue that is neither selected nor reported earlier in the same run, fails with
 `permission_denied`. For the developer's `report` action the agent is `developer`, the phase is
-`report`, and evidence may also name existing files under `.concorde/archive/reflections/`.
+`report`.
 
 A stage result may reference only receipts reported in the same run or received as admitted input,
 each at most once; otherwise it fails with `permission_denied` or `invalid_completion`. The input

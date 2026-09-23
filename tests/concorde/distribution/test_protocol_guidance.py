@@ -66,12 +66,11 @@ class ProtocolGuidanceTests(InstallerTestCase):
             (REPOSITORY_ROOT / "generated/protocol/principles.md").read_bytes(),
         )
         self.assertNotIn("### P10", root)
-        self.assertFalse((self.root / "CLAUDE.md").exists())
         self.assertEqual("unchanged", self.install())
 
     @verifies(
         "scenario.distribution.install-apply",
-        "scenario.distribution.install-retired-clients",
+        "scenario.distribution.install-upgrade",
         "scenario.distribution.install-remove-guidance",
     )
     def test_user_bytes_modes_and_post_install_edits_survive_upgrade_and_cleanup(
@@ -101,10 +100,7 @@ class ProtocolGuidanceTests(InstallerTestCase):
         self.install()
         self.assertEqual(preserved, b"".join(guidance.split(root.read_bytes())[::2]))
 
-    @verifies(
-        "scenario.distribution.install-remove-guidance",
-        "scenario.distribution.install-retired-clients",
-    )
+    @verifies("scenario.distribution.install-remove-guidance")
     def test_root_file_the_installer_created_goes_with_its_entry_but_a_user_file_stays(
         self,
     ):
@@ -234,97 +230,38 @@ class ProtocolGuidanceTests(InstallerTestCase):
         )
 
 
-class LegacyInstallationRetirementTests(InstallerTestCase):
-    # Inherit the same offline installer setup, but no production Skill installation helper.
-    def legacy_receipt(self, records):
-        path = self.root / installer.RECEIPT_PATH
-        path.parent.mkdir(parents=True, exist_ok=True)
-        value = {
-            "schema_version": 1,
-            "integrations": ["claude", "codex"],
-            "skills": {"cli": "skills@1.7.0", "agents": ["claude-code", "codex"]},
-            "outputs": records,
-        }
-        path.write_text(json.dumps(value))
-        return path
+class SupersededOutputTests(InstallerTestCase):
+    """A receipt-owned output the current package no longer ships is removed only when unchanged."""
 
-    @verifies("scenario.distribution.install-retired-clients")
-    def test_upgrade_retires_only_digest_owned_legacy_files_and_block(self):
-        block = guidance.START + b"Old Claude import\n" + guidance.END
-        claude = self.root / "CLAUDE.md"
-        claude.write_bytes(b"Before\n" + block + b"After\n")
-        claude.chmod(0o600)
-        legacy = self.root / ".claude/skills/concorde-validate/SKILL.md"
-        legacy.parent.mkdir(parents=True)
-        legacy.write_bytes(b"installer-owned legacy Skill\n")
-        user = legacy.parent / "notes.txt"
-        user.write_bytes(b"unrelated\n")
-        external = self.root / ".agents/skills/concorde-plan/SKILL.md"
-        external.parent.mkdir(parents=True)
-        external.write_bytes(b"external CLI bytes\n")
-        lock = self.root / "skills-lock.json"
-        lock.write_bytes(b"external CLI lock\n")
-        self.legacy_receipt(
-            [
-                {
-                    "path": "CLAUDE.md",
-                    "role": guidance.ROLE,
-                    "created": True,
-                    "sha256": installer._sha256(block),
-                },
-                {
-                    "path": legacy.relative_to(self.root).as_posix(),
-                    "role": "skill",
-                    "sha256": installer._sha256(legacy.read_bytes()),
-                },
-            ]
-        )
-        self.install()
-        self.assertFalse(legacy.exists())
-        self.assertEqual(b"Before\nAfter\n", claude.read_bytes())
-        self.assertEqual(0o600, claude.stat().st_mode & 0o777)
-        self.assertEqual(b"unrelated\n", user.read_bytes())
-        self.assertEqual(b"external CLI bytes\n", external.read_bytes())
-        self.assertEqual(b"external CLI lock\n", lock.read_bytes())
-        receipt = json.loads((self.root / installer.RECEIPT_PATH).read_text())
-        self.assertEqual(2, receipt["schema_version"])
-        self.assertEqual("pi", receipt["client"])
-        self.assertNotIn("skills", receipt)
-        self.assertEqual("unchanged", self.install())
+    SUPERSEDED = ".concorde/framework/prompts/removed/old.md"
 
-    @verifies("scenario.distribution.install-retired-clients")
-    def test_retired_block_removes_created_empty_file_not_user_file(self):
-        for created in (True, False):
-            with self.subTest(created=created):
-                path = self.root / "CLAUDE.md"
-                block = guidance.START + b"legacy\n" + guidance.END
-                path.write_bytes(block)
-                self.legacy_receipt(
-                    [
-                        {
-                            "path": "CLAUDE.md",
-                            "role": guidance.ROLE,
-                            "sha256": installer._sha256(block),
-                            "created": created,
-                        }
-                    ]
-                )
-                self.install()
-                self.assertEqual(not created, path.exists())
-                if not created:
-                    self.assertEqual(b"", path.read_bytes())
-                self.install(cleanup=True)
-
-    @verifies("scenario.distribution.install-conflict-rejected")
-    def test_modified_or_symlinked_retired_owned_file_blocks_without_writes(self):
-        path = self.root / ".agents/skills/concorde-plan/SKILL.md"
+    def owned_superseded(self, content=b"owned"):
+        path = self.root / self.SUPERSEDED
         path.parent.mkdir(parents=True)
-        record = {
-            "path": path.relative_to(self.root).as_posix(),
-            "role": "skill",
-            "sha256": installer._sha256(b"owned"),
-        }
-        receipt = self.legacy_receipt([record])
+        path.write_bytes(content)
+        receipt = self.root / installer.RECEIPT_PATH
+        receipt.write_text(
+            json.dumps(
+                {
+                    "schema_version": installer.INSTALL_SCHEMA,
+                    "outputs": [
+                        {
+                            "path": self.SUPERSEDED,
+                            "role": "framework",
+                            "sha256": installer._sha256(content),
+                        }
+                    ],
+                }
+            )
+        )
+        return path, receipt
+
+    @verifies(
+        "scenario.distribution.install-conflict-rejected",
+        "scenario.distribution.install-upgrade",
+    )
+    def test_modified_or_symlinked_superseded_file_blocks_without_writes(self):
+        path, receipt = self.owned_superseded()
         before = receipt.read_bytes()
         path.write_bytes(b"locally edited")
         for symlink in (False, True):
@@ -337,20 +274,12 @@ class LegacyInstallationRetirementTests(InstallerTestCase):
                 self.assertEqual(before, receipt.read_bytes())
                 self.assertFalse((self.root / ".pi").exists())
 
-    @verifies("scenario.distribution.install-conflict-rejected")
-    def test_retired_owned_file_changed_after_preview_is_not_deleted(self):
-        path = self.root / ".agents/skills/concorde-plan/SKILL.md"
-        path.parent.mkdir(parents=True)
-        path.write_bytes(b"owned")
-        self.legacy_receipt(
-            [
-                {
-                    "path": path.relative_to(self.root).as_posix(),
-                    "role": "skill",
-                    "sha256": installer._sha256(path.read_bytes()),
-                }
-            ]
-        )
+    @verifies(
+        "scenario.distribution.install-conflict-rejected",
+        "scenario.distribution.install-upgrade",
+    )
+    def test_superseded_file_changed_after_preview_is_not_deleted(self):
+        path, _ = self.owned_superseded()
         actions, desired, _ = installer.installation_plan(self.root, self.package)
         path.write_bytes(b"new user edit")
         with self.assertRaisesRegex(installer.InstallError, "changed since preview"):
@@ -358,21 +287,10 @@ class LegacyInstallationRetirementTests(InstallerTestCase):
         self.assertEqual(b"new user edit", path.read_bytes())
         self.assertFalse((self.root / ".pi").exists())
 
-    @verifies("scenario.distribution.install-retired-clients")
-    def test_failed_upgrade_restores_retired_bytes_modes_and_receipt_then_retries(self):
-        path = self.root / ".claude/skills/concorde-plan/SKILL.md"
-        path.parent.mkdir(parents=True)
-        path.write_bytes(b"old owned")
+    @verifies("scenario.distribution.install-upgrade")
+    def test_failed_upgrade_restores_removed_bytes_modes_and_receipt_then_retries(self):
+        path, receipt = self.owned_superseded(b"old owned")
         path.chmod(0o600)
-        receipt = self.legacy_receipt(
-            [
-                {
-                    "path": path.relative_to(self.root).as_posix(),
-                    "role": "skill",
-                    "sha256": installer._sha256(path.read_bytes()),
-                }
-            ]
-        )
         before = receipt.read_bytes()
         with patch.object(
             installer, "provision_runtime", side_effect=OSError("failure")
@@ -384,20 +302,4 @@ class LegacyInstallationRetirementTests(InstallerTestCase):
         self.assertEqual(before, receipt.read_bytes())
         self.install()
         self.assertFalse(path.exists())
-
-    @verifies("scenario.distribution.install-conflict-rejected")
-    def test_external_cli_lock_cannot_be_claimed_by_a_receipt(self):
-        lock = self.root / "skills-lock.json"
-        lock.write_bytes(b"external lock")
-        self.legacy_receipt(
-            [
-                {
-                    "path": "skills-lock.json",
-                    "role": "skill",
-                    "sha256": installer._sha256(lock.read_bytes()),
-                }
-            ]
-        )
-        with self.assertRaisesRegex(installer.InstallError, "never installer-owned"):
-            self.install()
-        self.assertEqual(b"external lock", lock.read_bytes())
+        self.assertEqual("unchanged", self.install())

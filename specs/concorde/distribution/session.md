@@ -126,8 +126,8 @@ host passes the saved path to a fresh Pi process in `CONCORDE_SESSION_SELECTION`
 pi-subagents launch as the extension binding `{"concorde/1": {"selection": "<path>"}}`. The private
 entry verifies the selection with the candidate's own `.venv` interpreter before it registers the
 tool and again before every call, compares the recorded entry, catalog and launcher with its own,
-refuses a selection that changed during the session, and refuses a redirect to LangGraph Studio. The
-launcher reverifies the selection before it runs anything.
+and refuses a selection that changed during the session. The launcher reverifies the selection
+before it runs anything.
 
 A selection proves which bytes a session was told to load. It is not evidence that Pi loaded them,
 that a tool was called or that a model ran.

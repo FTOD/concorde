@@ -144,10 +144,10 @@
       "entries": [
         "tests/concorde/harness/native_review_probe.mjs",
         "tests/concorde/harness/test_native_implementation_review.py",
+        "tests/concorde/operations/test_operation_modules.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",
         "tests/concorde/operations/test_specify_loop.py",
-        "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/support/native_planning.py"
       ]
     }

@@ -7,8 +7,7 @@ from pathlib import Path
 
 ROLE = "protocol-guidance"
 FILE = "AGENTS.md"
-# Historical receipts may own a bounded CLAUDE.md block, never its surrounding text.
-RECEIPT_FILES = {FILE, "CLAUDE.md"}
+RECEIPT_FILES = {FILE}
 TOKEN = b"<!-- concorde-protocol:"
 START = b"\n<!-- concorde-protocol:start -->\n"
 END = b"<!-- concorde-protocol:end -->\n"
@@ -62,9 +61,7 @@ def plan(
     created this file for its entry, which is the only case in which removing the entry may
     remove the file: a developer's own file stays, even when the removal leaves it empty."""
     if relative not in RECEIPT_FILES:
-        raise GuidanceError(
-            "Protocol guidance receipt path must be AGENTS.md or CLAUDE.md"
-        )
+        raise GuidanceError("Protocol guidance receipt path must be AGENTS.md")
     path = target / relative
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise GuidanceError(f"Protocol guidance must be a regular file: {relative}")

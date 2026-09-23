@@ -125,7 +125,6 @@ class InstalledWorkerRuntimeTests(unittest.TestCase):
         self.environment = {
             **independent_runtime_environment(self.root, REPOSITORY_ROOT),
             "PATH": str(pi.parent) + os.pathsep + os.environ.get("PATH", ""),
-            "CONCORDE_STUDIO_URL": "",
         }
         install = subprocess.run(
             [

@@ -92,11 +92,6 @@ def run_operation(
         return finish_failed_operation_graph(nodes, error)["result"]
 
 
-def _is_graph_command(value):
-    # Compatibility callers exchange finite dictionaries, never executable graph commands.
-    return False
-
-
 def run_host_tool(nodes):
     """Finite deterministic admission/dispatch, not model orchestration.
 
@@ -157,8 +152,6 @@ def finish_failed_operation_graph(nodes, error):
 
 def operation_graph_nodes(operation, configuration, runtime_input, *, host_context):
     """Fresh trusted node bindings; neither host authority nor callbacks enter the public input."""
-    END = "__end__"
-
     # A depth-1 (top-level) invocation never inherits a lifecycle status a prior invocation on
     # this same host object left behind; nested calls still share the one dict by reference so a
     # child's cancelled/limit_exhausted outcome keeps propagating to its enclosing loop.
@@ -374,7 +367,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         if dispatch_nodes is None:
             dispatch_nodes = dispatch_graph_nodes(operation, configuration, task, host)
         updates = dispatch_nodes[name](state)
-        payload = (updates.update or {}) if _is_graph_command(updates) else updates
+        payload = updates
         if isinstance(payload.get("relayed"), dict):
             # The candidate's launcher produced the complete envelope; adopt it as this
             # invocation's result rather than deriving a second status from its output.
@@ -463,18 +456,6 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                             error, layer="admission", attempt=host.invocation_id
                         )
                     ],
-                )
-            if _is_graph_command(updates):
-                from langgraph.types import Command
-
-                # A node that selects its own transition keeps it unless the guard recorded an
-                # error, which ends the Graph with the typed failure envelope in state.
-                if result["errors"]:
-                    return Command(
-                        goto=END, update={**(updates.update or {}), "result": result}
-                    )
-                return Command(
-                    goto=updates.goto, update={**(updates.update or {}), "result": None}
                 )
             return {
                 **updates,
@@ -578,7 +559,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
         )
         return {"result": result}
 
-    from ..operations.dispatch_graph import DISPATCH_NODES
+    from ..operations.dispatch_routes import DISPATCH_NODES
 
     return {
         "initialize": initialize,

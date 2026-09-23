@@ -432,7 +432,24 @@ export function roots(registry: ScopedRegistry): ModuleRecord[] {
   );
   return registry.modules.filter((m) => !contained.has(m.id));
 }
+/** The `[start, end)` ranges of a line's inline code spans: a run of backticks opens a span
+ * that the next run of exactly the same length closes; a run without such a partner is text. */
+function inlineCodeRanges(line: string): Array<[number, number]> {
+  const runs = [...line.matchAll(/`+/g)];
+  const ranges: Array<[number, number]> = [];
+  for (let open = 0; open < runs.length; open++) {
+    const length = runs[open][0].length;
+    const close = runs.findIndex(
+      (run, index) => index > open && run[0].length === length,
+    );
+    if (close < 0) continue;
+    ranges.push([runs[open].index!, runs[close].index! + length]);
+    open = close;
+  }
+  return ranges;
+}
 /** Rewrite registered relative links of Markdown written at `sourcePath` to canonical routes.
+ * Links inside fenced code and inline code spans are text and stay unchanged.
  * With `anchorFragments`, a bare `#fragment` is addressed to the source page too, for text
  * shown on another page. */
 export function rewriteMarkdownLinks(
@@ -451,9 +468,12 @@ export function rewriteMarkdownLinks(
         return line;
       }
       if (fence) return line;
+      const code = inlineCodeRanges(line);
       return line.replace(
         /(!?\[[^\]]*\])\(([^\s)]+)\)/g,
-        (whole, label: string, url: string) => {
+        (whole, label: string, url: string, offset: number) => {
+          if (code.some(([start, end]) => offset >= start && offset < end))
+            return whole;
           if (/^(?:[a-z]+:|\/)/i.test(url)) return whole;
           if (url.startsWith("#") && !anchorFragments) return whole;
           const fragmentIndex = url.indexOf("#");

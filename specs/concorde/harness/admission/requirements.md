@@ -63,6 +63,15 @@ and known attempt identity in its causal feedback.
 
 ## Relay
 
+### req.admission.primary-opt-in — Only an explicit opt-in applies in the primary
+
+The host SHALL apply `concorde-configure` or an initialization `apply` in the primary worktree only
+when the request sets `run_in_primary: true`.
+
+Without the field such a request is relayed like every other mutation. The field is part of those
+two request types only, and a request that sets it outside the primary worktree is refused with
+`workspace_mismatch`.
+
 ### req.admission.relay-result — A relay returns the candidate's envelope
 
 A relayed request SHALL return the candidate launcher's complete result envelope, or fail with

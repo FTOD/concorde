@@ -71,9 +71,6 @@ def create_parser() -> argparse.ArgumentParser:
     status.add_argument("--manual-merge")
     status.add_argument("--cleanup", choices=["pending", "retained", "removed"])
 
-    migration = subparsers.add_parser("migrate-status")
-    migration.add_argument("--apply", action="store_true")
-
     usage = subparsers.add_parser("usage")
     usage.add_argument(
         "--run",
@@ -172,15 +169,6 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             if arguments.output:
                 save_selection(root, arguments.output, selected)
         return ToolResult("select-session", ".", "success", result=selected)
-    if arguments.tool == "migrate-status":
-        from ..harness.status_store import migrate_legacy
-
-        return ToolResult(
-            "migrate-status",
-            ".",
-            "success",
-            result=migrate_legacy(root, apply=arguments.apply),
-        )
     if arguments.tool == "usage":
         from ..harness.usage import read_usage, summarize_usage
 
@@ -309,9 +297,8 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
 def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
     """Recompute tracked Protocol asset digests from the current build (developer-only).
 
-    Mirrors the former ``sync-protocol-assets.py --bind-project``: with neither flag this only
-    reports whether ``protocol/manifest.json`` matches the current ``generated/protocol/...``
-    build; ``--write`` accepts the current build's digests into the tracked manifest;
+    With neither flag this only reports whether ``protocol/manifest.json`` matches the current
+    ``generated/protocol/...`` build; ``--write`` accepts the current build's digests into the tracked manifest;
     ``--bind-project`` pins ``.concorde/config.json``'s ``protocol`` binding to the (possibly just
     rewritten) manifest's version and digest.
     """
@@ -434,7 +421,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "usage",
                 "status",
                 "select-session",
-                "migrate-status",
             }
             else "validate",
             ".",

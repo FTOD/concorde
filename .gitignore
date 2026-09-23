@@ -49,7 +49,6 @@ Thumbs.db
 .pi/extensions/concorde-session.ts
 
 .venv
-.concorde/attempts/
 .concorde/runs/
 
 node_modules

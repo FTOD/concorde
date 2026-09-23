@@ -1,4 +1,4 @@
-"""Deterministic project services, also reusable by explicit Studio Graph adapters."""
+"""Deterministic services of `concorde-configure` and `concorde-init`: propose and apply."""
 
 from __future__ import annotations
 

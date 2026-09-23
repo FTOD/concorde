@@ -29,8 +29,6 @@ def output_environment(environment: dict[str, str]) -> dict[str, str]:
     result = scrub_selection(environment)
     for key in ("PYTHONPATH", "PYTHONHOME"):
         result.pop(key, None)
-    if result.get("CONCORDE_STUDIO_URL"):
-        raise ValueError("installation fixture cannot redirect to Studio")
     return result
 
 

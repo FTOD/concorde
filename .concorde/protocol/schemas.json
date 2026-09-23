@@ -2132,6 +2132,9 @@
               "data"
             ],
             "type": "object"
+          },
+          "run_in_primary": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -2201,7 +2204,7 @@
         "$ref": "#/$defs/concorde-configure-request"
       },
       "schema_version": {
-        "const": 2,
+        "const": 3,
         "type": "integer"
       },
       "type_id": {
@@ -4585,6 +4588,9 @@
             ],
             "type": "object"
           },
+          "run_in_primary": {
+            "type": "boolean"
+          },
           "target_id": {
             "minLength": 1,
             "type": "string"
@@ -4718,7 +4724,7 @@
         "$ref": "#/$defs/concorde-init-request"
       },
       "schema_version": {
-        "const": 2,
+        "const": 3,
         "type": "integer"
       },
       "type_id": {
@@ -5388,301 +5394,134 @@
           },
           "issues": {
             "items": {
-              "anyOf": [
-                {
-                  "additionalProperties": false,
-                  "properties": {
-                    "dispositions": {
-                      "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "actor": {
-                            "minLength": 1,
-                            "type": "string"
-                          },
-                          "created_at": {
-                            "minLength": 1,
-                            "type": "string"
-                          },
-                          "duplicate_of": {
-                            "anyOf": [
-                              {
-                                "minLength": 1,
-                                "pattern": "I-[0-9a-f]{32}",
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "evidence": {
-                            "items": {
-                              "minLength": 1,
-                              "type": "string"
-                            },
-                            "minItems": 1,
-                            "type": "array",
-                            "uniqueItems": true
-                          },
-                          "note": {
-                            "minLength": 1,
-                            "type": "string"
-                          },
-                          "reason": {
-                            "enum": [
-                              "resolved",
-                              "duplicate",
-                              "not-actionable",
-                              "reopened"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "reason",
-                          "note",
-                          "evidence",
-                          "duplicate_of",
-                          "actor",
-                          "created_at"
-                        ],
-                        "type": "object"
+              "additionalProperties": false,
+              "properties": {
+                "dispositions": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "actor": {
+                        "minLength": 1,
+                        "type": "string"
                       },
-                      "type": "array"
-                    },
-                    "id": {
-                      "minLength": 1,
-                      "pattern": "I-[0-9a-f]{32}",
-                      "type": "string"
-                    },
-                    "reports": {
-                      "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "created_at": {
-                            "minLength": 1,
-                            "type": "string"
-                          },
-                          "id": {
-                            "minLength": 1,
-                            "pattern": "^sha256:[0-9a-f]{64}$",
-                            "type": "string"
-                          },
-                          "report": {
-                            "additionalProperties": false,
-                            "properties": {
-                              "basis": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "description": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "evidence": {
-                                "items": {
-                                  "additionalProperties": false,
-                                  "properties": {
-                                    "description": {
-                                      "minLength": 1,
-                                      "type": "string"
-                                    },
-                                    "path": {
-                                      "minLength": 1,
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "path",
-                                    "description"
-                                  ],
-                                  "type": "object"
-                                },
-                                "type": "array"
-                              },
-                              "expected_revision": {
-                                "minLength": 1,
-                                "pattern": "^sha256:[0-9a-f]{64}$",
-                                "type": "string"
-                              },
-                              "impact": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "issue_id": {
-                                "minLength": 1,
-                                "pattern": "I-[0-9a-f]{32}",
-                                "type": "string"
-                              },
-                              "owner_target_id": {
-                                "anyOf": [
-                                  {
-                                    "minLength": 1,
-                                    "type": "string"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "report_key": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "subtype": {
-                                "anyOf": [
-                                  {
-                                    "enum": [
-                                      "implementation-spec-mismatch",
-                                      "spec-conflict",
-                                      "missing-contract"
-                                    ]
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "title": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "type": {
-                                "enum": [
-                                  "bug",
-                                  "gap",
-                                  "limitation"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "report_key",
-                              "type",
-                              "subtype",
-                              "title",
-                              "description",
-                              "impact",
-                              "basis",
-                              "owner_target_id",
-                              "evidence"
-                            ],
-                            "type": "object"
-                          },
-                          "source": {
-                            "additionalProperties": false,
-                            "properties": {
-                              "agent": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "change_id": {
-                                "anyOf": [
-                                  {
-                                    "minLength": 1,
-                                    "type": "string"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "context_id": {
-                                "minLength": 1,
-                                "pattern": "^sha256:[0-9a-f]{64}$",
-                                "type": "string"
-                              },
-                              "head": {
-                                "anyOf": [
-                                  {
-                                    "minLength": 1,
-                                    "type": "string"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "invocation_id": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "operation": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "phase": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "target_id": {
-                                "minLength": 1,
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "invocation_id",
-                              "agent",
-                              "operation",
-                              "phase",
-                              "target_id",
-                              "context_id",
-                              "change_id",
-                              "head"
-                            ],
-                            "type": "object"
-                          }
-                        },
-                        "required": [
-                          "id",
-                          "created_at",
-                          "report",
-                          "source"
-                        ],
-                        "type": "object"
+                      "created_at": {
+                        "minLength": 1,
+                        "type": "string"
                       },
-                      "minItems": 1,
-                      "type": "array"
+                      "duplicate_of": {
+                        "anyOf": [
+                          {
+                            "minLength": 1,
+                            "pattern": "I-[0-9a-f]{32}",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "evidence": {
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "note": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "reason": {
+                        "enum": [
+                          "resolved",
+                          "duplicate",
+                          "not-actionable",
+                          "reopened"
+                        ]
+                      }
                     },
-                    "schema_version": {
-                      "const": 2,
-                      "type": "integer"
-                    },
-                    "status": {
-                      "enum": [
-                        "open",
-                        "closed"
-                      ]
-                    }
+                    "required": [
+                      "reason",
+                      "note",
+                      "evidence",
+                      "duplicate_of",
+                      "actor",
+                      "created_at"
+                    ],
+                    "type": "object"
                   },
-                  "required": [
-                    "schema_version",
-                    "id",
-                    "status",
-                    "reports",
-                    "dispositions"
-                  ],
-                  "type": "object"
+                  "type": "array"
                 },
-                {
-                  "additionalProperties": false,
-                  "properties": {
-                    "dispositions": {
-                      "items": {
+                "id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "reports": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "created_at": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^sha256:[0-9a-f]{64}$",
+                        "type": "string"
+                      },
+                      "report": {
                         "additionalProperties": false,
                         "properties": {
-                          "actor": {
+                          "basis": {
                             "minLength": 1,
                             "type": "string"
                           },
-                          "created_at": {
+                          "description": {
                             "minLength": 1,
                             "type": "string"
                           },
-                          "duplicate_of": {
+                          "evidence": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "description": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "description"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "expected_revision": {
+                            "minLength": 1,
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "impact": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "issue_id": {
+                            "minLength": 1,
+                            "pattern": "I-[0-9a-f]{32}",
+                            "type": "string"
+                          },
+                          "owner_target_id": {
                             "anyOf": [
                               {
                                 "minLength": 1,
-                                "pattern": "I-[0-9a-f]{32}",
                                 "type": "string"
                               },
                               {
@@ -5690,254 +5529,143 @@
                               }
                             ]
                           },
-                          "evidence": {
-                            "items": {
-                              "minLength": 1,
-                              "type": "string"
-                            },
-                            "minItems": 1,
-                            "type": "array",
-                            "uniqueItems": true
-                          },
-                          "note": {
+                          "report_key": {
                             "minLength": 1,
                             "type": "string"
                           },
-                          "reason": {
+                          "subtype": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "implementation-spec-mismatch",
+                                  "spec-conflict",
+                                  "missing-contract"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "type": {
                             "enum": [
-                              "resolved",
-                              "duplicate",
-                              "not-actionable",
-                              "reopened"
+                              "bug",
+                              "gap",
+                              "limitation"
                             ]
                           }
                         },
                         "required": [
-                          "reason",
-                          "note",
-                          "evidence",
-                          "duplicate_of",
-                          "actor",
-                          "created_at"
+                          "report_key",
+                          "type",
+                          "subtype",
+                          "title",
+                          "description",
+                          "impact",
+                          "basis",
+                          "owner_target_id",
+                          "evidence"
                         ],
                         "type": "object"
                       },
-                      "type": "array"
-                    },
-                    "id": {
-                      "minLength": 1,
-                      "pattern": "I-[0-9a-f]{32}",
-                      "type": "string"
-                    },
-                    "reports": {
-                      "items": {
+                      "source": {
                         "additionalProperties": false,
                         "properties": {
-                          "created_at": {
+                          "agent": {
                             "minLength": 1,
                             "type": "string"
                           },
-                          "id": {
+                          "change_id": {
+                            "anyOf": [
+                              {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "context_id": {
                             "minLength": 1,
                             "pattern": "^sha256:[0-9a-f]{64}$",
                             "type": "string"
                           },
-                          "report": {
-                            "additionalProperties": false,
-                            "properties": {
-                              "basis": {
+                          "head": {
+                            "anyOf": [
+                              {
                                 "minLength": 1,
                                 "type": "string"
                               },
-                              "description": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "evidence": {
-                                "items": {
-                                  "additionalProperties": false,
-                                  "properties": {
-                                    "description": {
-                                      "minLength": 1,
-                                      "type": "string"
-                                    },
-                                    "path": {
-                                      "minLength": 1,
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "path",
-                                    "description"
-                                  ],
-                                  "type": "object"
-                                },
-                                "type": "array"
-                              },
-                              "expected_revision": {
-                                "minLength": 1,
-                                "pattern": "^sha256:[0-9a-f]{64}$",
-                                "type": "string"
-                              },
-                              "impact": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "issue_id": {
-                                "minLength": 1,
-                                "pattern": "I-[0-9a-f]{32}",
-                                "type": "string"
-                              },
-                              "owner_target_id": {
-                                "anyOf": [
-                                  {
-                                    "minLength": 1,
-                                    "type": "string"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "report_key": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "subtype": {
-                                "anyOf": [
-                                  {
-                                    "enum": [
-                                      "implementation-spec-mismatch",
-                                      "spec-conflict",
-                                      "missing-contract"
-                                    ]
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "title": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "type": {
-                                "enum": [
-                                  "bug",
-                                  "gap",
-                                  "limitation"
-                                ]
+                              {
+                                "type": "null"
                               }
-                            },
-                            "required": [
-                              "report_key",
-                              "type",
-                              "subtype",
-                              "title",
-                              "description",
-                              "impact",
-                              "basis",
-                              "owner_target_id",
-                              "evidence"
-                            ],
-                            "type": "object"
+                            ]
                           },
-                          "source": {
-                            "additionalProperties": false,
-                            "properties": {
-                              "agent": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "capability": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "change_id": {
-                                "anyOf": [
-                                  {
-                                    "minLength": 1,
-                                    "type": "string"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "context_id": {
-                                "minLength": 1,
-                                "pattern": "^sha256:[0-9a-f]{64}$",
-                                "type": "string"
-                              },
-                              "head": {
-                                "anyOf": [
-                                  {
-                                    "minLength": 1,
-                                    "type": "string"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "invocation_id": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "phase": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "target_id": {
-                                "minLength": 1,
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "invocation_id",
-                              "agent",
-                              "capability",
-                              "phase",
-                              "target_id",
-                              "context_id",
-                              "change_id",
-                              "head"
-                            ],
-                            "type": "object"
+                          "invocation_id": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "operation": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "phase": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "target_id": {
+                            "minLength": 1,
+                            "type": "string"
                           }
                         },
                         "required": [
-                          "id",
-                          "created_at",
-                          "report",
-                          "source"
+                          "invocation_id",
+                          "agent",
+                          "operation",
+                          "phase",
+                          "target_id",
+                          "context_id",
+                          "change_id",
+                          "head"
                         ],
                         "type": "object"
-                      },
-                      "minItems": 1,
-                      "type": "array"
+                      }
                     },
-                    "schema_version": {
-                      "const": 1,
-                      "type": "integer"
-                    },
-                    "status": {
-                      "enum": [
-                        "open",
-                        "closed"
-                      ]
-                    }
+                    "required": [
+                      "id",
+                      "created_at",
+                      "report",
+                      "source"
+                    ],
+                    "type": "object"
                   },
-                  "required": [
-                    "schema_version",
-                    "id",
-                    "status",
-                    "reports",
-                    "dispositions"
-                  ],
-                  "type": "object"
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "schema_version": {
+                  "const": 2,
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "open",
+                    "closed"
+                  ]
                 }
-              ]
+              },
+              "required": [
+                "schema_version",
+                "id",
+                "status",
+                "reports",
+                "dispositions"
+              ],
+              "type": "object"
             },
             "type": "array"
           },

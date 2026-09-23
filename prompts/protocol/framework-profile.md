@@ -94,10 +94,10 @@ ceilings stay authoritative. A model proposal is never domain completion: the Ho
 only after correlating the actual native artifacts with the current inputs. Failed or cancelled work
 keeps its partial edits and receipts.
 
-LangGraph is used only for explicitly selected StateGraph Operations and Studio inspection, always
-through the Graph API (`StateGraph`, nodes and edges declared before compilation), never
-`langgraph.func`. `OperationNode` supplies a typed State transition with a trusted native launch and
-admission service in the Runtime; State cannot carry or expand authority.
+LangGraph is used only for explicitly selected StateGraph Operations, always through the Graph API
+(`StateGraph`, nodes and edges declared before compilation), never `langgraph.func`. `OperationNode`
+supplies a typed State transition with a trusted native launch and admission service in the Runtime;
+State cannot carry or expand authority.
 
 Agent instructions, the Pi session extension, schemas and rule assets are deterministic build
 projections of their sources. Generated output is never edited as source.

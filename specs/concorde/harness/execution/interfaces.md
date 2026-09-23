@@ -109,10 +109,6 @@ error, never truncated. Its reader `staging_control` in `native_result.py` requi
 document equal to its canonical form and bound to the expected ticket, identity and digest; mixed
 text, duplicate keys or a JSON fragment are refused.
 
-`NativeResultGate` in the same file expresses this gate as one class (`submit`, `stage`,
-`finalize`, `stop`) with trusted `recheck`, `validate`, `persist` and `verify_execution`
-callbacks. It is exercised by tests; no production path constructs it.
-
 ## Native terminal evidence {#native-terminal-evidence}
 
 **Producer admission.** `admit_native_runtime(root)` accepts only an absolute, symlink-free
@@ -225,8 +221,7 @@ typed result or its bare data from the service. Its exact topology is the
 Each public capability module also exposes a State adapter: `run_host(name, state, runtime)` in
 `operation_state.py` wraps the State as the capability's typed request, runs it through admission
 with the host and configuration from `OperationRuntimeContext`, and returns `{"result": envelope}`;
-it refuses when no host was supplied. `studio.py` exports `terminal_agent_operation` built without a
-service.
+it refuses when no host was supplied.
 
 ## RPC diagnostic worker
 

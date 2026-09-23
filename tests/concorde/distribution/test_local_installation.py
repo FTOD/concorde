@@ -81,7 +81,7 @@ class PreservedProjectTests(unittest.TestCase):
         agents = self.target / "AGENTS.md"
         agents.write_bytes(installer.guidance.entry() + b"\nUser text\r\n")
         agents.chmod(0o640)
-        (self.target / "CLAUDE.md").write_bytes(b"user legacy instructions\n")
+        (self.target / "NOTES.md").write_bytes(b"user notes\n")
         config = self.target / ".concorde/config.json"
         config.write_bytes(b'{"protocol": "accepted project binding"}\n')
         before = {

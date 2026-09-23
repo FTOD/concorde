@@ -1,16 +1,8 @@
-"""Compatibility-named finite capability dispatch table; no graph execution."""
+"""Route names of capability dispatch: the steps admission may dispatch a request to.
 
-from typing import TypedDict
-
-
-class DispatchState(TypedDict, total=False):
-    route: str
-    output: dict
-    # The complete result envelope a candidate worktree's launcher returned for a mutation
-    # admitted in the primary worktree; the operation Graph adopts it as its own result.
-    relayed: dict
-    result: dict
-
+``DISPATCH_NODES`` names every dispatch step; ``SUBGRAPH_NODES`` names the child steps of the
+routes that run several. These are plain names looked up in dictionaries, not LangGraph nodes.
+"""
 
 SUBGRAPH_NODES = {
     "prepare_target": ("bind_target",),

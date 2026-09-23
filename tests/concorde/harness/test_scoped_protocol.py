@@ -171,7 +171,6 @@ class ScopedProtocolTests(unittest.TestCase):
                 for item in observations
             )
         )
-        self.assertFalse((self.root / ".concorde/attempts").exists())
 
     @verifies("scenario.harness.context-gap")
     def test_duplicate_and_unrelated_dependency_declarations_are_rejected(self):
@@ -342,7 +341,6 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"])
         self.assertEqual(["context-solve"], [call["stage"] for call in double.calls])
-        self.assertFalse((self.root / ".concorde/attempts").exists())
         state = all_status(self.root)[0]
         self.assertEqual("blocked", state["status"])
         self.assertEqual({}, state["targets"])
@@ -368,7 +366,6 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
         self.assertEqual("passed", result["output"]["data"]["checks"][0]["status"])
-        self.assertFalse((self.root / ".concorde/attempts").exists())
         state = all_status(self.root)[0]
         self.assertEqual("ready", state["status"])
         self.assertEqual(

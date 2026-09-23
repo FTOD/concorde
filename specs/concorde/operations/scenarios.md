@@ -37,7 +37,7 @@ This follows from [one public name per capability](catalog.md#req.operations.pub
 ### scenario.operations.inspect-catalog — Operations compile for inspection
 
 - GIVEN the Operation catalog
-- WHEN a tool builds its Operations for inspection, as the Graph Spec check and Studio do
+- WHEN a tool builds its Operations for inspection, as the Graph Spec check does
 - THEN each builds as a compiled StateGraph whose nodes and edges equal those execution compiles
 - AND `terminal_agent_operation` has exactly the nodes `__start__`, `terminal_agent` and `__end__`
 - BUT building reads no project file and starts no Agent

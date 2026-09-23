@@ -1,10 +1,9 @@
-"""Shared helper for tests that exercise the real build or the real graph.
+"""Shared helper for tests that exercise the real build.
 
-Any test that needs a working built package as a *prerequisite* (worktree
-creation, a Studio graph bound to a temporary root) should build the package root into its own
-temporary directory first, rather than depending on the actual checkout being pre-built. Tests
-that exercise ``build``/``check_build``/``write_build`` themselves are not this helper's concern;
-they call those functions directly.
+Any test that needs a working built package as a *prerequisite* (for example worktree creation)
+should build the package root into its own temporary directory first, rather than depending on the
+actual checkout being pre-built. Tests that exercise ``build``/``check_build``/``write_build``
+themselves are not this helper's concern; they call those functions directly.
 """
 
 from __future__ import annotations
@@ -45,13 +44,9 @@ def refresh_projection_goldens() -> tuple[str, ...]:
 
     Run with ``PYTHONPATH=src .venv/bin/python -m tests.concorde.support.build_fixture``.
     No ambient installation or generated/session copy supplies fixture bytes. The fixture
-    inventory is exact: retired projections are removed, never retained as supported assets.
+    inventory is exact: a fixture the build no longer renders is removed.
     """
-    from concorde.distribution.build import (
-        LEGACY_OPERATION_NAMES,
-        PRIVATE_PI_SESSION_SHIM,
-        build,
-    )
+    from concorde.distribution.build import PRIVATE_PI_SESSION_SHIM, build
 
     golden = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
     expected = {}
@@ -63,15 +58,7 @@ def refresh_projection_goldens() -> tuple[str, ...]:
             relative = "pi/concorde-session.ts"
         if relative is not None:
             expected[relative] = output.content
-    retired = {
-        f"{client}/{name}/SKILL.md"
-        for client in ("claude", "codex")
-        for name in LEGACY_OPERATION_NAMES
-    }
     for path in golden.rglob("*"):
-        relative = path.relative_to(golden).as_posix()
-        if path.is_file() and relative not in expected and relative not in retired:
-            raise ValueError(f"unknown golden fixture: {path}")
         if path.is_symlink():
             raise ValueError(f"unsafe golden fixture: {path}")
     for path in golden.rglob("*"):

@@ -11,7 +11,7 @@ obligations are stated once in the [requirements](requirements.md) and linked fr
 - WHEN the resolver renders a worker, Protocol or capability guidance root
 - THEN each reference is replaced by the referenced prompt with its bindings substituted
 - AND the result lists every source that contributed to it
-- AND a missing or unsafe target, a malformed binding, an unbound variable, an audience or layer violation, a cycle, a second inclusion of one file within one root, or a column-one `@include` line fails with its rule identity and no partial result
+- AND a missing or unsafe target, a malformed binding, an unbound variable, an audience or layer violation, a cycle or a second inclusion of one file within one root fails with its rule identity and no partial result
 - BUT ordinary mentions, email addresses, decorators, inline references and indented lines stay literal text
 
 The exact grammar and rule identities are in [Interfaces](interfaces.md#prompt-references).
@@ -22,7 +22,7 @@ The exact grammar and rule identities are in [Interfaces](interfaces.md#prompt-r
 - WHEN the build renders the checkout
 - THEN it produces native instructions for the seven domain Agents under `generated/native/` and the same bytes under `generated/agents/`
 - AND one session entry whose catalog lists the eleven public capabilities
-- AND the Task subagent files, the Studio configuration, the Protocol assets and the exported schemas
+- AND the Task subagent files, the Protocol assets and the exported schemas
 - AND rendering the same sources again yields byte-identical outputs and manifest
 
 See [req.distribution.build-idempotent](requirements.md#req.distribution.build-idempotent) and
@@ -35,7 +35,10 @@ See [req.distribution.build-idempotent](requirements.md#req.distribution.build-i
 - THEN every output is written
 - AND `generated/build-manifest.json` records the digest of every source and every output
 - AND an output the new render no longer produces is removed when its bytes match the previous manifest, together with directories it leaves empty
+- AND a modified or unrecorded file or a symbolic link among the owned outputs stops the build before anything is written or removed
 - BUT files of other tools under `generated/` are neither judged nor removed
+
+See [req.distribution.owned-retirement](requirements.md#req.distribution.owned-retirement).
 
 ### scenario.distribution.build-check — Checking the build writes nothing
 
@@ -44,19 +47,6 @@ See [req.distribution.build-idempotent](requirements.md#req.distribution.build-i
 - THEN it compares them with a fresh render in memory
 - AND reports every missing, stale or extra owned output and every asset digest in `protocol/manifest.json` that differs from the render
 - BUT it writes nothing
-
-### scenario.distribution.build-retired-skills — Removing outputs the build no longer produces
-
-- GIVEN files from an earlier build remain, such as per-capability `SKILL.md` projections under `generated/session/codex`, `generated/session/claude`, `.agents/skills` or `.claude/skills`, an old `.pi/extensions/concorde-session.ts` or an old `.pi/APPEND_SYSTEM.md` in this checkout
-- WHEN `build --check` or `build` runs
-- THEN checking reports them without writing
-- AND building removes each one only when its bytes match the previous build manifest
-- AND a modified or unrecorded file, a symbolic link or unexpected content next to such a file stops the build before anything is written or removed
-- BUT unrelated files in those directories and `skills-lock.json` are never touched
-
-Only the exact names of the public capabilities and of five older capability names are inspected
-in those directories; a name alone never proves ownership. See
-[req.distribution.owned-retirement](requirements.md#req.distribution.owned-retirement).
 
 ### scenario.distribution.build-checkout-skills-user-invoked — The source session entry stays private
 
@@ -156,7 +146,7 @@ See [req.distribution.launcher-sigterm-cancels](requirements.md#req.distribution
 - AND a missing, modified, aliased or out-of-candidate path, a symbolic link among the sources or a stale build fails without any fallback
 - AND mode `maintenance` accepts no entry, and test and task modes require one
 - AND a selection is saved only under the candidate's `.concorde/work/` and `--verify` accepts it only if a fresh selection is identical
-- AND the private entry refuses to load without a selection, verifies it before registering the tool and before every call, and refuses a changed selection or a redirect to Studio
+- AND the private entry refuses to load without a selection, verifies it before registering the tool and before every call, and refuses a changed selection
 - BUT a selection is not evidence that Pi loaded the entry, that a tool was used or that a model ran
 
 See [req.distribution.private-selection](requirements.md#req.distribution.private-selection).
@@ -167,7 +157,7 @@ See [req.distribution.private-selection](requirements.md#req.distribution.privat
 
 - GIVEN a target project directory
 - WHEN the installer runs without `--apply`
-- THEN it prints the plan of actions for every Framework, Pi, Protocol, root guidance and runtime path together with the notice about externally installed Skills
+- THEN it prints the plan of actions for every Framework, Pi, Protocol, root guidance and runtime path
 - AND it exits with status 2 when any action is a conflict
 - BUT it writes no file, and repeating it gives the same plan
 
@@ -201,23 +191,22 @@ See [req.distribution.receipt-ownership](requirements.md#req.distribution.receip
 - AND the Framework, runtime and other receipt records stay
 - AND repeating the removal changes nothing
 
-### scenario.distribution.install-retired-clients — Upgrading an installation from an older receipt
+### scenario.distribution.install-upgrade — Updating removes only unchanged superseded outputs
 
-- GIVEN a schema 1 receipt that also owns files and a `CLAUDE.md` block for other clients
-- WHEN the current installer applies an upgrade
-- THEN it installs the session entry and the `AGENTS.md` block, and removes only the unchanged owned files and the exact owned `CLAUDE.md` block
-- AND edited owned content, unsafe links or inputs changed since the preview block before writing
-- AND surrounding text, modes, unrelated files, externally installed Skills and `skills-lock.json` stay
+- GIVEN a current receipt that owns files, including files and a root block the new package still ships and files it no longer ships
+- WHEN the installer applies the newer package
+- THEN it updates the owned files and the `AGENTS.md` block that are unchanged since they were written, and removes the unchanged owned files the package no longer ships
+- AND an edited owned file, a symbolic link or a file changed since the preview blocks the apply before anything is written
+- AND surrounding text, modes and unrelated files stay
 - AND a failure restores the removed bytes, modes and the previous receipt, so a fresh plan can retry
-- AND a receipt without root records can gain the Pi block without adopting existing marked content
+- BUT a receipt of any other schema is refused
 
 ### scenario.distribution.template-ownership — Templates ship only inside their owners
 
-- GIVEN the current package and either a fresh target or a receipt that owns obsolete root template files
-- WHEN installation previews and applies the package
-- THEN the Framework has no root templates directory, the Module and Scenario starters ship under `protocol/templates/`, and the plan and task starters ship inside their Agents' packages
-- AND an upgrade removes only unchanged owned obsolete template files, leaving other material, and possibly empty directories, in place
-- AND modified owned files, symbolic links or changes after the preview block before writing, and a failed apply restores the removed bytes, modes and receipt
+- GIVEN the current package
+- WHEN installation previews and applies it
+- THEN the Module and Scenario starters ship under `protocol/templates/` and the plan and task starters ship inside their Agents' packages
+- AND the package declares no separate templates root
 - AND repeating the installation changes nothing
 
 ### scenario.distribution.install-pi-session — The session entry is the only client integration
@@ -226,7 +215,7 @@ See [req.distribution.receipt-ownership](requirements.md#req.distribution.receip
 - WHEN installation is applied
 - THEN `.pi/extensions/concorde-session.ts` is an owned output that imports the installed session extension and names the installed launcher and the managed runtime's interpreters
 - AND the `AGENTS.md` block is installed for Pi to read as a context file
-- BUT no Skills, Skills tool lock or other client's files are installed, and an unknown option such as `--integration` is refused before the target is touched
+- BUT no other client's files are installed, and an unknown option is refused before the target is touched
 
 See [req.distribution.pi-only-install](requirements.md#req.distribution.pi-only-install).
 

@@ -11,7 +11,7 @@ Concorde fixes on top of it.
 
 ```json
 {
-  "profile_version": 15,
+  "profile_version": 16,
   "registry": ".concorde/specs.json",
   "protocol": {"version": "11.0.0", "digest": "sha256:<64 hex digits>"},
   "operation_configuration": {
@@ -27,7 +27,7 @@ Concorde fixes on top of it.
 }
 ```
 
-- `profile_version` is the Framework's configuration profile; the loader supports exactly `15` and
+- `profile_version` is the Framework's configuration profile; the loader supports exactly `16` and
   refuses others with `unsupported_profile`. It is a Framework compatibility number, not a Protocol
   version.
 - `registry` is the project-relative path of the registry.
@@ -377,8 +377,9 @@ candidate before validating, and delivery calls it again for entries created sin
 
 ## Initialization {#initialization}
 
-`concorde-init` takes `concorde-init-request` version 2, whose closed data has `action`
-(`"propose"` or `"apply"`) and optional `name`, `target_id`, `configuration` and `proposal`:
+`concorde-init` takes `concorde-init-request` version 3, whose closed data has `action`
+(`"propose"` or `"apply"`) and optional `name`, `target_id`, `configuration`, `proposal` and
+`run_in_primary` (Request admission's opt-in to apply in the primary worktree):
 
 - `propose` requires `name` (nonblank) and `configuration` (a worker model selection) and accepts
   `target_id`, default `module.project`. It fails with `already_initialized` when
@@ -394,7 +395,7 @@ written paths. A request with the Host's describe-policy mode is refused with `u
 because the proposal is already the preview.
 
 The proposal contains four files, each with `before_digest: null`: `.concorde/config.json` with
-profile 15, the registry path, the binding of the installed Protocol copy, the given worker
+profile 16, the registry path, the binding of the installed Protocol copy, the given worker
 configuration and an empty `checks` list; `.concorde/specs.json` with one record for the root Module; and
 `specs/project/module.md` with its metadata. The entry has the five required sections and says
 that the project's responsibility, behaviour and architecture are not yet specified. Its metadata

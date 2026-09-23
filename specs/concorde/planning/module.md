@@ -181,12 +181,11 @@ accepted plans and tasks into the candidate's change record.
 The **Planning tests** cover context assessment, planning and task authoring, both with scripted
 native runs and with test doubles for the business rules.
 
-**Open questions.** Before launching the assessor, the Host checks that the Module's declared
-collaborations are consistent; a missing collaboration is reported as a gap and a malformed one as
-conflicting. That check still reads the dependency declarations of the previous Spec format, and
-its form under the current Protocol is not yet settled. The Host also still supersedes a blocker
-left by a removed Spec-authoring step when a fresh assessment of the same task is sufficient; this
-only matters for candidates created before that step was removed.
+Before launching the assessor, the Host checks the Module's own collaborations with the Spec
+tooling's relation and reconciliation checks. A `contains`, `uses` or `participates` whose
+explanation does not resolve is reported as a gap (a missing promise); a `relies_on` naming nodes
+the provider does not own, a repeated or self `uses`, or an unreconciled context requirement is
+reported as a conflict. Either stops the assessment before any model runs.
 
 ## Relationships
 

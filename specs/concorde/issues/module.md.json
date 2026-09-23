@@ -129,12 +129,9 @@
       "meaning": "#realization.issues.store",
       "entries": [
         "src/concorde/issues/store.py",
-        "src/concorde/issues/archive.py",
         "src/concorde/spec/issue_shapes.py",
         "scripts/issues.py",
-        "tests/concorde/issues/test_store.py",
-        "tests/concorde/issues/test_record_versions.py",
-        "tests/concorde/issues/test_archive.py"
+        "tests/concorde/issues/test_store.py"
       ]
     },
     {

@@ -605,7 +605,7 @@ class SpecProject:
             self.root,
             ".concorde/config.json",
             {
-                "profile_version": 15,
+                "profile_version": 16,
                 "registry": ".concorde/specs.json",
                 "protocol": protocol_binding(PACKAGE),
                 "operation_configuration": CONFIGURATION,

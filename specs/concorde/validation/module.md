@@ -123,9 +123,6 @@ on request. This file is shared with Check execution, which owns the sandbox its
 The validation tests cover check execution, gates and readiness on fixture projects, including
 real sandboxed check runs.
 
-Open questions. The Host's `defer_ready` switch, which stops a validation before marking the
-candidate ready, is never set by any current caller.
-
 ## Relationships
 
 ```mermaid

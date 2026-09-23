@@ -48,11 +48,9 @@ class TaskSubagentsTests(unittest.TestCase):
         self.assertNotIn(
             "concorde-brief-lifecycle", source[".pi/agents/tester.md"].content.decode()
         )
-        self.assertNotIn(".pi/APPEND_SYSTEM.md", source)
         self.assertNotIn(".pi/extensions/concorde-session.ts", source)
         self.assertIn(".pi/agents/tester.md", installed)
         self.assertNotIn(".pi/agents/maintenance-worker.md", installed)
-        self.assertNotIn(".pi/APPEND_SYSTEM.md", installed)
         self.assertNotIn(".pi/extensions/concorde-coordinator.ts", installed)
         self.assertNotIn(
             "Source maintenance worker",
@@ -114,7 +112,9 @@ class TaskSubagentsTests(unittest.TestCase):
             self.assertEqual(action["action"], "conflict")
             self.assertEqual(path.read_text(), "user-owned tester")
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies(
+        "scenario.distribution.task-subagents", "scenario.agents.tester-independent"
+    )
     def test_actual_project_discovery_and_effective_tools(self):
         subagents = Path(
             os.environ.get(
@@ -220,7 +220,9 @@ class TaskSubagentsTests(unittest.TestCase):
             )
 
     @verifies(
-        "scenario.harness.session-observation", "scenario.distribution.task-subagents"
+        "scenario.harness.session-observation",
+        "scenario.distribution.task-subagents",
+        "scenario.agents.tester-independent",
     )
     def test_native_hook_observation_and_readonly_commands(self):
         if not shutil.which("node"):
@@ -325,7 +327,7 @@ class TaskSubagentsTests(unittest.TestCase):
             print(result.stdout)
 
     @verifies("scenario.distribution.test-timing")
-    def test_runner_fingerprints_and_legacy_cli(self):
+    def test_runner_fingerprints_and_default_cli(self):
         from tests.concorde.support import pytest_timing as runner
 
         selected = ["tests/concorde/harness/test_timing.py::TimingTests::test_x"]
@@ -355,7 +357,7 @@ class TaskSubagentsTests(unittest.TestCase):
                 "tests/concorde/harness/test_rpc_diagnostics.py",
             ]
             report = Path(directory) / "report.json"
-            # A legacy caller passes no reason, scope, phase or attempt.
+            # A caller may pass no reason, scope, phase or attempt.
             result = subprocess.run(
                 [*command, f"--json={report}"],
                 cwd=REPOSITORY_ROOT,

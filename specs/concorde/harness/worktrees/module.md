@@ -68,9 +68,7 @@ into the run, so the evidence survives the removal of the candidate or its scrat
 **Coordinating Task subagents.** The source user session uses the `status` command of the Concorde
 CLI to register a worktree as a task, to record which Task subagent currently owns it (a writer or
 a tester) and to release that ownership, and to record a merge it performed with ordinary Git.
-These commands record coordination; they never start a session or perform a merge. The
-`migrate-status` command imports lifecycle data written by earlier Concorde versions after an
-explicit preview.
+These commands record coordination; they never start a session or perform a merge.
 
 **Checking a mutation boundary.** A caller that is about to let an agent change files can require
 an isolated linked worktree, refusing the primary unless the developer explicitly allowed it. The
@@ -123,12 +121,7 @@ It changes nothing and does not look at file contents.
 <a id="realization.worktrees.tests"></a>
 
 The tests of this Module run against real, disposable Git repositories: candidate creation, status
-persistence and migration, the isolation check, and whole relay-and-deliver lifecycles.
-
-**Open questions.** Status migration from earlier Concorde versions is still present in the code
-and in the `migrate-status` command; whether it is still needed has not been decided. Status keeps
-admitting records that name a guidance block in `CLAUDE.md`, a file the host no longer writes. The
-`.concorde/worktrees.json` path is still excluded from deliveries, but no current code writes it.
+persistence, the isolation check, and whole relay-and-deliver lifecycles.
 
 ## Relationships
 

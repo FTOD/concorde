@@ -70,7 +70,7 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual(original, resolve_report(self.root, receipt)["report"])
         self.assertEqual(revision, list_issues(self.root)[0]["revision"])
         self.assertEqual([], list_issues(self.root, target_id="module.foreign"))
-        self.assertFalse((self.root / ".concorde/worktree.json").exists())
+        self.assertFalse((self.root / ".concorde/status").exists())
         self.assertIn(
             "Retry ownership is unspecified", (self.root / receipt["path"]).read_text()
         )

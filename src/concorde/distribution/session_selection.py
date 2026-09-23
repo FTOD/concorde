@@ -180,7 +180,7 @@ def select_session(
 
 
 def load_selection(root: Path, path: Path) -> dict:
-    """Reverify saved launch inputs; schema 1 and all legacy fields are refused."""
+    """Reverify saved launch inputs; any other schema or field is refused."""
     try:
         value = decode(selection_path(root, path).read_text(encoding="utf-8"))
         if type(value["schema_version"]) is not int or value["schema_version"] != 2:

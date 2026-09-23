@@ -217,7 +217,7 @@ def dispatch_graph_nodes(operation, configuration, task, host):
                 subgraphs[name] = issue_nodes(bound_run())
         return subgraphs[name][child](state)
 
-    from .dispatch_graph import SUBGRAPH_NODES
+    from .dispatch_routes import SUBGRAPH_NODES
 
     return {
         "select_operation": select_operation,

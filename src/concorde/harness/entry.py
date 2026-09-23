@@ -1,4 +1,4 @@
-"""The shared executable boundary of every public Pi tool and Studio entry."""
+"""The shared executable boundary of every public Operation."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from .usage import read_usage, summarize_usage
 
 
 def validate_invocation(value: Any, operation: str | None = None) -> dict:
-    """Validate the shared CLI/Studio envelope before selecting a trusted host."""
+    """Validate the shared invocation envelope before selecting a trusted host."""
     if os.environ.get("CONCORDE_WORKER_POLICY"):
         raise SpecError(
             "terminal workers cannot invoke Operations", "permission_denied"
@@ -36,7 +36,7 @@ def validate_invocation(value: Any, operation: str | None = None) -> dict:
         or value["schema_version"] != 3
     ):
         raise SpecError(
-            "Profile 15 requires concorde-operation-invocation schema 3",
+            "a capability request must be concorde-operation-invocation schema 3",
             "unsupported_version",
         )
     if operation is not None and value["operation_id"] != operation:
@@ -47,7 +47,7 @@ def validate_invocation(value: Any, operation: str | None = None) -> dict:
 
 
 def invocation_failure(operation: str | None, error: Exception) -> dict:
-    """The same pre-host failure envelope for paired CLI and Studio entries."""
+    """The pre-host failure envelope of every executable boundary."""
     from .execution_error import error_entry
 
     return {
@@ -72,13 +72,6 @@ def runtime_selection(package_root: Path) -> dict | None:
     if os.environ.get("CONCORDE_WORKER_POLICY"):
         raise SpecError(
             "terminal workers cannot invoke Operations", "permission_denied"
-        )
-    if os.environ.get("CONCORDE_SESSION_SELECTION") and os.environ.get(
-        "CONCORDE_STUDIO_URL"
-    ):
-        raise SpecError(
-            "private candidate selection cannot redirect to Studio",
-            "workspace_mismatch",
         )
     selection = None
     if os.environ.get("CONCORDE_SESSION_SELECTION"):
@@ -145,32 +138,19 @@ def json_main(package_root: Path, operation: str, runner) -> int:
         value = validate_invocation(
             decode(raw.decode() if isinstance(raw, bytes) else raw), operation
         )
-        if os.environ.get("CONCORDE_STUDIO_URL") and os.environ.get(
-            "CONCORDE_SESSION_SELECTION"
-        ):
-            raise SpecError(
-                "private candidate selection cannot fall back to a Studio runtime",
-                "workspace_mismatch",
-            )
-        if os.environ.get("CONCORDE_STUDIO_URL"):
-            raise SpecError(
-                "Native capabilities do not redirect to Studio; select the explicit StateGraph Operation API",
-                "native_required",
-            )
-        else:
-            selection = runtime_selection(package_root)
-            from .status_store import primary_root
+        selection = runtime_selection(package_root)
+        from .status_store import primary_root
 
-            host = OperationHost(
-                Path.cwd(),
-                package_root,
-                mode=value["mode"],
-                session_provenance=selection,
-                archive_root=primary_root(Path.cwd()),
-            )
-            result = run_host_node(
-                runner, host, value["configuration"], value["input"], operation
-            )
+        host = OperationHost(
+            Path.cwd(),
+            package_root,
+            mode=value["mode"],
+            session_provenance=selection,
+            archive_root=primary_root(Path.cwd()),
+        )
+        result = run_host_node(
+            runner, host, value["configuration"], value["input"], operation
+        )
 
     except KeyboardInterrupt:
         result = invocation_failure(
@@ -180,7 +160,7 @@ def json_main(package_root: Path, operation: str, runner) -> int:
     except Exception as error:
         result = invocation_failure(operation, error)
         # Once the envelope has selected a host, a rejected State projection still
-        # belongs to that admitted mode, just like Studio's guarded admission.
+        # belongs to that admitted mode.
         # Pre-host and invalid-mode failures retain the null pre-admission value.
         if host is not None and host.mode in {"execute", "describe-policy"}:
             result["mode"] = host.mode

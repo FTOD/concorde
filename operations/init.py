@@ -23,8 +23,9 @@ REQUEST = shapes.obj(
         "target_id": shapes.STRING,
         "configuration": _CONFIGURATION,
         "proposal": shapes.typed_schema("concorde-project-proposal"),
+        "run_in_primary": {"type": "boolean"},
     },
-    ("name", "target_id", "configuration", "proposal"),
+    ("name", "target_id", "configuration", "proposal", "run_in_primary"),
 )
 
 RESPONSE = shapes.obj(

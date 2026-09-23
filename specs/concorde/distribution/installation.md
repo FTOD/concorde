@@ -94,15 +94,8 @@ developer created stays even when it becomes empty.
 
 Running the installer from a newer package produces a plan against the current receipt. Owned files
 that changed in the package are updated, files the package no longer ships are removed, and every
-file the developer modified is a conflict that blocks the apply. Nothing is merged.
-
-The installer still reads receipts of schema 1, written by installers that also supported other
-clients. Their file and block records mean the same thing and are honoured; applying replaces them
-with a schema 2 receipt, removes owned files of the other clients when unchanged, and removes an
-owned block from `CLAUDE.md` under the same block rules. Skills that the external Agent Skills
-command-line tool placed under `.agents/skills` or `.claude/skills`, and its `skills-lock.json`,
-were never owned by the installer: it leaves them untouched and prints a notice asking the
-developer to remove their own old Concorde entries by hand.
+file the developer modified is a conflict that blocks the apply. Nothing is merged. A receipt of
+any schema other than the current one is refused.
 
 `--remove-protocol-guidance` removes only the owned root blocks and records the removal in the
 receipt; the Framework and the runtime stay. Running it again changes nothing.
@@ -114,8 +107,8 @@ A worktree created from a branch that already contains Concorde files, for examp
 are usually not committed. `--preserve-project` installs the Framework and runtime there without
 taking ownership of those inherited files:
 
-- An existing `AGENTS.md` or `CLAUDE.md` stays byte for byte, and an absent `AGENTS.md` receives a
-  new owned block.
+- An existing `AGENTS.md` stays byte for byte, and an absent `AGENTS.md` receives a new owned
+  block.
 - An existing Protocol copy must be complete, with every asset matching its manifest, and is kept as
   it is, even if it belongs to another version; it is never completed with files of the new package.
 - An absent Protocol copy is seeded only when the project is uninitialized or its configuration

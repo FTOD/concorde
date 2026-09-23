@@ -150,14 +150,11 @@ class SessionSelectionTests(unittest.TestCase):
             load_selection(self.root, path)
 
     @verifies("scenario.distribution.private-selection")
-    def test_cli_failure_keeps_selection_identity_and_private_selection_rejects_studio(
-        self,
-    ):
+    def test_cli_failure_keeps_selection_identity(self):
         import io
         import json
-        from unittest.mock import Mock, patch
+        from unittest.mock import patch
         from concorde.distribution.cli import main
-        from concorde.harness.entry import json_main
 
         output = io.StringIO()
         with patch("sys.stdout", output):
@@ -176,33 +173,6 @@ class SessionSelectionTests(unittest.TestCase):
             )
         self.assertNotEqual(0, code)
         self.assertEqual("select-session", json.loads(output.getvalue())["tool"])
-        request = {
-            "type_id": "concorde-operation-invocation",
-            "schema_version": 3,
-            "operation_id": "concorde-context-solve",
-            "mode": "execute",
-            "configuration": None,
-            "input": {},
-        }
-        runner = Mock()
-        output = io.StringIO()
-        with (
-            patch.dict(
-                "os.environ",
-                {
-                    "CONCORDE_STUDIO_URL": "http://not-candidate",
-                    "CONCORDE_SESSION_SELECTION": str(self.root / "selection.json"),
-                },
-            ),
-            patch("sys.argv", ["run-operation.py"]),
-            patch("sys.stdin", io.StringIO(json.dumps(request))),
-            patch("sys.stdout", output),
-        ):
-            self.assertEqual(3, json_main(self.root, "concorde-context-solve", runner))
-        self.assertEqual(
-            "workspace_mismatch", json.loads(output.getvalue())["errors"][0]["code"]
-        )
-        runner.assert_not_called()
 
     @verifies("scenario.distribution.private-selection")
     def test_private_runtime_can_target_disposable_project_data_without_moving_code(
@@ -242,7 +212,7 @@ class SessionSelectionTests(unittest.TestCase):
         with (
             patch.dict(
                 "os.environ",
-                {"CONCORDE_STUDIO_URL": "", "CONCORDE_SESSION_SELECTION": str(path)},
+                {"CONCORDE_SESSION_SELECTION": str(path)},
             ),
             patch("sys.argv", ["run-operation.py"]),
             patch("sys.stdin", io.StringIO(json.dumps(request))),
@@ -398,7 +368,6 @@ class SessionSelectionTests(unittest.TestCase):
                     "CONCORDE_SESSION_SELECTION": str(
                         self.root / ".concorde/work/selection.json"
                     ),
-                    "CONCORDE_STUDIO_URL": "",
                 },
             ),
             patch(

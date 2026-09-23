@@ -37,22 +37,15 @@ class NativeInstallerTests(unittest.TestCase):
         cls.runtime_environment.stop()
         cls.runtime_temporary.cleanup()
 
-    def test_parser_previews_by_default_and_rejects_client_selection(self):
+    def test_parser_previews_by_default(self):
         arguments = installer.create_parser().parse_args(["--target", "sample"])
         self.assertFalse(arguments.apply)
         self.assertEqual(arguments.checkout, str(REPOSITORY_ROOT))
-        for client in ("codex", "claude", "pi"):
-            with self.subTest(client=client), self.assertRaises(SystemExit):
-                installer.create_parser().parse_args(
-                    ["--target", "sample", "--integration", client]
-                )
 
-    def test_old_or_multi_client_package_contract_is_rejected(self):
+    def test_other_package_schema_or_client_is_rejected(self):
         for changes in (
-            {"schema_version": 3},
             {"schema_version": 4},
             {"client": "codex"},
-            {"integrations": ["pi"]},
         ):
             with (
                 self.subTest(changes=changes),
@@ -65,34 +58,18 @@ class NativeInstallerTests(unittest.TestCase):
                 with self.assertRaises(installer.InstallError):
                     installer.load_package(root)
 
-    @verifies("scenario.distribution.template-ownership")
-    def test_retired_template_inventory_is_rejected_even_when_empty(self):
-        for inventory in ([], ["plan-template.md"]):
-            with (
-                self.subTest(inventory=inventory),
-                tempfile.TemporaryDirectory() as raw,
-            ):
-                root = Path(raw)
-                (root / "concorde.json").write_text(
-                    json.dumps({**self.package.manifest, "templates": inventory})
-                )
-                with self.assertRaisesRegex(
-                    installer.InstallError, "retired top-level template"
-                ):
-                    installer.load_package(root)
-
-    def test_retired_client_flag_rejects_before_creating_target(self):
+    @verifies("scenario.distribution.install-pi-session")
+    def test_unknown_option_is_refused_before_creating_target(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / "absent"
             with self.assertRaises(SystemExit):
-                installer.main(["--target", str(target), "--integration", "codex"])
+                installer.main(["--target", str(target), "--client", "codex"])
             self.assertFalse(target.exists())
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
         self.assertEqual(self.package.version, "8.0.0")
-        self.assertEqual(self.package.manifest["architecture_profile"], 15)
+        self.assertEqual(self.package.manifest["architecture_profile"], 16)
         self.assertEqual(self.package.manifest["workspace_protocol"], 16)
-        self.assertNotIn("templates", self.package.manifest)
         self.assertEqual(
             self.package.manifest["runtime"]["venv"],
             ".concorde/.venv",
@@ -122,14 +99,6 @@ class NativeInstallerTests(unittest.TestCase):
                 for path in outputs
             )
         )
-        self.assertFalse(
-            any(
-                "/skills/" in path
-                for path in outputs
-                if not path.startswith(".concorde/framework/prompts/")
-            )
-        )
-        self.assertNotIn("CLAUDE.md", outputs)
         self.assertIn(".pi/extensions/concorde-session.ts", outputs)
         self.assertIn(".concorde/framework/scripts/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
@@ -155,22 +124,6 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertIn(".concorde/framework/" + relative, outputs)
         self.assertNotIn(".pi/agents/concorde-context-assessor.md", outputs)
 
-        self.assertFalse(
-            any(path.startswith(".concorde/framework/viewer/") for path in outputs)
-        )
-        self.assertFalse(
-            any(
-                path.startswith(
-                    (
-                        ".concorde/framework/capabilities",
-                        ".concorde/framework/roles",
-                        ".concorde/framework/agent-assets",
-                        ".codex/",
-                    )
-                )
-                for path in outputs
-            )
-        )
         self.assertIn(".concorde/framework/generated/build-manifest.json", outputs)
         self.assertEqual("extension", outputs[".pi/extensions/concorde-session.ts"][1])
         self.assertTrue(
@@ -223,11 +176,6 @@ class NativeInstallerTests(unittest.TestCase):
             receipt = json.loads((target / ".concorde/install.json").read_text())
             self.assertEqual(receipt["schema_version"], 2)
             self.assertEqual(receipt["client"], "pi")
-            self.assertNotIn("skills", receipt)
-            self.assertNotIn("integrations", receipt)
-            self.assertFalse((target / "skills-lock.json").exists())
-            self.assertFalse((target / ".agents").exists())
-            self.assertFalse((target / ".claude").exists())
             self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
             self.assertEqual(
                 receipt["runtime"]["verified_operations"],
@@ -515,7 +463,6 @@ class NativeInstallerTests(unittest.TestCase):
             marker = json.loads(marker_path.read_text())
             self.assertEqual(4, marker["schema_version"])
             self.assertEqual(list(spec.operations), marker["verified_operations"])
-            self.assertNotIn("verified_skills", marker)
             with (
                 mock.patch.object(managed_runtime, "_healthy", return_value=True),
                 mock.patch.object(managed_runtime, "_verify_pi"),
@@ -525,7 +472,6 @@ class NativeInstallerTests(unittest.TestCase):
                     managed_runtime.plan_runtime(target, spec, {})["action"],
                 )
                 marker["schema_version"] = 3
-                marker["verified_skills"] = marker.pop("verified_operations")
                 marker_path.write_text(json.dumps(marker))
                 before = marker_path.read_bytes()
                 self.assertEqual(
@@ -566,7 +512,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertEqual(item["action"], "conflict")
 
     @verifies("scenario.distribution.install-pi-session")
-    def test_desired_pi_outputs_project_the_session_shim_instead_of_skills(self):
+    def test_desired_pi_outputs_project_the_session_shim(self):
         outputs = installer.desired_outputs(self.package)
         content, role = outputs[".pi/extensions/concorde-session.ts"]
         self.assertEqual("extension", role)
@@ -576,39 +522,25 @@ class NativeInstallerTests(unittest.TestCase):
         )
         self.assertIn('".concorde/framework/scripts/run-operation.py"', shim)
         self.assertIn('"explicit_request_only": false', shim)
-        self.assertFalse(
-            any(
-                path.startswith((".agents/skills/", ".claude/skills/"))
-                for path in outputs
-            )
-        )
         self.assertIn(".concorde/framework/pi/extensions/concorde-session.ts", outputs)
         self.assertIn(".concorde/framework/pi/extensions/concorde-worker.ts", outputs)
         self.assertEqual("protocol-guidance", outputs["AGENTS.md"][1])
         self.assertIn(b"Read and follow", outputs["AGENTS.md"][0])
 
-    @verifies("scenario.distribution.install-apply")
-    def test_update_removes_only_unchanged_owned_legacy_operation_paths(self):
+    @verifies("scenario.distribution.install-upgrade")
+    def test_update_removes_only_unchanged_superseded_owned_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            legacy = target / ".concorde/framework/commands/concorde.plan.md"
-            legacy.parent.mkdir(parents=True)
-            legacy.write_text("owned legacy\n")
-            examples = target / ".concorde/framework/examples/standard_dev_loop.py"
-            examples.parent.mkdir(parents=True)
-            examples.write_text("owned example\n")
+            superseded = target / ".concorde/framework/prompts/removed/old.md"
+            superseded.parent.mkdir(parents=True)
+            superseded.write_text("owned old prompt\n")
             receipt = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "outputs": [
                     {
-                        "path": legacy.relative_to(target).as_posix(),
-                        "role": "command",
-                        "sha256": installer._sha256(legacy.read_bytes()),
-                    },
-                    {
-                        "path": examples.relative_to(target).as_posix(),
+                        "path": superseded.relative_to(target).as_posix(),
                         "role": "framework",
-                        "sha256": installer._sha256(examples.read_bytes()),
+                        "sha256": installer._sha256(superseded.read_bytes()),
                     },
                 ],
             }
@@ -617,16 +549,19 @@ class NativeInstallerTests(unittest.TestCase):
             receipt_path.write_text(json.dumps(receipt))
             actions, desired, _ = installer.installation_plan(target, self.package)
             removed = {item["path"] for item in actions if item["action"] == "remove"}
-            self.assertEqual(
-                removed,
-                {
-                    ".concorde/framework/commands/concorde.plan.md",
-                    ".concorde/framework/examples/standard_dev_loop.py",
-                },
-            )
+            self.assertEqual(removed, {".concorde/framework/prompts/removed/old.md"})
             installer.apply_plan(target, self.package, actions, desired)
-            self.assertFalse(legacy.exists())
-            self.assertFalse(examples.exists())
+            self.assertFalse(superseded.exists())
+
+    @verifies("scenario.distribution.install-conflict-rejected")
+    def test_receipt_of_another_schema_is_refused(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            receipt_path = target / ".concorde/install.json"
+            receipt_path.parent.mkdir()
+            receipt_path.write_text(json.dumps({"schema_version": 1, "outputs": []}))
+            with self.assertRaisesRegex(installer.InstallError, "unsupported"):
+                installer.installation_plan(target, self.package)
 
     def test_safe_relative_rejects_escape_absolute_and_backslash(self):
         for value in ("../escape", "/absolute", "bad\\path"):

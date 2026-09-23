@@ -13,7 +13,7 @@
 <p align="center">
   <a href="#why-concorde"><strong>Why Concorde</strong></a> ·
   <a href="#get-started"><strong>Get started</strong></a> ·
-  <a href="#explore-concorde"><strong>Docsite & Studio</strong></a> ·
+  <a href="#explore-concorde"><strong>Docsite</strong></a> ·
   <a href="https://ftod.github.io/concorde/"><strong>Explore the Specs</strong></a> ·
   <a href="docs/workflow-guide.md"><strong>Workflow guide</strong></a>
 </p>
@@ -29,7 +29,7 @@ file/tool policy. Native broad tools are not OS-confined by Concorde. A change i
 checked and independently reviewed there, and delivered only when you ask.
 
 You drive Concorde from the **Pi coding agent** through its `concorde` session tool. Pi is the
-only supported client; standalone Skills and Codex/Claude client integrations are retired.
+only supported client.
 Pi model providers, including OpenAI and Anthropic, remain supported. Model cognition runs through native pi-subagents Agents and authored workflows; deterministic actions
 are Host services. LangGraph is an optional execution boundary, not a scheduler under every call. The user session reads,
 answers and edits Specs directly, then chooses which capabilities to call and in what order.
@@ -98,8 +98,7 @@ when asynchronous. Final acceptance separately reconciles actual native artifact
 
 `OperationNode(agent).graph()` is the optional typed StateGraph boundary. A trusted embedding supplies
 an authorized native launch/admission service through Runtime, synchronously or asynchronously. Its
-State cannot choose that authority. There is no default model runner or old RPC fallback. Studio
-inspects this exact boundary, not fake graph mirrors of native workflows.
+State cannot choose that authority. There is no default model runner or old RPC fallback.
 
 ### Find the Agent, not an execution wrapper
 
@@ -169,7 +168,7 @@ bypass unfinished planned work or selected required evidence.
 **Requirements.** A Git project on **Linux with [bubblewrap](https://github.com/containers/bubblewrap)**,
 working user, mount and PID namespaces and pidfd support: configured checks and tester commands use that enforced boundary. Native Agent file policies
 are not sandbox enforcement. **Python 3.11+**, **Node.js 18+** and npm, used for the managed runtime and Pi
-extension dependencies, not a Skills installer. The [Pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) on
+extension dependencies. The [Pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) on
 `PATH` (`npm install -g @earendil-works/pi-coding-agent`; Concorde is developed against 0.85.1),
 logged in with `pi` then `/login`: workers use that login and Pi's own model providers. The optional
 docsite needs Node.js **20+**.
@@ -182,8 +181,7 @@ cd concorde
 python3 scripts/concorde.py build
 ```
 
-**2. Preview the Pi-only installation into your project, then apply it.** There is no client
-selector; retired `--integration` flags are rejected, including `--integration pi`.
+**2. Preview the installation into your project, then apply it.**
 
 ```bash
 python3 scripts/install-concorde.py --target /absolute/path/to/project --preview
@@ -194,13 +192,10 @@ The installer provisions a locked managed runtime at `.concorde/.venv`, deploys 
 `.concorde/framework/`, places the Protocol at `.concorde/protocol/` and adds a guidance block to
 `AGENTS.md`. It installs a receipt-owned session extension under `.pi/extensions/` whose
 `concorde` tool describes and runs the eleven public capability entries. It preserves your content outside
-the entries it owns, and the launcher re-runs itself inside the managed runtime. No standalone
-Skills are installed and no Skills CLI runs.
+the entries it owns, and the launcher re-runs itself inside the managed runtime.
 
-Upgrades retire only unchanged receipt-owned outputs and exact owned root blocks. Edited,
-symlinked or unknown content conflicts safely. Old external CLI-owned `.agents/skills`,
-`.claude/skills` entries and `skills-lock.json` are left untouched, with a manual retirement notice;
-remove only your own retired Concorde entries, never those directories or locks wholesale.
+Upgrades update or remove only unchanged receipt-owned outputs and the exact owned root block.
+Edited, symlinked or unknown content conflicts safely.
 
 **3. Commit project inputs, then initialize the project.** Candidate worktrees start from committed
 `HEAD`, so commit your project files, root guidance and complete Protocol bundle first. Framework,
@@ -291,25 +286,6 @@ For your own project, [scaffold a docsite](docsite/README.md#scaffold-a-docsite)
 `python3 .concorde/framework/scripts/concorde.py docsite --propose` and then `--apply`; add
 `--github-pages` for a deployment workflow.
 
-### LangGraph Studio
-
-Start Concorde's local Agent Server with the locked Studio dependencies:
-
-```bash
-uv sync --locked --group studio
-python3 scripts/concorde.py build
-uv run --locked --group studio langgraph dev \
-  --config generated/langgraph.json --host 127.0.0.1 --port 2024 \
-  --n-jobs-per-worker 1 --no-browser
-```
-
-Open **[LangGraph Studio](https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024)** and
-select `terminal-agent-operation`. This inspects the actual optional typed StateGraph. Execution
-requires an explicitly supplied trusted native Agent service; no model is selected implicitly.
-See [the Operation API and Studio guide](scripts/development/STUDIO.md). Native capabilities do not
-redirect through `CONCORDE_STUDIO_URL`. Retaining the installed LangGraph dependency is intentional;
-optional execution does not mean untested removal of installed dependencies.
-
 ## The Spec Protocol in brief
 
 Concorde's independent **[Spec Protocol 11.0.0](protocol/README.md)** has two purposes: a human
@@ -358,7 +334,6 @@ Commands are relative to this checkout; installed projects use the same scripts 
 | `python3 scripts/concorde.py docsite` · `usage`                  | Scaffold a project docsite; summarize recorded worker usage per run.                                        |
 | `python3 scripts/install-concorde.py`                            | Preview or apply installation into a project.                                                               |
 | `python3 scripts/issues.py`                                      | Inspect branch-local Issues from the command line.                                                          |
-| [LangGraph Studio](scripts/development/STUDIO.md)                | Inspect/use the explicitly selected typed StateGraph Operation boundary.                                    |
 | `npm --prefix docsite run <script>`                              | `start`, `build`, `validate`, `typecheck`, `test`, `check`.                                                 |
 
 The CLI `validate` command checks the project directly; the `concorde-validate` Host service also
@@ -390,11 +365,10 @@ reverify with `select-session --verify <absolute-selection>` before the fresh ho
 `CONCORDE_SESSION_SELECTION`, only the returned exact `-e` entry and discovery-disable flags, and
 a separate host-owned Pi configuration directory. Missing/stale artifacts or candidate Python
 block; selection is provenance, not evidence of extension loading, tool use or model execution.
-The host retains the actual file/tool grant; no global fallback or Studio redirect is allowed.
+The host retains the actual file/tool grant; no global fallback is allowed.
 
 Never edit build output under `generated/`; change `prompts/operation-guidance/`, other authored
-`prompts/`, canonical Agent/capability sources or `pi/extensions/` and rebuild. There is no standalone `skills/` product
-or `skills` publishing command. See the
+`prompts/`, canonical Agent/capability sources or `pi/extensions/` and rebuild. See the
 [source-checkout policy](AGENTS.md) and [development details](docs/workflow-guide.md#development).
 
 ---

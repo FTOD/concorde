@@ -129,18 +129,8 @@ def validate(run, run_checks: bool = True) -> dict:
             "checks": results,
         }
         save_change(run.repository.root, change)
-        if run.host.defer_ready:
-            return run.response(
-                answer="Deterministic checks completed; required review precedes readiness.",
-                checks=results,
-            )
         return mark_ready(run)
     if state and state["tasks"] and all(task["complete"] for task in state["tasks"]):
-        if run.host.defer_ready:
-            return run.response(
-                answer="Deterministic checks completed; required review precedes readiness.",
-                checks=results,
-            )
         return mark_ready(run)
     return run.response(
         answer="Deterministic validation passed; semantic completeness is not proven.",

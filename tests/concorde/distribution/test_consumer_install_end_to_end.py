@@ -84,31 +84,13 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
         )
 
     @verifies("scenario.distribution.install-pi-session")
-    def test_pi_entry_is_owned_and_no_skills_cli_outputs_exist(self):
+    def test_pi_entry_is_the_owned_client_integration(self):
         entry = ".pi/extensions/concorde-session.ts"
         self.assertTrue((self.target / entry).is_file())
-        for relative in (
-            ".claude",
-            ".agents",
-            "skills-lock.json",
-            ".concorde/framework/skills",
-        ):
-            self.assertFalse((self.target / relative).exists(), relative)
         receipt = json.loads((self.target / ".concorde/install.json").read_text())
         self.assertEqual("pi", receipt["client"])
         self.assertEqual(2, receipt["schema_version"])
-        self.assertNotIn("skills", receipt)
-        self.assertNotIn("integrations", receipt)
         self.assertIn(entry, {item["path"] for item in receipt["outputs"]})
-        self.assertTrue(self.install_payload["migration_notes"])
-
-    @verifies("scenario.distribution.install-apply")
-    def test_no_legacy_operation_tier_roots_are_installed(self):
-        framework = self.target / ".concorde/framework"
-        self.assertTrue(framework.is_dir())
-        self.assertTrue((framework / "operations").is_dir())
-        for legacy in ("capabilities", "roles", "agent-assets"):
-            self.assertFalse((framework / legacy).exists(), legacy)
 
     @verifies("scenario.distribution.install-apply")
     def test_consumer_agents_md_protocol_block_references_the_installed_protocol_copy(
@@ -139,7 +121,7 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             },
             "input": {
                 "type_id": "concorde-init-request",
-                "schema_version": 2,
+                "schema_version": 3,
                 "data": {"action": "propose"},
             },
         }
@@ -153,7 +135,7 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             input=json.dumps(invocation),
             capture_output=True,
             text=True,
-            env=child_environment(CONCORDE_STUDIO_URL=""),
+            env=child_environment(),
         )
         result = json.loads(process.stdout)
         if result["status"] == "described":

@@ -151,7 +151,6 @@ class Invocation:
                 self.blocker_revision(phase),
                 review_input_digest=review_input_digest,
                 spec_resolution=self.repository.spec_context(self.target.id).value,
-                assessment_context_id=self.last_context if assessment_intent else None,
             )
 
     def pending_gaps(
@@ -186,14 +185,6 @@ class Invocation:
             prerequisites = (
                 set(order[: order.index(phase)]) if phase in order else set()
             )
-            if phase in {
-                "spec-review",
-                "plan",
-                "tasks",
-                "implementation",
-                "code-review",
-            }:
-                prerequisites.add("specify")
             change = read_change(self.repository.root)
             blockers.extend(
                 dict(item["blocker"])

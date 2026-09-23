@@ -271,7 +271,6 @@ class BoundaryTests(unittest.TestCase):
         result = self.call_operation("concorde-plan", callback=cb)
         self.assertEqual("unsupported", result["output"]["data"]["outcome"])
         self.assertEqual([], result["output"]["data"]["blockers"])
-        self.assertFalse((self.root / ".concorde/attempts").exists())
 
     def assertSpecOnlyReads(self, read_paths):
         # A Spec-only phase reads the frozen index plus the granted Spec documents and the accepted

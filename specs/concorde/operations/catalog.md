@@ -26,8 +26,7 @@ make a capability an Operation: `run` only calls admission.
 
 The package `operations/__init__.py` lists the eleven names in `OPERATIONS` (also exported as
 `CAPABILITIES`) and groups them: `WORKFLOWS` holds `plan`, `spec_review`, `code_review` and `issues`;
-`HOST_TOOLS` holds `init`, `configure`, `validate` and `deliver`. `STATE_OPERATIONS` names the
-Operation catalog's single entry, `terminal_agent_operation`.
+`HOST_TOOLS` holds `init`, `configure`, `validate` and `deliver`.
 
 | Capability | `KIND` | `CONTEXT_SELECTION` | `DETERMINISTIC` | `USES` |
 | --- | --- | --- | --- | --- |

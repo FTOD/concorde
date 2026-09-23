@@ -42,7 +42,6 @@ AGENTS_ROOT = "agents/"
 
 # Path-shaped tokens only: ordinary mentions, emails and decorators stay literal.
 _DIRECTIVE_LINE = re.compile(r"^@(?P<target>[^\s@`\"'()<>]+)(?:[ \t]+.*)?$")
-_RETIRED_DIRECTIVE = re.compile(r"^@include(?:[ \t]|$)")
 _VARIABLE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -250,11 +249,6 @@ def _resolve_body(
     rendered: list[str] = []
     last_index = len(lines) - 1
     for index, line in enumerate(lines):
-        if _RETIRED_DIRECTIVE.match(line):
-            raise PromptResolverError(
-                "CONCORDE-PROMPT-UNRESOLVED-001",
-                f"{relative}: retired @include directive; use @path.md instead",
-            )
         match = _DIRECTIVE_LINE.fullmatch(line)
         if match is None or not (
             match.group("target").endswith(".md")
@@ -306,11 +300,6 @@ def _finalize(body: str, relative: str) -> str:
                 "CONCORDE-PROMPT-UNRESOLVED-001",
                 f"{relative}: unresolved variable {{{match.group(1)}}} in output",
             )
-    if any(_RETIRED_DIRECTIVE.match(line) for line in body.split("\n")):
-        raise PromptResolverError(
-            "CONCORDE-PROMPT-UNRESOLVED-001",
-            f"{relative}: retired @include directive in output; use @path.md instead",
-        )
     return body
 
 

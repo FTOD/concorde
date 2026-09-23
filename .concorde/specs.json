@@ -378,7 +378,7 @@
         {
           "kind": "external",
           "target": "reference/langchain-docs/",
-          "reason": "LangGraph Graph API and Studio documentation"
+          "reason": "LangGraph Graph API documentation"
         },
         {
           "kind": "external",

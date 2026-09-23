@@ -86,7 +86,7 @@
       {
         "kind": "external",
         "target": "reference/langchain-docs/",
-        "reason": "LangGraph Graph API and Studio documentation"
+        "reason": "LangGraph Graph API documentation"
       },
       {
         "kind": "external",
@@ -196,15 +196,11 @@
     {
       "id": "realization.execution.operation-graph",
       "type": "realization",
-      "title": "Operation graph and Studio",
+      "title": "Operation graph",
       "meaning": "#realization.execution.operation-graph",
       "entries": [
         "src/concorde/harness/operation_node.py",
-        "src/concorde/harness/operation_state.py",
-        "src/concorde/harness/studio.py",
-        "src/concorde/harness/studio_client.py",
-        "scripts/development/studio.py",
-        "scripts/development/STUDIO.md"
+        "src/concorde/harness/operation_state.py"
       ]
     },
     {
@@ -272,6 +268,8 @@
         "tests/concorde/harness/test_native_output_schema.py",
         "tests/concorde/harness/test_native_publication.py",
         "tests/concorde/harness/test_native_result.py",
+        "tests/concorde/harness/test_native_preflight.py",
+        "tests/concorde/harness/native_preflight_driver.mjs",
         "tests/concorde/harness/test_native_runtime.py",
         "tests/concorde/harness/test_operation_node.py",
         "tests/concorde/harness/test_optional_operation.py",
@@ -279,8 +277,6 @@
         "tests/concorde/harness/test_rpc_diagnostics.py",
         "tests/concorde/harness/test_runtime_mounts.py",
         "tests/concorde/harness/test_structured_diagnostic.py",
-        "tests/concorde/harness/test_studio_client.py",
-        "tests/concorde/harness/test_studio_server.py",
         "tests/concorde/harness/test_terminal_workers.py",
         "tests/concorde/harness/test_timing.py",
         "tests/concorde/harness/test_usage.py",

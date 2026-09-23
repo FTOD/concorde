@@ -54,8 +54,6 @@ class HandoffPolicyTests(unittest.TestCase):
             json.loads(child["PI_SUBAGENT_EXTENSION_BINDINGS"]),
             {"other/1": {"opaque": "preserve"}},
         )
-        with self.assertRaises(ValueError):
-            output_environment({"CONCORDE_STUDIO_URL": "http://localhost:2024"})
 
     def test_shared_scrub_removes_only_the_ambient_selection(self):
         ambient = {
@@ -88,8 +86,8 @@ class HandoffPolicyTests(unittest.TestCase):
             {}, scrub_selection({"PI_SUBAGENT_EXTENSION_BINDINGS": "not json"})
         )
         with patch.dict(os.environ, ambient):
-            child = child_environment(CONCORDE_STUDIO_URL="")
-            self.assertEqual("", child["CONCORDE_STUDIO_URL"])
+            child = child_environment(EXTRA="1")
+            self.assertEqual("1", child["EXTRA"])
             self.assertNotIn("CONCORDE_SESSION_SELECTION", child)
             self.assertNotIn("PI_SUBAGENT_EXTENSION_BINDINGS", child)
             with scrubbed_process_environment(EXTRA="1"):

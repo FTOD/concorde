@@ -75,7 +75,7 @@ class IssueGraphTests(unittest.TestCase):
             self.assertEqual("succeeded", result["status"], result)
             self.assertEqual([before[0]], result["output"]["data"]["issues"])
             self.assertEqual([], self.model.calls)
-            self.assertFalse((self.root / ".concorde/worktree.json").exists())
+            self.assertFalse((self.root / ".concorde/status").exists())
         self.assertEqual(before, read_issue(self.root, self.ref["issue_id"]))
 
     @verifies("scenario.issues.solve-ready")
@@ -224,7 +224,7 @@ class IssueGraphTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("stale_issue", result["errors"][0]["code"])
         self.assertEqual([], self.model.calls)
-        self.assertFalse((self.root / ".concorde/worktree.json").exists())
+        self.assertFalse((self.root / ".concorde/status").exists())
 
     @verifies("scenario.issues.solve-stale")
     def test_failed_final_validation_restores_only_the_own_disposition(self):
@@ -453,31 +453,4 @@ class IssueGraphTests(unittest.TestCase):
             host_context=host,
         )
         self.assertEqual("succeeded", result["status"], result)
-        self.assertFalse((self.root / ".concorde/worktree.json").exists())
-
-    @verifies("scenario.issues.report-authority")
-    def test_explicit_developer_report_can_cite_archived_evidence(self):
-        archived = self.root / ".concorde/archive/reflections/pending/R-001.md"
-        archived.parent.mkdir(parents=True)
-        archived.write_text("Historical observation, not an active Issue.\n")
-        payload = {
-            "action": "report",
-            "target_id": "service.transfer",
-            "report": report(
-                owner_target_id="service.transfer",
-                evidence=[
-                    {
-                        "path": archived.relative_to(self.root).as_posix(),
-                        "description": "Explicitly selected historical evidence",
-                    }
-                ],
-            ),
-        }
-        result = run_operation(
-            "concorde-issues",
-            CONFIGURATION,
-            typed("concorde-issues-request", payload),
-            host_context=OperationHost(self.root, PACKAGE),
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertFalse((self.root / ".concorde/worktree.json").exists())
+        self.assertFalse((self.root / ".concorde/status").exists())

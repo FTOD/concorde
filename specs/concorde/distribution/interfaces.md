@@ -10,7 +10,7 @@ The build owns these locations and judges nothing else:
 
 - directories `generated/native/`, `generated/agents/`, `generated/protocol/`, `generated/docs/`
   and `generated/session/`;
-- files `generated/build-manifest.json` and `generated/langgraph.json`;
+- the file `generated/build-manifest.json`;
 - the `.pi/agents/` and `.pi/extensions/` files it renders, listed in the build manifest.
 
 Other tools may write elsewhere under `generated/`. A symbolic link or a non-regular file inside an
@@ -19,7 +19,6 @@ owned directory stops both `build` and `build --check`.
 The source layout renders: `generated/native/<agent>.md` and `generated/agents/<agent>.md` with
 identical bytes for `code-reviewer`, `context-assessor`, `issue-solver`, `planner`, `programmer`,
 `spec-reviewer` and `task-author`; `generated/session/pi/concorde-session.ts`;
-`generated/langgraph.json` with the one Studio graph `terminal-agent-operation`;
 `generated/protocol/principles.md`, `generated/protocol/kinds/module.md` and
 `generated/protocol/schemas.json`; and the Task subagent files listed in
 [Pi session integration](session.md#task-subagent-files). Each native instruction file is the
@@ -55,8 +54,8 @@ extensions in the installed layout), and `concorde.json`, `pi/package.json`,
 unreadable or lacks `sources`, or when any recorded source is missing, a symbolic link or has a
 different digest. It never compares output bytes. `check_build(root)` returns `(current,
 differences)`: it renders in memory and lists every owned path whose bytes differ from the render,
-including extra and missing files, any older projection it would retire, and every
-`protocol/manifest.json:<asset>` whose recorded digest differs from the rendered asset.
+including extra and missing files, and every `protocol/manifest.json:<asset>` whose recorded digest
+differs from the rendered asset.
 
 ## Capability guidance
 
@@ -79,13 +78,12 @@ token and optional bindings:
 
 A line is a reference only when the token after `@` contains no whitespace, `@`, backtick, quote,
 parenthesis or angle bracket, and either ends in `.md` or contains a slash or backslash. Every other
-line, including indented lines, mentions and email addresses, stays as text. A line starting with
-`@include` followed by a space or the end of the line is refused.
+line, including indented lines, mentions and email addresses, stays as text.
 
 | Rule | Raised when |
 | --- | --- |
 | `CONCORDE-PROMPT-MISSING-001` | The target is not a canonical relative path (empty, dot or traversal part, `~`, colon, backslash, control character), not Markdown, missing, not a file, or reached through a symbolic link |
-| `CONCORDE-PROMPT-UNRESOLVED-001` | Bindings are not shell-style `KEY=value` tokens, a key is invalid or repeated, a `{KEY}` variable other than the reserved `OPERATION`, `SCRIPT` and `FRAMEWORK` is unbound or left in the output, or an `@include` line appears |
+| `CONCORDE-PROMPT-UNRESOLVED-001` | Bindings are not shell-style `KEY=value` tokens, a key is invalid or repeated, a `{KEY}` variable other than the reserved `OPERATION`, `SCRIPT` and `FRAMEWORK` is unbound or left in the output |
 | `CONCORDE-PROMPT-AUDIENCE-001` | A root includes a prompt of another audience; `shared` prompts may be included by any root |
 | `CONCORDE-PROMPT-AUDIENCE-002` | A prompt under `prompts/` lacks front matter with exactly `audience: worker`, `ambient` or `shared` |
 | `CONCORDE-PROMPT-SCOPE-001` | A reference targets capability guidance or `specs/`, an Agent definition references outside `prompts/`, or Protocol text is not Markdown |
@@ -162,7 +160,7 @@ finding `CONCORDE-RUN-001`.
 | `select-session --mode maintenance\|test\|task --runtime P [--pi-entry P] [--output P]` | The selection record, optionally saved |
 | `select-session --verify P` | The reverified saved record; refuses any other selection option |
 | `validate [target]` | The Spec checks' result |
-| `status`, `migrate-status`, `usage`, `docsite` | Routed to Candidate worktrees, Agent execution and Views |
+| `status`, `usage`, `docsite` | Routed to Candidate worktrees, Agent execution and Views |
 
 `status` options that change coordination (`--register`, `--child`, `--manual-merge`, `--cleanup`)
 are refused outside the primary checkout with `primary_session_required`. `docsite` requires an
@@ -170,15 +168,14 @@ isolated worktree unless `--allow-primary-worktree` is given.
 
 ## Package manifest
 
-`concorde.json` must have `schema_version` 5, `name` `concorde`, `architecture_profile` 15,
+`concorde.json` must have `schema_version` 5, `name` `concorde`, `architecture_profile` 16,
 `workspace_protocol` 16, `delivery_proposal` 10, `license` `MIT` with `license_file` `LICENSE`,
 `client` `pi`, `package_roots` exactly `agents`, `operations`, `docsite`, `pi`, `prompts`,
 `protocol`, `scripts`, `src`, `install` exactly `{"framework_root": ".concorde/framework",
 "receipt": ".concorde/install.json"}`, and `runtime` exactly `{"launcher":
 "scripts/run-operation.py", "python": ">=3.11", "requirements": "scripts/requirements.lock",
-"venv": ".concorde/.venv"}`. The fields `skill_namespace`, `integrations` and `templates` and the
-directories `commands` and `examples` are refused. The package must contain a real `README.md` and
-`LICENSE` and no symbolic link.
+"venv": ".concorde/.venv"}`. The package must contain a real `README.md` and `LICENSE` and no
+symbolic link.
 
 ## Installer command line
 
@@ -188,7 +185,7 @@ the package that contains the script. The target must be a real directory path w
 links, and not a Concorde source checkout.
 
 The JSON result has `schema_version` 2, `status` (`preview`, `conflict`, `installed` or
-`unchanged`), `version`, `client` `pi`, `migration_notes`, `target`, `receipt`,
+`unchanged`), `version`, `client` `pi`, `target`, `receipt`,
 `preserve_project`, `package` and `actions`. Each action has `path`, `action`, `role` (`framework`,
 `extension`, `protocol`, `project-default`, `protocol-guidance`, `protocol-guidance-cleanup`,
 `runtime` or `superseded`) and `sha256`, plus `reason` for a conflict and the before-state fields
@@ -204,8 +201,8 @@ package identity), `provider_root` (the package path it was installed from, prov
 `preserve_project`, `preserved` (path and role of unowned files left in place) and `outputs`. Each
 output has `path`, `role` and `sha256`: the digest of the whole file, or for root guidance the digest
 of the block only, plus `"created": true` when the installer created that root file. Project
-defaults are never recorded. Schema 1 receipts are read for upgrades; any other schema is refused,
-as is a receipt that lists `skills-lock.json`, repeats a path or records a whole root file.
+defaults are never recorded. A receipt of any other schema is refused, as is one that repeats a
+path or records a whole root file.
 
 ## Package identity
 

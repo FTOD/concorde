@@ -40,9 +40,7 @@ See [owner preserved](requirements.md#req.worktrees.owner-preserved).
 - AND edited or duplicated markers block the snapshot instead of discarding content
 - BUT `CLAUDE.md` is never written, and the snapshot changes neither the working files, the caller's index nor the status record
 
-A status record that names a block in `CLAUDE.md`, written by an earlier version, is still
-admitted and stripped the same way. See
-[local state not delivered](requirements.md#req.worktrees.local-state-not-delivered).
+See [local state not delivered](requirements.md#req.worktrees.local-state-not-delivered).
 
 ## Where a request is
 
@@ -84,13 +82,3 @@ A request started in a linked worktree instead reports kind `change` with its ow
 See [primary authority](requirements.md#req.worktrees.primary-authority),
 [revision-checked writes](requirements.md#req.worktrees.revision-checked-write) and
 [incarnation-bound status](requirements.md#req.worktrees.incarnation-bound).
-
-### scenario.harness.status-migration — Explicit migration of earlier lifecycle data
-
-- GIVEN worktree, delivery or candidate-run data written by an earlier Concorde version
-- WHEN `migrate-status` previews it and then applies it
-- THEN the preview changes nothing
-- AND applying imports the data into primary status and runs, archiving the original bytes
-- AND conflicting identities, differing run bytes or contradictory owner fields fail with `migration_conflict` before anything is written
-- AND an interrupted apply finishes identical writes when retried
-- BUT an earlier delivery counts as delivered only when Git shows its recorded commit on its target branch, and earlier readiness is never treated as fresh validation

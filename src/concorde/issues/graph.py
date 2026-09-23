@@ -6,7 +6,6 @@ from pathlib import Path
 
 from ..spec.changes import apply_files
 from ..spec.repository import SpecError, SpecRepository, digest, read_file
-from ..spec.typed_data import checked_path
 from .store import (
     MAX_RECORD_BYTES,
     dispose_issue,
@@ -111,10 +110,6 @@ def prepare_request(root: Path, package: Path, task: dict) -> dict:
                 "this action requires an explicit issue_id", "invalid_input"
             )
         record, revision = read_issue(root, task["issue_id"])
-        if action in {"solve", "reopen"}:
-            from .store import require_current_record
-
-            require_current_record(record)
         from ..harness.change_worktree import read_change
 
         change = read_change(root) if action == "solve" else None
@@ -247,12 +242,6 @@ def issue_nodes(run):
 
         context = run.repository.spec_context(run.target.id).value
         sources = context["sources"]
-        archived = {
-            item["path"]
-            for item in task["report"]["evidence"]
-            if item["path"].startswith(".concorde/archive/reflections/")
-            and checked_path(root, item["path"]).is_file()
-        }
         service = IssueReporter(
             root,
             {
@@ -272,7 +261,6 @@ def issue_nodes(run):
                 {
                     *(item["path"] for item in sources),
                     *run.repository.implementation_files(run.target),
-                    *archived,
                 }
             ),
             frozenset({task["report"]["issue_id"]})

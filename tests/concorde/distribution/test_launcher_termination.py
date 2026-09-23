@@ -57,7 +57,7 @@ class LauncherTerminationTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             cwd=REPOSITORY_ROOT,
             text=True,
-            env=child_environment(CONCORDE_STUDIO_URL=""),
+            env=child_environment(),
         )
         try:
             _wait_until_idle(process)

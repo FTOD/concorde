@@ -71,48 +71,10 @@ class PromptResolverRuleTests(unittest.TestCase):
             "@person\n@person@example.md\n@decorator(value)\n@functools.cache\n"
             "@\n@ path.md\nInline @prompts/missing.md\n"
             " @prompts/missing.md\n\t@prompts/missing.md\n"
-            "`@prompts/missing.md`\n@include-example\n"
-            "Use `@include path.md` as a historical example.\n"
-            " @include path.md\n"
+            "`@prompts/missing.md`\n"
         )
         _write(self.root, "prompts/root.md", _prompt("worker", body))
         self.assertEqual(body, resolve_role_prompt(self.root, "prompts/root.md").body)
-
-    @verifies("scenario.distribution.prompt-references")
-    def test_retired_syntax_is_rejected_for_all_roots_and_nested_sources(self):
-        for directive in (
-            "@include",
-            "@include prompts/leaf.md",
-            "@include\tprompts/leaf.md",
-        ):
-            for nested in (False, True):
-                with self.subTest(directive=directive, nested=nested):
-                    _write(
-                        self.root,
-                        "prompts/leaf.md",
-                        _prompt("shared", directive + "\n"),
-                    )
-                    body = "@prompts/leaf.md\n" if nested else directive + "\n"
-                    _write(self.root, "prompts/root.md", _prompt("worker", body))
-                    _write(self.root, "agents/example/spec.md", body)
-                    _write(
-                        self.root,
-                        "prompts/operation-guidance/example.md",
-                        '---\nname: example\ndescription: "Example"\noperation: example\n---\n'
-                        + body,
-                    )
-                    for resolver, path in (
-                        (resolve_role_prompt, "prompts/root.md"),
-                        (resolve_model_instructions, "agents/example/spec.md"),
-                        (
-                            resolve_operation_guidance,
-                            "prompts/operation-guidance/example.md",
-                        ),
-                    ):
-                        with self.assertRaisesRegex(
-                            PromptResolverError, "retired @include"
-                        ):
-                            resolver(self.root, path)
 
     @verifies("scenario.distribution.prompt-references")
     def test_invalid_targets_fail_without_expansion(self):
@@ -179,36 +141,6 @@ class PromptResolverRuleTests(unittest.TestCase):
         with self.assertRaises(PromptResolverError) as failure:
             resolve_model_instructions(self.root, "agents/example/spec.md")
         self.assertEqual("CONCORDE-PROMPT-SCOPE-001", failure.exception.rule_id)
-
-    @verifies("scenario.distribution.prompt-references")
-    def test_retired_syntax_blocks_build_and_package_validation(self):
-        from concorde.distribution.build import BuildError, build, write_build
-        from concorde.distribution.package_validation import _validate_prompts
-        from tests.concorde.support.build_fixture import build_package_copy
-
-        build_package_copy(self.root)
-        path = self.root / "prompts/operation-guidance/concorde-plan.md"
-        path.write_text(path.read_text().replace("@prompts/", "@include prompts/"))
-        before = (self.root / "generated/build-manifest.json").read_bytes()
-        for render in (build, write_build):
-            with (
-                self.subTest(render=render.__name__),
-                self.assertRaisesRegex(BuildError, "retired @include"),
-            ):
-                render(self.root)
-        self.assertEqual(
-            before, (self.root / "generated/build-manifest.json").read_bytes()
-        )
-        findings = _validate_prompts(self.root)
-        self.assertTrue(
-            any(
-                f.rule_id == "CONCORDE-PROMPT-UNRESOLVED-001"
-                and "retired @include" in f.message
-                and "@path.md" in f.remediation
-                for f in findings
-            ),
-            findings,
-        )
 
     # --- 1. cycle -----------------------------------------------------
 
@@ -324,12 +256,6 @@ class PromptResolverRuleTests(unittest.TestCase):
             "prompts/workflow-host/a.md",
             _prompt("worker", "@prompts/workflow-host/leaf.md\n"),
         )
-        with self.assertRaises(PromptResolverError) as context:
-            resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
-        self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-UNRESOLVED-001")
-
-    def test_malformed_directive_is_rejected(self):
-        _write(self.root, "prompts/workflow-host/a.md", _prompt("worker", "@include\n"))
         with self.assertRaises(PromptResolverError) as context:
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-UNRESOLVED-001")

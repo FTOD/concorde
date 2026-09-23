@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.harness.change_worktree import read_change
 from concorde.harness.checks import configured_checks, check_revision
 from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
@@ -232,9 +233,9 @@ sys.exit(17)
         self.assertNotEqual("succeeded", result["status"], result)
         self.assertFalse((self.root / "unlisted-new.txt").exists())
         self.assertIn("failed", json.dumps(result))
-        state = self.root / ".concorde/worktree.json"
-        if state.exists():
-            self.assertNotEqual("ready", json.loads(state.read_text())["status"])
+        change = read_change(self.root)
+        if change is not None:
+            self.assertNotEqual("ready", change["status"])
 
     @verifies("scenario.validation.check-isolation")
     def test_unavailable_sandbox_blocks_without_leaking_private_diagnostics(self):
@@ -267,9 +268,9 @@ sys.exit(17)
             (self.root / f".concorde/runs/timeout/{check_id}.log").read_bytes(),
         )
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.blocked", "scenario.checks.stale-measurement")
     def test_external_host_change_still_invalidates_post_check_digest(self):
-        repo, target, _ = self.configure("print('read-only check')")
+        repo, target, check_id = self.configure("print('read-only check')")
 
         def concurrent_host_change(*args, **kwargs):
             result = execute_check(*args, **kwargs)
@@ -282,6 +283,11 @@ sys.exit(17)
             with self.assertRaises(SpecError) as caught:
                 configured_checks(repo, target, "stale")
         self.assertEqual("stale_evidence", caught.exception.code)
+        # The log written before the digest mismatch stays for inspection.
+        self.assertIn(
+            b"read-only check",
+            (self.root / f".concorde/runs/stale/{check_id}.log").read_bytes(),
+        )
 
 
 if __name__ == "__main__":

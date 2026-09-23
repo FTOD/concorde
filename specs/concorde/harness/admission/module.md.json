@@ -170,7 +170,6 @@
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_status_store.py",
         "tests/concorde/operations/test_review.py",
-        "tests/concorde/operations/test_standalone_review.py",
         "tests/concorde/spec/test_typed_data.py"
       ]
     }

@@ -131,7 +131,6 @@ def _agents_package(
     init_source: str = VALID_AGENT_INIT,
     module_source: str = VALID_AGENT_ALPHA_MODULE,
     spec_source: str = VALID_AGENT_ALPHA_SPEC,
-    children: dict[str, str] | None = None,
 ) -> None:
     _operations_package(root, init_source="OPERATIONS = ()", alpha_source="")
     (root / "operations/alpha.py").unlink()
@@ -142,11 +141,6 @@ def _agents_package(
     alpha.mkdir(parents=True, exist_ok=True)
     (alpha / "__init__.py").write_text(module_source, encoding="utf-8")
     (alpha / "spec.md").write_text(spec_source, encoding="utf-8")
-    if children:
-        children_dir = alpha / "children"
-        children_dir.mkdir(parents=True, exist_ok=True)
-        for name, content in children.items():
-            (children_dir / f"{name}.md").write_text(content, encoding="utf-8")
 
 
 class PromptRuleTests(unittest.TestCase):
@@ -294,14 +288,6 @@ class OperationModuleRuleTests(unittest.TestCase):
                     findings,
                 )
 
-    def test_removed_class_declaration_is_rejected(self) -> None:
-        _operations_package(self.root, alpha_source=VALID_ALPHA + '\nCLASS = "stage"\n')
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001" for f in findings),
-            findings,
-        )
-
     def test_unknown_uses_name_is_reported(self) -> None:
         broken = VALID_ALPHA.replace("USES = ()", 'USES = ("unknown",)')
         _operations_package(self.root, alpha_source=broken)
@@ -354,14 +340,6 @@ class OperationModuleRuleTests(unittest.TestCase):
         findings = package_validation._validate_operation_modules(self.root)
         self.assertTrue(
             any("duplicate Operation" in f.message for f in findings), findings
-        )
-
-    def test_removed_agents_relation_is_rejected(self) -> None:
-        _operations_package(self.root, alpha_source=VALID_ALPHA + "\nAGENTS = ()\n")
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001" for f in findings),
-            findings,
         )
 
     def test_profiles_must_be_worker_profile_objects(self) -> None:
@@ -664,15 +642,6 @@ class AgentRuleTests(unittest.TestCase):
             'tools=("read", "grep", "find", "ls"),\n    timeout_seconds=0,',
         )
         _agents_package(self.root, module_source=broken_module)
-        findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings
-        )
-
-    def test_undeclared_child_file_is_reported(self) -> None:
-        _agents_package(
-            self.root, children={"scout": "Retired child catalog must fail."}
-        )
         findings = package_validation._validate_worker_profiles(self.root)
         self.assertTrue(
             any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings

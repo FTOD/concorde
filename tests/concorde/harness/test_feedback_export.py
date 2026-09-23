@@ -67,7 +67,6 @@ class FeedbackExportTests(unittest.TestCase):
             PYTHONPATH=os.pathsep.join((str(source / "src"), str(source))),
             TMPDIR=str(scratch_parent),
         )
-        environment.pop("CONCORDE_STUDIO_URL", None)
         receipts = []
         for case in ("direct", "schema", "workflow", "optional", "cancel"):
             with self.subTest(case=case):

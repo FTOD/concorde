@@ -76,23 +76,6 @@ are defined in the [Issue interface](interface.md).
 - THEN it does not report success
 - AND existing valid records stay readable and unchanged
 
-### scenario.issues.historical-record — Read schema-1 records without changing them
-
-- GIVEN an intact schema-1 Issue record
-- WHEN the Host reads it and then tries to append to, dispose, render or solve it
-- THEN reads return its exact bytes and receipts
-- AND every write fails with `unsupported_issue_version`
-- AND new reports always create schema-2 records
-- BUT a schema-1 record with a corrupted report digest is refused rather than repaired
-
-### scenario.issues.archive — Archive an old Reflection queue
-
-- GIVEN a project with a `.concorde/reflections/` directory and no archive yet
-- WHEN the developer runs `scripts/issues.py archive-reflections`
-- THEN the directory moves unchanged to `.concorde/archive/reflections/`
-- AND no Issue is created, closed or changed
-- BUT an existing destination or a symbolic link in the source is refused without changing either directory
-
 ## The capability
 
 ### scenario.issues.inspect — Inspect without starting work

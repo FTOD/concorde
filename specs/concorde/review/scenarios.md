@@ -23,7 +23,6 @@ running a reviewer or saving a report.
 - GIVEN an initialized project and a review task
 - WHEN the user session calls one of the two review capabilities
 - THEN `concorde-spec-review` runs only the Spec reviewer and `concorde-code-review` runs only the code reviewer
-- AND a request that contains a `review_mode` field is rejected by the request schema
 
 ### scenario.review.terminology-consistency — Imported words are compared with their definitions
 

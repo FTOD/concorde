@@ -53,7 +53,7 @@ class ReportingBoundaryTests(unittest.TestCase):
                 self.reporter(report(report_key="invalid", **changes))
         self.assertEqual(2, len(self.reporter.receipts))
         self.assertEqual(2, len(list_issues(self.root)))
-        self.assertFalse((self.root / ".concorde/worktree.json").exists())
+        self.assertFalse((self.root / ".concorde/status").exists())
 
     @verifies("scenario.issues.report-authority")
     def test_reporter_cannot_append_to_an_issue_it_was_not_granted(self):
@@ -134,7 +134,7 @@ class ReportingIntegrationTests(unittest.TestCase):
         )
         self.assertEqual("succeeded", result["status"], result)
         self.assertGreaterEqual(len(list_issues(self.root)), 1)
-        self.assertFalse((self.root / ".concorde/worktree.json").exists())
+        self.assertFalse((self.root / ".concorde/status").exists())
 
     @verifies("scenario.issues.report-survives-failure")
     def test_failed_or_invalid_worker_completion_cannot_erase_accepted_reports(self):

@@ -84,6 +84,17 @@ is refused with `fresh_session_required`, because source maintenance runs in a c
 by the user session to a fresh Task subagent.
 `concorde-deliver` runs only in the change's candidate or primary, as Delivery decides.
 
+**Configuring the primary directly.** `concorde-configure` and an initialization `apply` are
+relayed like any other mutation, so their effect reaches the primary only when the change is
+delivered. That is what a developer wants when changing or testing these commands. A developer who
+simply wants to configure or initialize the project now sets `run_in_primary: true` in the request;
+the host then applies it in the primary worktree without creating a candidate or registering a
+change. The field exists only in these two requests, so every other capability refuses it as an
+unknown field, and a request that sets it outside the primary worktree is refused with
+`workspace_mismatch`. The Concorde source checkout still refuses it with `fresh_session_required`.
+Because the choice changes where the effect lands, the user session asks the developer which one
+they want before calling either capability from the primary.
+
 **Installed projects.** In a consumer project the launcher, its Python environment and LangGraph
 must all belong to that worktree's own installation. A missing, stale or foreign installation stops
 with `local_installation_required`; the developer runs the installer for that worktree and retries.

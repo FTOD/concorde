@@ -14,7 +14,7 @@ starts another one when it finishes.
 
 | Term | Definition |
 | --- | --- |
-| Operation | A Concorde control flow written explicitly as a LangGraph StateGraph with typed input and output State, which a host selects by name and LangGraph Studio can display. |
+| Operation | A Concorde control flow written explicitly as a LangGraph StateGraph with typed input and output State, which a host selects by name and the Graph Spec check inspects. |
 | Capability declaration | The Python module under `operations/` that declares one capability's kind, request schema, context selection and the Agents it uses. |
 | Capability kind | How a capability does its work once admitted: as one direct native Agent call, as a native workflow, or as a finite Host service that calls no model. |
 | [Capability](../vocabulary.md#concept.concorde.capability) | |
@@ -114,16 +114,15 @@ is refused as `native_required`.
 <a id="concept.operations.operation"></a>
 
 An **Operation** is a flow the Host runs as a LangGraph StateGraph: typed State channels, and nodes
-and edges declared before the graph is compiled. Because the structure is declared, it can be drawn
-in LangGraph Studio and checked against its Graph Spec. The public capabilities are not Operations.
+and edges declared before the graph is compiled. Because the structure is declared, it can be checked
+against its Graph Spec. The public capabilities are not Operations.
 Their model work runs as native Pi [Agents](../agents/module.md#concept.agents.agent) and
 [workflows](../harness/execution/module.md#concept.execution.workflow), which the Host prepares and
 whose results it accepts, and their Host work is ordinary finite code.
 
 Today the Operation catalog holds one Operation, `terminal_agent_operation`. It wraps one Agent call
-with typed input and output State. The Harness uses it on its diagnostic worker path, and Studio
-displays it. It needs a trusted Agent service from the host that embeds it; without one it only
-compiles for inspection.
+with typed input and output State. The Harness uses it on its diagnostic worker path. It needs a
+trusted Agent service from the host that embeds it; without one it only compiles for inspection.
 
 The word "operation" also appears in the directory `operations/`, in the request field
 `operation_id` and in Python names such as `run_operation`. There it means any capability. In the
@@ -146,7 +145,8 @@ drift from the code. The behaviour stays with the provider Module that owns it.
 The **capability dispatch** is plain code, not a graph. Admission calls a fixed list of dispatch
 steps in a fixed order: choose a route by capability name, check the explicit target, bind the
 candidate, and call the provider. The sequence is finite and deterministic, so a graph would add
-nothing to inspect. The routes are listed in the [declarations and dispatch reference](catalog.md).
+nothing to inspect. The route names live in `src/concorde/operations/dispatch_routes.py` and are
+explained in the [declarations and dispatch reference](catalog.md).
 
 Dispatch never discovers or substitutes a Module. A request whose target does not resolve fails
 instead of being redirected. When a candidate already belongs to another Module, a request for a
@@ -167,12 +167,8 @@ inject a more powerful launcher or another workspace.
 <a id="realization.operations.tests"></a>
 
 The **Operations tests** exercise the launcher's refusal of unknown names, explicit target
-admission, the capability declarations and the Operation catalog.
-
-**Open questions.** The dispatch route table lives in a file named `dispatch_graph.py` and defines a
-`DispatchState` type, although no dispatch graph is compiled; only a test-support mirror still
-builds one. The package also defines `STATE_OPERATIONS`, which no code reads. Whether these names
-should be removed is undecided.
+admission, the refusal of native capabilities without their Pi preparation, the capability
+declarations and the Operation catalog.
 
 ## Relationships
 

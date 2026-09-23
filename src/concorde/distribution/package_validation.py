@@ -339,15 +339,6 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
             )
             continue
         valid_modules[name] = module
-        if hasattr(module, "CLASS") or hasattr(module, "AGENTS"):
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-CONSTANTS-001",
-                    source,
-                    f"operation {name!r} retains a removed CLASS or AGENTS declaration.",
-                    "Use the typed executable inventory and declared USES relationships.",
-                )
-            )
         if module.CONTEXT_SELECTION not in {"bound", "none"}:
             findings.append(
                 _finding(
@@ -524,7 +515,7 @@ _AGENT_SPEC_HEADINGS: tuple[str, ...] = (
 def _validate_agent_profile(
     root: Path, agent: WorkerProfile, source: str
 ) -> list[Finding]:
-    """Validate terminal profiles, exported contracts and absence of retired child catalogs."""
+    """Validate terminal profiles and their exported contracts."""
 
     findings: list[Finding] = []
     try:
@@ -547,16 +538,6 @@ def _validate_agent_profile(
                 source,
                 f"agent {agent.name!r} contract references unexported types: {unknown}.",
                 "Reference only types in contracts.exported_types().",
-            )
-        )
-
-    if (root / "agents" / agent.name / "children").exists():
-        findings.append(
-            _finding(
-                "CONCORDE-AGENT-PROFILE-001",
-                source,
-                "worker child definitions are retired",
-                "Remove the child catalog; the terminal worker does its own admitted work.",
             )
         )
     return findings

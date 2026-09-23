@@ -106,7 +106,7 @@ class SpecRepository(DocumentUnitRepository):
             or self.config["profile_version"] != PROFILE_VERSION
         ):
             raise SpecError(
-                "Profile 15 is required; older profiles need explicit migration",
+                f"Profile {PROFILE_VERSION} is required",
                 "unsupported_profile",
             )
         if (

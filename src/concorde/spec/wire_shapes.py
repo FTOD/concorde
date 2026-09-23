@@ -55,11 +55,10 @@ def type_version(type_id: str) -> int:
         return 6
     if type_id == "concorde-issues-response":
         return 2
-    if type_id in {
-        "concorde-init-request",
-        "concorde-configure-request",
-        "concorde-configure-response",
-    }:
+    # Version 3 adds the explicit `run_in_primary` opt-in.
+    if type_id in {"concorde-init-request", "concorde-configure-request"}:
+        return 3
+    if type_id == "concorde-configure-response":
         return 2
     if type_id.endswith("-response") and type_id not in {
         "concorde-init-response",

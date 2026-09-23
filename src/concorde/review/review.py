@@ -185,7 +185,7 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
                 "src/concorde/harness/checks.py",
                 "src/concorde/harness/revisions.py",
                 "src/concorde/operations/dispatch.py",
-                "src/concorde/operations/dispatch_graph.py",
+                "src/concorde/operations/dispatch_routes.py",
                 "src/concorde/planning/plan.py",
                 "src/concorde/planning/tasks.py",
                 "src/concorde/implementation/implement.py",
@@ -428,7 +428,7 @@ def spec_consumers(run) -> set[str]:
                 registry.get("modules"), list
             ):
                 raise SpecError(
-                    "review baseline uses a retired Spec format; migrate the candidate explicitly",
+                    "review baseline registry is not a schema-3 registry",
                     "unsupported_profile",
                 )
 

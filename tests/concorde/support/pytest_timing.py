@@ -205,7 +205,6 @@ def fingerprint(tests: list[str]) -> dict:
         "platform": platform.system(),
         "machine": platform.machine(),
         "bytecode_disabled": os.environ.get("PYTHONDONTWRITEBYTECODE") == "1",
-        "studio_enabled": os.environ.get("CONCORDE_TEST_STUDIO") == "1",
     }
     parts = {
         "input": digest(entries) if complete else None,

@@ -75,6 +75,17 @@ See [the project is the entry directory](requirements.md#req.admission.project-r
 
 See [relay result](requirements.md#req.admission.relay-result).
 
+### scenario.admission.primary-opt-in — Configure or initialize the primary on explicit request
+
+- GIVEN the primary worktree of a consumer project on an attached branch
+- WHEN the user session calls `concorde-configure`, or `concorde-init` with action `apply`, with `run_in_primary: true`
+- THEN the host applies the request in the primary worktree and returns an envelope whose workspace is null
+- AND no candidate is created and no change status is registered
+- AND the same request without `run_in_primary` is relayed into a new candidate
+- BUT `run_in_primary` in a request started in a candidate is refused with `workspace_mismatch`, and any other capability refuses the field as unknown
+
+See [primary opt-in](requirements.md#req.admission.primary-opt-in).
+
 ### scenario.harness.local-installation — A candidate runs its own complete installation
 
 - GIVEN a consumer primary whose installed Concorde package and runtime are ignored by Git
