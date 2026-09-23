@@ -242,10 +242,10 @@ Most responses carry `target_id`, `focus_id`, `change_id`, `context_id`, `outcom
 
 | Identity | What it carries | Owner |
 | --- | --- | --- |
-| `concorde-context-snapshot@6` | the frozen context of one worker step | Task context |
-| `concorde-agent-stage-context@4` | a worker's input: the snapshot, the change ID and expected artifacts | Task context |
+| `concorde-context-snapshot@7` | the frozen context of one worker step | Task context |
+| `concorde-agent-stage-context@5` | a worker's input: the snapshot, the change ID and expected artifacts | Task context |
 | `concorde-agent-stage-result@3` | a worker's proposal: outcome, answer, blockers, plan, tasks or Issue decision | Task context |
-| `concorde-review-stage-context@4` | a reviewer's input: the snapshot and the review input | Task context |
+| `concorde-review-stage-context@5` | a reviewer's input: the snapshot and the review input | Task context |
 | `concorde-review-stage-result@2` | a reviewer's proposal: status, representative tasks, Issues and answer | Task context |
 | `concorde-review-input@1` | the exact Spec or code revision and changes under review | Review |
 | `concorde-review-result@2` | a published review, also admitted as a repair input to tasks and implementation | Review |

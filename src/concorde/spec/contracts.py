@@ -21,6 +21,7 @@ from .contract_shapes import (
 from .issue_shapes import RECEIPT as ISSUE_RECEIPT
 from .issue_shapes import REPORT as ISSUE_REPORT
 from .issue_shapes import REVIEW_ISSUE
+from .wire_shapes import CONTEXT_SCHEMA, SELECTION_REASON
 
 DOCUMENT_CHANGE = obj({"path": PATH, "content": {"type": "string"}})
 TASK_ITEM = obj(
@@ -255,17 +256,24 @@ def schemas() -> dict:
     )
     # Context index records (Framework profile P5, Spec context grant): a document is identified, owned
     # and digested, never embedded. Its bytes reach an WorkerProfile through the read-only grant of the path.
-    reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
-    source = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})
+    # Each reason is the Protocol relation that selected the document (owns, contains, uses,
+    # includes) or the shared-file rule (shares) that added it for a code-writing step.
+    source = obj(
+        {
+            **document_ref["properties"],
+            "reasons": array(SELECTION_REASON, unique=True),
+        }
+    )
 
     def resolution(source_shape):
         return obj(
             {
-                "schema_version": {"const": 1},
+                "schema_version": {"const": CONTEXT_SCHEMA},
                 "registration": TARGET_DESCRIPTOR,
                 "query_id": STRING,
                 "query_kind": {"enum": ["module", "scenario"]},
                 "module_id": STRING,
+                "shares": {"type": "boolean"},
                 "reading_entry": PATH,
                 "documents": array(PATH, unique=True),
                 "references": array(REFERENCE, unique=True),
@@ -337,7 +345,7 @@ def schemas() -> dict:
     result["concorde-context-snapshot"] = obj(
         {
             "context_id": DIGEST,
-            "schema_version": {"const": 6},
+            "schema_version": {"const": 7},
             "target_id": STRING,
             "kind": {"const": "module"},
             "focus_id": NULLABLE_ID,

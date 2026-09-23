@@ -38,3 +38,12 @@ defined once in [Validation requirements](requirements.md).
 - THEN the Host removes those entries from their `pending` lists before validating the Specs
 - AND the entries whose files are still missing stay pending
 - BUT no reading document changes and every entry stays bound
+
+### scenario.validation.multi-module — A multi-Module change is validated as one candidate
+
+- GIVEN a managed change about one Module whose candidate also edits another Module, such as the consumer of a contract whose version the change raises
+- AND the other Module's work was completed as component work in the same candidate
+- WHEN the user session calls `concorde-validate` for the change's Module
+- THEN the configured checks of every Module the candidate edits run and are recorded with their revisions
+- AND the candidate becomes ready only when each of them passed and every component's own completion is current
+- BUT a later edit of any of those Modules makes the recorded evidence stale before delivery

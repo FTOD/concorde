@@ -14,9 +14,10 @@ ready or deliver it. Work that belongs to another Module goes back to the user s
 | Term | Definition |
 | --- | --- |
 | Task completion | The Host's record that every local task of the accepted list is fulfilled, together with the digest of the Module's implementation files at that moment. |
-| Component work | The tasks of an accepted list that target a Module the selected Module uses or directly contains, which must be planned and implemented for that Module separately. |
+| Component work | The tasks of an accepted list that target another Module of the selected Module's change scope, which must be planned and implemented for that Module separately. |
 | [Plan](../planning/module.md#concept.planning.plan) | |
 | [Task](../planning/module.md#concept.planning.task) | |
+| [Change scope](../planning/module.md#concept.planning.change-scope) | |
 | [User session](../vocabulary.md#concept.concorde.user-session) | |
 | [Host](../vocabulary.md#concept.concorde.host) | |
 | [Module](../vocabulary.md#concept.concorde.module) | |
@@ -62,15 +63,19 @@ programmer then also receives that review as feedback.
 
 <a id="concept.implementation.component-work"></a>
 
-A task list may include **component work**: tasks for a Module that the target uses or directly
-contains. The programmer never receives another Module's files. Instead, `concorde-implement`
+A task list may include **component work**: tasks for another Module of the target's
+[change scope](../planning/module.md#concept.planning.change-scope), for example a Module it uses,
+a child, or a participant of a contract whose version the change raises. The programmer never
+receives another Module's files. Instead, `concorde-implement`
 returns `unsupported` with each component's target and the exact task text derived from its tasks,
 without starting a programmer. The user session then plans, derives tasks for and implements each
 component with that exact text, in the same candidate. When it calls `concorde-implement` for the
 parent again, the Host checks that each component's recorded work matches the derived text and
 constraints, is complete, and is current for the component's Spec and implementation. Only then
 does the programmer run for the local tasks. If there are no local tasks, the Host records
-completion without starting a programmer.
+completion without starting a programmer. The whole change stays one candidate: validating the
+target afterwards covers every Module the candidate edited, and delivering that candidate lands
+all of them together.
 
 ### When implementation stops
 
@@ -95,7 +100,7 @@ it takes no arguments and runs the configured checks through the Host's read-onl
 Implementation keeps one programmer to one Module. A task list may reach into components, but a
 programmer that could edit them would silently gain another Module's code and break promises it
 cannot see. Returning component work to the user session keeps each change inside the boundary of
-the Module that owns it, and the Host's later check of each component's recorded work ensures that
+the Module that owns it, even when one change must edit several Modules to stay valid, and the Host's later check of each component's recorded work ensures that
 a component label cannot stand in for work that was never done.
 
 Completion is narrow on purpose. Marking tasks complete says only that the programmer's acceptance
@@ -160,7 +165,8 @@ flowchart LR
 
 **Planning** supplies the accepted [plan](../planning/module.md#concept.planning.plan) and
 [task](../planning/module.md#concept.planning.task) list that implementation works on, and guarantees
-that every task targets the Module, a Module it uses or a direct child, as
+that every task targets a Module in the target's
+[change scope](../planning/module.md#concept.planning.change-scope), as
 [accept only valid new task lists](../planning/workflow.md#req.planning.tasks-admission) states.
 Implementation relies on the list being current for the Module's Spec revision and the request's
 task, and refuses otherwise. It never edits the plan or the tasks' descriptions and acceptance

@@ -16,7 +16,7 @@ that is not proof that its Specs or code are semantically complete.
 | --- | --- |
 | Ready | The state of a candidate whose current Spec validation, configured checks, accepted tasks, required reviews and task blockers all satisfy its gates for its exact current files. |
 | Validation evidence | The recorded Spec validation and configured check results of a candidate, each bound to digests of the inputs it examined. |
-| Affected Module | A Module whose realizations bind a file that the validated Module also binds, so its checks run too. |
+| Affected Module | A Module whose configured checks and revisions a validation covers: the validated Module, every Module the change edits when the validated Module is the one the change is about, and every Module binding a file one of those binds. |
 | Direct candidate | A candidate whose change records no planned Module work, typically because the user session edited it directly. |
 | [Module](../vocabulary.md#concept.concorde.module) | |
 | [Spec](../vocabulary.md#concept.concorde.spec) | |
@@ -53,7 +53,13 @@ and an existing pending file is reported by structural validation.
 <a id="concept.validation.evidence"></a><a id="concept.validation.affected-module"></a>
 
 The checks run are those of every affected Module, including the validated Module itself, because a
-change to a shared file can break any Module that binds it. Each check result states the check,
+change to a shared file can break any Module that binds it. When the validated Module is the one the
+managed change is about, the affected Modules also include every Module the candidate edits: each
+Module owning a Spec document, or binding a file, that differs from the change's starting commit.
+One change may have to edit several Modules together, for example a contract's provider and every
+participant when the contract's version rises, and validating it from its own Module checks all of
+them at once, so delivering the one candidate is the atomic step. Local control records and the
+Host's own worktree guidance are not edits of the change. Each check result states the check,
 its Module, `passed`, `failed` or `timeout`, the exit code, and digests of the check's inputs and its
 log. The logs themselves stay in the Host's run records. The checks run in a sandbox that lets them
 read the project but not write anything in it, so temporary files, caches and reports must go to the
@@ -108,7 +114,9 @@ validated tree with the candidate's actual tree for the same reason.
 
 Readiness is not transitive trust. When the change recorded component work, each component's own
 completion is checked again with its own task, and a component whose Spec or implementation changed
-since it completed stops readiness.
+since it completed stops readiness. The change's own Module additionally records the revisions and
+check results of every Module the candidate edits, so an edit to any of them after validation makes
+the evidence stale.
 
 <a id="realization.validation.check-runner"></a>
 
@@ -144,7 +152,8 @@ The picture shows one validation request. Admission, task state and blockers are
 
 **Spec tooling** loads the registry and checks structural conformance. Validation runs its structural
 validation first and reports any error as outcome `failed`; it also asks Spec tooling which Modules bind
-the validated Module's files. A structurally invalid project never reaches the checks.
+the validated Module's files and, for the change's own Module, which Module owns or binds each path
+the candidate changed. A structurally invalid project never reaches the checks.
 
 <a id="uses-harness-checks"></a>
 

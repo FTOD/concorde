@@ -63,10 +63,17 @@ defined failure behaviour are not Spec gaps.
 
 Spec review reads the complete Spec context; code review reads the same Specs and the authorized
 code in a fresh read-only invocation. A review records its exact inputs, coverage, findings and
-completion; skipped, failed, incomplete and successful reviews stay distinct. When a document
-changes, every Module whose Spec context selects it (`selected-by`) needs a fresh review; when a
-promise changes, every Module that relies on it (`referenced-by`); when a file bound by several
-Modules changes, every binding Module (`implemented-by`) needs its own checks and evidence.
+completion; skipped, failed, incomplete and successful reviews stay distinct. Required reviews
+follow promise-level impact: inside a change the Host compares the changed documents' definitions
+between the change's base commit and the candidate (the defining section of each requirement,
+scenario and contract, each concept's definition row, record and explanation, and the entry's
+`module` block). A Module needs a fresh review when it selects a changed document without narrowing
+(it owns the document, or a `contains` or `uses` without `relies_on`, or an `includes`, selects it)
+or references a changed node (`referenced-by`: `relies_on`, `imports`, `narrows`, `supersedes`,
+`relates`, `participates`); a Module whose only selection is a `relies_on` narrowing of unchanged
+nodes does not. Without a baseline, every Module whose Spec context selects a document
+(`selected-by`) is concerned. When a file bound by several Modules changes, every binding Module
+(`implemented-by`) needs its own checks and evidence.
 Validation reports scenario coverage from the tests' `verifies` declarations; coverage is evidence
 about the tests, never a change to the contract. No structural check proves semantic sufficiency.
 
@@ -107,11 +114,17 @@ projections of their sources. Generated output is never edited as source.
 A structural change edits the owning Modules' entries (`module` blocks), document metadata and
 reading together, then regenerates the registry mirror, and validates the combined result before any
 dependent work. A shared definition is defined once by its owner and imported or relied upon by
-others, never copied. Realization entries name intended files as `pending` until they exist; within
-one Module the longest covering entry decides a file's realization, and a bound directory never
-contains a Spec document. Before a file bound by several Modules changes, `implemented-by` names
-every Module concerned. Code-writing workers never edit Specs or the registry. Direct edits confer
-no assessment, review, check or completion evidence.
+others, never copied. A change is owned by one Module and may edit every Module of its change scope,
+which is what atomic reconciliation can require: the Modules it contains or uses, the participants
+of contracts it defines or participates in, the Modules referencing nodes it defines
+(`referenced-by`) and the Modules binding its files (`implemented-by`). Each other Module's work
+runs as that Module's own single-Module invocation in the same candidate, never under the owner's
+scope; the owner's validation and required reviews cover every Module the candidate edits, so
+delivering the one candidate is the atomic step. Realization entries name intended files as
+`pending` until they exist; within one Module the longest covering entry decides a file's
+realization, and a bound directory never contains a Spec document. Before a file bound by several
+Modules changes, `implemented-by` names every Module concerned. Code-writing workers never edit
+Specs or the registry. Direct edits confer no assessment, review, check or completion evidence.
 
 ### P9. Task status and evidence have one primary authority
 

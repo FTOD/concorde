@@ -34,7 +34,7 @@ class CheckIntegrationTests(unittest.TestCase):
         check.update(argv=["{python}", "-c", code], timeout_seconds=timeout)
         self.save_config()
         repo = SpecRepository(self.root, PACKAGE)
-        return repo, repo.select("service.transfer"), check["id"]
+        return repo, repo.module("service.transfer"), check["id"]
 
     @verifies("scenario.validation.blocked")
     def test_all_registered_required_check_inputs_are_available_and_safe(self):

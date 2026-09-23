@@ -75,8 +75,9 @@ The target check resolves `target_id` and `focus_id` against the registry. It tr
 `concorde-context-solve`, both reviews and every non-solving `concorde-issues` action as read-only.
 For any other capability in execute mode it binds the candidate's owner to the target. When the
 candidate already belongs to another Module, the request is admitted as component work only if some
-owner's accepted tasks name the target, the owner uses or directly contains it, the owner's plan is
-current for its Spec revision, the request has no focus, and its task and constraints equal the work
+owner's accepted tasks name the target, the target lies in the owner's
+[change scope](../planning/module.md#concept.planning.change-scope), the owner's plan is current for
+its Spec revision, the request has no focus, and its task and constraints equal the work
 derived from those tasks. The check then chooses the provider route:
 
 | Provider route | Capability | Provider |

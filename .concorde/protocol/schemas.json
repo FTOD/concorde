@@ -29,7 +29,7 @@
                 "$ref": "#/$defs/concorde-context-snapshot"
               },
               "schema_version": {
-                "const": 6,
+                "const": 7,
                 "type": "integer"
               },
               "type_id": {
@@ -252,7 +252,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 6
+            "const": 7
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -449,7 +449,10 @@
                 "type": "object"
               },
               "schema_version": {
-                "const": 1
+                "const": 2
+              },
+              "shares": {
+                "type": "boolean"
               },
               "sources": {
                 "items": {
@@ -474,25 +477,79 @@
                     },
                     "reasons": {
                       "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "id": {
-                            "minLength": 1,
-                            "type": "string"
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "relation": {
+                                "enum": [
+                                  "owns",
+                                  "contains",
+                                  "uses"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "id"
+                            ],
+                            "type": "object"
                           },
-                          "kind": {
-                            "enum": [
-                              "owned",
-                              "module",
-                              "document"
-                            ]
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "kind": {
+                                "enum": [
+                                  "module",
+                                  "document"
+                                ]
+                              },
+                              "relation": {
+                                "const": "includes"
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "kind",
+                              "id"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "files": {
+                                "items": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "uniqueItems": true
+                              },
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "relation": {
+                                "const": "shares"
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "id",
+                              "files"
+                            ],
+                            "type": "object"
                           }
-                        },
-                        "required": [
-                          "kind",
-                          "id"
-                        ],
-                        "type": "object"
+                        ]
                       },
                       "type": "array",
                       "uniqueItems": true
@@ -523,6 +580,7 @@
               "query_id",
               "query_kind",
               "module_id",
+              "shares",
               "reading_entry",
               "documents",
               "references",
@@ -1439,7 +1497,7 @@
         "$ref": "#/$defs/concorde-agent-stage-context"
       },
       "schema_version": {
-        "const": 4,
+        "const": 5,
         "type": "integer"
       },
       "type_id": {
@@ -2533,7 +2591,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 6
+            "const": 7
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -2730,7 +2788,10 @@
                 "type": "object"
               },
               "schema_version": {
-                "const": 1
+                "const": 2
+              },
+              "shares": {
+                "type": "boolean"
               },
               "sources": {
                 "items": {
@@ -2755,25 +2816,79 @@
                     },
                     "reasons": {
                       "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "id": {
-                            "minLength": 1,
-                            "type": "string"
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "relation": {
+                                "enum": [
+                                  "owns",
+                                  "contains",
+                                  "uses"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "id"
+                            ],
+                            "type": "object"
                           },
-                          "kind": {
-                            "enum": [
-                              "owned",
-                              "module",
-                              "document"
-                            ]
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "kind": {
+                                "enum": [
+                                  "module",
+                                  "document"
+                                ]
+                              },
+                              "relation": {
+                                "const": "includes"
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "kind",
+                              "id"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "files": {
+                                "items": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "uniqueItems": true
+                              },
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "relation": {
+                                "const": "shares"
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "id",
+                              "files"
+                            ],
+                            "type": "object"
                           }
-                        },
-                        "required": [
-                          "kind",
-                          "id"
-                        ],
-                        "type": "object"
+                        ]
                       },
                       "type": "array",
                       "uniqueItems": true
@@ -2804,6 +2919,7 @@
               "query_id",
               "query_kind",
               "module_id",
+              "shares",
               "reading_entry",
               "documents",
               "references",
@@ -3720,7 +3836,7 @@
         "$ref": "#/$defs/concorde-context-snapshot"
       },
       "schema_version": {
-        "const": 6,
+        "const": 7,
         "type": "integer"
       },
       "type_id": {
@@ -6505,7 +6621,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 6
+            "const": 7
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -6702,7 +6818,10 @@
                 "type": "object"
               },
               "schema_version": {
-                "const": 1
+                "const": 2
+              },
+              "shares": {
+                "type": "boolean"
               },
               "sources": {
                 "items": {
@@ -6727,25 +6846,79 @@
                     },
                     "reasons": {
                       "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "id": {
-                            "minLength": 1,
-                            "type": "string"
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "relation": {
+                                "enum": [
+                                  "owns",
+                                  "contains",
+                                  "uses"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "id"
+                            ],
+                            "type": "object"
                           },
-                          "kind": {
-                            "enum": [
-                              "owned",
-                              "module",
-                              "document"
-                            ]
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "kind": {
+                                "enum": [
+                                  "module",
+                                  "document"
+                                ]
+                              },
+                              "relation": {
+                                "const": "includes"
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "kind",
+                              "id"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "files": {
+                                "items": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "uniqueItems": true
+                              },
+                              "id": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "relation": {
+                                "const": "shares"
+                              }
+                            },
+                            "required": [
+                              "relation",
+                              "id",
+                              "files"
+                            ],
+                            "type": "object"
                           }
-                        },
-                        "required": [
-                          "kind",
-                          "id"
-                        ],
-                        "type": "object"
+                        ]
                       },
                       "type": "array",
                       "uniqueItems": true
@@ -6776,6 +6949,7 @@
               "query_id",
               "query_kind",
               "module_id",
+              "shares",
               "reading_entry",
               "documents",
               "references",
@@ -7774,7 +7948,7 @@
                 "$ref": "#/$defs/concorde-context-snapshot"
               },
               "schema_version": {
-                "const": 6,
+                "const": 7,
                 "type": "integer"
               },
               "type_id": {
@@ -7838,7 +8012,7 @@
         "$ref": "#/$defs/concorde-review-stage-context"
       },
       "schema_version": {
-        "const": 4,
+        "const": 5,
         "type": "integer"
       },
       "type_id": {

@@ -22,7 +22,7 @@ class AgentInventoryTests(unittest.TestCase):
     @verifies("scenario.agents.inventory")
     def test_peer_discovery_and_real_render_admission(self):
         repository = SpecRepository(REPOSITORY_ROOT)
-        target = repository.select("module.agents")
+        target = repository.module("module.agents")
         self.assertEqual("module.concorde", target.parent)
         self.assertEqual("specs/concorde/agents/module.md", target.primary_document)
         resolution = repository.spec_context(target.id).value

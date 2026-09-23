@@ -135,7 +135,10 @@ returns the whole context of the scenario's owner, never a trimmed part of it.
 
 The **impact indexes** answer the reverse question. Before a shared file changes, the Host asks
 which Modules bind it; before a document changes, which Modules read it. The indexes never widen a
-boundary; they tell a caller whom a change concerns.
+boundary; they tell a caller whom a change concerns. For a task that writes code, the repository
+can add to a Module's Spec context the documents of every other Module binding one of its files,
+recorded with the relation `shares`, because such a task could otherwise break a promise it cannot
+see.
 
 ### Starting a new project
 

@@ -198,7 +198,7 @@ def _verify_merged_tree(
                 )
             repository = SpecRepository(root, package)
             checks = []
-            for target in repository.targets.values():
+            for target in repository.modules.values():
                 if target.checks:
                     results = configured_checks(
                         repository, target, host.invocation_id + "/delivery/" + phase

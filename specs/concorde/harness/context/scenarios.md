@@ -11,7 +11,7 @@ Concrete situations of [Task context](module.md). Module-wide obligations are st
 - AND a phase, a task, and optionally a scenario focus, constraints, instructions, stage inputs and workspace facts
 - WHEN the host freezes a context snapshot
 - THEN it returns an immutable snapshot identified by a digest of its content
-- AND the snapshot lists every document of the Module's `SpecContext` with its identity, owner, digest and selecting declarations, and names the Module's entry
+- AND the snapshot lists every document of the Module's `SpecContext` with its identity, owner, digest and the relations that selected it, and names the Module's entry
 - AND it lists the Module's implementation entries and bound file names for every phase
 - AND it includes implementation file paths and digests only for the `implementation` and `code-review` phases
 - BUT no document or file body is embedded in it
@@ -20,6 +20,17 @@ See [boundary sets](requirements.md#req.context.boundary-sets),
 [focus never trims](requirements.md#req.context.focus-no-trim),
 [names for every phase](requirements.md#req.context.names-every-phase) and
 [contents for code phases](requirements.md#req.context.contents-code-phases).
+
+### scenario.harness.shared-file-readers — A programmer reads the Modules that share its files
+
+- GIVEN Module A binds a file that Module B also binds, and A does not select B's documents
+- WHEN the host freezes a snapshot of A for the `implementation` phase
+- THEN the snapshot's Spec context also lists both members of every document B owns, each with the relation `shares`, Module B and the shared file
+- AND the programmer is granted those documents read-only, and its write paths stay A's implementation scope
+- AND a byte change in one of B's documents makes that snapshot stale
+- BUT a snapshot of A for any other phase, such as `plan` or `code-review`, lists none of B's documents
+
+See [shared-file readers](requirements.md#req.context.shared-file-readers).
 
 ### scenario.harness.external-references — Deliver a Module's external references to the workers that read them
 

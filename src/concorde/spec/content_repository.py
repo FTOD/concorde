@@ -28,17 +28,16 @@ from .repository_base import (
     REFERENCE_SKIPPED_SUFFIXES,
     REGISTRY_SCHEMA,
     Concept,
+    Module,
     ModuleDefinitions,
     Realization,
     Requirement,
     Scenario,
+    SpecContext,
     SpecDocument,
     SpecError,
-    SpecResolution,
-    SpecTarget,
-    covers,
+    bound_by,
     digest,
-    entry_base,
     entry_exists,
     expand_entry,
     identifier,
@@ -50,6 +49,10 @@ from .repository_base import (
 )
 from .syntax import Reading, parse_reading
 from .typed_data import canonical, check_schema, checked_path, decode, safe_path
+from .wire_shapes import CONTEXT_SCHEMA
+
+# A query naming a Module accepts its identity or its registered record.
+ModuleRef = str | Module
 
 WARNING_CHECKS = frozenset(
     {
@@ -68,9 +71,8 @@ def severity(check: str) -> str:
 def unit_resolution_schema() -> dict:
     """Closed paired-source resolution shape shared by all worker envelopes; roles never trim it."""
     from .contracts import REFERENCE, TARGET_DESCRIPTOR
-    from .wire_shapes import DIGEST, PATH, STRING, array, obj
+    from .wire_shapes import DIGEST, PATH, SELECTION_REASON, STRING, array, obj
 
-    reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
     source = obj(
         {
             "document_id": STRING,
@@ -78,15 +80,16 @@ def unit_resolution_schema() -> dict:
             "path": PATH,
             "digest": DIGEST,
             "role": {"enum": ["reading", "metadata"]},
-            "reasons": array(reason, unique=True),
+            "reasons": array(SELECTION_REASON, unique=True),
         }
     )
     return obj(
         {
-            "schema_version": {"const": 1},
+            "schema_version": {"const": CONTEXT_SCHEMA},
             "query_id": STRING,
             "query_kind": {"enum": ["module", "scenario"]},
             "module_id": STRING,
+            "shares": {"type": "boolean"},
             "reading_entry": PATH,
             "documents": array(PATH, unique=True),
             "references": array(REFERENCE, unique=True),
@@ -169,8 +172,8 @@ class DocumentUnitRepository:
             self.document_overrides[safe_path(path)] = raw
         self.protocol_assets: dict[str, bytes] = getattr(self, "protocol_assets", {})
         self._load = _Load()
-        self.modules: dict[str, ModuleDeclaration] = {}
-        self.targets: dict[str, SpecTarget] = {}
+        self.declarations: dict[str, ModuleDeclaration] = {}
+        self.modules: dict[str, Module] = {}
         self.document_targets: dict[str, list[str]] = {}
         self.units: dict[str, DocumentUnit] = {}
         self.readings: dict[str, Reading] = {}
@@ -183,10 +186,9 @@ class DocumentUnitRepository:
         self.imports: list[dict] = []
         self.metadata_relations: list[dict] = []
         self.checks: dict[str, dict] = {}
-        self.file_users: dict[str, tuple[str, ...]] = {}
         self._identity_paths: dict[str, str] = {}
         self._reference_digest_cache: dict[str, str] = {}
-        self._context_cache: dict[str, dict[str, list[dict]]] = {}
+        self._context_cache: dict[tuple[str, bool], dict[str, list[dict]]] = {}
         self._registry()
         self._documents()
         self._targets(configured_checks or [])
@@ -411,7 +413,7 @@ class DocumentUnitRepository:
             block,
             record,
         )
-        self.modules[module_id] = declaration
+        self.declarations[module_id] = declaration
         for path in owns:
             self.document_targets.setdefault(path, []).append(module_id)
 
@@ -481,7 +483,7 @@ class DocumentUnitRepository:
                     fatal=True,
                 )
                 continue
-            entry = self.modules[owner].entry == path
+            entry = self.declarations[owner].entry == path
             envelope = envelope_problems(value, entry=entry)
             for check, message in envelope:
                 self._problem(check, members[1], message, subject=owner, fatal=True)
@@ -491,7 +493,7 @@ class DocumentUnitRepository:
             if document["owner"] != owner:
                 self._problem(
                     "CHK.document.pair"
-                    if document["owner"] in self.modules
+                    if document["owner"] in self.declarations
                     else "CHK.node.owner",
                     members[1],
                     f"document owner {document['owner']} differs from its registered owner {owner}",
@@ -508,7 +510,7 @@ class DocumentUnitRepository:
                     fatal=True,
                 )
             identity = document["id"]
-            if identity in self._identity_paths or identity in self.modules:
+            if identity in self._identity_paths or identity in self.declarations:
                 self._problem(
                     "CHK.node.id",
                     members[1],
@@ -539,7 +541,7 @@ class DocumentUnitRepository:
         previous = self.nodes.get(node.id)
         if (
             previous is None
-            and node.id not in self.modules
+            and node.id not in self.declarations
             and node.id not in self._identity_paths
         ):
             self.nodes[node.id] = node
@@ -710,12 +712,12 @@ class DocumentUnitRepository:
 
     def _targets(self, configured_checks: list) -> None:
         parents: dict[str, list[str]] = {}
-        for module in self.modules.values():
+        for module in self.declarations.values():
             for item in module.contains:
                 parents.setdefault(item["target"], []).append(module.id)
             for kind in ("contains", "uses"):
                 for item in module.relations(kind):
-                    if item["target"] not in self.modules:
+                    if item["target"] not in self.declarations:
                         self._problem(
                             "CHK.relation.endpoints",
                             metadata_path(module.entry),
@@ -724,7 +726,7 @@ class DocumentUnitRepository:
                             fatal=True,
                         )
             for item in module.includes:
-                if item["kind"] == "module" and item["target"] not in self.modules:
+                if item["kind"] == "module" and item["target"] not in self.declarations:
                     self._problem(
                         "CHK.relation.endpoints",
                         metadata_path(module.entry),
@@ -747,12 +749,12 @@ class DocumentUnitRepository:
             if len(set(owners)) > 1:
                 self._problem(
                     "CHK.contains.single-parent",
-                    metadata_path(self.modules[owners[1]].entry),
+                    metadata_path(self.declarations[owners[1]].entry),
                     f"Module {child} is contained by several parents: {', '.join(sorted(set(owners)))}",
                     subject=child,
                     fatal=True,
                 )
-        for module_id in self.modules:
+        for module_id in self.declarations:
             seen = {module_id}
             current = module_id
             while parents.get(current):
@@ -760,7 +762,7 @@ class DocumentUnitRepository:
                 if current in seen:
                     self._problem(
                         "CHK.contains.acyclic",
-                        metadata_path(self.modules[module_id].entry),
+                        metadata_path(self.declarations[module_id].entry),
                         f"composition cycle through {module_id}",
                         subject=module_id,
                         fatal=True,
@@ -769,7 +771,7 @@ class DocumentUnitRepository:
                 seen.add(current)
         for check in configured_checks:
             self.checks[check["id"]] = check
-        for module in self.modules.values():
+        for module in self.declarations.values():
             realizations = [
                 item
                 for item in self.realization_nodes.values()
@@ -777,7 +779,7 @@ class DocumentUnitRepository:
             ]
             files = sorted({entry for item in realizations for entry in item.entries})
             parent = parents.get(module.id, [None])[0]
-            self.targets[module.id] = SpecTarget(
+            self.modules[module.id] = Module(
                 module.id,
                 "module",
                 module.title,
@@ -799,22 +801,14 @@ class DocumentUnitRepository:
                 ),
                 module.entry,
             )
-        users: dict[str, list[str]] = {}
-        for target in self.targets.values():
-            for entry in target.files:
-                users.setdefault(entry, []).append(target.id)
-        self.file_users = {entry: tuple(owners) for entry, owners in users.items()}
 
     # --- identities and documents --------------------------------------------------------
 
     @property
-    def entry_target(self) -> str:
+    def root_module(self) -> str:
         """The root Module: the one Module no other Module contains (the first one if several)."""
-        roots = [target.id for target in self.targets.values() if target.parent is None]
-        return roots[0] if roots else next(iter(self.targets))
-
-    def _document_index(self) -> dict[str, str]:
-        return dict(self._identity_paths)
+        roots = [module.id for module in self.modules.values() if module.parent is None]
+        return roots[0] if roots else next(iter(self.modules))
 
     def document_path(self, document_id: str) -> str:
         if document_id not in self._identity_paths:
@@ -845,8 +839,9 @@ class DocumentUnitRepository:
             text,
         )
 
-    def documents(self, target: SpecTarget) -> tuple[SpecDocument, ...]:
-        return tuple(self.document(path) for path in target.documents)
+    def documents(self, module: ModuleRef) -> tuple[SpecDocument, ...]:
+        """The documents a Module owns, entry first."""
+        return tuple(self.document(path) for path in self._resolve(module).documents)
 
     def reading(self, path: str) -> Reading:
         self.unit(path)
@@ -923,24 +918,34 @@ class DocumentUnitRepository:
                 "invalid_context",
             )
 
-    # --- selection ---------------------------------------------------------------------
+    # --- Modules and composition ---------------------------------------------------------
 
-    def select(self, target_id: str, focus_id: str | None = None) -> SpecTarget:
-        if target_id not in self.targets:
-            raise SpecError(f"unknown Spec target: {target_id}", "unknown_target")
-        target = self.targets[target_id]
-        if focus_id is not None:
-            scenario = self.scenario_nodes.get(focus_id)
-            if scenario is None or scenario.owner != target_id:
+    def _resolve(self, module: ModuleRef) -> Module:
+        identity = module.id if isinstance(module, Module) else module
+        if identity not in self.modules:
+            raise SpecError(f"unknown Spec target: {identity}", "unknown_target")
+        return self.modules[identity]
+
+    def module(self, module_id: str, scenario: str | None = None) -> Module:
+        """One registered Module; ``scenario``, when given, must be a scenario it owns."""
+        module = self._resolve(module_id)
+        if scenario is not None:
+            node = self.scenario_nodes.get(scenario)
+            if node is None or node.owner != module.id:
                 raise SpecError(
                     "scenario focus must belong to the selected target", "invalid_focus"
                 )
-        return target
+        return module
 
     def module_declaration(self, module_id: str) -> ModuleDeclaration:
-        if module_id not in self.modules:
+        if module_id not in self.declarations:
             raise SpecError(f"unknown Spec target: {module_id}", "unknown_target")
-        return self.modules[module_id]
+        return self.declarations[module_id]
+
+    def contained(self, module: ModuleRef) -> tuple[Module, ...]:
+        """The Modules this Module ``contains``, in registry order."""
+        parent = self._resolve(module).id
+        return tuple(item for item in self.modules.values() if item.parent == parent)
 
     def definer(self, identity: str) -> str | None:
         """The document defining a node, or None for an unknown identity."""
@@ -954,9 +959,9 @@ class DocumentUnitRepository:
         if kind == "document":
             path = self._identity_paths.get(target)
             return (path,) if path else ()
-        if kind == "external" or target not in self.modules:
+        if kind == "external" or target not in self.declarations:
             return ()
-        module = self.modules[target]
+        module = self.declarations[target]
         if kind == "module" and "relies_on" in relation:
             selected = [module.entry]
             for identity in relation["relies_on"]:
@@ -970,29 +975,37 @@ class DocumentUnitRepository:
             return tuple(selected)
         return tuple(module.owns)
 
-    def _query(self, query_id: str) -> tuple[SpecTarget, str]:
-        if query_id in self.targets:
-            return self.targets[query_id], "module"
+    # --- read sets: SpecContext ----------------------------------------------------------
+
+    def _query(self, query_id: str) -> tuple[Module, str]:
+        if query_id in self.modules:
+            return self.modules[query_id], "module"
         scenario = self.scenario_nodes.get(query_id)
         if scenario is not None:
-            return self.targets[scenario.owner], "scenario"
+            return self.modules[scenario.owner], "scenario"
         raise SpecError(
             f"unsupported or unknown context identity: {query_id}",
             "invalid_target",
             query_id,
         )
 
-    def _context_paths(self, target: SpecTarget) -> dict[str, list[dict]]:
-        """Spec(M) with the declarations that selected each document (one level, never recursive)."""
-        if target.id in self._context_cache:
+    def _context_paths(
+        self, module: ModuleRef, shares: bool = False
+    ) -> dict[str, list[dict]]:
+        """Spec(M) with every relation that selected each document (one level, never recursive).
+
+        With ``shares``, the owned documents of every other Module binding a file in M's
+        ImplementationScope are added with a ``shares`` reason (Protocol shared-file rule).
+        """
+        target = self._resolve(module)
+        key = (target.id, shares)
+        if key in self._context_cache:
             return {
                 path: list(reasons)
-                for path, reasons in self._context_cache[target.id].items()
+                for path, reasons in self._context_cache[key].items()
             }
-        module = self.modules[target.id]
-        paths: dict[str, list[dict]] = {
-            path: [{"kind": "owned", "id": target.id}] for path in module.owns
-        }
+        declaration = self.declarations[target.id]
+        paths: dict[str, list[dict]] = {}
 
         def add(documents, reason) -> None:
             for path in documents:
@@ -1000,53 +1013,65 @@ class DocumentUnitRepository:
                 if reason not in reasons:
                     reasons.append(reason)
 
+        add(declaration.owns, {"relation": "owns", "id": target.id})
         for kind in ("contains", "uses"):
-            for item in module.relations(kind):
+            for item in declaration.relations(kind):
                 add(
                     self.selection({**item, "kind": "module"}),
-                    {"kind": "module", "id": item["target"]},
+                    {"relation": kind, "id": item["target"]},
                 )
-        for item in module.includes:
-            if item["kind"] == "module":
+        for item in declaration.includes:
+            if item["kind"] in {"module", "document"}:
                 add(
-                    self.selection({"kind": "module", "target": item["target"]}),
-                    {"kind": "module", "id": item["target"]},
+                    self.selection({"kind": item["kind"], "target": item["target"]}),
+                    {
+                        "relation": "includes",
+                        "kind": item["kind"],
+                        "id": item["target"],
+                    },
                 )
-            elif item["kind"] == "document":
-                add(self.selection(item), {"kind": "document", "id": item["target"]})
+        if shares:
+            for other, files in self.shared_files(target).items():
+                add(
+                    self.modules[other].documents,
+                    {"relation": "shares", "id": other, "files": list(files)},
+                )
         result = {
-            path: sorted(paths[path], key=lambda reason: (reason["kind"], reason["id"]))
+            path: sorted(
+                paths[path],
+                key=lambda reason: (
+                    reason["relation"],
+                    reason.get("kind", ""),
+                    reason["id"],
+                ),
+            )
             for path in sorted(paths)
             if path in self.document_targets
         }
-        self._context_cache[target.id] = result
+        self._context_cache[key] = result
         return {path: list(reasons) for path, reasons in result.items()}
 
-    def spec_files(self, entity_id: str) -> tuple[str, ...]:
-        target, _ = self._query(entity_id)
-        return tuple(
-            sorted(
-                member
-                for path in self._context_paths(target)
-                for member in (path, metadata_path(path))
-            )
-        )
+    def spec_context(self, query_id: str, *, shares: bool = False) -> SpecContext:
+        """``SpecContext`` of a Module, or of a scenario's owner, with its source records.
 
-    def spec_context(self, entity_id: str) -> SpecResolution:
-        target, kind = self._query(entity_id)
+        ``shares`` adds the shared-file readers a code-writing task needs (see ``shared_files``);
+        it is recorded in the context, so it is part of the context identity.
+        """
+        target, kind = self._query(query_id)
         sources = [
             record
-            for path, reasons in self._context_paths(target).items()
+            for path, reasons in self._context_paths(target, shares).items()
             for record in self.source_records(path, reasons)
         ]
         descriptor = target.descriptor()
-        resolution = SpecResolution(
+        context = SpecContext(
             canonical(
                 {
-                    "schema_version": 1,
-                    "query_id": entity_id,
+                    "schema_version": CONTEXT_SCHEMA,
+                    "query_id": query_id,
                     "query_kind": kind,
                     "module_id": target.id,
+                    "shares": shares,
                     "reading_entry": target.primary_document,
                     "documents": list(target.documents),
                     "references": descriptor["references"],
@@ -1055,24 +1080,13 @@ class DocumentUnitRepository:
                 }
             )
         )
-        check_schema(resolution.value, unit_resolution_schema())
-        return resolution
-
-    def context_users(self, document_id: str) -> tuple[str, ...]:
-        """``selected-by``: the Modules whose Spec context contains a document."""
-        if document_id not in self._identity_paths:
-            raise SpecError(f"unknown document: {document_id}", "invalid_target")
-        path = self._identity_paths[document_id]
-        return tuple(
-            sorted(
-                t.id for t in self.targets.values() if path in self._context_paths(t)
-            )
-        )
+        check_schema(context.value, unit_resolution_schema())
+        return context
 
     def context_identities(self) -> dict[str, str]:
         return {
-            target.id: digest(self.spec_context(target.id).value)
-            for target in self.targets.values()
+            module.id: digest(self.spec_context(module.id).value)
+            for module in self.modules.values()
         }
 
     def affected_contexts(self, candidate) -> tuple[str, ...]:
@@ -1094,24 +1108,29 @@ class DocumentUnitRepository:
             configured_checks=list(self.checks.values()),
         )
 
-    def recheck_resolution(self, resolution: SpecResolution) -> None:
+    def recheck_context(self, context: SpecContext) -> None:
+        value = context.value
         try:
-            current = self.fresh().spec_context(resolution.value["query_id"])
-            if current.serialized != resolution.serialized:
+            current = self.fresh().spec_context(
+                value["query_id"], shares=value["shares"]
+            )
+            if current.serialized != context.serialized:
                 raise SpecError(
                     "context declarations, member roles or source bytes changed",
                     "stale_context",
                 )
         except (ValueError, OSError, KeyError) as error:
+            if isinstance(error, SpecError) and error.code == "stale_context":
+                raise
             raise SpecError(
                 f"document context is stale: {error}", "stale_context"
             ) from error
 
-    def context_bytes(self, resolution: SpecResolution) -> dict[str, bytes]:
-        self.recheck_resolution(resolution)
-        self.validate_source_records(resolution.value["sources"])
+    def context_bytes(self, context: SpecContext) -> dict[str, bytes]:
+        self.recheck_context(context)
+        self.validate_source_records(context.value["sources"])
         result = {}
-        for record in resolution.value["sources"]:
+        for record in context.value["sources"]:
             raw = self.source_bytes(record["path"])
             if digest(raw) != record["digest"]:
                 raise SpecError(
@@ -1120,10 +1139,133 @@ class DocumentUnitRepository:
             result[record["path"]] = raw
         return result
 
+    # --- read sets: ImplementationContext and ExternalContext ----------------------------
+
+    def implementation_context(self, module: ModuleRef) -> tuple[str, ...]:
+        """ImplementationContext(M): names of existing bound files and of pending exact entries."""
+        target = self._resolve(module)
+        names = set(self.bound_files(target))
+        for realization in self.realizations(target):
+            names.update(
+                entry for entry in realization.pending if not is_directory_entry(entry)
+            )
+        return tuple(sorted(names))
+
+    def bound_files(self, module: ModuleRef) -> tuple[str, ...]:
+        """Existing regular files the Module's entries bind, directory entries expanded."""
+        return tuple(
+            sorted(
+                {
+                    path
+                    for entry in self._resolve(module).files
+                    for path in expand_entry(self.root, entry)
+                }
+            )
+        )
+
+    def external_inclusions(self, module: ModuleRef) -> tuple[str, ...]:
+        """The Module's ``includes`` of kind ``external``, in declaration order."""
+        return tuple(
+            value
+            for kind, value in self._resolve(module).references
+            if kind == "external"
+        )
+
+    def external_files(self, entry: str) -> tuple[str, ...]:
+        """Existing readable files below one external entry, media and archives excluded."""
+        return tuple(
+            expand_entry(self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES)
+        )
+
+    def external_digest(self, entry: str) -> str:
+        """One digest per entry over its readable files' paths and bytes; cached per repository."""
+        if entry not in self._reference_digest_cache:
+            self._reference_digest_cache[entry] = digest(
+                [
+                    (path, digest(read_file(self.root, path)))
+                    for path in self.external_files(entry)
+                ]
+            )
+        return self._reference_digest_cache[entry]
+
+    def external_context(self, module: ModuleRef) -> tuple:
+        """ExternalContext(M): only M's own external inclusions; a selected Module brings none."""
+        from .boundaries import ExternalEntry
+
+        result = []
+        for entry in self.external_inclusions(module):
+            exists = entry_exists(self.root, entry)
+            result.append(
+                ExternalEntry(
+                    entry,
+                    is_directory_entry(entry),
+                    self.external_files(entry) if exists else (),
+                    self.external_digest(entry) if exists else digest([]),
+                    exists,
+                )
+            )
+        return tuple(result)
+
+    # --- write sets ------------------------------------------------------------------------
+
+    def spec_scope(self, module: ModuleRef) -> tuple[str, ...]:
+        """SpecScope(M): both members of every document M owns, including the entry."""
+        return tuple(
+            sorted(
+                member
+                for path in self._resolve(module).documents
+                for member in (path, metadata_path(path))
+            )
+        )
+
+    def implementation_scope(self, module: ModuleRef) -> tuple[str, ...]:
+        """ImplementationScope(M): M's realization entries, pending entries included.
+
+        A directory entry covers every present and future file below it under the exclusion
+        rule; use ``BoundarySets.writable`` or ``bound_by`` to test one path.
+        """
+        return tuple(self._resolve(module).files)
+
+    def boundary_sets(self, module: ModuleRef):
+        """The five boundary sets of one Module (see ``boundaries``)."""
+        from .boundaries import BoundarySets
+
+        target = self._resolve(module)
+        return BoundarySets(
+            target.id,
+            self.spec_context(target.id).paths,
+            self.external_context(target),
+            self.implementation_context(target),
+            self.spec_scope(target),
+            self.implementation_scope(target),
+        )
+
+    def missing_entries(self, module: ModuleRef) -> tuple[str, ...]:
+        """Entries whose file or directory does not exist yet."""
+        return tuple(
+            entry
+            for entry in self._resolve(module).files
+            if not entry_exists(self.root, entry)
+        )
+
+    def realization_entries(self, module: ModuleRef) -> dict[str, Realization]:
+        """Declared entries of the Module's realizations, keyed by entry (exact file or directory)."""
+        return {
+            entry: realization
+            for realization in self.realizations(module)
+            for entry in realization.entries
+        }
+
+    def realization_for_path(self, module: ModuleRef, path: str) -> Realization | None:
+        """The realization whose most specific entry covers a concrete file path, if any."""
+        entries = self.realization_entries(module)
+        entry = most_specific(entries, path)
+        return entries[entry] if entry is not None else None
+
     # --- definitions ---------------------------------------------------------------------
 
-    def definitions(self, target: SpecTarget) -> ModuleDefinitions:
-        owner = target.id
+    def definitions(self, module: ModuleRef) -> ModuleDefinitions:
+        owner = self._resolve(module).id
         return ModuleDefinitions(
             tuple(x for x in self.scenario_nodes.values() if x.owner == owner),
             tuple(x for x in self.requirement_nodes.values() if x.owner == owner),
@@ -1132,33 +1274,33 @@ class DocumentUnitRepository:
             tuple(x for x in self.contract_nodes.values() if x["owner"] == owner),
         )
 
-    def scenarios(self, target: SpecTarget) -> tuple[Scenario, ...]:
-        return self.definitions(target).scenarios
+    def scenarios(self, module: ModuleRef) -> tuple[Scenario, ...]:
+        return self.definitions(module).scenarios
 
-    def requirements(self, target: SpecTarget) -> tuple[Requirement, ...]:
-        return self.definitions(target).requirements
+    def requirements(self, module: ModuleRef) -> tuple[Requirement, ...]:
+        return self.definitions(module).requirements
 
-    def concepts(self, target: SpecTarget) -> tuple[Concept, ...]:
-        return self.definitions(target).concepts
+    def concepts(self, module: ModuleRef) -> tuple[Concept, ...]:
+        return self.definitions(module).concepts
 
-    def realizations(self, target: SpecTarget) -> tuple[Realization, ...]:
-        return self.definitions(target).realizations
+    def realizations(self, module: ModuleRef) -> tuple[Realization, ...]:
+        return self.definitions(module).realizations
 
-    def contracts(self, target: SpecTarget) -> tuple[dict, ...]:
+    def contracts(self, module: ModuleRef) -> tuple[dict, ...]:
         return tuple(
             {key: value for key, value in item.items() if key != "line"}
-            for item in self.definitions(target).contracts
+            for item in self.definitions(module).contracts
         )
 
-    def participations(self, target: SpecTarget) -> tuple[dict, ...]:
+    def participations(self, module: ModuleRef) -> tuple[dict, ...]:
+        owner = self._resolve(module).id
         return tuple(
-            {**item, "owner": target.id}
-            for item in self.modules[target.id].participates
+            {**item, "owner": owner} for item in self.declarations[owner].participates
         )
 
     def meaning_text(self, module_id: str, meaning: str) -> str | None:
         """The prose a Module relation's ``meaning`` anchor resolves to, or None."""
-        module = self.modules[module_id]
+        module = self.declarations[module_id]
         if not isinstance(meaning, str) or "#" not in meaning:
             return None
         location, anchor = meaning.split("#", 1)
@@ -1168,194 +1310,148 @@ class DocumentUnitRepository:
         found = self.readings[path].anchors.get(anchor)
         return found.text if found else None
 
-    # --- scenario coverage ---------------------------------------------------------------
+    # --- derived indexes and impact --------------------------------------------------------
 
-    def verifications(self, target: SpecTarget):
-        """Scenario declarations read from the test files the Module's realizations bind."""
-        from .verification import scan_declarations
+    def selected_by(self, document_id: str) -> tuple[str, ...]:
+        """``selected-by``: the Modules whose SpecContext contains a document."""
+        if document_id not in self._identity_paths:
+            raise SpecError(f"unknown document: {document_id}", "invalid_target")
+        path = self._identity_paths[document_id]
+        return tuple(
+            sorted(
+                module.id
+                for module in self.modules.values()
+                if path in self._context_paths(module)
+            )
+        )
 
-        return scan_declarations(self.root, self.implementation_files(target))
+    def referenced_by(self, identity: str) -> tuple[dict, ...]:
+        """``referenced-by``: declarations that depend on a concept, requirement, scenario or
+        contract.
 
-    def scenario_verifications(self, target: SpecTarget) -> dict[str, tuple]:
-        """``covered-by``: every scenario of the Module mapped to the tests that declare it."""
+        Inverts ``relies_on``, ``imports``, ``narrows``, ``supersedes``, ``relates`` and
+        ``participates``. Each record names the relation, the declaring Module and the
+        declaring document.
+        """
+        result = []
+        for module in self.declarations.values():
+            for kind in ("contains", "uses"):
+                for item in module.relations(kind):
+                    if identity in item.get("relies_on", ()):
+                        result.append(
+                            {
+                                "relation": "relies_on",
+                                "module": module.id,
+                                "document": module.entry,
+                            }
+                        )
+            for item in module.participates:
+                if item["contract"] == identity:
+                    result.append(
+                        {
+                            "relation": "participates",
+                            "module": module.id,
+                            "document": module.entry,
+                        }
+                    )
+        for item in self.imports:
+            if item["concept"] == identity:
+                result.append(
+                    {
+                        "relation": "imports",
+                        "module": item["owner"],
+                        "document": item["document"],
+                    }
+                )
+        for relation in self.metadata_relations:
+            if (
+                relation["type"] in {"narrows", "supersedes", "relates"}
+                and relation.get("target") == identity
+            ):
+                result.append(
+                    {
+                        "relation": relation["type"],
+                        "module": relation["owner"],
+                        "document": relation["document"],
+                    }
+                )
+        return tuple(
+            sorted(
+                {tuple(sorted(item.items())): item for item in result}.values(),
+                key=lambda item: (item["module"], item["relation"], item["document"]),
+            )
+        )
+
+    def implemented_by(self, path: str) -> tuple[str, ...]:
+        """``implemented-by``: Modules whose realizations bind a path or list it as an entry."""
+        return tuple(
+            module.id
+            for module in self.modules.values()
+            if any(entry == path or bound_by(entry, path) for entry in module.files)
+        )
+
+    def shared_files(self, module: ModuleRef) -> dict[str, tuple[str, ...]]:
+        """Every other Module binding a file in M's ImplementationScope, with those files.
+
+        Computed from entries alone: an exact entry both bind, an exact entry one binds below
+        the other's directory, or the inner of two nested directory entries. A task writing one
+        of these files concerns the other Module too (Protocol shared-file rule).
+        """
+        target = self._resolve(module)
+        result: dict[str, tuple[str, ...]] = {}
+        for other in self.modules.values():
+            if other.id == target.id:
+                continue
+            shared = {
+                path
+                for mine in target.files
+                for theirs in other.files
+                if (path := _shared_path(mine, theirs)) is not None
+            }
+            if shared:
+                result[other.id] = tuple(sorted(shared))
+        return result
+
+    def coverage(self, module: ModuleRef) -> dict[str, tuple]:
+        """``covered-by`` for every scenario of the Module: the tests that declare it."""
         from .verification import scan_declarations
 
         paths = sorted(
             {
                 path
-                for other in self.targets.values()
-                for path in self.implementation_files(other)
+                for other in self.modules.values()
+                for path in self.bound_files(other)
             }
         )
         declared: dict[str, list] = {
-            scenario.id: [] for scenario in self.scenarios(target)
+            scenario.id: [] for scenario in self.scenarios(module)
         }
         for declaration in scan_declarations(self.root, paths):
             if declaration.scenario_id in declared:
                 declared[declaration.scenario_id].append(declaration)
         return {scenario_id: tuple(items) for scenario_id, items in declared.items()}
 
-    # --- realizations and implementation ------------------------------------------------
-
-    def realization_entries(self, target: SpecTarget) -> dict[str, Realization]:
-        """Declared entries of the Module's realizations, keyed by entry (exact file or directory)."""
-        return {
-            entry: realization
-            for realization in self.realizations(target)
-            for entry in realization.entries
-        }
-
-    def realization_for_path(self, target: SpecTarget, path: str) -> Realization | None:
-        """The realization whose most specific entry covers a concrete file path, if any."""
-        entries = self.realization_entries(target)
-        entry = most_specific(entries, path)
-        return entries[entry] if entry is not None else None
-
-    def listing_users(self, path: str) -> tuple[str, ...]:
-        """``implemented-by``: Modules whose realization entries cover a concrete path."""
-        return tuple(
-            dict.fromkeys(
-                user
-                for entry, users in self.file_users.items()
-                if covers(entry, path)
-                for user in users
-            )
-        )
-
-    def children(self, target: SpecTarget) -> tuple[SpecTarget, ...]:
-        return tuple(t for t in self.targets.values() if t.parent == target.id)
-
-    def descendants(self, target: SpecTarget) -> tuple[SpecTarget, ...]:
-        result = []
-        for child in self.children(target):
-            result.extend((child, *self.descendants(child)))
-        return tuple(result)
-
-    def implementation_entries(self, target: SpecTarget) -> tuple[str, ...]:
-        """The realization entries, exact files and directory prefixes, including pending ones."""
-        return target.files
-
-    def implementation_paths(self, target: SpecTarget) -> tuple[str, ...]:
-        """Realization authority roots without trailing slashes, for permissions and history."""
-        return tuple(dict.fromkeys(entry_base(entry) for entry in target.files))
-
-    def implementation_files(self, target: SpecTarget) -> tuple[str, ...]:
-        """Existing regular files the Module's entries bind, directory prefixes expanded."""
-        return tuple(
-            sorted(
-                {
-                    path
-                    for entry in target.files
-                    for path in expand_entry(self.root, entry)
-                }
-            )
-        )
-
-    def missing_entries(self, target: SpecTarget) -> tuple[str, ...]:
-        """Entries whose file or directory does not exist yet."""
-        return tuple(
-            entry for entry in target.files if not entry_exists(self.root, entry)
-        )
-
-    def covering_modules(self, target: SpecTarget) -> tuple[SpecTarget, ...]:
-        """Modules whose entries cover this Module's own entries or the files those entries bind."""
-        return self.affected_modules(
-            (*target.files, *self.implementation_files(target))
-        )
-
-    def affected_modules(self, paths) -> tuple[SpecTarget, ...]:
-        """Reverse lookup for changed files or entries; no Spec bodies read."""
-        users = set()
-        for path in paths:
-            users.update(self.file_users.get(path, ()))
-            users.update(self.listing_users(path))
-        return tuple(target for target in self.targets.values() if target.id in users)
-
-    # --- external material ---------------------------------------------------------------
-
-    def external_references(self, target: SpecTarget) -> tuple[str, ...]:
-        """The Module's ``includes`` of kind ``external``, in declaration order."""
-        return tuple(value for kind, value in target.references if kind == "external")
-
-    def external_reference_paths(self, target: SpecTarget) -> tuple[str, ...]:
-        """External authority roots without trailing slashes, for read-only permissions."""
-        return tuple(
-            dict.fromkeys(
-                entry_base(entry) for entry in self.external_references(target)
-            )
-        )
-
-    def external_reference_files(self, entry: str) -> tuple[str, ...]:
-        """Existing readable files below one external entry, media and archives excluded."""
-        return tuple(
-            expand_entry(self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES)
-        )
-
-    def external_reference_digest(self, entry: str) -> str:
-        """One digest per entry over its readable files' paths and bytes; cached per repository."""
-        if entry not in self._reference_digest_cache:
-            self._reference_digest_cache[entry] = digest(
-                [
-                    (path, digest(read_file(self.root, path)))
-                    for path in self.external_reference_files(entry)
-                ]
-            )
-        return self._reference_digest_cache[entry]
-
-    def external_reference_records(self, target: SpecTarget) -> list[dict]:
-        """The snapshot form of the Module's external material: entry, kind and tree digest."""
-        return [
-            {
-                "path": entry,
-                "directory": is_directory_entry(entry),
-                "digest": self.external_reference_digest(entry),
-            }
-            for entry in self.external_references(target)
-        ]
-
-    def missing_external_references(self, target: SpecTarget) -> tuple[str, ...]:
-        """External entries whose file or directory does not exist."""
-        return tuple(
-            entry
-            for entry in self.external_references(target)
-            if not entry_exists(self.root, entry)
-        )
-
-    # --- boundary sets and impact indexes ---------------------------------------------------
-
-    def boundary_sets(self, module_id: str):
-        """The five boundary sets of one Module (see ``boundaries``)."""
-        from .boundaries import boundary_sets
-
-        return boundary_sets(self, module_id)
-
-    def spec_scope(self, module_id: str) -> tuple[str, ...]:
-        from .boundaries import spec_scope
-
-        return spec_scope(self, module_id)
-
-    def implementation_scope(self, module_id: str) -> tuple[str, ...]:
-        from .boundaries import implementation_scope
-
-        return implementation_scope(self, module_id)
-
-    def selected_by(self, document_id: str) -> tuple[str, ...]:
-        return self.context_users(document_id)
-
-    def referenced_by(self, identity: str) -> tuple[dict, ...]:
-        from .boundaries import referenced_by
-
-        return referenced_by(self, identity)
-
-    def implemented_by(self, path: str) -> tuple[str, ...]:
-        from .boundaries import implemented_by
-
-        return implemented_by(self, path)
-
     def covered_by(self, scenario_id: str) -> tuple:
-        from .boundaries import covered_by
+        """``covered-by``: the verification declarations, read from bound tests, naming a
+        scenario."""
+        scenario = self.scenario_nodes.get(scenario_id)
+        if scenario is None:
+            raise SpecError(
+                f"unknown scenario: {scenario_id}", "invalid_target", scenario_id
+            )
+        return self.coverage(scenario.owner)[scenario_id]
 
-        return covered_by(self, scenario_id)
+    def impact(self, *, documents=(), nodes=(), paths=()) -> tuple[str, ...]:
+        """Every Module a write concerns: readers of written documents, dependants of written
+        nodes and contracts, and binders of written files (Boundaries, impact of a write)."""
+        concerned: set[str] = set()
+        for document_id in documents:
+            concerned.update(self.selected_by(document_id))
+        for identity in nodes:
+            concerned.update(item["module"] for item in self.referenced_by(identity))
+        for path in paths:
+            concerned.update(self.implemented_by(path))
+        return tuple(sorted(concerned))
 
     # --- checks ----------------------------------------------------------------------------
 
@@ -1372,6 +1468,17 @@ class DocumentUnitRepository:
 RepositoryCore = DocumentUnitRepository
 
 
+def _shared_path(first: str, second: str) -> str | None:
+    """The path two realization entries both bind, or None (see ``shared_files``)."""
+    if first == second:
+        return first
+    if is_directory_entry(first) and bound_by(first, second):
+        return second
+    if is_directory_entry(second) and bound_by(second, first):
+        return first
+    return None
+
+
 def _error_code(check: str) -> str:
     if check in {"CHK.owns.unique", "CHK.document.pair", "CHK.document.entry"}:
         return "invalid_owner" if check == "CHK.owns.unique" else "invalid_spec"
@@ -1383,6 +1490,7 @@ def _error_code(check: str) -> str:
 __all__ = [
     "DocumentUnitRepository",
     "ModuleDeclaration",
+    "ModuleRef",
     "NodeRef",
     "RepositoryCore",
     "identifier",

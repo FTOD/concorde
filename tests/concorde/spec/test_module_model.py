@@ -14,6 +14,7 @@ from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.harness.invocation import Invocation
 from concorde.harness.revisions import implementation_digest, target_revision
+from concorde.spec.boundaries import scope_roots
 from concorde.spec.changes import confirm_pending_files
 from concorde.spec.initialize import protocol_binding
 from concorde.spec.repository import SpecError, SpecRepository, digest
@@ -264,9 +265,9 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertTrue(report.result["source_digest"].startswith("sha256:"))
         repository = self.repository()
         self.assertEqual(
-            ["module.root", "module.a", "module.b"], list(repository.targets)
+            ["module.root", "module.a", "module.b"], list(repository.modules)
         )
-        self.assertEqual("module.root", repository.select("module.a").parent)
+        self.assertEqual("module.root", repository.module("module.a").parent)
         self.assertEqual(
             (
                 {"target": "module.a", "meaning": "#contains-module-a"},
@@ -282,8 +283,8 @@ class ModuleImplementationTests(unittest.TestCase):
     )
     def test_a_scenario_focus_narrows_attention_only_and_must_be_the_targets_own(self):
         repository = self.repository()
-        unfocused = repository.select("module.a")
-        focused = repository.select("module.a", focus_id="scenario.a.value")
+        unfocused = repository.module("module.a")
+        focused = repository.module("module.a", scenario="scenario.a.value")
         self.assertEqual(unfocused, focused)
         self.assertEqual(
             (
@@ -301,10 +302,10 @@ class ModuleImplementationTests(unittest.TestCase):
             source_pairs(
                 ["specs/a/module.md", "specs/a/details.md", "specs/a/obligations.md"]
             ),
-            sorted(repository.spec_files("module.a")),
+            sorted(repository.spec_context("module.a").paths),
         )
         with self.assertRaises(SpecError) as raised:
-            repository.select("module.a", focus_id="scenario.b.value")
+            repository.module("module.a", scenario="scenario.b.value")
         self.assertEqual("invalid_focus", raised.exception.code)
 
     @verifies("scenario.spec.reject-unsupported-profile")
@@ -332,7 +333,7 @@ class ModuleImplementationTests(unittest.TestCase):
             self.repository()
         self.assertEqual("protocol_mismatch", raised.exception.code)
         self.write(".concorde/config.json", json.dumps(config))
-        self.assertEqual("module.a", self.repository().select("module.a").id)
+        self.assertEqual("module.a", self.repository().module("module.a").id)
 
     def test_parent_context_contains_the_children_and_children_do_not_see_the_parent(
         self,
@@ -402,20 +403,22 @@ class ModuleImplementationTests(unittest.TestCase):
     @verifies("scenario.spec.shared-file", "scenario.spec.impact-indexes")
     def test_a_shared_file_has_one_identity_and_every_binding_module(self):
         repository = self.repository()
-        self.assertEqual(
-            ("module.a", "module.b"), repository.file_users["source/shared.py"]
-        )
-        self.assertEqual(("module.a",), repository.file_users["source/a.py"])
+        self.assertEqual(("module.a",), repository.implemented_by("source/a.py"))
         self.assertEqual(
             ("module.a", "module.b"), repository.implemented_by("source/shared.py")
         )
         self.assertEqual(
-            ("module.a", "module.b"),
-            tuple(t.id for t in repository.affected_modules(["source/shared.py"])),
+            ("module.a", "module.b"), repository.impact(paths=["source/shared.py"])
+        )
+        self.assertEqual(
+            {"module.b": ("source/shared.py",)}, repository.shared_files("module.a")
+        )
+        self.assertEqual(
+            {"module.a": ("source/shared.py",)}, repository.shared_files("module.b")
         )
         self.assertEqual(
             ("source/a.py", "source/shared.py"),
-            repository.implementation_paths(repository.select("module.a")),
+            scope_roots(repository.implementation_scope("module.a")),
         )
 
     @verifies("scenario.spec.directory-entry", "scenario.spec.write-sets")
@@ -437,16 +440,17 @@ class ModuleImplementationTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, errors(report))
         repository = self.repository()
-        target = repository.select("module.a")
+        target = repository.module("module.a")
         self.assertEqual(
-            ("source/", "source/shared.py"), repository.implementation_entries(target)
+            ("source/", "source/shared.py"), repository.implementation_scope(target)
         )
         self.assertEqual(
-            ("source", "source/shared.py"), repository.implementation_paths(target)
+            ("source", "source/shared.py"),
+            scope_roots(repository.implementation_scope(target)),
         )
         self.assertEqual(
             ("source/a.py", "source/nested/deep.py", "source/shared.py"),
-            repository.implementation_files(target),
+            repository.bound_files(target),
         )
         self.assertEqual(
             ("source/", "source/shared.py"), repository.implementation_scope("module.a")
@@ -479,7 +483,7 @@ class ModuleImplementationTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, errors(report))
         repository = self.repository()
-        target = repository.select("module.a")
+        target = repository.module("module.a")
         self.assertEqual(
             "realization.a.shared",
             repository.realization_for_path(target, "source/nested/deep.py").id,
@@ -531,8 +535,6 @@ class ModuleImplementationTests(unittest.TestCase):
 
     @verifies("scenario.spec.shared-file")
     def test_a_directory_and_an_exact_entry_share_one_file_across_modules(self):
-        from concorde.harness.revisions import implementation_users
-
         self.write("source/nested/deep.py", "def deep():\n    return 1\n")
         self.relist(
             {
@@ -542,22 +544,17 @@ class ModuleImplementationTests(unittest.TestCase):
         )
         repository = self.repository()
         self.assertEqual(
-            ("module.a", "module.b"), repository.listing_users("source/shared.py")
+            ("module.a", "module.b"), repository.implemented_by("source/shared.py")
         )
         self.assertEqual(
-            ("module.a",), repository.listing_users("source/nested/deep.py")
+            ("module.a",), repository.implemented_by("source/nested/deep.py")
         )
-        for module in ("module.a", "module.b"):
-            with self.subTest(module=module):
-                selected = repository.select(module)
-                self.assertEqual(
-                    ("module.a", "module.b"),
-                    tuple(t.id for t in repository.covering_modules(selected)),
-                )
-                self.assertEqual(
-                    ("module.a", "module.b"),
-                    tuple(t.id for t in implementation_users(repository, selected)),
-                )
+        self.assertEqual(
+            {"module.b": ("source/shared.py",)}, repository.shared_files("module.a")
+        )
+        self.assertEqual(
+            {"module.a": ("source/shared.py",)}, repository.shared_files("module.b")
+        )
 
     @verifies("scenario.spec.pending-entries")
     def test_a_pending_directory_validates_until_delivery_confirms_it(self):
@@ -573,10 +570,10 @@ class ModuleImplementationTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, errors(report))
         repository = self.repository()
-        target = repository.select("module.a")
+        target = repository.module("module.a")
         self.assertEqual(("source/generated/",), repository.missing_entries(target))
         self.assertEqual(
-            ("source/a.py", "source/shared.py"), repository.implementation_files(target)
+            ("source/a.py", "source/shared.py"), repository.bound_files(target)
         )
         snapshot = resolve_context(repository, "module.a", phase="plan")
         self.assertEqual(
@@ -614,9 +611,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("success", report.status, errors(report))
         self.assertEqual(
             ("source/a.py", "source/generated/emitted.py", "source/shared.py"),
-            self.repository().implementation_files(
-                self.repository().select("module.a")
-            ),
+            self.repository().bound_files(self.repository().module("module.a")),
         )
 
     @verifies("scenario.spec.pending-entries")
@@ -633,9 +628,11 @@ class ModuleImplementationTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, errors(report))
         repository = self.repository()
-        target = repository.select("module.a")
-        self.assertIn("source/new.py", repository.implementation_paths(target))
-        self.assertNotIn("source/new.py", repository.implementation_files(target))
+        target = repository.module("module.a")
+        self.assertIn(
+            "source/new.py", scope_roots(repository.implementation_scope(target))
+        )
+        self.assertNotIn("source/new.py", repository.bound_files(target))
         self.assertIn("source/new.py", repository.implementation_scope("module.a"))
         snapshot = resolve_context(repository, "module.a", phase="plan")
         self.assertEqual(
@@ -703,10 +700,10 @@ class ModuleImplementationTests(unittest.TestCase):
             }
         )
         repository = self.repository()
-        before = implementation_digest(repository, repository.select("module.a"))
+        before = implementation_digest(repository, repository.module("module.a"))
         self.write("source/added.py", "def added():\n    return 1\n")
         created = self.repository()
-        with_new_file = implementation_digest(created, created.select("module.a"))
+        with_new_file = implementation_digest(created, created.module("module.a"))
         self.assertNotEqual(before, with_new_file)
         self.relist(
             {
@@ -716,7 +713,7 @@ class ModuleImplementationTests(unittest.TestCase):
         )
         expanded = self.repository()
         self.assertNotEqual(
-            with_new_file, implementation_digest(expanded, expanded.select("module.a"))
+            with_new_file, implementation_digest(expanded, expanded.module("module.a"))
         )
 
     def test_unconfirmed_entries_report_only_missing_declarations(self):
@@ -734,12 +731,12 @@ class ModuleImplementationTests(unittest.TestCase):
         repository = self.repository()
         self.assertEqual(
             ["source/missing.py"],
-            unconfirmed_files(repository, repository.select("module.a")),
+            unconfirmed_files(repository, repository.module("module.a")),
         )
         self.write("source/missing.py", "def missing():\n    return 1\n")
         (self.root / "source/generated").mkdir()
         current = self.repository()
-        self.assertEqual([], unconfirmed_files(current, current.select("module.a")))
+        self.assertEqual([], unconfirmed_files(current, current.module("module.a")))
 
     @verifies("scenario.spec.validate-structural-errors")
     def test_binding_rules_are_reported_as_findings(self):
@@ -820,18 +817,18 @@ class ModuleImplementationTests(unittest.TestCase):
     def test_shared_change_invalidates_each_implementation_revision(self):
         before = self.repository()
         old = {
-            key: implementation_digest(before, before.select(key))
+            key: implementation_digest(before, before.module(key))
             for key in ("module.a", "module.b")
         }
-        module_revision = target_revision(before, before.select("module.a"))
+        module_revision = target_revision(before, before.module("module.a"))
         self.write("source/shared.py", "def value():\n    return 43\n")
         after = self.repository()
         for key in old:
             self.assertNotEqual(
-                old[key], implementation_digest(after, after.select(key))
+                old[key], implementation_digest(after, after.module(key))
             )
         self.assertEqual(
-            module_revision, target_revision(after, after.select("module.a"))
+            module_revision, target_revision(after, after.module("module.a"))
         )
 
     def test_validation_runs_both_consumers_checks_and_surfaces_peer_failure(self):
@@ -856,7 +853,7 @@ class ModuleImplementationTests(unittest.TestCase):
             repository = self.repository()
             run = SimpleNamespace(
                 repository=repository,
-                target=repository.select("module.a"),
+                target=repository.module("module.a"),
                 host=SimpleNamespace(
                     coordinated=True, package_root=PACKAGE, invocation_id="test-impact"
                 ),
@@ -904,7 +901,7 @@ class ModuleImplementationTests(unittest.TestCase):
         repository = self.repository()
         run = SimpleNamespace(
             repository=repository,
-            target=repository.select("module.a"),
+            target=repository.module("module.a"),
             host=SimpleNamespace(
                 coordinated=True, package_root=PACKAGE, invocation_id="mutating-check"
             ),
@@ -932,7 +929,7 @@ class ModuleImplementationTests(unittest.TestCase):
             ]
         )
         run.repository = self.repository()
-        run.target = run.repository.select("module.a")
+        run.target = run.repository.module("module.a")
         from concorde.harness.check_executor import execute_check
 
         def external_change(*args, **kwargs):
@@ -1063,22 +1060,22 @@ class ModuleImplementationTests(unittest.TestCase):
         self.write("reference/lib/logo.png", "binary")
         self.declare_reference()
         repository = self.repository()
-        a = repository.select("module.a")
-        self.assertEqual(("reference/lib/",), repository.external_references(a))
-        self.assertEqual(("reference/lib",), repository.external_reference_paths(a))
+        a = repository.module("module.a")
+        self.assertEqual(("reference/lib/",), repository.external_inclusions(a))
+        self.assertEqual(
+            ("reference/lib",), scope_roots(repository.external_inclusions(a))
+        )
         self.assertEqual(
             ("reference/lib/README.md", "reference/lib/api.md"),
-            repository.external_reference_files("reference/lib/"),
+            repository.external_files("reference/lib/"),
         )
         external = repository.boundary_sets("module.a").external_context
         self.assertEqual(
             (("reference/lib/", ("reference/lib/README.md", "reference/lib/api.md")),),
             tuple((entry.path, entry.files) for entry in external),
         )
-        self.assertEqual(
-            ("source/a.py", "source/shared.py"), repository.implementation_files(a)
-        )
-        records = repository.external_reference_records(a)
+        self.assertEqual(("source/a.py", "source/shared.py"), repository.bound_files(a))
+        records = repository.external_context(a)
         self.assertEqual(
             source_pairs(
                 ["specs/a/details.md", "specs/a/module.md", "specs/a/obligations.md"]
@@ -1094,15 +1091,15 @@ class ModuleImplementationTests(unittest.TestCase):
         )
         # A selected Module does not bring its own external material.
         self.assertEqual(
-            (), repository.external_references(repository.select("module.root"))
+            (), repository.external_inclusions(repository.module("module.root"))
         )
         self.write("reference/lib/logo.png", "other binary")
-        self.assertEqual(records, self.repository().external_reference_records(a))
+        self.assertEqual(records, self.repository().external_context(a))
         self.write("reference/lib/api.md", "## connect(url, timeout)\n")
-        self.assertNotEqual(records, self.repository().external_reference_records(a))
+        self.assertNotEqual(records, self.repository().external_context(a))
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, errors(report))
-        self.assertEqual((), repository.listing_users("reference/lib/api.md"))
+        self.assertEqual((), repository.implemented_by("reference/lib/api.md"))
 
     @verifies("scenario.spec.external-reference")
     def test_missing_external_material_is_an_error(self):
@@ -1111,8 +1108,12 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertIn("CHK.external.exists", rule_ids(report))
         repository = self.repository()
         self.assertEqual(
-            ("reference/lib/",),
-            repository.missing_external_references(repository.select("module.a")),
+            ["reference/lib/"],
+            [
+                entry.path
+                for entry in repository.external_context("module.a")
+                if not entry.exists
+            ],
         )
         with self.assertRaises(SpecError) as raised:
             resolve_context(repository, "module.a", phase="plan", task="Adapt")
@@ -1239,8 +1240,8 @@ class ModuleImplementationTests(unittest.TestCase):
                 written,
             )
             repository = SpecRepository(root, PACKAGE)
-            target = repository.select("service.transfer")
-            self.assertIn("app/helper.py", repository.implementation_files(target))
+            target = repository.module("service.transfer")
+            self.assertIn("app/helper.py", repository.bound_files(target))
             self.assertEqual(
                 "realization.transfer.calculation",
                 repository.realization_for_path(target, "app/helper.py").id,

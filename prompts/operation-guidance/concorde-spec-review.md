@@ -22,6 +22,10 @@ and unresolved comparisons rather than assuming consistency. Reviewers have no w
 credential grants. The host persists review reports separately from reviewer authority.
 
 A managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.
+In a managed change the scope adds the Modules a changed promise concerns: those selecting a changed
+document whole and those referencing a changed definition. A `relies_on` narrowing of unchanged
+nodes is not concerned. For the change's own Module every changed document of the candidate counts,
+so every Module the change edits is reviewed.
 Do not claim this compares against another branch or a merge base. Report the returned review
 coverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do
 not authorize repairs. describe-policy previews grants without launching agents or persisting

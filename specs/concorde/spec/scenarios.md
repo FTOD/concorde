@@ -109,8 +109,8 @@ A newer installed Protocol is adopted only when the developer accepts it with `c
 - GIVEN Module A uses Module B, and B uses Module C
 - AND A includes one document of Module D with a reason
 - WHEN A's Spec context is resolved
-- THEN it contains A's documents, B's documents and the included D document, each with the declaration that selected it
-- AND a document selected by two declarations appears once, listing both
+- THEN it contains A's documents, B's documents and the included D document, each with the relation that selected it: `owns` for A's own, `uses` of B for B's, `includes` of document D for D's
+- AND a document selected by two relations appears once, listing both, and removing either changes the context identity
 - BUT no document of C appears unless A itself selects it
 
 ### scenario.spec.reference-invalid — Unresolved or misplaced relations
@@ -221,7 +221,8 @@ comment in an implementation document is checked by the Graph Spec check instead
 - GIVEN two Modules that each bind the same file, one exactly and one through a directory entry
 - WHEN the repository is loaded
 - THEN each Module keeps its own realization entry
-- AND the implemented-by index lists both Modules for that file
+- AND the implemented-by index lists both Modules for that file, and each Module's shared files name the other Module with that file
+- AND a Spec context requested with shares adds the other Module's documents with a `shares` reason naming that file, while the plain Spec context and both write sets stay unchanged
 - BUT within one Module the file belongs to the realization with the longest covering entry
 
 ### scenario.spec.directory-entry — A directory entry binds a whole directory

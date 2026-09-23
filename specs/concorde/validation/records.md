@@ -20,7 +20,10 @@ response; `checks` holds the check results of this run and `outcome` is `failed`
    `blocked` with outcome `invalid_spec` and the answer is `failed`; errors about check inputs are
    quoted in the answer.
 3. It selects the checked Modules: every Module for a direct candidate, otherwise the target's
-   affected Modules. It records their Spec and implementation revisions.
+   affected Modules. For the Module the change is about these include every Module that owns a Spec
+   document member or binds a file differing between the change's `base_commit` and the candidate's
+   deliverable tree, which leaves out local control records and the worktree guidance. It records
+   their Spec and implementation revisions.
 4. With `run_checks`, it runs the configured checks of each checked Module.
 5. For a planned target it stores the check results, the affected revisions, the Spec source digest
    and the Issue store revision in the target's state.
@@ -55,7 +58,7 @@ order and fails with the code of the first one that is not met:
 | *planned target:* every check of the affected Modules passed for its current input digest | `stale_evidence` |
 
 For a direct candidate the required checks are all configured checks of the project; for a planned
-target they are the checks of its affected Modules.
+target they are the checks of its affected Modules, recomputed from the candidate's current files.
 
 ## Check result
 

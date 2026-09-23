@@ -133,7 +133,7 @@ Planning SHALL refuse task authoring unless the target has an accepted plan that
 
 ### req.planning.tasks-admission — Accept only valid new task lists
 
-Planning SHALL accept only nonempty task lists whose tasks are uniquely identified, initially incomplete, disjoint from the reserved identities and targeted at the selected Module, a Module it uses or one of its direct children.
+Planning SHALL accept only nonempty task lists whose tasks are uniquely identified, initially incomplete, disjoint from the reserved identities and targeted at a Module in the selected Module's [change scope](module.md#concept.planning.change-scope).
 
 ### req.planning.task-collision-preserves — Collisions preserve history
 

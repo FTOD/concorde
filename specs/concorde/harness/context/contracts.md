@@ -51,13 +51,13 @@ reading outside the selection.
 
 ## Context snapshot
 
-The snapshot is the data of the private typed value `concorde-context-snapshot`, schema version 6.
+The snapshot is the data of the private typed value `concorde-context-snapshot`, schema version 7.
 It never crosses the public result boundary. All fields are required and unknown fields are
 rejected.
 
 | Field | Content |
 | --- | --- |
-| `schema_version` | `6` |
+| `schema_version` | `7` |
 | `context_id` | `sha256:` digest of the canonical JSON of every other field |
 | `target_id`, `kind` | the selected Module and `module` |
 | `focus_id` | a scenario ID or null |
@@ -65,7 +65,7 @@ rejected.
 | `instructions` | the Agent's rendered instructions, supplied by the caller |
 | `protocol_binding` | the project's bound Protocol `{version, digest}` |
 | `protocol` | `[{path, digest}]` of the Protocol files the worker is given, today `.concorde/protocol/principles.md` and `.concorde/protocol/kinds/module.md` |
-| `spec_resolution` | the Spec Module's record of the Module's `SpecContext`: one source record per document member (identity, owner, path, role, digest, selecting declarations) and the Module's entry; no bodies |
+| `spec_resolution` | the Spec Module's [Spec context record](../../spec/contracts.md#spec-context-records) of the Module's `SpecContext`: one source record per document member (identity, owner, path, role, digest, and every selecting relation) and the Module's entry; no bodies. In phase `implementation` it is requested with `shares`, so it also holds the documents of every other Module binding a file of the Module's implementation scope, each with a `shares` reason |
 | `implementation_entries` | `[{path, entity_id, pending, directory}]`: the Module's realization entries in declaration order, with the realization that declares each |
 | `implementation_files` | `[{path, entity_id, pending}]`: existing files the entries bind, each attributed to the most specific entry, plus exact pending entries |
 | `implementation_artifacts` | `[{id, path, digest}]` of every bound file, only for phases `implementation` and `code-review`; otherwise empty |

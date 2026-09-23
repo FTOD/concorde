@@ -94,7 +94,7 @@ class Checks:
         self.repository = repository
         self.findings: list[Finding] = []
         self.entries = {
-            module.entry: module.id for module in repository.modules.values()
+            module.entry: module.id for module in repository.declarations.values()
         }
 
     def add(self, check: str, source: str, message: str, **keys) -> None:
@@ -134,7 +134,7 @@ class Checks:
             "participates",
         )
         for record in repository.records:
-            module = repository.modules.get(record["id"])
+            module = repository.declarations.get(record["id"])
             if module is None or module.block is None:
                 continue
             if set(record) != set(fields):
@@ -163,7 +163,7 @@ class Checks:
 
     def documents(self) -> None:
         repository = self.repository
-        for module in repository.modules.values():
+        for module in repository.declarations.values():
             entries = [
                 path
                 for path in module.owns
@@ -302,7 +302,7 @@ class Checks:
                     subject=concept.id,
                 )
             elif (
-                concept.owner not in repository.targets[item["owner"]].uses
+                concept.owner not in repository.modules[item["owner"]].uses
                 and concept.owner not in self.ancestors(item["owner"])
                 and item["owner"] not in self.ancestors(concept.owner)
             ):
@@ -316,10 +316,10 @@ class Checks:
                 )
 
     def ancestors(self, module_id: str) -> set[str]:
-        result, current = set(), self.repository.targets[module_id].parent
+        result, current = set(), self.repository.modules[module_id].parent
         while current is not None and current not in result:
             result.add(current)
-            current = self.repository.targets[current].parent
+            current = self.repository.modules[current].parent
         return result
 
     # --- nodes -----------------------------------------------------------------------------
@@ -327,7 +327,7 @@ class Checks:
     def nodes(self) -> None:
         repository = self.repository
         titles: dict[str, list[str]] = {}
-        for module in repository.modules.values():
+        for module in repository.declarations.values():
             titles.setdefault(module.title, []).append(module.id)
         for title, owners in titles.items():
             if len(owners) > 1:
@@ -357,7 +357,7 @@ class Checks:
             if len(identities) > 1:
                 self.add(
                     "CHK.node.title",
-                    repository.targets[owner].primary_document,
+                    repository.modules[owner].primary_document,
                     f"title {title!r} is shared by {', '.join(identities)} of {owner}",
                     subject=identities[0],
                 )
@@ -380,7 +380,7 @@ class Checks:
     def module_relations(self) -> None:
         repository = self.repository
         roots = [
-            target.id for target in repository.targets.values() if target.parent is None
+            target.id for target in repository.modules.values() if target.parent is None
         ]
         if len(roots) != 1:
             self.add(
@@ -388,7 +388,7 @@ class Checks:
                 repository.registry_path,
                 f"exactly one Module should have no parent; found {roots}",
             )
-        for module in repository.modules.values():
+        for module in repository.declarations.values():
             source = metadata_path(module.entry)
             used = Counter(item["target"] for item in module.uses)
             for target, count in used.items():
@@ -622,7 +622,7 @@ class Checks:
         self.collisions(contrasts)
 
     def node_type(self, identity: str) -> str | None:
-        if identity in self.repository.modules:
+        if identity in self.repository.declarations:
             return "module"
         node = self.repository.nodes.get(identity)
         return node.type if node else None
@@ -634,7 +634,7 @@ class Checks:
             named.setdefault(normalize_title(concept.title), []).append(
                 (concept.id, concept.owner)
             )
-        for module in repository.modules.values():
+        for module in repository.declarations.values():
             named.setdefault(normalize_title(module.title), []).append(
                 (module.id, module.id)
             )
@@ -643,7 +643,10 @@ class Checks:
                 for second, second_owner in items[index + 1 :]:
                     if first_owner == second_owner:
                         continue
-                    if first in repository.modules and second in repository.modules:
+                    if (
+                        first in repository.declarations
+                        and second in repository.declarations
+                    ):
                         continue
                     if frozenset((first, second)) not in contrasts:
                         self.add(
@@ -661,9 +664,9 @@ class Checks:
         repository = self.repository
         members = set(repository.source_documents)
         outputs = generated_outputs(repository.root)
-        for module in repository.modules.values():
+        for module in repository.declarations.values():
             listed: Counter = Counter()
-            for realization in repository.realizations(repository.targets[module.id]):
+            for realization in repository.realizations(repository.modules[module.id]):
                 source = metadata_path(realization.document)
                 listed.update(realization.entries)
                 for entry in realization.pending:
@@ -727,10 +730,12 @@ class Checks:
         files, links = tracked
         external = [
             entry
-            for target in repository.targets.values()
-            for entry in repository.external_references(target)
+            for target in repository.modules.values()
+            for entry in repository.external_inclusions(target)
         ]
-        entries = list(repository.file_users)
+        entries = [
+            entry for module in repository.modules.values() for entry in module.files
+        ]
         for path in files:
             if (
                 path in members
@@ -755,11 +760,11 @@ class Checks:
         tracked = version_controlled(repository.root)
         members = set(repository.source_documents)
         entries = [
-            entry for target in repository.targets.values() for entry in target.files
+            entry for target in repository.modules.values() for entry in target.files
         ]
-        for module in repository.modules.values():
+        for module in repository.declarations.values():
             source = metadata_path(module.entry)
-            for entry in repository.external_references(repository.targets[module.id]):
+            for entry in repository.external_inclusions(repository.modules[module.id]):
                 if not entry_exists(repository.root, entry):
                     self.add(
                         "CHK.external.exists",
@@ -798,7 +803,7 @@ class Checks:
     def participation(self) -> None:
         repository = self.repository
         declared = []
-        for module in repository.modules.values():
+        for module in repository.declarations.values():
             source = metadata_path(module.entry)
             keys = Counter(
                 (item["contract"], item["peer"], item["role"])
@@ -828,7 +833,7 @@ class Checks:
                     )
                 if (
                     item["peer"] != "external"
-                    and item["peer"] not in repository.modules
+                    and item["peer"] not in repository.declarations
                 ):
                     self.add(
                         "CHK.relation.endpoints",
@@ -838,7 +843,10 @@ class Checks:
                     )
                 declared.append((module.id, item))
         for owner, item in declared:
-            if item["peer"] == "external" or item["peer"] not in repository.modules:
+            if (
+                item["peer"] == "external"
+                or item["peer"] not in repository.declarations
+            ):
                 continue
             if not any(
                 other_owner == item["peer"]
@@ -850,7 +858,7 @@ class Checks:
             ):
                 self.add(
                     "CHK.participates.complementary",
-                    metadata_path(repository.modules[owner].entry),
+                    metadata_path(repository.declarations[owner].entry),
                     f"{owner} participates in {item['contract']} with {item['peer']}, which declares "
                     "no complementary participation",
                     subject=owner,
@@ -865,7 +873,7 @@ class Checks:
             for relation in repository.metadata_relations
             if relation["type"] == "relates"
         }
-        for module in repository.modules.values():
+        for module in repository.declarations.values():
             for item in module.uses:
                 relates.add(("uses", module.id, item["target"]))
             for item in module.contains:
@@ -900,11 +908,13 @@ class Checks:
             if node.owner == owner and node.title == text
         ]
         matches += [
-            module.id for module in repository.modules.values() if module.title == text
+            module.id
+            for module in repository.declarations.values()
+            if module.title == text
         ]
         if " / " in text:
             module_title, node_title = (part.strip() for part in text.split(" / ", 1))
-            for module in repository.modules.values():
+            for module in repository.declarations.values():
                 if module.title != module_title:
                     continue
                 matches += [
@@ -974,8 +984,8 @@ class Checks:
 
     def reconciliation(self) -> None:
         repository = self.repository
-        for module in repository.modules.values():
-            target = repository.targets[module.id]
+        for module in repository.declarations.values():
+            target = repository.modules[module.id]
             context = set(repository._context_paths(target))
             owned = set(module.owns)
             requires: list[tuple[str, str, str]] = []
@@ -998,8 +1008,10 @@ class Checks:
                 if item["contract"] in repository.contract_nodes:
                     requires.append((item["contract"], module.entry, "participates"))
             for identity, source, kind in requires:
-                if identity in repository.modules:
-                    satisfied = bool(context & set(repository.modules[identity].owns))
+                if identity in repository.declarations:
+                    satisfied = bool(
+                        context & set(repository.declarations[identity].owns)
+                    )
                 else:
                     definer = repository.definer(identity)
                     satisfied = definer is None or definer in context
@@ -1053,10 +1065,10 @@ class Checks:
                 )
         listed: dict[str, set[str]] = {}
         realized: set[str] = set()
-        for target in repository.targets.values():
+        for target in repository.modules.values():
             if target.files:
                 realized.add(target.id)
-            for file in repository.implementation_files(target):
+            for file in repository.bound_files(target):
                 listed.setdefault(file, set()).add(target.id)
         try:
             declarations = scan_declarations(repository.root, listed)
@@ -1240,7 +1252,7 @@ def module_dependency_findings(
 
 def definition_ids(repository: DocumentUnitRepository) -> set[str]:
     """Every Module and scenario identity a reflection may be attributed to."""
-    return set(repository.targets) | set(repository.scenario_nodes)
+    return set(repository.modules) | set(repository.scenario_nodes)
 
 
 def check_input_findings(
@@ -1290,9 +1302,9 @@ def validate_repository(
             _defer_document_admission=True,
         )
         if target_id and target_id != ".":
-            repository.select(target_id)
+            repository.module(target_id)
         findings.extend(check_input_findings(repository, inputs))
-        for target in repository.targets.values():
+        for target in repository.modules.values():
             artifacts.extend(
                 member
                 for member in target.sources

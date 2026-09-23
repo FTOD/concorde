@@ -48,13 +48,19 @@ profile of the Agent it is about to run.
 
 For example, when `concorde-code-review` reviews Module `module.checkout`, the host freezes a
 snapshot for phase `code-review`. The snapshot lists every document in the Module's `SpecContext`
-with its owner, path, byte digest and the declarations that selected it; the names of every file
+with its owner, path, byte digest and the relations that selected it; the names of every file
 in its `ImplementationContext`; one digest per entry of its `ExternalContext`; the path and digest
 of every file in its `ImplementationScope`, because code review is a code phase; the Protocol files
 the project is bound to; the task, focus and constraints; and the current workspace facts. The
 snapshot's identity is the SHA-256 digest of all of that, so any change to any input gives a
 different snapshot. A planner for the same Module gets the same Spec sets but only the names of
 the implementation files, never their contents.
+
+A programmer gets one addition. When another Module binds a file in the programmer's
+`ImplementationScope`, a change to that file can break the other Module's promises, so the
+snapshot for phase `implementation` also lists every document the other Module owns, recorded with
+the relation `shares` and the shared files. The programmer reads them like any selected document;
+they add nothing it may write.
 
 A scenario focus changes the question, not the context: a snapshot focused on one scenario selects
 the whole context of the scenario's owning Module.
@@ -107,7 +113,7 @@ the Harness is at an early stage and does not yet confine native Agents to them:
 
 | Boundary set | In the snapshot | Reaches a native Agent as | Enforced today |
 | --- | --- | --- | --- |
-| `SpecContext` | every selected document, with digests and selecting declarations | copies in its capsule | Not confined: the capsule is the working directory, but the Agent's file tools can name other paths. A recheck rejects the result if any selected byte changed. |
+| `SpecContext` | every selected document, with digests and selecting relations; for the programmer also the documents of Modules sharing its files | copies in its capsule | Not confined: the capsule is the working directory, but the Agent's file tools can name other paths. A recheck rejects the result if any selected byte changed. |
 | `ExternalContext` | one tree digest per external inclusion | copies in the capsule, only for profiles that read external references | Not confined; changes are detected by the recheck. |
 | `ImplementationContext` | the declared entries and bound file names | names in `context.json` | Names only; contents are withheld from non-code phases by delivery. |
 | `ImplementationScope` | paths and digests, code phases only | copies for a code review; the project worktree and intended write paths for the programmer | Not confined: the programmer's writes and shell are limited by its instructions, not by the operating system. |

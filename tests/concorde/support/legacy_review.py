@@ -54,12 +54,9 @@ def legacy_issue_review_scope(run, mode: str) -> dict:
 
     affected_ids = set(components) if mode == "code" else set()
     allowed = {
-        run.target.id,
-        *run.target.uses,
+        *current_review.change_scope(run.repository, run.target.id),
         *affected_ids,
         *current_review.spec_consumers(run),
-        *(target.id for target in run.repository.covering_modules(run.target)),
-        *(child.id for child in run.repository.children(run.target)),
     }
     retained = (
         (change or {}).get("shared_spec_reviews", {}).get(run.target.id, {})
@@ -80,7 +77,7 @@ def legacy_issue_review_scope(run, mode: str) -> dict:
         target_id, record = item
         if target_id == run.target.id:
             return None
-        target = run.repository.select(target_id)
+        target = run.repository.module(target_id)
         if target.id not in allowed:
             raise SpecError(
                 "review target is outside declared composition, dependencies and implementation impact",
@@ -239,7 +236,7 @@ def review(run, mode: str) -> dict:
                 target=run.target,
                 target_id=run.target.id,
                 implementation=(
-                    tuple(run.repository.implementation_files(run.target))
+                    tuple(run.repository.bound_files(run.target))
                     if agent.workspace == "project"
                     else None
                 ),

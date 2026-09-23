@@ -255,9 +255,7 @@ class ReviewTests(unittest.TestCase):
             run = self.invocation()
             # This consumer binds application code, not the Framework scheduler.
             self.assertTrue(
-                set(schedulers).isdisjoint(
-                    run.repository.implementation_files(run.target)
-                )
+                set(schedulers).isdisjoint(run.repository.bound_files(run.target))
             )
             before, _ = inputs(run, mode)
             accepted = current(run, mode, required=True)
@@ -1554,7 +1552,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual((self.root / reference["path"]).read_text(), state["plan"])
         repository = SpecRepository(self.root, PACKAGE)
         self.assertEqual(
-            target_revision(repository, repository.select(self.task["target_id"])),
+            target_revision(repository, repository.module(self.task["target_id"])),
             state["spec_digest"],
         )
         self.assertEqual(

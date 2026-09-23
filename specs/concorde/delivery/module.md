@@ -132,7 +132,10 @@ explained below.
 **Validation** decides whether a candidate is [ready](../validation/module.md#concept.validation.ready).
 Delivery requires the candidate's status to be ready with a recorded validated tree, and reruns
 Validation's [completion check](../validation/requirements.md#req.validation.completion-gates)
-before building anything. A failure there stops delivery before any branch changes.
+before building anything. A failure there stops delivery before any branch changes. Because that
+check covers every Module a multi-Module change edits in its one candidate, delivering the
+candidate is the single step that lands all of them together; Delivery never delivers part of a
+candidate.
 
 <a id="uses-harness-worktrees"></a>
 

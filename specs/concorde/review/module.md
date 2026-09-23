@@ -84,13 +84,30 @@ A `describe-policy` request previews the scope and returns `described` without r
 <a id="concept.review.scope"></a>
 
 One request often reviews more than one Module, because a change to one Module can break others.
-For a Spec review, the scope also contains every Module whose Spec context selects one of the
-selected Module's documents, both now and at the change's starting commit; each is asked whether it
-still works with the changed Spec. For a code review, the scope contains every other Module that
-binds a file of the selected Module that changed since the change started, and every component whose
-work the change recorded for this Module. Each of them is reviewed against its own Spec. A Module
-with no bound files receives no local code review; its code review consists of its components'
-reviews, and with no components it is unsupported.
+For a Spec review inside a managed change, the Host compares the changed documents between the
+change's starting commit and the candidate, definition by definition: the section defining each
+requirement, scenario and contract, each concept's definition row, record and explanation, and the
+entry's `module` block. The scope then contains every Module that selects a changed document
+whole, through ownership, a `contains` or `uses` without `relies_on`, or an `includes`, and every
+Module whose declarations rely on, import, narrow, supersede, relate to or participate in a changed
+definition. A Module that narrowed its `uses` to promises that did not change is left out, even
+though it reads the changed document. Each member is asked whether it still works with the changed
+Spec. Without a managed change or a starting commit, every Module whose Spec context selects one of
+the selected Module's documents is a member.
+
+For a code review, the scope contains every other Module that binds a file of the selected Module
+that changed since the change started, and every component whose work the change recorded for this
+Module. Each of them is reviewed against its own Spec. A Module with no bound files receives no
+local code review; its code review consists of its components' reviews, and with no components it
+is unsupported.
+
+One change may have to edit several Modules together, for example a contract's provider and every
+participant when the contract's version rises. When the reviewed Module is the one the managed
+change is about, its scope therefore looks at the whole candidate rather than at its own files: the
+Spec review compares every changed document of the candidate, so each Module whose Spec the change
+edits is a member, and the code review includes every Module binding a file the candidate changed.
+The change's required reviews then cover every Module it edits, and delivering the one candidate is
+the atomic step.
 
 <a id="concept.review.required-review"></a>
 
@@ -228,12 +245,16 @@ does not resolve makes the older result unusable.
 <a id="uses-spec"></a>
 
 **Spec tooling** loads the registry and the Module declarations. Review asks it which Modules select a
-document, which Modules bind a file, which files a Module binds and what a Module's Spec context is.
-Without a structurally valid project, Review cannot compute a scope and refuses the request.
+document, which declarations reference a node, which Modules bind a file, which files a Module binds,
+what a Module's Spec context is, and which Modules a change of the selected Module may edit. It also
+loads the Specs at the change's starting commit from Git objects, so the definitions of both
+revisions can be compared. Without a structurally valid project, Review cannot compute a scope and
+refuses the request.
 
 <a id="uses-implementation"></a>
 
-**Implementation** records component work: tasks a parent Module handed to a child or provider.
+**Implementation** records component work: tasks a Module handed to another Module that its change
+must edit with it, such as a child, a provider or a contract participant.
 Review reads the recorded components of the selected Module and asks each one about the task
 Implementation derived for it. Review never starts or continues component work.
 

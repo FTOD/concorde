@@ -33,7 +33,7 @@ class Invocation:
             host,
         )
         self.repository = SpecRepository(host.project_root, host.package_root)
-        self.target = self.repository.select(task["target_id"], task.get("focus_id"))
+        self.target = self.repository.module(task["target_id"], task.get("focus_id"))
         change = read_change(host.project_root)
         if task.get("change_id") is not None and (
             change is None or task["change_id"] != change["change_id"]

@@ -712,7 +712,8 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.registry"
+            "concept.spec.registry",
+            "concept.spec.impact-index"
           ]
         },
         {
@@ -772,6 +773,7 @@
           "relies_on": [
             "concept.planning.plan",
             "concept.planning.task",
+            "concept.planning.change-scope",
             "req.planning.tasks-admission"
           ]
         },

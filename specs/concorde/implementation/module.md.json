@@ -20,6 +20,7 @@
         "relies_on": [
           "concept.planning.plan",
           "concept.planning.task",
+          "concept.planning.change-scope",
           "req.planning.tasks-admission"
         ]
       },
@@ -154,6 +155,7 @@
         "tests/concorde/harness/test_native_implementation_review.py",
         "tests/concorde/harness/test_worker_binding.py",
         "tests/concorde/issues/test_scope.py",
+        "tests/concorde/operations/test_change_scope.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/support/native_planning.py"
       ]

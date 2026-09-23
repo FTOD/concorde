@@ -9,6 +9,7 @@ from ..harness.revisions import (
     unconfirmed_files,
 )
 from ..review.review import repair_feedback, require_spec_review
+from ..spec.impact import change_scope
 from ..spec.repository import SpecError
 from ..spec.typed_data import typed, canonical
 from ..spec.validation import validate_repository
@@ -51,23 +52,19 @@ def prepare_implementation(run, *, admitted_inputs=None):
     run.check_state(state)
     if not state["tasks"]:
         raise SpecError("implementation requires tasks", "missing_tasks")
-    allowed = {
-        run.target.id,
-        *run.target.uses,
-        *(child.id for child in run.repository.children(run.target)),
-    }
+    allowed = set(change_scope(run.repository, run.target.id))
     grouped = {}
     for task in state["tasks"]:
         if task["target_id"] not in allowed:
             raise SpecError(
-                "component is not a declared dependency or child", "permission_denied"
+                "component is outside the Module's change scope", "permission_denied"
             )
         grouped.setdefault(task["target_id"], []).append(task)
     local = grouped.pop(run.target.id, [])
     needed, revisions = [], {}
     change = read_change(run.repository.root, required=True)
     for target_id, tasks in grouped.items():
-        component = run.repository.select(target_id)
+        component = run.repository.module(target_id)
         child = change["targets"].get(target_id, {})
         if (
             child.get("task") != component_intent(tasks)

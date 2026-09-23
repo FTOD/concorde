@@ -242,7 +242,7 @@ describe("a project holding only initialization outputs", () => {
         "utf8",
       ),
     );
-    expect(manifest.schema_version).toBe(22);
+    expect(manifest.schema_version).toBe(23);
     expect(manifest.pages).toHaveLength(2);
     expect(manifest.pages[0].route).toBe(
       "/specs/" + module.entry.replace(/^specs\//, "").replace(/\.md$/, ""),

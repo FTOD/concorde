@@ -52,7 +52,7 @@ def _entry_module_title(project_root: Path) -> str | None:
     """The root Module's title (the Module no other Module contains), or None when uninitialized."""
     try:
         repository = SpecRepository(project_root)
-        return repository.targets[repository.entry_target].title
+        return repository.modules[repository.root_module].title
     except (SpecError, TypedDataError, OSError, ValueError, KeyError):
         return None
 

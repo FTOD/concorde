@@ -23,6 +23,31 @@ PATH = {**STRING, "format": "project-path"}
 DIGEST = {**STRING, "pattern": r"^sha256:[0-9a-f]{64}$"}
 ARTIFACT = obj({"id": STRING, "path": PATH, "digest": DIGEST})
 
+# Version of a resolved SpecContext record; 2 records the selecting relation of every source.
+CONTEXT_SCHEMA = 2
+# One relation that selected a context source. ``owns``, ``contains`` and ``uses`` name a Module;
+# ``includes`` also states whether it included a Module or one document; ``shares`` names another
+# Module that binds a file in a code-writing reader's ImplementationScope, with those files.
+SELECTION_REASON = {
+    "anyOf": [
+        obj({"relation": {"enum": ["owns", "contains", "uses"]}, "id": STRING}),
+        obj(
+            {
+                "relation": {"const": "includes"},
+                "kind": {"enum": ["module", "document"]},
+                "id": STRING,
+            }
+        ),
+        obj(
+            {
+                "relation": {"const": "shares"},
+                "id": STRING,
+                "files": array(PATH, unique=True),
+            }
+        ),
+    ]
+}
+
 ISSUE_RESULT_TYPES = frozenset(
     {
         "concorde-agent-stage-result",
@@ -30,7 +55,9 @@ ISSUE_RESULT_TYPES = frozenset(
         "concorde-review-result",
     }
 )
-VERSION_FOUR_TYPES = frozenset(
+# Stage contexts embed the context snapshot; version 5 carries snapshot 7, whose Spec context
+# records the selecting relation of every source.
+STAGE_CONTEXT_TYPES = frozenset(
     {
         "concorde-agent-stage-context",
         "concorde-review-stage-context",
@@ -52,7 +79,7 @@ def type_version(type_id: str) -> int:
     if type_id == "concorde-agent-stage-result":
         return 3
     if type_id == "concorde-context-snapshot":
-        return 6
+        return 7
     if type_id == "concorde-issues-response":
         return 2
     # Version 3 adds the explicit `run_in_primary` opt-in.
@@ -66,8 +93,8 @@ def type_version(type_id: str) -> int:
         "concorde-issues-response",
     }:
         return 3
-    if type_id in VERSION_FOUR_TYPES:
-        return 4
+    if type_id in STAGE_CONTEXT_TYPES:
+        return 5
     if type_id in ISSUE_RESULT_TYPES:
         return 2
     return 1

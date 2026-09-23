@@ -27,6 +27,9 @@ declared `relates`, `uses` and `contains` relations; other diagrams are marked `
 illustrative`. Metadata-only edits affect complete-context identity and evidence just as reading
 edits do.
 
+For the Module a managed change is about, the configured checks cover every Module the candidate
+edits since its base commit, with every Module binding one of their files.
+
 Tests declare verified scenario IDs in their own source. Unknown IDs and unreadable tests are errors;
 uncovered scenarios and tests that the scenario's owner does not bind are warnings. Warnings do not
 by themselves fail validation. No structural result proves reading completeness, semantic

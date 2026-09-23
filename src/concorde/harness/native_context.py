@@ -20,6 +20,7 @@ from types import SimpleNamespace
 from ..distribution.build import load_model_instructions
 from ..issues.references import validate_references
 from ..issues.reporting import reporter_for_invocation
+from ..spec.boundaries import scope_roots
 from ..spec.issue_shapes import REPORT
 from ..spec.repository import SpecError, digest, read_file
 from ..spec.typed_data import DATA_SCHEMAS, canonical, decode, typed
@@ -478,7 +479,9 @@ def _execute(
                                 else []
                             ),
                         ],
-                        "write": list(run.repository.implementation_paths(run.target))
+                        "write": list(
+                            scope_roots(run.repository.implementation_scope(run.target))
+                        )
                         if phase == "implementation"
                         else [],
                         "tools": list(agent.tools),
@@ -563,7 +566,9 @@ def _execute(
                             "native_workspace": str(run.repository.root),
                             "intended_write_paths": [
                                 str(run.repository.root / p)
-                                for p in run.repository.implementation_paths(run.target)
+                                for p in scope_roots(
+                                    run.repository.implementation_scope(run.target)
+                                )
                             ],
                             "file_scope_enforcement": "prompt-level",
                             "network_and_credentials": "model policy, not OS confinement",

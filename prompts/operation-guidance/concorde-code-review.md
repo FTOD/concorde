@@ -19,6 +19,7 @@ external references and scoped changes. Reviewers have no write, network or cred
 The host persists review reports separately from reviewer authority.
 
 A managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.
+For the change's own Module the scope includes every Module binding a file the candidate changed.
 Do not claim this compares against another branch or a merge base. Report the returned review
 coverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do
 not authorize repairs. describe-policy previews grants without launching agents or persisting

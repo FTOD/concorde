@@ -53,10 +53,11 @@ See [preserve task identity and acceptance](programmer.md#req.implementation.adm
 
 ### scenario.implementation.caller-components — Component work returns to the user session
 
-- GIVEN an accepted task list with local tasks and tasks for a Module that the target uses or directly contains
+- GIVEN an accepted task list with local tasks and tasks for another Module of the target's change scope, such as the other participant of a contract whose version the change raises
 - WHEN implementation finds no current completed work for that component
 - THEN it returns `unsupported` with the component's target and derived task text, without starting any programmer
 - AND after the user session completes that work for the component, a retry checks its task text, constraints, completion and current Spec and implementation before the local programmer starts
+- AND the component's programmer receives only the component's own files, in the same candidate
 - BUT after a later change to the component's Spec or code, its work must be completed again before the parent's next run
 
 ### scenario.implementation.component-stale-parent — Component work needs the parent's current plan

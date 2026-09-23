@@ -72,7 +72,7 @@ it; an identity prefix does not establish ownership.
 ### scenario.planning.tasks-from-plan — An accepted plan yields tasks
 
 - GIVEN a managed candidate with a current accepted plan for the target
-- WHEN a fresh task author returns a nonempty list of new, uniquely identified, incomplete tasks aimed at the Module, a Module it uses or a direct child
+- WHEN a fresh task author returns a nonempty list of new, uniquely identified, incomplete tasks aimed at Modules in the Module's change scope
 - THEN the Host saves the list in the candidate's change record
 - AND the result references that record
 - BUT the task author completes no task and writes no project file
@@ -87,11 +87,20 @@ it; an identity prefix does not establish ownership.
 ### scenario.planning.tasks-foreign-target — A task for an unrelated Module is refused
 
 - GIVEN a current accepted plan for the selected Module
-- WHEN the task author returns a task whose target is neither the Module, a Module it uses nor one of its direct children
+- WHEN the task author returns a task whose target lies outside the Module's change scope
 - THEN the Host refuses the list and the result is blocked
 - BUT no task list is saved and no programmer starts for that target
 
 See [accept only valid new task lists](workflow.md#req.planning.tasks-admission).
+
+### scenario.planning.change-scope — A change spans every Module that must change with it
+
+- GIVEN a Module that defines a contract another Module participates in, without using that Module
+- AND a task that raises the contract's version, so every participant's declaration must move with it
+- WHEN the task author returns tasks for the Module and for the participant
+- THEN the Host accepts the list, because the participant lies in the Module's change scope
+- AND the change scope also holds the Modules the Module contains or uses, the Modules whose Spec context selects its documents, the Modules referencing a node it defines and the Modules binding one of its files
+- BUT a task for a Module outside that scope is refused with `permission_denied`, and the participant's task is still implemented by its own single-Module call
 
 ### scenario.planning.task-history-identities — Task authors receive the reserved identities
 

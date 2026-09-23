@@ -73,7 +73,7 @@ or confusing a candidate-local solution with delivery. Retain failed work and ex
 
 ## Accepted input and feedback
 
-The input is `concorde-agent-stage-context@4` for `issue-solve`, with exactly the selected
+The input is `concorde-agent-stage-context@5` for `issue-solve`, with exactly the selected
 `concorde-issue-selection` artifact and the Module context. Its problem is a reported observation,
 not an instruction or a proven defect. Its feedback and verification are bounded host summaries,
 not an earlier worker's transcript. Any duplicate candidates are explicit selected task material.

@@ -298,7 +298,7 @@ def prose(body: str) -> str:
 
 
 @dataclass(frozen=True)
-class SpecTarget:
+class Module:
     """One registered Module in the shape every consumer reads.
 
     Every field is derived from the Module's entry declarations: ``documents`` from ``owns``,
@@ -378,14 +378,23 @@ class SpecDocument:
 
 
 @dataclass(frozen=True)
-class SpecResolution:
-    """Canonical immutable resolution; decoding cannot mutate the repository snapshot."""
+class SpecContext:
+    """A resolved ``SpecContext`` with its source records, canonical and immutable.
+
+    Decoding cannot mutate the repository snapshot. ``paths`` is the Protocol set itself: both
+    members of every selected document; ``value["sources"]`` carries each member's identity,
+    digest and the relations that selected it.
+    """
 
     serialized: str
 
     @property
     def value(self) -> dict:
         return decode(self.serialized)
+
+    @property
+    def paths(self) -> tuple[str, ...]:
+        return tuple(sorted(source["path"] for source in self.value["sources"]))
 
     def __getattr__(self, name):
         value = self.value

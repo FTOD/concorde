@@ -65,3 +65,21 @@ running a reviewer or saving a report.
 - AND a missing, corrupt, incomplete, blocking, empty-coverage or unrelated result does not satisfy the requirement
 - AND an unresolved blocker for the same scope prevents reusing an earlier result
 - BUT an explicitly requested review always runs fresh reviewers and keeps the earlier reports as history
+
+### scenario.review.promise-impact — Only Modules relying on a changed promise are consumers
+
+- GIVEN a managed change that edits a Module's documents
+- AND one consumer uses the Module without `relies_on`, another narrows its `uses` to one concept with `relies_on`
+- WHEN the Spec review scope is computed
+- THEN the whole-document consumer is a member whenever a document it selects changed
+- AND the narrowed consumer is a member only when a node it relies on or references changed its definition
+- AND a changed `module` block concerns the Modules that relate to that Module
+- BUT an unchanged document concerns nobody, whoever selects it
+
+### scenario.review.multi-module — The change's own reviews cover every Module it edits
+
+- GIVEN a managed change about one Module whose candidate also edits another Module's Spec and code, such as the consumer of a contract whose version the change raises
+- WHEN the scope of a Spec review or code review of the change's Module is computed
+- THEN the Spec review includes the edited Module and every Module the changed definitions concern
+- AND the code review includes every Module binding a file the candidate changed
+- BUT the Host's worktree guidance and local control records do not count as edits

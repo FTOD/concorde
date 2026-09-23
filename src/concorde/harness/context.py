@@ -37,6 +37,9 @@ PHASES = frozenset(
     }
 )
 CODE_PHASES = frozenset({"implementation", "code-review"})
+# Phases that write code. Their Spec context also holds the documents of every other Module that
+# binds a file in the task Module's ImplementationScope (Protocol shared-file rule), read-only.
+CODE_WRITING_PHASES = frozenset({"implementation"})
 # The Protocol copy the installer places in the project and the configuration binds, granted in
 # place like any other project file.
 PROTOCOL_PATHS = (
@@ -90,11 +93,9 @@ def _implementation_entries(repository: SpecRepository, target) -> list[dict]:
 
 def _implementation_files(repository: SpecRepository, target) -> list[dict]:
     """The Module's ImplementationContext: names of existing bound files plus pending exact entries."""
-    from ..spec.boundaries import implementation_context
-
     realizations = repository.realization_entries(target)
     names: list[dict] = []
-    for path in implementation_context(repository, target.id):
+    for path in repository.implementation_context(target):
         entry = most_specific(realizations, path)
         realization = realizations[entry] if entry else None
         names.append(
@@ -114,20 +115,21 @@ def _implementation_files(repository: SpecRepository, target) -> list[dict]:
 def _implementation_artifacts(repository: SpecRepository, target) -> list[dict]:
     return [
         {"id": path, "path": path, "digest": digest(read_file(repository.root, path))}
-        for path in repository.implementation_files(target)
+        for path in repository.bound_files(target)
     ]
 
 
 def _external_references(repository: SpecRepository, target) -> list[dict]:
-    """The Module's external references with one tree digest each; bytes are granted, never embedded."""
-    missing = repository.missing_external_references(target)
+    """The Module's ExternalContext with one tree digest per entry; bytes are granted, never embedded."""
+    entries = repository.external_context(target)
+    missing = [entry.path for entry in entries if not entry.exists]
     if missing:
         raise SpecError(
             f"external reference is not checked out: {', '.join(missing)}",
             "invalid_reference",
             target.id,
         )
-    return repository.external_reference_records(target)
+    return [entry.record() for entry in entries]
 
 
 def reference_grants(records: list[dict]) -> tuple[str, ...]:
@@ -254,7 +256,7 @@ def resolve_context(
             validate_worker_artifacts(agent, stage_inputs, require_all=False)
         except ValueError as error:
             raise SpecError(str(error), "incompatible_handoff") from error
-    target = repository.select(target_id, focus_id)
+    target = repository.module(target_id, focus_id)
     from ..spec.typed_data import validate_typed
 
     for item in stage_inputs:
@@ -278,12 +280,14 @@ def resolve_context(
         }:
             raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
-    resolution = repository.spec_context(focus_id or target.id).value
+    resolution = repository.spec_context(
+        focus_id or target.id, shares=phase in CODE_WRITING_PHASES
+    ).value
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
 
     manifest = {
-        "schema_version": 6,
+        "schema_version": 7,
         "target_id": target.id,
         "kind": target.kind,
         "focus_id": focus_id,
@@ -353,11 +357,14 @@ def recheck_context(
         else None,
         document_overrides=repository.document_overrides,
     )
-    target = current.select(value["target_id"], value["focus_id"])
+    target = current.module(value["target_id"], value["focus_id"])
     if current.config["protocol"] != value["protocol_binding"]:
         raise SpecError("context Protocol binding has changed", "stale_context")
     if (
-        current.spec_context(value["focus_id"] or target.id).value
+        current.spec_context(
+            value["focus_id"] or target.id,
+            shares=value["phase"] in CODE_WRITING_PHASES,
+        ).value
         != value["spec_resolution"]
     ):
         raise SpecError(

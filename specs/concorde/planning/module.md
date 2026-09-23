@@ -16,6 +16,7 @@ never starts implementation; the user session decides what happens next.
 | Context assessment | A worker's judgement, accepted by the Host, of whether the selected Module's Spec says enough to plan one particular task. |
 | Plan | The accepted prose description of how to carry out one task for one Module, bound to that Module's Spec revision and to the task as stated. |
 | Task | One item of implementation work derived from an accepted plan, with an identity, a target Module, a description, an acceptance condition and a completion flag. |
+| Change scope | The Modules that one change owned by a Module may edit, because changing that Module can require them to change with it. |
 | [Capability](../vocabulary.md#concept.concorde.capability) | |
 | [User session](../vocabulary.md#concept.concorde.user-session) | |
 | [Host](../vocabulary.md#concept.concorde.host) | |
@@ -75,8 +76,24 @@ and proposes a list such as:
 ```
 
 The Host accepts the list only if it is nonempty, every **task** is new and incomplete, and every
-target is the Module itself, a Module it uses or one of its direct children. The list is saved in
-the candidate's change record, where `concorde-implement` finds it.
+target lies in the Module's **change scope**. The list is saved in the candidate's change record,
+where `concorde-implement` finds it.
+
+<a id="concept.planning.change-scope"></a>
+
+Some changes are only valid when other Modules change with them: raising a contract's version
+requires every participant to move to the new version, and retiring a concept requires its
+importers to follow. The **change scope** of a Module is therefore wider than its own boundary. It
+holds the Module itself, the Modules it contains or uses, every Module whose Spec context selects
+one of its documents (its consumers, its parent and Modules that include its documents), every
+Module that participates in a contract it defines or participates in and the owner of that
+contract, every Module whose declarations import, narrow, supersede, relate to, rely on or
+participate in a node it defines, and every Module that binds one of its files. It is one level deep and computed from declarations
+alone. A billing Module whose payment contract a checkout Module requires may therefore plan a
+task for checkout, even though billing does not use checkout. Each such task is still carried out
+by its own Module's single-Module implementation in the same candidate, and validating the
+change's Module then covers every Module the candidate edited, so delivering the one candidate
+lands the whole change at once.
 
 ### When planning stops
 
@@ -266,7 +283,9 @@ functions, under its lock, and refuses work when no managed candidate exists.
 
 **Spec** resolves the target Module and its revision from the
 [registry](../spec/module.md#concept.spec.registry). Planning binds plans to that revision and treats
-any change of it as a reason to plan again.
+any change of it as a reason to plan again. It also computes the Module's change scope from the
+Spec tooling's [impact indexes](../spec/module.md#concept.spec.impact-index) and relations, and
+refuses a task list with a target outside it.
 
 <a id="uses-issues"></a>
 

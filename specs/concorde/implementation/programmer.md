@@ -15,8 +15,9 @@ Preparing `concorde-implement` runs, in order:
 3. The candidate check: `missing_change` without a managed candidate; `stale_context` when the
    Module's Spec revision differs from the plan's; `incompatible_handoff` when the request's task or
    constraints differ from the plan's; `missing_tasks` when the task list is empty.
-4. The task split: every task must target the Module, a Module it uses or a direct child, else
-   `permission_denied`. Tasks for other Modules are grouped by target into component work.
+4. The task split: every task must target a Module in the Module's
+   [change scope](../planning/module.md#concept.planning.change-scope), else `permission_denied`.
+   Tasks for other Modules are grouped by target into component work.
 5. The component check: for each component, the change record must hold that component's work with
    the task text derived from its tasks, the same constraints, the component's current Spec
    revision, a nonempty all-complete task list and the component's current implementation digest.

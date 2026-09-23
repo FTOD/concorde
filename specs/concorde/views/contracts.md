@@ -238,7 +238,7 @@ A successful build writes `build-manifest.json` at the root of the published sit
 
 ```json
 {
-  "schema_version": 22,
+  "schema_version": 23,
   "sourceDigest": "sha256:…",
   "pages": [
     {
@@ -250,19 +250,20 @@ A successful build writes `build-manifest.json` at the root of the published sit
       "readingCollection": "module",
       "owner": "module.views",
       "includedBy": [
-        {"moduleId": "module.concorde", "reasons": [{"kind": "contains", "id": "module.views"}]},
-        {"moduleId": "module.views", "reasons": [{"kind": "owns", "id": "module.views"}]}
+        {"moduleId": "module.concorde", "reasons": [{"relation": "contains", "id": "module.views"}]},
+        {"moduleId": "module.views", "reasons": [{"relation": "owns", "id": "module.views"}]}
       ]
     }
   ]
 }
 ```
 
-`schema_version` is 22. `pages` has one entry per registered document in registry order, with
+`schema_version` is 23. `pages` has one entry per registered document in registry order, with
 exactly the fields shown, in that order. `contentDigest` and `metadataDigest` hash the exact bytes
 of the reading and metadata files. `includedBy` lists, in registry order, each Module whose
-one-level Spec context selects the document, with its reasons sorted by `kind` and then `id`;
-`kind` is `owns`, `contains`, `uses` or `includes`, and `id` is the Module or document that the
-relation names. `sourceDigest` is defined in the [pipeline](pipeline.md#source-digest). A manifest
+one-level Spec context selects the document, with its reasons sorted by `relation`, `kind` and
+`id`; `relation` is `owns`, `contains`, `uses` or `includes`, an `includes` reason also has `kind`
+`module` or `document`, and `id` is the Module or document that the relation names. This is the
+same reason shape as the Spec tooling's context records. `sourceDigest` is defined in the [pipeline](pipeline.md#source-digest). A manifest
 of any other version, or with any difference in these fields, is stale and requires a fresh build.
 The manifest records inputs only and makes no claim that code satisfies the Specs.

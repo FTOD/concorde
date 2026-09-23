@@ -199,18 +199,34 @@ cancelled or limit-exhausted reviewer also marks the invocation and the change s
 The scope is computed by the review service when the scope is prepared and recomputed before
 acceptance; any difference makes the scope stale.
 
-- **Spec review.** The selected Module, then every Module whose Spec context selects one of its
-  documents in the current Specs, every Module that did so at the change's `base_commit`, every
-  consumer already recorded for this Module, and every recorded component. A consumer is asked the
-  task `Review this Module's reliance on the changed canonical Spec. <task>`.
+- **Spec review.** The selected Module, then its promise-level consumers, every consumer already
+  recorded for this Module, and every recorded component. With a managed change and a readable
+  registry at its `base_commit`, the Host loads the Specs of that commit from Git objects and
+  compares them with the candidate's. The compared documents are every document of the candidate
+  when the selected Module is the one the change is about (`target_id`), otherwise the documents
+  the selected Module owns in either revision. A document is changed when either member's bytes
+  differ or it exists in only one revision. A consumer is a Module that, in either revision,
+  selects a changed document whole (it owns it, `contains` or `uses` its owner without `relies_on`,
+  or `includes` its owner or the document), or is named by `referenced-by` for a node whose
+  definition changed. A node's definition is, with the defining document's path: for a requirement
+  or scenario, its heading section; for a contract, its parsed fence and its anchored or enclosing
+  section; for a concept, its metadata record, Terminology definition row and anchor explanation; for
+  a realization, its metadata record; and for a Module, its entry's `module` block. Without a
+  managed change, a `base_commit` or a baseline registry, every Module whose Spec context selects
+  one of the selected Module's current documents is a consumer. A consumer is asked the task
+  `Review this Module's reliance on the changed canonical Spec. <task>`.
 - **Code review.** The selected Module when it binds files, every recorded component that binds
-  files, and every other Module that binds a file of the selected Module that differs from the
-  baseline. Without a baseline, every Module binding one of its files is a member. A peer is asked
-  the task `Check this Module's own contract against the shared implementation change. <task>`.
-  A component is asked the task Implementation derived from the accepted tasks it received.
+  files, and every other Module that binds a changed file. The changed files are those of the
+  selected Module that differ from the baseline, or, when the selected Module is the one the change
+  is about, every file of the candidate's deliverable tree that differs from the `base_commit` and
+  that some Module binds. Without a baseline, every Module sharing one of its files is a member. A
+  peer is asked the task `Check this Module's own contract against the shared implementation
+  change. <task>`. A component is asked the task Implementation derived from the accepted tasks it
+  received.
 
-A recorded component outside the selected Module's children and used Modules is refused with
-`permission_denied`. For code review the Host also binds a scope identity: a digest of the selected
+A recorded component outside the selected Module's change scope (the Modules it contains or uses,
+the participants of its contracts, the Modules referencing its nodes and the Modules binding its
+files) is refused with `permission_denied`. For code review the Host also binds a scope identity: a digest of the selected
 Module's Spec revision, task, focus and constraints. Aggregation refuses with `stale_context` when it
 changed.
 

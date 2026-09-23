@@ -76,7 +76,7 @@ it("writes a manifest after the build and validates the candidate against curren
   } as any);
   await expect(validateScopedBuild(root, outDir)).resolves.toBeUndefined();
   const manifest = readJson(project, "candidate/build-manifest.json");
-  expect(manifest.schema_version).toBe(22);
+  expect(manifest.schema_version).toBe(23);
   expect(manifest.sourceDigest).toBe(registry.sourceDigest);
   expect(manifest.pages[4]).toEqual({
     sourcePath: "specs/audit/module.md",
@@ -89,11 +89,11 @@ it("writes a manifest after the build and validates the candidate against curren
     includedBy: [
       {
         moduleId: "module.bank",
-        reasons: [{ kind: "contains", id: "module.audit" }],
+        reasons: [{ relation: "contains", id: "module.audit" }],
       },
       {
         moduleId: "module.audit",
-        reasons: [{ kind: "owns", id: "module.audit" }],
+        reasons: [{ relation: "owns", id: "module.audit" }],
       },
     ],
   });
@@ -106,7 +106,7 @@ it("writes a manifest after the build and validates the candidate against curren
     /Materialized Spec source identity differs/,
   );
   await expect(validateScopedBuild(root, outDir)).rejects.toThrow(
-    /Build Manifest 22/,
+    /Build Manifest 23/,
   );
 });
 
@@ -239,7 +239,7 @@ it("global data carries page metadata and the root Module without bodies", async
     content: registry,
     actions: { setGlobalData: (value: unknown) => (data = value) },
   } as any);
-  expect(data.schema_version).toBe(22);
+  expect(data.schema_version).toBe(23);
   expect(data.rootModule).toBe("module.bank");
   expect(data.pages).toEqual(
     registry.pages.map(({ content: _content, ...page }) => page),
@@ -463,7 +463,7 @@ it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
     for (const invalid of ["source", "manifest"] as const) {
       failure = invalid;
       await expect(fixtureModule.exports.buildSite()).rejects.toThrow(
-        /Build Manifest 22/,
+        /Build Manifest 23/,
       );
       unchanged();
       put("specs/transfer/requirements.md", source);

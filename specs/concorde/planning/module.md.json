@@ -65,7 +65,8 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.registry"
+          "concept.spec.registry",
+          "concept.spec.impact-index"
         ]
       },
       {
@@ -128,6 +129,12 @@
       "meaning": "#concept.planning.task"
     },
     {
+      "id": "concept.planning.change-scope",
+      "type": "concept",
+      "title": "Change scope",
+      "meaning": "#concept.planning.change-scope"
+    },
+    {
       "id": "realization.planning.capabilities",
       "type": "realization",
       "title": "Planning capability declarations",
@@ -171,6 +178,7 @@
         "tests/concorde/harness/test_native_context_public.py",
         "tests/concorde/harness/test_native_planning_public.py",
         "tests/concorde/issues/test_scope.py",
+        "tests/concorde/operations/test_change_scope.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_specify_loop.py",
         "tests/concorde/support/native_planning.py",

@@ -54,7 +54,7 @@ afterEach(() => rmSync(project.root, { recursive: true, force: true }));
 // verifies: scenario.views.load-registry
 it("loads Modules, composition and one page per registered document", () => {
   const registry = load();
-  expect(registry.schema_version).toBe(22);
+  expect(registry.schema_version).toBe(23);
   expect(registry.rootModule).toBe("module.bank");
   expect(registry.modules.map((m) => m.id)).toEqual([
     "module.bank",
@@ -102,9 +102,9 @@ it("derives which Modules select each document from owns, contains, uses and inc
       page(path).includedBy.map(({ moduleId, reasons }) => [moduleId, reasons]),
     );
   expect(selectedBy("specs/transfer/module.md")).toEqual({
-    "module.bank": [{ kind: "contains", id: "module.transfer" }],
-    "module.transfer": [{ kind: "owns", id: "module.transfer" }],
-    "module.audit": [{ kind: "uses", id: "module.transfer" }],
+    "module.bank": [{ relation: "contains", id: "module.transfer" }],
+    "module.transfer": [{ relation: "owns", id: "module.transfer" }],
+    "module.audit": [{ relation: "uses", id: "module.transfer" }],
   });
   // relies_on narrows the Audit selection to the entry and the documents defining its nodes.
   expect(Object.keys(selectedBy("specs/transfer/requirements.md"))).toEqual([
@@ -123,10 +123,10 @@ it("derives which Modules select each document from owns, contains, uses and inc
   ];
   writeRegistry(project);
   expect(selectedBy("specs/transfer/requirements.md")["module.audit"]).toEqual([
-    { kind: "uses", id: "module.transfer" },
+    { relation: "uses", id: "module.transfer" },
   ]);
   expect(selectedBy("specs/ledger/module.md")["module.audit"]).toEqual([
-    { kind: "includes", id: "module.ledger" },
+    { relation: "includes", kind: "module", id: "module.ledger" },
   ]);
   record("module.audit").uses[0].relies_on = ["req.ledger.unknown"];
   writeRegistry(project);

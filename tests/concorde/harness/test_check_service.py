@@ -34,7 +34,7 @@ class CheckServiceTests(unittest.TestCase):
         self.check_id = config["checks"][0]["id"]
         repository = SpecRepository(self.root, PACKAGE)
         self.run_checks = check_service(
-            repository, repository.select("service.transfer"), "invocation"
+            repository, repository.module("service.transfer"), "invocation"
         )
 
     @verifies("scenario.checks.run-checks-tool")

@@ -11,6 +11,7 @@ from concorde.harness.invocation import Invocation
 from tests.concorde.support.native_planning import OperationHost
 from concorde.harness.admission import run_operation
 from concorde.harness.context import resolve_context
+from concorde.spec.boundaries import scope_roots
 from concorde.spec.changes import apply_files, file_change
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.schema import ContractError, admit
@@ -131,18 +132,16 @@ class BoundaryTests(unittest.TestCase):
         sync_registry(self.root)
         self.assertNotIn("CHK.binds.exists", self.validation_rules())
         repo = SpecRepository(self.root)
-        ledger = repo.select("module.ledger")
-        self.assertEqual(("app/",), repo.implementation_entries(ledger))
-        self.assertEqual(("app",), repo.implementation_paths(ledger))
-        self.assertEqual(
-            ("app/ledger.py", "app/transfer.py"), repo.implementation_files(ledger)
-        )
+        ledger = repo.module("module.ledger")
+        self.assertEqual(("app/",), repo.implementation_scope(ledger))
+        self.assertEqual(("app",), scope_roots(repo.implementation_scope(ledger)))
+        self.assertEqual(("app/ledger.py", "app/transfer.py"), repo.bound_files(ledger))
         realization = repo.realization_for_path(ledger, "app/transfer.py")
         assert realization is not None
         self.assertEqual("realization.ledger.store", realization.id)
         self.assertEqual(
-            ("service.transfer", "module.ledger"),
-            tuple(t.id for t in repo.affected_modules(["app/transfer.py"])),
+            ("module.ledger", "service.transfer"),
+            repo.impact(paths=["app/transfer.py"]),
         )
 
     def test_control_and_spec_paths_cannot_be_bound(self):

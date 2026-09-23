@@ -17,7 +17,12 @@ check log. There is no option to disable the sandbox and no fallback to an unres
 ### req.validation.affected-modules — Shared files are checked for every Module that binds them
 
 Validation SHALL run the configured checks of every Module that binds a file the validated Module
-binds, and of every Module in the project for a direct candidate.
+binds, of every Module the candidate edits when the validated Module is the one the change is
+about, and of every Module in the project for a direct candidate.
+
+A Module the candidate edits owns a Spec document member, or binds a file, that differs from the
+change's starting commit. Each of them brings every Module binding one of its files, as the
+validated Module does.
 
 ### req.validation.deterministic — Validation runs no model
 

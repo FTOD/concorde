@@ -127,7 +127,7 @@ class SpecRepository(DocumentUnitRepository):
             _defer_document_admission=_defer_document_admission,
         )
         for check in checks:
-            if check["module"] not in self.targets:
+            if check["module"] not in self.modules:
                 raise SpecError(
                     f"configured check {check['id']} names an unregistered Module: {check['module']}",
                     "invalid_spec",

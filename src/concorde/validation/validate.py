@@ -18,12 +18,40 @@ from ..harness.invocation import Invocation
 from ..harness.revisions import (
     impact_revisions,
     implementation_digest,
-    implementation_users,
     issues_revision,
     target_revision,
 )
+from ..spec.impact import binding_modules, edited_modules
 from ..spec.repository import SpecError, SpecRepository
 from ..spec.validation import validate_repository
+
+
+def checked_modules(repository, target, *, direct: bool = False) -> tuple:
+    """The Modules whose configured checks and revisions a validation of ``target`` covers.
+
+    A direct candidate covers every Module. The Module a managed change is about covers every
+    Module the candidate edits since the change's base commit, the owners of changed Spec
+    documents and the binders of changed files, so the one candidate is validated as one
+    multi-Module change. Every covered Module brings each Module that binds one of its files.
+    """
+    if direct:
+        return tuple(repository.modules.values())
+    edited = {target.id}
+    change = read_change(repository.root)
+    if change and change.get("target_id") == target.id and change.get("base_commit"):
+        from ..review.review import changed_paths
+
+        edited.update(
+            edited_modules(
+                repository, changed_paths(repository.root, change["base_commit"])
+            )
+        )
+    covered = {
+        module_id for item in edited for module_id in binding_modules(repository, item)
+    }
+    return tuple(
+        module for module in repository.modules.values() if module.id in covered
+    )
 
 
 def validate(run, run_checks: bool = True) -> dict:
@@ -40,7 +68,7 @@ def validate(run, run_checks: bool = True) -> dict:
         confirmed, _ = confirm_pending_files(run.repository.root, run.host.package_root)
         if confirmed:
             run.repository = SpecRepository(run.repository.root, run.host.package_root)
-            run.target = run.repository.select(run.target.id)
+            run.target = run.repository.module(run.target.id)
     before_tree = snapshot_tree(run.repository.root) if run.work_directory else None
     direct_candidate = bool(
         change is not None and not change["targets"] and not run.host.coordinated
@@ -60,10 +88,8 @@ def validate(run, run_checks: bool = True) -> dict:
             "Spec structure or shared contracts failed deterministic validation."
             + (" " + "; ".join(input_errors) if input_errors else ""),
         )
-    checked_targets = (
-        tuple(run.repository.targets.values())
-        if direct_candidate
-        else implementation_users(run.repository, run.target)
+    checked_targets = checked_modules(
+        run.repository, run.target, direct=direct_candidate
     )
     impacts = impact_revisions(run.repository, checked_targets)
     results = (
@@ -105,11 +131,9 @@ def validate(run, run_checks: bool = True) -> dict:
             "candidate files changed while checks were running", "stale_evidence"
         )
     current_repository = SpecRepository(run.repository.root, run.host.package_root)
-    current_target = current_repository.select(run.target.id)
-    current_targets = (
-        tuple(current_repository.targets.values())
-        if direct_candidate
-        else implementation_users(current_repository, current_target)
+    current_target = current_repository.module(run.target.id)
+    current_targets = checked_modules(
+        current_repository, current_target, direct=direct_candidate
     )
     if impact_revisions(current_repository, current_targets) != impacts:
         raise SpecError(
@@ -204,13 +228,13 @@ def verify_completion(run) -> dict:
             )
         required = {
             check_id
-            for target in run.repository.targets.values()
+            for target in run.repository.modules.values()
             for check_id in target.checks
         }
         if {item["check_id"] for item in validation["checks"]} != required or any(
             item["status"] != "passed"
             or item["source_digest"]
-            != check_revision(run.repository, run.repository.select(item["target_id"]))
+            != check_revision(run.repository, run.repository.module(item["target_id"]))
             for item in validation["checks"]
         ):
             raise SpecError(
@@ -221,7 +245,7 @@ def verify_completion(run) -> dict:
     state = target_state(run.repository.root, run.target.id, run.task.get("focus_id"))
     run.check_state(state)
     for target_id, revision in state.get("component_revisions", {}).items():
-        component = run.repository.select(target_id)
+        component = run.repository.module(target_id)
         if revision != {
             "spec": target_revision(run.repository, component),
             "implementation": implementation_digest(run.repository, component),
@@ -259,7 +283,7 @@ def verify_completion(run) -> dict:
         or state.get("validation_spec_digest") != report.result["source_digest"]
     ):
         raise SpecError("Spec validation is missing or stale", "stale_evidence")
-    affected = implementation_users(run.repository, run.target)
+    affected = checked_modules(run.repository, run.target)
     if state.get("implementation_impacts") != impact_revisions(
         run.repository, affected
     ):
@@ -271,7 +295,7 @@ def verify_completion(run) -> dict:
     if {item["check_id"] for item in state["checks"]} != required_checks or any(
         item["status"] != "passed"
         or item["source_digest"]
-        != check_revision(run.repository, run.repository.select(item["target_id"]))
+        != check_revision(run.repository, run.repository.module(item["target_id"]))
         for item in state["checks"]
     ):
         raise SpecError(

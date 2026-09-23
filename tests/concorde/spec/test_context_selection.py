@@ -85,32 +85,74 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual("service.transfer", promise["owner"])
         self.assertEqual(
             [
-                {"kind": "document", "id": "document.transfer.promises"},
-                {"kind": "module", "id": "service.transfer"},
+                {
+                    "relation": "includes",
+                    "kind": "document",
+                    "id": "document.transfer.promises",
+                },
+                {"relation": "uses", "id": "service.transfer"},
             ],
             promise["reasons"],
         )
+        entry = next(
+            s for s in resolved["sources"] if s["path"] == "specs/audit/module.md"
+        )
+        self.assertEqual([{"relation": "owns", "id": "scope.audit"}], entry["reasons"])
+        self.assertFalse(resolved["shares"])
         scenario = r.spec_context("scenario.transfer.debit").value
         self.assertEqual("service.transfer", scenario["module_id"])
         self.assertIn(
             "specs/ledger/module.md", [s["path"] for s in scenario["sources"]]
         )
         self.assertEqual(
-            r.spec_files("service.transfer"), r.spec_files("scenario.transfer.debit")
+            r.spec_context("service.transfer").paths,
+            r.spec_context("scenario.transfer.debit").paths,
         )
         self.assertEqual(
             ("scope.audit", "scope.bank", "service.transfer"),
-            r.context_users("document.transfer.promises"),
+            r.selected_by("document.transfer.promises"),
         )
         self.assertEqual(
             ["scenario.bank.settlement"],
-            [s.id for s in r.scenarios(r.select("scope.bank"))],
+            [s.id for s in r.scenarios(r.module("scope.bank"))],
         )
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertIn(
             "CHK.includes.redundant",
             {f.rule_id for f in report.findings if f.severity == "warning"},
         )
+
+    @verifies("scenario.spec.reference-resolution")
+    def test_every_relation_that_selects_a_document_is_recorded(self):
+        before = self.repository().spec_context("scope.bank").value
+        update_module(
+            self.root,
+            "scope.bank",
+            includes=[
+                {
+                    "kind": "module",
+                    "target": "service.transfer",
+                    "reason": "the transfer promises the settlement reports",
+                }
+            ],
+        )
+        after = self.repository().spec_context("scope.bank").value
+        promise = next(
+            s for s in after["sources"] if s["path"] == "specs/transfer/promises.md"
+        )
+        self.assertEqual(
+            [
+                {"relation": "includes", "kind": "module", "id": "service.transfer"},
+                {"relation": "uses", "id": "service.transfer"},
+            ],
+            promise["reasons"],
+        )
+        # The redundant inclusion selects nothing new, yet it changes the context identity.
+        self.assertEqual(
+            [s["path"] for s in before["sources"]],
+            [s["path"] for s in after["sources"]],
+        )
+        self.assertNotEqual(digest(before), digest(after))
 
     @verifies("scenario.spec.relies-on")
     def test_relies_on_selects_the_entry_and_the_defining_documents_only(self):
@@ -157,7 +199,7 @@ class ContextSelectionTests(unittest.TestCase):
             entries=["app/ledger.py", "app/transfer.py"],
         )
         r = self.repository()
-        scopes = {module: r.spec_scope(module) for module in r.targets}
+        scopes = {module: r.spec_scope(module) for module in r.modules}
         self.assertEqual(
             ("module.ledger", "scope.audit", "scope.bank", "service.transfer"),
             r.selected_by("document.transfer.feature.obligations"),
@@ -175,13 +217,11 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(
             ("service.transfer", "module.ledger"), r.implemented_by("app/transfer.py")
         )
-        from concorde.spec.boundaries import impact
-
         self.assertEqual(
             ("module.ledger", "scope.audit", "service.transfer"),
-            impact(r, nodes=["req.transfer.pure"], paths=["app/transfer.py"]),
+            r.impact(nodes=["req.transfer.pure"], paths=["app/transfer.py"]),
         )
-        self.assertEqual(scopes, {module: r.spec_scope(module) for module in r.targets})
+        self.assertEqual(scopes, {module: r.spec_scope(module) for module in r.modules})
         self.assertNotIn("specs/transfer/obligations.md", r.spec_scope("scope.audit"))
 
     @verifies("scenario.spec.query-files")
@@ -199,7 +239,7 @@ class ContextSelectionTests(unittest.TestCase):
                         ]
                     )
                 ),
-                r.spec_files("scope.audit"),
+                r.spec_context("scope.audit").paths,
             )
         for identity in (
             "document.bank",
@@ -211,7 +251,7 @@ class ContextSelectionTests(unittest.TestCase):
                 self.subTest(identity=identity),
                 self.assertRaises(SpecError) as caught,
             ):
-                r.spec_files(identity)
+                r.spec_context(identity).paths
             self.assertEqual("invalid_target", caught.exception.code)
 
     def test_selection_changes_with_identical_files_invalidate_snapshot_and_revision(
@@ -220,11 +260,13 @@ class ContextSelectionTests(unittest.TestCase):
         self.audit_uses_transfer()
         old = self.repository()
         snap = resolve_context(old, "scope.audit")
-        revision = target_revision(old, old.select("scope.audit"))
+        revision = target_revision(old, old.module("scope.audit"))
         update_module(self.root, "scope.audit", includes=[PROMISES])
         new = self.repository()
-        self.assertEqual(old.spec_files("scope.audit"), new.spec_files("scope.audit"))
-        self.assertNotEqual(revision, target_revision(new, new.select("scope.audit")))
+        self.assertEqual(
+            old.spec_context("scope.audit").paths, new.spec_context("scope.audit").paths
+        )
+        self.assertNotEqual(revision, target_revision(new, new.module("scope.audit")))
         with self.assertRaisesRegex(SpecError, "changed"):
             recheck_context(new, snap)
         update_module(
@@ -296,9 +338,9 @@ class ContextSelectionTests(unittest.TestCase):
 
     def test_provider_documents_never_add_files_or_write_authority(self):
         r = self.repository()
-        target = r.select("service.transfer")
-        self.assertIn("specs/ledger/module.md", r.spec_files(target.id))
-        self.assertNotIn("app/ledger.py", r.implementation_files(target))
+        target = r.module("service.transfer")
+        self.assertIn("specs/ledger/module.md", r.spec_context(target.id).paths)
+        self.assertNotIn("app/ledger.py", r.bound_files(target))
         self.assertTrue(all(node.owner == target.id for node in r.realizations(target)))
         self.assertNotIn("specs/ledger/module.md", r.spec_scope(target.id))
         snap = resolve_context(r, target.id, phase="implementation").value
@@ -468,9 +510,9 @@ class ContextSelectionTests(unittest.TestCase):
                 ],
             )
         r = self.repository()
-        self.assertEqual((), r.contracts(r.select("service.transfer")))
+        self.assertEqual((), r.contracts(r.module("service.transfer")))
         self.assertEqual(
-            "module.ledger", r.contracts(r.select("module.ledger"))[0]["owner"]
+            "module.ledger", r.contracts(r.module("module.ledger"))[0]["owner"]
         )
         self.assertEqual(
             ("module.ledger", "service.transfer"),
@@ -514,8 +556,8 @@ class ContextSelectionTests(unittest.TestCase):
             "concorde-context-snapshot",
             resolve_context(self.repository(), "scope.bank").value,
         )
-        self.assertEqual(6, value["schema_version"])
-        for old in (1, 2, 3, 4, 5):
+        self.assertEqual(7, value["schema_version"])
+        for old in (1, 2, 3, 4, 5, 6):
             with self.assertRaises(TypedDataError):
                 validate_typed({**value, "schema_version": old})
 

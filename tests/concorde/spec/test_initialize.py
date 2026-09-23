@@ -55,7 +55,7 @@ class InitialModuleTests(unittest.TestCase):
             applied = apply_project_proposal(root, PACKAGE, proposal)
             self.assertEqual("applied", applied["status"])
             repository = SpecRepository(root, PACKAGE)
-            target = repository.select("module.project")
+            target = repository.module("module.project")
             self.assertEqual("specs/project/module.md", target.primary_document)
             self.assertEqual(("specs/project/module.md",), target.documents)
             body = repository.document(target.primary_document).body

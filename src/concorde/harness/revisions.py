@@ -21,20 +21,9 @@ def implementation_digest(repository: SpecRepository, target) -> str:
             "listed": list(target.files),
             "files": [
                 (path, digest(read_file(repository.root, path)))
-                for path in repository.implementation_files(target)
+                for path in repository.bound_files(target)
             ],
         }
-    )
-
-
-def implementation_users(repository: SpecRepository, target) -> tuple:
-    """Every Module whose entries cover one of these entries or bound files, with no context union."""
-    affected = {
-        target.id,
-        *(module.id for module in repository.covering_modules(target)),
-    }
-    return tuple(
-        module for module in repository.targets.values() if module.id in affected
     )
 
 

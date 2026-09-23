@@ -113,7 +113,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
     @verifies("scenario.spec.validate-success")
     def test_a_requirement_section_is_parsed_with_its_one_shall_statement(self):
         repository = self.project.repository()
-        target = repository.select("module.shop")
+        target = repository.module("module.shop")
         (requirement,) = repository.requirements(target)
         self.assertEqual(
             ("req.shop.single-order", "One order per submission"),
@@ -193,8 +193,8 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             {"scenario.shop.submit": 1},
             {
                 k: len(v)
-                for k, v in repository.scenario_verifications(
-                    repository.select("module.shop")
+                for k, v in repository.coverage(
+                    repository.module("module.shop")
                 ).items()
             },
         )

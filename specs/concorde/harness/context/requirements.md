@@ -12,9 +12,20 @@ A context snapshot SHALL record the selected Module's `SpecContext`, `Implementa
 in.
 
 `SpecContext` is recorded as one source record per selected document member, with its identity,
-owner, path, role, byte digest and the declarations that selected it. `ExternalContext` is recorded
+owner, path, role, byte digest and every relation that selected it (`owns`, `contains`, `uses` or
+`includes`, with its target). `ExternalContext` is recorded
 as one tree digest per external inclusion. `ImplementationContext` is recorded as the declared
 realization entries and the file names they currently bind.
+
+### req.context.shared-file-readers — A code-writing step reads every Module that binds its files
+
+A snapshot for the `implementation` phase SHALL add, read-only, both members of every document
+owned by each other Module that binds a file in the selected Module's `ImplementationScope`, each
+recorded with the relation `shares`, that Module and the shared files.
+
+A task that writes a shared file can otherwise break a promise it cannot see (Protocol Boundaries,
+shared files). The additional documents are part of the snapshot's identity, so a change to one of
+them makes the snapshot stale. They widen no write set and no other phase receives them.
 
 ### req.context.focus-no-trim — A scenario focus never trims context
 

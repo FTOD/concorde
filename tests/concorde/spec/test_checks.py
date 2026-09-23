@@ -166,7 +166,7 @@ class CheckTests(unittest.TestCase):
             ({"target": "module.provider", "meaning": "#uses-module-provider"},),
             repository.module_declaration("module.consumer").uses,
         )
-        self.assertEqual("module.app", repository.entry_target)
+        self.assertEqual("module.app", repository.root_module)
         self.assertEqual(
             [
                 {

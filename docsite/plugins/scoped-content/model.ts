@@ -26,9 +26,11 @@ export interface ModuleRecord extends ModuleBlock {
   id: string;
   entry: string;
 }
-/** Why a Module's Spec context selects a document: the declaring relation and its target. */
+/** Why a Module's Spec context selects a document: the declaring relation and its target; an
+ * `includes` also says whether it names a Module or a document. */
 export interface InclusionReason {
-  kind: "owns" | "contains" | "uses" | "includes";
+  relation: "owns" | "contains" | "uses" | "includes";
+  kind?: "module" | "document";
   id: string;
 }
 export interface Page {
@@ -58,7 +60,7 @@ export interface PublishedNode {
   definition?: string;
 }
 export interface ScopedRegistry {
-  schema_version: 22;
+  schema_version: 23;
   projectRoot: string;
   registryPath: string;
   /** The first Module without a parent: the homepage's entry into the Specs. */
@@ -337,16 +339,23 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     const add = (paths: string[], reason: InclusionReason) => {
       for (const path of paths) {
         const reasons = context.get(path) ?? [];
-        if (!reasons.some((r) => r.kind === reason.kind && r.id === reason.id))
+        if (
+          !reasons.some(
+            (r) =>
+              r.relation === reason.relation &&
+              r.kind === reason.kind &&
+              r.id === reason.id,
+          )
+        )
           reasons.push(reason);
         context.set(path, reasons);
       }
     };
-    add(m.owns, { kind: "owns", id: m.id });
+    add(m.owns, { relation: "owns", id: m.id });
     for (const r of m.contains)
-      add(selection(m, r), { kind: "contains", id: r.target });
+      add(selection(m, r), { relation: "contains", id: r.target });
     for (const r of m.uses)
-      add(selection(m, r), { kind: "uses", id: r.target });
+      add(selection(m, r), { relation: "uses", id: r.target });
     for (const i of m.includes) {
       if (i.kind === "external") continue;
       const paths =
@@ -356,20 +365,20 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
             ? [byDocumentId.get(i.target)!]
             : undefined;
       requireThat(paths, `Unknown ${i.kind} inclusion: ${m.id} -> ${i.target}`);
-      add(paths, { kind: "includes", id: i.target });
+      add(paths, {
+        relation: "includes",
+        kind: i.kind as "module" | "document",
+        id: i.target,
+      });
     }
     for (const reasons of context.values())
-      reasons.sort((a, b) =>
-        a.kind === b.kind
-          ? a.id < b.id
-            ? -1
-            : a.id > b.id
-              ? 1
-              : 0
-          : a.kind < b.kind
-            ? -1
-            : 1,
-      );
+      reasons.sort((a, b) => {
+        const left = [a.relation, a.kind ?? "", a.id];
+        const right = [b.relation, b.kind ?? "", b.id];
+        for (let i = 0; i < left.length; i++)
+          if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
+        return 0;
+      });
     contexts.set(m.id, context);
   }
   const stripRoot = [...owner.keys()].every((path) =>
@@ -406,7 +415,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     });
   }
   return {
-    schema_version: 22,
+    schema_version: 23,
     projectRoot: root,
     registryPath: config.registry,
     rootModule: rootModules[0].id,

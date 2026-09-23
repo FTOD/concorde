@@ -47,14 +47,14 @@ class ScopedProtocolTests(unittest.TestCase):
     @verifies("scenario.harness.context-freeze")
     def test_module_dependencies_and_complete_arbitrary_collections(self):
         repo = SpecRepository(self.root)
-        target = repo.select("service.transfer", "scenario.transfer.debit")
+        target = repo.module("service.transfer", "scenario.transfer.debit")
         self.assertEqual(("module.ledger",), target.uses)
         self.assertIsNone(target.parent)
         context = resolve_context(
             repo, target.id, focus_id="scenario.transfer.debit"
         ).value
         # uses selects the provider's documents; its own relations select nothing further.
-        expected = sorted(target.sources + repo.select("module.ledger").sources)
+        expected = sorted(target.sources + repo.module("module.ledger").sources)
         self.assertEqual(
             expected,
             [source["path"] for source in context["spec_resolution"]["sources"]],
@@ -208,14 +208,14 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_module_scenario_focus_is_local(self):
         repo = SpecRepository(self.root)
         self.assertEqual(
-            "module.ledger", repo.select("module.ledger", "scenario.ledger.read").id
+            "module.ledger", repo.module("module.ledger", "scenario.ledger.read").id
         )
         with self.assertRaises(SpecError):
-            repo.select("module.ledger", "scenario.transfer.debit")
+            repo.module("module.ledger", "scenario.transfer.debit")
         # The root is the first Module no other Module contains.
         self.registry["modules"].insert(0, self.registry["modules"].pop(3))
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
-        self.assertEqual("module.ledger", SpecRepository(self.root).entry_target)
+        self.assertEqual("module.ledger", SpecRepository(self.root).root_module)
 
     @verifies("scenario.harness.typed-reject")
     def test_internal_stage_operation_requires_target_id_at_the_top_level(self):

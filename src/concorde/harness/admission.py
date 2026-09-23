@@ -240,7 +240,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                 change = read_change(host.project_root)
                 if change:
                     owner = change.get("target_id")
-                    if owner is not None and owner not in repository.targets:
+                    if owner is not None and owner not in repository.modules:
                         raise SpecError(
                             "recorded change owner is not registered",
                             "invalid_worktree_state",
@@ -250,7 +250,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                     # retains its explicit task and is checked by target admission below.
                     if owner in {None, task["target_id"]}:
                         task = resume_owner(change, task)
-            repository.select(task["target_id"], task.get("focus_id"))
+            repository.module(task["target_id"], task.get("focus_id"))
 
     @timed("admission.workspace")
     def bind_workspace():

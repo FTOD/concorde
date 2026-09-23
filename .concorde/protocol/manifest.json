@@ -10,11 +10,11 @@
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:4cd908e485c46a0a8c1fccffed6aee396ef2d3a65a752fc8128d7e8386ef5949"
+      "digest": "sha256:9ff66e79bf0c687231eb8275d46e49ce2a83c8ba20297c75be505ba80f01af01"
     },
     {
       "path": "generated/protocol/schemas.json",
-      "digest": "sha256:fa4f36c13f8b90ec465d5d311a2cd32fafeb362d2628d19d56413799d6febbb2"
+      "digest": "sha256:90da469fd6a205dd9741d9bf739c20a2c5a914d9cfd033af72ea52e5ce609acd"
     }
   ]
 }

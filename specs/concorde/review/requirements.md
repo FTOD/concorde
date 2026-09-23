@@ -78,6 +78,16 @@ files) and every component's and changed-file peer's result must be current and 
 scope identity. A candidate with no planned tasks checks every Module that has a recorded required
 review in the same way, using the intent recorded for that Module.
 
+### req.review.promise-impact — Spec review scope follows changed promises
+
+Inside a managed change, a Spec review's consumers SHALL be the Modules that select a changed document without narrowing or reference a changed node definition.
+
+A Module whose only selection of a changed document is a `relies_on` narrowing of unchanged nodes is
+therefore not a consumer; consumers already recorded for the Module and its components stay
+members. The comparison is between the change's starting commit and the candidate, as listed under
+[Scope members](contracts.md#scope-members). For the Module the change is about it covers every
+changed document of the candidate, so every Module whose Spec the change edits is reviewed.
+
 ### req.review.no-downgrade — A requirement is never removed
 
 A review kind that a change has recorded as required for a Module SHALL remain required for the rest

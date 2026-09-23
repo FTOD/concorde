@@ -66,19 +66,23 @@ numeric constants.
 
 ## Repository interface {#repository-interface}
 
+The repository has one vocabulary: every query that answers a Protocol concept carries the
+Protocol's name for it. A query that takes a Module accepts its identity or its `Module` record.
+
 ```python
 SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
-SpecRepository.select(target_id: str, focus_id: str | None = None) -> SpecTarget
-SpecRepository.spec_files(query_id: str) -> tuple[str, ...]
-SpecRepository.spec_context(query_id: str) -> SpecResolution
+SpecRepository.modules -> dict[str, Module]
+SpecRepository.module(module_id: str, scenario: str | None = None) -> Module
+SpecRepository.root_module -> str
+SpecRepository.contained(module) -> tuple[Module, ...]
 SpecRepository.document(path: str) -> SpecDocument
-SpecRepository.definitions(target: SpecTarget) -> ModuleDefinitions
+SpecRepository.documents(module) -> tuple[SpecDocument, ...]
+SpecRepository.definitions(module) -> ModuleDefinitions
 SpecRepository.definer(identity: str) -> str | None
 SpecRepository.selection(relation: dict) -> tuple[str, ...]
 SpecRepository.meaning_text(module_id: str, meaning: str) -> str | None
-SpecRepository.realization_entries(target: SpecTarget) -> dict[str, Realization]
-SpecRepository.realization_for_path(target: SpecTarget, path: str) -> Realization | None
-SpecRepository.entry_target -> str
+SpecRepository.realization_entries(module) -> dict[str, Realization]
+SpecRepository.realization_for_path(module, path: str) -> Realization | None
 SpecRepository.fresh() -> SpecRepository
 ```
 
@@ -89,21 +93,22 @@ Protocol the project copy must equal; it defaults to the running package. `regis
 only, so a caller can load a candidate state; they are never written. `fresh()` builds a new
 repository from the same root and overrides.
 
-`select` returns the Module's descriptor: its `id`, `title`, entry path, owned document paths
-(`documents`), parent, used Module identities (`uses`), realization entries (`files`), inclusions
-(`references`) and the identities of the configured checks whose `module` is this Module
-(`checks`). A `focus_id` must be a scenario the Module owns and never changes the result. An
-unknown Module, or a focus of another Module, fails with a `SpecError`.
+`modules` maps every registered Module to its `Module` record, in registry order; `module` returns
+one: its `id`, `title`, entry path, owned document paths (`documents`), parent, used Module
+identities (`uses`), realization entries (`files`), inclusions (`references`) and the identities of
+the configured checks whose `module` is this Module (`checks`). A `scenario` must be a scenario the
+Module owns and never changes the result. An unknown Module, or a scenario of another Module, fails
+with a `SpecError`. `root_module` is the first recorded Module that no other Module contains, and
+`contained` returns the Modules a Module `contains`.
 
 `definitions` returns the requirements, scenarios, concepts, realizations and contracts the
 Module's own documents define. `document` returns one registered reading member with its metadata,
-owner and digest. `definer` returns the reading path of the document defining a node, or `None`
-for an unknown identity. `selection` returns the documents one `contains`, `uses` or `includes`
-declaration selects. `meaning_text` returns the prose a Module relation's `meaning` anchor
-resolves to. `realization_entries` maps each declared entry of the Module to its realization, and
-`realization_for_path` returns the realization whose most specific entry covers a file; an exact
-entry is more specific than any directory entry. `entry_target` is the root Module: the first
-recorded Module that no other Module contains.
+owner and digest, and `documents` every document a Module owns. `definer` returns the reading path
+of the document defining a node, or `None` for an unknown identity. `selection` returns the
+documents one `contains`, `uses` or `includes` declaration selects. `meaning_text` returns the
+prose a Module relation's `meaning` anchor resolves to. `realization_entries` maps each declared
+entry of the Module to its realization, and `realization_for_path` returns the realization whose
+most specific entry covers a file; an exact entry is more specific than any directory entry.
 
 Failures raise `SpecError(ValueError)` with a `code` and a `field`; path and JSON failures raised by
 the typed values keep their own `TypedDataError`. No call writes a file.
@@ -129,27 +134,54 @@ well.
 
 ### Spec context records {#spec-context-records}
 
-`spec_files` and `spec_context` accept a Module identity or a scenario identity; a scenario
-resolves to its owner. Any other identity fails with code `invalid_target`. `spec_files` returns
-the paths of both members of every selected document, without duplicates and sorted, and reads no
-document content. `spec_context` returns a `SpecResolution`, whose value is a JSON object with:
+```python
+SpecRepository.spec_context(query_id: str, *, shares: bool = False) -> SpecContext
+SpecContext.paths -> tuple[str, ...]
+SpecContext.value -> dict
+```
+
+`spec_context` accepts a Module identity or a scenario identity; a scenario resolves to its owner.
+Any other identity fails with code `invalid_target`. `paths` is the Protocol's `SpecContext`: the
+paths of both members of every selected document, without duplicates and sorted. `value` is the
+record of that context, a JSON object with:
 
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | the record's version |
+| `schema_version` | `2` |
 | `query_id`, `query_kind` | the queried identity and whether it is a `module` or a `scenario` |
 | `module_id` | the Module whose context was selected |
-| `registration` | that Module's descriptor, as `select` returns it |
+| `shares` | whether the shared-file readers were added (below) |
+| `registration` | that Module's descriptor, as `module` returns it |
 | `reading_entry` | that Module's entry reading path |
 | `documents` | the paths of the documents that Module owns |
+| `references` | that Module's inclusions |
 | `sources` | one record per selected member, sorted by path |
 
 Each source record has `document_id`, `path`, `owner` (the defining Module, never the selecting
 one), `role` (`reading` or `metadata`), `digest` (SHA-256 of the exact bytes, as `sha256:` plus 64
-lowercase hexadecimal digits) and `reasons`, the declarations that selected the document: its own
-ownership, or the `contains`, `uses` or `includes` of the selecting Module that selected it. No
-source record carries file content; a consumer reads the file the record names and can check its
-digest. A member that is not valid UTF-8 or cannot be read fails the resolution.
+lowercase hexadecimal digits) and `reasons`: every relation that selected the document, each
+recorded as the Protocol relation and its target, sorted by relation, kind and identity:
+
+| Reason | Recorded when |
+| --- | --- |
+| `{"relation": "owns", "id": M}` | the queried Module M owns the document |
+| `{"relation": "contains", "id": N}` | a `contains` of child N selected it |
+| `{"relation": "uses", "id": N}` | a `uses` of provider N selected it |
+| `{"relation": "includes", "kind": "module" or "document", "id": X}` | an `includes` of Module or document X selected it |
+| `{"relation": "shares", "id": N, "files": [...]}` | Module N binds the listed files of the queried Module's ImplementationScope, and `shares` was requested |
+
+Two relations that select the same document are both recorded, so removing a redundant one
+changes the record and the context identity. With `shares`, every document owned by another Module
+that binds a file in the queried Module's ImplementationScope (see `shared_files` below) is added,
+so a task that writes a shared file can read the promises of every Module binding it (Protocol
+Boundaries, shared files). The addition is read material only and widens no write set; without
+`shares` the record is exactly the Protocol's `SpecContext`. No source record carries file
+content; a consumer reads the file the record names and can check its digest. A member that is not
+valid UTF-8 or cannot be read fails the resolution.
+
+`recheck_context(context)` recomputes the record from the current files with the same `shares`
+and fails with `stale_context` when anything differs; `context_bytes(context)` rechecks and
+returns the exact bytes of every source.
 
 ### Boundary sets and impact indexes {#boundary-sets}
 
@@ -158,24 +190,35 @@ and Context (`protocol/context.md`) chapters for a Module, computed from declara
 
 | Set or index | Returns | Repository query |
 | --- | --- | --- |
-| Spec context | both members of each owned and selected document, sorted; `spec_context` adds the selecting declarations | `spec_files`, `spec_context` |
-| External context | per external inclusion: the entry, whether it is a directory, the readable files below it and one digest over their paths and bytes | `boundary_sets(...).external_context`, `external_reference_records` |
-| Implementation context | the names of the existing files the realizations bind, and of pending exact entries | `boundary_sets(...).implementation_context`, `implementation_files` |
+| Spec context | both members of each owned and selected document, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context` |
+| External context | per external inclusion: the entry, whether it is a directory, whether it exists, the readable files below it and one digest over their paths and bytes | `external_context`; `external_inclusions` lists the declared entries, `external_files` and `external_digest` expand and digest one entry |
+| Implementation context | the names of the existing files the realizations bind, and of pending exact entries | `implementation_context`; `bound_files` lists only the existing bound files |
 | Spec scope | both members of each owned document | `spec_scope` |
-| Implementation scope | the realization entries, pending entries included; a directory entry covers every present and future file below it | `implementation_scope` |
+| Implementation scope | the realization entries, pending entries included; a directory entry covers every present and future file below it | `implementation_scope`; `missing_entries` lists the entries not yet on disk |
 | selected-by | the Modules whose Spec context contains a document | `selected_by` |
 | referenced-by | the declarations that name a concept, requirement, scenario or contract, each with its Module | `referenced_by` |
-| implemented-by | the Modules whose realizations cover a path | `implemented_by` |
-| covered-by | the verification declarations that name a scenario | `covered_by` |
+| implemented-by | the Modules whose realizations bind a path or list it as an entry | `implemented_by` |
+| shared files | per other Module, the files both it and this Module bind | `shared_files` |
+| covered-by | the verification declarations that name a scenario; `coverage` answers it for every scenario of a Module | `covered_by`, `coverage` |
 
-`boundary_sets(module_id)` returns all five sets of one Module at once; its `writable(path)`
-answers whether a path lies in the Spec scope or is covered by the implementation scope. The same
-functions are available in `concorde.spec.boundaries`, where `impact(repository, *, documents=(),
-nodes=(), paths=())` returns every Module that writing the given documents, nodes or files concerns:
-the readers of the documents, the Modules referencing the nodes and the Modules binding the files.
-Older implementation queries remain for existing consumers: `implementation_entries`,
-`implementation_paths`, `missing_entries`, `context_users`, `listing_users`, `affected_modules` and
-`covering_modules`.
+`concorde.spec.impact` builds Concorde's change and review rules on these queries:
+
+| Query | Returns |
+| --- | --- |
+| `change_scope(repository, module_id)` | the Modules one change owned by the Module may edit: the owner, the Modules it contains or uses, the Modules selecting one of its documents, the participants and owners of contracts it defines or participates in, the Modules referencing a node it defines, and the Modules binding one of its files; one level only |
+| `edited_modules(repository, paths)` | the Modules whose write sets hold a changed path: the owner of a changed document member and every Module binding a changed file |
+| `changed_documents(old, new)`, `changed_nodes(old, new)` | the documents and nodes whose definitions differ between two revisions, a node being compared by its defining section, contract fence, concept record and definition row, realization record or entry `module` block |
+| `review_impact(old, new, paths)` | the Modules needing a fresh review: those selecting a changed document without narrowing (`owns`, `includes`, or `contains`/`uses` without `relies_on`) and those referencing a changed node |
+
+`boundary_sets(module)` returns all five sets of one Module at once as a `BoundarySets` record,
+whose `writable(path)` answers whether a path lies in the Spec scope or is covered by the
+implementation scope. `impact(*, documents=(), nodes=(), paths=())` returns every Module that
+writing the given documents, nodes or files concerns: the readers of the documents, the Modules
+referencing the nodes and the Modules binding the files. `shared_files` is computed from entries
+alone: an exact entry both Modules list, an exact entry of one below a directory entry of the
+other, or the inner of two nested directory entries. `concorde.spec.boundaries` holds the
+`BoundarySets` and `ExternalEntry` records and `scope_roots(entries)`, which turns entries into
+permission roots by dropping trailing slashes.
 
 A `uses` or `contains` with `relies_on` selects the target's entry and the documents defining the
 listed nodes; without it, every document the target owns. An `includes` of kind `document` selects

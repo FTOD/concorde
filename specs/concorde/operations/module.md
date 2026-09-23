@@ -150,8 +150,10 @@ explained in the [declarations and dispatch reference](catalog.md).
 
 Dispatch never discovers or substitutes a Module. A request whose target does not resolve fails
 instead of being redirected. When a candidate already belongs to another Module, a request for a
-component Module is admitted only as component work that the owner's accepted tasks name exactly;
-this keeps one candidate from quietly serving two unrelated changes.
+component Module is admitted only as component work that the owner's accepted tasks name exactly,
+for a Module in the owner's [change scope](../planning/module.md#concept.planning.change-scope);
+this keeps one candidate from quietly serving two unrelated changes while letting one change edit
+every Module that must change with its owner.
 
 <a id="realization.operations.graph-catalog"></a>
 

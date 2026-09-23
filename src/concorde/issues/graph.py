@@ -177,8 +177,8 @@ def prepare_request(root: Path, package: Path, task: dict) -> dict:
             )
     if action == "reopen" and not task.get("note", "").strip():
         raise SpecError("reopen requires a rationale", "invalid_input")
-    task.setdefault("target_id", repository.entry_target)
-    repository.select(task["target_id"], task.get("focus_id"))
+    task.setdefault("target_id", repository.root_module)
+    repository.module(task["target_id"], task.get("focus_id"))
     task.setdefault("task", "Inspect project Issues")
     return task
 
@@ -260,7 +260,7 @@ def issue_nodes(run):
             frozenset(
                 {
                     *(item["path"] for item in sources),
-                    *run.repository.implementation_files(run.target),
+                    *run.repository.bound_files(run.target),
                 }
             ),
             frozenset({task["report"]["issue_id"]})
