@@ -112,8 +112,8 @@ names and is a plain value: the Operation host computes it for the task worktree
 into the worker's configuration at launch, and the Spec MCP server returns the same computation to
 agents that ask. Spec core neither stores nor enforces a grant. It refuses a grant that would make
 writable a file another, unbound Module also binds, because the Protocol requires a task that
-writes a shared file to be bound to every Module binding it. Grants are designed but not yet
-implemented; `concorde grant --root <worktree> --modules <ids> --type <task type>` will print one.
+writes a shared file to be bound to every Module binding it.
+`concorde grant --root <worktree> --modules <ids> --type <task type>` prints one.
 
 <a id="concept.spec.typed-value"></a>
 
@@ -160,8 +160,8 @@ declarations alone, never reading implementation contents.
 <a id="realization.spec.grants"></a>
 
 The **Grant computation** applies a task type to the boundary sets of the bound Modules, computes
-the context identity and refuses unbound shared writes. It and its tests are pending: they do not
-exist yet.
+the context identity and refuses unbound shared writes, in `src/concorde/spec/grants.py`, with its
+tests.
 
 <a id="realization.spec.validator"></a>
 

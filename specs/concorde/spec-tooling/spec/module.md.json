@@ -127,10 +127,7 @@
         "src/concorde/spec/grants.py",
         "tests/concorde/spec/test_grants.py"
       ],
-      "pending": [
-        "src/concorde/spec/grants.py",
-        "tests/concorde/spec/test_grants.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.spec.validator",

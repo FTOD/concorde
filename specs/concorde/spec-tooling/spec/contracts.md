@@ -233,8 +233,6 @@ under `.concorde/` or `generated/`.
 
 ## Grants {#grants}
 
-The grant computation is pending: this section is its design, and no code implements it yet.
-
 ```python
 grant(repository, modules: Sequence[str], task_type: str) -> Grant
 Grant.value -> dict

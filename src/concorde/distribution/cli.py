@@ -38,6 +38,12 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--github-pages", action="store_true")
     docsite.add_argument("--format", choices=["json"], default="json")
 
+    grant = subparsers.add_parser("grant")
+    grant.add_argument("--root")
+    grant.add_argument("--modules", required=True)
+    grant.add_argument("--type", dest="task_type", required=True)
+    grant.add_argument("--format", choices=["json"], default="json")
+
     build = subparsers.add_parser("build")
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
@@ -131,6 +137,14 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                     ),
                 ),
             )
+    if arguments.tool == "grant":
+        from ..spec.grants import grant_command
+
+        return grant_command(
+            Path(arguments.root) if arguments.root else root,
+            arguments.modules,
+            arguments.task_type,
+        )
     if arguments.tool == "registry":
         from ..spec.registry import registry_command
 
@@ -234,6 +248,7 @@ TOOLS = frozenset(
         "validate",
         "registry",
         "docsite",
+        "grant",
         "build",
         "protocol-manifest",
     }
