@@ -34,11 +34,16 @@ worktree's Git common directory. `<run-id>` is unique and chosen by the host.
 | `control/result.schema.json` | The worker result schema | none |
 | `config/` | `CLAUDE_CONFIG_DIR`: the credential copy, sessions and transcripts | none |
 | `home/` | `HOME` | Bash read and write |
-| `tmp/` | `TMPDIR` | Bash read and write |
+| `tmp/` | unused; see below | none |
 | `work/` | The working directory | Bash read and write |
 | `checks/<round>/<check-id>.log` | Check logs of each round | none |
 
-The host refuses to launch when any deny rule it generated covers `work/`, `home/` or `tmp/`.
+`TMPDIR` is a private directory `/tmp/concorde-<suffix>-<random>/` created for the run and
+removed when it ends, recorded as the run record's `tmp`. Claude Code's Bash sandbox creates Unix
+sockets below `TMPDIR`, and a socket path must stay under the kernel's 108-byte limit; below a deep
+run directory the sandbox fails to start and every Bash command is refused.
+
+The host refuses to launch when any deny rule it generated covers `work/`, `home/` or `TMPDIR`.
 
 ## Worker settings
 
@@ -51,7 +56,7 @@ The host refuses to launch when any deny rule it generated covers `work/`, `home
   },
   "hooks": {
     "PreToolUse": [
-      {"matcher": "Edit|Write",
+      {"matcher": "Edit|Write|MultiEdit|NotebookEdit",
        "hooks": [{"type": "command", "command": "<python> <run>/control/write_hook.py"}]}
     ]
   },
@@ -60,8 +65,8 @@ The host refuses to launch when any deny rule it generated covers `work/`, `home
     "allowUnsandboxedCommands": false,
     "filesystem": {
       "denyRead": ["<worktree>", "<user home>", "<run>/control", "<run>/config"],
-      "allowRead": ["<each ro and rw file>", "<runtime paths>"],
-      "allowWrite": ["<each rw file>", "<run>/work", "<run>/home", "<run>/tmp"]
+      "allowRead": ["<each ro and rw path>", "<runtime paths>", "<run>/work", "<run>/home", "<TMPDIR>"],
+      "allowWrite": ["<each rw path>", "<run>/work", "<run>/home", "<TMPDIR>"]
     },
     "network": {"allowedDomains": []}
   }
@@ -70,7 +75,10 @@ The host refuses to launch when any deny rule it generated covers `work/`, `home
 
 ### Deny rules
 
-Deny rules are generated from the grant and the task worktree's file tree:
+Claude Code applies `Read` deny rules to its file tools and also to the Bash sandbox: a path a rule
+denies is absent for Bash too. The rules are therefore the one place that hides a path from a
+worker, and they must never cover system directories, the runtime paths or the run's own
+directories. They are generated from the grant and the file tree:
 
 | Path | Rules |
 | --- | --- |
@@ -78,14 +86,16 @@ Deny rules are generated from the grant and the task worktree's file tree:
 | a `names` file | `Read` and `Edit` |
 | a `ro` file | `Edit` |
 | a `rw` file | none |
-| a directory with no `ro` or `rw` file below it | one `Read` and one `Edit` rule on `<dir>/**` instead of rules per file |
-| `.git` of the task worktree, and the primary worktree's `.git/` | `Read` and `Edit` on the path and below |
-| the primary worktree outside the run directory, computed the same way with the run directory as the only kept subtree | `Read` and `Edit` |
-| `~/.claude/` | `Read` and `Edit` on `~/.claude/**` |
+| a task-worktree directory with no `ro` or `rw` path below it | one `Read` and one `Edit` rule on `<dir>/**` instead of rules per file |
+| a directory covered by a `ro` directory entry with no `rw` path below it | one `Edit` rule on `<dir>/**` |
+| the task worktree's `.git` | `Read` and `Edit` on the path and below |
+| inside the user's home, every entry that leads neither to the task worktree, to the run's `work/` or `home/`, nor to a runtime path | `Read` and `Edit` on the entry and below; a home that holds none of them is denied as a whole |
 | `<run>/control/` and `<run>/config/` | `Read` and `Edit` on the path and below |
 
-Glob and Grep are governed by the `Read` rules. A file created after the rules were generated has no
-rule of its own; it is still covered by a directory rule or by the write hook.
+The home rule hides other projects, other task worktrees, the primary worktree's `.git` and other
+runs, and `~/.claude`. Paths below a runtime path are left alone. Glob and Grep are governed by the
+`Read` rules. A file created after the rules were generated has no rule of its own; it is still
+covered by a directory rule or by the write hook.
 
 ### Write hook
 
@@ -135,11 +145,12 @@ The environment is cleared and then set to exactly:
 | --- | --- |
 | `PATH`, `LANG` | the host's values |
 | `HOME` | `<run>/home` |
-| `TMPDIR` | `<run>/tmp` |
+| `TMPDIR` | the run's private directory under `/tmp` |
 | `CLAUDE_CONFIG_DIR` | `<run>/config` |
 | `CLAUDE_CODE_DISABLE_CLAUDE_MDS` | `1` |
 | `CLAUDE_CODE_DISABLE_AUTO_MEMORY` | `1` |
 | `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | `1` |
+| `ANTHROPIC_API_KEY` | the host's value, only when the host has one |
 
 Before the first round the host copies the user's Claude Code credentials file into `config/`.
 
@@ -150,8 +161,9 @@ record as a bounded tail.
 
 ## Audit
 
-Before the first round the host records a snapshot of the task worktree: `HEAD`, and the digest of
-every tracked change and untracked file that already exists. After each round it runs read-only Git
+Before the first round, after pre-creating the pending files, the host records a snapshot of the
+task worktree: `HEAD`, the index digest, and the digest of every tracked change and untracked file
+that already exists. After each round it runs read-only Git
 (`git status --porcelain=v2 -z --untracked-files=all` and the digests of the listed files) and
 compares.
 
@@ -188,6 +200,7 @@ its log.
 | Field | Content |
 | --- | --- |
 | `run_id`, `task_type`, `worktree` | the run's identity, task type and task worktree |
+| `run_directory`, `tmp` | the run directory and the run's `TMPDIR` |
 | `context_identity`, `grant_digest` | the grant's context identity and the digest of `control/grant.json` |
 | `settings_digest`, `brief_digest`, `tools` | what the worker was given |
 | `started_at`, `ended_at` | UTC times |
@@ -195,7 +208,7 @@ its log.
 | `transcript` | the path of the latest session's transcript under `config/` |
 | `stderr_tail` | the last 20,000 bytes of the worker's standard error |
 | `worker_result` | the last worker result, verbatim, or null |
-| `pending_removed`, `deleted`, `deletions_refused` | paths the host removed or refused to remove |
+| `pending_created`, `pending_removed`, `deleted`, `deletions_refused` | paths the host pre-created, removed or refused to remove |
 | `status` | the host's final status: `ok`, `blocked` or `failed` |
 | `errors` | host error codes with details |
 

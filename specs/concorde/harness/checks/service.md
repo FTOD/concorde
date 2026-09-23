@@ -1,8 +1,7 @@
 # The check service
 
 The exact declaration of configured checks, the call that runs them and the check result, and the
-requirements they serve. The service is pending: nothing here is implemented yet, and its scenarios
-will be written together with its tests. The [entry](module.md#concept.checks.configured-check)
+requirements and scenarios they serve. The [entry](module.md#concept.checks.configured-check)
 explains why it is shaped this way; [the boundary](boundary.md) gives the runner it uses.
 
 ## Declaring a configured check
@@ -73,3 +72,40 @@ named.
 
 The check service SHALL NOT return a check result for a check whose command the boundary refused to
 start.
+
+## Scenarios
+
+### scenario.checks.service-run — The checks of changed Modules run and are logged
+
+- GIVEN a worktree whose Module A has one configured check and Module B none
+- WHEN the service runs with a changed path of A's realization or A's Spec
+- THEN it selects A, runs its check read-only and returns one result with its status, exit code, source digest and log path
+- AND the log is written into the caller's log directory
+- BUT asked for Module B it returns no result
+
+### scenario.checks.service-read-only — A check cannot change the worktree
+
+- GIVEN a configured check that tries to write a file of the worktree
+- WHEN the service runs it
+- THEN the write fails as a read-only file system and the check's result is `failed`
+- AND the file is unchanged
+
+### scenario.checks.service-stale — Input that changes during the run is stale
+
+- GIVEN a check whose Module's implementation file changes while the check runs
+- WHEN the service measures the check revision again
+- THEN the call fails with `stale_evidence` and returns no result
+
+### scenario.checks.service-refused — A refused check has no status
+
+- GIVEN a host where the read-only boundary cannot start the check's command
+- WHEN the service runs the check
+- THEN the call fails with `check_sandbox_unavailable`
+- AND the log holds what the boundary reported
+- BUT no check result is returned
+
+### scenario.checks.service-input-missing — A missing input stops the run
+
+- GIVEN a configured check whose declared input does not exist
+- WHEN the service is asked to run it
+- THEN the call fails naming the check, its Module and the path before any command runs

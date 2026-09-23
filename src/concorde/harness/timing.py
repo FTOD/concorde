@@ -281,7 +281,7 @@ def traced_operation(sink_for):
             host = kwargs["host_context"]
             with operation_trace(
                 host.root_invocation_id or host.invocation_id, sink_for(host)
-            ) as trace:
+            ):
                 with Span("operation.total") as span:
                     result = function(*args, **kwargs)
                     span.finish(

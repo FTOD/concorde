@@ -60,11 +60,11 @@ Take an `implement` task for one Module whose grant makes `src/shop/cart.py` and
 1. The host creates the **run directory** `.concorde/runs/<run-id>/` in the primary worktree, even
    when the task worktree is elsewhere. It holds the host-only `control/` directory (settings, hook,
    grant, brief), the worker's `config/` (`CLAUDE_CONFIG_DIR`, with a copy of the user's
-   credential), `home/` (`HOME`), `tmp/` (`TMPDIR`) and `work/`, the worker's working directory.
-   The run directory is ignored by Git and never lies inside the task worktree.
-2. It creates `src/shop/discounts.py` as an empty file, because a worker can write only files that
+   credential), `home/` (`HOME`) and `work/`, the worker's working directory. `TMPDIR` is a short
+   private directory under `/tmp`, removed when the run ends. The run directory is ignored by Git.
+2. It generates the worker settings, the tool list for the task type and the brief.
+3. It creates `src/shop/discounts.py` as an empty file, because a worker can write only files that
    exist and a new undeclared file is exactly what the boundary forbids.
-3. It generates the worker settings, the tool list for the task type and the brief.
 4. It launches `claude -p` in `work/` with `bypassPermissions`, the worker result schema, no MCP
    servers and a cleared environment, and waits for the structured result.
 5. It audits the task worktree: every change since launch must be in `rw`.
@@ -81,12 +81,14 @@ list, for the file tools, every task-worktree path the grant leaves out (Read an
 `ro` and `names` path (Edit denied, and Read too for `names`), a single rule for each directory with
 no granted file below it, the primary worktree outside this run's directory, `.git`, `~/.claude` and
 the run's `control/` and `config/` directories. Deny rules still apply in `bypassPermissions`, and
-Grep leaves denied files out of its results. The **write hook** makes the `rw` list the exact write
+Grep leaves denied files out of its results. Claude Code also applies the `Read` deny rules to the
+Bash sandbox, so a denied path is hidden from Bash as well; this is why the rules never cover system
+directories, the runtime paths or the run's own directories. The **write hook** makes the `rw` list the exact write
 allowlist: it denies any Edit or Write of another path with a reason that names the path's level,
 for example that an undeclared file must first be declared pending by a `specify` task, and it says
 nothing about `rw` paths. It never governs reads. The Bash sandbox denies reading the task worktree
 and `$HOME` except the `ro` and `rw` files and the runtime paths the Operation configures, allows writing
-only the `rw` files and the run's `work/`, `home/` and `tmp/`, allows no network domain and ignores
+only the `rw` files and the run's `work/`, `home/` and temporary directory, allows no network domain and ignores
 requests to run a command unsandboxed. `names` files are readable by no tool; the worker learns
 them only from its brief.
 
@@ -188,10 +190,12 @@ confirmed when the runtime is built; the per-task-type tool lists are the v1 def
 
 <a id="realization.workers.runtime"></a>
 
-The **worker runtime** will consist of the settings generator, which turns a grant into worker
-settings and the brief's boundary part; the write hook script; the launcher, which runs and resumes
-`claude -p` with its limits; the write audit; the run-record writer; and their tests. All of these
-files are pending.
+The **worker runtime** consists of the settings generator (`settings.py`), which turns a grant into
+deny rules, the sandbox and the hook registration; the write hook script (`write_hook.py`); the
+launcher (`workers.py`), which writes the brief, runs and resumes `claude -p` with its limits and
+decides the rounds; the write audit (`audit.py`); and the run directories and records
+(`runs.py`). Its tests use a fake `claude` for the host's behaviour and, on request with
+`CONCORDE_LIVE_CLAUDE=1`, a real Claude Code worker for what only Claude Code enforces.
 
 ## Relationships
 

@@ -84,7 +84,7 @@ list of what is left out are in [the design topic](design.md).
 The **check runner** has three parts. The executor mounts the host filesystem recursively read-only
 with only the scratch writable, and holds a process file descriptor so it can end every descendant
 before removing the scratch. The timing recorder keeps diagnostic spans of its work. The check
-service, which is pending, selects the configured checks of the Modules it is given, measures their
+service selects the configured checks of the Modules it is given, measures their
 input before and after the run, turning a concurrent change into `stale_evidence` rather than false
 evidence, and owns the check result so that no consumer runs checks another way.
 

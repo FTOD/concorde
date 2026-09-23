@@ -75,9 +75,7 @@
         "src/concorde/harness/timing.py",
         "src/concorde/harness/checks.py"
       ],
-      "pending": [
-        "src/concorde/harness/checks.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.checks.tests",

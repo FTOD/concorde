@@ -75,9 +75,9 @@ boundary is in [Check execution](checks/module.md).
 
 - The Claude process and the write hook are not sandboxed. The file-tool boundary is only as good
   as the generated deny rules are complete and the hook is correct.
-- File tools are denied only the paths the deny rules name. Other files the user can read outside
-  the task worktree and the primary worktree, such as the rest of the home directory, stay readable
-  to Read and Grep.
+- Deny rules cover the task worktree and the user's home directory, where other projects, other
+  task worktrees and Claude Code's own state live. System directories and other paths outside the
+  home stay readable to every tool, because Bash needs them to run anything.
 - A read denial carries Claude Code's generic "denied by your permission settings" message, so the
   brief states the grant explicitly. Write denials come from the hook and explain themselves.
 - Bash writes to single files inherit the bind-mount limits of Claude Code's Linux sandbox: such a

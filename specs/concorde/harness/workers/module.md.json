@@ -109,14 +109,7 @@
         "src/concorde/harness/runs.py",
         "tests/concorde/harness/workers/"
       ],
-      "pending": [
-        "src/concorde/harness/settings.py",
-        "src/concorde/harness/write_hook.py",
-        "src/concorde/harness/workers.py",
-        "src/concorde/harness/audit.py",
-        "src/concorde/harness/runs.py",
-        "tests/concorde/harness/workers/"
-      ]
+      "pending": []
     }
   ],
   "relations": [

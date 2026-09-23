@@ -273,6 +273,17 @@ File tools without a hook, same sandbox settings:
 | Sandbox only, no hook, no permission rules                           | **File tools are not confined.** Read returned an ungranted file, the secret and the worker's own credentials file. Edit changed a `ro` Spec, Write created an ungranted file, and Grep returned matches from an ungranted file. The sandbox governs only Bash and its child processes.                                                                                                     |
 | Sandbox and `permissions.deny` listing every ungranted path, no hook | Reads of listed paths and Edit of a `ro` file are denied with a generic "denied by your permission settings". **Grep filters ungranted files out of its results**, which is better than the hook's all-or-nothing directory rule. **Write of a new, unlisted file succeeds**: deny beats allow, so "only these files are writable" cannot be expressed, and only the host audit catches it. |
 
+Found while building milestone 5 (same Claude Code version):
+
+- **`Read` deny rules also bind the Bash sandbox.** A path a `permissions.deny` `Read` rule covers is
+  absent for Bash too. The deny rules are therefore the single place that hides a path, and they
+  must never cover system directories, the toolchain or the run's own directories. The generator
+  hides everything in the user's home except the paths to the task worktree, the run and the
+  runtime paths.
+- **The Bash sandbox needs a short `TMPDIR`.** It creates Unix sockets below `TMPDIR`; below a
+  deep run directory their paths exceed 108 bytes, the sandbox fails to start and every Bash
+  command is refused. Each run gets a private directory under `/tmp`.
+
 Consequences for the design:
 
 1. The worker runs in `bypassPermissions` with the run directory as its working directory. The
