@@ -54,10 +54,11 @@ not ready and lists every blocking finding it established in the run, not only t
 
 - a [structural check](../../spec-tooling/spec/module.md#concept.spec.structural-check) error,
   such as a broken link or a stale registry mirror, or the Specs failing to load at all;
-- a changed or new path that is neither a Spec document, a control record under `.concorde/`, nor
-  bound by any Module;
+- a changed or new path that is neither a Spec document, a control record under `.concorde/`,
+  generated or build output, external material, nor bound by any Module;
 - a [configured check](../../harness/checks/module.md#concept.checks.configured-check) of a changed
-  or bound Module that failed or timed out.
+  or bound Module that failed, timed out or could not be run, for example because its input is
+  missing.
 
 Warnings, such as missing scenario coverage, are reported but do not block. A pending realization
 entry whose file now exists, for example one an `implement` run filled in, is not an error here: it
@@ -74,10 +75,12 @@ digest, and Delivery then refuses the readiness as stale; the main agent runs `v
 The result status is `ok` whenever a readiness was decided, ready or not; the main agent reads
 `ready` to know whether to deliver, and `blocking` to know what to fix, typically with another
 `implement`, a `specify`, or by regenerating a stale registry mirror in the task worktree. The
-status is `failed` when no trustworthy readiness exists: the worktree is not on the task branch,
-Git cannot report the changes, the check sandbox is unavailable, or the worktree changed while the
-checks ran. Running `validate` again on an unchanged worktree gives the same readiness with fresh
-check results.
+status is `failed` when no trustworthy readiness exists, and a host evidence entry names the
+reason in its `ref`: `git` evidence `wrong_branch` when the worktree is not on the task branch,
+`git` evidence with the Git error when Git cannot report the changes, `check` evidence
+`check_sandbox_unavailable` when the check sandbox is unavailable, and `readiness` evidence
+`inputs_changed` when the worktree changed while the checks ran. Running `validate` again on an
+unchanged worktree gives the same readiness with fresh check results.
 
 ## Design
 
@@ -108,9 +111,14 @@ because a Spec change can break a link or a selection anywhere.
 | 9 | Save the readiness in the run directory and return it as the output | host | — |
 
 Steps 3 to 7 never stop the run on a finding: they collect every blocking finding, so one run tells
-the main agent everything that stands between the task and delivery. If the Specs cannot be loaded,
-steps 5 to 7 are skipped, because without the Specs no path can be attributed to a Module; the load
-failure is itself blocking. Step 8 exists because a
+the main agent everything that stands between the task and delivery. Step 3 validates the Specs as
+they will read once Delivery has applied the confirmations, so a filled pending entry is no error
+and the readiness speaks for the Specs that will be committed; an unbound-file error of the
+structural check on a changed path is reported once, as the unbound finding of step 5. If the Specs
+cannot be loaded, steps 5 to 7 are skipped, because without the Specs no path can be attributed to
+a Module; the load failure is itself blocking. The Operation host normally refuses to begin a run
+whose Specs cannot be loaded, because it cannot resolve the bound Modules, so this case arises only
+when the Specs break after the run began. Step 8 exists because a
 check can take minutes and nothing stops the main agent from changing the worktree meanwhile; a
 readiness is only issued for inputs that held still for the whole run.
 
@@ -126,7 +134,8 @@ error remains. The precise obligations are in the [requirements](requirements.md
 <a id="realization.validation.operation"></a>
 
 The **Validate Operation** realization holds the Operation's steps, the input measurement, the
-confirmation service Delivery calls, and their tests. It is pending: the files do not exist yet.
+confirmation service Delivery calls, and their tests, together with the task fixture the Delivery
+tests share.
 
 ## Relationships
 

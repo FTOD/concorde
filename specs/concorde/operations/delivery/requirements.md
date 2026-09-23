@@ -13,8 +13,8 @@ input digest equals a fresh measurement of the task worktree.
 
 ### req.delivery.blocked-inert — A blocked delivery changes nothing
 
-A delivery run that ends `blocked` SHALL leave the task worktree, its index, its branch and the task
-record unchanged.
+A delivery run that ends `blocked` SHALL leave the task worktree, its index, its branch and the
+deliveries of the task record unchanged.
 
 ## The commit
 

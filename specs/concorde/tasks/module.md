@@ -143,8 +143,9 @@ Tasks gives it a fixed place and lifetime and nothing more. The precise obligati
 
 <a id="realization.tasks.store"></a>
 
-The **Task store** realization holds the `concorde task` commands, the task record reads and
-updates the Operation host calls, and their tests. It is pending: the files do not exist yet.
+The **Task store** realization holds the `concorde task` commands (`src/concorde/tasks/cli.py`),
+the task records and the updates the Operation host calls (`src/concorde/tasks/store.py`), and
+their tests, which run on real Git repositories.
 
 ## Relationships
 

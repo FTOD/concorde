@@ -56,10 +56,6 @@
       "entries": [
         "src/concorde/validation/",
         "tests/concorde/validation/"
-      ],
-      "pending": [
-        "src/concorde/validation/",
-        "tests/concorde/validation/"
       ]
     }
   ],

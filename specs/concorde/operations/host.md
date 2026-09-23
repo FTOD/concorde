@@ -43,7 +43,9 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 | 6 | Write `result.json`, finish the run in the task record with the result's status, print the envelope and exit | host, Tasks | — |
 
 - Each provider step returns either "continue", with any output and evidence it produced, or
-  "stop", with a status, a summary and evidence. The runner never skips, repeats or reorders
+  "stop", with a status, a summary and evidence. Steps of one run share the run context: the task record, the task
+  worktree, the Modules, the admitted inputs, the output so far, a `state` dictionary the provider
+  owns, and the run record of the latest worker launch. The runner never skips, repeats or reorders
   steps; any repetition, such as resume rounds, happens inside one step.
 - An exception raised by a step becomes a `failed` result with `host-error` evidence naming the
   step, the error type and message, and the path of the traceback in the run directory.
@@ -53,6 +55,16 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
   is still written and printed, with `record` evidence naming the failure.
 - A refusal in steps 2 or 3 still writes and prints a result, with the refusal code as `refused`
   evidence and an escalation from the host.
+
+## Worker settings in the project configuration
+
+The optional `workers` object of `.concorde/config.json`, read from the task worktree, sets the
+limits of every worker launch: `model` (passed with `--model`), `timeout_seconds` per round
+(default 1800), `max_turns` (default 200), `max_budget_usd` (default none), `rounds` of resume
+(default 3) and `runtime`, the paths Bash may read besides the grant, relative to the task
+worktree or absolute (default `.venv` and `node_modules`, each only when it exists). A refusal of
+the task before the run begins (`unknown_task`, `missing_worktree`, `input_not_admissible`,
+`task_closed`, `task_busy`, `unknown_module`) is reported as `refused` evidence.
 
 ## Standard worker sequence
 

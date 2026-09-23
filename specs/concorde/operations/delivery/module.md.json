@@ -62,10 +62,6 @@
       "entries": [
         "src/concorde/delivery/",
         "tests/concorde/delivery/"
-      ],
-      "pending": [
-        "src/concorde/delivery/",
-        "tests/concorde/delivery/"
       ]
     }
   ],

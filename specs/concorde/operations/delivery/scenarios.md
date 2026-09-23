@@ -36,14 +36,14 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - GIVEN a ready readiness
 - WHEN a file of the task worktree changes and the main agent runs `delivery`
 - THEN the result has status `blocked` with `stale_readiness`
-- AND no commit is created and nothing in the worktree or the task record changes
+- AND no commit is created, nothing in the worktree changes and no delivery is recorded
 
 ### scenario.delivery.not-ready — Refuse a missing or negative readiness
 
 - GIVEN a task without a `validate` run, or whose latest readiness is not ready
 - WHEN the main agent runs `delivery`
 - THEN the result has status `blocked` with `no_readiness` or `not_ready`
-- AND nothing changes
+- AND no commit is created and no delivery is recorded
 
 ### scenario.delivery.nothing — Nothing to deliver
 

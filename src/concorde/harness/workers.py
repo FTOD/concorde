@@ -341,6 +341,7 @@ def run_worker(request: WorkerRequest) -> dict:
 
     def finish(status: str, error: str | None = None, detail: str = "") -> dict:
         remove_short_tmp(paths)
+        _remove_unused_pending(worktree, record)
         record["status"] = status
         if error:
             record["errors"].append({"code": error, "detail": detail})
@@ -467,16 +468,11 @@ def run_worker(request: WorkerRequest) -> dict:
     return finish("failed", "checks_failed", "no rounds left")
 
 
-def _finalize(worktree: Path, record: dict, result: dict, *, clean: bool) -> None:
-    """Remove unused pre-created files and perform proposed deletions after a clean audit."""
-    rw = [
-        entry["path"]
-        for entry in json.loads(
-            (Path(record["run_directory"]) / "control/grant.json").read_text()
-        )["entries"]
-        if entry["level"] == "rw"
-    ]
+def _remove_unused_pending(worktree: Path, record: dict) -> None:
+    """Remove every pre-created pending path the worker left empty; runs on every exit path."""
     for path in record["pending_created"]:
+        if path in record["pending_removed"]:
+            continue
         target = worktree / path.rstrip("/")
         if path.endswith("/"):
             if target.is_dir() and not any(target.iterdir()):
@@ -485,6 +481,17 @@ def _finalize(worktree: Path, record: dict, result: dict, *, clean: bool) -> Non
         elif target.is_file() and target.stat().st_size == 0:
             target.unlink()
             record["pending_removed"].append(path)
+
+
+def _finalize(worktree: Path, record: dict, result: dict, *, clean: bool) -> None:
+    """Perform the proposed deletions after a clean audit."""
+    rw = [
+        entry["path"]
+        for entry in json.loads(
+            (Path(record["run_directory"]) / "control/grant.json").read_text()
+        )["entries"]
+        if entry["level"] == "rw"
+    ]
     if not clean:
         return
     for proposed in result.get("proposed_deletions", []):

@@ -63,10 +63,7 @@
         "src/concorde/tasks/",
         "tests/concorde/tasks/"
       ],
-      "pending": [
-        "src/concorde/tasks/",
-        "tests/concorde/tasks/"
-      ]
+      "pending": []
     }
   ],
   "relations": [

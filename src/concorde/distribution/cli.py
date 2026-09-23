@@ -46,6 +46,15 @@ def create_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("spec-mcp")
 
+    init = subparsers.add_parser("init")
+    init_mode = init.add_mutually_exclusive_group(required=True)
+    init_mode.add_argument("--propose", action="store_true")
+    init_mode.add_argument("--apply", action="store_true")
+    init.add_argument("--name")
+    init.add_argument("--target", default="module.project")
+    init.add_argument("--proposal")
+    init.add_argument("--format", choices=["json"], default="json")
+
     build = subparsers.add_parser("build")
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
@@ -146,6 +155,34 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             Path(arguments.root) if arguments.root else root,
             arguments.modules,
             arguments.task_type,
+        )
+    if arguments.tool == "init":
+        import json as json_module
+
+        from ..spec.initialize import initialize
+
+        package = Path(__file__).resolve().parents[3]
+        if arguments.apply:
+            if not arguments.proposal:
+                raise ValueError("init --apply requires --proposal <file>")
+            proposed = json_module.loads(
+                (root / arguments.proposal).read_text(encoding="utf-8")
+            )
+            data = {
+                "action": "apply",
+                "proposal": proposed["proposal"],
+                "proposal_digest": proposed["proposal_digest"],
+            }
+        else:
+            if not arguments.name:
+                raise ValueError("init --propose requires --name")
+            data = {
+                "action": "propose",
+                "name": arguments.name,
+                "target_id": arguments.target,
+            }
+        return ToolResult(
+            "init", ".", "success", result=initialize(root, package, data)
         )
     if arguments.tool == "registry":
         from ..spec.registry import registry_command
@@ -252,6 +289,7 @@ TOOLS = frozenset(
         "docsite",
         "grant",
         "spec-mcp",
+        "init",
         "build",
         "protocol-manifest",
     }
@@ -280,6 +318,15 @@ def _failed(tool: str, message: str) -> dict:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
     words = list(sys.argv[1:] if argv is None else argv)
+    # Tasks and Operations own their command lines and output; they print no envelope.
+    if words and words[0] == "task":
+        from ..tasks.cli import main as task_main
+
+        return task_main(words[1:])
+    if words and words[0] == "run":
+        from ..operations.host import main as run_main
+
+        return run_main(words[1:])
     requested = next((word for word in words if word in TOOLS), "validate")
     arguments: argparse.Namespace | None = None
     try:

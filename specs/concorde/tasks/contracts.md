@@ -125,6 +125,8 @@ and a paragraph `Goal: <goal>`.
 | Error code | Raised when |
 | --- | --- |
 | `not_primary` | The command runs outside the primary worktree. |
+| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names neither or both of `--merged` and `--abandoned`, or `--force` without `--abandoned`. |
+| `worktree_failed` | Git refused to add or remove the worktree; the message carries Git's error. |
 | `invalid_task_id` | The identity does not match the record's `id` pattern. |
 | `task_exists` | A record with that identity exists, whatever its state. |
 | `branch_exists` | The branch `concorde/<task-id>` already exists. |

@@ -72,13 +72,15 @@ transcripts stay in the primary worktree's `.concorde/runs/`, which Git ignores;
 carries their identities and digests so that they can be matched later, not their contents. Its
 exact shape is the [evidence bundle contract](contracts.md#contract.delivery.evidence-bundle).
 
-The result status is `blocked` when the main agent has to act first: no `validate` run yet
-(`no_readiness`), a latest readiness that is not ready (`not_ready`), a worktree that changed since
-(`stale_readiness`), or nothing left to commit (`nothing_to_deliver`). In each case nothing is
-written, and the usual answer is to fix the findings or run `validate` again. The status is
-`failed` when the worktree is not on the task branch, the confirmations cannot be applied, or Git
-refuses the commit, for example because of a hook or a missing author identity; the worktree is
-then left as it was validated. If a delivery commit was made but could not be recorded in the task
+The result status is `blocked` when the main agent has to act first: no `validate` run yet, or a
+latest `validate` run that produced no readiness (`no_readiness`), a latest readiness that is not
+ready (`not_ready`), a worktree that changed since (`stale_readiness`), or nothing left to commit
+(`nothing_to_deliver`). The code is the `ref` of a `readiness` host evidence entry, or of a `git`
+entry for `nothing_to_deliver`. In each case Delivery writes nothing, and the usual answer is to fix
+the findings or run `validate` again. The status is `failed` when the worktree is not on the task
+branch, the confirmations cannot be applied, or Git refuses the commit, for example because of a
+hook or a missing author identity; the hook's output is then `git` host evidence and the worktree
+is left as it was validated. If a delivery commit was made but could not be recorded in the task
 record, the next `delivery` run finds it at the head of the branch and records it instead of
 committing again.
 
@@ -123,7 +125,8 @@ Spec structure when it applies them. The precise obligations are in the
 <a id="realization.delivery.operation"></a>
 
 The **Delivery Operation** realization holds the Operation's steps, the evidence bundle writer and
-their tests. It is pending: the files do not exist yet.
+their tests. The bundle is staged even where Git would ignore its path, so every delivery commit
+carries it.
 
 ## Relationships
 

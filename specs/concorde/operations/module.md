@@ -159,7 +159,9 @@ precise obligations are in the [requirements](requirements.md) and shown in the
 <a id="realization.operations.runner"></a>
 
 The **Catalog and runner** realization holds the catalog, the `concorde run` dispatch, the step
-runner and the result envelope, and their tests. It is pending: the files do not exist yet. The
+runner and the result envelope, and their tests: the catalog in `src/concorde/operations/catalog.py`,
+the provider interface and the standard worker sequence in `provider.py`, and the runner in
+`host.py`. The tests exercise the runner with test providers and a fake worker. The
 `concorde` command itself belongs to [Distribution](../distribution/module.md), which hands `run`
 to this Module.
 

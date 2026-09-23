@@ -39,8 +39,9 @@ a changed Spec document, and of every Module the run is bound to.
 
 ### req.validation.unbound-paths — Every change is accounted for
 
-Validation SHALL report as blocking every changed path that is not a Spec document member, not a
-control record under `.concorde/` and bound by no Module.
+Validation SHALL report as blocking every changed path that still exists, is not a Spec document
+member, a control record under `.concorde/`, generated or build output or external material, and is
+bound by no Module.
 
 ### req.validation.confirmations — Filled pending entries are confirmations
 
