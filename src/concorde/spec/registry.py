@@ -2,8 +2,9 @@
 
 The registry lists which Modules exist and mirrors each entry's ``module`` block. A task bound to
 one Module may change its own block but never the registry, so the mirror can go stale; this step
-reconciles it. It never adds or removes a Module and never changes a record's ``id``, ``title`` or
-``entry``: those are deliberate registry edits.
+reconciles it: every field of the entry's ``module`` block, the title included. It never adds or
+removes a Module and never changes a record's ``id`` or ``entry``: those are deliberate registry
+edits.
 """
 
 from __future__ import annotations
@@ -16,8 +17,13 @@ from .content_model import MODULE_FIELDS, metadata_path
 from .model import Finding, ToolResult
 from .repository_base import SpecError, decode, read_file
 
-MIRRORED = tuple(name for name in MODULE_FIELDS if name != "title")
-RECORD_FIELDS = ("id", "title", "entry", *MIRRORED)
+MIRRORED = MODULE_FIELDS
+RECORD_FIELDS = (
+    "id",
+    "title",
+    "entry",
+    *(name for name in MIRRORED if name != "title"),
+)
 
 
 def _registry_path(root: Path) -> str:
@@ -78,9 +84,9 @@ def mirrored_registry(
             )
         regenerated = {
             "id": record["id"],
-            "title": record["title"],
+            "title": block["title"],
             "entry": entry,
-            **{name: block[name] for name in MIRRORED},
+            **{name: block[name] for name in RECORD_FIELDS[3:]},
         }
         if regenerated != record or list(record) != list(RECORD_FIELDS):
             stale.append(record["id"])

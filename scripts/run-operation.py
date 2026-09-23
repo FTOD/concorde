@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Executable boundary for Concorde's public Operations (proposal section 6.3).
+"""The launcher of Concorde's public capabilities.
 
-Only public Operations are directly invocable. This launcher accepts exactly one of the public Operation names,
-maps it to its operation module through the `operation:` front-matter field of its operation guidance source
-`prompts/operation-guidance/<name>.md`, and runs the shared trusted stdin/envelope handling
-(`concorde.harness.entry.json_main`) through that module's own `run`. Stage
-operations have no launcher and no direct invocation. `<operation-name> --runtime-check` is a
-lightweight offline smoke check used by the managed runtime provisioner: it loads the operation
-module and confirms LangGraph is importable, without touching stdin or launching an agent.
+``run-operation.py <capability>`` accepts exactly one public capability name of the Operation
+catalog, reads one capability request on standard input and prints one result envelope. It imports
+the catalog and hands admission what admission must not import itself: the capability
+declarations, Operations' dispatcher, the local installation service and the verified session
+selection as the run's session provenance. ``<capability> --runtime-check`` is the offline probe
+the managed runtime provisioner runs: it loads the capability's declaration and confirms LangGraph
+is importable, without touching stdin or launching an Agent. ``--native-context <step> ...`` runs
+one native preparation or acceptance step of Agent execution.
 
 In an installed project the launcher runs inside the managed runtime the installer provisioned
 beside the framework, whatever interpreter started it: the caller may start it with ambient
@@ -25,20 +26,6 @@ from pathlib import Path
 FRAMEWORK_ROOT = Path(__file__).resolve().parent.parent
 # The installer's verified runtime leaves this owner marker (managed_runtime.MARKER_NAME).
 MANAGED_RUNTIME_MARKER = ".concorde-runtime.json"
-
-PUBLIC_OPERATIONS = (
-    "concorde-context-solve",
-    "concorde-plan",
-    "concorde-tasks",
-    "concorde-implement",
-    "concorde-issues",
-    "concorde-spec-review",
-    "concorde-code-review",
-    "concorde-init",
-    "concorde-configure",
-    "concorde-validate",
-    "concorde-deliver",
-)
 
 
 class UnknownOperationError(ValueError):
@@ -94,35 +81,15 @@ def _enter_managed_runtime(arguments: list[str]) -> int | None:
     return None  # pragma: no cover - execv does not return
 
 
-def _declared_operation(package_root: Path, operation_name: str) -> str:
-    from concorde.spec.frontmatter import FrontMatterError, parse_document
-
-    source = package_root / "prompts" / "operation-guidance" / f"{operation_name}.md"
-    try:
-        metadata, _ = parse_document(
-            source.read_text(encoding="utf-8"), source.as_posix()
-        )
-    except (OSError, UnicodeError, FrontMatterError) as error:
-        raise UnknownOperationError(
-            f"cannot read operation guidance source for {operation_name!r}: {error}"
-        ) from error
-    operation = metadata.get("operation")
-    if not isinstance(operation, str) or not operation.strip():
-        raise UnknownOperationError(
-            f"guidance for {operation_name!r} declares no operation"
-        )
-    return operation
-
-
-def _runtime_check(operation_name: str, operation: str, module) -> int:
+def _runtime_check(operation_name: str) -> int:
     import importlib.metadata
     import platform
 
-    if not callable(getattr(module, "run", None)) or not isinstance(
-        getattr(module, "REQUEST", None), dict
-    ):
+    from concorde.operations.catalog import operation
+
+    if not isinstance(operation(operation_name).request, dict):
         raise UnknownOperationError(
-            f"operation module {operation!r} has no registered JSON data boundary"
+            f"capability {operation_name!r} declares no request schema"
         )
     try:
         import langgraph.graph as graph_api
@@ -181,17 +148,44 @@ def main(argv: list[str] | None = None) -> int:
     # the concorde package for any entry that runs ahead of the one this line adds.
     if source in sys.path:
         sys.path.remove(source)
+    # The declaration packages ``agents`` and ``operations`` live at the package root.
+    if str(package_root) not in sys.path:
+        sys.path.insert(0, str(package_root))
     sys.path.insert(0, source)
-    import importlib
+    from concorde.harness.entry import invocation_failure, json_main
+    from concorde.spec.typed_data import canonical
+
+    try:
+        from concorde.operations.catalog import PUBLIC_OPERATIONS, register_types
+        from concorde.operations.dispatch import services
+
+        # The one registration entry: every owner's typed values before anything is checked.
+        register_types()
+    except ValueError as error:
+        # A refused catalog stops the launcher before any request is admitted.
+        print(canonical(invocation_failure(None, error)))
+        return 3
+    from concorde.distribution.local_installation import LocalInstallationService
+
+    admission_services = services(installation=LocalInstallationService())
+
+    def select_session():
+        # The verified session selection is this run's provenance; none is active without one.
+        if not os.environ.get("CONCORDE_SESSION_SELECTION"):
+            return None
+        from concorde.distribution.session_selection import runtime_selection
+
+        return runtime_selection(package_root)
 
     if arguments[:1] == ["--native-context"]:
-        from concorde.harness.native_context import main as native_context_main
+        from concorde.harness.native_driver import main as native_context_main
 
-        return native_context_main(package_root, arguments[1:])
-
-    from concorde.harness.entry import invocation_failure, json_main, runtime_selection
-    from concorde.spec.contracts import load_operation_inventory
-    from concorde.spec.typed_data import canonical
+        return native_context_main(
+            package_root,
+            arguments[1:],
+            services=admission_services,
+            select_session=select_session,
+        )
 
     runtime_check = len(arguments) == 2 and arguments[1] == "--runtime-check"
     valid_call = (
@@ -211,45 +205,28 @@ def main(argv: list[str] | None = None) -> int:
         return 3
     operation_name = arguments[0]
 
-    try:
-        runtime_selection(package_root)
-    except Exception as error:
-        print(canonical(invocation_failure(operation_name, error)))
-        return 3
-
-    try:
-        operation = _declared_operation(package_root, operation_name)
-        external_name = "concorde-" + operation.replace("_", "-")
-        if external_name != operation_name:
-            raise UnknownOperationError(
-                f"guidance for {operation_name!r} declares operation {operation!r}, expected {operation_name!r}"
-            )
-        inventory = load_operation_inventory()
-        module = importlib.import_module(f"{inventory.__name__}.{operation}")
-    except (UnknownOperationError, ImportError) as error:
-        print(
-            canonical(
-                invocation_failure(
-                    operation_name,
-                    error
-                    if isinstance(error, UnknownOperationError)
-                    else UnknownOperationError(str(error)),
-                )
-            )
-        )
-        return 3
-
     if runtime_check:
         try:
-            return _runtime_check(operation_name, operation, module)
+            return _runtime_check(operation_name)
         except (UnknownOperationError, MissingRuntimeError, ImportError) as error:
             print(canonical(invocation_failure(operation_name, error)))
             return 3
 
-    # json_main expects a bare invocation on stdin with no positional arguments; the Operation
+    try:
+        selection = select_session()
+    except Exception as error:
+        print(canonical(invocation_failure(operation_name, error)))
+        return 3
+
+    # json_main expects a bare invocation on stdin with no positional arguments; the capability
     # name (this launcher's own argument) has already been consumed and verified above.
     sys.argv = sys.argv[:1]
-    return json_main(package_root, operation_name, runner=module.run)
+    return json_main(
+        package_root,
+        operation_name,
+        services=admission_services,
+        session_provenance=selection,
+    )
 
 
 if __name__ == "__main__":

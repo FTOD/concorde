@@ -11,175 +11,156 @@
     "concorde.operations": [
       {
         "id": "code-review",
-        "kind": "workflow",
-        "public": true,
-        "context_selection": "bound",
-        "deterministic": false,
         "public_name": "concorde-code-review",
-        "uses": [
-          "code_reviewer"
+        "kind": "pi-workflow",
+        "public": true,
+        "deterministic": false,
+        "owner": "module.review",
+        "agents": [
+          {
+            "agent": "code_reviewer",
+            "phase": "code-review"
+          }
         ],
-        "state": {
-          "input": "concorde-code-review-request",
-          "output": null
-        },
-        "profile": null
+        "uses": []
       },
       {
         "id": "configure",
+        "public_name": "concorde-configure",
         "kind": "host",
         "public": true,
-        "context_selection": "none",
         "deterministic": true,
-        "public_name": "concorde-configure",
-        "uses": [],
-        "state": {
-          "input": "concorde-configure-request",
-          "output": null
-        },
-        "profile": null
+        "owner": "module.harness.admission",
+        "agents": [],
+        "uses": []
       },
       {
         "id": "context-solve",
-        "kind": "agent-entry",
-        "public": true,
-        "context_selection": "bound",
-        "deterministic": false,
         "public_name": "concorde-context-solve",
-        "uses": [
-          "context_assessor"
+        "kind": "agent-call",
+        "public": true,
+        "deterministic": false,
+        "owner": "module.planning",
+        "agents": [
+          {
+            "agent": "context_assessor",
+            "phase": "context-solve"
+          }
         ],
-        "state": {
-          "input": "concorde-context-solve-request",
-          "output": null
-        },
-        "profile": null
+        "uses": []
       },
       {
         "id": "deliver",
+        "public_name": "concorde-deliver",
         "kind": "host",
         "public": true,
-        "context_selection": "none",
         "deterministic": true,
-        "public_name": "concorde-deliver",
-        "uses": [],
-        "state": {
-          "input": "concorde-deliver-request",
-          "output": null
-        },
-        "profile": null
+        "owner": "module.delivery",
+        "agents": [],
+        "uses": []
       },
       {
         "id": "implement",
-        "kind": "agent-entry",
-        "public": true,
-        "context_selection": "bound",
-        "deterministic": false,
         "public_name": "concorde-implement",
-        "uses": [
-          "programmer"
+        "kind": "agent-call",
+        "public": true,
+        "deterministic": false,
+        "owner": "module.implementation",
+        "agents": [
+          {
+            "agent": "programmer",
+            "phase": "implementation"
+          }
         ],
-        "state": {
-          "input": "concorde-implement-request",
-          "output": null
-        },
-        "profile": null
+        "uses": []
       },
       {
         "id": "init",
+        "public_name": "concorde-init",
         "kind": "host",
         "public": true,
-        "context_selection": "none",
         "deterministic": true,
-        "public_name": "concorde-init",
-        "uses": [],
-        "state": {
-          "input": "concorde-init-request",
-          "output": null
-        },
-        "profile": null
+        "owner": "module.spec",
+        "agents": [],
+        "uses": []
       },
       {
         "id": "issues",
-        "kind": "workflow",
-        "public": true,
-        "context_selection": "bound",
-        "deterministic": false,
         "public_name": "concorde-issues",
-        "uses": [
-          "issue_solver",
-          "spec_review",
-          "code_review",
-          "validate"
+        "kind": "pi-workflow",
+        "public": true,
+        "deterministic": false,
+        "owner": "module.issue-solving",
+        "agents": [
+          {
+            "agent": "issue_solver",
+            "phase": "issue-solve"
+          }
         ],
-        "state": {
-          "input": "concorde-issues-request",
-          "output": null
-        },
-        "profile": null
+        "uses": [
+          "concorde-spec-review",
+          "concorde-code-review",
+          "concorde-validate"
+        ]
       },
       {
         "id": "plan",
-        "kind": "workflow",
-        "public": true,
-        "context_selection": "bound",
-        "deterministic": false,
         "public_name": "concorde-plan",
-        "uses": [
-          "context_assessor",
-          "planner"
+        "kind": "pi-workflow",
+        "public": true,
+        "deterministic": false,
+        "owner": "module.planning",
+        "agents": [
+          {
+            "agent": "context_assessor",
+            "phase": "context-solve"
+          },
+          {
+            "agent": "planner",
+            "phase": "plan"
+          }
         ],
-        "state": {
-          "input": "concorde-plan-request",
-          "output": null
-        },
-        "profile": null
+        "uses": []
       },
       {
         "id": "spec-review",
-        "kind": "workflow",
-        "public": true,
-        "context_selection": "bound",
-        "deterministic": false,
         "public_name": "concorde-spec-review",
-        "uses": [
-          "spec_reviewer"
+        "kind": "pi-workflow",
+        "public": true,
+        "deterministic": false,
+        "owner": "module.review",
+        "agents": [
+          {
+            "agent": "spec_reviewer",
+            "phase": "spec-review"
+          }
         ],
-        "state": {
-          "input": "concorde-spec-review-request",
-          "output": null
-        },
-        "profile": null
+        "uses": []
       },
       {
         "id": "tasks",
-        "kind": "agent-entry",
-        "public": true,
-        "context_selection": "bound",
-        "deterministic": false,
         "public_name": "concorde-tasks",
-        "uses": [
-          "task_author"
+        "kind": "agent-call",
+        "public": true,
+        "deterministic": false,
+        "owner": "module.planning",
+        "agents": [
+          {
+            "agent": "task_author",
+            "phase": "tasks"
+          }
         ],
-        "state": {
-          "input": "concorde-tasks-request",
-          "output": null
-        },
-        "profile": null
+        "uses": []
       },
       {
         "id": "validate",
+        "public_name": "concorde-validate",
         "kind": "host",
         "public": true,
-        "context_selection": "none",
         "deterministic": true,
-        "public_name": "concorde-validate",
-        "uses": [],
-        "state": {
-          "input": "concorde-validate-request",
-          "output": null
-        },
-        "profile": null
+        "owner": "module.validation",
+        "agents": [],
+        "uses": []
       }
     ]
   }

@@ -1,8 +1,8 @@
-"""Deterministic worker instructions, Protocol assets and Pi Operation catalog.
+"""The build: Agent instructions, Protocol assets, exported schemas and the Pi session files.
 
-Source builds write only private generated/session/pi integration output. Consumer
-installation renders the same catalog with an explicit framework prefix; it owns deployment.
-No standalone Skill publishing or client-selection interface remains.
+A source build writes the private session entry under generated/session/pi, never into Pi's
+discovery directories. Consumer installation renders the same outputs with an explicit framework
+prefix and performs its own writes.
 """
 
 from __future__ import annotations
@@ -10,24 +10,14 @@ from __future__ import annotations
 import copy
 import hashlib
 import importlib
-import importlib.abc
 import importlib.util
 import json
 import re
 import sys
-import uuid
 from dataclasses import dataclass
-from importlib.machinery import SourceFileLoader
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from ..harness.effects import EffectDeclaration
-from ..harness.worker_profile import (
-    load_worker_profiles,
-    resolve_worker,
-    worker_profile,
-)
-from ..spec.contracts import PUBLIC_OPERATIONS
+from ..harness.worker_profile import agent_definition, agent_names
 from ..spec.frontmatter import FrontMatterError, parse_document
 from . import task_subagents
 from .prompt_resolver import (
@@ -37,25 +27,6 @@ from .prompt_resolver import (
     resolve_operation_guidance,
     resolve_role_prompt,
 )
-
-if TYPE_CHECKING:
-    from ..harness.worker_profile import WorkerBinding
-
-
-@dataclass(frozen=True)
-class ModelInstructions:
-    """One admitted worker's instructions, effect ceiling and current build binding.
-
-    This in-process record is not a public Operation catalog entry or a wire envelope.
-    The host narrows its effects to the actual grant and reverifies its WorkerBinding.
-    """
-
-    name: str
-    description: str
-    source_path: str
-    body: str
-    effects: EffectDeclaration
-    binding: WorkerBinding
 
 
 class BuildError(ValueError):
@@ -72,16 +43,53 @@ PI_SESSION_SHIM = ".pi/extensions/concorde-session.ts"
 PRIVATE_PI_SESSION_SHIM = "generated/session/pi/concorde-session.ts"
 CONSUMER_RUNTIME_VENV = ".concorde/.venv"
 
+# Each Agent's hyphenated name and its instruction source, from its definition.
 MODEL_ROOTS: dict[str, str] = {
-    agent.name.replace("_", "-"): agent.spec
-    for agent in load_worker_profiles().values()
+    name.replace("_", "-"): agent_definition(name).instructions
+    for name in agent_names()
 }
-# The tier-one rules every worker follows, rendered before each worker's own Agent Spec.
-WORKER_RULES = "prompts/workers/common.md"
 
-OPERATION_GUIDANCE: dict[str, str] = {
-    name: f"prompts/operation-guidance/{name}.md" for name in PUBLIC_OPERATIONS
-}
+# The Pi session catalog's name for each routed Operation kind.
+SESSION_KINDS = {"host": "host", "agent-call": "agent-entry", "pi-workflow": "workflow"}
+
+
+def session_route(operation) -> tuple[str, list[str]]:
+    """The session catalog ``kind`` and ``native_actions`` of one cataloged Operation.
+
+    A pi workflow whose workflow hook serves some requests in place without a Workflow is a
+    ``host`` capability for the session, prepared natively only for the ``action`` values its hook
+    declares in ``NATIVE_ACTIONS``.
+    """
+    from ..harness.native_driver import WORKFLOW_HOOK_METHODS, resolve_hook
+
+    if operation.kind == "pi-workflow":
+        hook = resolve_hook(operation.declaration["entry_point"], WORKFLOW_HOOK_METHODS)
+        if getattr(hook, "serve_in_place", None) is not None:
+            actions = getattr(hook, "NATIVE_ACTIONS", None)
+            if (
+                not isinstance(actions, tuple)
+                or not actions
+                or not all(isinstance(item, str) and item for item in actions)
+            ):
+                raise BuildError(
+                    f"operation {operation.public_name}: a workflow hook that serves requests "
+                    "in place must declare NATIVE_ACTIONS"
+                )
+            return "host", list(actions)
+    return SESSION_KINDS[operation.kind], []
+
+
+def guidance_sources() -> dict[str, str]:
+    """The guidance source of every public capability of the Operation catalog, in catalog order."""
+    from ..operations.catalog import PUBLIC_OPERATIONS
+
+    return {name: guidance_source(name) for name in PUBLIC_OPERATIONS}
+
+
+def guidance_source(name: str) -> str:
+    return f"prompts/operation-guidance/{name}.md"
+
+
 PROTOCOL_KINDS = ("module",)
 PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
@@ -92,12 +100,13 @@ PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 # and check_build must never judge locations it does not own.
 GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/native",
-    "generated/agents",
     "generated/protocol",
-    "generated/docs",
     "generated/session",
 )
-GENERATED_OWNED_FILES: tuple[str, ...] = ("generated/build-manifest.json",)
+GENERATED_OWNED_FILES: tuple[str, ...] = (
+    "generated/build-manifest.json",
+    "generated/schemas.json",
+)
 
 
 @dataclass(frozen=True)
@@ -122,7 +131,7 @@ def _sha256_file(project_root: Path, relative: str) -> str:
 
 
 def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
-    relative = OPERATION_GUIDANCE[name]
+    relative = guidance_source(name)
     path = project_root / relative
     try:
         text = path.read_text(encoding="utf-8")
@@ -136,7 +145,7 @@ def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
         raise BuildError(
             f"invalid operation guidance source front matter in {relative}: {error}"
         ) from error
-    required = {"name", "description", "operation"}
+    required = {"name", "description"}
     if set(metadata) != required:
         raise BuildError(
             f"operation guidance source {relative} must declare exactly {sorted(required)}, found {sorted(metadata)}"
@@ -152,36 +161,18 @@ def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
         raise BuildError(
             f"operation guidance source {relative} requires a non-empty description"
         )
-    if not isinstance(metadata["operation"], str) or not metadata["operation"].strip():
-        raise BuildError(
-            f"operation guidance source {relative} requires a non-empty operation"
-        )
     return metadata
 
 
-def render_model_instructions(project_root: Path, agent: str) -> BuildOutput:
-    """The same canonical native Agent bytes under the worker instructions path."""
-    native = render_native_context_agent(project_root, agent)
-    return BuildOutput(
-        path=f"generated/agents/{agent}.md",
-        content=native.content,
-        sources=native.sources,
-    )
-
-
-def render_native_context_agent(
-    project_root: Path, name="context-assessor"
-) -> BuildOutput:
-    """Native transport instructions: the Agent's rules followed by its Agent Spec."""
+def render_native_context_agent(project_root: Path, name: str) -> BuildOutput:
+    """An Agent's rendered instructions: its native rules followed by its own instructions."""
     try:
         rules = resolve_role_prompt(project_root, f"prompts/native/{name}.md")
         role = resolve_model_instructions(
             project_root, f"agents/{name.replace(chr(45), chr(95))}/spec.md"
         )
     except PromptResolverError as error:
-        raise BuildError(
-            f"native context-assessor: {error.rule_id}: {error}"
-        ) from error
+        raise BuildError(f"native {name}: {error.rule_id}: {error}") from error
     return BuildOutput(
         path=f"generated/native/{name}.md",
         content=(rules.body.rstrip() + "\n\n" + role.body).encode(),
@@ -196,16 +187,16 @@ def _interpreters(prefix: str) -> list[str]:
 
 def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> BuildOutput:
     """Embed all public Operation guidance and versioned schemas in one Pi shim."""
+    from ..operations.catalog import PUBLIC_OPERATIONS, operation
+
     prefix = framework_prefix.strip("/")
-    schemas, schema_sources, _ = _root_schemas(project_root)
+    schemas, schema_sources = registered_schemas(project_root)
     sources: set[str] = set(schema_sources)
     operations = []
     for name in PUBLIC_OPERATIONS:
         metadata = _guidance_metadata(project_root, name)
         try:
-            resolved = resolve_operation_guidance(
-                project_root, OPERATION_GUIDANCE[name]
-            )
+            resolved = resolve_operation_guidance(project_root, guidance_source(name))
         except PromptResolverError as error:
             raise BuildError(f"operation {name}: {error.rule_id}: {error}") from error
         guidance = re.sub(r"\n{3,}", "\n\n", resolved.body).strip("\n") + "\n"
@@ -230,19 +221,12 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
             raise BuildError(
                 f"request schema {request_type} declares no constant schema_version"
             ) from error
+        kind, native_actions = session_route(operation(name))
         operations.append(
             {
                 "name": name,
-                "kind": {
-                    "concorde-init": "host",
-                    "concorde-configure": "host",
-                    "concorde-validate": "host",
-                    "concorde-deliver": "host",
-                    "concorde-plan": "workflow",
-                    "concorde-spec-review": "workflow",
-                    "concorde-code-review": "workflow",
-                    "concorde-issues": "workflow",
-                }.get(name, "agent-entry"),
+                "kind": kind,
+                "native_actions": native_actions,
                 "description": str(metadata["description"]),
                 "guidance": guidance,
                 "request_version": version,
@@ -250,9 +234,9 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
             }
         )
         sources.update(resolved.sources)
-        sources.add(OPERATION_GUIDANCE[name])
+        sources.add(guidance_source(name))
     catalog = {
-        "schema_version": 2,
+        "schema_version": 3,
         "launcher": (
             f"{prefix}/scripts/run-operation.py"
             if prefix
@@ -313,112 +297,60 @@ def render_protocol_kind(project_root: Path, kind: str) -> BuildOutput:
     )
 
 
-def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str, ...]]:
-    """Evaluate schema sources in a private namespace, without stale module/pyc caches.
+SCHEMAS_PATH = "generated/schemas.json"
 
-    Returns the rendered schemas, the root-local source files they depend on, and the root's
-    exported identity sequence exactly as declared, so callers can judge uniqueness before the
-    schema dictionary collapses any duplicate.
+
+def registered_schemas(project_root: Path) -> tuple[dict, tuple[str, ...]]:
+    """The JSON Schema of every registered type, and the sources below ``project_root`` they
+    come from.
+
+    The build loads every owner through the Operation catalog's registration entry before it
+    exports, so the export holds exactly what the running package registers.
     """
-    source_root = project_root / "src/concorde"
-    if not (source_root / "spec").is_dir():
-        # A root without any schema source tree, such as a prompt-only fixture, renders the
-        # running package's schemas and binds no root-local schema source.
-        from ..spec.contracts import exported_types
-        from ..spec.typed_data import json_schema
+    from ..operations import catalog
+    from ..spec.typed_data import json_schema, registered_types
 
-        identities = tuple(exported_types())
-        return {name: json_schema(name) for name in identities}, (), identities
-    for required in ("contracts.py", "typed_data.py"):
-        if not (source_root / "spec" / required).is_file():
-            # A populated schema tree missing its entry modules is a broken root, never a
-            # reason to fall back to another package's schemas.
-            raise BuildError(
-                f"incomplete schema source tree: src/concorde/spec/{required} is missing"
-            )
-    namespace = "_concorde_build_" + uuid.uuid4().hex
-    sources: set[str] = set()
-
-    class Sources(importlib.abc.MetaPathFinder, importlib.abc.Loader):
-        def find_spec(self, fullname, path=None, target=None):
-            if fullname != namespace and not fullname.startswith(namespace + "."):
-                return None
-            parts = fullname.split(".")[1:]
-            location = source_root.joinpath(*parts)
-            if location.is_dir():
-                return importlib.util.spec_from_loader(fullname, self, is_package=True)
-            if location.with_suffix(".py").is_file():
-                return importlib.util.spec_from_loader(fullname, self)
-            return None
-
-        def create_module(self, spec):
-            return None
-
-        def exec_module(self, module):
-            location = source_root.joinpath(*module.__name__.split(".")[1:])
-            if location.is_dir():
-                module.__path__ = [str(location)]
-                # Namespace containers avoid unrelated package initialization.
-                return
-            location = location.with_suffix(".py")
-            relative = location.relative_to(project_root).as_posix()
-            from ..spec.typed_data import checked_path
-
-            location = checked_path(project_root, relative)
-            sources.add(relative)
-            module.__file__ = str(location)
-            try:
-                # Use the normal Python source-loader contract, but bypass timestamp-based bytecode
-                # caches: build identity covers these exact trusted package source bytes.
-                loader = SourceFileLoader(module.__name__, str(location))
-                code = loader.source_to_code(location.read_bytes(), str(location))
-                # pi-lens-ignore: S102
-                exec(code, module.__dict__)
-            except BuildError:
-                raise
-            except Exception as error:
-                raise BuildError(
-                    f"cannot evaluate schema source {relative}: {error}"
-                ) from error
-
-    finder = Sources()
-    sys.meta_path.insert(0, finder)
     try:
-        try:
-            contracts = importlib.import_module(namespace + ".spec.contracts")
-            provider = importlib.import_module(namespace + ".spec.typed_data")
-            identities = tuple(contracts.exported_types())
-            payload = {name: provider.json_schema(name) for name in identities}
-        except BuildError:
-            raise
-        except Exception as error:
-            # Every failure of the root's own schema sources stays inside the declared
-            # BuildError boundary instead of escaping as an undeclared exception.
-            raise BuildError(
-                f"cannot evaluate schema sources under {source_root}: {error}"
-            ) from error
-        return payload, tuple(sorted(sources)), identities
-    finally:
-        sys.meta_path.remove(finder)
-        for name in tuple(sys.modules):
-            if name == namespace or name.startswith(namespace + "."):
-                del sys.modules[name]
+        catalog.register_types()
+        payload = {name: json_schema(name) for name in registered_types()}
+    except (ValueError, KeyError, TypeError) as error:
+        raise BuildError(f"cannot export the registered schemas: {error}") from error
+    # The declaring files, named by their place in the package and bound when ``project_root``
+    # has them, so every process that renders this root records the same sources.
+    package = Path(__file__).resolve().parents[3]
+    modules = [
+        sys.modules[importlib.util.resolve_name(name, catalog.__package__)]
+        for name in catalog.RECORD_MODULES
+    ]
+    sources = {
+        relative
+        for relative in (
+            f"operations/{item.id.replace('-', '_')}.py"
+            for item in catalog.CATALOG.values()
+        )
+        if (project_root / relative).is_file()
+    }
+    for module in modules:
+        location = Path(getattr(module, "__file__", "") or "").resolve()
+        if location.is_relative_to(package):
+            relative = location.relative_to(package).as_posix()
+            if (project_root / relative).is_file():
+                sources.add(relative)
+    return payload, tuple(sorted(sources))
 
 
-def render_protocol_schemas(project_root: Path) -> BuildOutput:
-    """Export schemas from the named root and bind every loaded source to the output."""
-    payload, sources, _ = _root_schemas(project_root)
+def render_schemas(project_root: Path) -> BuildOutput:
+    """Export every registered type's schema and bind the sources that declare them."""
+    payload, sources = registered_schemas(project_root)
     content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
-    return BuildOutput(
-        path="generated/protocol/schemas.json", content=content, sources=sources
-    )
+    return BuildOutput(path=SCHEMAS_PATH, content=content, sources=sources)
 
 
 def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     all_sources: set[str] = set()
     for output in outputs:
         all_sources.update(output.sources)
-    # WorkerProfile declarations and operation wire metadata are authored build inputs too.
+    # Agent definitions and Operation declarations are authored build inputs too.
     for directory in ("agents", "operations", "src/concorde"):
         all_sources.update(
             path.relative_to(project_root).as_posix()
@@ -451,11 +383,9 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         "scripts/concorde.py",
         "scripts/install-concorde.py",
         "scripts/run-operation.py",
-        "src/concorde/spec/contracts.py",
-        "src/concorde/spec/contract_shapes.py",
-        "src/concorde/spec/wire_shapes.py",
+        "src/concorde/spec/typed_data.py",
+        "src/concorde/operations/catalog.py",
         "src/concorde/harness/worker_profile.py",
-        "src/concorde/harness/operation_state.py",
         "src/concorde/harness/operation_node.py",
         # The shim binds the tracked session extension; its behavior is part of the projection.
         PI_SESSION_EXTENSION,
@@ -483,44 +413,20 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     root = Path(project_root)
 
     outputs: list[BuildOutput] = []
-    for agent in sorted(MODEL_ROOTS):
-        outputs.append(render_model_instructions(root, agent))
-    for name in (
-        "context-assessor",
-        "planner",
-        "task-author",
-        "programmer",
-        "spec-reviewer",
-        "code-reviewer",
-        "issue-solver",
-    ):
+    for name in sorted(MODEL_ROOTS):
         outputs.append(render_native_context_agent(root, name))
     outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
     outputs.extend(task_subagents.render(root, framework_prefix))
     outputs.append(render_protocol_principles(root))
     for kind in PROTOCOL_KINDS:
         outputs.append(render_protocol_kind(root, kind))
-    outputs.append(render_protocol_schemas(root))
+    outputs.append(render_schemas(root))
 
     roots = (
         list(MODEL_ROOTS.values())
-        + [
-            WORKER_RULES,
-            *[
-                f"prompts/native/{name}.md"
-                for name in (
-                    "context-assessor",
-                    "planner",
-                    "task-author",
-                    "programmer",
-                    "spec-reviewer",
-                    "code-reviewer",
-                    "issue-solver",
-                )
-            ],
-        ]
+        + [f"prompts/native/{name}.md" for name in sorted(MODEL_ROOTS)]
         + list(task_subagents.prompt_roots(root))
-        + list(OPERATION_GUIDANCE.values())
+        + list(guidance_sources().values())
         + ["prompts/protocol/principles.md"]
         + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS]
     )
@@ -748,31 +654,3 @@ def verify_fresh(project_root: str | Path) -> None:
             raise BuildError(
                 f"build source changed since the last build: {relative}", "stale_build"
             )
-
-
-def load_model_instructions(package_root: str | Path, name: str) -> ModelInstructions:
-    """Load one worker's rendered instructions and complete binding from the build.
-
-    Verifies freshness first (via ``resolve_worker``). ``name`` accepts either the external
-    ``concorde-<hyphenated>`` identity used throughout the host (for example
-    ``concorde-code-reviewer``) or the bare hyphenated/underscored WorkerProfile name.
-    """
-
-    binding = resolve_worker(package_root, name)
-    root = Path(package_root)
-    try:
-        body = (root / binding.instructions_path).read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as error:
-        raise BuildError(
-            f"cannot read rendered agent {binding.instructions_path}: {error}",
-            "stale_build",
-        ) from error
-    hyphenated = binding.agent.replace("_", "-")
-    return ModelInstructions(
-        name=f"concorde-{hyphenated}",
-        description=f"Concorde {hyphenated} agent.",
-        source_path=binding.spec_path,
-        body=body,
-        effects=worker_profile(binding.agent).contract.effects,
-        binding=binding,
-    )

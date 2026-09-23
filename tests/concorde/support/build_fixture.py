@@ -52,7 +52,7 @@ def refresh_projection_goldens() -> tuple[str, ...]:
     expected = {}
     for output in build(REPOSITORY_ROOT).outputs:
         relative = None
-        if output.path.startswith(("generated/agents/", "generated/native/")):
+        if output.path.startswith("generated/native/"):
             relative = output.path.removeprefix("generated/")
         if output.path == PRIVATE_PI_SESSION_SHIM:
             relative = "pi/concorde-session.ts"

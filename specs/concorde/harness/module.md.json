@@ -8,28 +8,65 @@
   "module": {
     "title": "Harness",
     "owns": [
-      "specs/concorde/harness/module.md"
+      "specs/concorde/harness/module.md",
+      "specs/concorde/harness/design.md"
     ],
     "contains": [
       {
         "target": "module.harness.admission",
-        "meaning": "#contains-admission"
+        "meaning": "#contains-admission",
+        "relies_on": [
+          "concept.admission.capability-request",
+          "concept.admission.result-envelope",
+          "concept.admission.capability-declaration",
+          "concept.admission.relay"
+        ]
       },
       {
         "target": "module.harness.context",
-        "meaning": "#contains-context"
+        "meaning": "#contains-context",
+        "relies_on": [
+          "concept.context.snapshot",
+          "concept.context.capsule",
+          "concept.context.agent-binding"
+        ]
       },
       {
         "target": "module.harness.execution",
-        "meaning": "#contains-execution"
+        "meaning": "#contains-execution",
+        "relies_on": [
+          "concept.execution.agent-call",
+          "concept.execution.workflow",
+          "concept.execution.graph",
+          "concept.execution.model-selection",
+          "concept.execution.agent-hook",
+          "concept.execution.workflow-hook",
+          "concept.execution.result-gate"
+        ]
       },
       {
         "target": "module.harness.checks",
-        "meaning": "#contains-checks"
+        "meaning": "#contains-checks",
+        "relies_on": [
+          "concept.checks.configured-check",
+          "concept.checks.read-only-boundary"
+        ]
       },
       {
         "target": "module.harness.worktrees",
-        "meaning": "#contains-worktrees"
+        "meaning": "#contains-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate",
+          "concept.worktrees.change-status",
+          "concept.worktrees.run-record"
+        ]
+      },
+      {
+        "target": "module.harness.observation",
+        "meaning": "#contains-observation",
+        "relies_on": [
+          "concept.observation.diagnostic-span"
+        ]
       }
     ],
     "uses": [],

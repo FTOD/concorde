@@ -2,32 +2,30 @@
 
 ## Purpose
 
-Request admission is the single entry of every public Concorde capability. It reads one request,
-checks it against its declared type, the project's stored configuration and the worktree it was
-started in, decides where it runs, hands it to the Operations dispatch, and returns one result
-envelope that keeps a refusal, a business outcome and an execution failure apart. The user session,
-through the Pi `concorde` tool, and every native preparation step rely on it so that no capability
-runs without these checks. It does not decide what a capability does (that belongs to its
-provider under Operations), does not freeze worker context and does not launch models.
+Request admission is the single entry of every Concorde capability request. It checks one request
+against the declaration of the capability it names, the stored configuration and the worktree it
+was started in, decides where it runs, hands it to the Operations dispatch, and returns one result
+envelope that keeps a refusal, a business outcome and an execution failure apart. The user
+session's `concorde` tool and any provider that starts another capability rely on it. It also
+provides `concorde-configure`. It does not decide what a capability does, knows no provider (only
+their declarations), freezes no Agent context and launches no model.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Capability request | One JSON invocation of one public capability, naming the capability, a mode, the project configuration and the capability's own typed request. |
+| Capability request | One JSON invocation of one capability, naming the capability, a mode, the project configuration and the capability's own typed request. |
 | Result envelope | The one JSON result every capability request returns, carrying a status, the workspace used, the capability's typed output and any errors. |
-| Operation configuration | The project's stored choice of worker models, thinking levels and time limits, which every request must match. |
-| Relay | Running an admitted mutating request from the primary worktree through the launcher of a new or recorded candidate, and adopting that launcher's result envelope. |
+| Capability declaration | The facts a capability states about itself so that admission never has to know it: whether and when it mutates, where it runs, how its target is selected, its default task, how it takes its configuration, its entry point and its request and response types. |
+| Operation configuration | The project's stored choice of Agent models, thinking levels and time limits, which every request of a capability that uses stored configuration must match. |
+| Configuration proposal | The reviewed change to the stored configuration that `concorde-configure` proposes, bound to the digest of the configuration file it was computed from. |
+| Relay | Running an admitted mutating request from the primary worktree through the launcher of a new or recorded candidate, and returning that launcher's result envelope. |
 | Causal feedback | A diagnostic record attached to an error that keeps each lower-level cause, its layer and its attempt identity as a failure is reported upward. |
-| [Capability](../../vocabulary.md#concept.concorde.capability) | |
-| [User session](../../vocabulary.md#concept.concorde.user-session) | |
-| [Host](../../vocabulary.md#concept.concorde.host) | |
-| [Worker](../../vocabulary.md#concept.concorde.worker) | |
-| [Task subagent](../../vocabulary.md#concept.concorde.task-subagent) | |
-| [Operation](../../operations/module.md#concept.operations.operation) | |
+| [Agent](../../agents/module.md#concept.agents.agent) | |
 | [Typed value](../../spec/module.md#concept.spec.typed-value) | |
-| [Candidate](../worktrees/module.md#concept.worktrees.candidate) | |
+| [Worktree](../worktrees/module.md#concept.worktrees.worktree) | |
 | [Primary worktree](../worktrees/module.md#concept.worktrees.primary-worktree) | |
+| [Candidate](../worktrees/module.md#concept.worktrees.candidate) | |
 | [Change status](../worktrees/module.md#concept.worktrees.change-status) | |
 | [Run record](../worktrees/module.md#concept.worktrees.run-record) | |
 
@@ -35,12 +33,9 @@ provider under Operations), does not freeze worker context and does not launch m
 
 <a id="concept.admission.capability-request"></a>
 
-**Calling a capability.** A capability is run by starting the launcher with the capability name as
-its only argument and one capability request on standard input:
-
-```text
-python3 scripts/run-operation.py concorde-plan < request.json
-```
+**Calling a capability.** The launcher takes the capability name as its only argument and one
+capability request on standard input; its working directory is the project, which must be a Git
+worktree root or a directory outside any Git repository:
 
 ```json
 {"type_id": "concorde-operation-invocation", "schema_version": 3,
@@ -49,208 +44,175 @@ python3 scripts/run-operation.py concorde-plan < request.json
            "data": {"target_id": "module.checkout", "task": "Add retry limits"}}}
 ```
 
-The Pi `concorde` tool builds exactly this request for the user session. The launcher's working
-directory is the project: it must be the root of a Git worktree or a directory outside any Git
-repository. `mode` is `execute` or `describe-policy`; `describe-policy` shows what a capability
-would do without running a worker or changing project files. A `configuration` of `null` means
-"use the stored project configuration"; any other value must equal it.
+`mode` is `execute` or `describe-policy` (describe without running an Agent or changing files); a
+`configuration` of `null` means the stored one.
 
 <a id="concept.admission.result-envelope"></a>
 
 **Reading the result.** Standard output receives one result envelope. `status` is `succeeded`,
-`blocked`, `failed` or `described`; the exit code is 0 for `succeeded` and `described` and 3
-otherwise. `output` is the capability's own typed response, whose `outcome` tells the business
-result: a `blocked` status with outcome `spec_incomplete` means the Spec lacks something the step
-needs, which is different from a `failed` status with error `execution_cancelled`. `workspace` names
-the worktree the request ran in, which is a new candidate when the request was relayed. `errors`
-lists refusals and failures with a stable `code`, the offending `field` and a sanitized `message`.
-Standard error receives the policy descriptions of `describe-policy` and a usage summary.
+`blocked`, `failed` or `described` (exit code 0 for the first and last, 3 otherwise); `output` is
+the capability's typed response, whose `outcome` gives the business result; `workspace` names the
+worktree used; `errors` carry a stable `code`, a `field`, a sanitized `message` and optional causal
+feedback. A `blocked` status with outcome `spec_incomplete` (the Spec lacks something) is different
+from `failed` with `execution_cancelled`.
 
-For example, a `concorde-plan` request from the primary worktree of a consumer project returns
-`succeeded`, an output with outcome `completed`, and a `workspace` naming a new candidate and its
-change ID. Repeating the request with that `change_id` continues in the same candidate.
+<a id="concept.admission.capability-declaration"></a>
+
+**What admission decides from.** The launcher hands admission the Operation catalog; for example
+`concorde-plan` declares that it is model-backed, always mutates, runs in a candidate and is bound to
+the Module its request names. Admission decides every check from such facts alone; a name the
+catalog does not offer is refused with `unknown_operation`.
 
 <a id="concept.admission.relay"></a>
 
-**Where a request runs.** Read-only capabilities (`concorde-context-solve`,
-`concorde-spec-review`, `concorde-code-review`, Issue bookkeeping and an initialization proposal)
-run where they are started. A mutating capability started in a candidate runs there and registers
-the change if needed. A mutating capability started in the primary worktree of a consumer project
-is relayed, unless the embedding host explicitly allows mutation of the primary: the host creates a
-candidate from the committed `HEAD`, installs this worktree's Concorde package into it, runs the
-same request through the candidate's own launcher and returns that launcher's envelope. The user
-session stays in the primary. In Concorde's own source checkout a mutating request from the primary
-is refused with `fresh_session_required`, because source maintenance runs in a candidate assigned
-by the user session to a fresh Task subagent.
-`concorde-deliver` runs only in the change's candidate or primary, as Delivery decides.
+**Where a request runs.** A request that does not mutate runs where it was started, and so does a
+mutation started in a candidate. A mutation started in the primary worktree of a consumer project is
+relayed: into the live candidate of the `change_id` it names (none is `missing_change`), or into a
+new candidate from the committed `HEAD` into which the launcher's installation service installs the
+package. The candidate's own launcher runs the same request, and its complete envelope, including
+its invocation identity, is the result. The user session never moves and uncommitted primary edits
+never reach the change. Concorde's own source checkout refuses a mutation from its primary with
+`fresh_session_required`; a mutation outside any Git worktree is refused with `workspace_mismatch`;
+`concorde-deliver` runs where it was started. `concorde-configure` and an initialization `apply`
+apply in the primary only with `run_in_primary: true`.
 
-**Configuring the primary directly.** `concorde-configure` and an initialization `apply` are
-relayed like any other mutation, so their effect reaches the primary only when the change is
-delivered. That is what a developer wants when changing or testing these commands. A developer who
-simply wants to configure or initialize the project now sets `run_in_primary: true` in the request;
-the host then applies it in the primary worktree without creating a candidate or registering a
-change. The field exists only in these two requests, so every other capability refuses it as an
-unknown field, and a request that sets it outside the primary worktree is refused with
-`workspace_mismatch`. The Concorde source checkout still refuses it with `fresh_session_required`.
-Because the choice changes where the effect lands, the user session asks the developer which one
-they want before calling either capability from the primary.
+<a id="concept.admission.operation-configuration"></a><a id="concept.admission.configuration-proposal"></a>
 
-**Installed projects.** In a consumer project the launcher, its Python environment and LangGraph
-must all belong to that worktree's own installation. A missing, stale or foreign installation stops
-with `local_installation_required`; the developer runs the installer for that worktree and retries.
-Nothing falls back to the primary's or a global installation.
+**Configuring Agents.** The operation configuration (default and per-Agent model, thinking level
+and time limit) lives in `.concorde/config.json` and changes only through `concorde-configure` in
+two steps. `propose` returns a configuration proposal with its digest and changes nothing; `apply`
+writes exactly the proposal whose digest it names, and only if the file still has the digest the
+proposal was computed from, else `stale_proposal`. A proposal with `accept_protocol: true` also
+rebinds the project to the installed Protocol copy. Every other request whose configuration differs
+from the stored one is refused with `configuration_mismatch`; `concorde-init` takes its
+configuration from its request.
 
-<a id="concept.admission.operation-configuration"></a>
-
-**Configuration.** The operation configuration lives under `operation_configuration` in
-`.concorde/config.json`: an optional default model (`provider/id`), thinking level and timeout, and
-optional per-worker overrides. It is changed only through `concorde-configure`, which proposes a
-change bound to the current file digest and applies it only if the file has not changed since. A
-request whose configuration differs from the stored one stops with `configuration_mismatch`.
-
-**Errors and interruption.** Every refusal ends in an envelope, never an unhandled exception. An
-interrupt (Ctrl-C, or SIGTERM from the developer's client) ends the request with
-`execution_cancelled` and keeps the candidate. A relayed launcher is given thirty seconds to cancel
-its own work before it is killed. A process running as a worker cannot call a capability at all:
-it is refused with `permission_denied`.
+**Other checks and errors.** A top-level model-backed request needs a fresh build, else
+`stale_build`. Every executed request has one run record in the primary. An interrupt ends the request with `execution_cancelled` and keeps the candidate; a
+candidate launcher that returns no envelope fails the request (status `failed`) with `relay_failed`; a mutation of a change being
+delivered gives `delivery_in_progress`. Nothing is retried automatically, and a repeated request
+cannot replace a change's recorded task or target. All codes are in
+[contracts](contracts.md#error-codes); less common paths are in the [design topic](design.md).
 
 ## Design
 
 <a id="realization.admission.boundary"></a>
 
-**One boundary, a fixed sequence.** Every public capability, deterministic or model-backed, passes
-the same finite steps in the same order: read the request; admit it (known capability, known mode,
-local installation, fresh build for model-backed capabilities, worktree root, typed configuration
-and request, restored change owner, selectable target); bind the workspace; check the configuration
-and open a run record; dispatch; finalize. A failed step skips the rest and goes straight to
-finalization. The sequence is plain code, not a scheduler: it accepts no caller-supplied steps and
-launches no model. Model-backed capabilities are only prepared behind it; running the worker and
-accepting its result belong to [Agent execution](../execution/module.md), which calls back into
-this same boundary for every Host step.
+**One boundary, declarations instead of knowledge.** The admission boundary runs a fixed, finite
+sequence (read, admit, bind the workspace, check the configuration and open the run record,
+dispatch, finalize); a failed step goes straight to finalization. It accepts no caller-supplied
+steps and launches no model. Because admission sits below every provider, what differs between
+capabilities comes from their declarations and, where needed, a provider's selection hook, so it
+never imports a provider.
 
-**Refusal, outcome and failure stay apart.** A caller must be able to tell "you asked for something
-invalid" from "the Spec is incomplete" from "the worker crashed", because each needs a different
-reaction. Admission refusals keep the provider's error code and give status `blocked`. A provider's
-output decides the status by its outcome: `completed`, `ready` and `delivered` succeed, `failed`
-fails, anything else blocks. Execution failures give status `failed` with `execution_failed`,
-`execution_cancelled` or `execution_limit`, and are recorded as the change's lifecycle status.
-A failed status write is reported beside the output, never instead of it.
+Refusals, business outcomes and execution failures stay apart because each needs a different
+reaction, and the stored configuration is the only source so that no request can change an Agent's
+model or limits.
 
-**Stored configuration as the only source.** Requiring every request to equal the stored
-configuration means a worker's model and limits cannot be changed by whoever writes the request,
-and a nested step cannot run with different settings from its parent.
+<a id="realization.admission.configure"></a>
+
+The **configure service** implements `concorde-configure` as a reviewed proposal, so the developer
+sees exactly what is written and a file edited meanwhile is never overwritten.
 
 <a id="realization.admission.relay"></a>
 
-**Relay keeps the primary clean.** Relaying rather than switching directories means the user
-session never moves, uncommitted primary edits never leak into a change, and the candidate runs
-its own code and installation. Only candidate creation may install; a later relay only verifies.
-The relayed launcher's complete envelope becomes this request's result, and its standard error is
-forwarded. A launcher that returns no envelope fails with `relay_failed`.
+The **candidate relay** runs the candidate's own launcher and installation, so the user session
+never moves and the change starts from committed history.
 
-<a id="concept.admission.causal-feedback"></a><a id="realization.admission.feedback"></a>
+<a id="realization.admission.feedback"></a><a id="concept.admission.causal-feedback"></a>
 
-**Failures keep their causes.** Each error entry may carry causal feedback: the lower-level code,
-message, layer and attempt identity, with the causes below it. Upper layers add context as causes
-instead of replacing the original, so a native schema rejection is still visible behind a Host
-refusal behind a workflow failure. Messages are sanitized: argument values and model output are
-removed and credential-like values are redacted. When a record is too large for Pi's display, the
-full sanitized record is exported to a private temporary file and the display names that file.
-Feedback is diagnostic only; it never changes a status, accepts a result or permits a retry.
+The **feedback records** add each layer as context instead of replacing the lower cause, sanitize
+messages and use one format on the Host and Pi sides; feedback never changes a status.
+
+**Not enforced.** Admission cannot tell who started the launcher: an Agent with a shell can call it
+like any other caller.
 
 <a id="realization.admission.tests"></a>
 
-The tests of this Module run the launcher and the Host services end to end in fixture projects:
-envelope and request refusals, deterministic capabilities without LangGraph, local installation
-admission, and causal feedback through the native and finite boundaries.
-
-**Open questions.** What `describe-policy` shows for each model-backed capability is decided by its
-provider and native preparation; this Module promises only that nothing runs and nothing changes.
-The error code vocabulary is shared by all providers and is not owned by one document.
+The **admission tests** run admission end to end in fixture projects. The [design topic](design.md)
+covers the rest, including open questions.
 
 ## Relationships
 
 ```mermaid
 flowchart LR
     accTitle: Request admission relationships
-    accDescr: The admission boundary admits a capability request, checks it against the operation configuration, binds the workspace through Candidate worktrees, dispatches to Operations and returns a result envelope.
+    accDescr: The admission boundary admits requests against declarations, binds the workspace and returns envelopes.
     boundary[Admission boundary]
     request[Capability request]
+    declaration[Capability declaration]
     configuration[Operation configuration]
     envelope[Result envelope]
     relay[Candidate relay]
+    configure[Configure service]
+    proposal[Configuration proposal]
     feedback[Feedback records]
     worktrees[Candidate worktrees]
     candidate[Candidate worktrees / Candidate]
-    operations[Operations]
-    execution[Agent execution]
+    spec[Spec tooling]
+    observation[Observation]
     boundary -->|admits| request
+    boundary -->|reads| declaration
     boundary -->|checks| configuration
     boundary -->|binds the workspace through| worktrees
-    boundary -->|dispatches admitted requests to| operations
+    boundary -->|selects targets through| spec
+    boundary -->|times requests with| observation
     boundary -->|returns| envelope
     relay -->|relays requests into| candidate
+    configure -->|applies| proposal
     feedback -->|explains failures in| envelope
-    boundary -->|creates the invocation host of| execution
 ```
-
-The **admission boundary** is the launcher entry and the admission sequence. The **candidate
-relay** creates or finds the candidate and runs its launcher. The **feedback records** are the
-causal feedback format, in Python for the Host and in JavaScript for the Pi side.
-
-<a id="uses-operations"></a>
-
-**Operations.** After admission the request goes to the [Operations](../../operations/module.md)
-dispatch, which knows the public [Operation](../../operations/module.md#concept.operations.operation)
-catalog, binds the target Module and runs the owning provider. Admission refuses an unknown
-capability name with `unknown_operation` before dispatch, and adopts the provider's typed output,
-or a relayed envelope, as the result. A provider error keeps its own code in the envelope.
 
 <a id="uses-worktrees"></a>
 
-**Candidate worktrees.** Binding the workspace uses [Candidate worktrees](../worktrees/module.md):
-the [worktree](../worktrees/module.md#concept.worktrees.worktree) identity of the entry directory,
-the [primary worktree](../worktrees/module.md#concept.worktrees.primary-worktree), creation of a
-[candidate](../worktrees/module.md#concept.worktrees.candidate) for a relay, and the
-[change status](../worktrees/module.md#concept.worktrees.change-status) whose recorded owner a
-repeated request must match. Every executed request opens and finishes a
-[run record](../worktrees/module.md#concept.worktrees.run-record) in the primary. When the primary
-is unavailable or a status write is stale, the request stops with that error rather than running
-without a record.
+**Candidate worktrees** identifies the [worktree](../worktrees/module.md#concept.worktrees.worktree)
+and [primary worktree](../worktrees/module.md#concept.worktrees.primary-worktree) and creates a
+relay's [candidate](../worktrees/module.md#concept.worktrees.candidate); admission checks the owner in
+the [change status](../worktrees/module.md#concept.worktrees.change-status) and opens and finishes
+every [run record](../worktrees/module.md#concept.worktrees.run-record). An unavailable primary or a
+stale write stops the request; a failed final write is reported as `state_persistence_failed`.
 
 <a id="uses-spec"></a>
 
-**Spec.** Admission uses the [Spec](../../spec/module.md) Module's typed value checks for the
-configuration and every request, its safe-path rules, and its registry to select the request's
-target Module. A malformed value stops with a typed error naming the field; an unknown target stops
-before any provider runs.
+**Spec tooling** checks every request, configuration and output as a
+[typed value](../../spec/module.md#concept.spec.typed-value) and every bound target against the
+[registry](../../spec/module.md#concept.spec.registry); a failure stops before any provider runs.
+The configure service writes through a
+[file transaction](../../spec/module.md#concept.spec.file-transaction) kept only if the project
+loads, and changes the [Protocol binding](../../spec/module.md#concept.spec.protocol-binding) only
+for an accepted Protocol.
+
+<a id="uses-agents"></a>
+
+**Agents.** A per-Agent configuration override must name an
+[Agent](../../agents/module.md#concept.agents.agent); any other key is refused.
 
 <a id="uses-distribution"></a>
 
-**Distribution.** Admission relies on [Distribution](../../distribution/module.md) to tell whether
-the build is fresh, to verify an installed worktree's local installation, and to install the
-invoking package into a new consumer candidate. Deterministic capabilities (`concorde-init`,
-`concorde-configure`, `concorde-validate`, `concorde-deliver`) read no rendered worker
-instructions and skip the build check; every other top-level request is refused with `stale_build`
-when the build is stale.
+**Distribution.** Admission decides build freshness exactly as Distribution's
+[build manifest contract](../../distribution/module.md) (`contract.distribution.build-manifest`)
+defines it, and refuses a model-backed request with `stale_build` when the manifest is missing,
+malformed or stale. The launcher and its installation service also belong to Distribution;
+admission relies on no other promise of it.
 
-<a id="uses-issues"></a>
+<a id="uses-observation"></a>
 
-**Issues.** For `concorde-issues`, admission lets [Issues](../../issues/module.md#concept.issues.issue)
-select and bind the requested Issue before the workspace is chosen, so that solving an Issue can be
-relayed into a candidate with its selection, while list, show, report and reopen stay bookkeeping
-in the current worktree.
+**Observation.** Admission traces each request's steps as
+[diagnostic spans](../observation/module.md#concept.observation.diagnostic-span) beside the run
+record; a missing trace never changes the envelope.
 
-<a id="uses-delivery"></a>
+<a id="participation-declarations"></a>
 
-**Delivery.** For `concorde-deliver`, admission asks [Delivery](../../delivery/module.md) whether the
-current session is a participant of the change and uses the worktree it names; delivery never
-creates a candidate.
+**Operations, through the capability declaration.** Operations provides the
+[capability declaration](contracts.md#contract.admission.capability-declaration) of every capability
+in its catalog and the dispatcher that runs a declared entry point; the launcher passes both.
+Admission refuses an entry that violates the contract and keeps a provider's error code in the
+envelope. It does not use Operations.
 
-<a id="uses-execution"></a>
+<a id="participation-envelopes"></a>
 
-**Agent execution.** Admission creates the invocation Host object that [Agent
-execution](../execution/module.md) defines, which carries the project and package roots, the mode
-and the trusted services of one request, and it maps Agent execution's failure outcomes
-(cancelled, time limit, failed) to envelope errors and lifecycle status. Admission records timing
-spans through Agent execution's diagnostics; they never change an outcome.
+**The Pi session, through the envelopes.** Admission provides the
+[capability request](contracts.md#contract.admission.invocation),
+[result envelope](contracts.md#contract.admission.result) and
+[causal feedback](contracts.md#contract.admission.feedback) contracts to the Pi session's `concorde`
+tool, validates every incoming request and emits exactly one result per request.

@@ -1,31 +1,30 @@
 # Task context requirements
 
-These are the Module-wide obligations of [Task context](module.md). The [scenarios](scenarios.md)
-show them in concrete situations; the records are in [contracts](contracts.md).
+The Module-wide obligations of [Task context](module.md). The [scenarios](scenarios.md) show them
+in concrete situations; the records are in [records](records.md).
 
 ## Freezing
 
-### req.context.boundary-sets — A snapshot records the Spec Module's boundary sets
+### req.context.boundary-sets — A snapshot records Spec tooling's boundary sets
 
-A context snapshot SHALL record the selected Module's `SpecContext`, `ImplementationContext` and
-`ExternalContext` exactly as the Spec Module computes them for the checkout the snapshot is frozen
-in.
+A context snapshot SHALL record the `SpecContext` of every bound Module and the selected Module's
+`ImplementationContext` and `ExternalContext` exactly as Spec tooling computes them for the
+checkout the snapshot is frozen in.
 
 `SpecContext` is recorded as one source record per selected document member, with its identity,
-owner, path, role, byte digest and every relation that selected it (`owns`, `contains`, `uses` or
-`includes`, with its target). `ExternalContext` is recorded
+owner, path, role, byte digest and every relation that selected it. `ExternalContext` is recorded
 as one tree digest per external inclusion. `ImplementationContext` is recorded as the declared
 realization entries and the file names they currently bind.
 
-### req.context.shared-file-readers — A code-writing step reads every Module that binds its files
+### req.context.shared-file-binding — A code-writing call is bound to every Module sharing its files
 
-A snapshot for the `implementation` phase SHALL add, read-only, both members of every document
-owned by each other Module that binds a file in the selected Module's `ImplementationScope`, each
-recorded with the relation `shares`, that Module and the shared files.
+A snapshot for an Agent whose definition writes implementation SHALL also be bound to each other
+Module that binds a file in the selected Module's `ImplementationScope`, recording that Module's
+`SpecContext` and the files it shares.
 
-A task that writes a shared file can otherwise break a promise it cannot see (Protocol Boundaries,
-shared files). The additional documents are part of the snapshot's identity, so a change to one of
-them makes the snapshot stale. They widen no write set and no other phase receives them.
+The additional Modules add reading only: the intended write paths stay the selected Module's
+`ImplementationScope`. Their documents are part of the snapshot's identity, so a change to one of
+them makes the snapshot stale.
 
 ### req.context.focus-no-trim — A scenario focus never trims context
 
@@ -37,42 +36,54 @@ scenario's owning Module without a focus.
 Every snapshot SHALL list the names of the files bound by the selected Module's realizations,
 including pending entries.
 
-### req.context.contents-code-phases — Implementation contents only for code phases
+### req.context.contents-when-read — Implementation contents only for Agents that read them
 
 A snapshot SHALL include the selected Module's `ImplementationScope` files, by path and digest,
-only for the `implementation` and `code-review` phases.
+only when the bound Agent definition reads implementation.
 
 ### req.context.no-embedded-bodies — Bodies travel as files
 
-The host SHALL NOT embed Spec document, Protocol, external reference or implementation file bodies
-in a worker's input.
+The Host SHALL NOT embed Spec document, Protocol, external reference or implementation file bodies
+in an Agent's input.
 
-The worker reads them as files: copies in its capsule, or files in place in the project worktree.
-The snapshot itself, the task, stage inputs and a review's typed changes do travel inline.
+The Agent reads them as files: copies in its capsule, or files in place in the project worktree
+for the programmer. The snapshot itself, the task, stage inputs and a review's typed changes do
+travel inline.
 
 ### req.context.identity — A snapshot is identified by all its inputs
 
 A snapshot's identity SHALL be the SHA-256 digest of its complete canonical content apart from the
 identity field itself.
 
+## Delivery
+
+### req.context.capsule-exact — A capsule holds exactly the delivered copies
+
+A capsule SHALL contain byte-identical copies of exactly the files its snapshot delivers to the
+bound Agent, and the context file.
+
+Which files are delivered is fixed by the snapshot and the Agent definition, as the
+[capsule layout](records.md#capsule) states. Agent execution may add its own launch files beside
+them; those are not context.
+
 ## Rechecking
 
 ### req.context.recheck — Recheck rejects changed inputs
 
-A recheck of a snapshot SHALL fail with `stale_context` when any selected document byte, selecting
-declaration, realization entry, bound file name, code-phase file byte, external reference digest,
-Protocol binding or the current worktree's own status differs from the snapshot.
+A recheck of a snapshot SHALL fail with `stale_context` when any rechecked input differs from the
+snapshot.
 
-## Profiles and grants
+The rechecked inputs are the snapshot's identity digest, the current worktree's workspace facts
+other than the list of other worktrees, the Protocol binding, the Spec context record of every
+bound Module, the selected Module's realization entries, its bound file names, the implementation
+file bytes the snapshot holds, the external reference digests and the Agent binding. For an Agent
+whose definition writes implementation, bound file names and implementation bytes are not
+rechecked, because changing them is the purpose of the call.
 
-### req.context.profile-consistent — A worker profile is consistent with its contract
+## Binding
 
-The host SHALL refuse with `invalid_agent_binding` a worker profile whose tools, workspace kind,
-path roles, stage inputs or result fields are inconsistent with its contract.
+### req.context.definition-consistent — Only a consistent, built definition is bound
 
-### req.context.grant-within-profile — A grant never exceeds the profile
-
-A compiled grant SHALL be a subset of both the worker profile's declared effects and the narrowing
-binding the host issued for the step.
-
-A refused grant is reported as an error and never retried with a wider binding.
+The Host SHALL refuse with `invalid_agent_binding` to bind an Agent definition whose tools,
+workspace kind, effects, stage inputs or result fields are inconsistent with each other, or whose
+instruction source is not recorded in the build manifest.

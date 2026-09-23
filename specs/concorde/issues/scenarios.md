@@ -7,149 +7,163 @@ are defined in the [Issue interface](interface.md).
 
 ### scenario.issues.report-independent — Report without ending the task
 
-- GIVEN a worker whose run has the `report_issue` tool
+- GIVEN a worker whose call has the `report_issue` tool
 - WHEN it reports one or more problems and then submits its result
 - THEN each report is saved and acknowledged while the worker keeps running
 - AND the worker's task completes with its own outcome
 - BUT the reports neither stop the worker nor start a repair
 
-### scenario.issues.report-authority — Report only within the worker's context
+### scenario.issues.report-provenance — A report is saved with its caller's provenance
 
-- GIVEN a worker whose frozen context admits some Modules and files
-- WHEN it reports a problem naming an admitted owner and admitted evidence
-- THEN the Host saves the report with Host-supplied provenance
-- AND the worker still has no write access to project files
-- BUT a report naming an owner or evidence outside the context, forged provenance, or an append to an Issue not selected for the run is refused
-- AND a policy preview that runs no worker creates no reporting service and no Issue
+- GIVEN a reporting service bound with provenance and limits for one reporter
+- WHEN the reporter submits a report naming an admitted owner and admitted evidence
+- THEN the store saves the report with the provenance the caller supplied
+- AND answers with a receipt and the record's current revision
 
-### scenario.issues.report-survives-failure — Keep reports from a failed run
+### scenario.issues.report-authority — A report outside the reporter's limits is refused
 
-- GIVEN a worker whose report the Host has acknowledged
-- WHEN the worker later submits an invalid result, fails, times out or is cancelled
+- GIVEN a reporting service bound with admitted owners, evidence paths and selected Issues
+- WHEN the reporter names an owner or evidence path outside them, or appends to an Issue neither selected nor created earlier by the same service
+- THEN the report is refused with `permission_denied`
+- BUT nothing is written
+
+### scenario.issues.report-survives-failure — Keep reports from a failed call
+
+- GIVEN a reporter whose report the store has acknowledged
+- WHEN the reporter later submits an invalid result, fails, times out or is cancelled
 - THEN the report stays saved
-- AND the failed run is still reported as failed, not as successful
 
-### scenario.issues.reference — Reference only reported or admitted reports
+### scenario.issues.reference — A result cannot reference an unknown report
 
-- GIVEN a worker that reported some problems and may have received admitted Issue reports as input
-- WHEN it submits Blockers or review Findings that reference Issue reports
-- THEN each reference must name a report the worker made in this run or received as input
-- AND a missing, foreign, fabricated or repeated reference fails the result
+- GIVEN a reporter that reported some problems and may have received admitted receipts as input
+- WHEN its result references a report it neither made through its service nor received
+- THEN the reference check fails with `permission_denied`
 - BUT the reports already saved are kept
 
-### scenario.issues.blocker-history — Track a Blocker independently of task wording
+### scenario.issues.reference-repeated — A result cannot reference a report twice
 
-- GIVEN a candidate in which an Issue report blocks one Module's phase
-- WHEN the work is replanned with different task wording and a fresh successful assessment of that phase releases the dependency
-- THEN the Blocker stays in the candidate's history keyed by change, Module, phase and Issue
-- AND the Issue itself stays open until a separate disposition closes it
-- AND a worker bound to another Module does not see that Blocker
+- GIVEN a reporter that made one report
+- WHEN its result references that report twice
+- THEN the reference check fails with `invalid_completion`
+
+### scenario.issues.blocker-independent — Dispositions and Blockers do not touch each other
+
+- GIVEN an Issue whose report a recorded Blocker references
+- WHEN the Issue is closed with a disposition
+- THEN the store changes only the Issue record
+- BUT the Blocker is not released by the store
 
 ## Records
 
 ### scenario.issues.store-report — Save a report once
 
-- GIVEN a Host-issued provenance and a classified report
-- WHEN the Host saves it and then saves the identical report again
-- THEN exactly one Issue with one report exists and both calls return the same receipt
-- AND a later append with the current revision may classify the problem differently without changing the first report
-- AND listing a project without an Issue directory returns nothing and creates nothing
+- GIVEN Host-issued provenance and a classified report
+- WHEN the store saves it and then saves the identical report again
+- THEN exactly one Issue with one report exists
+- AND both calls return the same receipt
 
-### scenario.issues.store-concurrency — Serialize writes without coupling branches
-
-- GIVEN concurrent reports in one worktree and a second worktree with its own copy of the records
-- WHEN the Host accepts the reports and closes an Issue in one worktree
-- THEN no accepted report is lost or duplicated
-- AND the other worktree keeps its own status for that Issue until the branches are integrated
-
-### scenario.issues.store-disposition — Close and reopen with evidence
+### scenario.issues.store-append — Append a later observation
 
 - GIVEN an open Issue and its current revision
-- WHEN an authorized Host call supplies a disposition with a note, evidence and actor
-- THEN the Issue gets the disposition and keeps every report unchanged
-- BUT a stale revision, empty evidence, a duplicate of itself, a closed duplicate target or an invalid transition is refused
+- WHEN a new report appends to it with that revision and a different classification
+- THEN the Issue holds both reports
+- BUT the first report is unchanged
+
+### scenario.issues.store-key-conflict — A reused key with other content is refused
+
+- GIVEN an accepted report of one invocation and key
+- WHEN the same invocation submits different content under the same key
+- THEN the store refuses with `issue_key_conflict`
+- BUT the accepted report is unchanged
+
+### scenario.issues.store-empty — Listing without Issues creates nothing
+
+- GIVEN a project without an Issue directory
+- WHEN the Issues are listed
+- THEN the list is empty
+- BUT no directory is created
+
+### scenario.issues.store-concurrency — Concurrent writers never lose a report
+
+- GIVEN several reports submitted concurrently from worktrees of one repository
+- WHEN the store accepts them
+- THEN every accepted report is saved exactly once
+- BUT no accepted report is lost or duplicated
+
+### scenario.issues.branch-local — Each worktree keeps its own copy
+
+- GIVEN an Issue committed on the primary branch and a candidate created from it
+- WHEN the Issue is closed in the candidate
+- THEN the candidate's copy is closed
+- BUT the primary worktree's copy stays open until the candidate's branch is merged
+
+### scenario.issues.store-disposition — Close with evidence
+
+- GIVEN an open Issue and its current revision
+- WHEN the store receives a disposition with a note, evidence and actor
+- THEN the Issue gets the disposition and its status follows it
+- AND every report stays unchanged
+
+### scenario.issues.store-disposition-stale — A disposition over a changed record is refused
+
+- GIVEN an Issue whose record changed after its revision was read
+- WHEN a disposition names the old revision
+- THEN the store refuses with `stale_issue`
+- BUT the record is unchanged
+
+### scenario.issues.store-disposition-invalid — An invalid disposition is refused
+
+- GIVEN an Issue and its current revision
+- WHEN a disposition has no evidence, names the Issue itself or a closed Issue as its duplicate, or closes a closed Issue or reopens an open one
+- THEN the store refuses it
+- BUT the record is unchanged
+
+### scenario.issues.store-restore — Restore the open bytes of an unfinished close
+
+- GIVEN an Issue closed over a known revision and the exact open bytes it had before
+- WHEN the store restores the open bytes over the closed revision
+- THEN the record is the open bytes again
+- AND restoring a second time does nothing
+
+### scenario.issues.store-restore-stale — A restoration over other bytes is refused
+
+- GIVEN an Issue whose bytes are neither the closed revision nor the open bytes to restore
+- WHEN the store is asked to restore
+- THEN it refuses with `stale_issue`
+- BUT the record is unchanged
 
 ### scenario.issues.store-boundary — Refuse malformed or unsafe records
 
-- GIVEN a malformed report, an unsafe path, a corrupted report digest or a failed file publication
-- WHEN the Host tries to accept or save it
+- GIVEN a malformed report, an unsafe evidence path, a corrupted report digest or a failed file publication
+- WHEN the store tries to accept or save it
 - THEN it does not report success
 - AND existing valid records stay readable and unchanged
 
-## The capability
+## The store check
 
-### scenario.issues.inspect — Inspect without starting work
+### scenario.issues.store-check-invalid — The store check fails for an invalid record
 
-- GIVEN an initialized project with or without Issues
-- WHEN the user session calls `concorde-issues` with `list` or `show`
-- THEN the current records are returned
-- BUT no model runs, no candidate is created and no record changes
+- GIVEN a project whose Issue directory holds a malformed or misnamed record
+- WHEN the configured store check runs
+- THEN it prints a finding naming the record
+- AND exits with a nonzero status
 
-## Solving
+### scenario.issues.unknown-owner-listed — An Issue of a removed Module is still listed
 
-### scenario.issues.solve-handoff — Carry an uncommitted Issue into the candidate
+- GIVEN an Issue whose owner is not a registered Module
+- WHEN the Issues are listed or the record is read
+- THEN the Issue is returned like any other
 
-- GIVEN an open Issue whose report is not yet committed in the primary worktree
-- WHEN the user session requests `solve` from the primary worktree
-- THEN the Host copies exactly the selected Issue's bytes into the new candidate before relaying the request there
-- AND other local edits and the primary worktree's index are left alone
+### scenario.issues.store-check-unknown-owner — The store check reports an unknown owner
 
-### scenario.issues.solve-spec-repair — Hand needed changes back
+- GIVEN an open Issue whose owner is not a registered Module
+- WHEN the configured store check runs
+- THEN it prints a finding naming the Issue and the unknown owner
+- AND exits with a nonzero status
 
-- GIVEN a solve whose solver decides `develop` or `spec-repair`
-- WHEN the Host admits the decision
-- THEN the solve stops with outcome `unsupported`, naming the Module, the intended change and the reason
-- AND the Issue stays open and the decision is kept in the solve history
-- BUT no worker writes code or Specs and nothing is changed
-- AND after the user session makes the change, a new solve can verify it on the current inputs
+### scenario.issues.store-check-closed-unknown-owner — A closed Issue of a removed Module does not fail
 
-### scenario.issues.solve-decision — Ask only when a choice is genuinely open
-
-- GIVEN a selected Issue whose fix needs a product or design choice that its context does not settle
-- WHEN the solver decides `needs-decision`
-- THEN the solve stops with the precise question and the Issue stays open
-- AND a later solve with a `note` carrying the developer's answer starts a fresh bounded attempt
-
-### scenario.issues.solve-ready — Close, validate and stop at ready
-
-- GIVEN a selected open Issue that the user session has already fixed
-- WHEN fresh Issue-specific and ordinary reviews pass and the solver decides `resolved`
-- THEN the Host writes the disposition and final validation checks the candidate including it
-- AND the result is a ready candidate
-- BUT nothing is delivered or merged, and repeating solve does not run the workflow again
-
-### scenario.issues.solve-stale — Refuse changed inputs
-
-- GIVEN a solve in progress
-- WHEN the selected Issue's bytes, the offered duplicate, or the Module's Specs or implementation files change before a dependent step
-- THEN that step is refused as stale and earlier work is kept
-- AND a failed final validation leaves the Issue open, not closed
-
-### scenario.issues.native-solve — Only Host steps close an Issue
-
-- GIVEN one selected Issue in its candidate and the native solve workflow
-- WHEN the workflow runs solver and reviewer calls between its Host steps
-- THEN each solver attempt is saved before the model starts, and only results correlated with an actual finished native child are admitted
-- AND `develop`, `spec-repair` and `needs-decision` return to the user session without changes
-- AND `resolved`, `duplicate` and `not-actionable` close the Issue only through the journal and final validation
-- AND failed validation restores the Issue, and a stopped, failed, stale or duplicated step cannot close it
-- AND a verification with many reviewers runs them all in the same workflow without extra Host permissions
-
-## Recovery
-
-### scenario.issues.disposition-recovery — Recover an interrupted close
-
-- GIVEN a solve that saved its closing journal
-- WHEN the process fails before the disposition is written, after it is written, or before completion is saved
-- THEN the next solve in the same candidate first invalidates any earlier ready result
-- AND restores exactly the journal's open bytes, or does nothing if they are already on disk
-- AND continues with a fresh solve and fresh validation
-- BUT a failure before the journal was saved leaves the Issue open with nothing to restore
-- AND nothing is delivered automatically
-
-### scenario.issues.disposition-recovery-stale — Refuse recovery that cannot be proven
-
-- GIVEN an interrupted solver close
-- WHEN the next solve finds Issue bytes that match neither journal image, a corrupt journal, or a solver close without any journal
-- THEN it refuses to recover and does not overwrite the record
-- AND no solver is launched
+- GIVEN a closed Issue whose owner is not a registered Module, and no other problem
+- WHEN the configured store check runs
+- THEN it prints a finding naming the Issue and the unknown owner
+- BUT exits with status zero

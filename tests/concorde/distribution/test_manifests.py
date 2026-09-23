@@ -53,16 +53,8 @@ class ManifestContractTests(unittest.TestCase):
         for relative in (
             "protocol/templates/module.md",
             "protocol/templates/scenario.md",
-            "agents/planner/plan-template.md",
-            "agents/task_author/tasks-template.md",
         ):
             self.assertTrue((REPOSITORY_ROOT / relative).is_file(), relative)
-        for owner, template in (
-            ("planner", "plan-template.md"),
-            ("task_author", "tasks-template.md"),
-        ):
-            readme = (REPOSITORY_ROOT / "agents" / owner / "README.md").read_text()
-            self.assertIn(f"]({template})", readme)
 
     def test_runtime_reads_version_from_the_single_manifest(self):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
@@ -77,27 +69,26 @@ class ManifestContractTests(unittest.TestCase):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
         sys.path.insert(0, str(REPOSITORY_ROOT))
         try:
-            from concorde.distribution.build import PUBLIC_OPERATIONS
-            from concorde.harness.worker_profile import load_worker_profiles
-            from concorde.spec.contracts import load_operation_inventory
+            from concorde.harness.worker_profile import agent_names
+            from concorde.operations.catalog import PUBLIC_OPERATIONS
         finally:
             sys.path.pop(0)
             sys.path.pop(0)
-        operations = load_operation_inventory()
+        import operations
+
+        # The launcher keeps no list of its own: it offers exactly the catalog's public names.
         launcher = ast.parse((REPOSITORY_ROOT / "scripts/run-operation.py").read_text())
-        launcher_operations = next(
-            ast.literal_eval(node.value)
-            for node in launcher.body
-            if isinstance(node, ast.Assign)
-            and any(
+        self.assertFalse(
+            any(
                 isinstance(target, ast.Name) and target.id == "PUBLIC_OPERATIONS"
+                for node in launcher.body
+                if isinstance(node, ast.Assign)
                 for target in node.targets
             )
         )
-        self.assertEqual(set(PUBLIC_OPERATIONS), set(launcher_operations))
         self.assertEqual(
             (
-                len(load_worker_profiles()),
+                len(agent_names()),
                 len(operations.OPERATIONS),
                 len(PUBLIC_OPERATIONS),
             ),
@@ -110,8 +101,8 @@ class ManifestContractTests(unittest.TestCase):
         self.assertTrue((REPOSITORY_ROOT / "scripts/run-operation.py").is_file())
 
     def test_issue_reporting_replaces_the_reflection_template_and_triage(self):
-        from concorde.spec.contracts import OPERATION_NAMES
-        from concorde.spec.issue_shapes import REPORT
+        from concorde.operations.catalog import OPERATION_NAMES
+        from concorde.issues.shapes import REPORT
 
         self.assertEqual(
             ["bug", "gap", "limitation"], REPORT["properties"]["type"]["enum"]

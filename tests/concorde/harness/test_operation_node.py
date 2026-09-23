@@ -1,84 +1,20 @@
-"""A worker invocation is a LangGraph node whose typed state is the worker's task contract."""
+"""An Agent call is a LangGraph node whose typed state is the Agent definition's input and result."""
 
 import unittest
 
+from langgraph.graph import END, START, StateGraph
+
 from concorde.harness.operation_node import OperationNode, state_schema, typed_state
-from concorde.harness.worker_profile import worker_profile
-from concorde.spec.typed_data import DATA_SCHEMAS, TypedDataError, typed
+from concorde.harness.operation_state import OperationRuntimeContext
+from concorde.harness.worker_profile import agent_definition
+from concorde.spec.repository import SpecError
+from concorde.spec.typed_data import TypedDataError, data_schema, typed
 from concorde.spec.verification import verifies
-
-
-def _stage_context():
-    from concorde.harness.context import (
-        PROTOCOL_PATHS,  # noqa: F401  (import keeps the fixture honest)
-    )
-
-    snapshot = {
-        "context_id": "sha256:" + "3" * 64,
-        "schema_version": 7,
-        "target_id": "service.fixture",
-        "kind": "module",
-        "focus_id": None,
-        "phase": "plan",
-        "task": "Plan",
-        "constraints": [],
-        "protocol_binding": {"version": "7.0.0", "digest": "sha256:" + "4" * 64},
-        "protocol": [],
-        "spec_resolution": {
-            "schema_version": 2,
-            "registration": {
-                "id": "service.fixture",
-                "kind": "module",
-                "title": "Fixture",
-                "documents": ["specs/module.md"],
-                "references": [],
-                "parent": None,
-                "uses": [],
-                "files": [],
-                "checks": [],
-            },
-            "query_id": "service.fixture",
-            "query_kind": "module",
-            "module_id": "service.fixture",
-            "shares": False,
-            "reading_entry": "specs/module.md",
-            "documents": ["specs/module.md"],
-            "references": [],
-            "sources": [],
-        },
-        "instructions": "Fixture.",
-        "stage_inputs": [],
-        "implementation_entries": [],
-        "implementation_files": [],
-        "implementation_artifacts": [],
-        "external_references": [],
-        "workspace": {
-            "kind": "unversioned",
-            "current_worktree": "/fixture",
-            "current_branch": None,
-            "primary_worktree": None,
-            "primary_branch": None,
-            "change_id": None,
-            "phase": None,
-            "status": None,
-            "outcome": None,
-            "blockers": [],
-            "components": [],
-            "active_worktrees": [],
-        },
-    }
-    return typed(
-        "concorde-agent-stage-context",
-        {
-            "snapshot": typed("concorde-context-snapshot", snapshot),
-            "change_id": None,
-            "expected_artifacts": [],
-        },
-    )
+from tests.concorde.support.stage_context import stage_context as _stage_context
 
 
 class OperationNodeTests(unittest.TestCase):
-    @verifies("scenario.harness.agent-node")
+    @verifies("scenario.execution.agent-node")
     def test_node_schemas_are_exactly_the_contract_fields(self):
         for name in (
             "context_assessor",
@@ -90,19 +26,19 @@ class OperationNodeTests(unittest.TestCase):
             "issue_solver",
         ):
             with self.subTest(worker=name):
-                agent = worker_profile(name)
+                agent = agent_definition(name)
                 node = OperationNode(agent.name)
                 self.assertEqual(
-                    (agent.contract.context, agent.contract.result),
+                    (agent.context, agent.result),
                     (node.input_type, node.result_type),
                 )
                 self.assertEqual(
-                    set(DATA_SCHEMAS[node.input_type]["properties"]),
+                    set(data_schema(node.input_type)["properties"]),
                     set(node.input_schema.__annotations__),
                 )
                 assert node.result_type is not None
                 self.assertEqual(
-                    set(DATA_SCHEMAS[node.result_type]["properties"]),
+                    set(data_schema(node.result_type)["properties"]),
                     set(node.output_schema.__annotations__),
                 )
                 union = state_schema(node.input_type, node.result_type, name="S")
@@ -120,7 +56,7 @@ class OperationNodeTests(unittest.TestCase):
             set(typed_state("concorde-agent-stage-context").__annotations__),
         )
 
-    @verifies("scenario.harness.agent-node")
+    @verifies("scenario.execution.agent-node")
     def test_invocation_validates_context_in_and_result_out(self):
         node = OperationNode("planner")
         context = _stage_context()
@@ -152,11 +88,139 @@ class OperationNodeTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "inspection only"):
             node.graph().invoke(context["data"])
 
-    @verifies("scenario.harness.agent-node", "scenario.harness.graph-inspection")
+    @verifies("scenario.execution.agent-node", "scenario.execution.graph-inspection")
     def test_native_plan_has_no_shadow_graph(self):
         from concorde.operations.graph_catalog import catalog
 
         self.assertNotIn("plan_graph", catalog())
+
+
+class TerminalAgentGraphTests(unittest.TestCase):
+    @verifies("scenario.execution.operation-state")
+    def test_model_subgraph_projects_parent_state_and_preserves_unrelated_channels(
+        self,
+    ):
+        node = OperationNode("planner")
+        seen = []
+
+        def launcher(value):
+            seen.append(value)
+            return {
+                "context_id": value["data"]["snapshot"]["data"]["context_id"],
+                "outcome": "completed",
+                "answer": "Planned",
+                "blockers": [],
+                "documents": [],
+                "plan": "The plan",
+                "tasks": [],
+            }
+
+        from typing import TypedDict, cast
+
+        class ParentState(TypedDict, total=False):
+            snapshot: dict
+            change_id: str | None
+            expected_artifacts: list[str]
+            plan: str
+            private_parent_channel: str
+
+        graph = StateGraph(ParentState, context_schema=OperationRuntimeContext)
+        graph.add_node("plan", node.graph())
+        graph.add_edge(START, "plan")
+        graph.add_edge("plan", END)
+        data = _stage_context()["data"]
+        result = graph.compile().invoke(
+            cast(ParentState, {**data, "private_parent_channel": "not admitted"}),
+            context=OperationRuntimeContext(launcher=launcher),
+        )
+        self.assertEqual("The plan", result["plan"])
+        self.assertEqual("not admitted", result["private_parent_channel"])
+        self.assertEqual([typed(node.input_type, data)], seen)
+        with self.assertRaises(RuntimeError):
+            node.graph().invoke(data)  # State cannot supply the trusted launcher.
+
+    def run_to_failure(self, graph, data, context):
+        """Stream the Graph until it raises; return the updates it made and the error."""
+        updates = []
+        with self.assertRaises(BaseException) as caught:
+            for update in graph.stream(data, context=context, stream_mode="updates"):
+                updates.append(update)
+        return updates, caught.exception
+
+    @verifies("scenario.execution.operation-without-service")
+    def test_without_a_service_the_operation_refuses_even_if_state_names_one(self):
+        called = []
+
+        def smuggled(value):
+            called.append(value)
+            return {}
+
+        data = _stage_context()["data"]
+        graph = OperationNode("planner").graph()
+        for state, context in (
+            (data, None),
+            ({**data, "launcher": smuggled}, None),
+            ({**data, "launcher": smuggled}, OperationRuntimeContext()),
+        ):
+            with self.subTest(state=sorted(state), context=context):
+                updates, error = self.run_to_failure(graph, state, context)
+                self.assertIsInstance(error, RuntimeError)
+                self.assertIn("inspection only", str(error))
+                self.assertEqual([], updates)
+        self.assertEqual([], called)
+
+    @verifies("scenario.execution.operation-service-failure")
+    def test_a_failing_service_stops_the_graph_with_causal_feedback(self):
+        data = _stage_context()["data"]
+
+        def raises(value):
+            raise ValueError("native service lost its run")
+
+        def rejected(value):
+            return {"outcome": "completed"}
+
+        def foreign_field(value):
+            return {
+                "context_id": value["data"]["snapshot"]["data"]["context_id"],
+                "outcome": "completed",
+                "answer": "Planned",
+                "blockers": [],
+                "documents": [],
+                "plan": "Plan",
+                "tasks": [],
+                "issue_decision": {"action": "develop", "reason": "not the planner's"},
+            }
+
+        async def asynchronous(value):
+            return {}
+
+        cases = {
+            "raises": (raises, ValueError, "native service lost its run"),
+            "rejected result": (rejected, TypedDataError, ""),
+            "field the Agent may not populate": (foreign_field, Exception, ""),
+            "awaitable to a synchronous invocation": (
+                asynchronous,
+                RuntimeError,
+                "Use ainvoke",
+            ),
+        }
+        graph = OperationNode("planner").graph()
+        for name, (service, kind, message) in cases.items():
+            with self.subTest(case=name):
+                updates, error = self.run_to_failure(
+                    graph, data, OperationRuntimeContext(launcher=service)
+                )
+                self.assertIsInstance(error, kind)
+                self.assertIn(message, str(error))
+                self.assertEqual([], updates)
+                feedback = error.feedback
+                self.assertEqual("operation", feedback["layer"])
+                self.assertEqual("native-service", feedback["causes"][0]["layer"])
+
+    def test_arbitrary_compatibility_names_do_not_register_operations(self):
+        with self.assertRaises(SpecError) as refused:
+            OperationNode("normalize_plan")
+        self.assertEqual("unknown_agent", refused.exception.code)
 
 
 if __name__ == "__main__":

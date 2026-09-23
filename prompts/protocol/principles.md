@@ -17,5 +17,3 @@ audience: shared
 @protocol/checks.md
 
 @protocol/views.md
-
-@prompts/protocol/framework-profile.md

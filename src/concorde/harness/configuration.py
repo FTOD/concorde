@@ -1,19 +1,45 @@
-"""Explicit project operation settings and digest-bound configuration proposals."""
+"""The stored operation configuration: its typed value, admission and loading."""
 
 from __future__ import annotations
 
-import hashlib
-import json
-import os
-import tempfile
 from pathlib import Path
 
 from ..harness.model_selection import validate_worker_selections
-from ..spec.model import Finding, ToolResult
-from ..spec.typed_data import TypedDataError, checked_path, decode, validate_typed
+from ..spec.typed_data import (
+    STRING,
+    TypedDataError,
+    checked_path,
+    decode,
+    obj,
+    register,
+    validate_typed,
+)
 
 CONFIG_PATH = ".concorde/config.json"
 CONFIG_TYPE = "concorde-operation-configuration"
+
+# The Pi model selection of a worker: a provider/id model, a thinking level and a timeout. An absent
+# value keeps Pi's default model and thinking level and the worker profile's timeout.
+_SELECTION = {
+    "model": STRING,
+    "thinking": {"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]},
+    "timeout_seconds": {"type": "integer"},
+}
+OPERATION_CONFIGURATION = obj(
+    {
+        **_SELECTION,
+        # Overrides keyed by a worker or by one of its children (worker/child); the most specific
+        # wins.
+        "workers": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": obj(_SELECTION, tuple(_SELECTION)),
+        },
+    },
+    (*_SELECTION.keys(), "workers"),
+)
+
+register(CONFIG_TYPE, 2, OPERATION_CONFIGURATION)
 
 
 def admit_configuration(value, field: str = "/configuration") -> dict:
@@ -21,17 +47,6 @@ def admit_configuration(value, field: str = "/configuration") -> dict:
     configuration = validate_typed(value, CONFIG_TYPE, field)
     validate_worker_selections(configuration, field)
     return configuration
-
-
-def _project_root(project_root: str | Path) -> Path:
-    project = Path(project_root)
-    if project.is_symlink():
-        raise TypedDataError(
-            "configuration_mismatch",
-            "/configuration",
-            "project root may not be a symlink",
-        )
-    return project.resolve()
 
 
 def load_configuration(project_root: str | Path) -> dict:
@@ -64,94 +79,3 @@ def load_configuration(project_root: str | Path) -> dict:
             "/configuration",
             f"cannot load project configuration: {error}",
         ) from error
-
-
-def _failure(error: Exception) -> ToolResult:
-    return ToolResult(
-        "configure",
-        ".",
-        "invalid",
-        findings=(
-            Finding(
-                "CONCORDE-CONFIG-001",
-                "error",
-                CONFIG_PATH,
-                str(error),
-                "Propose explicit operation configuration JSON, review its source digest, and apply the accepted proposal.",
-            ),
-        ),
-    )
-
-
-def propose_configuration(project_root: str | Path, configuration: dict) -> ToolResult:
-    try:
-        project = _project_root(project_root)
-        configuration = admit_configuration(configuration)
-        source = checked_path(project, CONFIG_PATH).read_bytes()
-        document = decode(source.decode("utf-8"))
-        if not isinstance(document, dict):
-            raise ValueError("project configuration must be an object")
-        if document.get("operation_configuration") == configuration:
-            return ToolResult("configure", ".", "unchanged", artifacts=(CONFIG_PATH,))
-        proposal = {
-            "proposal_version": 1,
-            "path": CONFIG_PATH,
-            "source_digest": "sha256:" + hashlib.sha256(source).hexdigest(),
-            "configuration": configuration,
-        }
-        return ToolResult("configure", ".", "proposal", result={"proposal": proposal})
-    except (OSError, UnicodeError, ValueError) as error:
-        return _failure(error)
-
-
-def apply_configuration(project_root: str | Path, proposal_path: str) -> ToolResult:
-    try:
-        project = _project_root(project_root)
-        value = decode(checked_path(project, proposal_path).read_text(encoding="utf-8"))
-        proposal = value.get("result", {}).get("proposal", value.get("proposal", value))
-        if (
-            not isinstance(proposal, dict)
-            or set(proposal)
-            != {"proposal_version", "path", "source_digest", "configuration"}
-            or type(proposal["proposal_version"]) is not int
-            or proposal["proposal_version"] != 1
-            or proposal["path"] != CONFIG_PATH
-        ):
-            raise ValueError("unsupported configuration proposal")
-        configuration = admit_configuration(proposal["configuration"], "")
-        path = checked_path(project, CONFIG_PATH)
-        source = path.read_bytes()
-        document = decode(source.decode("utf-8"))
-        if not isinstance(document, dict):
-            raise ValueError("project configuration must be an object")
-        if document.get("operation_configuration") == configuration:
-            return ToolResult("configure", ".", "unchanged", artifacts=(CONFIG_PATH,))
-        if "sha256:" + hashlib.sha256(source).hexdigest() != proposal["source_digest"]:
-            raise ValueError(
-                "configuration changed after proposal; request a fresh proposal"
-            )
-        document["operation_configuration"] = configuration
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=path.parent,
-            prefix="operation-config-",
-            delete=False,
-        ) as stream:
-            temporary = Path(stream.name)
-            stream.write(json.dumps(document, indent=2, sort_keys=True) + "\n")
-        try:
-            if checked_path(project, CONFIG_PATH).read_bytes() != source:
-                raise ValueError("configuration changed during apply")
-            os.replace(temporary, path)
-        finally:
-            temporary.unlink(missing_ok=True)
-        return ToolResult(
-            "configure",
-            ".",
-            "success",
-            artifacts=(CONFIG_PATH,),
-            result={"configuration": configuration},
-        )
-    except (OSError, UnicodeError, ValueError, AttributeError, TypeError) as error:
-        return _failure(error)

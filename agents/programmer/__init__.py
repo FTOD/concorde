@@ -1,35 +1,24 @@
 """Fulfil one Module's implementation tasks in its candidate worktree."""
 
-from concorde.harness.effects import EffectDeclaration
-from concorde.harness.worker_profile import Contract, WorkerProfile
+from concorde.harness.worker_profile import AgentDefinition
 
-from .. import external_name
-
-PROFILE = WorkerProfile(
+DEFINITION = AgentDefinition(
     name="programmer",
-    spec="agents/programmer/spec.md",
+    instructions="agents/programmer/spec.md",
     workspace="project",
-    contract=Contract(
-        phase="implementation",
-        context="concorde-agent-stage-context",
-        result="concorde-agent-stage-result",
-        effects=EffectDeclaration(
-            ("spec-context", "implementation", "references"),
-            ("implementation",),
-            False,
-            "none",
-        ),
-        stage_inputs=("concorde-implementation-task", "concorde-review-result"),
-        required_inputs=("concorde-implementation-task",),
-        output_fields=("tasks",),
+    phase="implementation",
+    context="concorde-agent-stage-context",
+    result="concorde-agent-stage-result",
+    reads=("spec-context", "implementation", "references"),
+    writes=("implementation",),
+    stage_inputs=(
+        "concorde-implementation-task",
+        "concorde-review-result",
+        "concorde-issue-context",
     ),
+    required_inputs=("concorde-implementation-task",),
+    output_fields=("tasks",),
     tools=("read", "grep", "find", "ls", "edit", "write", "bash", "run_checks"),
     timeout_seconds=3600,
+    hook="concorde.implementation.hooks:programmer",
 )
-
-PUBLIC = False
-CONTEXT_SELECTION = "bound"
-DETERMINISTIC = False
-USES = ()
-EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
-KIND = "agent"

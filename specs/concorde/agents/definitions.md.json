@@ -1,0 +1,49 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.agents.definitions",
+    "owner": "module.agents",
+    "role": "implementation"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {
+    "concorde.agents": [
+      {
+        "id": "code-reviewer",
+        "source": "agents/code_reviewer/spec.md",
+        "hook": "concorde.review.native:code_reviewer"
+      },
+      {
+        "id": "context-assessor",
+        "source": "agents/context_assessor/spec.md",
+        "hook": "concorde.planning.hooks:context_assessor"
+      },
+      {
+        "id": "issue-solver",
+        "source": "agents/issue_solver/spec.md",
+        "hook": "concorde.issue_solving.native:issue_solver"
+      },
+      {
+        "id": "planner",
+        "source": "agents/planner/spec.md",
+        "hook": "concorde.planning.hooks:planner"
+      },
+      {
+        "id": "programmer",
+        "source": "agents/programmer/spec.md",
+        "hook": "concorde.implementation.hooks:programmer"
+      },
+      {
+        "id": "spec-reviewer",
+        "source": "agents/spec_reviewer/spec.md",
+        "hook": "concorde.review.native:spec_reviewer"
+      },
+      {
+        "id": "task-author",
+        "source": "agents/task_author/spec.md",
+        "hook": "concorde.planning.hooks:task_author"
+      }
+    ]
+  }
+}

@@ -3,7 +3,7 @@
 
 Each executable Graph (a LangGraph StateGraph built by a factory in the Graph catalog) has exactly
 one Mermaid flowchart in the Specs bound to it with ``%% graph: <name>``. This check compiles the
-catalog with inert nodes and reports every diagram whose nodes, edges, routing labels or state
+catalog named by ``--catalog module:attribute`` with inert nodes and reports every diagram whose nodes, edges, routing labels or state
 labels disagree with the compiled topology, and every Graph that has no diagram. It also holds
 the Graph API rule: a catalog Graph that is not a compiled StateGraph, or a Python file under
 ``src/`` or ``scripts/`` that imports LangGraph's Functional API (``langgraph.func``), is an
@@ -20,11 +20,22 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
 
-def main() -> int:
-    from concorde.harness.graph_specs import graph_spec_findings
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    from concorde.harness.graph_specs import graph_spec_findings, load_catalog
     from concorde.spec.repository import SpecRepository
 
-    findings = graph_spec_findings(SpecRepository(ROOT, ROOT))
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--catalog",
+        required=True,
+        help="module:attribute of the Graph catalog (a mapping or a function returning one)",
+    )
+    arguments = parser.parse_args(argv)
+    findings = graph_spec_findings(
+        SpecRepository(ROOT, ROOT), load_catalog(arguments.catalog)
+    )
     for finding in findings:
         print(
             f"{finding.severity}: {finding.rule_id} {finding.source}: {finding.message}"

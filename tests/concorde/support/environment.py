@@ -1,15 +1,13 @@
 """Child-process environments for tests: the ambient Concorde selection never crosses.
 
 A tester or developer session that runs this suite may carry ``CONCORDE_SESSION_SELECTION``, a
-``concorde/1`` entry in ``PI_SUBAGENT_EXTENSION_BINDINGS``, ``CONCORDE_NATIVE_PROJECT_ROOT`` or
-``CONCORDE_WORKER_POLICY``. Those bind *that* session to one exact candidate Pi entry, native
-project or terminal-worker grant. A fixture install, harness or launcher started by a test must
-not inherit them: the private entry verifies a selection against its own workspace and refuses a
-foreign one, and a terminal-worker policy refuses every Operation. Every test that derives a
-child environment from ``os.environ`` starts from :func:`scrub_selection`.
+``concorde/1`` entry in ``PI_SUBAGENT_EXTENSION_BINDINGS`` or ``CONCORDE_NATIVE_PROJECT_ROOT``.
+Those bind *that* session to one exact candidate Pi entry or native project. A fixture install,
+harness or launcher started by a test must not inherit them: the private entry verifies a
+selection against its own workspace and refuses a foreign one. Every test that derives a child
+environment from ``os.environ`` starts from :func:`scrub_selection`.
 
-This is a denylist on purpose. ``concorde.harness.harness.SAFE_ENVIRONMENT`` is the runtime's
-allowlist for terminal workers; fixtures still need PATH additions, package caches, wheelhouses,
+This is a denylist on purpose: fixtures still need PATH additions, package caches, wheelhouses,
 scratch directories and other test variables that an allowlist would drop.
 """
 
@@ -24,7 +22,6 @@ from unittest.mock import patch
 SELECTION_VARIABLES: tuple[str, ...] = (
     "CONCORDE_SESSION_SELECTION",
     "CONCORDE_NATIVE_PROJECT_ROOT",
-    "CONCORDE_WORKER_POLICY",
 )
 BINDINGS_VARIABLE = "PI_SUBAGENT_EXTENSION_BINDINGS"
 CONCORDE_BINDING = "concorde/1"

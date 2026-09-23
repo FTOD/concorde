@@ -1,8 +1,10 @@
-"""Host-owned change state and discovery metadata for Git worktrees.
+"""Candidate worktrees: the change status of each worktree, its lifecycle and the boundary check.
 
 A linked worktree is one candidate change. Its primary-owned status is never Spec
 authority and is never part of a delivered Git tree. Live inventory joins Git
-worktree incarnations to primary status, including unmanaged worktrees.
+worktree incarnations to primary status records, including unmanaged worktrees, and
+reads no file inside another worktree. Provider records live in declared provider
+sections that this Module stores but never interprets.
 """
 
 from __future__ import annotations
@@ -17,17 +19,22 @@ import tempfile
 import threading
 import uuid
 from contextlib import contextmanager
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal, overload
+from typing import Any, Literal, overload
 
 from ..spec.changes import apply_files, file_change
 from ..spec.repository import SpecError, identifier
-from ..spec.typed_data import canonical, checked_path
+from ..spec.typed_data import checked_path
 from .status_store import (
     RUNS_PATH,
     STATUS_PATH,
+    STATUS_VERSION,
     all_status,
+    declare_section as declare_section,
+    put_section as put_section,
     read_status,
+    section as section,
     status_path as status_path,
     write_status,
 )
@@ -205,12 +212,6 @@ def worktree_incarnation(root: Path, *, create: bool = False) -> str | None:
     return "incarnation:" + token
 
 
-def _write_json(root: Path, relative: str, value: dict) -> None:
-    apply_files(
-        root, [file_change(root, relative, canonical(value) + "\n")], {relative}
-    )
-
-
 def _exclude_control_files(root: Path) -> None:
     common = git(
         root, "rev-parse", "--path-format=absolute", "--git-common-dir", check=False
@@ -249,21 +250,17 @@ def read_change(root: Path, *, required: Literal[False] = False) -> dict | None:
 def read_change(root: Path, *, required: bool) -> dict | None: ...
 
 
-def read_change(root: Path, *, required: bool = False) -> dict | None:
-    primary, current = workspace_identity(root)
-    git_id = worktree_incarnation(root) if current else None
-    located = [
-        item for item in all_status(root) if item.get("path") == str(root.resolve())
-    ]
+def _bound(records: list[dict], path: str, token: str | None, primary: str | None):
+    """The change statuses bound to the worktree at ``path`` with incarnation ``token``."""
     candidates = [
         item
-        for item in located
-        if item.get("git_worktree_id") == git_id and (not current or git_id is not None)
+        for item in records
+        if item.get("path") == path and item.get("git_worktree_id") == token
     ]
     matches = [
         item for item in candidates if item.get("status") not in {"merged", "delivered"}
     ]
-    if not matches and primary is not None and primary["path"] != str(root.resolve()):
+    if not matches and primary is not None and primary != path:
         # A retained candidate remains inspectable; terminal primary tasks do not own
         # every future direct task in that same primary workspace.
         matches = [
@@ -271,23 +268,17 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             for item in candidates
             if item.get("cleanup", {}).get("status") != "removed"
         ]
-    if len(matches) > 1:
-        raise SpecError("multiple tasks claim this workspace", "workspace_mismatch")
-    if not matches:
-        if required:
-            raise SpecError(
-                "this operation requires a managed change worktree", "missing_change"
-            )
-        return None
-    state = matches[0]
+    return matches
+
+
+def check_lifecycle(state) -> dict:
+    """Refuse a change status whose identity, owner or lifecycle fields are malformed."""
     if (
         not isinstance(state, dict)
         or type(state.get("schema_version")) is not int
-        or state["schema_version"] != 2
-        or state.get("path") != str(root.resolve())
-        or not isinstance(state.get("targets"), dict)
+        or state["schema_version"] != STATUS_VERSION
         or not isinstance(state.get("guidance"), dict)
-        or not isinstance(state.get("blockers"), list)
+        or not isinstance(state.get("sections"), dict)
         or not isinstance(state.get("phase"), str)
         or not state["phase"]
         or not isinstance(state.get("status"), str)
@@ -310,8 +301,6 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             identifier(state["target_id"])
             if not isinstance(state.get("task"), str) or not state["task"].strip():
                 raise ValueError("bound owner requires a task")
-        elif state["targets"]:
-            raise ValueError("target progress requires an owner")
         if state["focus_id"] is not None:
             identifier(state["focus_id"])
         if state.get("target_hint") is not None:
@@ -329,36 +318,37 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
         raise SpecError(
             f"worktree owner state is invalid: {error}", "invalid_worktree_state"
         ) from error
-    from ..issues.references import receipt
-    from ..issues.store import resolve_report
-    from ..spec.issue_shapes import BLOCKER
-    from ..spec.repository import digest
-    from ..spec.typed_data import check_schema
-
-    try:
-        for item in state.get("issue_blockers", []):
-            check_schema(item["blocker"], BLOCKER)
-            expected = digest(
-                {
-                    "change_id": state["change_id"],
-                    "target_id": item["target_id"],
-                    "scope_id": item["scope_id"],
-                    "phase": item["phase"],
-                    "issue_id": item["blocker"]["issue_id"],
-                }
-            )
-            observation = resolve_report(root, receipt(item["blocker"]))
-            if (
-                item["id"] != expected
-                or item["status"] not in {"open", "resolved"}
-                or observation["source"]["context_id"] not in item["contexts"]
-            ):
-                raise ValueError("Issue blocker identity or provenance changed")
-    except (ValueError, KeyError, TypeError) as error:
+    if set(state["guidance"]) - set(GUIDANCE_FILES) or any(
+        not isinstance(value, dict) or type(value.get("created")) is not bool
+        for value in state["guidance"].values()
+    ):
         raise SpecError(
-            f"invalid Issue blocker history: {error}", "invalid_worktree_state"
-        ) from error
+            "worktree guidance has an invalid shape", "invalid_worktree_state"
+        )
+    return state
+
+
+def read_change(root: Path, *, required: bool = False) -> dict | None:
     primary, current = workspace_identity(root)
+    git_id = worktree_incarnation(root) if current else None
+    if current is not None and git_id is None:
+        matches = []
+    else:
+        matches = _bound(
+            all_status(root),
+            str(root.resolve()),
+            git_id,
+            primary["path"] if primary else None,
+        )
+    if len(matches) > 1:
+        raise SpecError("multiple tasks claim this workspace", "workspace_mismatch")
+    if not matches:
+        if required:
+            raise SpecError(
+                "this operation requires a managed change worktree", "missing_change"
+            )
+        return None
+    state = check_lifecycle(matches[0])
     if current is not None and (
         primary is None or state.get("primary_worktree") != primary["path"]
     ):
@@ -366,31 +356,57 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             "worktree state belongs to a different branch or primary worktree",
             "workspace_mismatch",
         )
-    if set(state["guidance"]) - set(GUIDANCE_FILES):
-        raise SpecError(
-            "worktree guidance names an unsupported file", "invalid_worktree_state"
-        )
-    if any(
-        not isinstance(value, dict) or type(value.get("created")) is not bool
-        for value in state["guidance"].values()
-    ) or any(not isinstance(value, dict) for value in state["targets"].values()):
-        raise SpecError(
-            "worktree progress or guidance has an invalid shape",
-            "invalid_worktree_state",
-        )
-    for target in state["targets"].values():
-        verify_target_owner(state, target)
     return state
 
 
-def _summary(item: dict, primary_path: str) -> dict:
-    state = None
-    invalid = False
-    if item["path"] != primary_path:
+def _incarnations(root: Path) -> dict[str, str | None]:
+    """Linked worktree path -> its incarnation token, read from Git's administrative directories.
+
+    Each linked worktree's administrative directory names the worktree in its ``gitdir`` file
+    and holds the token; no file inside any worktree is read.
+    """
+    common = git(
+        root, "rev-parse", "--path-format=absolute", "--git-common-dir", check=False
+    )
+    if common.returncode:
+        return {}
+    tokens: dict[str, str | None] = {}
+    directory = Path(common.stdout.strip()) / "worktrees"
+    if not directory.is_dir():
+        return tokens
+    for admin in sorted(directory.iterdir()):
         try:
-            state = read_change(Path(item["path"]))
-        except (ValueError, OSError):
-            invalid = True
+            pointer = (admin / "gitdir").read_text().strip()
+            path = str(Path(pointer).parent.resolve())
+            marker = admin / "concorde-incarnation"
+            token = marker.read_text() if marker.is_file() else None
+        except OSError:
+            continue
+        try:
+            if token is not None and str(uuid.UUID(token)) != token:
+                raise ValueError("noncanonical token")
+        except ValueError:
+            tokens[path] = "invalid"
+            continue
+        tokens[path] = None if token is None else "incarnation:" + token
+    return tokens
+
+
+def _summary(
+    item: dict, primary_path: str, records: list[dict] | None, token: str | None
+) -> dict:
+    state = None
+    invalid = records is None or token == "invalid"
+    if not invalid and item["path"] != primary_path and token is not None:
+        matches = _bound(records or [], item["path"], token, primary_path)
+        try:
+            if len(matches) > 1:
+                raise ValueError("several changes claim one worktree")
+            state = check_lifecycle(matches[0]) if matches else None
+            if state is not None and state.get("primary_worktree") != primary_path:
+                raise ValueError("the change belongs to another primary worktree")
+        except ValueError:
+            state, invalid = None, True
     return {
         "path": item["path"],
         "branch": item["branch"],
@@ -410,15 +426,26 @@ def _summary(item: dict, primary_path: str) -> dict:
     }
 
 
-def _inventory(root: Path, *, persist: bool) -> dict:
+def _inventory(root: Path) -> dict:
+    """Every live linked worktree, summarized from Git and the primary's status records only."""
     primary, current = workspace_identity(root)
     live = {item["path"]: item for item in list_worktrees(root) if item["alive"]}
+    try:
+        records = all_status(root) if primary else []
+    except ValueError:
+        records = None
+    tokens = _incarnations(root) if primary else {}
     return {
         "schema_version": 2,
         "primary_worktree": primary["path"] if primary else None,
         "primary_branch": primary["branch"] if primary else None,
         "worktrees": [
-            _summary(item, primary["path"] if primary else "")
+            _summary(
+                item,
+                primary["path"] if primary else "",
+                records,
+                tokens.get(item["path"]),
+            )
             for item in live.values()
             if not primary or item["path"] != primary["path"]
         ],
@@ -426,15 +453,15 @@ def _inventory(root: Path, *, persist: bool) -> dict:
 
 
 def refresh_registry(root: Path, *, persist: bool = True) -> dict:
+    """The worktree inventory; ``persist`` reads it under the repository lock."""
     if not persist:
-        return _inventory(root, persist=False)
+        return _inventory(root)
     with repository_lock(root):
-        return _inventory(root, persist=True)
+        return _inventory(root)
 
 
-def save_change(
-    root: Path, state: dict, *, publish: bool = True, locked: bool = False
-) -> None:
+def save_change(root: Path, state: dict, *, locked: bool = False) -> None:
+    """Write the change status bound to this worktree; its provider sections are type-checked."""
     if state.get("path") != str(root.resolve()):
         raise SpecError(
             "cannot move change ownership between worktrees", "workspace_mismatch"
@@ -450,8 +477,6 @@ def save_change(
                 )
             state["branch"] = current["branch"]
         write_status(root, state)
-        if publish:
-            _inventory(root, persist=True)
 
     if locked:
         write()
@@ -552,14 +577,16 @@ def ensure_change(
                 "invalid_worktree_state",
             )
     state = {
-        "schema_version": 2,
+        "schema_version": STATUS_VERSION,
         "change_id": change_id or "change." + str(uuid.uuid4()),
+        "mode": mode,
         "path": str(root.resolve()),
         "branch": current["branch"] if current else None,
         "git_worktree_id": None,
         "primary_worktree": primary["path"] if primary else None,
         "base_commit": current["head"] if current else None,
         "base_branch": primary["branch"] if primary else None,
+        "candidate_worktree": str(root.resolve()) if secondary else None,
         "target_id": None,
         "target_hint": (task or {}).get("target_id"),
         "focus_id": (task or {}).get("focus_id"),
@@ -568,18 +595,11 @@ def ensure_change(
         "phase": "created",
         "status": "active",
         "outcome": None,
-        "blockers": [],
-        "targets": {},
         "guidance": {},
-        "validated_tree": None,
-        "validation": None,
-        "mode": mode,
-        "candidate_worktree": str(root.resolve()) if secondary else None,
         "child": None,
         "runs": [],
-        "manual_merge": None,
-        "delivery": None,
         "cleanup": {"status": "pending" if secondary else "not_needed"},
+        "sections": {},
     }
     identifier(state["change_id"])
     with repository_lock(root):
@@ -633,7 +653,6 @@ def ensure_change(
                 restore_modes()
         else:
             write_status(root, state, create=True)
-        _inventory(root, persist=True)
     return state
 
 
@@ -746,7 +765,35 @@ def resume_owner(state: dict, task: dict) -> dict:
     return result
 
 
-def bind_owner(root: Path, task: dict, *, coordinated: bool = False) -> dict:
+# The rule that admits a request for a Module other than the change's owner as a component
+# request. Planning owns it and registers it when its records load; with none registered no
+# such request is admitted.
+_COMPONENT_POLICY = None
+
+
+def register_component_policy(policy) -> None:
+    """Register ``policy(repository, change, task) -> bool``; only one rule may be registered."""
+    global _COMPONENT_POLICY
+    if _COMPONENT_POLICY not in {None, policy}:
+        raise SpecError(
+            "a component request policy is already registered", "invalid_input"
+        )
+    _COMPONENT_POLICY = policy
+
+
+def component_request(repository, change: dict, task: dict) -> bool:
+    """Whether ``task`` is a component request of ``change`` under the registered policy."""
+    return _COMPONENT_POLICY is not None and bool(
+        _COMPONENT_POLICY(repository, change, task)
+    )
+
+
+def bind_owner(root: Path, task: dict, *, component: bool = False) -> dict:
+    """Bind a mutating request to the change of this worktree.
+
+    The first request records its owner; a later request must carry the recorded intent,
+    except a component request, which is admitted without taking the change's ownership.
+    """
     state = read_change(root, required=True)
     if task.get("change_id") not in {None, state["change_id"]}:
         raise SpecError("change ID does not own this worktree", "incompatible_handoff")
@@ -773,72 +820,9 @@ def bind_owner(root: Path, task: dict, *, coordinated: bool = False) -> dict:
             constraints=task.get("constraints", []),
         )
         save_change(root, state)
-    elif not coordinated:
+    elif not component:
         resume_owner(state, {"focus_id": None, "constraints": [], **task})
     return state
-
-
-def target_owner(change: dict) -> dict:
-    """Non-reusable ownership, captured when a target is first constructed."""
-    return {
-        "change_id": change["change_id"],
-        "git_worktree_id": change.get("git_worktree_id"),
-    }
-
-
-def verify_target_owner(change: dict, target: dict) -> None:
-    # Never fill a missing binding from a fresh read: that would launder stale work.
-    if target.get("owner") != target_owner(change):
-        raise SpecError(
-            "target belongs to another task or worktree incarnation, or lacks ownership",
-            "workspace_mismatch",
-        )
-
-
-def target_state(
-    root: Path, target_id: str, focus_id: str | None, *, create: bool = False
-) -> dict:
-    change = read_change(root, required=True)
-    existing = change["targets"].get(target_id)
-    if existing is not None:
-        if existing.get("focus_id") != focus_id:
-            raise SpecError(
-                "target work belongs to a different focus", "incompatible_handoff"
-            )
-        return copy.deepcopy(existing)
-    if not create:
-        raise SpecError(
-            "this operation requires an authored target plan", "missing_plan"
-        )
-    return {
-        "schema_version": 2,
-        "target_id": target_id,
-        "focus_id": focus_id,
-        "owner": target_owner(change),
-        "plan": "",
-        "tasks": [],
-        "checks": [],
-        "spec_digest": None,
-        "implementation_digest": None,
-        "completed_operations": [],
-        "phase": "plan",
-        "status": "active",
-    }
-
-
-def save_target_state(root: Path, value: dict) -> None:
-    with repository_lock(root):
-        change = read_change(root, required=True)
-        identifier(value["target_id"])
-        verify_target_owner(change, value)
-        previous = change["targets"].get(value["target_id"], {})
-        if value.get("revision", 0) != previous.get("revision", 0):
-            raise SpecError(
-                "target progress changed; reread before updating", "stale_status"
-            )
-        change["targets"][value["target_id"]] = copy.deepcopy(value)
-        save_change(root, change)
-        value["revision"] = change["targets"][value["target_id"]]["revision"]
 
 
 def progress(
@@ -847,9 +831,8 @@ def progress(
     phase: str | None = None,
     status: str | None = None,
     outcome: str | None = None,
-    blockers=None,
-    invalidate: bool = False,
 ) -> None:
+    """Record the lifecycle position of the change bound to this worktree, if any."""
     state = read_change(root)
     if state is None:
         return
@@ -858,195 +841,7 @@ def progress(
     if status is not None:
         state["status"] = status
     state["outcome"] = outcome
-    if blockers is not None:
-        unresolved = [
-            item["blocker"]
-            for item in state.get("issue_blockers", [])
-            if item["status"] == "open"
-        ]
-        state["blockers"] = list(
-            {canonical(gap): gap for gap in [*unresolved, *blockers]}.values()
-        )
-    if invalidate:
-        state["validated_tree"] = None
-        state["validation"] = None
     save_change(root, state)
-
-
-def blocker_scope(state: dict, target_id: str, task: str | None) -> str | None:
-    """Bind a request to accepted candidate work, not an ID hashed from task wording.
-
-    Root intent, evolving component intent and required consumer review intent all select the
-    same durable Module work scope. A separately requested unrelated task cannot borrow it.
-    """
-    if task is None:
-        return "module:" + target_id
-    intents = []
-    if state.get("target_id") == target_id:
-        intents.append(state.get("task"))
-    intents.append(state.get("targets", {}).get(target_id, {}).get("task"))
-    intents.append(state.get("review_intents", {}).get(target_id, {}).get("task"))
-    for target in state.get("targets", {}).values():
-        intents.append(target.get("coordination", {}).get(target_id, {}).get("task"))
-    for name in ("shared_spec_reviews", "shared_implementation_reviews"):
-        for consumers in state.get(name, {}).values():
-            intents.append(consumers.get(target_id, {}).get("task"))
-    if task in intents:
-        return "module:" + target_id
-    return next(
-        (
-            item["scope_id"]
-            for item in state.get("issue_blockers", [])
-            if item["target_id"] == target_id and item["task"] == task
-        ),
-        None,
-    )
-
-
-def record_task_gaps(
-    root: Path,
-    target_id: str,
-    task: str,
-    phase: str,
-    blockers,
-    spec_digest: str,
-    *,
-    review_input_digest: str | None = None,
-    spec_resolution: dict | None = None,
-    scope_id: str | None = None,
-) -> None:
-    """Retain Issue dependencies by change/Module/phase/Issue, never by task wording.
-
-    A successful fresh assessment releases a dependency, not the referenced Issue. Reports and
-    their immutable observations survive independently. Caller admission protects unrelated review
-    intents; one candidate has one evolving work scope for each participating Module.
-    """
-    from ..issues.references import receipt, requires_contract_repair
-    from ..issues.store import resolve_report
-    from ..spec.repository import digest
-
-    state = read_change(root)
-    if state is None:
-        return
-    history = state.setdefault("issue_blockers", [])
-    scope_id = scope_id or blocker_scope(state, target_id, task)
-    if scope_id is None:
-        if not blockers:
-            return
-        scope_id = (
-            "independent:"
-            + resolve_report(root, receipt(blockers[0]))["source"]["invocation_id"]
-        )
-    existing = {item["id"]: item for item in history}
-    for blocker in blockers:
-        observation = resolve_report(root, receipt(blocker))
-        context_id = observation["source"]["context_id"]
-        key = digest(
-            {
-                "change_id": state["change_id"],
-                "target_id": target_id,
-                "scope_id": scope_id,
-                "phase": phase,
-                "issue_id": blocker["issue_id"],
-            }
-        )
-        if key not in existing:
-            item = {
-                "id": key,
-                "target_id": target_id,
-                "task": task,
-                "phase": phase,
-                "scope_id": scope_id,
-                "blocker": dict(blocker),
-                "status": "open",
-                "contexts": [],
-                "spec_digest": spec_digest,
-            }
-            history.append(item)
-            existing[key] = item
-        item = existing[key]
-        item.update(
-            blocker=dict(blocker), task=task, status="open", spec_digest=spec_digest
-        )
-        if spec_resolution is not None:
-            evidence = {
-                key: value for key, value in spec_resolution.items() if key != "sources"
-            }
-            evidence["sources"] = [
-                {key: value for key, value in source.items() if key != "content"}
-                for source in spec_resolution["sources"]
-            ]
-            item.setdefault("context_evidence", {})[context_id] = evidence
-        if review_input_digest is not None:
-            item["review_input_digest"] = review_input_digest
-        if context_id not in item["contexts"]:
-            item["contexts"].append(context_id)
-    for item in history:
-        if (
-            item["target_id"] == target_id
-            and item["scope_id"] == scope_id
-            and item["status"] == "open"
-            and item["phase"] == phase
-            and not blockers
-            and (
-                item.get("spec_digest") != spec_digest
-                or (
-                    review_input_digest is not None
-                    and item.get("review_input_digest") != review_input_digest
-                )
-                or (
-                    phase in {"spec-review", "code-review"}
-                    and not requires_contract_repair(root, [item["blocker"]])
-                )
-            )
-        ):
-            item["status"] = "resolved"
-    state["blockers"] = [
-        item["blocker"] for item in history if item["status"] == "open"
-    ]
-    target = state["targets"].get(target_id)
-    if target is not None:
-        target["blockers"] = [
-            item["blocker"]
-            for item in history
-            if item["status"] == "open" and item["target_id"] == target_id
-        ]
-    if blockers:
-        state["validated_tree"] = None
-        state["validation"] = None
-    save_change(root, state)
-
-
-def unchanged_task_gaps(
-    root: Path,
-    target_id: str,
-    task: str,
-    phase: str,
-    spec_digest: str,
-    *,
-    review_input_digest: str | None = None,
-) -> list[dict]:
-    from ..issues.references import requires_contract_repair
-
-    state = read_change(root)
-    scope = blocker_scope(state or {}, target_id, task)
-    return [
-        dict(item["blocker"])
-        for item in (state or {}).get("issue_blockers", [])
-        if item["status"] == "open"
-        and item["target_id"] == target_id
-        and item["scope_id"] == scope
-        and item["phase"] == phase
-        and item.get("spec_digest") == spec_digest
-        and (
-            phase != "code-review" or requires_contract_repair(root, [item["blocker"]])
-        )
-        and (
-            review_input_digest is None
-            or phase not in {"spec-review", "code-review"}
-            or item.get("review_input_digest") == review_input_digest
-        )
-    ]
 
 
 def work_path(target_id: str, name: str) -> str:
@@ -1056,21 +851,12 @@ def work_path(target_id: str, name: str) -> str:
     return f"{WORK_PATH}/{target_id}/{name}"
 
 
-def workspace_context(
-    root: Path,
-    *,
-    persist: bool = False,
-    target_id: str | None = None,
-    task: str | None = None,
-) -> dict:
+def workspace_context(root: Path, *, persist: bool = False) -> dict:
+    """The workspace facts of ``root``: where it is, its change's lifecycle and the other
+    live worktrees, from Git and the primary's status records only."""
     inventory = refresh_registry(root, persist=persist)
     primary, current = workspace_identity(root)
     state = read_change(root)
-    coordination = (
-        state["targets"].get(state["target_id"], {}).get("coordination", {})
-        if state
-        else {}
-    )
     return {
         "kind": "unversioned"
         if current is None
@@ -1085,27 +871,6 @@ def workspace_context(
         "phase": state["phase"] if state else None,
         "status": state["status"] if state else None,
         "outcome": state.get("outcome") if state else None,
-        "blockers": [
-            item["blocker"]
-            for item in (state or {}).get("issue_blockers", [])
-            if item["status"] == "open"
-            and (
-                target_id is None
-                or (
-                    item["target_id"] == target_id
-                    and item["scope_id"] == blocker_scope(state or {}, target_id, task)
-                )
-            )
-        ],
-        "components": [
-            {
-                "target_id": target_id,
-                "spec_status": record["spec_status"],
-                "implementation_status": record["implementation_status"],
-                "outcome": record["outcome"],
-            }
-            for target_id, record in coordination.items()
-        ],
         "active_worktrees": inventory["worktrees"],
     }
 
@@ -1147,3 +912,144 @@ def snapshot_tree(root: Path, state: dict | None = None) -> str | None:
                     env=env,
                 )
         return git(root, "write-tree", env=env).stdout.strip()
+
+
+# --- the worktree boundary check -----------------------------------------------------------
+
+
+class WorktreeBoundaryError(ValueError):
+    """The requested mutation has no authorized isolated Git worktree."""
+
+
+@dataclass(frozen=True)
+class WorktreeBoundary:
+    project_root: str
+    repository_root: str
+    head: str
+    git_dir: str
+    common_dir: str
+    isolated: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def _boundary_git(root: Path, *arguments: str) -> str:
+    try:
+        result = subprocess.run(
+            ("git", "-C", str(root), *arguments),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as error:
+        raise WorktreeBoundaryError(
+            f"cannot execute Git worktree preflight: {error}"
+        ) from error
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "Git command failed"
+        raise WorktreeBoundaryError(detail)
+    value = result.stdout.strip()
+    if not value:
+        raise WorktreeBoundaryError("Git worktree preflight returned an empty value")
+    return value
+
+
+def inspect_worktree(project_root: str | Path) -> WorktreeBoundary:
+    """Return immutable Git identity without reading working-tree file contents."""
+
+    candidate = Path(project_root)
+    if candidate.is_symlink():
+        raise WorktreeBoundaryError(f"project root may not be a symlink: {candidate}")
+    root = candidate.resolve()
+    if not root.is_dir():
+        raise WorktreeBoundaryError(f"project root is not a directory: {root}")
+
+    repository_root = Path(
+        _boundary_git(root, "rev-parse", "--show-toplevel")
+    ).resolve()
+    git_dir = Path(_boundary_git(root, "rev-parse", "--absolute-git-dir")).resolve()
+    common_value = _boundary_git(
+        root, "rev-parse", "--path-format=absolute", "--git-common-dir"
+    )
+    common_dir = Path(common_value).resolve()
+    head = _boundary_git(root, "rev-parse", "--verify", "HEAD^{commit}")
+    return WorktreeBoundary(
+        project_root=root.as_posix(),
+        repository_root=repository_root.as_posix(),
+        head=head,
+        git_dir=git_dir.as_posix(),
+        common_dir=common_dir.as_posix(),
+        isolated=git_dir != common_dir,
+    )
+
+
+ISOLATION_GUIDANCE = (
+    "Create a unique branch and linked worktree from the primary worktree's committed HEAD "
+    "(git worktree add -b <branch> <path> HEAD) and retry from that worktree's root."
+)
+
+
+def require_isolated_worktree(
+    project_root: str | Path,
+    *,
+    allow_primary_worktree: bool = False,
+) -> WorktreeBoundary:
+    """Require a linked worktree unless the developer explicitly authorized primary mutation.
+
+    Every refusal says how to obtain an isolated worktree.
+    """
+
+    candidate = Path(project_root)
+    if candidate.is_symlink():
+        raise WorktreeBoundaryError(
+            f"project root may not be a symlink: {candidate}. {ISOLATION_GUIDANCE}"
+        )
+    root = candidate.resolve()
+    if not root.is_dir():
+        raise WorktreeBoundaryError(
+            f"project root is not a directory: {root}. {ISOLATION_GUIDANCE}"
+        )
+    try:
+        probe = subprocess.run(
+            ("git", "-C", str(root), "rev-parse", "--is-inside-work-tree"),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as error:
+        if not allow_primary_worktree:
+            raise WorktreeBoundaryError(
+                f"cannot execute Git worktree preflight: {error}. {ISOLATION_GUIDANCE}"
+            ) from error
+        probe = None
+    if probe is None or probe.returncode != 0 or probe.stdout.strip() != "true":
+        if allow_primary_worktree:
+            return WorktreeBoundary(
+                project_root=root.as_posix(),
+                repository_root="",
+                head="",
+                git_dir="",
+                common_dir="",
+                isolated=False,
+            )
+        raise WorktreeBoundaryError(
+            "agent-authored mutation requires a committed linked Git worktree; this directory is "
+            "not a Git worktree. Use --allow-primary-worktree only when the developer explicitly "
+            "authorized mutation of this current directory. " + ISOLATION_GUIDANCE
+        )
+    try:
+        boundary = inspect_worktree(project_root)
+    except WorktreeBoundaryError as error:
+        raise WorktreeBoundaryError(
+            f"Git worktree preflight failed: {error}. {ISOLATION_GUIDANCE}"
+        ) from error
+    if boundary.isolated or allow_primary_worktree:
+        return boundary
+    raise WorktreeBoundaryError(
+        "agent-authored mutation is not allowed in the primary Git worktree; create a unique "
+        f"branch and linked worktree from committed HEAD {boundary.head}, then retry there. "
+        "Primary staged, unstaged, untracked, and ignored files are outside the request authority. "
+        "Use --allow-primary-worktree only when the developer explicitly authorized mutation of "
+        "the primary worktree for this request."
+    )

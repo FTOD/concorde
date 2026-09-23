@@ -5,10 +5,10 @@ from unittest.mock import patch
 
 from concorde.harness.operation_node import OperationNode
 from concorde.harness.operation_state import OperationRuntimeContext
-from concorde.harness.worker_profile import worker_profile
+from concorde.harness.worker_profile import agent_definition
 from concorde.operations.graph_catalog import catalog, topology
 from concorde.spec.verification import verifies
-from tests.concorde.harness.test_operation_node import _stage_context
+from tests.concorde.support.stage_context import stage_context as _stage_context
 
 
 class GraphCatalogTests(unittest.TestCase):
@@ -29,9 +29,7 @@ class GraphCatalogTests(unittest.TestCase):
     def test_catalog_operation_without_a_service_is_inspection_only(self):
         graph = catalog()["terminal_agent_operation"]()
         data = _stage_context()["data"]
-        data["snapshot"]["data"]["phase"] = worker_profile(
-            "context_assessor"
-        ).contract.phase
+        data["snapshot"]["data"]["phase"] = agent_definition("context_assessor").phase
         with self.assertRaisesRegex(RuntimeError, "inspection only"):
             graph.invoke(data)
         with self.assertRaisesRegex(RuntimeError, "inspection only"):
@@ -39,6 +37,15 @@ class GraphCatalogTests(unittest.TestCase):
         # A launcher placed in State is not a declared channel and never becomes the service.
         with self.assertRaisesRegex(RuntimeError, "inspection only"):
             graph.invoke({**data, "launcher": lambda value: value})
+
+    @verifies("scenario.operations.inspect-catalog")
+    def test_catalog_graph_schemas_export_as_json_schema(self):
+        graph = catalog()["terminal_agent_operation"]()
+        for schema in (graph.get_input_jsonschema(), graph.get_output_jsonschema()):
+            self.assertEqual("object", schema["type"])
+            self.assertTrue(schema["properties"])
+        self.assertIn("snapshot", graph.get_input_jsonschema()["properties"])
+        self.assertIn("outcome", graph.get_output_jsonschema()["properties"])
 
 
 if __name__ == "__main__":

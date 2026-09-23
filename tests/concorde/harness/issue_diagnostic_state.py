@@ -5,7 +5,10 @@ import json
 import os
 import pathlib
 
+from concorde.delivery.records import receipt
 from concorde.harness.change_worktree import read_change
+from concorde.issue_solving.records import solutions
+from concorde.validation.records import validated_tree
 from concorde.issues.store import read_issue, resolve_report
 
 S = pathlib.Path(os.environ["S"])
@@ -33,16 +36,16 @@ o["persistence"] = {
     "specCodeConfigUnchanged": unchanged,
     "status": state["status"],
     "phase": state["phase"],
-    "validatedTree": state.get("validated_tree"),
+    "validatedTree": validated_tree(state),
     "candidateStatusExists": (r / ".concorde/status").exists(),
     "candidateRunsExists": (r / ".concorde/runs").exists(),
     "primaryStatusExists": (p / f".concorde/status/{f['change_id']}.json").exists(),
     "nativeIssueArchives": len(
         list((p / ".concorde/runs").glob("*/native-issue.json"))
     ),
-    "delivered": bool(state.get("delivery")),
+    "delivered": bool(receipt(state)),
 }
-solution = state.get("issue_solutions", {}).get(f["receipt"]["issue_id"], {})
+solution = solutions(state).get(f["receipt"]["issue_id"], {})
 o["persistence"].update(
     attempts=solution.get("attempts", 0),
     acceptedDecisions=len(solution.get("history", [])),

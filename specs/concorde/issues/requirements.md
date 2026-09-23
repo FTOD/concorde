@@ -1,56 +1,75 @@
 # Issues requirements
 
-The Module-wide obligations of Issues. The [entry](module.md) explains them; the
-[scenarios](scenarios.md) show them in concrete situations.
+The Module-wide obligations of [Issues](module.md). Shapes, operations and error codes are in the
+[Issue interface](interface.md); the [scenarios](scenarios.md) show the obligations in concrete
+situations.
 
 ## Reporting
 
 ### req.issues.report-control — Reporting does not control execution
 
-Accepting an Issue report SHALL NOT stop the reporting worker, start a repair or change the outcome of the worker's task.
+Accepting an Issue report SHALL NOT stop the reporter, start a repair or change the outcome of the
+reporter's task.
 
 A worker can report several problems and still complete its task. Whether a problem stops the task
 is stated separately, by a Blocker in the worker's result.
 
-### req.issues.scope — Issues never widen authority
+### req.issues.report-limits — Reports stay within the reporter's limits
 
-Reporting, selecting or solving an Issue SHALL NOT widen any worker's Spec, implementation or command Grant.
+The reporting service SHALL refuse a report whose owner, evidence paths or appended Issue lie
+outside the limits its caller admitted for that reporter.
 
-The reporting tool writes only through the Host, the owner a report names must already be in the
-reporter's context, and a solve stays bound to the Module the Issue is about.
+### req.issues.host-provenance — Provenance comes from the caller
 
-### req.issues.host-writes — Only the Host writes Issue records
+The reporting service SHALL take every provenance field of a report from its caller, never from the
+report.
 
-Every write to a file under `.concorde/issues/` SHALL go through the Host's Issue store.
+### req.issues.durable-receipt — A receipt means the report is on disk
+
+The Issue store SHALL return a receipt only after the record holding the report is durably
+published.
 
 ### req.issues.references — Results reference only known reports
 
-A stage result SHALL reference only Issue reports made in the same worker run or explicitly admitted as that worker's input.
+A stage result SHALL reference only Issue reports made through the same reporting service or
+explicitly admitted as that reporter's input.
 
 ## Records
 
+### req.issues.host-writes — Only the store writes Issue records
+
+Every Host write that creates, appends to, disposes or restores an Issue record SHALL go through the
+Issue store.
+
+Git operations that move committed record files between branches, such as creating a candidate,
+delivering or merging, are not store writes, and the store never runs Git.
+
 ### req.issues.retention — Reports are never rewritten
 
-The Issue store SHALL NOT modify or remove an accepted report, including when the Issue is closed or reopened.
+The Issue store SHALL NOT modify or remove an accepted report, including when the Issue is closed or
+reopened.
 
-Restoring a solve's own unfinished close does not touch reports either: it removes only the
-disposition that solve added, as described under
-[the closing journal](solving.md#concept.issues.journal).
+Restoring an unfinished close removes only the disposition that close added.
 
-## Solving
+### req.issues.closed-kept — Closed Issues stay recorded
 
-### req.issues.verified-resolution — Resolution needs current verification
+The Issue store SHALL NOT delete an Issue record file.
 
-The solve workflow SHALL write a `resolved` disposition only after Issue-specific and ordinary reviews completed without blocking findings on the Module's current Specs and implementation files.
+A closed Issue keeps its reports and dispositions, so it can be shown and reopened.
 
-### req.issues.bounded-decisions — Solving is bounded
+### req.issues.revision-checked — Writes never overwrite a newer record
 
-One solve SHALL launch the Issue solver at most six times for an unchanged set of inputs and clarification.
+The Issue store SHALL write a record only over the exact revision its caller read.
 
-### req.issues.journal-first — The journal precedes the close
+A creation requires that the record does not exist; an append, a disposition and a restoration name
+the revision they replace, and a mismatch fails with `stale_issue`.
 
-The Host SHALL save the closing journal in the candidate before it writes a solver disposition to the Issue.
+### req.issues.repository-lock — One lock serializes every store write
 
-### req.issues.ready-boundary — Solving stops before delivery
+The Issue store SHALL perform every write while holding the one exclusive lock kept in the primary
+worktree's run records.
 
-A successful solve SHALL end at a ready candidate without delivering it or changing the primary branch.
+### req.issues.legal-transitions — Dispositions alternate
+
+The Issue store SHALL accept a closing disposition only for an open Issue and a reopening only for a
+closed Issue.

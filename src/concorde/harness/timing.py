@@ -45,7 +45,7 @@ LABELS = frozenset(
 )
 
 
-def _notice():
+def notice_incomplete():
     try:
         sys.stderr.write("CONCORDE_TIMING_INCOMPLETE\n")
     except Exception:
@@ -108,7 +108,7 @@ class Trace:
                 )
             except Exception:
                 self.incomplete += 1
-                _notice()
+                notice_incomplete()
 
 
 class Span:
@@ -210,65 +210,6 @@ def diagnostic_sink(directory):
     return save
 
 
-def observe_pi_event(record, intervals):
-    """Best-effort native RPC timing; malformed diagnostic fields never change execution."""
-    try:
-        kind = record.get("type")
-        message = record.get("message") or {}
-        is_start = kind in {"turn_start", "tool_execution_start", "message_start"}
-        is_end = kind in {"turn_end", "tool_execution_end", "message_end"}
-        if not (is_start or is_end):
-            return
-        if kind.startswith("message_") and message.get("role") != "assistant":
-            return
-        key = (
-            "tool:" + str(record.get("toolCallId"))
-            if kind.startswith("tool_")
-            else "turn"
-            if kind.startswith("turn_")
-            else "model"
-        )
-        if is_start:
-            if key in intervals:
-                intervals.pop(key).finish("incomplete")
-            if len(intervals) >= 1024:
-                mark_incomplete()
-                return
-            span = Span(
-                "pi."
-                + (
-                    "tool"
-                    if key.startswith("tool:")
-                    else "round"
-                    if key == "turn"
-                    else "model_roundtrip"
-                )
-            )
-            parent = intervals.get("turn")
-            if key != "turn" and span.record is not None and parent and parent.record:
-                span.record["parent_id"] = parent.record["span_id"]
-            intervals[key] = span
-        else:
-            span = intervals.pop(key, None)
-            if span is None:
-                mark_incomplete()
-                return
-            usage = message.get("usage") or {}
-            span.finish(
-                "error"
-                if record.get("isError") or message.get("stopReason") == "error"
-                else "cancelled"
-                if message.get("stopReason") == "aborted"
-                else "ok",
-                input_tokens=usage.get("input"),
-                output_tokens=usage.get("output"),
-                cache_read_tokens=usage.get("cacheRead"),
-                cache_write_tokens=usage.get("cacheWrite"),
-            )
-    except Exception:
-        mark_incomplete()
-
-
 def mark_incomplete():
     trace = _CURRENT.get()
     if trace is not None:
@@ -289,7 +230,7 @@ def timed(name):
                     sink = diagnostic_sink(directory)
                 except Exception:
                     sink = None
-                    _notice()
+                    notice_incomplete()
                 with tracing(Trace(sink=sink)):
                     with Span(name, **metadata(kwargs)):
                         return function(*args, **kwargs)
@@ -301,68 +242,64 @@ def timed(name):
     return decorate
 
 
+def name_trace(trace_id):
+    """Give the open trace, and every span it holds, the identity ``trace_id``.
+
+    A top-level request names its trace once it knows its own run identity.
+    """
+    trace = _CURRENT.get()
+    if trace is None:
+        return
+    trace.trace_id = trace_id
+    for record in [*trace.records, *trace.pending.values()]:
+        record["trace_id"] = trace_id
+
+
 @contextmanager
-def operation_trace(host):
+def operation_trace(trace_id, sink):
+    """Open a trace for one top-level unit of work with the caller's ``sink``.
+
+    Inside an open trace the work joins it and ``sink`` is not used.
+    """
     if _CURRENT.get() is not None:
         yield _CURRENT.get()
         return
-
-    def persist(value):
-        from .change_worktree import repository_lock
-        from .status_store import run_path
-
-        try:
-            archive = host.archive_root or host.project_root
-            path = run_path(archive, f".concorde/runs/{value['trace_id']}/timing.json")
-            # Observability cannot create execution persistence for previews/rejected calls.
-            # Only an already admitted host run has durable diagnostic authority.
-            if host.mode == "execute" and (path.parent / "run.json").is_file():
-                with repository_lock(archive):
-                    fd = os.open(
-                        path,
-                        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                        0o600,
-                    )
-                    with os.fdopen(fd, "w") as stream:
-                        json.dump(value, stream, separators=(",", ":"))
-            else:
-                value = {**value, "persistence": "not-admitted"}
-        except Exception:
-            value = {**value, "complete": False, "persistence": "unavailable"}
-            _notice()
-        host.observe("timing", **value)
-
-    with tracing(
-        Trace(host.root_invocation_id or host.invocation_id, sink=persist)
-    ) as trace:
+    with tracing(Trace(trace_id, sink=sink)) as trace:
         yield trace
 
 
-def traced_operation(function):
-    @functools.wraps(function)
-    def call(*args, **kwargs):
-        host = kwargs["host_context"]
-        with operation_trace(host) as trace:
-            with Span("operation.total") as span:
-                result = function(*args, **kwargs)
-                span.finish(
-                    "ok"
-                    if result.get("status") in {"succeeded", "described"}
-                    else "cancelled"
-                    if any(
-                        error.get("code") == "execution_cancelled"
-                        for error in result.get("errors", [])
-                    )
-                    else "error",
-                    invocation_id=result.get("invocation_id"),
-                )
-            if host.depth == 0:
-                trace.trace_id = result["invocation_id"]
-                for record in [*trace.records, *trace.pending.values()]:
-                    record["trace_id"] = trace.trace_id
-            return result
+def traced_operation(sink_for):
+    """Trace each call of a request function taking ``host_context`` in its own trace.
 
-    return call
+    ``sink_for(host)`` supplies the sink that receives the finished trace; Observation never
+    decides where a trace is kept.
+    """
+
+    def decorate(function):
+        @functools.wraps(function)
+        def call(*args, **kwargs):
+            host = kwargs["host_context"]
+            with operation_trace(
+                host.root_invocation_id or host.invocation_id, sink_for(host)
+            ) as trace:
+                with Span("operation.total") as span:
+                    result = function(*args, **kwargs)
+                    span.finish(
+                        "ok"
+                        if result.get("status") in {"succeeded", "described"}
+                        else "cancelled"
+                        if any(
+                            error.get("code") == "execution_cancelled"
+                            for error in result.get("errors", [])
+                        )
+                        else "error",
+                        invocation_id=result.get("invocation_id"),
+                    )
+                return result
+
+        return call
+
+    return decorate
 
 
 def interval_record(

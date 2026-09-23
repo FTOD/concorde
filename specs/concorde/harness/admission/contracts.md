@@ -1,24 +1,40 @@
 # Request admission contracts
 
-The exact envelopes, records and error codes of [Request admission](module.md). The
-[requirements](requirements.md) state what the host promises about them.
+The exact envelopes, declarations, records and error codes of [Request admission](module.md). The
+[requirements](requirements.md) state what the Host promises about them.
 
 The schemas below use an offline JSON Schema subset: `type`, `properties`, `required`,
 `additionalProperties`, `items`, `enum`, `const`, `anyOf` and `minLength` have their ordinary
 meanings, and no schema loads another document.
 
-## Launcher
+## Values of admission
 
-`scripts/run-operation.py <capability>` accepts exactly one argument, the name of one of the eleven
-public capabilities: `concorde-context-solve`, `concorde-plan`, `concorde-tasks`,
-`concorde-implement`, `concorde-issues`, `concorde-spec-review`, `concorde-code-review`,
-`concorde-init`, `concorde-configure`, `concorde-validate` and `concorde-deliver`. Standard input
-holds one capability request of at most 1 MiB. Any other argument, a larger input or a request whose
-`operation_id` differs from the launcher argument is refused. In an installed project the launcher
-first re-executes itself in the worktree's managed runtime. The environment variable
-`CONCORDE_WORKER_POLICY` marks a worker process, and its presence refuses the request with
-`permission_denied`. `CONCORDE_SESSION_SELECTION` pins the Concorde code to an explicitly selected
-private session build; a selection in `maintenance` mode is refused with `fresh_session_required`.
+Admission owns these registered typed values; every other capability's request, response and
+stage values are specified by the Module that owns them.
+
+| Identity | What it carries |
+| --- | --- |
+| `concorde-operation-configuration@2` | the stored Agent models, thinking levels and time limits |
+| `concorde-configure-request@4` | a `concorde-configure` proposal or apply request |
+| `concorde-configure-response@3` | the outcome of a `concorde-configure` request |
+| `concorde-configuration-proposal@1` | a configuration proposal bound to its source digest |
+
+The two envelopes, `concorde-operation-invocation@3` (one capability request on the launcher's
+standard input) and `concorde-operation-result@3` (the one result envelope on standard output),
+carry a `type_id` and a `schema_version` but are not registered typed values: their fields sit at
+the top level instead of under `data`, and the entry checks them against the
+[capability request](#contract.admission.invocation) and [result envelope](#contract.admission.result)
+contracts below.
+
+## Launcher input
+
+The launcher `scripts/run-operation.py <capability>` belongs to Distribution; what it passes to
+admission is fixed here. It accepts exactly one argument, the name of one public capability in the
+catalog. Standard input holds one capability request of at most 1 MiB. Any other argument, a larger
+input, or a request whose `operation_id` differs from the argument is refused with an envelope
+whose `mode` is null. The launcher hands admission the project root (its working directory), the
+package root, the catalog of capability declarations, the dispatcher, the installation service and
+the session provenance it verified, if any.
 
 ## Capability request
 
@@ -39,7 +55,7 @@ private session build; a selection in `maintenance` mode is refused with `fresh_
     "required": ["type_id", "schema_version", "operation_id", "mode", "configuration", "input"],
     "additionalProperties": false
   },
-  "semantics": "Run one public capability. operation_id names the capability and must equal the launcher argument. mode execute runs it; describe-policy describes what would run without launching a worker or changing project files. configuration is null for the stored project configuration or a concorde-operation-configuration typed value equal to it. input is the capability's own request typed value {type_id, schema_version, data}, validated against that capability's request type; unknown fields and versions are refused. Any other schema_version is refused with unsupported_version.",
+  "semantics": "Run one public capability. operation_id names the capability and must equal the launcher argument. mode execute runs it; describe-policy describes what would run without launching an Agent or changing project files. configuration is null for the stored project configuration or a concorde-operation-configuration typed value equal to it; a capability that takes its configuration from its request requires null. input is the capability's own request typed value {type_id, schema_version, data}, validated against the request type its declaration names; unknown fields and versions are refused. Any other schema_version is refused with unsupported_version.",
   "example": {
     "type_id": "concorde-operation-invocation",
     "schema_version": 3,
@@ -60,7 +76,7 @@ private session build; a selection in `maintenance` mode is refused with `fresh_
 ```concorde-contract
 {
   "id": "contract.admission.result",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "properties": {
@@ -90,7 +106,7 @@ private session build; a selection in `maintenance` mode is refused with `fresh_
     "required": ["type_id", "schema_version", "operation_id", "invocation_id", "mode", "status", "workspace", "output", "errors"],
     "additionalProperties": false
   },
-  "semantics": "The one result of a capability request. operation_id and mode are null only when the request was refused before a capability and mode were admitted. status succeeded or described exits 0; blocked or failed exits 3. output is the capability's response typed value or null; its outcome completed, ready or delivered gives succeeded, failed gives failed, any other outcome gives blocked. workspace is null or the worktree the request ran in; after a relay it names the candidate. Each error has a stable code, a JSON-pointer field (possibly empty), a sanitized message and optional causal feedback. A relayed request returns the candidate launcher's envelope unchanged apart from being this request's result.",
+  "semantics": "The one result of a capability request. operation_id and mode are null only when the request was refused before a capability and mode were admitted. invocation_id identifies the run that produced the envelope; its run record is .concorde/runs/<invocation_id>/run.json in the primary worktree when the request executed. status succeeded or described exits 0; blocked or failed exits 3. output is the capability's response typed value or null; its outcome completed, ready or delivered gives succeeded, failed gives failed, any other outcome gives blocked; describe-policy gives described. workspace is null or {path, branch, change_id, ...} of the worktree the request ran in. Each error has a stable code, a JSON-pointer field (possibly empty), a sanitized message and optional causal feedback. A relayed request returns the candidate launcher's envelope unchanged, including the candidate's invocation_id and workspace; the relaying request's own run record links to that invocation.",
   "example": {
     "type_id": "concorde-operation-result",
     "schema_version": 3,
@@ -113,14 +129,8 @@ private session build; a selection in `maintenance` mode is refused with `fresh_
 
 <a id="participation-envelopes"></a>
 
-**Participation.** Request admission provides both envelopes to any caller of the launcher; the Pi
-`concorde` tool and the native preparation steps are the callers today. The host validates every
-incoming request against the request contract before admission and emits exactly one result per
-request.
-
-Standard error carries, when present, a canonical JSON line `{"policies": [...]}` with the policy
-descriptions of a `describe-policy` request, and a line `{"usage": {...}}` summarizing the usage
-records of the request's run.
+**Participation.** Request admission provides both envelopes to the Pi session's `concorde` tool,
+which builds requests and reads results; any other caller of the launcher uses the same contracts.
 
 ## Causal feedback
 
@@ -176,15 +186,81 @@ records of the request's run.
 
 <a id="participation-feedback"></a>
 
-**Participation.** Request admission provides the feedback record in every error entry it creates.
-The same record is produced by the native Pi side through `pi/execution-error.mjs`, so a failure
-keeps one format across the Python Host and the Pi process.
+**Participation.** Request admission provides the feedback record in every error entry it creates;
+the Pi session displays it. The same record is produced on the Pi side through
+`pi/execution-error.mjs`, so a failure keeps one format across the Host and the Pi process.
 
 Sanitization removes argument values that follow `Received arguments:`, model output that follows
 `Output:`, bearer tokens, and values labelled as API keys, access or refresh tokens, passwords,
 secrets or authorization. A record whose serialized form exceeds the Pi display limit (12,000
 bytes) is written to a new mode-0600 file under the system temporary directory, and the display
-shows its path, digest and size instead.
+shows its path, digest and size instead. A failed export is reported as incomplete, never clipped
+silently.
+
+## Capability declaration
+
+```concorde-contract
+{
+  "id": "contract.admission.capability-declaration",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "capability": {"type": "string", "minLength": 1},
+      "public": {"type": "boolean"},
+      "model_backed": {"type": "boolean"},
+      "request_type": {"type": "string", "minLength": 1},
+      "response_type": {"type": "string", "minLength": 1},
+      "mutation": {
+        "type": "object",
+        "properties": {
+          "policy": {"enum": ["never", "always", "by-action"]},
+          "actions": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        },
+        "required": ["policy", "actions"],
+        "additionalProperties": false
+      },
+      "workspace": {"enum": ["candidate", "primary-opt-in", "delivery-session", "none"]},
+      "target": {
+        "type": "object",
+        "properties": {
+          "selection": {"enum": ["bound-module", "none", "provider-hook"]},
+          "hook": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
+        },
+        "required": ["selection", "hook"],
+        "additionalProperties": false
+      },
+      "default_task": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+      "configuration": {"enum": ["stored", "request"]},
+      "entry_point": {"type": "string", "minLength": 1}
+    },
+    "required": ["capability", "public", "model_backed", "request_type", "response_type", "mutation", "workspace", "target", "default_task", "configuration", "entry_point"],
+    "additionalProperties": false
+  },
+  "semantics": "The facts admission needs about one capability. capability is its external name (concorde-<name>). public says whether the launcher may run it; admission refuses a non-public or unlisted name with unknown_operation. model_backed says whether it runs an Agent; a top-level model-backed request needs a fresh build. request_type and response_type are the registered typed-value types of its request data and response. mutation.policy never means the request never changes the project and runs where it was started; always means every request mutates; by-action means a request mutates exactly when its data's action field is one of mutation.actions, which must be empty for the other policies. workspace says where a mutating request runs: candidate (in its change's candidate, relayed from the primary), primary-opt-in (as candidate, and the request type carries run_in_primary, which applies it in the primary when true there), delivery-session (where it was started, never relayed or registered; the provider verifies participation), or none (only with mutation never). target.selection bound-module requires target_id and admits it and any focus_id against the registry, restoring the recorded owner of a mutating request's change; none performs no target check; provider-hook calls target.hook, a module:function entry point that receives the request data and returns the bound data and whether this request mutates. hook is null unless selection is provider-hook. default_task is the task text supplied when the request omits one, or null. configuration stored requires a stored operation configuration equal to the request's; request consults no stored configuration and requires the envelope's configuration to be null. entry_point is the module:function the Operations dispatch runs for the admitted request. A catalog entry violating this contract, or a hook or entry point that cannot be resolved, refuses the request with invalid_input before any effect.",
+  "example": {
+    "capability": "concorde-configure",
+    "public": true,
+    "model_backed": false,
+    "request_type": "concorde-configure-request",
+    "response_type": "concorde-configure-response",
+    "mutation": {"policy": "by-action", "actions": ["apply"]},
+    "workspace": "primary-opt-in",
+    "target": {"selection": "none", "hook": null},
+    "default_task": null,
+    "configuration": "stored",
+    "entry_point": "operations.configure:run"
+  }
+}
+```
+
+<a id="participation-declarations"></a>
+
+**Participation.** Request admission requires one declaration per capability in the catalog the
+launcher passes; Operations provides them. A request whose data does not set `task` receives the
+declared default task when there is one. A
+provider hook runs before the workspace is bound and may read the current worktree, but it must not
+write anything; its returned data replaces the request data for every later step.
 
 ## Operation configuration
 
@@ -193,150 +269,148 @@ under `operation_configuration` in `.concorde/config.json`:
 
 ```text
 {model?: "provider/id", thinking?: off|minimal|low|medium|high|xhigh|max, timeout_seconds?: int,
- workers?: {<worker>: {model?, thinking?, timeout_seconds?}}}
+ workers?: {<agent>: {model?, thinking?, timeout_seconds?}}}
 ```
 
-A key in `workers` must name a worker, timeouts must be positive and a model must name a provider.
-A missing stored value, or a project root that is a symlink, is `configuration_mismatch`.
-`propose_configuration` returns a proposal bound to the SHA-256 digest of the current file;
-`apply_configuration` writes it only when the file still has that digest, keeping every other key
-of the file.
+A key in `workers` must name an Agent, time limits must be positive integers and a model must name
+a provider. A missing stored value, or a project root that is a symbolic link, is
+`configuration_mismatch`.
 
-## Wire identities
+## concorde-configure
 
-Every value that crosses a capability or step boundary is a typed value
-`{type_id, schema_version, data}` whose version is fixed per type; an unknown field or another
-version is refused. The schemas themselves are registered with the Spec Module's wire types. The
-owner is the Module whose behaviour gives the value its meaning.
+The request type is `concorde-configure-request`, schema version 4, one of:
 
-### Envelopes
-
-| Identity | What it carries | Owner |
+| Action | Fields | Effect |
 | --- | --- | --- |
-| `concorde-operation-invocation@3` | one capability request on the launcher's standard input | Request admission |
-| `concorde-operation-result@3` | the one result envelope on standard output | Request admission |
-| `concorde-operation-configuration@2` | the stored worker models, thinking levels and time limits | Request admission |
+| `propose` | `configuration` (a `concorde-operation-configuration` typed value), optional `accept_protocol` (default false) | none; returns a proposal, or status `unchanged` when the stored value already equals it and no Protocol is to be accepted |
+| `apply` | `proposal` (a `concorde-configuration-proposal` typed value), `proposal_digest`, optional `run_in_primary` | writes the proposal |
 
-### Capability requests and responses
+A proposal is the typed value `concorde-configuration-proposal`, schema version 1, with data
+`{path: ".concorde/config.json", source_digest, configuration, protocol}`: `source_digest` is the
+`sha256:` digest of the configuration file's bytes when the proposal was made, and `protocol` is
+null or the Protocol binding `{version, digest}` of the installed Protocol copy to adopt.
+`proposal_digest` is the `sha256:` digest of the canonical JSON of the proposal typed value.
 
-Most requests carry `target_id`, `task` and optionally `focus_id`, `constraints` and `change_id`.
-Most responses carry `target_id`, `focus_id`, `change_id`, `context_id`, `outcome`, `answer`,
-`artifacts`, `blockers`, `checks` and `completed_operations`.
+Apply refuses, writing nothing: a `proposal_digest` that is not the digest of the given proposal
+(`invalid_proposal`); a configuration file whose digest is not `source_digest`, or an installed
+Protocol copy whose binding is not `protocol` (`stale_proposal`); an invalid configuration value
+(`invalid_field`). Otherwise it replaces `operation_configuration`, and `protocol` when present,
+keeps every other key, and keeps the write through a file transaction only if the project then
+loads; if it does not, the file is restored and the error of the failed load is returned. Without
+`accept_protocol`, a proposal for a project whose Protocol binding does not match its installed copy
+is refused with `protocol_mismatch`.
 
-| Identity | What it carries | Owner |
-| --- | --- | --- |
-| `concorde-context-solve-request@1`, `concorde-context-solve-response@3` | whether the Module's Spec suffices for the task | Planning |
-| `concorde-plan-request@1`, `concorde-plan-response@3` | a plan for one Module | Planning |
-| `concorde-tasks-request@2`, `concorde-tasks-response@3` | implementation tasks derived from the plan; the request may select a scope repair or a code-review repair | Planning |
-| `concorde-implement-request@1`, `concorde-implement-response@3` | implementation of the accepted tasks | Implementation |
-| `concorde-spec-review-request@2`, `concorde-spec-review-response@3` | an independent Spec review of an explicit Module; the response adds `reviews` | Review |
-| `concorde-code-review-request@2`, `concorde-code-review-response@3` | an independent code review of an explicit Module; the response adds `reviews` | Review |
-| `concorde-validate-request@1`, `concorde-validate-response@3` | deterministic validation and optional configured checks | Validation |
-| `concorde-deliver-request@1`, `concorde-deliver-response@3` | delivery of a change, optionally keeping the worktree or merging into the primary | Delivery |
-| `concorde-issues-request@1`, `concorde-issues-response@2` | list, show, report, reopen or solve an Issue; the response adds Issue records and a decision | Issues |
-| `concorde-init-request@3`, `concorde-init-response@1` | propose or apply the first Spec of a project, optionally opting in to apply in the primary worktree; the response has `status`, `proposal` and `files` | Spec |
-| `concorde-project-proposal@1` | the files of an initialization proposal with their base digests | Spec |
-| `concorde-configure-request@3`, `concorde-configure-response@2` | a new operation configuration, optionally opting in to apply in the primary worktree; the response has `configuration` and `status` | Distribution |
+The response type is `concorde-configure-response`, schema version 3:
+`{status: proposed|unchanged|applied, proposal, proposal_digest, configuration}`, where `proposal`
+and `proposal_digest` are null unless `status` is `proposed`, and `configuration` is the stored
+value after the request. A `describe-policy` request is refused with `use_proposal`.
 
-### Step inputs and results
+## Relay
 
-| Identity | What it carries | Owner |
-| --- | --- | --- |
-| `concorde-context-snapshot@7` | the frozen context of one worker step | Task context |
-| `concorde-agent-stage-context@5` | a worker's input: the snapshot, the change ID and expected artifacts | Task context |
-| `concorde-agent-stage-result@3` | a worker's proposal: outcome, answer, blockers, plan, tasks or Issue decision | Task context |
-| `concorde-review-stage-context@5` | a reviewer's input: the snapshot and the review input | Task context |
-| `concorde-review-stage-result@2` | a reviewer's proposal: status, representative tasks, Issues and answer | Task context |
-| `concorde-review-input@1` | the exact Spec or code revision and changes under review | Review |
-| `concorde-review-result@2` | a published review, also admitted as a repair input to tasks and implementation | Review |
-| `concorde-plan-artifact@1` | an accepted plan passed to task authoring | Planning |
-| `concorde-implementation-task@1` | the plan and task list passed to implementation | Planning |
-| `concorde-task-identity-constraints@1` | task IDs a new task list must not reuse | Planning |
-| `concorde-task-scope-feedback@1` | the digest of a task list that exceeded the implementation boundary | Planning |
-| `concorde-issue-selection@1` | the selected Issue, its revision and bounded feedback for the Issue solver | Issues |
-| `concorde-issue-intent@1` | the intended behaviour of a selected Issue for ordinary steps | Issues |
-| `concorde-issue-context@1` | the selected Issue observations behind a review repair | Issues |
-| `concorde-issue-report@1` | one classified observation a worker reports | Issues |
-| `concorde-issue-receipt@1` | the immutable identity of an accepted observation | Issues |
+The relay runs `[<candidate python>, <candidate launcher>, <capability>]` with the candidate as
+working directory, the environment without `PYTHONPATH` and `PYTHONHOME`, and the relayed request
+on standard input. The relayed request is the original with `configuration: null` and, when its
+request type has a `change_id` field, the candidate's change identity. On interrupt the relay sends
+SIGTERM and waits 30 seconds before killing the launcher. Output that is not a result envelope
+fails with `relay_failed`, category `transport`, attempt the relaying invocation, and diagnostics
+holding the exit code, standard output and standard error.
+
+Before relaying into an existing candidate the relay checks that the candidate's change status
+names the requested change and path (`workspace_mismatch`) and, for a request that mutates, that its
+owner fields do not conflict (`incompatible_handoff`). The candidate launcher is selected by the
+installation service: `install(candidate, package_root, bootstrap)` returns the candidate's own
+interpreter and launcher, installing only when `bootstrap` is true (a new candidate), and raises
+`local_installation_required` when the candidate has no verified installation of the package; the
+candidate's change is then marked `blocked` with that outcome. A candidate of Concorde's own source
+is never installed into: it must have its own fresh build, `.venv` interpreter and launcher, else
+`missing_runtime`.
+
+An embedding Host (a Python program that calls admission directly) may be created with
+`allow_primary_worktree`; it then applies mutating requests in place, registering a change for the
+primary or unversioned project. The launcher never sets it.
 
 ## Error codes
 
 Every code any Concorde component raises is listed here, because every code can reach a caller
-through the result envelope. The last column names the Module where it arises.
+through the result envelope. The last column names the Modules where it arises; each of them owns
+the code's meaning in its own context.
 
 | Code | Meaning | Where it arises |
 | --- | --- | --- |
-| `already_initialized` | the project is initialized; use `concorde-configure` to change settings | Spec |
+| `already_initialized` | the project is initialized; use `concorde-configure` to change settings | Spec tooling |
 | `check_sandbox_unavailable` | the read-only sandbox for configured checks cannot be enforced, so checks do not run | Check execution |
 | `closed_issue` | a new observation needs the closed Issue to be reopened first | Issues |
-| `configuration_mismatch` | the request's or a nested step's configuration differs from the stored one, or none is stored | Request admission, Agent execution |
+| `configuration_mismatch` | the request's or a Host step's configuration differs from the stored one, or none is stored | Request admission, Agent execution |
 | `delivery_in_progress` | a mutation was requested while the change is being delivered | Request admission |
 | `delivery_required` | a primary merge needs a completed staged delivery | Delivery |
 | `delivery_session_required` | the session is not in the change's candidate or primary worktree | Delivery |
 | `detached_primary` | the primary worktree has no attached branch to deliver onto | Delivery |
 | `detached_worktree` | a candidate has no attached branch | Candidate worktrees |
 | `dirty_primary` | a primary merge is blocked by local changes in the primary | Delivery |
-| `execution_cancelled` | the host was interrupted or a worker was cancelled; the candidate is kept | Request admission, Agent execution |
+| `duplicate_type` | a type identity is registered again with another version or schema | Spec tooling |
+| `execution_cancelled` | the Host was interrupted or an Agent call was cancelled; the candidate is kept | Request admission, Agent execution |
 | `execution_failed` | any other failure outside the named codes | Request admission, Agent execution |
-| `execution_limit` | a worker ran past its time limit | Request admission |
+| `execution_limit` | an Agent call ran past its time limit | Request admission, Agent execution |
 | `failed_merge_checks` | the merged candidate failed its configured checks | Delivery |
-| `fresh_session_required` | a mutation from the primary of Concorde's source checkout, or a maintenance session selection | Request admission |
+| `fresh_session_required` | a mutation from the primary of Concorde's own source checkout | Request admission, Pi session |
 | `incompatible_contracts` | shared contracts of participating Modules disagree | Implementation |
-| `incompatible_handoff` | a returned or supplied identity does not match what the host issued, or conflicts with the recorded change owner | Request admission, Task context, Agent execution, Candidate worktrees |
+| `incompatible_handoff` | a returned or supplied identity does not match what the Host issued, a stage input is not admitted, or a request conflicts with the recorded change owner | Request admission, Task context, Agent execution, Candidate worktrees |
 | `incomplete_change` | validation or delivery was requested before every task was complete | Validation, Delivery |
 | `incomplete_tasks` | implementation did not report every task as complete | Implementation |
-| `invalid_agent_binding` | a worker profile is inconsistent with its contract or the build | Task context |
-| `invalid_assessment` | a context assessment contradicts its own blockers | Task context |
-| `invalid_completion` | a worker returned no single valid result, or one its contract forbids | Agent execution |
-| `invalid_context` | a resolved context or its grant is structurally invalid | Spec, Agent execution |
+| `invalid_agent_binding` | an Agent definition is inconsistent or not recorded in the build | Task context |
+| `invalid_assessment` | a context assessment contradicts its own blockers | Planning |
+| `invalid_completion` | an Agent call returned no single valid result, or one its definition forbids | Task context, Agent execution |
+| `invalid_context` | a resolved context is structurally invalid | Spec tooling, Agent execution |
 | `invalid_delivery` | a delivery record has an invalid or mismatched identity | Delivery |
-| `invalid_field` | a typed value violates its schema, or a worker selection is malformed | Spec |
-| `invalid_focus` | the scenario focus does not belong to the selected Module | Spec |
-| `invalid_input` | a request's fields are invalid for the requested action | Request admission, Spec |
+| `invalid_field` | a typed value violates its schema | Spec tooling, Request admission |
+| `invalid_focus` | the scenario focus does not belong to the selected Module | Spec tooling |
+| `invalid_input` | a request's fields are invalid for the requested action, or a catalog declaration is invalid | Request admission, Spec tooling, Candidate worktrees |
 | `invalid_issue` | an Issue record, report or disposition violates its shape or history | Issues |
-| `invalid_json` | the input is not JSON, or has duplicate keys or non-finite numbers | Spec |
+| `invalid_json` | the input is not JSON, or has duplicate keys or non-finite numbers | Spec tooling |
 | `invalid_merge` | the merged candidate failed Spec validation | Delivery |
-| `invalid_phase` | the step phase is not supported | Task context |
-| `invalid_proposal` | a proposal or source override is not acceptable | Spec |
+| `invalid_phase` | the step phase is not the bound Agent definition's phase | Task context |
+| `invalid_proposal` | a proposal, its digest or a source override is not acceptable | Spec tooling, Request admission |
 | `invalid_reference` | an external inclusion is not checked out | Task context |
-| `invalid_spec` | a document's metadata, ownership or reading structure is invalid | Spec |
-| `invalid_target` | a context query names no registered Module or scenario | Spec |
-| `invalid_worktree_state` | a change status, owner, incarnation token or guidance marker is malformed | Candidate worktrees |
+| `invalid_spec` | a document's metadata, ownership or reading structure is invalid | Spec tooling |
+| `invalid_target` | a context query names no registered Module or scenario | Spec tooling |
+| `invalid_worktree_state` | a change status, owner, incarnation token, guidance marker or provider section is malformed | Candidate worktrees, Request admission |
 | `issue_key_conflict` | a report key was reused with different content | Issues |
-| `local_installation_required` | the worktree's own installation is missing, stale, foreign or not the running one | Request admission |
+| `local_installation_required` | the worktree's own installation is missing, stale, foreign or not the running one | Distribution, Request admission |
 | `merge_conflict` | the candidate conflicts with the primary branch | Delivery |
-| `missing_change` | no managed change or live candidate exists for the request | Candidate worktrees, Planning, Implementation |
+| `missing_change` | no managed change or live candidate exists for the request | Candidate worktrees, Request admission, Planning, Implementation, Validation |
 | `missing_plan` | task authoring was requested without a plan | Planning |
-| `missing_runtime` | no usable interpreter, environment or native runtime was found | Request admission, Agent execution |
-| `missing_source` | a file named by the registry or a context is missing | Spec |
+| `missing_runtime` | no usable interpreter, environment or native runtime was found | Request admission, Agent execution, Distribution |
+| `missing_source` | a file named by the registry or a context is missing | Spec tooling |
 | `missing_tasks` | implementation was requested without tasks | Implementation |
-| `native_required` | a model-backed step needs its prepared native worker; there is no other backend | Agent execution, Operations |
-| `not_installed` | no Protocol copy is installed in the project | Spec |
-| `permission_denied` | a request, worker or result acts outside its granted authority | Request admission, Task context, Agent execution |
+| `native_required` | a model-backed step needs its prepared native Agent call; there is no other backend | Agent execution |
+| `not_installed` | no Protocol copy is installed in the project | Spec tooling |
+| `permission_denied` | a result fills a field its Agent definition does not permit, or an action exceeds its granted authority | Task context, Agent execution |
 | `primary_session_required` | the command must run in the primary worktree | Candidate worktrees, Delivery |
 | `primary_unavailable` | the primary worktree cannot be found; restore it and retry | Candidate worktrees |
-| `protocol_mismatch` | the project's Protocol binding does not match the installed Protocol | Spec, Distribution |
-| `review_required` | a required review is missing, incomplete, blocking or stale | Review, Issues |
+| `protocol_mismatch` | the project's Protocol binding does not match the installed Protocol | Spec tooling, Request admission |
+| `relay_failed` | the candidate's launcher returned no result envelope | Request admission |
+| `review_required` | a required review is missing, incomplete, blocking or stale | Review, Issue solving |
 | `spec_incomplete` | the Spec lacks something the step needs; a gap was recorded | Planning, Implementation, Review, Validation |
-| `stale_build` | the build is missing or older than its sources | Distribution, Task context |
+| `stale_build` | the build is missing or older than its sources | Request admission, Task context, Distribution |
 | `stale_context` | a frozen context no longer matches the repository | Task context, Agent execution |
 | `stale_delivery` | a recorded delivery is no longer on its target branch | Delivery |
 | `stale_evidence` | recorded evidence no longer matches the current bytes | Validation, Review, Delivery, Agent execution |
-| `stale_issue` | the selected Issue changed since it was read | Issues |
-| `stale_proposal` | a proposal's base changed since it was produced | Spec |
-| `stale_reference` | an artifact reference's digest does not match the file | Spec |
+| `stale_issue` | the selected Issue changed since it was read | Issues, Issue solving |
+| `stale_proposal` | a proposal's base changed since it was produced | Spec tooling, Request admission |
+| `stale_reference` | an artifact reference's digest does not match the file | Spec tooling |
 | `stale_status` | a change status changed since it was read | Candidate worktrees |
 | `state_persistence_failed` | status or run evidence could not be written after a final outcome | Request admission, Delivery |
+| `uncommitted_issue` | `solve` of an open Issue whose record file is not committed, unchanged, at `HEAD` of the worktree the request starts in | Issue solving |
 | `undeclared_operation` | an Operation composed another it does not declare | Agent execution |
 | `unknown_agent` | no Agent has this name | Task context |
-| `unknown_change` | a change ID has no status or delivery record | Candidate worktrees, Delivery |
+| `unknown_change` | a change identity has no status or delivery record | Candidate worktrees, Delivery |
 | `unknown_issue` | the Issue does not exist | Issues |
-| `unknown_operation` | the capability is not registered or not public | Request admission |
-| `unknown_target` | the target Module is not registered | Spec |
-| `unknown_type` | a typed value names no registered type | Spec |
-| `unsafe_path` | a path escapes the project, aliases a control path or crosses a symlink | Spec, Candidate worktrees |
-| `unsupported_profile` | the registry declares an unsupported profile | Spec |
+| `unknown_operation` | the capability is not in the catalog or not public | Request admission |
+| `unknown_target` | the target Module is not registered, or a selected Issue's owner is not a registered Module | Spec tooling, Issue solving |
+| `unknown_type` | a typed value names no registered type | Spec tooling |
+| `unsafe_path` | a path escapes the project, aliases a control path or crosses a symbolic link | Spec tooling, Candidate worktrees |
+| `unsupported_profile` | the registry declares an unsupported profile | Spec tooling |
 | `unsupported_target` | the Module has no implementation for the requested behaviour | Implementation, Review |
-| `unsupported_version` | a request or typed value has an unsupported version | Request admission, Spec |
-| `use_proposal` | `describe-policy` cannot preview initialization or configuration; use their proposals | Operations |
-| `workspace_mismatch` | the entry directory, worktree or incarnation is not the one the request requires, or `run_in_primary` was set outside the primary worktree | Request admission, Candidate worktrees |
+| `unsupported_version` | a request or typed value has an unsupported version | Request admission, Spec tooling |
+| `use_proposal` | `describe-policy` cannot preview initialization or configuration; use their proposals | Request admission, Spec tooling |
+| `workspace_mismatch` | the entry directory, worktree or incarnation is not the one the request requires, a mutation was started outside a Git worktree, or `run_in_primary` was set outside the primary worktree | Request admission, Candidate worktrees |

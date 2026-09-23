@@ -1,7 +1,16 @@
 # Spec requirements
 
-The Module-wide obligations of the [Spec tooling](module.md) Module. The headings group them by subject;
-each requirement belongs to the Module as a whole.
+The Module-wide obligations of the [Spec tooling](module.md) Module. The headings group them by
+subject; each requirement belongs to the Module as a whole.
+
+## Independence
+
+### req.spec.no-owner-imports — Spec tooling depends on no other Module
+
+Spec tooling SHALL NOT import code of any other Concorde Module.
+
+Schemas, policies and file locations that other Modules own reach Spec tooling only through its
+registration interface or as arguments of a call.
 
 ## Loading
 
@@ -40,14 +49,14 @@ scan, which parses bound test files, is a separate step.
 The loader SHALL NOT return a repository for use by consumers when the project has a problem that
 makes a boundary untrustworthy.
 
-These problems are listed in the [interface definitions](contracts.md#loading-failures). Validation
-opens the repository so that the same problems become findings instead.
+These problems are listed in the [interface definitions](contracts.md#loading-failures). The
+validator opens the repository so that the same problems become findings instead.
 
 ### req.spec.protocol-binding — Only the accepted Protocol is admitted
 
 The loader SHALL admit a project only when its configuration binds exactly the Protocol copy under
-`.concorde/protocol/`, that copy's assets match their recorded digests, and the copy equals the
-Protocol of the installed Concorde package.
+`.concorde/protocol/`, that copy's assets match their recorded digests, and the copy's manifest
+equals the Protocol manifest of the running Concorde package.
 
 ## Checks
 
@@ -60,7 +69,9 @@ severity the chapter gives it.
 ### req.spec.all-findings — One run reports everything it can
 
 Validation SHALL continue after a finding and report every further violation that the remaining
-readable declarations allow it to establish.
+readable declarations and test files allow it to establish.
+
+A test file that cannot be parsed is reported, and the other bound test files are still scanned.
 
 ### req.spec.status-from-errors — Only errors make a result invalid
 
@@ -78,29 +89,39 @@ The result carries an explicit marker saying semantic completeness is not proven
 Validation SHALL report as an error every link in Spec reading whose fragment has the form of a
 node identity and does not name a definition in the linked document.
 
+### req.spec.check-inputs — Configured check inputs exist and are safe
+
+Validation SHALL report as an error every configured-check input that is missing, is not a
+canonical project-relative path, or is reached through a symbolic link.
+
 ### req.spec.digest-per-assessment — Every result names what it assessed
 
-Every validation result SHALL carry a digest of the exact configuration, registry, document,
-Protocol binding and Issue record inputs it assessed.
+Every validation result SHALL carry a digest of the exact configuration, registry, document members,
+Protocol binding and configured-check input states it assessed.
 
 ## Registry mirror
 
 ### req.spec.registry-mirror-only — Regeneration changes only mirrored fields
 
 Regenerating the registry SHALL rewrite only the mirrored fields of the Modules it already records,
-leaving each record's identity, title and entry path and the set of recorded Modules unchanged.
+leaving each record's identity and entry path and the set of recorded Modules unchanged.
+
+The mirrored fields are every field of the entry's `module` block: `title`, `owns`, `contains`,
+`uses`, `includes` and `participates`.
 
 ### req.spec.registry-check-read-only — Checking the mirror never writes
 
 Checking the registry mirror SHALL report every record whose mirrored fields differ from its entry
 without writing any file.
 
-## Boundary sets
+## Boundary sets and indexes
 
 ### req.spec.one-level-selection — Context selection is one level deep
 
 Spec context selection SHALL follow only the selected Module's own `owns`, `contains`, `uses` and
 `includes` declarations and never the relations of the Modules and documents they select.
+
+Sharing a bound file with another Module adds nothing to either Module's Spec context.
 
 ### req.spec.both-members — Documents are selected whole
 
@@ -131,6 +152,13 @@ The exclusion rule is part of the [interface definitions](contracts.md#implement
 A query by scenario identity SHALL return exactly the Spec context of the Module that owns the
 scenario.
 
+### req.spec.indexes-derived — Impact indexes come from declarations alone
+
+Every impact index SHALL be computed from the loaded declarations and realization entries alone.
+
+No index reads implementation file contents, test results or recorded evidence, and no index
+query changes a boundary set.
+
 ## Coverage
 
 ### req.spec.coverage-from-tests — Coverage comes from the tests
@@ -148,7 +176,15 @@ one, a missing required field and any field its schema does not declare.
 ### req.spec.typed-offline — Typed values are checked offline
 
 Checking a typed value or a contract schema SHALL use no network access and no schema outside
-those registered in Concorde or defined in the checked schema itself.
+those registered or defined in the checked schema itself.
+
+### req.spec.typed-registration-unique — One registration per type
+
+Registering a type SHALL fail when its identity is already registered with a different version or
+schema.
+
+Registering the identical version and schema again is accepted and changes nothing, so an owner's
+code may be loaded twice.
 
 ## File transactions
 
@@ -209,9 +245,10 @@ Protocol copy under `.concorde/protocol/`.
 
 ## Protocol assets
 
-### req.spec.protocol-assets-projected — Distributed assets are built from the text
+### req.spec.protocol-assets-projected — The bundle carries only the Protocol
 
-Every distributed Protocol asset SHALL be built from the Protocol text and the Framework profile and
-have its digest recorded in the tracked manifest.
+Every Protocol asset recorded in the tracked manifest SHALL be rendered only from the Protocol text
+and carry the digest of its rendered bytes.
 
-The build that renders the assets and checks their freshness belongs to the Distribution Module.
+Concorde's own conventions are not part of the bundle; they are defined by the Modules that own
+them. Rendering the bundle and recomputing the digests is Distribution's build step.

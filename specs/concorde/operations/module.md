@@ -2,298 +2,219 @@
 
 ## Purpose
 
-Operations is the list of Concorde's public capabilities and the dispatch that sends each admitted
-request to the Module that owns its behaviour. It also keeps the catalog of Operations: the control
-flows that Concorde writes explicitly as LangGraph StateGraphs. Its five children, Planning,
-Implementation, Review, Validation and Delivery, own the behaviour of most capabilities; Issues,
-Spec and Distribution own the rest. Operations does not admit requests, which is the job of Request
-admission, and it never decides which capability runs next: the user session does. No capability
-starts another one when it finishes.
+Operations is the catalog of everything Concorde can execute and the dispatch that runs an admitted
+request. Every Operation is declared once with its request, response, control-flow kind and owning
+Module; dispatch calls the entry point the declaration names without knowing any provider in
+advance. Operations also keeps the Graph catalog of the LangGraph Graphs Concorde compiles, and it
+contains the Modules whose only responsibility is to provide Operations: Planning, Implementation,
+Review, Validation, Delivery and Issue solving. It does not admit requests (Request admission does),
+owns no stage behaviour (each provider does), and never decides which Operation runs next (the user
+session does).
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Operation | A Concorde control flow written explicitly as a LangGraph StateGraph with typed input and output State, which a host selects by name and the Graph Spec check inspects. |
-| Capability declaration | The Python module under `operations/` that declares one capability's kind, request schema, context selection and the Agents it uses. |
-| Capability kind | How a capability does its work once admitted: as one direct native Agent call, as a native workflow, or as a finite Host service that calls no model. |
+| Operation | A cataloged executable entry with a declared request and response and exactly one control-flow kind: a Host service, a single Agent call, a pi workflow or a LangGraph Graph. |
+| Operation catalog | The complete set of Operation declarations and the loader that validates them, from which admission, dispatch, the Pi session and distribution all read the same facts. |
 | [Capability](../vocabulary.md#concept.concorde.capability) | |
 | [User session](../vocabulary.md#concept.concorde.user-session) | |
-| [Host](../vocabulary.md#concept.concorde.host) | |
-| [Module](../vocabulary.md#concept.concorde.module) | |
+| [Capability request](../harness/admission/module.md#concept.admission.capability-request) | |
+| [Result envelope](../harness/admission/module.md#concept.admission.result-envelope) | |
+| [Capability declaration](../harness/admission/module.md#concept.admission.capability-declaration) | |
 | [Agent](../agents/module.md#concept.agents.agent) | |
+| [Agent call](../harness/execution/module.md#concept.execution.agent-call) | |
 | [Workflow](../harness/execution/module.md#concept.execution.workflow) | |
-| [Candidate](../harness/worktrees/module.md#concept.worktrees.candidate) | |
+| [LangGraph Graph](../harness/execution/module.md#concept.execution.graph) | |
+| [Agent hook](../harness/execution/module.md#concept.execution.agent-hook) | |
+| [Workflow hook](../harness/execution/module.md#concept.execution.workflow-hook) | |
+| [Phase](../harness/context/module.md#concept.context.phase) | |
+| [Typed value](../spec/module.md#concept.spec.typed-value) | |
 
-A capability is what the user session calls. Its kind says whether a model runs and how. An
-Operation is a different thing: a StateGraph that the Host runs, used today by one internal flow.
+A capability is a public Operation. The capability declaration is the part of an Operation's
+declaration that Request admission reads; dispatch reads the rest.
 
 ## Usage
 
-### The public capabilities
-
-<a id="concept.operations.capability-declaration"></a><a id="concept.operations.capability-kind"></a>
-
-There are eleven capabilities. Each has one **capability declaration** in `operations/` and one
-public name. The **kind** tells the caller what to expect: an Agent capability returns a prepared
-native Agent call, a workflow capability returns a prepared native workflow, and a Host capability
-runs to its end and returns the final result.
-
-| Capability | Kind | Behaviour owned by | What it does |
-| --- | --- | --- | --- |
-| `concorde-context-solve` | Agent | [Planning](../planning/module.md) | Judges whether the Module's Spec says enough to plan the task |
-| `concorde-plan` | workflow | [Planning](../planning/module.md) | Assesses the task, then writes a plan in the candidate |
-| `concorde-tasks` | Agent | [Planning](../planning/module.md) | Derives acceptance tasks from the accepted plan |
-| `concorde-implement` | Agent | [Implementation](../implementation/module.md) | Changes the Module's implementation files to fulfil the tasks |
-| `concorde-spec-review` | workflow | [Review](../review/module.md) | Reviews a Module's Spec independently |
-| `concorde-code-review` | workflow | [Review](../review/module.md) | Reviews a Module's code against its Spec independently |
-| `concorde-validate` | Host | [Validation](../validation/module.md) | Runs the deterministic checks and records readiness evidence |
-| `concorde-deliver` | Host | [Delivery](../delivery/module.md) | Stages a verified candidate on its own branch |
-| `concorde-issues` | Host; workflow to solve | [Issues](../issues/module.md) | Lists, shows, reports, reopens or solves an Issue |
-| `concorde-init` | Host | [Spec](../spec/module.md) | Proposes, then applies, the first Spec of a project |
-| `concorde-configure` | Host | [Distribution](../distribution/module.md) | Chooses worker models or accepts the installed Protocol |
-
-The capabilities that act on one Module share a core request: `target_id`, the Module it acts on;
-`task`, a plain statement of the work; and optionally `focus_id`, one scenario of that Module, and
-`constraints`. The exact fields are in the [declarations and dispatch reference](catalog.md).
-
-### How a request reaches its provider
-
-Take a plan for a billing Module. The user session first calls the Pi tool `concorde` with
-`operation: "concorde-plan"` and `action: "describe"` to read the capability's guidance and request
-schema. Then it calls `action: "run"` with the input
-`{"target_id": "module.billing", "task": "Retry failed card charges once"}`.
-
-1. The session extension, which [Distribution](../distribution/module.md) installs, wraps the input
-   in a typed invocation envelope and hands it to the launcher `scripts/run-operation.py`. The
-   launcher accepts only the eleven public names. For a Host capability it runs the capability
-   declaration; for a native capability such as this one it runs the Host's native preparation.
-   Both lead to Request admission.
-2. Request admission checks the envelope against the request schema, binds the request to a
-   workspace, here a candidate worktree because planning writes, and checks the configuration.
-3. Dispatch checks that `module.billing` is a registered Module, binds the candidate to it, and
-   routes the request to Planning.
-4. Planning runs no model at this point. It freezes the task's context and returns an exact native
-   workflow call. The user session invokes that call unchanged; the workflow runs a context assessor
-   and, if the Spec is sufficient, a planner. Host steps inside the workflow accept or reject each
-   result.
-5. The user session polls `concorde` with `action: "result"` until the workflow ends. The result
-   says whether the Host accepted a plan, or why it stopped.
-
-```mermaid illustrative
-sequenceDiagram
-    accTitle: How a capability request reaches its provider
-    accDescr: The user session calls the concorde tool; admission and dispatch route the request to the provider, which either finishes a Host service or returns a prepared native call that the user session then invokes.
-    participant U as User session
-    participant T as concorde tool
-    participant A as Request admission
-    participant D as Dispatch
-    participant P as Provider Module
-    U->>T: run concorde-plan with input
-    T->>A: invocation envelope
-    A->>D: admitted request, bound workspace
-    D->>P: route for the target Module
-    P-->>U: Host result, or a prepared native call
-    U->>U: invoke the prepared call unchanged
-    U->>T: result (workflows only)
-```
-
-A Host capability such as `concorde-validate` finishes inside steps 2 and 3, and the tool returns
-its final result at once. An Agent capability such as `concorde-tasks` returns a prepared Agent call;
-the Host accepts or rejects the Agent's answer when the call returns.
-
-Every result is a typed envelope whose status is `succeeded`, `described`, `blocked` or `failed`,
-with errors that explain a stop. An unknown capability name is refused as `unknown_operation`; a
-missing or unknown target stops before any worktree or worker is touched. Running with
-`mode: "describe-policy"` previews the context and permissions a real run would use, without
-starting an Agent. Calling a native capability through the bare launcher, without the Pi session,
-is refused as `native_required`.
-
-### Operations and native calls
-
 <a id="concept.operations.operation"></a>
 
-An **Operation** is a flow the Host runs as a LangGraph StateGraph: typed State channels, and nodes
-and edges declared before the graph is compiled. Because the structure is declared, it can be checked
-against its Graph Spec. The public capabilities are not Operations.
-Their model work runs as native Pi [Agents](../agents/module.md#concept.agents.agent) and
-[workflows](../harness/execution/module.md#concept.execution.workflow), which the Host prepares and
-whose results it accepts, and their Host work is ordinary finite code.
+An **Operation** is anything a request can make Concorde execute. Its declaration fixes its public
+name, its request and response schemas, and its control-flow kind: a **Host service** runs
+deterministic code to its end and returns the final result; a **single Agent call** returns a
+prepared native call of one Agent, which the user session invokes unchanged; a **pi workflow**
+returns a prepared native workflow of Agents and Host steps, which the user session invokes and then
+polls; a **LangGraph Graph** is a sanctioned kind that no cataloged Operation uses today.
 
-Today the Operation catalog holds one Operation, `terminal_agent_operation`. It wraps one Agent call
-with typed input and output State. The Harness uses it on its diagnostic worker path. It needs a
-trusted Agent service from the host that embeds it; without one it only compiles for inspection.
+<a id="concept.operations.catalog"></a>
 
-The word "operation" also appears in the directory `operations/`, in the request field
-`operation_id` and in Python names such as `run_operation`. There it means any capability. In the
-Specs, Operation means only a StateGraph.
+The **Operation catalog** holds eleven Operations, all public:
+
+| Capability | Kind | Owner |
+| --- | --- | --- |
+| `concorde-context-solve`, `concorde-tasks` | single Agent call | [Planning](../planning/module.md) |
+| `concorde-plan` | pi workflow | [Planning](../planning/module.md) |
+| `concorde-implement` | single Agent call | [Implementation](../implementation/module.md) |
+| `concorde-spec-review`, `concorde-code-review` | pi workflow | [Review](../review/module.md) |
+| `concorde-validate` | Host service | [Validation](../validation/module.md) |
+| `concorde-deliver` | Host service | [Delivery](../delivery/module.md) |
+| `concorde-issues` | pi workflow | [Issue solving](../issue-solving/module.md) |
+| `concorde-init` | Host service | [Spec tooling](../spec/module.md) |
+| `concorde-configure` | Host service | [Request admission](../harness/admission/module.md) |
+
+`concorde-issues` answers its listing, showing, reporting and reopening actions without starting
+its workflow. The Operations that act on one Module share a core request: `target_id`, `task`, and
+optionally `focus_id`, `constraints` and `change_id`. The exact declarations are in the
+[catalog reference](catalog.md); a worked request is in the [design notes](design.md).
+
+A request reaches its provider in three steps. Request admission looks the name up in the catalog,
+checks the request, resolves the target and binds the workspace. Dispatch then reads the
+declaration and calls the entry point it names: a Host service runs to its end, while an Agent call
+or pi workflow is handed with the provider's hook to Agent execution's native driver, which returns
+a prepared call without running a model. The user session invokes that call unchanged.
+
+A name the catalog does not hold is refused with `unknown_operation`. An Agent call or pi workflow
+reached without the native driver, for example through the bare launcher, is refused with
+`native_required`. In `describe-policy` mode the provider or native driver returns a preview and no
+Agent starts. An Operation may compose others only through the `uses` list of its declaration
+(today only `concorde-issues`); each child request passes admission as a request of its own, and an
+undeclared child is refused with `undeclared_operation`. No Operation starts another as a
+consequence of finishing: the user session chooses every next step.
 
 ## Design
 
+The children of Operations are exactly the Modules whose sole responsibility is to provide
+Operations. `concorde-init` and `concorde-configure` are provided by the infrastructure Modules that
+own what they maintain (Spec tooling and Request admission) and are cataloged like any other.
+
 <a id="realization.operations.catalog"></a>
 
-The **capability inventory** is the directory `operations/`: its package lists the eleven capability
-names and groups them by kind, and each declaration module gives one capability's kind, exposure,
-context selection, determinism, the Agents it uses and its request schema. The declarations carry
-no behaviour; each one hands its request to Request admission. Keeping them apart from behaviour
-lets Distribution render the Pi catalog and the guidance from one place, and lets a package check
-compare the declarations with the inventory in this Module's metadata, so the published list cannot
-drift from the code. The behaviour stays with the provider Module that owns it.
+The **catalog loader** checks every declaration before anything uses it and registers its request
+and response schemas as typed values. Every fact about an Operation (kind, owner, Agents and their
+phases, children, schemas and the capability-declaration facts) is a declaration field, so no other
+Module keeps a table of Operations. A mirror in this Module's Spec metadata lets Distribution's
+package check detect drift.
 
 <a id="realization.operations.dispatch"></a>
 
-The **capability dispatch** is plain code, not a graph. Admission calls a fixed list of dispatch
-steps in a fixed order: choose a route by capability name, check the explicit target, bind the
-candidate, and call the provider. The sequence is finite and deterministic, so a graph would add
-nothing to inspect. The route names live in `src/concorde/operations/dispatch_routes.py` and are
-explained in the [declarations and dispatch reference](catalog.md).
-
-Dispatch never discovers or substitutes a Module. A request whose target does not resolve fails
-instead of being redirected. When a candidate already belongs to another Module, a request for a
-component Module is admitted only as component work that the owner's accepted tasks name exactly,
-for a Module in the owner's [change scope](../planning/module.md#concept.planning.change-scope);
-this keeps one candidate from quietly serving two unrelated changes while letting one change edit
-every Module that must change with its owner.
+**Dispatch** chooses a route by kind and calls the declared entry point. It imports no provider and
+performs no business check: target and workspace checks happen in admission before it, stage rules
+in the provider after it. Being finite and deterministic, it is plain code rather than a Graph.
 
 <a id="realization.operations.graph-catalog"></a>
 
-The **Operation catalog** names every Operation and builds it without any Agent service, so inspection,
-publication and the Graph Spec check all see exactly the topology that execution compiles. New
-control flow that Concorde itself orchestrates must be an Operation built with LangGraph's Graph API
-(`StateGraph`); the Functional API hides control flow inside ordinary Python and is not allowed.
-
-State carries data, never authority. An Operation receives its trusted services, such as the Agent
-launcher, through LangGraph's runtime context supplied by the embedding host, so a request cannot
-inject a more powerful launcher or another workspace.
+The **Graph catalog** names every LangGraph Graph Concorde compiles and builds each without
+services, so inspection and the Graph Spec check see exactly what execution compiles. Today it holds
+only the Terminal Agent Operation, which compiles for inspection only.
 
 <a id="realization.operations.tests"></a>
 
-The **Operations tests** exercise the launcher's refusal of unknown names, explicit target
-admission, the refusal of native capabilities without their Pi preparation, the capability
-declarations and the Operation catalog.
+The **Operations tests** exercise the catalog, its loader, dispatch by kind and by declared child,
+and the Graph catalog.
+
+The reasons behind these choices and the open questions (chaining the stage capabilities behind one
+Operation; the first LangGraph Graph Operation) are in the [design notes](design.md).
 
 ## Relationships
 
 ```mermaid
-flowchart TB
-    accTitle: Operations and its providers
-    accDescr: Operations contains the five provider Modules that own the behaviour of most capabilities.
-    ops[Operations]
-    planning[Planning]
-    implementation[Implementation]
-    review[Review]
-    validation[Validation]
-    delivery[Delivery]
-    ops -->|contains| planning
-    ops -->|contains| implementation
-    ops -->|contains| review
-    ops -->|contains| validation
-    ops -->|contains| delivery
-```
-
-```mermaid
 flowchart LR
-    accTitle: How dispatch and the catalogs collaborate
-    accDescr: Dispatch checks targets with Spec, binds candidates through Candidate worktrees and routes requests to providers; the catalogs name Agents and build Operations.
-    catalog[Capability inventory]
-    dispatch[Capability dispatch]
-    graphs[Operation catalog]
+    accTitle: How the catalog and dispatch collaborate
+    accDescr: Admission reads the catalog and calls dispatch; dispatch hands native Operations to Agent execution; the loader checks Agent names and registers schemas; the Graph catalog lists Graphs.
+    loader[Catalog loader]
+    dispatch[Dispatch]
+    graphs[Graph catalog]
     operation[Operation]
     admission[Request admission]
-    spec[Spec tooling]
-    worktrees[Candidate worktrees]
-    issues[Issues]
-    planning[Planning]
-    agents[Agents]
     execution[Agent execution]
-    catalog -->|hands requests to| admission
-    catalog -->|names the Agents of| agents
-    dispatch -->|checks the target with| spec
-    dispatch -->|binds the candidate through| worktrees
-    dispatch -->|routes Module requests to| planning
-    dispatch -->|routes Issue requests to| issues
-    graphs -->|lists| operation
-    graphs -->|builds Operations from| execution
+    agents[Agents]
+    spec[Spec tooling]
+    lgraph[Agent execution / Graph]
+    loader -->|lists| operation
+    loader -->|provides declarations to| admission
+    loader -->|checks the Agent names against| agents
+    loader -->|registers request schemas through| spec
+    dispatch -->|hands native Operations to| execution
+    dispatch -->|runs child requests through| admission
+    graphs -->|lists| lgraph
 ```
 
-Dispatch routes to every provider child in the same way it routes to Planning; the diagram shows
-one.
+Each child is reached the same way: dispatch calls the entry point its declaration names, and
+Operations relies on each child to declare its Operations completely and correctly in the catalog.
+A child whose declaration is invalid stops the whole catalog at load time.
 
 <a id="contains-planning"></a>
 
-**Planning** owns `concorde-context-solve`, `concorde-plan` and `concorde-tasks`: judging whether a
-Spec is sufficient, writing a plan and deriving tasks. Dispatch routes those three capabilities to it
-after binding the target. Operations relies on Planning to return a typed result and to leave
-earlier accepted plans and tasks intact when it rejects new ones.
+**Planning** provides `concorde-context-solve`, `concorde-plan` and `concorde-tasks`: the
+[context assessment](../planning/module.md#concept.planning.assessment), the
+[plan](../planning/module.md#concept.planning.plan) and its [tasks](../planning/module.md#concept.planning.task).
+Operations relies on Planning to leave earlier accepted plans and tasks intact when it rejects new
+ones.
 
 <a id="contains-implementation"></a>
 
-**Implementation** owns `concorde-implement`: changing the Module's implementation files to fulfil
-accepted tasks. Dispatch routes to it after binding the target. When the tasks name component
-Modules, Implementation returns that work to the caller, and dispatch later admits the component
-requests as described in Design.
+**Implementation** provides `concorde-implement`. Its [component work](../implementation/module.md#concept.implementation.component-work)
+comes back to the user session as a typed response field, never as a dispatched request.
 
 <a id="contains-review"></a>
 
-**Review** owns `concorde-spec-review` and `concorde-code-review`. Dispatch treats both as read-only:
-it binds no candidate owner for them. Operations relies on Review to report findings without
-changing the reviewed Spec or code.
+**Review** provides the [Spec review](../review/module.md#concept.review.spec-review) and the
+[code review](../review/module.md#concept.review.code-review), each a pi workflow with its own
+reviewer Agent, and reports [findings](../review/module.md#concept.review.finding) without changing
+the reviewed Spec or code.
 
 <a id="contains-validation"></a>
 
-**Validation** owns `concorde-validate`, a Host capability. Dispatch routes it after binding the
-target, and Validation runs the checks and records readiness evidence without any model.
+**Validation** provides `concorde-validate`, a Host service that records
+[validation evidence](../validation/module.md#concept.validation.evidence) and decides whether a
+candidate is [ready](../validation/module.md#concept.validation.ready), without any model.
 
 <a id="contains-delivery"></a>
 
-**Delivery** owns `concorde-deliver`, a Host capability. Dispatch sends it straight to Delivery
-without a target check, because delivery acts on the candidate as a whole.
+**Delivery** provides `concorde-deliver`, a Host service that lands a ready candidate on its
+[delivered branch](../delivery/module.md#concept.delivery.delivered-branch).
+
+<a id="contains-issue-solving"></a>
+
+**Issue solving** provides `concorde-issues`, the one Operation that composes others: its
+declaration lists the two reviews and `concorde-validate` in `uses`, and dispatch runs exactly those
+as child requests while it reaches a [solve decision](../issue-solving/module.md#concept.issue-solving.decision).
 
 <a id="uses-admission"></a>
 
-**Request admission** checks every [capability request](../harness/admission/module.md#concept.admission.capability-request),
-binds its workspace and wraps every outcome in the [result envelope](../harness/admission/module.md#concept.admission.result-envelope).
-Each capability declaration hands its request to admission, and admission calls dispatch. When a
-mutating request arrives in the primary worktree, admission's [relay](../harness/admission/module.md#concept.admission.relay)
-runs it in the candidate worktree, and dispatch passes the relayed result through unchanged, as
-[a relay returns the candidate's envelope](../harness/admission/requirements.md#req.admission.relay-result) requires.
-Dispatch only ever sees requests that admission accepted; any error it raises is reported through
-admission's envelope.
-
-<a id="uses-spec"></a>
-
-**Spec** resolves the explicit target and its focus scenario from the
-[registry](../spec/module.md#concept.spec.registry), and runs the project services behind
-`concorde-init`, including its [initial proposal](../spec/module.md#concept.spec.initial-proposal),
-and `concorde-configure`. Dispatch refuses a target that does not resolve and never replaces it with
-another Module.
-
-<a id="uses-worktrees"></a>
-
-**Candidate worktrees** records which Module owns a [candidate](../harness/worktrees/module.md#concept.worktrees.candidate).
-Dispatch binds that owner for every mutating capability in execute mode, relying on
-[a change keeping its recorded intent](../harness/worktrees/requirements.md#req.worktrees.owner-preserved), and checks
-the candidate's recorded tasks before admitting component work for another Module. A binding
-conflict stops the request before any provider runs.
+**Request admission** checks every [capability request](../harness/admission/module.md#concept.admission.capability-request)
+and wraps every outcome in the [result envelope](../harness/admission/module.md#concept.admission.result-envelope).
+It reads each Operation's [capability declaration](../harness/admission/module.md#concept.admission.capability-declaration)
+from the catalog, which Operations provides in the form the [capability declaration contract](../harness/admission/contracts.md#contract.admission.capability-declaration)
+defines; the loader refuses a declaration that does not satisfy it. Dispatch sees only admitted
+requests, reports its errors through admission's envelope, and hands child requests back to
+admission as new requests.
 
 <a id="uses-execution"></a>
 
-**Agent execution** supplies the [Terminal Agent Operation](../harness/execution/module.md#concept.execution.terminal-agent-operation)
-boundary that wraps one Agent call, the [workflow](../harness/execution/module.md#concept.execution.workflow) machinery
-that native capabilities run in, and the check that every Operation has one matching
-[Graph Spec](../harness/execution/module.md#concept.execution.graph-spec). The Operation catalog builds its Operations
-from that boundary and relies on [graphs using the Graph API](../harness/execution/requirements.md#req.execution.graph-api-only);
-the Graph Specs themselves are kept with the boundary's owner.
+**Agent execution** runs every native Operation: dispatch hands an [Agent call](../harness/execution/module.md#concept.execution.agent-call)
+or [workflow](../harness/execution/module.md#concept.execution.workflow) to its native driver with
+the provider's [Agent hook](../harness/execution/module.md#concept.execution.agent-hook) or
+[workflow hook](../harness/execution/module.md#concept.execution.workflow-hook), and refuses with
+`native_required` when no driver is supplied. The Graph catalog lists each
+[Graph](../harness/execution/module.md#concept.execution.graph) that the [Graph Spec](../harness/execution/module.md#concept.execution.graph-spec)
+check inspects, including the [Terminal Agent Operation](../harness/execution/module.md#concept.execution.terminal-agent-operation),
+built without services.
 
 <a id="uses-agents"></a>
 
-**Agents** defines every [Agent](../agents/module.md#concept.agents.agent) once, in its
-[Agent definition](../agents/module.md#concept.agents.definition). Capability declarations name the
-Agents they use, such as `planner` or `programmer`, and those names must resolve to definitions.
-Operations keeps no second list of Agents.
+**Agents** defines every [Agent](../agents/module.md#concept.agents.agent) in its
+[Agent definition](../agents/module.md#concept.agents.definition). The loader refuses a declared
+Agent name without a definition, and a single Agent call whose entry point differs from the hook the
+definition names. Operations keeps no second list of Agents.
 
-<a id="uses-issues"></a>
+<a id="uses-context"></a>
 
-**Issues** owns `concorde-issues` and the durable [Issue](../issues/module.md#concept.issues.issue)
-records. Dispatch routes listing, showing, reporting and reopening to Issues' Host services, and
-routes solving to its native workflow. Dispatch makes no Issue decision itself.
+**Task context** defines the [phase](../harness/context/module.md#concept.context.phase) in which an
+Agent works. A declaration pairs each Agent with its phase, so the native driver needs no table of
+stages; the loader refuses an unknown phase.
+
+<a id="uses-spec"></a>
+
+**Spec tooling** registers [typed values](../spec/module.md#concept.spec.typed-value). The loader
+registers each declared request and response schema and refuses a declaration whose schema does not
+register.

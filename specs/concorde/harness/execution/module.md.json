@@ -9,10 +9,10 @@
     "title": "Agent execution",
     "owns": [
       "specs/concorde/harness/execution/module.md",
-      "specs/concorde/harness/execution/requirements.md",
-      "specs/concorde/harness/execution/scenarios.md",
+      "specs/concorde/harness/execution/design.md",
+      "specs/concorde/harness/execution/agent-calls.md",
       "specs/concorde/harness/execution/interfaces.md",
-      "specs/concorde/harness/execution/graphs.md"
+      "specs/concorde/harness/execution/control-flow.md"
     ],
     "contains": [],
     "uses": [
@@ -20,21 +20,40 @@
         "target": "module.agents",
         "meaning": "#uses-agents",
         "relies_on": [
-          "concept.agents.agent"
+          "concept.agents.agent",
+          "concept.agents.definition",
+          "req.agents.terminal"
         ]
       },
       {
         "target": "module.harness.context",
-        "meaning": "#uses-context"
+        "meaning": "#uses-context",
+        "relies_on": [
+          "concept.context.snapshot",
+          "concept.context.phase",
+          "concept.context.stage-input",
+          "concept.context.capsule",
+          "concept.context.agent-binding"
+        ]
       },
       {
         "target": "module.harness.admission",
-        "meaning": "#uses-admission"
+        "meaning": "#uses-admission",
+        "relies_on": [
+          "contract.admission.invocation",
+          "contract.admission.result",
+          "contract.admission.feedback",
+          "contract.admission.capability-declaration",
+          "concept.admission.relay",
+          "concept.admission.capability-declaration",
+          "concept.admission.causal-feedback"
+        ]
       },
       {
         "target": "module.harness.worktrees",
         "meaning": "#uses-worktrees",
         "relies_on": [
+          "concept.worktrees.change-status",
           "concept.worktrees.run-record"
         ]
       },
@@ -43,32 +62,33 @@
         "meaning": "#uses-checks",
         "relies_on": [
           "concept.checks.configured-check",
-          "req.checks.project-read-only"
+          "concept.checks.read-only-boundary",
+          "concept.checks.check-result"
         ]
       },
       {
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.registry"
+          "concept.spec.typed-value",
+          "concept.spec.registry",
+          "concept.spec.document"
         ]
-      },
-      {
-        "target": "module.operations",
-        "meaning": "#uses-operations",
-        "relies_on": [
-          "concept.operations.operation"
-        ]
-      },
-      {
-        "target": "module.distribution",
-        "meaning": "#uses-distribution"
       },
       {
         "target": "module.issues",
         "meaning": "#uses-issues",
         "relies_on": [
-          "concept.issues.issue"
+          "contract.issues.report",
+          "contract.issues.receipt",
+          "concept.issues.report"
+        ]
+      },
+      {
+        "target": "module.harness.observation",
+        "meaning": "#uses-observation",
+        "relies_on": [
+          "concept.observation.diagnostic-span"
         ]
       }
     ],
@@ -91,10 +111,46 @@
       {
         "kind": "external",
         "target": "reference/pi/",
-        "reason": "Pi RPC mode, extension API and session events used by Agent calls, the RPC diagnostic worker and passive observation"
+        "reason": "Pi extension API, tool events and sessions used by the native call extension, the child extension and the workflow registrar"
       }
     ],
-    "participates": []
+    "participates": [
+      {
+        "contract": "contract.execution.host-step",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.planning",
+        "meaning": "specs/concorde/harness/execution/interfaces.md#the-protocol"
+      },
+      {
+        "contract": "contract.execution.host-step",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.review",
+        "meaning": "specs/concorde/harness/execution/interfaces.md#the-protocol"
+      },
+      {
+        "contract": "contract.execution.host-step",
+        "version": 1,
+        "role": "provided",
+        "peer": "module.issue-solving",
+        "meaning": "specs/concorde/harness/execution/interfaces.md#the-protocol"
+      },
+      {
+        "contract": "contract.issues.report",
+        "version": 1,
+        "role": "required",
+        "peer": "module.issues",
+        "meaning": "#uses-issues"
+      },
+      {
+        "contract": "contract.issues.receipt",
+        "version": 1,
+        "role": "required",
+        "peer": "module.issues",
+        "meaning": "#uses-issues"
+      }
+    ]
   },
   "defines": [
     {
@@ -108,6 +164,12 @@
       "type": "concept",
       "title": "Workflow",
       "meaning": "#concept.execution.workflow"
+    },
+    {
+      "id": "concept.execution.graph",
+      "type": "concept",
+      "title": "Graph",
+      "meaning": "#concept.execution.graph"
     },
     {
       "id": "concept.execution.proposal",
@@ -128,6 +190,18 @@
       "meaning": "#concept.execution.result-gate"
     },
     {
+      "id": "concept.execution.agent-hook",
+      "type": "concept",
+      "title": "Agent hook",
+      "meaning": "#concept.execution.agent-hook"
+    },
+    {
+      "id": "concept.execution.workflow-hook",
+      "type": "concept",
+      "title": "Workflow hook",
+      "meaning": "#concept.execution.workflow-hook"
+    },
+    {
       "id": "concept.execution.model-selection",
       "type": "concept",
       "title": "Model selection",
@@ -146,41 +220,34 @@
       "meaning": "#concept.execution.graph-spec"
     },
     {
-      "id": "concept.execution.usage-record",
-      "type": "concept",
-      "title": "Usage record",
-      "meaning": "#concept.execution.usage-record"
-    },
-    {
-      "id": "concept.execution.diagnostic-span",
-      "type": "concept",
-      "title": "Diagnostic span",
-      "meaning": "#concept.execution.diagnostic-span"
-    },
-    {
-      "id": "concept.execution.rpc-worker",
-      "type": "concept",
-      "title": "RPC diagnostic worker",
-      "meaning": "#concept.execution.rpc-worker"
-    },
-    {
-      "id": "realization.execution.native-acceptance",
+      "id": "realization.execution.native-driver",
       "type": "realization",
-      "title": "Native acceptance services",
-      "meaning": "#realization.execution.native-acceptance",
+      "title": "Native driver",
+      "meaning": "#realization.execution.native-driver",
       "entries": [
+        "src/concorde/harness/native_driver.py",
         "src/concorde/harness/native_result.py",
         "src/concorde/harness/native_evidence.py",
         "src/concorde/harness/native_runtime.py",
-        "pi/native-runtime-contract.json",
+        "pi/native-runtime-contract.json"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.execution.native-plumbing",
+      "type": "realization",
+      "title": "Native Pi plumbing",
+      "meaning": "#realization.execution.native-plumbing",
+      "entries": [
         "pi/native-proposal.ts",
         "pi/native-preflight.ts",
         "pi/native-host-error.mjs",
+        "pi/native-host-step.mjs",
         "pi/extensions/concorde-native-child.ts",
-        "pi/package.json",
-        "pi/package-lock.json",
-        "pi/.npmrc"
-      ]
+        "pi/extensions/concorde-native-context.ts",
+        "pi/extensions/concorde-native-plan.ts"
+      ],
+      "pending": []
     },
     {
       "id": "realization.execution.invocation-host",
@@ -191,7 +258,8 @@
         "src/concorde/harness/host.py",
         "src/concorde/harness/invocation.py",
         "src/concorde/harness/model_selection.py"
-      ]
+      ],
+      "pending": []
     },
     {
       "id": "realization.execution.operation-graph",
@@ -201,7 +269,8 @@
       "entries": [
         "src/concorde/harness/operation_node.py",
         "src/concorde/harness/operation_state.py"
-      ]
+      ],
+      "pending": []
     },
     {
       "id": "realization.execution.graph-spec-check",
@@ -211,34 +280,8 @@
       "entries": [
         "src/concorde/harness/graph_specs.py",
         "scripts/development/check-graph-specs.py"
-      ]
-    },
-    {
-      "id": "realization.execution.diagnostics",
-      "type": "realization",
-      "title": "Execution diagnostics",
-      "meaning": "#realization.execution.diagnostics",
-      "entries": [
-        "src/concorde/harness/usage.py",
-        "src/concorde/harness/timing.py",
-        "scripts/development/analyze-timing.py",
-        "pi/extensions/concorde-observe.ts"
-      ]
-    },
-    {
-      "id": "realization.execution.rpc-worker",
-      "type": "realization",
-      "title": "RPC diagnostic worker path",
-      "meaning": "#realization.execution.rpc-worker",
-      "entries": [
-        "src/concorde/harness/launch.py",
-        "src/concorde/harness/worker_executor.py",
-        "src/concorde/harness/pi_worker.py",
-        "src/concorde/harness/pi_rpc.py",
-        "src/concorde/harness/worker_sandbox.py",
-        "pi/extensions/concorde-worker.ts",
-        "src/concorde/harness/harness.py"
-      ]
+      ],
+      "pending": []
     },
     {
       "id": "realization.execution.tests",
@@ -246,14 +289,15 @@
       "title": "Execution tests",
       "meaning": "#realization.execution.tests",
       "entries": [
-        "tests/concorde/harness/__init__.py",
         "tests/concorde/harness/fixtures/issue-sdk-rejections.json",
         "tests/concorde/harness/issue_diagnostic_setup.py",
         "tests/concorde/harness/issue_diagnostic_state.py",
         "tests/concorde/harness/issue_live_diagnostic.mjs",
-        "tests/concorde/harness/native_context_probe.mjs",
+        "tests/concorde/harness/native_call_fixture.py",
+        "tests/concorde/harness/native_extension_probe.mjs",
         "tests/concorde/harness/native_model_fixture.mjs",
         "tests/concorde/harness/native_observation.mjs",
+        "tests/concorde/harness/native_preflight_driver.mjs",
         "tests/concorde/harness/native_publication_probe.mjs",
         "tests/concorde/harness/native_schema_probe.mjs",
         "tests/concorde/harness/native_sdk_validation.mjs",
@@ -261,44 +305,26 @@
         "tests/concorde/harness/run_issue_diagnostic.py",
         "tests/concorde/harness/structured_diagnostic.mjs",
         "tests/concorde/harness/test_graph_specs.py",
-        "tests/concorde/harness/test_installed_worker_runtime.py",
         "tests/concorde/harness/test_model_selection.py",
+        "tests/concorde/harness/test_native_driver.py",
         "tests/concorde/harness/test_native_evidence.py",
+        "tests/concorde/harness/test_native_extension.py",
         "tests/concorde/harness/test_native_observation.py",
         "tests/concorde/harness/test_native_output_schema.py",
+        "tests/concorde/harness/test_native_preflight.py",
         "tests/concorde/harness/test_native_publication.py",
         "tests/concorde/harness/test_native_result.py",
-        "tests/concorde/harness/test_native_preflight.py",
-        "tests/concorde/harness/native_preflight_driver.mjs",
         "tests/concorde/harness/test_native_runtime.py",
+        "tests/concorde/harness/test_native_workflow.py",
         "tests/concorde/harness/test_operation_node.py",
         "tests/concorde/harness/test_optional_operation.py",
-        "tests/concorde/harness/test_pi_worker.py",
-        "tests/concorde/harness/test_rpc_diagnostics.py",
-        "tests/concorde/harness/test_runtime_mounts.py",
         "tests/concorde/harness/test_structured_diagnostic.py",
         "tests/concorde/harness/test_terminal_workers.py",
-        "tests/concorde/harness/test_timing.py",
-        "tests/concorde/harness/test_usage.py",
-        "tests/concorde/harness/test_worker_executor.py",
-        "tests/concorde/harness/test_worker_result_schema.py",
-        "tests/concorde/harness/test_worker_sandbox.py",
-        "tests/concorde/operations/test_operation_modules.py",
         "tests/concorde/support/fake_openai_provider.py",
-        "tests/concorde/support/fake_pi_rpc.py",
-        "tests/concorde/support/installed_legacy_driver.py",
-        "tests/concorde/support/legacy_graphs/",
-        "tests/concorde/support/legacy_review.py",
-        "tests/concorde/support/legacy_stage.py",
-        "tests/concorde/distribution/test_task_subagents.py",
-        "tests/concorde/harness/test_check_evidence.py",
-        "tests/concorde/harness/test_execution_feedback.py",
-        "tests/concorde/harness/test_feedback_export.py",
-        "tests/concorde/harness/test_tester_tmp.py",
-        "tests/concorde/harness/test_worker_binding.py",
-        "tests/concorde/harness/test_worker_profile.py",
-        "tests/concorde/operations/test_review.py"
-      ]
+        "tests/concorde/support/pi_prompt_client.py",
+        "tests/concorde/support/sample_graph.py"
+      ],
+      "pending": []
     }
   ],
   "relations": [
@@ -309,13 +335,38 @@
     },
     {
       "type": "narrows",
-      "source": "concept.execution.rpc-worker",
-      "target": "concept.concorde.worker"
+      "source": "concept.execution.terminal-agent-operation",
+      "target": "concept.execution.graph"
     },
     {
-      "type": "narrows",
-      "source": "concept.execution.terminal-agent-operation",
-      "target": "concept.operations.operation"
+      "type": "relates",
+      "source": "realization.execution.native-driver",
+      "verb": "prepares and accepts",
+      "target": "concept.execution.agent-call"
+    },
+    {
+      "type": "relates",
+      "source": "realization.execution.native-driver",
+      "verb": "calls",
+      "target": "concept.execution.agent-hook"
+    },
+    {
+      "type": "relates",
+      "source": "realization.execution.native-driver",
+      "verb": "calls",
+      "target": "concept.execution.workflow-hook"
+    },
+    {
+      "type": "relates",
+      "source": "realization.execution.native-plumbing",
+      "verb": "launches",
+      "target": "concept.execution.agent-call"
+    },
+    {
+      "type": "relates",
+      "source": "realization.execution.native-plumbing",
+      "verb": "registers",
+      "target": "concept.execution.workflow"
     },
     {
       "type": "relates",
@@ -337,9 +388,9 @@
     },
     {
       "type": "relates",
-      "source": "concept.execution.agent-call",
-      "verb": "is launched with",
-      "target": "concept.execution.model-selection"
+      "source": "concept.execution.agent-hook",
+      "verb": "is named by",
+      "target": "concept.agents.definition"
     },
     {
       "type": "relates",
@@ -361,9 +412,9 @@
     },
     {
       "type": "relates",
-      "source": "realization.execution.native-acceptance",
-      "verb": "supplies the checks of",
-      "target": "concept.execution.result-gate"
+      "source": "concept.execution.agent-call",
+      "verb": "is launched with",
+      "target": "concept.execution.model-selection"
     },
     {
       "type": "relates",
@@ -393,31 +444,7 @@
       "type": "relates",
       "source": "concept.execution.graph-spec",
       "verb": "describes",
-      "target": "concept.execution.terminal-agent-operation"
-    },
-    {
-      "type": "relates",
-      "source": "realization.execution.diagnostics",
-      "verb": "records",
-      "target": "concept.execution.usage-record"
-    },
-    {
-      "type": "relates",
-      "source": "realization.execution.diagnostics",
-      "verb": "records",
-      "target": "concept.execution.diagnostic-span"
-    },
-    {
-      "type": "relates",
-      "source": "realization.execution.rpc-worker",
-      "verb": "runs",
-      "target": "concept.execution.rpc-worker"
-    },
-    {
-      "type": "relates",
-      "source": "realization.execution.rpc-worker",
-      "verb": "runs each worker through",
-      "target": "concept.execution.terminal-agent-operation"
+      "target": "concept.execution.graph"
     }
   ]
 }

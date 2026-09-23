@@ -231,7 +231,7 @@ it("rejects sources changed between staging and plugin loading", async () => {
   await expect(plugin().loadContent!()).rejects.toThrow(/ENOENT/);
 });
 
-// verifies: scenario.views.publish-without-graph
+// verifies: scenario.views.inline-diagrams
 it("global data carries page metadata and the root Module without bodies", async () => {
   const registry = load();
   let data: any;
@@ -248,7 +248,7 @@ it("global data carries page metadata and the root Module without bodies", async
     expect(data).not.toHaveProperty(key);
 });
 
-// verifies: scenario.views.publish-repeat-without-graph
+// verifies: scenario.views.rebuild-removes-stale-pages
 it("checked directory replacement removes obsolete output on consecutive promotions", async () => {
   const obsolete = [
     "graph.html",
@@ -283,7 +283,7 @@ it("checked directory replacement removes obsolete output on consecutive promoti
   }
 });
 
-// verifies: scenario.views.publish-legacy-redirect scenario.views.publish-reference-link
+// verifies: scenario.views.cross-module-link scenario.views.publish-reference-link
 it("validates cross-Module links and anchors in rendered output", async () => {
   const audit = "specs/audit/module.md";
   put(
@@ -342,7 +342,7 @@ it("validates cross-Module links and anchors in rendered output", async () => {
   }
 });
 
-// verifies: scenario.views.build-site scenario.views.publish-preserves-previous-on-failure scenario.views.validate-candidate-mismatch scenario.views.publish-repeat-without-graph
+// verifies: scenario.views.build-site scenario.views.publish-preserves-previous-on-failure scenario.views.validate-candidate-mismatch scenario.views.rebuild-removes-stale-pages
 it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
   "the real build script keeps the published site on failure and replaces it on success (%s)",
   async (baseUrl) => {

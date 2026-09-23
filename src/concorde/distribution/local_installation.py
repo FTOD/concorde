@@ -196,3 +196,66 @@ def ensure_installation(
             target, package, actions, desired, preserve_project=preserve_project
         )
         return verify_installation(target, expected=source)
+
+
+# An installed consumer keeps the framework below this project-relative root.
+INSTALLED_FRAMEWORK_ROOT = ".concorde/framework"
+
+
+class LocalInstallationService:
+    """The installation service the launcher hands Request admission.
+
+    ``verify`` refuses a top-level run in a consumer project whose running package, interpreter
+    or LangGraph is not that worktree's own installation. ``install`` selects a candidate's own
+    interpreter and launcher, installing the admitted package first only with ``bootstrap``.
+    Both refuse with ``local_installation_required``; neither creates a worktree or records a
+    candidate status.
+    """
+
+    def verify(self, project_root: Path, package_root: Path) -> None:
+        import sys
+
+        from ..spec.repository import SpecError
+
+        if package_root.name != "framework" or package_root.parent.name != ".concorde":
+            return
+        if package_root != project_root / INSTALLED_FRAMEWORK_ROOT:
+            raise SpecError(
+                "installed execution requires this worktree's local Framework",
+                "local_installation_required",
+            )
+        try:
+            local = verify_installation(project_root)
+            import langgraph.graph
+
+            runtime = local.python.parent.parent
+            if Path(sys.prefix).resolve() != runtime or not Path(
+                langgraph.graph.__file__
+            ).resolve().is_relative_to(runtime):
+                raise ValueError(
+                    "the executing interpreter or LangGraph dependency is not worktree-local"
+                )
+        except (ValueError, OSError) as error:
+            raise SpecError(
+                f"local installation unavailable: {error}; run the explicit installer before retrying",
+                "local_installation_required",
+            ) from error
+
+    def install(
+        self, candidate: Path, package_root: Path, bootstrap: bool
+    ) -> tuple[Path, Path]:
+        from ..spec.repository import SpecError
+
+        try:
+            local = ensure_installation(
+                candidate,
+                admit_package(package_root),
+                bootstrap=bootstrap,
+                preserve_project=True,
+            )
+        except (ValueError, OSError) as error:
+            raise SpecError(
+                f"candidate local installation unavailable: {error}; explicitly install/update this worktree before retrying",
+                "local_installation_required",
+            ) from error
+        return local.python, local.launcher

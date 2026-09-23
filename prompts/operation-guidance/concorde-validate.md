@@ -1,7 +1,6 @@
 ---
 name: concorde-validate
 description: "Host service: run deterministic Spec and configured code checks and record readiness for the current candidate."
-operation: validate
 ---
 
 # concorde-validate

@@ -21,3 +21,5 @@ ID, target, description or acceptance. Return the issued invocation_id plus type
 structured_output. Report incomplete work honestly; partial candidate edits survive rejection,
 failure or cancellation. A proposal and passing stage-only gate do not accept completion. Do not
 commit, review, mark ready, deliver or integrate the candidate.
+
+@prompts/native/spec-gaps.md

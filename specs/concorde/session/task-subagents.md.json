@@ -1,0 +1,136 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.session.task-subagents",
+    "owner": "module.session",
+    "role": "module"
+  },
+  "defines": [
+    {
+      "id": "concept.session.todo-note",
+      "type": "concept",
+      "title": "TODO note",
+      "meaning": "#concept.session.todo-note"
+    },
+    {
+      "id": "realization.session.projector",
+      "type": "realization",
+      "title": "Task subagent definitions",
+      "meaning": "#realization.session.projector",
+      "entries": [
+        "agents/task_subagent.py",
+        "agents/source/",
+        "prompts/task-subagent/",
+        "src/concorde/distribution/task_subagents.py",
+        "tests/concorde/distribution/test_task_subagents.py",
+        "tests/concorde/distribution/test_role_isolation.py",
+        "tests/concorde/support/task_subagents_preflight.mjs"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.session.tester-tool",
+      "type": "realization",
+      "title": "Tester command tool",
+      "meaning": "#realization.session.tester-tool",
+      "entries": [
+        "pi/extensions/concorde-tester.ts",
+        "src/concorde/distribution/tester_check.py",
+        "tests/concorde/distribution/test_tester_command.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.session.maintenance-guard",
+      "type": "realization",
+      "title": "Maintenance guard",
+      "meaning": "#realization.session.maintenance-guard",
+      "entries": [
+        "pi/extensions/concorde-maintenance.ts"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.session.coordinator-prompt",
+      "type": "realization",
+      "title": "Coordinator prompt",
+      "meaning": "#realization.session.coordinator-prompt",
+      "entries": [
+        "prompts/user-session/",
+        "tests/concorde/distribution/test_coordinator_status.py",
+        "tests/concorde/distribution/test_user_session_todos.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.session.brief-lifecycle",
+      "type": "realization",
+      "title": "Brief lifecycle extension",
+      "meaning": "#realization.session.brief-lifecycle",
+      "entries": [
+        "pi/extensions/concorde-brief-lifecycle.ts",
+        "tests/concorde/distribution/brief_lifecycle_fixture.mjs",
+        "tests/concorde/distribution/user_session_brief_fixture.mjs",
+        "tests/concorde/distribution/test_brief_lifecycle.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.session.handoff",
+      "type": "realization",
+      "title": "Installed-output handoff",
+      "meaning": "#realization.session.handoff",
+      "entries": [
+        "tests/concorde/support/install_output_handoff.py",
+        "tests/concorde/distribution/test_install_output_handoff.py",
+        "tests/concorde/distribution/installed_output_probe.py"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.session.projector",
+      "verb": "project",
+      "target": "concept.session.tester"
+    },
+    {
+      "type": "relates",
+      "source": "realization.session.projector",
+      "verb": "project",
+      "target": "concept.session.maintenance-worker"
+    },
+    {
+      "type": "relates",
+      "source": "realization.session.tester-tool",
+      "verb": "runs tester commands through",
+      "target": "module.harness.checks"
+    },
+    {
+      "type": "relates",
+      "source": "realization.session.maintenance-guard",
+      "verb": "confines",
+      "target": "concept.session.maintenance-worker"
+    },
+    {
+      "type": "relates",
+      "source": "realization.session.coordinator-prompt",
+      "verb": "states",
+      "target": "concept.session.coordinator"
+    },
+    {
+      "type": "relates",
+      "source": "realization.session.brief-lifecycle",
+      "verb": "reinjects",
+      "target": "concept.session.task-brief"
+    },
+    {
+      "type": "relates",
+      "source": "realization.session.handoff",
+      "verb": "verifies",
+      "target": "concept.distribution.local-installation"
+    }
+  ],
+  "extensions": {}
+}

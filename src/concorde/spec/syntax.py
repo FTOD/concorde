@@ -822,8 +822,18 @@ OPENERS = ("(((", "[[", "[(", "((", "{{", "[/", "[\\", "[", "(", "{", ">")
 CLOSERS = (")))", "]]", ")]", "))", "}}", "/]", "\\]", "]", ")", "}")
 
 
+# Edge operators by the direction they draw: forward from the left node to the right one, reversed
+# from the right node to the left one, or without a single direction (undirected or both ways).
+REVERSED_EDGES = frozenset({"<--", "<=="})
+UNDIRECTED_EDGES = frozenset({"---", "-.-", "===", "<-->", "x--x", "o--o"})
+
+
 class DiagramError(ValueError):
     pass
+
+
+class UndirectedEdgeError(DiagramError):
+    """A checked edge drawn without exactly one direction."""
 
 
 def first_line(label: str) -> str:
@@ -896,7 +906,13 @@ def _scan_node(line: str, position: int) -> tuple[str, str | None, int]:
 def flowchart_model(
     text: str,
 ) -> tuple[dict[str, str], list[tuple[str, str | None, str]]]:
-    """Node labels and labeled edges of one Mermaid flowchart; raises DiagramError when unreadable."""
+    """Node labels and directed, labeled edges of one Mermaid flowchart.
+
+    Each edge is ``(source, label, target)`` in the drawn direction: ``<--`` and ``<==`` point from
+    the right node to the left one. An edge without exactly one direction (``---``, ``-.-``,
+    ``===``, ``<-->``, ``x--x``, ``o--o``) raises UndirectedEdgeError; an unreadable line raises
+    DiagramError.
+    """
     nodes: dict[str, str] = {}
     edges: list[tuple[str, str | None, str]] = []
     for raw in text.splitlines():
@@ -909,6 +925,7 @@ def flowchart_model(
         position = 0
         groups: list[list[str]] = []
         pending_edges: list[str | None] = []
+        reversed_edges: list[bool] = []
         current: list[str] = []
         while position < len(line):
             while position < len(line) and line[position] in " \t":
@@ -928,14 +945,21 @@ def flowchart_model(
                 groups.append(current)
                 current = []
                 pending_edges.append(label.strip() if label and label.strip() else None)
+                reversed_edges.append(False)
                 position = inline.end()
                 continue
             edge = EDGE.match(line, position)
             if edge:
+                operator = edge.group("op")
+                if operator in UNDIRECTED_EDGES:
+                    raise UndirectedEdgeError(
+                        f"edge {operator!r} has no single direction: {raw.strip()!r}"
+                    )
                 label = edge.group("label")
                 groups.append(current)
                 current = []
                 pending_edges.append(label.strip() if label and label.strip() else None)
+                reversed_edges.append(operator in REVERSED_EDGES)
                 position = edge.end()
                 continue
             node_id, label, position = _scan_node(line, position)
@@ -948,9 +972,13 @@ def flowchart_model(
         if len(groups) != len(pending_edges) + 1 or any(not group for group in groups):
             raise DiagramError(f"cannot interpret diagram line: {raw.strip()!r}")
         for index, label in enumerate(pending_edges):
-            for source in groups[index]:
-                for target in groups[index + 1]:
-                    edges.append((source, label, target))
+            for left in groups[index]:
+                for right in groups[index + 1]:
+                    edges.append(
+                        (right, label, left)
+                        if reversed_edges[index]
+                        else (left, label, right)
+                    )
     return nodes, edges
 
 

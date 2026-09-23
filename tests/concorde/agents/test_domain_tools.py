@@ -1,4 +1,4 @@
-"""A prepared native Domain Agent gets its profile's tools, `report_issue` and nothing inherited."""
+"""A prepared Agent call gets its definition's tools, `report_issue` and nothing inherited."""
 
 import json
 import os
@@ -8,12 +8,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.native_context import execute
+from concorde.harness.native_driver import execute
+from concorde.operations.dispatch import services
 from concorde.harness.native_runtime import FORMAT, NativeRuntimeBinding
-from concorde.harness.worker_profile import worker_profile
+from concorde.harness.worker_profile import agent_definition
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import PACKAGE, project
+from tests.concorde.support.spec_project import PACKAGE, project
 
 DOMAIN_AGENTS = (
     "context_assessor",
@@ -46,7 +47,7 @@ class DomainToolTests(unittest.TestCase):
         self.addCleanup(os.chdir, Path.cwd())
         os.chdir(self.root)
         runtime = patch(
-            "concorde.harness.native_context.admit_native_runtime",
+            "concorde.harness.native_driver.admit_native_runtime",
             return_value=NativeRuntimeBinding(
                 FORMAT, str(self.root), "sha256:" + "0" * 64
             ),
@@ -74,24 +75,34 @@ class DomainToolTests(unittest.TestCase):
                 "native_root": str(self.root),
                 "session_id": "unit",
             },
+            services=services(),
         )
         self.assertEqual("prepared", prepared["state"], prepared)
         self.addCleanup(
-            shutil.rmtree, Path(prepared["call"]["cwd"]).parent, ignore_errors=True
+            shutil.rmtree, Path(prepared["descriptor"]).parent, ignore_errors=True
         )
         return prepared
 
+    @staticmethod
+    def call(prepared: dict) -> dict:
+        """The single call, or the first reviewer call a review workflow issued."""
+        if "call" in prepared:
+            return prepared["call"]
+        return prepared["workflow"]["expansion"]["members"][0]["call"]
+
     @verifies("scenario.agents.domain-tools")
-    def test_only_the_programmer_profile_may_change_files(self):
+    def test_only_the_programmer_definition_may_change_files(self):
         for name in DOMAIN_AGENTS:
             with self.subTest(agent=name):
-                tools = set(worker_profile(name).tools)
+                tools = set(agent_definition(name).tools)
                 self.assertFalse(tools & DELEGATION)
                 self.assertEqual(
-                    name == "programmer", bool(tools & {"edit", "write"}), tools
+                    name == "programmer", bool(tools & {"edit", "write", "bash"}), tools
                 )
                 self.assertEqual(
-                    name in {"programmer", "code_reviewer"}, "bash" in tools, tools
+                    name in {"programmer", "code_reviewer"},
+                    "run_checks" in tools,
+                    tools,
                 )
 
     @verifies("scenario.agents.domain-tools")
@@ -99,16 +110,12 @@ class DomainToolTests(unittest.TestCase):
         for operation, name in PREPARED.items():
             with self.subTest(operation=operation):
                 prepared = self.prepare(operation)
-                call = prepared["call"]
+                call = self.call(prepared)
                 self.assertEqual("fresh", call["context"])
                 definition = front_matter(
                     Path(call["cwd"]) / ".pi/agents" / (call["agent"] + ".md")
                 )
-                expected = [
-                    tool
-                    for tool in worker_profile(name).tools
-                    if not (name == "code_reviewer" and tool == "bash")
-                ] + ["report_issue"]
+                expected = [*agent_definition(name).tools, "report_issue"]
                 tools = definition["tools"].split(", ")
                 self.assertEqual(expected, tools)
                 self.assertFalse(set(tools) & (DELEGATION | {"edit", "write", "bash"}))

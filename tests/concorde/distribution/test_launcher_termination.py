@@ -48,7 +48,7 @@ def _wait_until_idle(process: subprocess.Popen, timeout: float = 60) -> None:
     sys.platform.startswith("linux"), "reads /proc to wait for the launcher"
 )
 class LauncherTerminationTests(unittest.TestCase):
-    @verifies("scenario.distribution.launcher-terminated")
+    @verifies("scenario.distribution.launcher-terminated-reading")
     def test_sigterm_while_waiting_for_the_invocation_prints_a_cancelled_envelope(self):
         process = subprocess.Popen(
             [sys.executable, str(LAUNCHER), "concorde-validate"],

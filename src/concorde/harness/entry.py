@@ -1,34 +1,49 @@
-"""The shared executable boundary of every public Operation."""
+"""The JSON boundary of every capability request: one invocation in, one result envelope out."""
 
 from __future__ import annotations
 
-import os
 import sys
 import uuid
 from pathlib import Path
 from typing import Any
 
 from ..spec.repository import SpecError
-from ..spec.typed_data import canonical, decode
-from .admission import run_host_node
-from .host import OperationHost
-from .usage import read_usage, summarize_usage
+from ..spec.typed_data import TypedDataError, canonical, check_schema, decode
+from .admission import run_operation
+from .host import AdmissionServices, OperationHost
 
+MAX_INVOCATION_BYTES = 1024 * 1024
 
-def validate_invocation(value: Any, operation: str | None = None) -> dict:
-    """Validate the shared invocation envelope before selecting a trusted host."""
-    if os.environ.get("CONCORDE_WORKER_POLICY"):
-        raise SpecError(
-            "terminal workers cannot invoke Operations", "permission_denied"
-        )
-    if not isinstance(value, dict) or set(value) != {
+# contract.admission.invocation, version 3.
+INVOCATION = {
+    "type": "object",
+    "properties": {
+        "type_id": {"const": "concorde-operation-invocation"},
+        "schema_version": {"const": 3},
+        "operation_id": {"type": "string", "minLength": 1},
+        "mode": {"enum": ["execute", "describe-policy"]},
+        "configuration": {
+            "anyOf": [
+                {"type": "object", "additionalProperties": {}},
+                {"type": "null"},
+            ]
+        },
+        "input": {"type": "object", "additionalProperties": {}},
+    },
+    "required": [
         "type_id",
         "schema_version",
         "operation_id",
         "mode",
         "configuration",
         "input",
-    }:
+    ],
+}
+
+
+def validate_invocation(value: Any, operation: str | None = None) -> dict:
+    """Check the capability request envelope before a host is created for it."""
+    if not isinstance(value, dict) or set(value) != set(INVOCATION["required"]):
         raise SpecError("invocation fields do not match schema 3", "invalid_input")
     if (
         value["type_id"] != "concorde-operation-invocation"
@@ -39,6 +54,10 @@ def validate_invocation(value: Any, operation: str | None = None) -> dict:
             "a capability request must be concorde-operation-invocation schema 3",
             "unsupported_version",
         )
+    try:
+        check_schema(value, INVOCATION)
+    except TypedDataError as error:
+        raise SpecError(str(error), "invalid_input", error.field) from error
     if operation is not None and value["operation_id"] != operation:
         raise SpecError(
             "invocation does not match this entry point", "incompatible_handoff"
@@ -47,7 +66,7 @@ def validate_invocation(value: Any, operation: str | None = None) -> dict:
 
 
 def invocation_failure(operation: str | None, error: Exception) -> dict:
-    """The pre-host failure envelope of every executable boundary."""
+    """The envelope of a request refused before admission."""
     from .execution_error import error_entry
 
     return {
@@ -67,91 +86,45 @@ def invocation_failure(operation: str | None, error: Exception) -> dict:
     }
 
 
-def runtime_selection(package_root: Path) -> dict | None:
-    """Fail closed before selecting runtime code; project data does not select code."""
-    if os.environ.get("CONCORDE_WORKER_POLICY"):
-        raise SpecError(
-            "terminal workers cannot invoke Operations", "permission_denied"
-        )
-    selection = None
-    if os.environ.get("CONCORDE_SESSION_SELECTION"):
-        from ..distribution.session_selection import load_selection
+def json_main(
+    package_root: Path,
+    operation: str,
+    *,
+    services: AdmissionServices,
+    session_provenance: dict | None = None,
+) -> int:
+    """Read one capability request from standard input and print its one result envelope.
 
-        # Pin code/Pi integration to the candidate while allowing explicitly scoped
-        # disposable consumer projects as data. Never redirect into a sibling
-        # worktree of the source repository with those loaded instructions.
-        if package_root.resolve() != Path.cwd().resolve():
-            from .change_worktree import git
-
-            package_common = git(
-                package_root,
-                "rev-parse",
-                "--path-format=absolute",
-                "--git-common-dir",
-                check=False,
-            )
-            project_common = git(
-                Path.cwd(),
-                "rev-parse",
-                "--path-format=absolute",
-                "--git-common-dir",
-                check=False,
-            )
-            if (
-                package_common.returncode == 0
-                and project_common.returncode == 0
-                and package_common.stdout.strip() == project_common.stdout.strip()
-            ):
-                raise SpecError(
-                    "private selection cannot redirect into another source worktree",
-                    "workspace_mismatch",
-                )
-        selection = load_selection(
-            package_root, Path(os.environ["CONCORDE_SESSION_SELECTION"])
-        )
-        if selection["mode"] == "maintenance":
-            raise SpecError(
-                "maintenance authoring uses deterministic development commands, not public Operations",
-                "fresh_session_required",
-            )
-    return selection
-
-
-def json_main(package_root: Path, operation: str, runner) -> int:
-    """Shared stdin/limit/envelope/result handling for every public Operation's executable boundary.
-
-    ``runner(state, runtime)`` is the public Operation's node. This boundary validates the wire
-    envelope and adapts it to State plus trusted Runtime context; it does not dispatch by name. Only a public Operation has an executable
-    boundary at all, so every caller already knows and validates its own ``operation`` before
-    reaching here (``scripts/run-operation.py``); there is no internal/stage fallback to guard.
+    The launcher has already resolved ``operation`` in the catalog and verified any session
+    selection; it hands admission the catalog's declarations, the dispatcher and the installation
+    service through ``services``.
     """
-
-    host = None
+    mode = None
     try:
         if sys.argv[1:]:
             raise SpecError(
                 "Operation inputs must be one JSON invocation on stdin", "invalid_input"
             )
-        raw = getattr(sys.stdin, "buffer", sys.stdin).read(1024 * 1024 + 1)
-        if len(raw) > 1024 * 1024:
+        raw = getattr(sys.stdin, "buffer", sys.stdin).read(MAX_INVOCATION_BYTES + 1)
+        if len(raw) > MAX_INVOCATION_BYTES:
             raise SpecError("invocation exceeds 1 MiB", "invalid_input")
         value = validate_invocation(
             decode(raw.decode() if isinstance(raw, bytes) else raw), operation
         )
-        selection = runtime_selection(package_root)
+        mode = value["mode"]
         from .status_store import primary_root
 
         host = OperationHost(
             Path.cwd(),
             package_root,
             mode=value["mode"],
-            session_provenance=selection,
+            services=services,
+            session_provenance=session_provenance,
             archive_root=primary_root(Path.cwd()),
         )
-        result = run_host_node(
-            runner, host, value["configuration"], value["input"], operation
+        result = run_operation(
+            operation, value["configuration"], value["input"], host_context=host
         )
-
     except KeyboardInterrupt:
         result = invocation_failure(
             operation,
@@ -159,34 +132,9 @@ def json_main(package_root: Path, operation: str, runner) -> int:
         )
     except Exception as error:
         result = invocation_failure(operation, error)
-        # Once the envelope has selected a host, a rejected State projection still
-        # belongs to that admitted mode.
-        # Pre-host and invalid-mode failures retain the null pre-admission value.
-        if host is not None and host.mode in {"execute", "describe-policy"}:
-            result["mode"] = host.mode
-    if host and host.descriptions:
-        print(canonical({"policies": host.descriptions}), file=sys.stderr)
-    if host is not None and result.get("invocation_id"):
-        records = read_usage(
-            host.archive_root or host.project_root, result["invocation_id"]
-        )
-        if records:
-            summary = summarize_usage(records)
-            print(
-                canonical(
-                    {
-                        "usage": {
-                            "root_invocation_id": result["invocation_id"],
-                            "schema_version": summary["schema_version"],
-                            "complete": summary["complete"],
-                            "historical_records": summary["historical_records"],
-                            "unsupported_records": summary["unsupported_records"],
-                            "total": summary["total"],
-                            "by_step": summary["by_step"],
-                        }
-                    }
-                ),
-                file=sys.stderr,
-            )
+        # Once the envelope itself was valid, a refusal belongs to its admitted mode, also when
+        # the workspace refuses the request before a host is created for it.
+        if mode in {"execute", "describe-policy"}:
+            result["mode"] = mode
     print(canonical(result))
     return 0 if result["status"] in {"succeeded", "described"} else 3

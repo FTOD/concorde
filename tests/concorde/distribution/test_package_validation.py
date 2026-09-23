@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
@@ -20,32 +21,26 @@ from concorde.distribution import package_validation  # noqa: E402
 from concorde.distribution.build import write_build  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 
-VALID_OPERATION_INIT = """OPERATIONS = ("alpha",)
+VALID_OPERATION_INIT = 'OPERATIONS = ("alpha",)\n'
 
+VALID_ALPHA = """from concorde.operations import shapes
 
-def external_name(name):
-    return "concorde-" + name.replace("_", "-")
-"""
-
-VALID_ALPHA = """from concorde.spec import contract_shapes as shapes
-from agents import planner
-from . import external_name
-from concorde.harness.operation_state import StateContract
-
-KIND = "operation"
-PUBLIC = False
-CONTEXT_SELECTION = "bound"
-DETERMINISTIC = False
-PROFILE = planner.PROFILE
+KIND = "host"
+PUBLIC = True
+DETERMINISTIC = True
+OWNER = "module.fixture"
+AGENTS = ()
 USES = ()
-EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 REQUEST = shapes.obj({})
 RESPONSE = shapes.obj({})
-STATE = StateContract("concorde-agent-stage-context", "concorde-agent-stage-result")
-
-
-def run(state, runtime):
-    return {}
+REQUEST_VERSION = 1
+RESPONSE_VERSION = 1
+MUTATION = {"policy": "never", "actions": []}
+WORKSPACE = "none"
+TARGET = {"selection": "none", "hook": None}
+DEFAULT_TASK = None
+CONFIGURATION = "stored"
+ENTRY_POINT = "concorde.validation.validate:run"
 """
 
 
@@ -61,43 +56,43 @@ def _operations_package(
     (package / "alpha.py").write_text(alpha_source, encoding="utf-8")
 
 
-def _guidance(root: Path, *, operation: str = "alpha") -> None:
-    guidance = root / "prompts/operation-guidance/concorde-alpha.md"
+def _guidance(root: Path, *, name: str = "concorde-alpha") -> None:
+    guidance = root / f"prompts/operation-guidance/{name}.md"
     guidance.parent.mkdir(parents=True, exist_ok=True)
     guidance.write_text(
-        f"---\nname: concorde-alpha\ndescription: Fixture guidance.\noperation: {operation}\n---\n\n# concorde-alpha\n",
+        f"---\nname: {name}\ndescription: Fixture guidance.\n---\n\n# {name}\n",
         encoding="utf-8",
     )
 
 
-VALID_AGENT_INIT = """DOMAIN_AGENTS = ("alpha",)
+VALID_AGENT_INIT = """AGENTS = ("alpha",)
 
 
 def external_name(name):
     return "concorde-" + name.replace("_", "-")
 """
 
-VALID_AGENT_ALPHA_MODULE = """from concorde.harness.worker_profile import WorkerProfile, Contract
-from concorde.harness.effects import EffectDeclaration
+VALID_AGENT_ALPHA_MODULE = """from concorde.harness.worker_profile import AgentDefinition
 
-PROFILE = WorkerProfile(
+DEFINITION = AgentDefinition(
     name="alpha",
-    spec="agents/alpha/spec.md",
+    instructions="agents/alpha/spec.md",
     workspace="capsule",
-    contract=Contract(
-        phase="plan",
-        context="concorde-agent-stage-context",
-        result="concorde-agent-stage-result",
-        effects=EffectDeclaration(("spec-context",), (), False, "none"),
-        output_fields=("plan",),
-    ),
+    phase="plan",
+    context="concorde-agent-stage-context",
+    result="concorde-agent-stage-result",
+    reads=("spec-context",),
+    writes=(),
+    network=False,
+    output_fields=("plan",),
     tools=("read", "grep", "find", "ls"),
+    hook="fixture.hooks:alpha",
 )
 """
 
 VALID_AGENT_ALPHA_SPEC = """# concorde-alpha
 
-Fixture WorkerProfile summary.
+Fixture Agent summary.
 
 ## Responsibilities
 
@@ -212,330 +207,88 @@ class PromptRuleTests(unittest.TestCase):
 
 
 class OperationModuleRuleTests(unittest.TestCase):
-    """Rule 2: operation module inventory, mandatory properties, context selection, USES, model profiles, Operation guidance."""
+    """Rule 2: the Operation catalog loads and each public Operation has its own guidance.
+
+    The declaration rules themselves are the catalog loader's; the package check reports the
+    loader's refusal instead of repeating them.
+    """
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
+    def rules(self) -> set[str]:
+        return {
+            f.rule_id for f in package_validation._validate_operation_modules(self.root)
+        }
+
     def test_clean_minimal_package_has_no_findings(self) -> None:
         _operations_package(self.root)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertEqual([], findings)
-
-    def test_inventory_mismatch_is_reported(self) -> None:
-        init = VALID_OPERATION_INIT.replace(
-            'OPERATIONS = ("alpha",)', 'OPERATIONS = ("alpha", "missing")'
-        )
-        _operations_package(self.root, init_source=init)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-INVENTORY-001" for f in findings),
-            findings,
-        )
-
-    def test_missing_mandatory_constant_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace(
-            'STATE = StateContract("concorde-agent-stage-context", "concorde-agent-stage-result")\n',
-            "",
-        )
-        _operations_package(self.root, alpha_source=broken)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001" for f in findings),
-            findings,
-        )
-
-    def test_wrong_constant_type_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace("USES = ()", "USES = []")
-        _operations_package(self.root, alpha_source=broken)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001" for f in findings),
-            findings,
-        )
-
-    def test_invalid_context_selection_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace(
-            'CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "bogus"'
-        )
-        _operations_package(self.root, alpha_source=broken)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONTEXT-001" for f in findings),
-            findings,
-        )
-
-    def test_public_requires_an_explicit_boolean(self) -> None:
-        for declaration in (
-            "",
-            'PUBLIC = "false"\n',
-            "PUBLIC = 0\n",
-            "PUBLIC = None\n",
-        ):
-            with self.subTest(declaration=declaration):
-                _operations_package(
-                    self.root,
-                    alpha_source=VALID_ALPHA.replace("PUBLIC = False\n", declaration),
-                )
-                findings = package_validation._validate_operation_modules(self.root)
-                self.assertTrue(
-                    any(
-                        f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001"
-                        for f in findings
-                    ),
-                    findings,
-                )
-
-    def test_unknown_uses_name_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace("USES = ()", 'USES = ("unknown",)')
-        _operations_package(self.root, alpha_source=broken)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-USES-001" for f in findings), findings
-        )
-
-    def test_uses_cycle_is_reported(self) -> None:
-        init = VALID_OPERATION_INIT.replace(
-            'OPERATIONS = ("alpha",)', 'OPERATIONS = ("alpha", "beta")'
-        )
-        alpha = VALID_ALPHA.replace("USES = ()", 'USES = ("beta",)')
-        beta = VALID_ALPHA.replace("USES = ()", 'USES = ("alpha",)')
-        _operations_package(self.root, alpha_source=alpha, init_source=init)
-        (self.root / "operations/beta.py").write_text(beta, encoding="utf-8")
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(any("cyclic" in f.message for f in findings), findings)
-
-    def test_private_deterministic_state_node_needs_no_wire_wrapper(self) -> None:
-        source = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
-        source = source.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
-        source = source.replace("REQUEST = shapes.obj({})\n", "").replace(
-            "RESPONSE = shapes.obj({})\n", ""
-        )
-        _operations_package(self.root, alpha_source=source)
+        _guidance(self.root)
         self.assertEqual([], package_validation._validate_operation_modules(self.root))
 
-    def test_state_types_and_profile_must_agree(self) -> None:
-        for replacement in (
-            'StateContract("not-registered", None)',
-            'StateContract("concorde-main-stage-context", "concorde-main-stage-result")',
+    def test_missing_operations_package_is_reported(self) -> None:
+        self.assertEqual({"CONCORDE-OPERATION-INVENTORY-001"}, self.rules())
+
+    def test_inventory_mismatch_is_reported(self) -> None:
+        for init in ('OPERATIONS = ("alpha", "missing")\n', "OPERATIONS = ()\n"):
+            with self.subTest(init=init):
+                _operations_package(self.root, init_source=init)
+                _guidance(self.root)
+                self.assertEqual({"CONCORDE-OPERATION-INVENTORY-001"}, self.rules())
+
+    @verifies("scenario.distribution.package-check-drift")
+    def test_a_declaration_the_loader_refuses_is_reported_with_its_source(self) -> None:
+        for before, after in (
+            ('KIND = "host"', 'KIND = "graph"'),
+            ("DETERMINISTIC = True", "DETERMINISTIC = False"),
+            ("AGENTS = ()", 'AGENTS = (("ghost", "plan"),)'),
+            ("USES = ()", 'USES = ("concorde-ghost",)'),
+            ('WORKSPACE = "none"', 'WORKSPACE = "elsewhere"'),
+            ("DEFAULT_TASK = None\n", ""),
+            (
+                'ENTRY_POINT = "concorde.validation.validate:run"',
+                'ENTRY_POINT = "concorde.validation.validate:missing"',
+            ),
         ):
-            source = VALID_ALPHA.replace(
-                'StateContract("concorde-agent-stage-context", "concorde-agent-stage-result")',
-                replacement,
-            )
-            _operations_package(self.root, alpha_source=source)
-            findings = package_validation._validate_operation_modules(self.root)
-            self.assertTrue(
-                any(f.rule_id == "CONCORDE-OPERATION-STATE-001" for f in findings),
-                findings,
-            )
-
-    def test_duplicate_uses_is_rejected(self) -> None:
-        _operations_package(
-            self.root,
-            alpha_source=VALID_ALPHA.replace("USES = ()", 'USES = ("alpha", "alpha")'),
-        )
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any("duplicate Operation" in f.message for f in findings), findings
-        )
-
-    def test_profiles_must_be_worker_profile_objects(self) -> None:
-        broken = VALID_ALPHA.replace(
-            "PROFILE = planner.PROFILE", 'PROFILE = "not-a-profile"'
-        )
-        _operations_package(self.root, alpha_source=broken)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001" for f in findings),
-            findings,
-        )
+            with self.subTest(declaration=after):
+                _operations_package(
+                    self.root, alpha_source=VALID_ALPHA.replace(before, after)
+                )
+                _guidance(self.root)
+                [finding] = package_validation._validate_operation_modules(self.root)
+                self.assertEqual("CONCORDE-OPERATION-INVENTORY-001", finding.rule_id)
+                self.assertEqual("operations/alpha.py", finding.source)
 
     def test_public_operation_without_a_guidance_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
-        _operations_package(self.root, alpha_source=broken)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001" for f in findings),
-            findings,
-        )
-
-    def test_nonpublic_operation_with_a_guidance_is_reported(self) -> None:
         _operations_package(self.root)
-        _guidance(self.root)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001" for f in findings),
-            findings,
-        )
+        self.assertEqual({"CONCORDE-OPERATION-GUIDANCE-001"}, self.rules())
 
-    def test_public_operation_with_exactly_one_guidance_has_no_guidance_finding(
-        self,
-    ) -> None:
-        broken = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
-        _operations_package(self.root, alpha_source=broken)
-        _guidance(self.root)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertFalse(
-            any(f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001" for f in findings),
-            findings,
+    def test_guidance_without_a_public_operation_is_reported(self) -> None:
+        _operations_package(
+            self.root,
+            alpha_source=VALID_ALPHA.replace("PUBLIC = True", "PUBLIC = False"),
         )
+        _guidance(self.root)
+        self.assertEqual({"CONCORDE-OPERATION-GUIDANCE-001"}, self.rules())
 
     @verifies("scenario.distribution.build-pi-session")
-    def test_public_guidance_filename_must_match_external_name(self) -> None:
-        _operations_package(
-            self.root,
-            alpha_source=VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True"),
-        )
-        _guidance(self.root)
-        source = self.root / "prompts/operation-guidance/concorde-alpha.md"
-        source.rename(source.with_name("concorde-wrong.md"))
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001" for f in findings),
-            findings,
-        )
-
-    def test_external_name_mismatch_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace(
-            'EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])',
-            'EXTERNAL_NAME = "concorde-wrong-name"',
-        )
-        _operations_package(self.root, alpha_source=broken)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-EXTERNALNAME-001" for f in findings),
-            findings,
-        )
-
-    def test_missing_operations_package_is_reported(self) -> None:
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-INVENTORY-001" for f in findings),
-            findings,
-        )
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_deterministic_requires_an_explicit_boolean(self) -> None:
-        for declaration in (
-            "",
-            'DETERMINISTIC = "false"\n',
-            "DETERMINISTIC = 0\n",
-            "DETERMINISTIC = 1\n",
-            "DETERMINISTIC = None\n",
-        ):
-            with self.subTest(declaration=declaration):
-                source = VALID_ALPHA.replace("DETERMINISTIC = False\n", declaration)
-                _operations_package(self.root, alpha_source=source)
-                findings = package_validation._validate_operation_modules(self.root)
-                self.assertTrue(
-                    any(
-                        f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001"
-                        for f in findings
-                    ),
-                    findings,
-                )
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_deterministic_matches_direct_model_calls_from_direct_model_calls(
-        self,
-    ) -> None:
-        for profile in ("None", "planner.PROFILE"):
-            for deterministic in (True, False):
-                with self.subTest(profile=profile, deterministic=deterministic):
-                    source = VALID_ALPHA.replace(
-                        "PROFILE = planner.PROFILE", f"PROFILE = {profile}"
-                    )
-                    source = source.replace(
-                        "DETERMINISTIC = False", f"DETERMINISTIC = {deterministic}"
-                    )
-                    _operations_package(self.root, alpha_source=source)
-                    findings = package_validation._validate_operation_modules(self.root)
-                    invalid = any(
-                        f.rule_id == "CONCORDE-OPERATION-DETERMINISTIC-001"
-                        for f in findings
-                    )
-                    self.assertEqual(
-                        invalid, deterministic != (profile == "None"), findings
-                    )
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_transitive_model_calls_do_not_trust_a_childs_false_deterministic_claim(
-        self,
-    ) -> None:
-        init = VALID_OPERATION_INIT.replace('("alpha",)', '("alpha", "beta", "gamma")')
-        pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
-        pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
-        _operations_package(
-            self.root,
-            alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'),
-            init_source=init,
-        )
-        (self.root / "operations/beta.py").write_text(
-            pure.replace("USES = ()", 'USES = ("gamma",)'), encoding="utf-8"
-        )
-        # All three incorrectly claim determinism; gamma launches an WorkerProfile.
-        (self.root / "operations/gamma.py").write_text(
-            VALID_ALPHA.replace("DETERMINISTIC = False", "DETERMINISTIC = True"),
-            encoding="utf-8",
-        )
+    def test_public_guidance_filename_must_match_the_public_name(self) -> None:
+        _operations_package(self.root)
+        _guidance(self.root, name="concorde-wrong")
         findings = package_validation._validate_operation_modules(self.root)
         self.assertEqual(
             {
-                f.source
-                for f in findings
-                if f.rule_id == "CONCORDE-OPERATION-DETERMINISTIC-001"
+                "prompts/operation-guidance/concorde-alpha.md",
+                "prompts/operation-guidance/concorde-wrong.md",
             },
-            {f"operations/{name}.py" for name in ("alpha", "beta", "gamma")},
-            findings,
-        )
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_deterministic_composition_without_agents_is_valid(self) -> None:
-        init = VALID_OPERATION_INIT.replace('("alpha",)', '("alpha", "beta")')
-        pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
-        pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
-        _operations_package(
-            self.root,
-            alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'),
-            init_source=init,
-        )
-        (self.root / "operations/beta.py").write_text(pure, encoding="utf-8")
-        self.assertEqual([], package_validation._validate_operation_modules(self.root))
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_removed_discovery_selection_is_rejected(self) -> None:
-        pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
-        pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
-        _operations_package(self.root, alpha_source=pure)
-        pure = pure.replace(
-            'CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "discover"'
-        )
-        _operations_package(self.root, alpha_source=pure)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONTEXT-001" for f in findings),
-            findings,
-        )
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_no_context_selection_cannot_admit_model_calls(self) -> None:
-        source = VALID_ALPHA.replace(
-            'CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "none"'
-        ).replace("PUBLIC = False", "PUBLIC = True")
-        _operations_package(self.root, alpha_source=source)
-        _guidance(self.root)
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONTEXT-001" for f in findings),
-            findings,
+            {f.source for f in findings},
         )
 
 
 class AgentRuleTests(unittest.TestCase):
-    """New rules: WorkerProfile inventory, WorkerProfile Spec structure, worker profile and child definitions."""
+    """Agent inventory, Agent instruction structure and Agent definition consistency."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -556,7 +309,7 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_inventory_mismatch_is_reported(self) -> None:
         init = VALID_AGENT_INIT.replace(
-            'DOMAIN_AGENTS = ("alpha",)', 'DOMAIN_AGENTS = ("alpha", "missing")'
+            'AGENTS = ("alpha",)', 'AGENTS = ("alpha", "missing")'
         )
         _agents_package(self.root, init_source=init)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -567,7 +320,7 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_duplicate_agent_name_is_reported(self) -> None:
         init = VALID_AGENT_INIT.replace(
-            'DOMAIN_AGENTS = ("alpha",)', 'DOMAIN_AGENTS = ("alpha", "alpha")'
+            'AGENTS = ("alpha",)', 'AGENTS = ("alpha", "alpha")'
         )
         _agents_package(self.root, init_source=init)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -586,7 +339,8 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_wrong_spec_path_is_reported(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'spec="agents/alpha/spec.md",', 'spec="agents/alpha/wrong.md",'
+            'instructions="agents/alpha/spec.md",',
+            'instructions="agents/alpha/wrong.md",',
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -616,8 +370,8 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_network_effect_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'effects=EffectDeclaration(("spec-context",), (), False, "none"),',
-            'effects=EffectDeclaration(("spec-context",), (), True, "none"),',
+            "network=False,",
+            "network=True,",
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -627,8 +381,8 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_write_effect_outside_read_effect_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'effects=EffectDeclaration(("spec-context",), (), False, "none"),',
-            'effects=EffectDeclaration(("spec-context",), ("implementation",), False, "none"),',
+            "writes=(),",
+            'writes=("implementation",),',
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
@@ -649,7 +403,7 @@ class AgentRuleTests(unittest.TestCase):
 
 
 class ContractRuleTests(unittest.TestCase):
-    """Rule 3: exported type identities are unique; generated/protocol/schemas.json matches json_schema."""
+    """Rule 3: every type is registered once; generated/schemas.json matches json_schema."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -663,72 +417,41 @@ class ContractRuleTests(unittest.TestCase):
         )
 
     def test_stale_schemas_file_is_reported(self) -> None:
-        (self.root / "generated/protocol").mkdir(parents=True)
-        (self.root / "generated/protocol/schemas.json").write_text(
-            "{}", encoding="utf-8"
-        )
+        (self.root / "generated").mkdir(parents=True)
+        (self.root / "generated/schemas.json").write_text("{}", encoding="utf-8")
         findings = package_validation._validate_contracts(self.root)
         self.assertTrue(
             any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings
         )
 
     def test_current_schemas_file_has_no_findings(self) -> None:
-        (self.root / "generated/protocol").mkdir(parents=True)
+        (self.root / "generated").mkdir(parents=True)
         shutil.copy2(
-            REPOSITORY_ROOT / "generated/protocol/schemas.json",
-            self.root / "generated/protocol/schemas.json",
+            REPOSITORY_ROOT / "generated/schemas.json",
+            self.root / "generated/schemas.json",
         )
         self.assertEqual([], package_validation._validate_contracts(self.root))
 
-    def test_broken_schema_source_is_reported_without_raising(self) -> None:
-        (self.root / "generated/protocol").mkdir(parents=True)
-        shutil.copy2(
-            REPOSITORY_ROOT / "generated/protocol/schemas.json",
-            self.root / "generated/protocol/schemas.json",
-        )
-        shutil.copytree(
-            REPOSITORY_ROOT / "src/concorde/spec",
-            self.root / "src/concorde/spec",
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-        )
-        helper = self.root / "src/concorde/spec/wire_shapes.py"
-        helper.write_text(
-            helper.read_text(encoding="utf-8") + "\nSTRING = {\n", encoding="utf-8"
-        )
-        findings = package_validation._validate_contracts(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings
-        )
-        self.assertIn("wire_shapes.py", str(findings))
+    def test_a_conflicting_registration_is_reported_without_raising(self) -> None:
+        from concorde.spec.typed_data import TypedDataError
 
-    def test_duplicate_exported_type_identity_is_reported(self) -> None:
-        # The duplicate lives in the named root's own contracts, which the rendered schema
-        # dictionary would otherwise collapse silently.
-        (self.root / "generated/protocol").mkdir(parents=True)
-        shutil.copy2(
-            REPOSITORY_ROOT / "generated/protocol/schemas.json",
-            self.root / "generated/protocol/schemas.json",
-        )
-        shutil.copytree(
-            REPOSITORY_ROOT / "src/concorde/spec",
-            self.root / "src/concorde/spec",
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-        )
-        contracts = self.root / "src/concorde/spec/contracts.py"
-        contracts.write_text(
-            contracts.read_text(encoding="utf-8")
-            + (
-                "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
-                "def exported_types():\n"
-                "    return (*_ORIGINAL_EXPORTED_TYPES(), 'concorde-context-solve-request')\n"
-            ),
-            encoding="utf-8",
-        )
-        findings = package_validation._validate_contracts(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-CONTRACT-UNIQUE-001" for f in findings), findings
-        )
-        self.assertIn("concorde-context-solve-request", str(findings))
+        for code, rule in (
+            ("duplicate_type", "CONCORDE-CONTRACT-UNIQUE-001"),
+            ("invalid_schema", "CONCORDE-CONTRACT-SCHEMA-001"),
+        ):
+            with (
+                self.subTest(code=code),
+                patch.object(
+                    package_validation,
+                    "register_types",
+                    side_effect=TypedDataError(
+                        code, "concorde-context-solve-request", "conflict"
+                    ),
+                ),
+            ):
+                findings = package_validation._validate_contracts(self.root)
+            self.assertEqual([rule], [f.rule_id for f in findings])
+            self.assertIn("concorde-context-solve-request", str(findings))
 
 
 class BuildOutputRuleTests(unittest.TestCase):
@@ -765,7 +488,7 @@ class BuildOutputRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_drifted_output_is_reported(self) -> None:
         write_build(self.root)
-        target = self.root / "generated/agents/planner.md"
+        target = self.root / "generated/native/planner.md"
         target.write_text(
             target.read_text(encoding="utf-8") + "\ntampered\n", encoding="utf-8"
         )
@@ -795,7 +518,7 @@ class BuildOutputRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_unexpected_file_in_an_owned_directory_is_reported(self) -> None:
         write_build(self.root)
-        (self.root / "generated/agents/extra.md").write_text(
+        (self.root / "generated/native/extra.md").write_text(
             "not a build output\n", encoding="utf-8"
         )
         findings = package_validation._validate_build_outputs(self.root)
@@ -858,7 +581,7 @@ def _document(root: Path, relative: str, document_id: str, body: str) -> None:
                             base = expected.get(
                                 entry.get("id"), next(iter(expected.values()), {})
                             )
-                            for field in ("kind", "uses", "state", "profile"):
+                            for field in ("kind", "owner", "agents", "uses"):
                                 entry.setdefault(field, base.get(field))
             except ValueError:
                 value = match.group(
@@ -870,322 +593,117 @@ def _document(root: Path, relative: str, document_id: str, body: str) -> None:
     (root / (relative + ".json")).write_text(json.dumps(metadata))
 
 
+def _mirror_entry(**changes) -> dict:
+    return {
+        "id": "alpha",
+        "public_name": "concorde-alpha",
+        "kind": "host",
+        "public": True,
+        "deterministic": True,
+        "owner": "module.fixture",
+        "agents": [],
+        "uses": [],
+        **changes,
+    }
+
+
 class SpecAlignmentOperationsRuleTests(unittest.TestCase):
-    """Rule 4a: exactly one registered concorde-operations block, equal to the code inventory."""
+    """Rule 4a: exactly one ``concorde.operations`` mirror, equal to the loaded catalog."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        _operations_package(self.root)
+        _guidance(self.root)
+
+    def findings(self, entries) -> list:
+        block = "```concorde-operations\n" + json.dumps(entries) + "\n```"
+        _document(self.root, "specs/one.md", "document.one", block)
+        _registry(self.root, documents=["specs/one.md"])
+        return package_validation._validate_spec_operations_block(
+            self.root, _required_documents(self.root)
+        )
 
     def test_missing_registry_is_reported(self) -> None:
-        findings = package_validation._validate_spec_alignment(self.root)
+        findings = package_validation._validate_spec_alignment(Path(tempfile.mkdtemp()))
         self.assertTrue(
             any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings),
             findings,
         )
 
-    @verifies("scenario.distribution.operation-determinism")
-    def test_spec_deterministic_must_be_a_matching_boolean(self) -> None:
-        _operations_package(self.root)
-        for value in (False, True, "false", 0, 1, None, "missing"):
-            with self.subTest(value=value):
-                entry = {
-                    "id": "alpha",
-                    "public": False,
-                    "context_selection": "bound",
-                    "public_name": None,
-                }
-                if value != "missing":
-                    entry["deterministic"] = value
-                body = "```concorde-operations\n" + json.dumps([entry]) + "\n```"
-                _document(self.root, "specs/one.md", "document.one", body)
-                findings = package_validation._validate_spec_operations_block(
-                    self.root, {"specs/one.md": body}
-                )
-                if value is False:
-                    self.assertEqual([], findings)
-                else:
-                    self.assertTrue(
-                        any(
-                            f.rule_id == "CONCORDE-SPEC-OPERATIONS-001"
-                            for f in findings
-                        ),
-                        findings,
-                    )
+    def test_matching_mirror_has_no_findings(self) -> None:
+        self.assertEqual(
+            {"alpha": {k: v for k, v in _mirror_entry().items() if k != "id"}},
+            package_validation._operation_code_inventory(self.root),
+        )
+        self.assertEqual([], self.findings([_mirror_entry()]))
 
-    def test_no_operations_block_is_reported(self) -> None:
-        _operations_package(self.root)
+    @verifies("scenario.distribution.package-check-drift")
+    def test_a_mirror_record_differing_from_its_declaration_is_reported(self) -> None:
+        for changes in (
+            {"deterministic": False},
+            {"public": False},
+            {"kind": "agent-call"},
+            {"owner": "module.other"},
+            {"agents": [{"agent": "planner", "phase": "plan"}]},
+            {"uses": ["concorde-ghost"]},
+            {"public_name": "concorde-wrong"},
+        ):
+            with self.subTest(changes=changes):
+                findings = self.findings([_mirror_entry(**changes)])
+                self.assertTrue(
+                    any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings),
+                    findings,
+                )
+
+    def test_a_malformed_mirror_is_reported(self) -> None:
+        entry = _mirror_entry()
+        for bad in (
+            {**entry, "state": None},
+            {**entry, "agents": "none"},
+            {**entry, "deterministic": "true"},
+        ):
+            with self.subTest(entry=bad):
+                findings = self.findings([bad])
+                self.assertTrue(
+                    any("Malformed" in f.message for f in findings), findings
+                )
+
+    def test_no_or_two_mirrors_are_reported(self) -> None:
         _document(self.root, "specs/doc.md", "document.doc", "No block here.")
         _registry(self.root, documents=["specs/doc.md"])
         findings = package_validation._validate_spec_operations_block(
             self.root, _required_documents(self.root)
         )
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings),
-            findings,
-        )
-
-    def test_two_operations_blocks_is_reported(self) -> None:
-        _operations_package(self.root)
-        block = '```concorde-operations\n[{"id": "alpha", "public": false, "context_selection": "bound", "deterministic": false, "public_name": null}]\n```'
+        self.assertTrue(any("Exactly one" in f.message for f in findings), findings)
+        block = "```concorde-operations\n" + json.dumps([_mirror_entry()]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
         findings = package_validation._validate_spec_operations_block(
             self.root, _required_documents(self.root)
         )
+        self.assertTrue(any("Exactly one" in f.message for f in findings), findings)
+
+    def test_missing_and_extra_records_are_reported(self) -> None:
         self.assertTrue(
-            any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings),
-            findings,
+            any("missing operation" in f.message for f in self.findings([]))
         )
-
-    def test_malformed_json_is_reported(self) -> None:
-        _operations_package(self.root)
-        _document(
-            self.root,
-            "specs/one.md",
-            "document.one",
-            "```concorde-operations\nnot json\n```",
-        )
-        _registry(self.root, documents=["specs/one.md"])
-        findings = package_validation._validate_spec_operations_block(
-            self.root, _required_documents(self.root)
-        )
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings),
-            findings,
-        )
-
-    def test_matching_operations_block_has_no_findings(self) -> None:
-        public_alpha = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
-        _operations_package(self.root, alpha_source=public_alpha)
-        _guidance(self.root)
-        block = (
-            "```concorde-operations\n"
-            + json.dumps(
-                [
-                    {
-                        "id": "alpha",
-                        "public": True,
-                        "context_selection": "bound",
-                        "deterministic": False,
-                        "public_name": "concorde-alpha",
-                    }
-                ]
-            )
-            + "\n```"
-        )
-        _document(self.root, "specs/one.md", "document.one", block)
-        _registry(self.root, documents=["specs/one.md"])
-        findings = package_validation._validate_spec_operations_block(
-            self.root, _required_documents(self.root)
-        )
-        self.assertEqual([], findings)
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_public_name_is_code_identity_not_a_skill_prerequisite(self) -> None:
-        _operations_package(
-            self.root,
-            alpha_source=VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True"),
-        )
-        inventory = package_validation._operation_code_inventory(self.root)
-        self.assertEqual("concorde-alpha", inventory["alpha"]["public_name"])
-        self.assertNotIn("skill", inventory["alpha"])
-        # Missing ordinary guidance is independently invalid, not a null executable name.
-        self.assertTrue(
-            any(
-                f.rule_id == "CONCORDE-OPERATION-GUIDANCE-001"
-                for f in package_validation._validate_operation_modules(self.root)
-            )
-        )
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_retired_skill_metadata_and_wrong_public_names_are_rejected(self) -> None:
-        _operations_package(
-            self.root,
-            alpha_source=VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True"),
-        )
-        _guidance(self.root)
-        expected = package_validation._operation_code_inventory(self.root)["alpha"]
-        legacy = {"id": "alpha", **expected}
-        legacy["skill"] = legacy.pop("public_name")
-        entries = [legacy, {"id": "alpha", **expected, "skill": "concorde-alpha"}]
-        entries.extend(
-            {"id": "alpha", **expected, "public_name": value}
-            for value in (None, False, 1, "concorde-wrong", ["concorde-alpha"])
-        )
-        for entry in entries:
-            with self.subTest(entry=entry):
-                body = "```concorde-operations\\n" + json.dumps([entry]) + "\\n```"
-                _document(self.root, "specs/one.md", "document.one", body)
-                findings = package_validation._validate_spec_operations_block(
-                    self.root, {"specs/one.md": body}
-                )
-                self.assertTrue(
-                    any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings),
-                    findings,
-                )
-
-    @verifies("scenario.distribution.operation-determinism")
-    def test_private_operation_has_no_public_name(self) -> None:
-        _operations_package(self.root)
-        expected = package_validation._operation_code_inventory(self.root)["alpha"]
-        self.assertIsNone(expected["public_name"])
-        entry = {"id": "alpha", **expected, "public_name": "concorde-alpha"}
-        body = "```concorde-operations\\n" + json.dumps([entry]) + "\\n```"
-        _document(self.root, "specs/one.md", "document.one", body)
-        findings = package_validation._validate_spec_operations_block(
-            self.root, {"specs/one.md": body}
-        )
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings), findings
-        )
-
-    def test_mismatched_context_selection_is_reported(self) -> None:
-        public_alpha = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
-        _operations_package(self.root, alpha_source=public_alpha)
-        _guidance(self.root)
-        block = (
-            "```concorde-operations\n"
-            + json.dumps(
-                [
-                    {
-                        "id": "alpha",
-                        "public": True,
-                        "context_selection": "none",
-                        "deterministic": False,
-                        "public_name": "concorde-alpha",
-                    }
-                ]
-            )
-            + "\n```"
-        )
-        _document(self.root, "specs/one.md", "document.one", block)
-        _registry(self.root, documents=["specs/one.md"])
-        findings = package_validation._validate_spec_operations_block(
-            self.root, _required_documents(self.root)
-        )
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-SPEC-OPERATIONS-001" for f in findings),
-            findings,
-        )
-
-    def test_missing_operation_entry_is_reported(self) -> None:
-        _operations_package(self.root)
-        _document(
-            self.root,
-            "specs/one.md",
-            "document.one",
-            "```concorde-operations\n[]\n```",
-        )
-        _registry(self.root, documents=["specs/one.md"])
-        findings = package_validation._validate_spec_operations_block(
-            self.root, _required_documents(self.root)
-        )
-        self.assertTrue(
-            any("missing operation" in f.message for f in findings), findings
-        )
-
-    def test_extra_operation_entry_is_reported(self) -> None:
-        _operations_package(self.root)
-        block = (
-            "```concorde-operations\n"
-            + json.dumps(
-                [
-                    {
-                        "id": "alpha",
-                        "public": False,
-                        "context_selection": "bound",
-                        "deterministic": False,
-                        "public_name": None,
-                    },
-                    {
-                        "id": "ghost",
-                        "public": False,
-                        "context_selection": "bound",
-                        "deterministic": False,
-                        "public_name": None,
-                    },
-                ]
-            )
-            + "\n```"
-        )
-        _document(self.root, "specs/one.md", "document.one", block)
-        _registry(self.root, documents=["specs/one.md"])
-        findings = package_validation._validate_spec_operations_block(
-            self.root, _required_documents(self.root)
-        )
-        self.assertTrue(
-            any("unknown operation" in f.message for f in findings), findings
-        )
-
-
-class UnifiedProfileMetadataTests(unittest.TestCase):
-    """Profile drift is checked inside the one Operation inventory, not a parallel block."""
-
-    @verifies("scenario.distribution.build-check")
-    def test_model_profile_and_state_drift_are_rejected(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            _operations_package(root)
-            inventory = package_validation._operation_code_inventory(root)
-            assert inventory is not None
-            expected = inventory["alpha"]
-            for key, value in (
-                ("profile", {**expected["profile"], "tools": ["invented"]}),
-                ("profile", {**expected["profile"], "workspace": "project"}),
-                ("state", {"input": "unknown", "output": None}),
-                ("uses", ["ghost"]),
-            ):
-                with self.subTest(key=key, value=value):
-                    entry = {"id": "alpha", **expected, key: value}
-                    block = "```concorde-operations\n" + json.dumps([entry]) + "\n```"
-                    _document(root, "specs/one.md", "document.one", block)
-                    _registry(root, documents=["specs/one.md"])
-                    findings = package_validation._validate_spec_operations_block(
-                        root, _required_documents(root)
-                    )
-                    self.assertTrue(
-                        any(
-                            f.rule_id == "CONCORDE-SPEC-OPERATIONS-001"
-                            for f in findings
-                        ),
-                        findings,
-                    )
-
-    def test_single_inventory_matches_without_an_agent_metadata_block(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            _operations_package(root)
-            inventory = package_validation._operation_code_inventory(root)
-            assert inventory is not None
-            entry = {"id": "alpha", **inventory["alpha"]}
-            _document(
-                root,
-                "specs/one.md",
-                "document.one",
-                "```concorde-operations\n" + json.dumps([entry]) + "\n```",
-            )
-            _registry(root, documents=["specs/one.md"])
-            self.assertEqual(
-                [],
-                package_validation._validate_spec_operations_block(
-                    root, _required_documents(root)
-                ),
-            )
+        findings = self.findings([_mirror_entry(), _mirror_entry(id="ghost")])
+        self.assertTrue(any("unknown operation" in f.message for f in findings))
 
 
 class SpecAlignmentTypesRuleTests(unittest.TestCase):
-    """Rule 4b: every concorde-...@N token in the workflow-host boundary document is an exported
-    identity with that exact version, and every exported identity appears there at least once."""
+    """Every concorde-...@N token in a registered document is an exported identity with that exact
+    version, and every exported identity appears at its version in a document of its owner."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
-    def test_missing_boundary_document_is_reported(self) -> None:
+    def test_types_without_owner_documents_are_reported(self) -> None:
         _document(self.root, "specs/other.md", "document.other", "Nothing relevant.")
         _registry(self.root, documents=["specs/other.md"])
         findings = package_validation._validate_spec_types(
@@ -1237,9 +755,18 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         findings = package_validation._validate_spec_types(
             self.root, _required_documents(self.root)
         )
+        # The fixture registers none of the owners: a capability's request names its declared
+        # owner, a record type the Module binding its registering file (here none).
         self.assertTrue(
-            any("does not appear in this document" in f.message for f in findings),
+            any(
+                "concorde-plan-request@1 is not described in a document of its owner "
+                "module.planning" in f.message
+                for f in findings
+            ),
             findings,
+        )
+        self.assertTrue(
+            any("has no owner Module" in f.message for f in findings), findings
         )
 
     def test_the_real_boundary_document_has_no_findings(self) -> None:

@@ -4,18 +4,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.harness.admission import run_operation
+from concorde.operations.dispatch import run_operation
 from concorde.harness.change_worktree import git, git_value, read_change
 from concorde.harness.host import OperationHost as RealHost
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import (
-    CONFIGURATION,
-    PACKAGE,
-    ModelProcessDouble,
-    project,
-)
-from tests.concorde.support.native_planning import OperationHost
+from tests.concorde.support.spec_project import CONFIGURATION, PACKAGE, project
 
 TARGET = {"target_id": "service.transfer", "task": "Implement the transfer contract"}
 
@@ -41,42 +35,6 @@ class DispatchTests(unittest.TestCase):
             name, CONFIGURATION, typed(name + "-request", data), host_context=host
         )
 
-    def snapshot(self):
-        """Candidate bindings, worktrees and project files outside run diagnostics."""
-        files = {
-            path.relative_to(root): path.read_bytes()
-            for root in (self.primary, self.change)
-            for path in root.rglob("*")
-            if path.is_file()
-            and ".git" not in path.parts
-            and ".concorde/runs" not in path.as_posix()
-        }
-        return files, git_value(self.primary, "worktree", "list", "--porcelain")
-
-    @verifies("scenario.operations.unknown-target")
-    def test_unresolved_target_or_focus_binds_nothing_and_starts_no_worker(self):
-        before = self.snapshot()
-        requests = (
-            {**TARGET, "target_id": "module.unknown"},
-            {**TARGET, "focus_id": "scenario.ledger.read"},
-        )
-        for root in (self.primary, self.change):
-            for name in (
-                "concorde-context-solve",
-                "concorde-plan",
-                "concorde-validate",
-            ):
-                for data, code in zip(requests, ("unknown_target", "invalid_focus")):
-                    with self.subTest(root=root.name, operation=name, code=code):
-                        double = ModelProcessDouble()
-                        host = OperationHost(root, PACKAGE, executor=double.executor)
-                        result = self.call(root, name, data, host)
-                        self.assertEqual("blocked", result["status"], result)
-                        self.assertEqual(code, result["errors"][0]["code"], result)
-                        self.assertIsNone(result["output"])
-                        self.assertEqual([], double.calls)
-                        self.assertEqual(before, self.snapshot())
-
     @verifies("scenario.operations.native-without-pi")
     def test_native_capability_without_its_pi_preparation_is_refused(self):
         for name in ("concorde-plan", "concorde-tasks", "concorde-implement"):
@@ -98,7 +56,7 @@ class DispatchTests(unittest.TestCase):
             "M AGENTS.md", git_value(self.change, "status", "--porcelain").strip()
         )
         state = read_change(self.change, required=True)
-        self.assertEqual(("created", {}), (state["phase"], state["targets"]))
+        self.assertEqual(("created", {}), (state["phase"], state["sections"]))
 
 
 if __name__ == "__main__":

@@ -21,19 +21,18 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class CheckEvidenceTests(unittest.TestCase):
-    @verifies("scenario.harness.context-freeze")
-    def test_distribution_includes_complete_tester_contract_pair_once(self):
+    def test_session_includes_complete_tester_contract_pair_once(self):
         from concorde.spec.repository import SpecRepository
 
         sources = (
             SpecRepository(REPOSITORY_ROOT)
-            .spec_context("module.distribution")
+            .spec_context("module.session")
             .value["sources"]
         )
         paths = [source["path"] for source in sources]
         for suffix in ("", ".json"):
             self.assertEqual(
-                1, paths.count("specs/concorde/harness/checks/interfaces.md" + suffix)
+                1, paths.count("specs/concorde/harness/checks/module.md" + suffix)
             )
 
     def setUp(self):
@@ -82,8 +81,8 @@ class CheckEvidenceTests(unittest.TestCase):
         return json.loads(raw)
 
     @verifies(
-        "scenario.harness.check-result",
-        "scenario.harness.check-read-only",
+        "scenario.checks.command-output",
+        "scenario.checks.read-only",
         "scenario.checks.tester-evidence",
     )
     def test_failure_reports_and_output_survive_cleanup_exactly_without_scratch_secrets(
@@ -127,7 +126,7 @@ print('precise failure');print('cause: documents',file=sys.stderr);sys.exit(17)
         self.assertFalse((self.project / "forbidden").exists())
         self.assertFalse((self.project / ".concorde/status").exists())
 
-    @verifies("scenario.harness.check-result")
+    @verifies("scenario.checks.command-output")
     def test_binary_output_survives_lossy_and_truncated_ui_tail(self):
         result = self.bridge("import os;os.write(1,bytes(range(256))*100)")
         self.assertTrue(result["stdout_truncated"])
@@ -140,7 +139,7 @@ print('precise failure');print('cause: documents',file=sys.stderr);sys.exit(17)
         )
         self.assertFalse(record["truncated"])
 
-    @verifies("scenario.harness.check-result")
+    @verifies("scenario.checks.command-output")
     def test_output_and_report_limits_are_explicit_not_silent_success(self):
         result = self.bridge(
             """
@@ -172,7 +171,7 @@ for i in range(5): (r/f'{i}.bin').write_bytes(b'R'*(2*1024*1024+1))
             all(r["captured_bytes"] <= 2 * 1024 * 1024 for r in manifest["artifacts"])
         )
 
-    @verifies("scenario.harness.check-scratch", "scenario.harness.check-unavailable")
+    @verifies("scenario.checks.scratch", "scenario.checks.unavailable")
     def test_unsafe_report_sources_are_refused_without_hanging_or_following_links(self):
         result = self.bridge(
             """
@@ -214,7 +213,7 @@ os.mkfifo(r/'fifo');os.link(s/'secret',r/'hardlink')
             with self.subTest(names=names), self.assertRaises(ValueError):
                 report_names(names)
 
-    @verifies("scenario.harness.check-scratch")
+    @verifies("scenario.checks.scratch")
     def test_report_directory_itself_cannot_be_replaced_by_a_link(self):
         result = self.bridge(
             """
@@ -228,7 +227,7 @@ r=Path(os.environ['CONCORDE_CHECK_REPORT_DIR']);r.rmdir()
         self.assertFalse(result["evidence"]["complete"])
         self.assertIsNone(self.manifest(result)["artifacts"][-1]["artifact"])
 
-    @verifies("scenario.harness.check-lifetime", "scenario.checks.tester-evidence")
+    @verifies("scenario.checks.descendants-end", "scenario.checks.tester-evidence")
     def test_timeout_keeps_partial_output_and_named_report(self):
         result = self.bridge(
             """
@@ -247,7 +246,7 @@ print('deadline evidence',flush=True);time.sleep(30)
         self.assertIn("deadline evidence", result["stdout"])
         self.assertTrue(self.manifest(result)["timed_out"])
 
-    @verifies("scenario.harness.check-lifetime", "scenario.checks.tester-evidence")
+    @verifies("scenario.checks.descendants-end", "scenario.checks.tester-evidence")
     def test_cancellation_captures_before_cleanup_and_ignores_repeat_abort(self):
         code = "import os,time;from pathlib import Path;Path(os.environ['CONCORDE_CHECK_REPORT_DIR'],'ready').write_text('cancel detail');print('cancel output',flush=True);time.sleep(30)"
         p = subprocess.Popen(
@@ -289,7 +288,7 @@ print('deadline evidence',flush=True);time.sleep(30)
         self.assertTrue(self.manifest(result)["cancelled"])
         self.assertEqual([], list(self.storage.glob("concorde-check-*")))
 
-    @verifies("scenario.harness.check-lifetime")
+    @verifies("scenario.checks.descendants-end")
     def test_abort_during_export_preserves_completed_execution_and_artifact_ack(self):
         result = self.bridge(
             "print('completed before abort')",
@@ -314,7 +313,7 @@ main()
         self.assertTrue(result["evidence"]["complete"])
         self.assertEqual(0, self.manifest(result)["returncode"])
 
-    @verifies("scenario.harness.primary-status", "scenario.checks.tester-evidence")
+    @verifies("scenario.checks.tester-no-primary")
     def test_missing_primary_authority_never_creates_a_replacement_archive(self):
         missing = self.root / "missing"
         evidence = CheckEvidence(missing, (), command="true", timeout=1)
@@ -324,7 +323,7 @@ main()
         self.assertIn("no local fallback", str(evidence.errors))
         self.assertFalse(missing.exists())
 
-    @verifies("scenario.harness.check-unavailable")
+    @verifies("scenario.checks.unavailable")
     def test_unavailable_isolation_has_manifest_and_no_fallback(self):
         result = self.bridge(
             "open('unsafe','w').write('bad')",
@@ -337,7 +336,7 @@ main()
         self.assertFalse((self.project / "unsafe").exists())
         self.assertIn("scratch/report unavailable", str(self.manifest(result)))
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.checks.tester-evidence-incomplete")
     def test_export_refusal_keeps_original_failure_and_has_no_destination_fallback(
         self,
     ):
@@ -353,7 +352,9 @@ main()
         self.assertTrue(result["evidence"]["errors"])
         self.assertEqual([], list(outside.iterdir()))
 
-    @verifies("scenario.harness.primary-status", "scenario.checks.tester-evidence")
+    @verifies(
+        "scenario.checks.tester-evidence", "scenario.checks.tester-evidence-incomplete"
+    )
     def test_partial_export_is_recorded_with_successful_artifacts_still_retrievable(
         self,
     ):
@@ -382,7 +383,7 @@ main()
             b"cause", Path(m["artifacts"][0]["artifact"]["path"]).read_bytes()
         )
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.checks.tester-evidence-incomplete")
     def test_manifest_export_failure_retains_successful_artifact_references(self):
         from concorde.harness import check_evidence
 
@@ -405,7 +406,7 @@ main()
             Path(summary["artifacts"][0]["artifact"]["path"]).read_bytes(),
         )
 
-    @verifies("scenario.harness.primary-status", "scenario.checks.tester-evidence")
+    @verifies("scenario.checks.tester-evidence")
     def test_linked_fixture_uses_only_primary_authority_and_retains_input_identity(
         self,
     ):
@@ -497,7 +498,7 @@ class RegisteredToolEvidenceTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         return json.loads(result.stdout.splitlines()[-1])
 
-    @verifies("scenario.harness.check-lifetime")
+    @verifies("scenario.checks.descendants-end")
     def test_abort_during_bridge_startup_keeps_evidence_acknowledgement(self):
         actual = self.drive("sleep 20", abort_after=0)
         self.assertTrue(actual["isError"])
@@ -508,14 +509,14 @@ class RegisteredToolEvidenceTests(unittest.TestCase):
         self.assertTrue(self.manifest(response)["cancelled"])
         self.assertEqual([], list(self.storage.glob("concorde-check-*")))
 
-    @verifies("scenario.harness.check-result")
+    @verifies("scenario.checks.command-output")
     def test_zero_exit_missing_report_is_tool_error_not_success(self):
         actual = self.drive("true", reports=["absent"])
         self.assertTrue(actual["isError"])
         self.assertEqual(0, actual["response"]["returncode"])
         self.assertFalse(self.manifest(actual["response"])["complete"])
 
-    @verifies("scenario.harness.check-result", "scenario.harness.native-result-gate")
+    @verifies("scenario.checks.command-output")
     def test_real_sdk_registered_test_command_specific_failure_is_retrievable(self):
         command = shlex.join(
             [

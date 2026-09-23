@@ -4,7 +4,7 @@ A prompt is a Markdown file with YAML front matter declaring ``audience: worker 
 shared``. A prompt body may reference other prompts through an explicit ``@path.md`` reference
 that occupies a whole line starting at column one:
 
-    @prompts/workflow-host/gap-reporting.md
+    @prompts/workflow-host/lifecycle-no-cognition.md
     @prompts/workflow-host/invoke-operation-opener.md ACTION=validate
 
 Resolution is a pure function of the source tree: given a root (a role root prompt or an operation guidance
@@ -13,7 +13,7 @@ fully substituted text. It performs no network or process I/O beyond reading fil
 ``project_root``.
 
 Operation guidance sources (``prompts/operation-guidance/<name>.md``) are a distinct front-matter shape (``name``,
-``description``, ``operation``) with no ``audience`` field; they are always implicit ``ambient``
+``description``) with no ``audience`` field; they are always implicit ``ambient``
 roots and can never be included. WorkerProfile Specs (``agents/<name>/spec.md``) are a third distinct shape: no front matter at all,
 and always an implicit ``worker`` root -- an WorkerProfile Spec carries its own ``# concorde-<name>``
 heading and behavioral contract directly, not role/audience metadata. Every other prompt lives
@@ -344,7 +344,7 @@ def resolve_operation_guidance(
             "CONCORDE-PROMPT-AUDIENCE-002",
             f"invalid operation guidance source front matter in {relative}: {error}",
         ) from error
-    required = {"name", "description", "operation"}
+    required = {"name", "description"}
     if set(metadata) != required:
         raise PromptResolverError(
             "CONCORDE-PROMPT-AUDIENCE-002",

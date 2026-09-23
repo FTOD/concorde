@@ -1,7 +1,6 @@
 ---
 name: concorde-plan
 description: "Workflow: assess sufficiency, then call the planner for the explicitly selected Module."
-operation: plan
 ---
 
 # concorde-plan

@@ -49,6 +49,30 @@
       "meaning": "#concept.concorde.context"
     },
     {
+      "id": "concept.concorde.spec-context",
+      "type": "concept",
+      "title": "Spec context",
+      "meaning": "#concept.concorde.spec-context"
+    },
+    {
+      "id": "concept.concorde.implementation-context",
+      "type": "concept",
+      "title": "Implementation context",
+      "meaning": "#concept.concorde.implementation-context"
+    },
+    {
+      "id": "concept.concorde.capability-context",
+      "type": "concept",
+      "title": "Capability context",
+      "meaning": "#concept.concorde.capability-context"
+    },
+    {
+      "id": "concept.concorde.task-context",
+      "type": "concept",
+      "title": "Task context",
+      "meaning": "#concept.concorde.task-context"
+    },
+    {
       "id": "concept.concorde.boundary",
       "type": "concept",
       "title": "Boundary",
@@ -73,5 +97,12 @@
       "meaning": "#concept.concorde.evidence"
     }
   ],
-  "relations": []
+  "relations": [
+    {
+      "type": "contrasts",
+      "source": "concept.concorde.task-context",
+      "target": "module.harness.context",
+      "reason": "task context is one of the four kinds of an Agent call's context, the task material; the Task context Module composes all four kinds for a call and is not limited to this one"
+    }
+  ]
 }

@@ -21,7 +21,7 @@ catalog compiles from the executable factory:
 - the section's heading carries an explicit ``{#anchor}``, and a module-role document of the same
   owning Module links to it, so the Operation's explanation leads to its exact Graph Spec.
 
-It also holds the Graph API rule of the Framework profile: every catalog Graph is a compiled
+It also holds the Graph API rule: every catalog Graph is a compiled
 ``StateGraph``, and no Python file under ``src/``, ``scripts/`` or ``operations/`` imports LangGraph's Functional
 API (``langgraph.func``), which would hide control flow inside ordinary Python. Source files are
 parsed for that, never executed.
@@ -427,20 +427,47 @@ def functional_api_imports(
     return tuple(hits)
 
 
+def compiled_topology(graph) -> dict:
+    """Nodes and edges of one compiled Graph, as the check compares them."""
+    drawing = graph.get_graph()
+    return {
+        "nodes": list(drawing.nodes),
+        "edges": [
+            {
+                "source": edge.source,
+                "target": edge.target,
+                "conditional": edge.conditional,
+            }
+            for edge in drawing.edges
+        ],
+    }
+
+
+def load_catalog(reference: str) -> dict:
+    """The Graph catalog a ``module:attribute`` entry point names; a callable is called."""
+    import importlib
+
+    module_name, separator, attribute = reference.partition(":")
+    if not separator or not module_name or not attribute:
+        raise ValueError(f"--catalog {reference!r} is not module:attribute")
+    value = getattr(importlib.import_module(module_name), attribute)
+    value = value() if callable(value) else value
+    if not isinstance(value, dict):
+        raise ValueError(f"--catalog {reference!r} is not a mapping of Graph factories")
+    return value
+
+
 def graph_spec_findings(
-    repository: SpecRepository, catalog: dict | None = None
+    repository: SpecRepository, catalog: dict
 ) -> tuple[Finding, ...]:
     """Compare every bound Graph diagram with its compiled Graph; every catalog Graph needs one Spec.
 
-    The same pass refuses every catalog Graph that is not a compiled ``StateGraph`` and every
-    source file that imports the Functional API.
+    ``catalog`` maps each compiled Graph name to a factory that builds it with inert nodes. The
+    same pass refuses every catalog Graph that is not a compiled ``StateGraph`` and every source
+    file that imports the Functional API.
     """
     from langgraph.graph.state import CompiledStateGraph
 
-    from ..operations.graph_catalog import catalog as default_catalog
-    from ..operations.graph_catalog import topology as compiled_topology
-
-    catalog = default_catalog() if catalog is None else catalog
     findings: list[Finding] = []
     compiled: dict[str, object] = {}
     for name, build in sorted(catalog.items()):

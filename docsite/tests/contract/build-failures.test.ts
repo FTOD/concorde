@@ -61,3 +61,28 @@ it('failed backup removal attempts to restore the previous destination', async (
   ]);
   expect(mocks.rm).toHaveBeenCalledWith('destination', {recursive: true, force: true});
 });
+
+// verifies: scenario.views.build-site-failure
+it.each(['spawn', 'exit', 'validation'])(
+  'a %s failure stops the build, deletes the candidate and promotes nothing',
+  async (failure) => {
+    if (failure === 'validation') mocks.validate.mockRejectedValue(new Error('validation failed'));
+    else mocks.spawn.mockImplementation(() => {
+      const child = new EventEmitter();
+      queueMicrotask(() => failure === 'spawn'
+        ? child.emit('error', new Error('Docusaurus did not start')) : child.emit('exit', 2));
+      return child;
+    });
+    await expect(buildSite()).rejects.toThrow(
+      {spawn: 'Docusaurus did not start', exit: 'Docusaurus exited with status 2.', validation: 'validation failed'}[failure],
+    );
+    expect(mocks.prepare).toHaveBeenCalledTimes(1);
+    expect(mocks.rename).not.toHaveBeenCalled();
+    const removals = mocks.rm.mock.calls.map(([path]) => path);
+    expect(removals).toHaveLength(2);
+    expect(removals.every((path) => path.endsWith('/.generated/candidate'))).toBe(true);
+    // The candidate is deleted after the failed step, not only before the build starts.
+    const failedStep = failure === 'validation' ? mocks.validate : mocks.spawn;
+    expect(mocks.rm.mock.invocationCallOrder[1]).toBeGreaterThan(failedStep.mock.invocationCallOrder[0]);
+  },
+);

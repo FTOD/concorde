@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.session.design",
+    "owner": "module.session",
+    "role": "module"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

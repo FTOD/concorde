@@ -10,6 +10,7 @@ import asyncio
 import re
 import subprocess
 from copy import deepcopy
+from typing import Literal
 
 from ..spec.repository import SpecError
 
@@ -110,6 +111,24 @@ def error_entry(error, *, code=None, layer="host", attempt=None):
         "message": safe_text(error),
         "feedback": exception_feedback(error, layer=layer, attempt=attempt),
     }
+
+
+class OperationExecutionError(RuntimeError):
+    """An Agent call was refused, failed, was cancelled, ran out of time or returned an invalid
+    result. ``outcome`` classifies why; ``code`` preserves a contract rejection class. The host maps
+    these to distinct result error codes, and none retries automatically."""
+
+    def __init__(
+        self,
+        message: str,
+        outcome: Literal[
+            "failed", "cancelled", "limit_exhausted", "invalid_completion"
+        ] = "failed",
+        code: str | None = None,
+    ):
+        super().__init__(message)
+        self.outcome = outcome
+        self.code = code
 
 
 class ExecutionFailure(SpecError):
@@ -223,18 +242,9 @@ def workflow_feedback(base, status, binding):
         ):
             feedback["causes"].append(emission["feedback"])
     files = list(directory.glob("host-failure-*.json"))
-    slots = [base]
+    slots = []
     try:
-        if (directory / "planner.json").is_file():
-            slots.append(
-                _record(Path(_record(directory / "planner.json")["descriptor"]))
-            )
-        if (directory / "review-scope.json").is_file():
-            slots.extend(
-                _record(Path(row["descriptor"]))
-                for row in _record(directory / "review-scope.json")["slots"]
-            )
-        for file in (directory / "bindings").glob("*.json"):
+        for file in sorted((directory / "bindings").glob("*.json")):
             slots.append(_record(Path(_record(file)["descriptor"])))
         files.extend(
             Path(slot["directory"]) / "failure.json"
@@ -245,7 +255,7 @@ def workflow_feedback(base, status, binding):
             files.extend(Path(slot["directory"]).glob("submission-error-*.json"))
         for slot in slots:
             if (
-                slot.get("role")
+                slot.get("agent")
                 and slot.get("snapshot")
                 and not (Path(slot["directory"]) / "proposal.json").exists()
                 and not (Path(slot["directory"]) / "failure.json").exists()

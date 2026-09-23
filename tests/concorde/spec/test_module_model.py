@@ -3,33 +3,27 @@
 from __future__ import annotations
 
 import json
-import tempfile
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
-from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.harness.invocation import Invocation
 from concorde.harness.revisions import implementation_digest, target_revision
 from concorde.spec.boundaries import scope_roots
 from concorde.spec.changes import confirm_pending_files
-from concorde.spec.initialize import protocol_binding
-from concorde.spec.repository import SpecError, SpecRepository, digest
+from concorde.spec.repository import SpecError, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from concorde.validation.validate import validate as validate_candidate
-from tests.concorde.spec.support import (
-    MIRRORED,
-    DocumentSource,
-    module_document,
-    source_pairs,
-    write_document,
+from tests.concorde.support.shared_file_project import (
+    PACKAGE,
+    SharedFileProject,
 )
-
-PACKAGE = Path(__file__).resolve().parents[3]
+from tests.concorde.support.spec_project import (
+    source_pairs,
+)
 
 
 def rule_ids(report) -> set[str]:
@@ -46,216 +40,8 @@ def errors(report) -> list[str]:
     ]
 
 
-def realization(identity, title, meaning, entries, pending=()):
-    return {
-        "id": identity,
-        "type": "realization",
-        "title": title,
-        "meaning": meaning,
-        "entries": list(entries),
-        "pending": list(pending),
-    }
-
-
-ROOT = module_document(
-    "document.root",
-    "module.root",
-    "Root",
-    "ROOT_MODULE_CONTRACT: the root composes its two submodules and owns no code.",
-    "### scenario.root.value — The root reports a composed value\n\n"
-    "- GIVEN both submodules answer\n- WHEN the root is asked for its value\n"
-    "- THEN it reports the composed integer\n",
-    ("The root delegates both answers to its children.", []),
-    "The root contains A and B, which both answer with an integer.",
-    "flowchart TB\n    accTitle: root composition\n"
-    "    accDescr: The root contains A and B.\n"
-    '    root["Root"]\n    a["A"]\n    b["B"]\n'
-    "    root -->|contains| a\n    root -->|contains| b",
-    contains=[
-        {
-            "target": "module.a",
-            "explanation": "A adapts the shared value and returns an integer.",
-        },
-        {
-            "target": "module.b",
-            "explanation": "B reads the shared value and returns 42.",
-        },
-    ],
-)
-MODULE_A = module_document(
-    "document.a",
-    "module.a",
-    "A",
-    "A_MODULE_CONTRACT: A adapts the shared integer for its own consumers.",
-    "### scenario.a.value — A adapts the shared value\n\n"
-    "- GIVEN the shared value function\n- WHEN A adapts it\n- THEN it returns the same integer\n"
-    "- AND the shared value is unchanged\n",
-    (
-        "The adapter reads the shared value function.",
-        [
-            realization(
-                "realization.a.adapter",
-                "Adapter",
-                "Adapts the shared integer.",
-                ["source/a.py"],
-            ),
-            realization(
-                "realization.a.shared",
-                "Shared value",
-                "Answers with the shared integer.",
-                ["source/shared.py"],
-            ),
-        ],
-    ),
-    "The adapter reads the shared value.",
-    "flowchart TB\n    accTitle: A\n"
-    "    accDescr: The adapter reads the shared value function.\n"
-    '    adapter["Adapter"]\n    shared["Shared value"]\n    adapter -->|reads| shared',
-    requirements="### req.a.pure — A never changes the shared value\n\n"
-    "A SHALL NOT change the shared value.\n",
-    relations=[
-        {
-            "type": "relates",
-            "source": "realization.a.adapter",
-            "verb": "reads",
-            "target": "realization.a.shared",
-        }
-    ],
-    extra_owned=("details.md",),
-)
-DETAILS_A = DocumentSource(
-    "# Local details\n\nA_OWN_ADDITIONAL_CONTRACT: the adapted integer is never negative.\n",
-    {
-        "schema_version": 3,
-        "document": {"id": "document.a.details", "owner": "module.a", "role": "module"},
-        "defines": [],
-        "relations": [],
-    },
-)
-MODULE_B = module_document(
-    "document.b",
-    "module.b",
-    "B",
-    "B_PRIVATE_SPEC: B reads the shared integer and promises exactly 42.",
-    "### scenario.b.value — B reports the shared value\n\n"
-    "- GIVEN the shared value function\n- WHEN B is asked for its value\n- THEN it returns 42\n",
-    (
-        "B holds only the shared value function.",
-        [
-            realization(
-                "realization.b.shared",
-                "Shared value",
-                "Answers with the shared integer.",
-                ["source/shared.py"],
-            )
-        ],
-    ),
-    "B collaborates with no other Module.",
-)
-
-
-class ModuleImplementationTests(unittest.TestCase):
+class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
     """Root contains A and B; A and B both bind ``source/shared.py``."""
-
-    def setUp(self):
-        self.directory = tempfile.TemporaryDirectory()
-        self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
-        self.configuration = {
-            "type_id": "concorde-operation-configuration",
-            "schema_version": 2,
-            "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
-        }
-        self.write(
-            ".concorde/config.json",
-            json.dumps(
-                {
-                    "profile_version": 16,
-                    "registry": ".concorde/specs.json",
-                    "protocol": protocol_binding(PACKAGE),
-                    "operation_configuration": self.configuration,
-                    "checks": [],
-                }
-            ),
-        )
-        write_protocol_copy(self.root, PACKAGE)
-        self.write(
-            "source/shared.py", "def value():\n    return 42\n# PRIVATE_SOURCE_MARKER\n"
-        )
-        self.write("source/a.py", "def adapt(value):\n    return value\n")
-        self.entries = {
-            "module.root": "specs/root/module.md",
-            "module.a": "specs/a/module.md",
-            "module.b": "specs/b/module.md",
-        }
-        self.write("specs/root/module.md", ROOT)
-        self.write("specs/a/module.md", MODULE_A)
-        self.write("specs/a/details.md", DETAILS_A)
-        self.write("specs/b/module.md", MODULE_B)
-        self.registry = {"schema_version": 3, "modules": []}
-        for module_id, entry in self.entries.items():
-            block = json.loads((self.root / (entry + ".json")).read_text())["module"]
-            self.registry["modules"].append(
-                {"id": module_id, "title": block["title"], "entry": entry}
-                | {name: block[name] for name in MIRRORED}
-            )
-        self.save_registry()
-
-    def write(self, path, content):
-        write_document(self.root, path, content)
-
-    def save_registry(self):
-        self.write(".concorde/specs.json", json.dumps(self.registry, indent=2))
-
-    def metadata(self, module_id):
-        return json.loads((self.root / (self.entries[module_id] + ".json")).read_text())
-
-    def save_metadata(self, module_id, value):
-        (self.root / (self.entries[module_id] + ".json")).write_text(
-            json.dumps(value, indent=2) + "\n"
-        )
-        record = next(m for m in self.registry["modules"] if m["id"] == module_id)
-        record.update({name: value["module"][name] for name in MIRRORED})
-        self.save_registry()
-
-    def update_module(self, module_id, **changes):
-        value = self.metadata(module_id)
-        value["module"].update(changes)
-        self.save_metadata(module_id, value)
-
-    def repository(self):
-        return SpecRepository(self.root, PACKAGE)
-
-    def relist(self, entries, module_id="module.a"):
-        """Rewrite realization entries: ``{realization id: (entries, pending)}``."""
-        value = self.metadata(module_id)
-        for record in value["defines"]:
-            if record["id"] in entries:
-                files, pending = entries[record["id"]]
-                record["entries"] = list(files)
-                record["pending"] = list(pending)
-        self.save_metadata(module_id, value)
-
-    def configure_checks(self, checks):
-        config = json.loads((self.root / ".concorde/config.json").read_text())
-        config["checks"] = checks
-        self.write(".concorde/config.json", json.dumps(config))
-
-    def declare_reference(self, module="module.a", entries=("reference/lib/",)):
-        """Declare vendored material as ``includes`` of kind ``external`` of ``module``."""
-        includes = [
-            item
-            for item in self.metadata(module)["module"]["includes"]
-            if item["kind"] != "external"
-        ] + [
-            {
-                "kind": "external",
-                "target": entry,
-                "reason": "the library's API reference",
-            }
-            for entry in entries
-        ]
-        self.update_module(module, includes=includes)
 
     @verifies("scenario.spec.validate-success", "scenario.spec.admit-inventory")
     def test_the_fixture_is_a_valid_project(self):
@@ -308,7 +94,10 @@ class ModuleImplementationTests(unittest.TestCase):
             repository.module("module.a", scenario="scenario.b.value")
         self.assertEqual("invalid_focus", raised.exception.code)
 
-    @verifies("scenario.spec.reject-unsupported-profile")
+    @verifies(
+        "scenario.spec.reject-unsupported-profile",
+        "scenario.spec.reject-configuration-profile",
+    )
     def test_only_profile_16_with_the_installed_protocol_binding_is_admitted(self):
         config = json.loads((self.root / ".concorde/config.json").read_text())
         for profile in (14, 15, 17):
@@ -317,9 +106,14 @@ class ModuleImplementationTests(unittest.TestCase):
                     ".concorde/config.json",
                     json.dumps({**config, "profile_version": profile}),
                 )
+                written = (self.root / ".concorde/config.json").read_bytes()
                 with self.assertRaises(SpecError) as raised:
                     self.repository()
                 self.assertEqual("unsupported_profile", raised.exception.code)
+                # The configuration is refused as written, never reinterpreted or rewritten.
+                self.assertEqual(
+                    written, (self.root / ".concorde/config.json").read_bytes()
+                )
         self.write(
             ".concorde/config.json",
             json.dumps(
@@ -471,7 +265,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertTrue(sets.writable("specs/a/details.md.json"))
         self.assertFalse(sets.writable("specs/b/module.md"))
 
-    @verifies("scenario.spec.directory-entry")
+    @verifies("scenario.spec.directory-entry", "scenario.spec.longest-entry")
     def test_the_longest_entry_owns_a_nested_file(self):
         self.write("source/nested/deep.py", "def deep():\n    return 1\n")
         self.relist(
@@ -487,6 +281,10 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual(
             "realization.a.shared",
             repository.realization_for_path(target, "source/nested/deep.py").id,
+        )
+        self.assertEqual(
+            "realization.a.shared",
+            repository.realization_for_path(target, "source/shared.py").id,
         )
         self.assertEqual(
             "realization.a.adapter",
@@ -505,7 +303,8 @@ class ModuleImplementationTests(unittest.TestCase):
         coding = resolve_context(repository, "module.a", phase="implementation")
         planned = resolve_context(repository, "module.a", phase="plan")
         self.write("source/added.py", "def added():\n    return 1\n")
-        recheck_context(repository, coding, check_implementation=False)
+        # The programmer's own files may change during its call.
+        recheck_context(repository, coding)
         with self.assertRaisesRegex(SpecError, "implementation file names changed"):
             recheck_context(repository, planned)
         report = validate_repository(self.root, package_root=PACKAGE)
@@ -556,7 +355,7 @@ class ModuleImplementationTests(unittest.TestCase):
             {"module.a": ("source/shared.py",)}, repository.shared_files("module.b")
         )
 
-    @verifies("scenario.spec.pending-entries")
+    @verifies("scenario.spec.pending-entries", "scenario.spec.pending-materialized")
     def test_a_pending_directory_validates_until_delivery_confirms_it(self):
         self.relist(
             {
@@ -671,7 +470,7 @@ class ModuleImplementationTests(unittest.TestCase):
             "success", validate_repository(self.root, package_root=PACKAGE).status
         )
 
-    @verifies("scenario.spec.pending-entries")
+    @verifies("scenario.spec.pending-entries", "scenario.spec.missing-entry")
     def test_missing_entries_that_are_not_pending_are_errors(self):
         self.relist(
             {
@@ -805,14 +604,17 @@ class ModuleImplementationTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertIn("CHK.contains.acyclic", rule_ids(report))
 
-    def test_file_only_change_invalidates_writers_not_planner_context(self):
+    def test_file_only_change_invalidates_readers_not_planner_context(self):
         repository = self.repository()
         planned = resolve_context(repository, "module.a", phase="plan")
+        reviewed = resolve_context(repository, "module.a", phase="code-review")
         coding = resolve_context(repository, "module.a", phase="implementation")
         self.write("source/shared.py", "def value():\n    return 43\n")
         recheck_context(repository, planned)
+        # The programmer's own file bytes are exempt; changing them is the purpose of its call.
+        recheck_context(repository, coding)
         with self.assertRaisesRegex(SpecError, "implementation input"):
-            recheck_context(repository, coding)
+            recheck_context(repository, reviewed)
 
     def test_shared_change_invalidates_each_implementation_revision(self):
         before = self.repository()
@@ -855,9 +657,10 @@ class ModuleImplementationTests(unittest.TestCase):
                 repository=repository,
                 target=repository.module("module.a"),
                 host=SimpleNamespace(
-                    coordinated=True, package_root=PACKAGE, invocation_id="test-impact"
+                    lifecycle={}, package_root=PACKAGE, invocation_id="test-impact"
                 ),
                 work_directory=None,
+                owns_change=lambda: False,
                 completed=[],
                 response=lambda outcome="completed", answer="", **kwargs: {
                     "outcome": outcome,
@@ -903,9 +706,10 @@ class ModuleImplementationTests(unittest.TestCase):
             repository=repository,
             target=repository.module("module.a"),
             host=SimpleNamespace(
-                coordinated=True, package_root=PACKAGE, invocation_id="mutating-check"
+                lifecycle={}, package_root=PACKAGE, invocation_id="mutating-check"
             ),
             work_directory=None,
+            owns_change=lambda: False,
             completed=[],
             response=lambda outcome="completed", answer="", **kwargs: {
                 "outcome": outcome,
@@ -942,115 +746,6 @@ class ModuleImplementationTests(unittest.TestCase):
             self.assertRaisesRegex(SpecError, "using Module"),
         ):
             validate_candidate(cast(Invocation, run))
-
-    @verifies("scenario.spec.shared-file")
-    def test_shared_code_review_preserves_separate_module_contexts_and_peer_findings(
-        self,
-    ):
-        from concorde.review.review import review_scope
-        from tests.concorde.spec.support import ModelProcessDouble
-        from tests.concorde.support.native_planning import OperationHost
-
-        self.write("source/shared.py", "def value():\n    return 43\n")
-        seen = []
-
-        def inspect(stage, snapshot, result, cwd):
-            if stage != "code-review":
-                return
-            seen.append(snapshot["target_id"])
-            text = json.dumps(snapshot)
-            self.assertNotIn("PRIVATE_SOURCE_MARKER", text)
-            if snapshot["target_id"] == "module.b":
-                self.assertIn("return 43", (cwd / "source/shared.py").read_text())
-                result.update(
-                    status="findings",
-                    issues=[
-                        {
-                            "id": "finding.b.value",
-                            "severity": "blocking",
-                            "target_id": "module.b",
-                            "document": "specs/b/module.md",
-                            "contract": "value() returns 42",
-                            "location": {"path": "source/shared.py", "line": 2},
-                            "problem": "The shared implementation returns 43.",
-                            "affected_task": snapshot["task"],
-                        }
-                    ],
-                )
-
-        double = ModelProcessDouble(inspect)
-        host = OperationHost(
-            self.root,
-            PACKAGE,
-            executor=double.executor,
-            allow_primary_worktree=True,
-            invocation_id="shared-consumer-review",
-        )
-        run = Invocation(
-            "concorde-code-review",
-            self.configuration,
-            {"target_id": "module.a", "task": "Review the shared value change"},
-            host,
-        )
-        result = review_scope(run, "code")["data"]
-        self.assertEqual(["module.a", "module.b"], seen)
-        self.assertEqual("conflicting", result["outcome"])
-
-    @verifies("scenario.spec.shared-file")
-    def test_code_review_peers_are_only_the_binding_modules_of_changed_files(self):
-        import subprocess
-
-        from concorde.harness.change_worktree import ensure_change
-        from concorde.review.review import code_review_peers, review_scope
-        from tests.concorde.spec.support import ModelProcessDouble
-        from tests.concorde.support.native_planning import OperationHost
-
-        for args in [
-            ("init", "-q"),
-            ("add", "--", "source", "specs"),
-            (
-                "-c",
-                "user.name=Test",
-                "-c",
-                "user.email=test@example.invalid",
-                "commit",
-                "-q",
-                "-m",
-                "base",
-            ),
-        ]:
-            subprocess.run(
-                ("git", *args), cwd=self.root, capture_output=True, check=True
-            )
-        task = {"target_id": "module.a", "task": "Adapt the private value"}
-        ensure_change(self.root, task=task, allow_primary=True)
-        seen = []
-        double = ModelProcessDouble(
-            lambda stage, snapshot, result, cwd: (
-                seen.append(snapshot["target_id"]) if stage == "code-review" else None
-            )
-        )
-
-        def scope():
-            host = OperationHost(
-                self.root,
-                PACKAGE,
-                executor=double.executor,
-                allow_primary_worktree=True,
-            )
-            run = Invocation("concorde-code-review", self.configuration, task, host)
-            return run, review_scope(run, "code")["data"]
-
-        self.write("source/a.py", "def adapt(value):\n    return value + 1\n")
-        run, result = scope()
-        self.assertEqual([], [target.id for target in code_review_peers(run)])
-        self.assertEqual(["module.a"], seen)
-        self.assertEqual("completed", result["outcome"])
-        self.write("source/shared.py", "def value():\n    return 43\n")
-        seen.clear()
-        run, result = scope()
-        self.assertEqual(["module.b"], [target.id for target in code_review_peers(run)])
-        self.assertEqual(["module.a", "module.b"], seen)
 
     @verifies("scenario.spec.external-reference")
     def test_external_material_is_read_material_not_context_or_implementation(self):
@@ -1139,116 +834,107 @@ class ModuleImplementationTests(unittest.TestCase):
                 finally:
                     fixture.doCleanups()
 
-    def test_code_writer_cannot_author_spec_documents(self):
-        from concorde.harness.admission import run_operation
-        from concorde.spec.typed_data import typed
-        from tests.concorde.spec.support import ModelProcessDouble, project
-        from tests.concorde.support.native_planning import OperationHost
+    def snapshot(self):
+        return {
+            str(path.relative_to(self.root)): path.read_bytes()
+            for path in sorted(self.root.rglob("*"))
+            if path.is_file()
+        }
 
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            project(root)
+    @verifies("scenario.spec.pending-confirm")
+    def test_confirming_pending_entries_rewrites_only_the_affected_metadata(self):
+        from concorde.spec import content_changes
 
-            def author(stage, snapshot, data, cwd):
-                if stage == "implementation":
-                    data["documents"] = [
-                        {"path": "specs/transfer/module.md", "content": "# Replaced\n"}
-                    ]
-
-            double = ModelProcessDouble(author)
-            host = OperationHost(
-                root, PACKAGE, executor=double.executor, allow_primary_worktree=True
-            )
-            task = {"target_id": "service.transfer", "task": "Implement transfer"}
-            for operation in ("concorde-plan", "concorde-tasks"):
-                admitted = run_operation(
-                    operation,
-                    self.configuration,
-                    typed(operation + "-request", task),
-                    host_context=host,
-                )
-                self.assertEqual("succeeded", admitted["status"], admitted)
-            result = run_operation(
-                "concorde-implement",
-                self.configuration,
-                typed("concorde-implement-request", task),
-                host_context=host,
-            )
-            self.assertEqual("blocked", result["status"], result)
-            self.assertEqual("permission_denied", result["errors"][0]["code"])
-            self.assertIn(
-                "# Transfers", (root / "specs/transfer/module.md").read_text()
-            )
-
-    @verifies("scenario.spec.directory-entry")
-    def test_a_code_writer_may_create_a_file_below_a_bound_directory(self):
-        from concorde.harness.admission import run_operation
-        from concorde.spec.typed_data import typed
-        from tests.concorde.spec.support import (
-            ModelProcessDouble,
-            project,
-            set_realization,
-            sync_registry,
-        )
-        from tests.concorde.support.native_planning import OperationHost
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            project(root)
-            # The transfer calculation binds the whole app/ directory, shared with the ledger Module.
-            set_realization(root, "realization.transfer.calculation", entries=["app/"])
-            sync_registry(root)
-            report = validate_repository(root, package_root=PACKAGE)
-            self.assertEqual("success", report.status, errors(report))
-            written = []
-
-            def implement(stage, snapshot, result, cwd):
-                if stage != "implementation":
-                    return
-                written.append(
-                    [item["path"] for item in snapshot["implementation_files"]]
-                )
-                (cwd / "app/helper.py").write_text(
-                    "HELPER_CREATED_BELOW_A_BOUND_DIRECTORY = True\n"
-                )
-
-            double = ModelProcessDouble(implement)
-            host = OperationHost(
-                root, PACKAGE, executor=double.executor, allow_primary_worktree=True
-            )
-            task = {
-                "target_id": "service.transfer",
-                "task": "Implement the pure transfer contract",
+        self.relist(
+            {
+                "realization.a.adapter": (
+                    ["source/a.py", "source/new.py", "source/later.py"],
+                    ["source/new.py", "source/later.py"],
+                ),
+                "realization.a.shared": (["source/shared.py"], ()),
             }
-            for operation in ("concorde-plan", "concorde-tasks"):
-                admitted = run_operation(
-                    operation,
-                    self.configuration,
-                    typed(operation + "-request", task),
-                    host_context=host,
+        )
+        self.relist(
+            {
+                "realization.b.shared": (
+                    ["source/shared.py", "source/b.py"],
+                    ["source/b.py"],
                 )
-                self.assertEqual("succeeded", admitted["status"], admitted)
-            result = run_operation(
-                "concorde-implement",
-                self.configuration,
-                typed("concorde-implement-request", task),
-                host_context=host,
+            },
+            module_id="module.b",
+        )
+        self.write("source/new.py", "def added():\n    return 1\n")
+        self.write("source/b.py", "def b():\n    return 2\n")
+        before = self.snapshot()
+        with patch.object(
+            content_changes, "apply_files", wraps=content_changes.apply_files
+        ) as transaction:
+            confirmed, missing = confirm_pending_files(self.root, PACKAGE)
+        self.assertEqual(1, transaction.call_count)
+        self.assertEqual(
+            ["specs/a/module.md.json", "specs/b/module.md.json"],
+            sorted(item["path"] for item in transaction.call_args.args[1]),
+        )
+        self.assertEqual(
+            [
+                {
+                    "module": "module.a",
+                    "realization": "realization.a.adapter",
+                    "path": "source/new.py",
+                },
+                {
+                    "module": "module.b",
+                    "realization": "realization.b.shared",
+                    "path": "source/b.py",
+                },
+            ],
+            confirmed,
+        )
+        self.assertEqual(["source/later.py"], missing)
+        after = self.snapshot()
+        self.assertEqual(
+            ["specs/a/module.md.json", "specs/b/module.md.json"],
+            sorted(path for path in after if after[path] != before.get(path)),
+        )
+        self.assertEqual(set(before), set(after))
+        pending = {
+            record["id"]: record["pending"]
+            for module in ("module.a", "module.b")
+            for record in self.metadata(module)["defines"]
+            if record["type"] == "realization"
+        }
+        self.assertEqual(["source/later.py"], pending["realization.a.adapter"])
+        self.assertEqual([], pending["realization.b.shared"])
+
+    @verifies("scenario.spec.external-reference-invalid")
+    def test_missing_untracked_or_overlapping_external_material_is_an_error(self):
+        import subprocess
+
+        self.write("reference/tracked/api.md", "api\n")
+        subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
+        subprocess.run(("git", "add", "-A"), cwd=self.root, check=True)
+        self.write("reference/untracked/api.md", "api\n")
+        self.declare_reference(
+            entries=(
+                "reference/tracked/",
+                "reference/missing/",
+                "reference/untracked/",
+                "source/shared.py",
             )
-            self.assertEqual("succeeded", result["status"], result)
-            self.assertEqual(
-                [["app/ledger.py", "app/transfer.py", "checks/transfer_check.py"]],
-                written,
-            )
-            repository = SpecRepository(root, PACKAGE)
-            target = repository.module("service.transfer")
-            self.assertIn("app/helper.py", repository.bound_files(target))
-            self.assertEqual(
-                "realization.transfer.calculation",
-                repository.realization_for_path(target, "app/helper.py").id,
-            )
-            self.assertEqual(
-                "success", validate_repository(root, package_root=PACKAGE).status
-            )
+        )
+        report = validate_repository(self.root, package_root=PACKAGE)
+        exists = [
+            f.message for f in report.findings if f.rule_id == "CHK.external.exists"
+        ]
+        overlap = [
+            f.message for f in report.findings if f.rule_id == "CHK.external.no-overlap"
+        ]
+        self.assertEqual(2, len(exists), exists)
+        self.assertTrue(any("reference/missing/" in m for m in exists), exists)
+        self.assertTrue(any("reference/untracked/" in m for m in exists), exists)
+        self.assertEqual(1, len(overlap), overlap)
+        self.assertIn("source/shared.py", overlap[0])
+        self.assertFalse(any("reference/tracked/" in m for m in exists + overlap))
 
 
 if __name__ == "__main__":

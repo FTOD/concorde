@@ -3,8 +3,8 @@ import type { Page } from "../../plugins/scoped-content/model";
 
 function kindLabel(page: Page): string {
   return page.readingCollection === "implementation"
-    ? "Implementation Spec"
-    : "Module Spec";
+    ? "Implementation document"
+    : "Module document";
 }
 
 export default function ContentProvenance({
@@ -29,10 +29,10 @@ export default function ContentProvenance({
       {details.length > 0 && (
         <nav aria-label="Module specification reading paths">
           {page.readingCollection === "implementation" && entry ? (
-            <Link to={entry.route}>Module Specs: {entry.title}</Link>
+            <Link to={entry.route}>Module documents: {entry.title}</Link>
           ) : (
             <details>
-              <summary>Implementation Specs ({details.length})</summary>
+              <summary>Implementation documents ({details.length})</summary>
               <ul>
                 {details.map((detail) => (
                   <li key={detail.documentId}>

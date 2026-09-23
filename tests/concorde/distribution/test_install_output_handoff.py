@@ -59,7 +59,6 @@ class HandoffPolicyTests(unittest.TestCase):
         ambient = {
             "CONCORDE_SESSION_SELECTION": "/elsewhere/selection.json",
             "CONCORDE_NATIVE_PROJECT_ROOT": "/elsewhere",
-            "CONCORDE_WORKER_POLICY": "/elsewhere/policy.json",
             "PI_SUBAGENT_EXTENSION_BINDINGS": json.dumps(
                 {"concorde/1": {"selection": "/elsewhere/selection.json"}}
             ),
@@ -92,7 +91,6 @@ class HandoffPolicyTests(unittest.TestCase):
             self.assertNotIn("PI_SUBAGENT_EXTENSION_BINDINGS", child)
             with scrubbed_process_environment(EXTRA="1"):
                 self.assertNotIn("CONCORDE_SESSION_SELECTION", os.environ)
-                self.assertNotIn("CONCORDE_WORKER_POLICY", os.environ)
                 self.assertEqual("1", os.environ["EXTRA"])
                 self.assertEqual("kept", os.environ["PATH"])
             self.assertEqual(
@@ -149,6 +147,7 @@ class HandoffPolicyTests(unittest.TestCase):
             self.assertEqual(0, installed.returncode, installed.stderr)
             self.assertTrue((project / "node_modules/typebox/package.json").is_file())
 
+    @verifies("scenario.session.installed-output-refused")
     def test_outside_scratch_and_missing_governing_selection_refuse(self):
         with tempfile.TemporaryDirectory() as temporary:
             scratch = Path(temporary)
@@ -163,16 +162,99 @@ class HandoffPolicyTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         install_selected_fixture(target, Path("/not-selected"))
 
+    @verifies("scenario.session.installed-output-refused")
+    def test_a_refused_handoff_issues_no_provenance_record(self):
+        from types import SimpleNamespace
+
+        from tests.concorde.support import install_output_handoff as handoff
+
+        with tempfile.TemporaryDirectory() as temporary:
+            scratch = Path(temporary).resolve()
+            selection = scratch / "selection.json"
+            record = scratch / "installed-output-provenance.json"
+            occupied = scratch / "occupied"
+            occupied.mkdir()
+            (occupied / "keep").write_text("user file")
+            base = {"CONCORDE_CHECK_TMPDIR": str(scratch)}
+            cases = {
+                "outside scratch": (Path(temporary).parent / "consumer", selection),
+                "scratch itself": (scratch, selection),
+                "not empty": (occupied, selection),
+                "missing selection": (scratch / "consumer", selection),
+                "different selection": (scratch / "consumer", scratch / "other.json"),
+            }
+            for case, (target, requested) in cases.items():
+                environment = dict(base)
+                if case != "missing selection":
+                    environment["CONCORDE_SESSION_SELECTION"] = str(selection)
+                with (
+                    self.subTest(case=case),
+                    patch.dict(os.environ, environment),
+                    self.assertRaises(ValueError),
+                ):
+                    if case == "missing selection":
+                        os.environ.pop("CONCORDE_SESSION_SELECTION", None)
+                    install_selected_fixture(target, requested)
+                self.assertFalse(record.exists(), case)
+                self.assertFalse((scratch / "consumer").exists(), case)
+            self.assertEqual("user file", (occupied / "keep").read_text())
+            # A source that changes while the installer runs: the admitted package and the
+            # selection are re-read afterwards, and a difference refuses the provenance record.
+            target = scratch / "consumer"
+            framework = target / ".concorde/framework"
+            installed = {
+                "package": "admitted-identity",
+                "framework": str(framework),
+                "entry": str(target / ".pi/extensions/concorde-session.ts"),
+                "runtime": str(framework / "scripts/run-operation.py"),
+                "python": str(target / ".concorde/.venv/bin/python"),
+                "prefix": str(target / ".concorde/.venv"),
+                "receipt_digest": "sha256:receipt",
+                "runtime_digest": "sha256:runtime",
+            }
+            runs = iter(
+                [
+                    SimpleNamespace(returncode=0, stdout="", stderr=""),
+                    SimpleNamespace(
+                        returncode=0, stdout=json.dumps(installed), stderr=""
+                    ),
+                ]
+            )
+            selections = iter(
+                [
+                    {"mode": "test", "build_digest": "a"},
+                    {"mode": "test", "build_digest": "b"},
+                ]
+            )
+            with (
+                patch.dict(
+                    os.environ,
+                    {**base, "CONCORDE_SESSION_SELECTION": str(selection)},
+                ),
+                patch(
+                    "concorde.distribution.session_selection.load_selection",
+                    side_effect=lambda root, path: next(selections),
+                ),
+                patch(
+                    "concorde.distribution.local_installation.admit_package",
+                    return_value=SimpleNamespace(identity="admitted-identity"),
+                ),
+                patch.object(
+                    handoff.subprocess, "run", side_effect=lambda *a, **k: next(runs)
+                ),
+                self.assertRaisesRegex(
+                    ValueError, "source changed during installation"
+                ),
+            ):
+                install_selected_fixture(target, selection)
+            self.assertFalse(record.exists())
+
     @unittest.skipUnless(
         os.environ.get("CONCORDE_NATIVE_SUBAGENTS")
         and os.environ.get("CONCORDE_NATIVE_PI"),
         "explicit native roots required",
     )
-    @verifies(
-        "scenario.harness.native-context-public",
-        "scenario.harness.check-read-only",
-        "scenario.distribution.install-local-worktree",
-    )
+    @verifies("scenario.session.installed-output-handoff")
     def test_readonly_tester_installs_selected_output_and_runs_native_smoke(self):
         with tempfile.TemporaryDirectory(
             prefix="concorde-install-handoff-input-"

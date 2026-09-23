@@ -1,28 +1,18 @@
 """Decide whether one Module's Spec context suffices for a task before planning."""
 
-from concorde.harness.effects import EffectDeclaration
-from concorde.harness.worker_profile import Contract, WorkerProfile
+from concorde.harness.worker_profile import AgentDefinition
 
-from .. import external_name
-
-PROFILE = WorkerProfile(
+DEFINITION = AgentDefinition(
     name="context_assessor",
-    spec="agents/context_assessor/spec.md",
+    instructions="agents/context_assessor/spec.md",
     workspace="capsule",
-    contract=Contract(
-        phase="context-solve",
-        context="concorde-agent-stage-context",
-        result="concorde-agent-stage-result",
-        effects=EffectDeclaration(("spec-context",), (), False, "none"),
-        outcomes=("sufficient", "spec_incomplete", "unsupported", "conflicting"),
-    ),
+    phase="context-solve",
+    context="concorde-agent-stage-context",
+    result="concorde-agent-stage-result",
+    reads=("spec-context",),
+    writes=(),
+    outcomes=("sufficient", "spec_incomplete", "unsupported", "conflicting"),
     tools=("read", "grep", "find", "ls"),
     timeout_seconds=1800,
+    hook="concorde.planning.hooks:context_assessor",
 )
-
-PUBLIC = False
-CONTEXT_SELECTION = "bound"
-DETERMINISTIC = False
-USES = ()
-EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
-KIND = "agent"

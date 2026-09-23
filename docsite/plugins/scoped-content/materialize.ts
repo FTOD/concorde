@@ -88,8 +88,8 @@ export async function materializeScoped(registry: ScopedRegistry) {
         sidebar_label: title,
         displayed_sidebar:
           page.readingCollection === "implementation"
-            ? "implementationSpecsSidebar"
-            : "moduleSpecsSidebar",
+            ? "implementationDocumentsSidebar"
+            : "moduleDocumentsSidebar",
         toc_max_heading_level: 3,
       }),
     );
@@ -98,12 +98,12 @@ export async function materializeScoped(registry: ScopedRegistry) {
     resolve(generated, "specs-sidebar.json"),
     JSON.stringify(
       {
-        moduleSpecsSidebar: scopedSidebar(registry),
+        moduleDocumentsSidebar: scopedSidebar(registry),
         ...(registry.pages.some(
           (page) => page.readingCollection === "implementation",
         )
           ? {
-              implementationSpecsSidebar: scopedSidebar(
+              implementationDocumentsSidebar: scopedSidebar(
                 registry,
                 "implementation",
               ),

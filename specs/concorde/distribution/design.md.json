@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.distribution.design",
+    "owner": "module.distribution",
+    "role": "module"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

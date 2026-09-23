@@ -1,38 +1,29 @@
-"""Operation: apply the project's Pi worker model selection and, on explicit
-request, accept the Protocol the installer placed under .concorde/protocol/ by rebinding to it.
-Deterministic; runs no agent cognition and selects no context."""
+"""Operation: propose a change of the stored operation configuration, or apply the reviewed proposal
+whose digest the request names; a proposal made with accept_protocol also rebinds the project to the
+Protocol copy the installer placed under .concorde/protocol/. Deterministic; runs no Agent and
+selects no context."""
 
-from concorde.harness.operation_state import StateContract, run_host
-from concorde.spec import contract_shapes as shapes
+from concorde.harness import configure
 
-from . import external_name
 
 KIND = "host"
 PUBLIC = True
-CONTEXT_SELECTION = "none"
 DETERMINISTIC = True
-PROFILE = None
+OWNER = "module.harness.admission"
+AGENTS = ()
 USES = ()
-EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
-_CONFIGURATION = shapes.typed_schema("concorde-operation-configuration")
-
-# ``accept_protocol`` is the only way an updated installed Protocol becomes the project's binding:
-# install and update never rewrite the binding silently. ``run_in_primary`` is the explicit opt-in
-# to apply in the primary worktree instead of a relayed candidate.
-REQUEST = shapes.obj(
-    {
-        "configuration": _CONFIGURATION,
-        "accept_protocol": {"type": "boolean"},
-        "run_in_primary": {"type": "boolean"},
-    },
-    ("accept_protocol", "run_in_primary"),
-)
-RESPONSE = shapes.obj({"configuration": _CONFIGURATION, "status": {"const": "applied"}})
+# Request admission owns the concorde-configure request and response; the declaration names the
+# same schemas.
+REQUEST = configure.REQUEST
+RESPONSE = configure.RESPONSE
+REQUEST_VERSION = configure.REQUEST_VERSION
+RESPONSE_VERSION = configure.RESPONSE_VERSION
 
 
-STATE = StateContract(f"{EXTERNAL_NAME}-request", None)
-
-
-def run(state, runtime):
-    return run_host(EXTERNAL_NAME, state, runtime)
+MUTATION = {"policy": "by-action", "actions": ["apply"]}
+WORKSPACE = "primary-opt-in"
+TARGET = {"selection": "none", "hook": None}
+DEFAULT_TASK = "Configure the project's operation settings"
+CONFIGURATION = "stored"
+ENTRY_POINT = "concorde.harness.configure:run"

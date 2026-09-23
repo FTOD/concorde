@@ -16,15 +16,15 @@ from concorde.harness.execution_error import (
     safe_text,
     workflow_feedback,
 )
-from concorde.harness.native_context import _remember_failure, _slot_failure
+from concorde.harness.native_driver import _remember_failure, _slot_failure
 from concorde.harness.operation_node import OperationNode
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
-from tests.concorde.harness.test_operation_node import _stage_context
+from tests.concorde.support.stage_context import stage_context as _stage_context
 
 
 class ExecutionFeedbackTests(unittest.TestCase):
-    @verifies("scenario.harness.execution-feedback")
+    @verifies("scenario.admission.feedback-causes")
     def test_pi_proposal_command_and_display_boundaries(self):
         root = Path(__file__).resolve().parents[3]
         result = subprocess.run(
@@ -45,7 +45,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
         and os.environ.get("CONCORDE_NATIVE_PI"),
         "explicit SDK/native roots required",
     )
-    @verifies("scenario.harness.execution-feedback")
+    @verifies("scenario.admission.feedback-causes")
     def test_actual_sdk_observation_failure_reaches_native_error_reporting(self):
         from concorde.harness.native_runtime import admit_native_runtime
         from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
@@ -85,7 +85,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
             self.assertEqual(len(provider.requests), 3)
             print(result.stdout)
 
-    @verifies("scenario.harness.execution-feedback")
+    @verifies("scenario.admission.feedback-causes")
     def test_entry_preserves_exception_chain_for_every_public_kind(self):
         for operation in (
             "concorde-context-solve",
@@ -117,9 +117,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
                 self.assertEqual(feedback["causes"][0]["code"], 5)
                 self.assertIn("disk read failed", feedback["causes"][0]["message"])
 
-    @verifies(
-        "scenario.harness.execution-feedback", "scenario.harness.optional-operation"
-    )
+    @verifies("scenario.admission.feedback-causes")
     def test_optional_graph_sync_async_refusal_preserves_cause(self):
         context = _stage_context()
         cause = SpecError("exact plan identity refused", "stale_context")
@@ -149,9 +147,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
             self.assertEqual(detail["causes"][0]["code"], "stale_context")
             self.assertEqual(detail["causes"][0]["message"], str(cause))
 
-    @verifies(
-        "scenario.harness.execution-feedback", "scenario.harness.optional-operation"
-    )
+    @verifies("scenario.admission.feedback-causes")
     def test_optional_graph_cancellation_is_not_an_ordinary_failure(self):
         async def cancel(_):
             raise asyncio.CancelledError("caller cancelled native service")
@@ -167,7 +163,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
             "cancelled",
         )
 
-    @verifies("scenario.harness.execution-feedback")
+    @verifies("scenario.admission.feedback-causes")
     def test_first_slot_failure_survives_invalidation_and_large_diagnostic(self):
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
@@ -186,7 +182,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
             )
             self.assertEqual((directory / "failure.json").stat().st_mode & 0o777, 0o600)
 
-    @verifies("scenario.harness.execution-feedback")
+    @verifies("scenario.admission.feedback-causes")
     def test_native_categories_unknowns_and_workflow_error_emissions(self):
         for row, category in (
             ({"timedOut": True}, "timeout"),
@@ -213,7 +209,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
             self.assertIn(detail, result["causes"])
             self.assertEqual(result["attempt"], "run")
 
-    @verifies("scenario.harness.execution-feedback")
+    @verifies("scenario.admission.feedback-causes")
     def test_refused_workflow_service_keeps_original_errors(self):
         for layer in ("planning", "review", "issues"):
             error = response_failure(
@@ -240,7 +236,7 @@ class ExecutionFeedbackTests(unittest.TestCase):
             )
             self.assertEqual(error.feedback["causes"][0]["attempt"], "lower-attempt")
 
-    @verifies("scenario.harness.execution-feedback")
+    @verifies("scenario.admission.feedback-causes")
     def test_credential_labels_are_redacted_without_clipping_causes(self):
         text = safe_text(
             'Authorization: Bearer super-secret api_key="hidden" password=private ordinary error'
@@ -248,3 +244,76 @@ class ExecutionFeedbackTests(unittest.TestCase):
         for secret in ("super-secret", "hidden", "private"):
             self.assertNotIn(secret, text)
         self.assertIn("ordinary error", text)
+
+
+DISPLAY_PROBE = """
+import { errorDisplay } from "./pi/error-display.mjs";
+import { failure } from "./pi/execution-error.mjs";
+const record = failure("large cause password=private", {
+  code: "relay_failed",
+  layer: "relay",
+  category: "transport",
+  attempt: "attempt-1",
+  diagnostics: "x".repeat(30000) + " api_key=hidden",
+});
+console.log(errorDisplay(record));
+"""
+
+
+class FeedbackDisplayTests(unittest.TestCase):
+    """Pi's bounded display of causal feedback records larger than its limit."""
+
+    def display(self, temporary):
+        root = Path(__file__).resolve().parents[3]
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", DISPLAY_PROBE],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env={**os.environ, "TMPDIR": str(temporary)},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    @verifies("scenario.admission.feedback-export")
+    def test_a_large_record_is_exported_to_a_private_file(self):
+        import hashlib
+
+        with tempfile.TemporaryDirectory() as raw:
+            display = self.display(Path(raw))
+            diagnostics = display["diagnostics"]
+            self.assertFalse(diagnostics["complete"])
+            self.assertEqual(
+                ("relay_failed", "relay", "transport", "attempt-1"),
+                (
+                    display["code"],
+                    display["layer"],
+                    display["category"],
+                    display["attempt"],
+                ),
+            )
+            path = Path(diagnostics["reference"])
+            # A new private directory under the temporary root holds the whole record.
+            self.assertEqual(Path(raw).resolve(), path.parent.parent.resolve())
+            self.assertEqual(0o600, path.stat().st_mode & 0o777)
+            saved = path.read_bytes()
+            self.assertEqual(len(saved), diagnostics["bytes"])
+            self.assertEqual(hashlib.sha256(saved).hexdigest(), diagnostics["sha256"])
+            record = json.loads(saved)
+            self.assertEqual("relay_failed", record["code"])
+            self.assertIn("x" * 30000, record["diagnostics"]["text"])
+            for secret in ("private", "hidden"):
+                self.assertNotIn(secret, saved.decode())
+                self.assertNotIn(secret, json.dumps(display))
+
+    @verifies("scenario.admission.feedback-export")
+    def test_a_failed_export_is_reported_as_incomplete(self):
+        with tempfile.TemporaryDirectory() as raw:
+            display = self.display(Path(raw) / "missing")
+        diagnostics = display["diagnostics"]
+        self.assertFalse(diagnostics["complete"])
+        self.assertIsNone(diagnostics["reference"])
+        self.assertTrue(diagnostics["export_error"])
+        self.assertGreater(diagnostics["bytes"], 30000)
+        self.assertEqual("relay_failed", display["code"])

@@ -4,18 +4,24 @@ These tests deliberately fail (rather than skip or substitute mocks) when Linux 
 enforcement is unavailable. Run them on an enforcement-capable Linux host.
 """
 
+import _thread
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import uuid
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.check_executor import CheckSandboxError, execute_check
+from concorde.harness.check_executor import (
+    CheckCancelled,
+    CheckSandboxError,
+    execute_check,
+)
 from concorde.spec.verification import verifies
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import RUNTIME_ROOT
@@ -40,7 +46,7 @@ class CheckExecutorTests(unittest.TestCase):
             environment=child_environment(),
         )
 
-    @verifies("scenario.harness.check-read-only")
+    @verifies("scenario.checks.read-only")
     def test_real_mutations_fail_at_the_system_call(self):
         operations = {
             "create": "(root/'new.txt').write_text('new')",
@@ -74,7 +80,7 @@ class CheckExecutorTests(unittest.TestCase):
                 )
                 self.assertEqual([], list((self.root / ".concorde/runs").iterdir()))
 
-    @verifies("scenario.harness.check-read-only")
+    @verifies("scenario.checks.read-only")
     def test_children_aliases_and_host_descriptors_do_not_restore_write_access(self):
         alias = self.parent / "alias"
         os.link(self.file, alias)
@@ -124,7 +130,7 @@ print('child denied')
         self.assertEqual("original", self.file.read_text())
         print("Process-isolation evidence:", result.stdout.decode().strip())
 
-    @verifies("scenario.harness.check-read-only")
+    @verifies("scenario.checks.read-only")
     def test_further_user_namespace_cannot_remount_project_writable(self):
         result = self.run_check("""
 import subprocess
@@ -138,7 +144,7 @@ assert Path('unlisted.txt').read_text() == 'original'
 """)
         self.assertEqual(0, result.returncode, result)
 
-    @verifies("scenario.harness.check-scratch")
+    @verifies("scenario.checks.scratch")
     def test_reads_and_private_temporary_writes_succeed_and_are_cleaned(self):
         scratch_paths = []
         for _ in range(2):
@@ -159,14 +165,14 @@ print(json.dumps(str(scratch)))
             scratch_paths.append(scratch)
         self.assertNotEqual(*scratch_paths)
 
-    @verifies("scenario.harness.check-scratch")
+    @verifies("scenario.checks.scratch")
     def test_project_tmpdir_cannot_become_a_writable_project_mount(self):
         with patch("tempfile.gettempdir", return_value=str(self.root)):
             result = self.run_check("import tempfile; print(tempfile.mkstemp()[1])")
         self.assertEqual(0, result.returncode, result)
         self.assertFalse(Path(result.stdout.decode().strip()).is_relative_to(self.root))
 
-    @verifies("scenario.harness.check-result")
+    @verifies("scenario.checks.command-output")
     def test_exit_code_and_separate_streams_are_preserved(self):
         result = self.run_check(
             "import sys; print('out'); print('err',file=sys.stderr); sys.exit(17)"
@@ -184,7 +190,7 @@ print(json.dumps(str(scratch)))
             (result.returncode, len(result.stdout), len(result.stderr)),
         )
 
-    @verifies("scenario.harness.check-unavailable")
+    @verifies("scenario.checks.unavailable")
     def test_missing_backend_and_unsupported_os_never_launch_the_command(self):
         for platform in ("darwin", "win32"):
             with self.subTest(platform=platform), patch("sys.platform", platform):
@@ -198,7 +204,7 @@ print(json.dumps(str(scratch)))
                 self.run_check("open('new.txt','w').write('unsafe')")
         self.assertFalse((self.root / "new.txt").exists())
 
-    @verifies("scenario.harness.check-result")
+    @verifies("scenario.checks.command-output")
     def test_environment_reaches_real_check_without_entering_monitor_command_line(self):
         token = "private-environment-" + uuid.uuid4().hex
         process = subprocess.Popen
@@ -222,7 +228,7 @@ print(json.dumps(str(scratch)))
         self.assertEqual((0, token + "\n"), (result.returncode, result.stdout.decode()))
         self.assertNotIn(token, json.dumps(launches))
 
-    @verifies("scenario.harness.check-unavailable")
+    @verifies("scenario.checks.unavailable")
     def test_real_bubblewrap_setup_failure_never_runs_command(self):
         # A vanished project after admission causes a genuine bwrap --chdir setup failure.
         from concorde.harness.check_executor import BubblewrapBackend
@@ -239,7 +245,7 @@ print(json.dumps(str(scratch)))
         self.assertTrue(caught.exception.stderr)
         self.assertEqual("original", self.file.read_text())
 
-    @verifies("scenario.harness.check-unavailable")
+    @verifies("scenario.checks.unavailable")
     def test_real_namespace_denial_and_missing_executable_fail_closed(self):
         code = """
 import os,sys,ctypes,ctypes.util,errno
@@ -289,7 +295,7 @@ else:
                 self.run_check("open('unlisted.txt','w').write('unsafe')")
         self.assertEqual("original", self.file.read_text())
 
-    @verifies("scenario.harness.check-lifetime")
+    @verifies("scenario.checks.descendants-end")
     def test_timeout_and_normal_exit_kill_detached_descendants(self):
         for timeout in (True, False):
             token = "concorde-descendant-" + uuid.uuid4().hex
@@ -321,6 +327,85 @@ time.sleep(60)
                 except (FileNotFoundError, PermissionError, ProcessLookupError):
                     continue
                 self.assertNotIn(token.encode(), command, str(path))
+
+
+def running(token: str) -> bool:
+    """Whether any host-visible process carries ``token`` in its command line."""
+    for path in Path("/proc").glob("[0-9]*/cmdline"):
+        try:
+            if token.encode() in path.read_bytes():
+                return True
+        except (FileNotFoundError, PermissionError, ProcessLookupError):
+            continue
+    return False
+
+
+class CheckCancellationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name) / "project"
+        self.root.mkdir()
+
+    def cancel_running(self, cancel):
+        """Run a command with a detached descendant and cancel it once both are running."""
+        token = "concorde-cancel-" + uuid.uuid4().hex
+        child = (
+            "import os,time\nos.setsid()\nif os.fork(): os._exit(0)\ntime.sleep(60)\n"
+        )
+        code = (
+            "import subprocess,sys,time\n"
+            "sys.stdout.write('o'*300000); sys.stdout.flush()\n"
+            "sys.stderr.write('e'*70000); sys.stderr.flush()\n"
+            f"subprocess.Popen([sys.executable,'-c',{child!r},{token!r}]).wait()\n"
+            "time.sleep(60)\n"
+        )
+        seen = []
+
+        def evidence(scratch, result, failure):
+            seen.append((scratch, scratch.is_dir(), result, failure))
+
+        def trigger():
+            deadline = time.monotonic() + 20
+            while not running(token) and time.monotonic() < deadline:
+                time.sleep(0.02)
+            cancel()
+
+        helper = threading.Thread(target=trigger, daemon=True)
+        started = time.monotonic()
+        helper.start()
+        with self.assertRaises(CheckCancelled) as caught:
+            execute_check(
+                self.root,
+                [sys.executable, "-c", code],
+                timeout=30,
+                environment=child_environment(),
+                evidence=evidence,
+                cancel_event=self.event,
+            )
+        helper.join(5)
+        self.assertLess(time.monotonic() - started, 20)
+        error = caught.exception
+        self.assertEqual(b"o" * 300000, error.stdout)
+        self.assertEqual(b"e" * 70000, error.stderr)
+        self.assertEqual((300000, 70000), (error.stdout_bytes, error.stderr_bytes))
+        self.assertFalse(running(token))  # the whole process tree has ended
+        [(scratch, existed, result, failure)] = seen
+        self.assertTrue(existed)  # evidence ran before the scratch was removed
+        self.assertIsNone(result)
+        self.assertIs(error, failure)
+        self.assertFalse(scratch.exists())
+
+    @verifies("scenario.checks.cancelled")
+    def test_cancel_event_ends_the_tree_and_keeps_drained_output(self):
+        self.event = threading.Event()
+        self.cancel_running(self.event.set)
+
+    @verifies("scenario.checks.cancelled")
+    def test_host_interrupt_ends_the_tree_and_keeps_drained_output(self):
+        self.assertIs(threading.current_thread(), threading.main_thread())
+        self.event = None
+        self.cancel_running(_thread.interrupt_main)
 
 
 if __name__ == "__main__":

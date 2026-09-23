@@ -8,12 +8,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.native_context import execute
+from concorde.harness.native_driver import execute
 from concorde.harness.native_runtime import FORMAT, NativeRuntimeBinding
+from concorde.operations.dispatch import services
 from concorde.spec.repository import digest
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import PACKAGE, project
+from tests.concorde.support.spec_project import PACKAGE, project
 
 
 class NativeContextTests(unittest.TestCase):
@@ -37,7 +38,7 @@ class NativeContextTests(unittest.TestCase):
             ),
         }
         self.patch = patch(
-            "concorde.harness.native_context.admit_native_runtime",
+            "concorde.harness.native_driver.admit_native_runtime",
             return_value=NativeRuntimeBinding(
                 FORMAT, str(self.root), "sha256:" + "0" * 64
             ),
@@ -64,11 +65,17 @@ class NativeContextTests(unittest.TestCase):
                 "native_root": str(self.root),
                 "session_id": "unit",
             },
+            services=services(),
         )
 
     def command(self, prepared, action, payload):
         return execute(
-            PACKAGE, action, payload, prepared["descriptor"], prepared["digest"]
+            PACKAGE,
+            action,
+            payload,
+            prepared["descriptor"],
+            prepared["digest"],
+            services=services(),
         )
 
     def proposal(self, prepared):
@@ -89,7 +96,7 @@ class NativeContextTests(unittest.TestCase):
             ),
         }
 
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-prepared")
     def test_prepared_not_accepted_and_no_model_service(self):
         prepared = self.prepare()
         self.assertEqual(prepared["state"], "prepared", prepared)
@@ -111,7 +118,7 @@ class NativeContextTests(unittest.TestCase):
             (Path(prepared["descriptor"]).parent / "terminal.json").exists()
         )
 
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-rejected")
     def test_duplicate_or_foreign_submission_invalidates(self):
         for foreign in (False, True):
             with self.subTest(foreign=foreign):
@@ -130,7 +137,7 @@ class NativeContextTests(unittest.TestCase):
                     self.command(prepared, "stage", {})["state"], "rejected"
                 )
 
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.native-assessment-stale")
     def test_configuration_registry_and_spec_changes_reject_currentness(self):
         for relative in (
             ".concorde/config.json",
@@ -160,7 +167,7 @@ class NativeContextTests(unittest.TestCase):
                 finally:
                     file.write_bytes(original)
 
-    @verifies("scenario.harness.native-context-public")
+    @verifies("scenario.planning.assessment-preview")
     def test_policy_description_has_no_capsule_or_child(self):
         self.envelope["mode"] = "describe-policy"
         value = self.prepare()

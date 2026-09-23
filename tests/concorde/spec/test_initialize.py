@@ -6,13 +6,15 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from concorde.distribution.project_defaults import install_project_defaults
+from concorde.spec import initialize
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import CONFIGURATION, PACKAGE
+from tests.concorde.support.spec_project import CONFIGURATION, PACKAGE
 
 
 class InitialModuleTests(unittest.TestCase):
@@ -20,7 +22,6 @@ class InitialModuleTests(unittest.TestCase):
         "scenario.spec.propose-initialization",
         "scenario.spec.apply-initialization",
         "scenario.spec.rollback-on-failure",
-        "scenario.concorde.adopt-initialize",
     )
     def test_initialization_is_honest_and_rolls_back_a_bad_reading_entry(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -136,6 +137,20 @@ class InitialModuleTests(unittest.TestCase):
                 [f.message for f in report.findings if f.severity == "error"],
             )
 
+    @verifies("scenario.spec.reject-not-installed")
+    def test_a_project_without_the_protocol_copy_is_not_initialized(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "README.md").write_text("# Existing project\n")
+            before = sorted(str(p.relative_to(root)) for p in root.rglob("*"))
+            with self.assertRaises(SpecError) as raised:
+                project_proposal(root, PACKAGE, "New project", CONFIGURATION)
+            self.assertEqual("not_installed", raised.exception.code)
+            self.assertEqual(
+                before, sorted(str(p.relative_to(root)) for p in root.rglob("*"))
+            )
+            self.assertEqual("# Existing project\n", (root / "README.md").read_text())
+
     @verifies("scenario.spec.reject-already-initialized")
     def test_an_already_configured_project_refuses_a_second_initialization(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -162,7 +177,11 @@ class InitialModuleTests(unittest.TestCase):
                 before, {path: (root / path).read_bytes() for path in paths}
             )
 
-    @verifies("scenario.spec.reject-stale-or-invalid-proposal")
+    @verifies(
+        "scenario.spec.reject-invalid-proposal",
+        "scenario.spec.reject-stale-proposal",
+        "scenario.spec.reject-proposal-outside-files",
+    )
     def test_apply_rejects_an_invalid_out_of_bound_or_stale_proposal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -264,6 +283,64 @@ class InitialModuleTests(unittest.TestCase):
             self.assertEqual(
                 "# Concurrent draft\n", (root / "specs/project/module.md").read_text()
             )
+
+
+class ProposalBindingTests(unittest.TestCase):
+    """Apply accepts only the exact proposal propose returned, named by its digest."""
+
+    def init(self, root, data):
+        request = SimpleNamespace(
+            host=SimpleNamespace(
+                mode="execute", project_root=root, package_root=PACKAGE
+            ),
+            data=data,
+        )
+        return initialize.run(request)["data"]
+
+    @verifies(
+        "scenario.spec.reject-invalid-proposal",
+        "scenario.spec.reject-stale-proposal",
+        "scenario.spec.apply-initialization",
+    )
+    def test_apply_is_bound_to_the_proposal_digest_and_the_project_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            install_project_defaults(root, PACKAGE)
+            (root / "app.py").write_text("print('app')\n")
+            proposed = self.init(
+                root,
+                {"action": "propose", "name": "App", "configuration": CONFIGURATION},
+            )
+            proposal, named = proposed["proposal"], proposed["proposal_digest"]
+            self.assertEqual(digest(proposal), named)
+
+            def refused(data, code):
+                with self.assertRaises(SpecError) as raised:
+                    self.init(root, {"action": "apply", **data})
+                self.assertEqual(code, raised.exception.code)
+                self.assertFalse((root / ".concorde/config.json").exists())
+                self.assertFalse((root / "specs/project").exists())
+
+            # A digest that names another proposal, or a proposal changed after propose.
+            refused(
+                {"proposal": proposal, "proposal_digest": digest(b"other")},
+                "invalid_proposal",
+            )
+            forged = copy.deepcopy(proposal)
+            forged["data"]["files"][2]["content"] += "\nAn extra promise.\n"
+            refused({"proposal": forged, "proposal_digest": named}, "invalid_proposal")
+            refused({"proposal": proposal}, "invalid_input")
+            # A new project file changes what propose would return: the proposal is stale.
+            (root / "tool.py").write_text("print('tool')\n")
+            refused({"proposal": proposal, "proposal_digest": named}, "stale_proposal")
+            (root / "tool.py").unlink()
+            applied = self.init(
+                root,
+                {"action": "apply", "proposal": proposal, "proposal_digest": named},
+            )
+            self.assertEqual("applied", applied["status"])
+            self.assertIsNone(applied["proposal_digest"])
 
 
 if __name__ == "__main__":

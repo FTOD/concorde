@@ -21,7 +21,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
     "explicit reviewed native runtime roots required",
 )
 class NativePublicationTests(unittest.TestCase):
-    @verifies("scenario.harness.native-terminal-evidence")
+    @verifies("scenario.execution.workflow-coverage")
     def test_real_native_publication_and_failure_boundaries(self):
         for scenario in (
             "success",

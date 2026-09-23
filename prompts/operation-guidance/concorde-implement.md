@@ -1,7 +1,6 @@
 ---
 name: concorde-implement
 description: "Agent entry: call the programmer to implement current accepted tasks inside the selected Module grant."
-operation: implement
 ---
 
 # concorde-implement

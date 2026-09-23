@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.issue-solving.design",
+    "owner": "module.issue-solving",
+    "role": "module"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

@@ -193,38 +193,47 @@ def _typescript_declarations(path: str, text: str) -> list[Verification]:
     return result
 
 
-def scan_declarations(root: Path, paths) -> tuple[Verification, ...]:
+def _file_declarations(root: Path, relative: str) -> list[Verification]:
+    typescript = relative.endswith(TYPESCRIPT_SUFFIXES)
+    target = checked_path(root, relative)
+    if target.is_symlink() or not target.is_file():
+        return []
+    if typescript:
+        return _typescript_declarations(
+            relative, target.read_text(encoding="utf-8", errors="replace")
+        )
+    try:
+        tree = ast.parse(target.read_bytes(), filename=relative)
+    except (SyntaxError, ValueError) as error:
+        raise DeclarationError(
+            relative,
+            getattr(error, "lineno", None),
+            f"cannot parse Python source: {error.msg if hasattr(error, 'msg') else error}",
+        ) from error
+    return _declarations(relative, tree)
+
+
+def scan_declarations(
+    root: Path, paths, errors: list[DeclarationError] | None = None
+) -> tuple[Verification, ...]:
     """Every ``verifies`` declaration in the given project-relative test files, in path order.
 
     Files are read, never imported, compiled or executed. Python declarations are read from
     module-level functions and from the methods of classes at any nesting of classes; a function
     nested inside another function is a helper and is not scanned. TypeScript declarations are
     read from own-line ``// verifies:`` comments above a test call. A file in another language is
-    skipped; a Python file that cannot be parsed raises DeclarationError, because its declarations
-    cannot be known.
+    skipped. A Python file that cannot be parsed, or a malformed declaration, makes that file's
+    declarations unknown: with ``errors`` the DeclarationError is appended there and scanning
+    continues with the next file, without it the error is raised.
     """
     result: list[Verification] = []
     for relative in sorted(set(paths)):
-        typescript = relative.endswith(TYPESCRIPT_SUFFIXES)
-        if not relative.endswith(".py") and not typescript:
-            continue
-        target = checked_path(root, relative)
-        if target.is_symlink() or not target.is_file():
-            continue
-        if typescript:
-            result.extend(
-                _typescript_declarations(
-                    relative, target.read_text(encoding="utf-8", errors="replace")
-                )
-            )
+        if not relative.endswith((".py", *TYPESCRIPT_SUFFIXES)):
             continue
         try:
-            tree = ast.parse(target.read_bytes(), filename=relative)
-        except (SyntaxError, ValueError) as error:
-            raise DeclarationError(
-                relative,
-                getattr(error, "lineno", None),
-                f"cannot parse Python source: {error.msg if hasattr(error, 'msg') else error}",
-            ) from error
-        result.extend(_declarations(relative, tree))
+            result.extend(_file_declarations(root, relative))
+        except DeclarationError as error:
+            if errors is None:
+                raise
+            errors.append(error)
     return tuple(result)

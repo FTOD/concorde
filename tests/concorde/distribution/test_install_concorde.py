@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -11,6 +13,7 @@ from unittest import mock
 
 from concorde.distribution import installation as installer
 from concorde.distribution import managed_runtime  # noqa: E402
+from concorde.operations.catalog import PUBLIC_OPERATIONS
 from concorde.spec.verification import verifies  # noqa: E402
 from tests.concorde.support.managed_runtime import (
     create_langgraph_index,
@@ -58,13 +61,26 @@ class NativeInstallerTests(unittest.TestCase):
                 with self.assertRaises(installer.InstallError):
                     installer.load_package(root)
 
-    @verifies("scenario.distribution.install-pi-session")
+    @verifies(
+        "scenario.distribution.install-pi-session",
+        "scenario.distribution.install-unknown-option",
+    )
     def test_unknown_option_is_refused_before_creating_target(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            target = Path(temporary) / "absent"
-            with self.assertRaises(SystemExit):
-                installer.main(["--target", str(target), "--client", "codex"])
-            self.assertFalse(target.exists())
+        for option in (["--client", "codex"], ["--bogus"], ["--apply", "--force"]):
+            with (
+                self.subTest(option=option),
+                tempfile.TemporaryDirectory() as temporary,
+                mock.patch.object(
+                    installer,
+                    "load_package",
+                    side_effect=AssertionError("the package must not be read"),
+                ),
+            ):
+                target = Path(temporary) / "absent"
+                with self.assertRaises(SystemExit) as refused:
+                    installer.main(["--target", str(target), *option])
+                self.assertNotEqual(0, refused.exception.code)
+                self.assertFalse(target.exists())
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
         self.assertEqual(self.package.version, "8.0.0")
@@ -119,7 +135,8 @@ class NativeInstallerTests(unittest.TestCase):
             "prompts/native/context-assessor.md",
             "pi/extensions/concorde-native-context.ts",
             "pi/extensions/concorde-native-child.ts",
-            "src/concorde/harness/native_context.py",
+            "src/concorde/harness/native_driver.py",
+            "pi/native-host-step.mjs",
         ):
             self.assertIn(".concorde/framework/" + relative, outputs)
         self.assertNotIn(".pi/agents/concorde-context-assessor.md", outputs)
@@ -157,8 +174,6 @@ class NativeInstallerTests(unittest.TestCase):
             for relative in (
                 "protocol/templates/module.md",
                 "protocol/templates/scenario.md",
-                "agents/planner/plan-template.md",
-                "agents/task_author/tasks-template.md",
             ):
                 self.assertEqual(
                     (framework / relative).read_bytes(),
@@ -179,7 +194,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
             self.assertEqual(
                 receipt["runtime"]["verified_operations"],
-                list(installer.concorde_build.PUBLIC_OPERATIONS),
+                list(PUBLIC_OPERATIONS),
             )
             self.assertTrue(
                 (target / ".concorde/.venv/.concorde-runtime.json").is_file()
@@ -431,6 +446,119 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertFalse((target / ".concorde/.venv").exists())
             self.assertFalse((target / ".concorde/install.json").exists())
 
+    @staticmethod
+    def files(target: Path, *, runtime: bool = True) -> dict:
+        return {
+            path.relative_to(target).as_posix(): (
+                path.read_bytes(),
+                path.stat().st_mode & 0o777,
+            )
+            for path in target.rglob("*")
+            if path.is_file()
+            and not path.is_symlink()
+            and (runtime or not path.is_relative_to(target / ".concorde/.venv"))
+        }
+
+    @verifies("scenario.distribution.install-apply-rollback")
+    def test_a_failure_after_the_runtime_was_created_removes_that_runtime(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary).resolve()
+            agents = target / "AGENTS.md"
+            agents.write_bytes(b"# Developer rules\n")
+            agents.chmod(0o600)
+            before = self.files(target)
+            actions, desired, _ = installer.installation_plan(target, self.package)
+            runtime = next(item for item in actions if item["role"] == "runtime")
+            self.assertEqual("create", runtime["action"])
+            real_identity = installer.package_identity
+            provisioned = []
+            real_provision = installer.provision_runtime
+
+            def provision(*args, **kwargs):
+                record = real_provision(*args, **kwargs)
+                provisioned.append((target / ".concorde/.venv").is_dir())
+                return record
+
+            def drifting(package):
+                identity = real_identity(package)
+                if provisioned:
+                    identity = {**identity, "digest": "sha256:" + "1" * 64}
+                return identity
+
+            with (
+                mock.patch.object(
+                    installer, "provision_runtime", side_effect=provision
+                ),
+                mock.patch.object(installer, "package_identity", side_effect=drifting),
+                self.assertRaisesRegex(installer.InstallError, "package changed"),
+            ):
+                installer.apply_plan(target, self.package, actions, desired)
+            self.assertEqual([True], provisioned)
+            self.assertFalse((target / ".concorde/.venv").exists())
+            self.assertFalse((target / installer.RECEIPT_PATH).exists())
+            self.assertEqual(before, self.files(target))
+
+    @verifies("scenario.distribution.runtime-rebuild-failure")
+    def test_a_failed_rebuild_leaves_no_runtime_and_restores_files_and_receipt(self):
+        from concorde.distribution.local_installation import verify_installation
+
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary).resolve()
+            actions, desired, _ = installer.installation_plan(target, self.package)
+            installer.apply_plan(target, self.package, actions, desired)
+            # An owned output the next apply removes, so its rollback has a file to restore.
+            receipt_path = target / installer.RECEIPT_PATH
+            receipt = json.loads(receipt_path.read_text())
+            retired = target / ".concorde/framework/retired/old.txt"
+            retired.parent.mkdir(parents=True)
+            retired.write_bytes(b"retired owned bytes\n")
+            retired.chmod(0o600)
+            receipt["outputs"].append(
+                {
+                    "path": retired.relative_to(target).as_posix(),
+                    "role": "framework",
+                    "sha256": installer._sha256(retired.read_bytes()),
+                }
+            )
+            receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True))
+            marker = target / ".concorde/.venv" / managed_runtime.MARKER_NAME
+            value = json.loads(marker.read_text(encoding="utf-8"))
+            value["requirements_sha256"] = "sha256:" + "0" * 64
+            marker.write_text(json.dumps(value), encoding="utf-8")
+            rebuild, desired, _ = installer.installation_plan(target, self.package)
+            by_path = {item["path"]: item["action"] for item in rebuild}
+            self.assertEqual("rebuild", by_path[".concorde/.venv"])
+            self.assertEqual("remove", by_path[retired.relative_to(target).as_posix()])
+            files = self.files(target, runtime=False)
+            with (
+                mock.patch.object(
+                    managed_runtime,
+                    "_verify_operations",
+                    side_effect=managed_runtime.ManagedRuntimeError(
+                        "injected rebuild verification failure"
+                    ),
+                ),
+                self.assertRaisesRegex(installer.InstallError, "injected rebuild"),
+            ):
+                installer.apply_plan(target, self.package, rebuild, desired)
+            # The previous runtime is gone, the one being built is removed, nothing is marked.
+            self.assertFalse((target / ".concorde/.venv").exists())
+            self.assertEqual([], list(target.rglob(managed_runtime.MARKER_NAME)))
+            # Files and receipt are restored, the runtime is not.
+            self.assertEqual(files, self.files(target, runtime=False))
+            with self.assertRaisesRegex(
+                installer.InstallError, "managed runtime is missing or stale"
+            ):
+                verify_installation(target)
+            # A fresh plan installs again once the cause is gone.
+            again, desired, _ = installer.installation_plan(target, self.package)
+            self.assertEqual(
+                "create",
+                next(item for item in again if item["role"] == "runtime")["action"],
+            )
+            installer.apply_plan(target, self.package, again, desired)
+            self.assertTrue(marker.is_file())
+
     @verifies("scenario.distribution.runtime-plan")
     def test_pi_lock_marker_drift_requires_managed_runtime_rebuild(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -523,7 +651,6 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn('".concorde/framework/scripts/run-operation.py"', shim)
         self.assertIn('"explicit_request_only": false', shim)
         self.assertIn(".concorde/framework/pi/extensions/concorde-session.ts", outputs)
-        self.assertIn(".concorde/framework/pi/extensions/concorde-worker.ts", outputs)
         self.assertEqual("protocol-guidance", outputs["AGENTS.md"][1])
         self.assertIn(b"Read and follow", outputs["AGENTS.md"][0])
 
@@ -553,15 +680,40 @@ class NativeInstallerTests(unittest.TestCase):
             installer.apply_plan(target, self.package, actions, desired)
             self.assertFalse(superseded.exists())
 
-    @verifies("scenario.distribution.install-conflict-rejected")
+    @verifies("scenario.distribution.install-receipt-schema")
     def test_receipt_of_another_schema_is_refused(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            target = Path(temporary)
-            receipt_path = target / ".concorde/install.json"
-            receipt_path.parent.mkdir()
-            receipt_path.write_text(json.dumps({"schema_version": 1, "outputs": []}))
-            with self.assertRaisesRegex(installer.InstallError, "unsupported"):
-                installer.installation_plan(target, self.package)
+        record = {"path": ".pi/extensions/concorde-session.ts", "role": "extension"}
+        record["sha256"] = "sha256:" + "0" * 64
+        for receipt, reason in (
+            ({"schema_version": 1, "outputs": []}, "unsupported"),
+            ({"schema_version": "2", "outputs": []}, "unsupported"),
+            ({"schema_version": 2, "outputs": [record, record]}, "repeats output"),
+            (
+                {"schema_version": 2, "outputs": [{**record, "path": "AGENTS.md"}]},
+                "whole file",
+            ),
+        ):
+            with (
+                self.subTest(reason=reason, receipt=receipt),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                target = Path(temporary).resolve()
+                receipt_path = target / ".concorde/install.json"
+                receipt_path.parent.mkdir()
+                receipt_path.write_text(json.dumps(receipt))
+                before = {p: p.read_bytes() for p in target.rglob("*") if p.is_file()}
+                with self.assertRaisesRegex(installer.InstallError, reason):
+                    installer.installation_plan(target, self.package)
+                with contextlib.redirect_stdout(io.StringIO()) as printed:
+                    code = installer.main(
+                        ["--target", str(target), "--apply", "--format", "json"]
+                    )
+                self.assertEqual(3, code)
+                self.assertEqual("failed", json.loads(printed.getvalue())["status"])
+                self.assertEqual(
+                    before,
+                    {p: p.read_bytes() for p in target.rglob("*") if p.is_file()},
+                )
 
     def test_safe_relative_rejects_escape_absolute_and_backslash(self):
         for value in ("../escape", "/absolute", "bad\\path"):
@@ -607,7 +759,7 @@ class NativeInstallerTests(unittest.TestCase):
             python = managed_runtime.runtime_python(target / ".concorde/.venv")
             self.assertEqual(
                 [command[2] for command in checks],
-                list(installer.concorde_build.PUBLIC_OPERATIONS),
+                list(PUBLIC_OPERATIONS),
             )
             # The check exercises the runtime being verified, never the installer's interpreter.
             self.assertEqual({command[0] for command in checks}, {str(python)})
@@ -636,7 +788,10 @@ class NativeInstallerTests(unittest.TestCase):
                 installer.apply_plan(target, self.package, actions, desired)
             self.assertEqual(list(target.rglob("*")), [])
 
-    @verifies("scenario.distribution.launcher-managed-runtime")
+    @verifies(
+        "scenario.distribution.launcher-managed-runtime",
+        "scenario.distribution.launcher-missing-runtime",
+    )
     def test_installed_launcher_reexecutes_inside_the_managed_runtime(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary).resolve()

@@ -1,40 +1,14 @@
-"""Planning: context assessment followed by one revision-bound plan."""
+"""The plan record: an accepted plan, bound to the Spec revision and task it was written for."""
 
 from __future__ import annotations
 
-from ..harness.change_worktree import (
-    WORK_PATH,
-    read_change,
-    save_target_state,
-    target_state,
-    work_path,
-)
+from ..harness.change_worktree import WORK_PATH, read_change, work_path
 from ..harness.revisions import target_revision
 from ..spec.changes import apply_files, file_change
 from ..spec.repository import SpecError
 from ..spec.typed_data import artifact
-
-
-def plan(run) -> dict:
-    raise SpecError("Planning requires its native Pi workflow", "native_required")
-
-
-def context_solve(run, operation: str) -> dict:
-    """One context-assessor stage; a sufficient assessment completes the operation."""
-    if run.host.native_assessment is not None:
-        return run.host.native_assessment(run)
-    if run.host.executor is None:
-        raise SpecError(
-            "Context assessment requires the native Pi prepare/Agent boundary",
-            "native_required",
-        )
-    # Explicit injected legacy executors remain a regression-test adapter, not fallback.
-    result = run.stage(operation)
-    return run.response(
-        "completed" if result["outcome"] == "sufficient" else result["outcome"],
-        result["answer"],
-        blockers=result["blockers"],
-    )
+from .gaps import record_gaps
+from .records import save_target_state, target_state
 
 
 def persist_plan_result(run, result):
@@ -58,7 +32,6 @@ def persist_plan_result(run, result):
             }
         )
     state.pop("repair_review", None)
-    state.pop("coordination", None)
     state.pop("component_revisions", None)
     state.update(
         plan=result["plan"],
@@ -79,7 +52,7 @@ def persist_plan_result(run, result):
         {path},
     )
     save_target_state(run.repository.root, state)
-    run.record_gaps("plan", [])
+    record_gaps(run, "plan", [])
     return run.response(
         answer=result["answer"],
         artifacts=[artifact(run.repository.root, "plan", path)],

@@ -1,36 +1,26 @@
-"""Finite implementation admission and persistence; Pi owns programmer execution."""
+"""Implementation admission and task completion; the native driver runs the programmer."""
 
 from __future__ import annotations
 
-from ..harness.change_worktree import read_change, save_target_state, target_state
+from ..harness.change_worktree import read_change
 from ..harness.revisions import (
     implementation_digest,
     target_revision,
     unconfirmed_files,
 )
 from ..review.review import repair_feedback, require_spec_review
-from ..spec.impact import change_scope
+from ..planning.gaps import pending_gaps, record_gaps
+from ..planning.records import save_target_state, target_state, targets
+from ..planning.scope import change_scope, component_intent
 from ..spec.repository import SpecError
-from ..spec.typed_data import typed, canonical
+from ..spec.typed_data import typed
 from ..spec.validation import validate_repository
-
-
-def component_intent(tasks: list[dict]) -> str:
-    return "\n\n".join(
-        task["description"] + "\nAcceptance: " + task["acceptance"] for task in tasks
-    )
-
-
-def implement(run) -> dict:
-    raise SpecError(
-        "Implementation requires its native Pi programmer", "native_required"
-    )
 
 
 def prepare_implementation(run, *, admitted_inputs=None):
     """Current domain selection; admitted feedback survives expected code edits only."""
     require_spec_review(run)
-    pending = run.pending_gaps("implementation")
+    pending = pending_gaps(run, "implementation")
     if pending:
         return (
             None,
@@ -65,7 +55,7 @@ def prepare_implementation(run, *, admitted_inputs=None):
     change = read_change(run.repository.root, required=True)
     for target_id, tasks in grouped.items():
         component = run.repository.module(target_id)
-        child = change["targets"].get(target_id, {})
+        child = targets(change).get(target_id, {})
         if (
             child.get("task") != component_intent(tasks)
             or child.get("constraints", []) != run.task.get("constraints", [])
@@ -89,8 +79,8 @@ def prepare_implementation(run, *, admitted_inputs=None):
             (),
             run.response(
                 "unsupported",
-                "Complete separately selected component work, then retry: "
-                + canonical(needed),
+                "Complete the component work listed in components, then retry.",
+                components=needed,
             ),
         )
     if (
@@ -118,9 +108,9 @@ def prepare_implementation(run, *, admitted_inputs=None):
         else:
             # The descriptor binds the exact accepted target state/reference. Re-evaluating
             # feedback against intentionally changed code would falsely make repair stale.
-            from ..spec.typed_data import verify_artifacts
+            from ..harness.status_store import verify_record_artifacts
 
-            verify_artifacts(run.repository.root, repair)
+            verify_record_artifacts(run.repository.root, repair)
             inputs = tuple(admitted_inputs)
     return state, local, revisions, inputs, None
 
@@ -145,9 +135,9 @@ def persist_implementation(run, data, state, local, revisions):
     state["implementation_digest"] = implementation_digest(run.repository, run.target)
     state["checks"] = []
     state.pop("repair_review", None)
-    if revisions or state.get("coordination"):
+    if revisions:
         state["component_revisions"] = revisions
     state.update(phase="implementation", status="completed")
     save_target_state(run.repository.root, state)
-    run.record_gaps("implementation", [])
+    record_gaps(run, "implementation", [])
     return run.response(answer=data["answer"])

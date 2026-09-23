@@ -8,26 +8,30 @@ user's project generates through Concorde (its configuration, registry and Modul
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from ..spec.repository import SpecError, digest, read_file
+from ..spec.repository import (
+    PROTOCOL_DIR,
+    PROTOCOL_MANIFEST_PATH,
+    SpecError,
+    digest,
+    protocol_asset_path,
+    read_file,
+)
 from ..spec.typed_data import checked_path, decode
 
-PROTOCOL_DIR = ".concorde/protocol"
-PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
-RENDERED_PROTOCOL_PREFIX = "generated/protocol/"
+__all__ = [
+    "ISSUES_IGNORE_PATH",
+    "PROTOCOL_DIR",
+    "PROTOCOL_MANIFEST_PATH",
+    "install_project_defaults",
+    "project_default_files",
+    "protocol_asset_path",
+    "protocol_files",
+    "write_protocol_copy",
+]
+
 ISSUES_IGNORE_PATH = ".concorde/issues/.gitignore"
-
-
-def protocol_asset_path(asset_path: str) -> str:
-    """Where a rendered Protocol asset is installed: ``generated/protocol/<name>`` becomes
-    ``.concorde/protocol/<name>`` in the project."""
-    if not asset_path.startswith(RENDERED_PROTOCOL_PREFIX):
-        raise SpecError(
-            f"unexpected Protocol asset path: {asset_path}", "protocol_mismatch"
-        )
-    return PROTOCOL_DIR + "/" + asset_path[len(RENDERED_PROTOCOL_PREFIX) :]
 
 
 def protocol_files(package: Path) -> dict[str, bytes]:

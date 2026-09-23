@@ -10,7 +10,7 @@ from concorde.harness.check_executor import CheckSandboxError
 from concorde.harness.checks import check_service
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import PACKAGE, project
+from tests.concorde.support.spec_project import PACKAGE, project
 
 
 class CheckServiceTests(unittest.TestCase):

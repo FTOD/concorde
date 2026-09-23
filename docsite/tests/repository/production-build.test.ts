@@ -89,8 +89,8 @@ it("publishes both reading collections with links between entry and implementati
     registry.pages.find((p) => p.primaryOf === registry.rootModule)!.route,
   );
   const navbar = entryHtml.match(/<nav\b[\s\S]*?<\/nav>/)![0];
-  expect(navbar).toContain("Module Specs");
-  expect(navbar).toContain("Implementation Specs");
+  expect(navbar).toContain("Module documents");
+  expect(navbar).toContain("Implementation documents");
   expect(navbar).toContain("Spec Protocol");
   const base = loadSiteIdentity(site).baseUrl.replace(/\/$/, "");
   for (const module of registry.modules) {
@@ -216,13 +216,13 @@ it("publishes the configured homepage at the root and links the Specs", async ()
   expect(home).not.toContain("provenanceShell");
 });
 
-// verifies: scenario.views.publish-without-graph
+// verifies: scenario.views.inline-diagrams
 it("omits graph routes and artifacts", async () => {
   for (const path of [...obsolete, "graph/index.html"])
     await expect(readFile(resolve(output, path))).rejects.toThrow();
 });
 
-// verifies: scenario.views.publish-repeat-without-graph
+// verifies: scenario.views.rebuild-removes-stale-pages
 it("a second checked build preserves absence and reading", async () => {
   build();
   await validateScopedBuild(root, output);
@@ -231,5 +231,5 @@ it("a second checked build preserves absence and reading", async () => {
   const entry = registry.pages.find(
     (p) => p.primaryOf === registry.rootModule,
   )!;
-  expect(await html(entry.route)).toContain("Module Specs");
+  expect(await html(entry.route)).toContain("Module documents");
 }, 240000);

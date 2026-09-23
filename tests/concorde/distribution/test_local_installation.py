@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -106,7 +107,7 @@ class PreservedProjectTests(unittest.TestCase):
         self.assertEqual("unchanged", self.apply())
         self.assertEqual(b"only the project's own rules\n", agents.read_bytes())
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.distribution.install-conflict-rejected")
     def test_tester_owned_update_protects_edits(self):
         self.apply()
         tester = self.target / ".pi/agents/tester.md"
@@ -169,6 +170,51 @@ class PreservedProjectTests(unittest.TestCase):
         with self.assertRaisesRegex(installer.InstallError, "partial"):
             self.apply()
 
+    @verifies("scenario.distribution.install-preserve-protocol-invalid")
+    def test_a_damaged_inherited_protocol_copy_stops_preservation_without_writes(self):
+        protocol = self.target / installer.PROTOCOL_ROOT
+
+        def files():
+            return {
+                path.relative_to(self.target).as_posix(): (
+                    path.readlink() if path.is_symlink() else path.read_bytes()
+                )
+                for path in self.target.rglob("*")
+                if path.is_file() or path.is_symlink()
+            }
+
+        def partial():
+            (protocol / "kinds/module.md").unlink()
+
+        def changed():
+            (protocol / "principles.md").write_text("an edited inherited chapter\n")
+
+        def aliased():
+            elsewhere = self.target / "elsewhere/principles.md"
+            elsewhere.parent.mkdir()
+            (protocol / "principles.md").rename(elsewhere)
+            (protocol / "principles.md").symlink_to(elsewhere)
+
+        def aliased_directory():
+            (protocol / "kinds").rename(self.target / "kinds-elsewhere")
+            (protocol / "kinds").symlink_to(
+                self.target / "kinds-elsewhere", target_is_directory=True
+            )
+
+        for damage in (partial, changed, aliased, aliased_directory):
+            with self.subTest(damage=damage.__name__):
+                shutil.rmtree(self.target)
+                self.target.mkdir()
+                self.seed_protocol()
+                damage()
+                before = files()
+                with self.assertRaisesRegex(
+                    installer.InstallError, "partial|changed|symlink|unsafe"
+                ):
+                    self.apply()
+                # Nothing is written and the copy is never completed from the new package.
+                self.assertEqual(before, files())
+
     @verifies("scenario.distribution.install-local-failure")
     def test_preserved_project_and_old_owned_outputs_survive_failed_install(self):
         (self.target / "AGENTS.md").write_text("project rules")
@@ -224,7 +270,11 @@ class PreservedProjectTests(unittest.TestCase):
                 installer.installation_plan(target, self.package, preserve_project=True)
             self.assertFalse((target / installer.PROTOCOL_ROOT).exists())
 
-    @verifies("scenario.distribution.install-local-failure")
+    @verifies(
+        "scenario.distribution.install-local-failure",
+        "scenario.distribution.install-concurrent",
+        "scenario.distribution.install-target-refused",
+    )
     def test_concurrent_installer_and_symlink_targets_are_refused(self):
         with installation_lock(self.target):
             with self.assertRaisesRegex(installer.InstallError, "another installer"):
@@ -239,10 +289,98 @@ class PreservedProjectTests(unittest.TestCase):
             verify_installation(alias)
 
 
+class InstallerTargetTests(unittest.TestCase):
+    """The command-line installer and the local installation service refuse before writing."""
+
+    INSTALLER = REPOSITORY_ROOT / "scripts/install-concorde.py"
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="concorde-install-target-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.target = self.root / "project"
+        self.target.mkdir()
+        (self.target / "README.md").write_text("project\n")
+
+    def files(self):
+        return {
+            path.relative_to(self.root).as_posix(): (
+                path.readlink() if path.is_symlink() else path.read_bytes()
+            )
+            for path in self.root.rglob("*")
+            if path.is_file() or path.is_symlink()
+        }
+
+    def run_installer(self, target):
+        return subprocess.run(
+            [
+                sys.executable,
+                str(self.INSTALLER),
+                "--target",
+                str(target),
+                "--apply",
+                "--format",
+                "json",
+            ],
+            cwd=self.root,
+            env=child_environment(),
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    @verifies("scenario.distribution.install-concurrent")
+    def test_a_second_applying_installer_fails_at_once_without_writing(self):
+        source = admit_package(REPOSITORY_ROOT)
+        with installation_lock(self.target):
+            before = self.files()
+            started = time.monotonic()
+            result = self.run_installer(self.target)
+            self.assertEqual(3, result.returncode, result.stdout + result.stderr)
+            outcome = json.loads(result.stdout)
+            self.assertEqual("failed", outcome["status"])
+            self.assertIn("another installer", outcome["error"])
+            with self.assertRaisesRegex(installer.InstallError, "another installer"):
+                ensure_installation(self.target, source, bootstrap=True)
+            # Neither waits for the holder to finish.
+            self.assertLess(time.monotonic() - started, 60)
+            self.assertEqual(before, self.files())
+
+    @verifies("scenario.distribution.install-target-refused")
+    def test_an_aliased_or_source_checkout_target_is_refused_without_writing(self):
+        alias = self.root / "alias"
+        alias.symlink_to(self.target, target_is_directory=True)
+        checkout = self.root / "checkout"
+        (checkout / "src/concorde").mkdir(parents=True)
+        (checkout / "concorde.json").write_text("{}\n")
+        source = admit_package(REPOSITORY_ROOT)
+        before = self.files()
+        for target, reason in (
+            (alias, "symlink"),
+            (alias / "nested", "symlink"),
+            (checkout, "source checkout"),
+        ):
+            with self.subTest(target=target.name):
+                result = self.run_installer(target)
+                self.assertEqual(3, result.returncode, result.stdout + result.stderr)
+                self.assertIn(reason, json.loads(result.stdout)["error"])
+                self.assertEqual(before, self.files())
+        for target, reason in ((alias, "canonical"), (checkout, "source checkout")):
+            with (
+                self.subTest(service=target.name),
+                self.assertRaisesRegex(installer.InstallError, reason),
+            ):
+                ensure_installation(target, source, bootstrap=True)
+            self.assertEqual(before, self.files())
+
+
 class NativeLocalInstallationTests(unittest.TestCase):
     @verifies(
         "scenario.distribution.install-local-worktree",
         "scenario.distribution.install-local-failure",
+        "scenario.distribution.install-local-reuse",
+        "scenario.distribution.install-local-bootstrap-failure",
     )
     def test_source_and_installed_provider_supply_independent_git_worktree_installs(
         self,
@@ -427,9 +565,9 @@ class NativeLocalInstallationTests(unittest.TestCase):
                         "-I",
                         "-c",
                         "import sys,json; sys.path[:0]=sys.argv[1:]; "
-                        "import agents; from concorde.harness.worker_profile import load_worker_profiles; "
-                        "print(json.dumps({'agents':agents.AGENTS,'task':agents.TASK_SUBAGENTS,"
-                        "'domain':list(load_worker_profiles()),'source':agents.__file__}))",
+                        "import agents; from agents.task_subagent import TASK_SUBAGENTS; "
+                        "print(json.dumps({'agents':agents.AGENTS,'task':TASK_SUBAGENTS,"
+                        "'source':agents.__file__}))",
                         str(local.framework),
                         str(local.framework / "src"),
                     ],
@@ -439,9 +577,8 @@ class NativeLocalInstallationTests(unittest.TestCase):
                     cwd=target,
                 )
                 discovered = json.loads(role_probe.stdout)
-                self.assertEqual(8, len(discovered["agents"]))
+                self.assertEqual(7, len(discovered["agents"]))
                 self.assertEqual(["tester"], discovered["task"])
-                self.assertEqual(7, len(discovered["domain"]))
                 self.assertNotIn("main", discovered["agents"])
                 self.assertNotIn("user-session", discovered["agents"])
                 self.assertNotIn("maintenance-worker", discovered["agents"])

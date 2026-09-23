@@ -18,18 +18,22 @@ execFileSync(python, [
   "-c",
   `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.insert(0,${JSON.stringify(candidate)})
 from pathlib import Path
-from tests.concorde.spec.support import project
+from concorde.operations.catalog import register_types
+register_types()
+from tests.concorde.support.spec_project import project
 project(Path(${JSON.stringify(root)}))
 import json
 r=Path(${JSON.stringify(root)})
 if ${JSON.stringify(scenario)} in ('shared','many','missing','budget'):
- from tests.concorde.spec.support import add_consumers
+ from tests.concorde.support.spec_project import add_consumers
  add_consumers(r, 19 if ${JSON.stringify(scenario)}=='many' else 2)
 `,
 ]);
 execFileSync(python, [
   "-c",
   `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")})
+from concorde.operations.catalog import register_types
+register_types()
 from pathlib import Path
 import subprocess,json
 from concorde.harness.change_worktree import ensure_change,bind_owner
@@ -46,6 +50,9 @@ if ${JSON.stringify(scenario)} in ('duplicate','stale-duplicate'):
  (r/'duplicate.json').write_text(json.dumps(other))
 if ${JSON.stringify(scenario)}=='final-failure':
  (r/'checks/transfer_check.py').write_text('raise AssertionError("fixture final check failure")'+chr(10))
+# Only a committed Issue can be solved.
+subprocess.run(['git','add','.concorde/issues'],cwd=r,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+subprocess.run(['git','commit','-m','Issues'],cwd=r,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 `,
 ]);
@@ -83,35 +90,32 @@ def guarded(name,*args,**kwargs):
  if name=='langgraph' or name.startswith('langgraph.'): raise AssertionError('Native path imported LangGraph')
  return original(name,*args,**kwargs)
 builtins.__import__=guarded
-from concorde.harness.worker_executor import WorkerExecutor
-def forbidden(*a,**k): raise AssertionError('Native path launched a hidden Pi-RPC worker')
-WorkerExecutor.__call__=forbidden
 
 import os,json
 from pathlib import Path
 scenario=os.environ.get('CONCORDE_ISSUE_FAULT')
 if scenario in {'slot-change','missing-slot','call-mismatch'}:
- from concorde.harness import native_issues
- original_slot=native_issues._prepare_slot
- def injected(*args,**kwargs):
-  value=original_slot(*args,**kwargs)
-  if value['key']=='d-0':
-   if scenario=='slot-change': Path(value['descriptor']).write_text(Path(value['descriptor']).read_text()+' ')
-   elif scenario=='missing-slot': Path(value['descriptor']).unlink()
-   else:
-    root=json.loads(Path(args[2]).read_text());f=Path(root['directory'])/'bindings/d-0.json';v=json.loads(f.read_text());v['call']['task']='foreign task';f.write_text(json.dumps(v))
+ from concorde.issue_solving import native
+ original_issue=native._issue
+ def injected(driver,layout,key,*args,**kwargs):
+  value=original_issue(driver,layout,key,*args,**kwargs)
+  if key=='d-0':
+   f=Path(driver.directory)/'bindings/d-0.json';v=json.loads(f.read_text())
+   if scenario=='slot-change': Path(v['descriptor']).write_text(Path(v['descriptor']).read_text()+' ')
+   elif scenario=='missing-slot': Path(v['descriptor']).unlink()
+   else: v['call']['task']='foreign task';f.write_text(json.dumps(v))
   return value
- native_issues._prepare_slot=injected
+ native._issue=injected
 if scenario in {'control-extra','control-large'}:
- from concorde.harness import native_issues
- real_service=native_issues.workflow_service
- def bad_control(*args,**kwargs):
-  value=real_service(*args,**kwargs)
-  if args[1]=='workflow-issue-next-0':value['foreign']='x'*(5000 if scenario=='control-large' else 1)
+ from concorde.issue_solving import native
+ real_step=native.IssuesWorkflowHook.step
+ def bad_control(self,run,driver,name):
+  value=real_step(self,run,driver,name)
+  if name=='next-0':value['foreign']='x'*(5000 if scenario=='control-large' else 1)
   return value
- native_issues.workflow_service=bad_control
+ native.IssuesWorkflowHook.step=bad_control
 if scenario=='journal':
- from concorde.issues.solve import IssueSolve
+ from concorde.issue_solving.solve import IssueSolve
  real=IssueSolve.ready
  def interrupted(self,state):
   marker=self.root/'journal-interrupted'
@@ -768,9 +772,9 @@ if (
 )
   execFileSync(python, [
     "-c",
-    "from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
+    "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
       JSON.stringify(path.join(root, "candidate")) +
-      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['issue_solutions'][i];assert v['attempts']==1 and not v['history'] and not v.get('verification') and not v.get('pending_disposition') and not s.get('validated_tree');assert read_issue(r,i)[0]['status']=='open'",
+      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['sections']['issue-solving']['data']['solutions'][i];assert v['attempts']==1 and not v['history'] and not v.get('verification') and not v.get('pending_disposition') and s['status']!='ready';assert read_issue(r,i)[0]['status']=='open'",
   ]);
 if (scenario.startsWith("retained-invalid-")) {
   assert.equal(diagnostic.attempts.length, 1);
@@ -819,9 +823,9 @@ if (scenario === "prose-only") {
   assert.equal(child.outputSchemaDigest, child.registeredValueSchemaDigest);
   execFileSync(python, [
     "-c",
-    "from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
+    "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.store import read_issue;import json;r=Path(" +
       JSON.stringify(path.join(root, "candidate")) +
-      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['issue_solutions'][i];assert v['attempts']==1 and not v['history'];assert not v.get('verification') and not v.get('pending_disposition') and not s.get('validated_tree');assert read_issue(r,i)[0]['status']=='open'",
+      ");s=read_change(r);i=json.loads((r/'selected.json').read_text())['issue_id'];v=s['sections']['issue-solving']['data']['solutions'][i];assert v['attempts']==1 and not v['history'];assert not v.get('verification') and not v.get('pending_disposition') and s['status']!='ready';assert read_issue(r,i)[0]['status']=='open'",
   ]);
 }
 if (
@@ -890,9 +894,9 @@ if (scenario === "journal") {
     python,
     [
       "-c",
-      "from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issues.graph import pending_disposition;r=Path(" +
+      "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;from concorde.issue_solving.bookkeeping import pending_disposition;from concorde.issue_solving.records import solutions;r=Path(" +
         JSON.stringify(path.join(root, "candidate")) +
-        ");c=read_change(r);i=next(iter(c['issue_solutions']));assert pending_disposition(c,i);print(i)",
+        ");c=read_change(r);i=next(iter(solutions(c)));assert pending_disposition(c,i);print(i)",
     ],
     { encoding: "utf8" },
   ).trim();
@@ -919,7 +923,7 @@ if (scenario === "journal") {
     python,
     [
       "-c",
-      "from pathlib import Path;from concorde.issues.store import read_issue;print(read_issue(Path(" +
+      "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.issues.store import read_issue;print(read_issue(Path(" +
         JSON.stringify(path.join(root, "candidate")) +
         ")," +
         JSON.stringify(check) +
@@ -934,9 +938,9 @@ const attempts = Number(
     python,
     [
       "-c",
-      "from pathlib import Path;from concorde.harness.change_worktree import read_change;s=read_change(Path(" +
+      "from concorde.operations.catalog import register_types;register_types();from pathlib import Path;from concorde.harness.change_worktree import read_change;s=read_change(Path(" +
         JSON.stringify(path.join(root, "candidate")) +
-        ")).get('issue_solutions',{});print(next(iter(s.values()))['attempts'])",
+        ")).get('sections',{}).get('issue-solving',{}).get('data',{}).get('solutions',{});print(next(iter(s.values()))['attempts'])",
     ],
     { encoding: "utf8" },
   ).trim(),

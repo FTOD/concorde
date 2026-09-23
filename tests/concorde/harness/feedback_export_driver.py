@@ -121,7 +121,9 @@ def main():
     try:
         if case == "optional":
             from concorde.harness.operation_node import OperationNode
-            from tests.concorde.harness.test_operation_node import _stage_context
+            from tests.concorde.support.stage_context import (
+                stage_context as _stage_context,
+            )
 
             OperationNode("planner").graph(service).invoke(_stage_context()["data"])
         else:

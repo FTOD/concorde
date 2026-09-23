@@ -9,19 +9,13 @@
     "title": "Request admission",
     "owns": [
       "specs/concorde/harness/admission/module.md",
+      "specs/concorde/harness/admission/design.md",
       "specs/concorde/harness/admission/requirements.md",
       "specs/concorde/harness/admission/scenarios.md",
       "specs/concorde/harness/admission/contracts.md"
     ],
     "contains": [],
     "uses": [
-      {
-        "target": "module.operations",
-        "meaning": "#uses-operations",
-        "relies_on": [
-          "concept.operations.operation"
-        ]
-      },
       {
         "target": "module.harness.worktrees",
         "meaning": "#uses-worktrees",
@@ -35,26 +29,34 @@
       },
       {
         "target": "module.spec",
-        "meaning": "#uses-spec"
-      },
-      {
-        "target": "module.distribution",
-        "meaning": "#uses-distribution"
-      },
-      {
-        "target": "module.issues",
-        "meaning": "#uses-issues",
+        "meaning": "#uses-spec",
         "relies_on": [
-          "concept.issues.issue"
+          "concept.spec.typed-value",
+          "concept.spec.registry",
+          "concept.spec.file-transaction",
+          "concept.spec.protocol-binding"
         ]
       },
       {
-        "target": "module.delivery",
-        "meaning": "#uses-delivery"
+        "target": "module.agents",
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.agent"
+        ]
       },
       {
-        "target": "module.harness.execution",
-        "meaning": "#uses-execution"
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "contract.distribution.build-manifest"
+        ]
+      },
+      {
+        "target": "module.harness.observation",
+        "meaning": "#uses-observation",
+        "relies_on": [
+          "concept.observation.diagnostic-span"
+        ]
       }
     ],
     "includes": [
@@ -69,22 +71,36 @@
         "contract": "contract.admission.invocation",
         "version": 3,
         "role": "provided",
-        "peer": "external",
-        "meaning": "specs/concorde/harness/admission/contracts.md#participation-envelopes"
+        "peer": "module.session",
+        "meaning": "#participation-envelopes"
       },
       {
         "contract": "contract.admission.result",
-        "version": 3,
+        "version": 4,
         "role": "provided",
-        "peer": "external",
-        "meaning": "specs/concorde/harness/admission/contracts.md#participation-envelopes"
+        "peer": "module.session",
+        "meaning": "#participation-envelopes"
       },
       {
         "contract": "contract.admission.feedback",
         "version": 1,
         "role": "provided",
-        "peer": "external",
-        "meaning": "specs/concorde/harness/admission/contracts.md#participation-feedback"
+        "peer": "module.session",
+        "meaning": "#participation-envelopes"
+      },
+      {
+        "contract": "contract.admission.capability-declaration",
+        "version": 1,
+        "role": "required",
+        "peer": "module.operations",
+        "meaning": "#participation-declarations"
+      },
+      {
+        "contract": "contract.distribution.build-manifest",
+        "version": 1,
+        "role": "required",
+        "peer": "module.distribution",
+        "meaning": "#uses-distribution"
       }
     ]
   },
@@ -102,10 +118,22 @@
       "meaning": "#concept.admission.result-envelope"
     },
     {
+      "id": "concept.admission.capability-declaration",
+      "type": "concept",
+      "title": "Capability declaration",
+      "meaning": "#concept.admission.capability-declaration"
+    },
+    {
       "id": "concept.admission.operation-configuration",
       "type": "concept",
       "title": "Operation configuration",
       "meaning": "#concept.admission.operation-configuration"
+    },
+    {
+      "id": "concept.admission.configuration-proposal",
+      "type": "concept",
+      "title": "Configuration proposal",
+      "meaning": "#concept.admission.configuration-proposal"
     },
     {
       "id": "concept.admission.relay",
@@ -140,6 +168,17 @@
       ]
     },
     {
+      "id": "realization.admission.configure",
+      "type": "realization",
+      "title": "Configure service",
+      "meaning": "#realization.admission.configure",
+      "entries": [
+        "operations/configure.py",
+        "prompts/operation-guidance/concorde-configure.md",
+        "src/concorde/harness/configure.py"
+      ]
+    },
+    {
       "id": "realization.admission.feedback",
       "type": "realization",
       "title": "Feedback records",
@@ -156,21 +195,17 @@
       "title": "Admission tests",
       "meaning": "#realization.admission.tests",
       "entries": [
-        "tests/concorde/operations/test_run_operation.py",
-        "tests/concorde/support/operation_json.py",
         "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/harness/test_local_execution.py",
         "tests/concorde/harness/test_execution_feedback.py",
         "tests/concorde/harness/execution_feedback_probe.mts",
         "tests/concorde/harness/test_feedback_export.py",
         "tests/concorde/harness/feedback_export_driver.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/harness/test_installed_worker_runtime.py",
-        "tests/concorde/harness/test_boundaries.py",
-        "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/harness/test_status_store.py",
-        "tests/concorde/operations/test_review.py",
-        "tests/concorde/spec/test_typed_data.py"
+        "tests/concorde/support/operation_json.py",
+        "tests/concorde/harness/test_configure.py",
+        "tests/concorde/harness/test_admission.py",
+        "tests/concorde/harness/test_admission_workspace.py",
+        "tests/concorde/harness/test_admission_finalization.py"
       ]
     }
   ],
@@ -180,6 +215,12 @@
       "source": "realization.admission.boundary",
       "verb": "admits",
       "target": "concept.admission.capability-request"
+    },
+    {
+      "type": "relates",
+      "source": "realization.admission.boundary",
+      "verb": "reads",
+      "target": "concept.admission.capability-declaration"
     },
     {
       "type": "relates",
@@ -196,8 +237,14 @@
     {
       "type": "relates",
       "source": "realization.admission.boundary",
-      "verb": "dispatches admitted requests to",
-      "target": "module.operations"
+      "verb": "selects targets through",
+      "target": "module.spec"
+    },
+    {
+      "type": "relates",
+      "source": "realization.admission.boundary",
+      "verb": "times requests with",
+      "target": "module.harness.observation"
     },
     {
       "type": "relates",
@@ -207,15 +254,15 @@
     },
     {
       "type": "relates",
-      "source": "realization.admission.boundary",
-      "verb": "creates the invocation host of",
-      "target": "module.harness.execution"
-    },
-    {
-      "type": "relates",
       "source": "realization.admission.relay",
       "verb": "relays requests into",
       "target": "concept.worktrees.candidate"
+    },
+    {
+      "type": "relates",
+      "source": "realization.admission.configure",
+      "verb": "applies",
+      "target": "concept.admission.configuration-proposal"
     },
     {
       "type": "relates",

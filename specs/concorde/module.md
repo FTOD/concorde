@@ -2,158 +2,213 @@
 
 ## Purpose
 
-Concorde keeps a project's Specs at the center of AI-assisted development. The Specs explain what
-each part of the software is for, how it is designed and what it precisely promises; Concorde's
-agents work inside boundaries derived from those Specs; and every code change is made in its own
-candidate worktree, checked, independently reviewed and delivered only when the developer asks.
-A developer uses Concorde from the Pi coding agent, both to change a project and to understand it.
-Concorde does not decide business behaviour, does not run an autonomous development loop, and never
-merges into the primary branch without explicit authorization.
+Concorde is a set of Operations that an AI coding session can call, together with the
+configuration of the developer's own Pi session that calls them. Each Operation does one bounded
+job on a project that describes itself in Specs: checking whether a Spec says enough, planning,
+writing tasks, implementing, reviewing, validating, delivering, or working on a recorded Issue.
+Every model step receives a context and a permission derived from the Specs, and its answer counts
+only after the deterministic Host has checked it. The developer and the user session stay in
+charge: Concorde never chooses the next step, never repairs a Spec on its own and never merges into
+the primary branch without explicit authorization. It does not decide business behaviour, does not
+require independent review of every change, and does not confine what a model reads or runs as
+strictly as its boundaries describe; the Harness states what is enforced.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| [Agent](agents/module.md#concept.agents.agent) | |
-| [Workflow](harness/execution/module.md#concept.execution.workflow) | |
 | [Operation](operations/module.md#concept.operations.operation) | |
+| [Operation catalog](operations/module.md#concept.operations.catalog) | |
+| [Agent](agents/module.md#concept.agents.agent) | |
+| [Capability declaration](harness/admission/module.md#concept.admission.capability-declaration) | |
+| [Workflow](harness/execution/module.md#concept.execution.workflow) | |
+| [Graph](harness/execution/module.md#concept.execution.graph) | |
 | [Candidate](harness/worktrees/module.md#concept.worktrees.candidate) | |
 | [Issue](issues/module.md#concept.issues.issue) | |
 
-The words shared by every Module — developer, user session, capability, Module, Spec, context,
-boundary, Host, worker and evidence — are defined in the [shared vocabulary](vocabulary.md). Read it
-first if Concorde is new to you.
+The words every Module shares, including the four kinds of context, are defined in the
+[shared vocabulary](vocabulary.md); read it first. The imported words above are the ones this entry
+needs from its descendants.
 
 ## Usage
 
-### Setting up
+The developer installs Concorde with its installer, which places a Protocol copy under
+`.concorde/protocol/`, a managed runtime and the Pi integration, and never writes the project's
+Specs. The user session calls `concorde-init` to propose an honest first Spec and again to apply
+that exact proposal. From then on the project is opened in Pi, whose session integration adds one
+tool, `concorde`: `describe` explains every public capability, `run` calls one, and `result`
+fetches the result of a running or finished call.
 
-Install Concorde into a project with its installer, then call `concorde-init` to create an honest
-starting Spec. From then on, open the project in Pi: the session extension adds one tool,
-`concorde`, whose `describe` action explains every capability and whose `run` action calls one.
+Each `run` goes through the launcher to Request admission, which checks the request against the
+capability's declaration, binds it to a Module and a worktree, and returns a versioned result that
+keeps admission failure, execution failure and domain outcome apart. A mutating call from the
+primary worktree is relayed into a new candidate worktree; later calls name its `change_id`. A
+preview explains an effect without performing it.
 
-### Making a change
+A typical change is a sequence of explicit calls chosen by the user session: agree the owning
+Module's Spec with the developer (optionally `concorde-spec-review`), then `concorde-context-solve`,
+`concorde-plan` (which opens the candidate), `concorde-tasks`, `concorde-implement`, optionally
+`concorde-code-review`, `concorde-validate` (which decides readiness) and `concorde-deliver` (which
+publishes the ready candidate on its own branch). Merging into the primary branch is a further
+request stating the developer's explicit authorization. Independent review is not a gate on every
+change: a review kind becomes required only when the change records it, and then later stages
+refuse while it is missing or stale.
 
-A typical change runs as a sequence of explicit calls, each chosen by the user session:
+When a step needs a promise the Spec does not state, it stops with a Spec gap against the owning
+Module; dependent stages refuse until the developer repairs the Spec and the step is called again.
+A failed or cancelled Agent call returns an execution failure, keeps its edits in the candidate for
+inspection and leaves the candidate not ready. A repeated call is admitted against current state,
+never replayed from stale inputs. Problems worth keeping are recorded as Issues.
 
-1. **Agree on the Spec.** The user session and the developer read the owning Module's Spec and edit
-   it until it states the intended behaviour. `concorde-spec-review` gives an independent opinion.
-2. **Check sufficiency and plan.** `concorde-context-solve` tells whether the Spec says enough for
-   the task; `concorde-plan` writes a plan for one Module in a new candidate worktree.
-3. **Derive and implement tasks.** `concorde-tasks` turns the accepted plan into acceptance tasks;
-   `concorde-implement` lets a programmer worker change only that Module's implementation files.
-4. **Check and review.** `concorde-code-review` reviews the code against the Spec;
-   `concorde-validate` runs the deterministic checks and records evidence.
-5. **Deliver.** `concorde-deliver` stages the ready candidate on its own branch. Merging it into the
-   primary branch is a separate decision.
+| Capability | Use it to | Provided by |
+| --- | --- | --- |
+| `concorde-init` | propose and apply the first Spec of a newly installed project | [Spec tooling](spec/module.md) |
+| `concorde-configure` | choose the model, thinking level and time limits of Agent calls, or accept a newly installed Protocol | [Request admission](harness/admission/module.md) |
+| `concorde-issues` | list, show, report, reopen or solve a recorded Issue | [Issue solving](issue-solving/module.md) |
 
-If a step finds that the Spec does not say something it needs, it stops and reports the gap instead
-of guessing from code. The developer fixes the Spec, and the step is repeated with current inputs.
-
-For example, adding retries to a network client starts by deciding which failures may be retried,
-written into the client Module's Spec. Only then is a plan written, and the programmer receives
-tasks that cite that promise.
-
-### Other capabilities
-
-| Capability | Use it to |
-| --- | --- |
-| `concorde-issues` | list, show, report, reopen or solve a recorded Issue |
-| `concorde-configure` | choose the model, thinking level and time limits of workers |
-| `concorde-init` | create the first Spec of an uninitialized project |
-
-The Specs can also be published as a documentation site, which is the easiest way to read them.
+`python3 scripts/concorde.py validate` checks the Specs, and Views publishes them as a site.
 
 ## Design
 
-Concorde is built around one idea: **the Spec, not the code, is the shared source of truth between
-the developer and the agents.** The rest of the design follows from making that safe and practical.
+The Spec, not the code, is the shared source of truth between the developer and the agents.
+Each Agent call receives the four [kinds of context](vocabulary.md#concept.concorde.context), all
+derived from declarations; a code-writing Agent never edits Specs. Results are always checked by
+the Host, but reads, shell use and Spec scope are not confined during model steps; the
+[Harness](harness/module.md) states exactly what is enforced. Control flow is written either as a
+pi workflow run by pi-subagents or as a LangGraph Graph using only the Graph API; each is explained
+by a step table or a Graph Spec in its owner's Spec. Mutations run in candidate worktrees, evidence
+is bound to exact inputs, and delivery and merging are separate requests. The reasons are in the
+[design topic](design.md).
 
-- **Specs are structured** so that both humans and tools can read them. The [Spec tooling](spec/module.md)
-  Module loads and checks every Spec and computes, from the declarations alone, what a task bound to
-  a Module may read and write.
-- **Agents are bounded.** The [Harness](harness/module.md) admits every capability request, freezes
-  the task's context, runs each model step as a fresh worker, and accepts results only after the Host
-  has checked them. [Agents](agents/module.md) defines every callable agent once.
-- **Capabilities are small and explicit.** [Operations](operations/module.md) lists the public
-  capabilities and routes each request to the Module that owns its behaviour: Planning,
-  Implementation, Review, Validation or Delivery. None of them calls the next one; the user session
-  stays in charge of the sequence.
-- **Changes are isolated.** Every mutating task runs in a candidate worktree, so the primary branch
-  stays untouched until the developer decides.
-- **Problems are remembered.** [Issues](issues/module.md) keeps durable records of gaps and defects
-  that outlive one conversation.
-- **Concorde ships and explains itself.** [Distribution](distribution/module.md) builds and installs
-  the Framework and its Pi integration; [Views](views/module.md) publishes the Specs as a website.
+### Dependency layering {#dependency-layering}
 
-The same Protocol governs Concorde's own Specs, so this project is also the reference example of a
-Concorde project.
+Modules rely on each other only from the outside in:
+
+- **Spec tooling** and **Observation** use nothing.
+- **Issues** uses only Spec tooling and Candidate worktrees.
+- The **Harness** children use only Spec tooling, Issues, Agents, Observation, each other, and
+  Distribution's build-manifest contract; never Operations, its providers, the Pi session or Views.
+- **Agents** uses only the providers' output contracts and concepts it names exactly, Issues'
+  report service and the Harness children.
+- **Operations** and its providers may use the Harness, Agents, Spec tooling, Issues and each other.
+- The **Pi session**, **Distribution** and **Views** are outer Modules and may use what they need.
+
+Every `uses` names exactly the promises it relies on. A lower Module reaches a higher one only by
+inversion: admission's capability declaration, Agent execution's hooks and Spec tooling's
+typed-value registration.
+
+<a id="realization.concorde.project-files"></a>
+
+The root binds the **project files** that belong to no single responsibility: README, workflow
+guide, agent instructions, licence, repository configuration and the CI workflow that validates
+this checkout.
+
+<a id="realization.concorde.development-environment"></a>
+
+It binds the **development environment** of this checkout, the Python project, test roots, shared
+test support, reference initializer and docsite type check, and the tests of that environment,
+whose promises are in [Development environment](development.md).
+
+<a id="realization.concorde.acceptance-tests"></a>
+
+Its **acceptance tests**, under `tests/concorde/acceptance/`, exercise the root's cross-Module
+[scenarios](scenarios.md) through the public capabilities.
 
 ## Relationships
 
 ```mermaid
 flowchart TB
     accTitle: The Modules of the Concorde Framework
-    accDescr: The root Module contains seven Modules. Harness and Operations are themselves composites.
+    accDescr: The root Module contains eight Modules; Harness and Operations are themselves composites.
     root[Concorde Framework]
     spec[Spec tooling]
     harness[Harness]
     agents[Agents]
     operations[Operations]
-    distribution[Distribution]
     issues[Issues]
+    session[Pi session]
+    distribution[Distribution]
     views[Views]
     root -->|contains| spec
     root -->|contains| harness
     root -->|contains| agents
     root -->|contains| operations
-    root -->|contains| distribution
     root -->|contains| issues
+    root -->|contains| session
+    root -->|contains| distribution
     root -->|contains| views
 ```
 
+The composition follows the [layering rules](#dependency-layering). The Harness contains Request
+admission, Task context, Agent execution, Check execution, Candidate worktrees and Observation;
+Operations contains Planning, Implementation, Review, Validation, Delivery and Issue solving. Each
+composite explains its own children.
+
+How one call crosses these Modules is illustrated in the [design topic](design.md#one-call-through-the-modules).
+
 <a id="contains-spec"></a>
 
-**Spec tooling** is the foundation: every other Module relies on it to know which documents exist, who owns
-them, and what a task may read. Concorde relies on it to reject inconsistent Specs before any agent
-sees them.
+**Spec tooling** loads the [registry](spec/module.md#concept.spec.registry) and documents, runs
+every [structural check](spec/module.md#concept.spec.structural-check), computes each Module's
+[boundary sets](spec/module.md#concept.spec.boundary-set), supplies the
+[typed values](spec/module.md#concept.spec.typed-value) capabilities exchange, and provides
+`concorde-init`. Every capability loads the Specs first, relying on it to refuse a structure that
+cannot support a trustworthy boundary. The root keeps it dependency-free; when loading fails, no
+capability runs until the Specs or the binding are repaired.
 
 <a id="contains-harness"></a>
 
-**Harness** is the execution boundary. Every capability request enters through it, and every model
-step runs under it. Concorde relies on it to keep model output a proposal until the Host accepts it.
+The **Harness** explains how an Agent is configured and run: context, control flow, Agent and
+model, and permission per call, with the table of what is enforced. It applies to every call, and
+the Framework relies on it to keep a model's answer a proposal until the Host accepts it. The root
+keeps it independent of Operations; a Harness failure surfaces as an admission or execution
+failure, never as a domain outcome.
 
 <a id="contains-agents"></a>
 
-**Agents** supplies the definitions of the callable agents that the Harness runs and that the
-providers under Operations call.
+**Agents** defines the seven domain [Agents](agents/module.md#concept.agents.agent), each by one
+[definition](agents/module.md#concept.agents.definition) of identity, tools, effects, instructions
+and output contract. It applies whenever an Operation runs model work, and the Framework relies on
+the single definition so that preflight and instructions cannot drift. Task subagents are not
+Agents. The root keeps Agents below Operations: they name providers' output contracts, never code.
 
 <a id="contains-operations"></a>
 
-**Operations** turns a capability name into the owning provider's behaviour. Its five providers own
-planning, implementation, review, validation and delivery.
-
-<a id="contains-distribution"></a>
-
-**Distribution** produces what a developer installs and runs: the built assets, the installer, the
-managed runtime and the Pi session integration.
+**Operations** holds the [Operation catalog](operations/module.md#concept.operations.catalog)
+declaring every [Operation](operations/module.md#concept.operations.operation) and the generic
+dispatch to a provider's declared entry point, and contains the six providers. It applies to every
+run; the Framework relies on no provider calling the next stage. `concorde-init` and
+`concorde-configure` come from infrastructure Modules outside it. An unknown or non-public
+Operation is refused by admission before dispatch.
 
 <a id="contains-issues"></a>
 
-**Issues** is used by every worker that finds a problem and by the `concorde-issues` capability.
+**Issues** keeps durable [Issue](issues/module.md#concept.issues.issue) records and the
+[report](issues/module.md#concept.issues.report) service Agents use. It applies whenever a problem
+is reported, listed or solved, and the Framework relies on a report surviving the failure of its
+stage. The root keeps it a record layer; solving belongs to Issue solving, and an unreadable store
+is reported by its own configured check.
+
+<a id="contains-session"></a>
+
+The **Pi session** configures the user session: the
+[session entry](session/module.md#concept.session.session-entry) adding the `concorde` tool, the
+private [selection](session/module.md#concept.session.selection) of one exact integration,
+guidance, the Task subagents and the [coordinator](session/module.md#concept.session.coordinator)
+instructions of this checkout. The Framework relies on it to send every call through the launcher
+as a versioned invocation. A missing or stale selection blocks the session instead of falling back.
+
+<a id="contains-distribution"></a>
+
+**Distribution** builds the [package](distribution/module.md#concept.distribution.package), installs
+the [Protocol copy](distribution/module.md#concept.distribution.protocol-copy) and
+[managed runtime](distribution/module.md#concept.distribution.managed-runtime), and provides the
+[launcher](distribution/module.md#concept.distribution.launcher) that hands each invocation, with
+the Operation catalog, to admission. The Framework relies on a failed installation leaving the
+previous state intact. The Harness may rely only on its build-manifest contract.
 
 <a id="contains-views"></a>
 
-**Views** publishes the Specs for reading; a published page never grants context or authority.
-
-<a id="realization.concorde.project-files"></a>
-
-The root Module also owns the project-level files that belong to no single responsibility: the
-README and contribution guide, the licence, repository configuration, the CI workflow that validates
-this checkout, and the documentation assets.
-
-<a id="realization.concorde.acceptance-tests"></a>
-
-Its **acceptance tests** exercise whole flows that cross several Modules, such as installing into a
-consumer project or driving a candidate from planning to delivery; the promises they verify are the
-root's [scenarios](scenarios.md).
+**Views** publishes the Specs as a [documentation site](views/module.md#concept.views.published-site)
+for readers. The Framework relies on a published page never granting context or authority; a
+publishing failure affects no project state.

@@ -1,6 +1,8 @@
 """Graph Specs are node, edge and state diagrams kept equal to the compiled LangGraph Graphs."""
 
 import tempfile
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -69,37 +71,35 @@ def section(*parts: str, role: str = "implementation") -> GraphSpec:
 
 
 class GraphSpecTests(unittest.TestCase):
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_every_compiled_graph_has_one_matching_spec_in_this_repository(self):
         repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
         with patch("concorde.harness.context.resolve_context") as resolve:
-            findings = graph_spec_findings(repository)
+            findings = graph_spec_findings(repository, catalog())
             resolve.assert_not_called()
         self.assertEqual((), findings, [finding.message for finding in findings])
         bound = {item.graph for item in graph_specs(repository)}
         self.assertEqual(set(catalog()), bound)
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies("scenario.execution.graph-spec-match")
     def test_catalog_compiles_every_graph_without_a_repository_or_agent(self):
-        with (
-            patch("concorde.harness.invocation.SpecRepository") as bound,
-            patch("concorde.operations.dispatch.SpecRepository") as dispatched,
-        ):
+        with patch("concorde.harness.invocation.SpecRepository") as bound:
             for name, build in catalog().items():
                 with self.subTest(graph=name):
                     shape = topology(build())
                     self.assertIn("__start__", shape["nodes"])
                     self.assertIn("__end__", shape["nodes"])
                     self.assertTrue(shape["edges"])
-            for repository in (bound, dispatched):
-                repository.assert_not_called()
+            bound.assert_not_called()
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_comparison_reports_missing_nodes_edges_conditions_and_state(self):
         compiled = topology(
             (
                 lambda: __import__(
-                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    "tests.concorde.support.sample_graph",
                     fromlist=["build_batch_graph"],
                 ).build_batch_graph(
                     lambda name: lambda state: {},
@@ -170,12 +170,14 @@ class GraphSpecTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_parts_require_state_nodes_and_edges_in_order(self):
         compiled = topology(
             (
                 lambda: __import__(
-                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    "tests.concorde.support.sample_graph",
                     fromlist=["build_batch_graph"],
                 ).build_batch_graph(
                     lambda name: lambda state: {},
@@ -217,12 +219,14 @@ class GraphSpecTests(unittest.TestCase):
             problems(STATE, NODES, EDGES, role="module"),
         )
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_nodes_table_names_every_compiled_node_with_its_diagram_state(self):
         compiled = topology(
             (
                 lambda: __import__(
-                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    "tests.concorde.support.sample_graph",
                     fromlist=["build_batch_graph"],
                 ).build_batch_graph(
                     lambda name: lambda state: {},
@@ -272,7 +276,9 @@ class GraphSpecTests(unittest.TestCase):
             problems("**Nodes.** Two nodes.\n\n"),
         )
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_owner_reading_links_the_exact_graph_spec(self):
         body = (
             "#### Sequential work items Graph (`batch_graph`) {#host-batch}\n\n"
@@ -318,13 +324,15 @@ class GraphSpecTests(unittest.TestCase):
             link_problems(section(STATE, NODES, EDGES), [linking]),
         )
 
-    @verifies("scenario.harness.graph-specs")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_unknown_duplicate_and_missing_bindings_are_findings(self):
         repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
         limited = {
             "batch_graph": (
                 lambda: __import__(
-                    "tests.concorde.support.legacy_graphs.batch_graph",
+                    "tests.concorde.support.sample_graph",
                     fromlist=["build_batch_graph"],
                 ).build_batch_graph(
                     lambda name: lambda state: {},
@@ -355,13 +363,60 @@ class GraphSpecTests(unittest.TestCase):
                 for finding in none
             )
         )
-        self.assertTrue(
-            (
-                Path(REPOSITORY_ROOT) / "scripts/development/check-graph-specs.py"
-            ).is_file()
+        script = Path(REPOSITORY_ROOT) / "scripts/development/check-graph-specs.py"
+        checked = subprocess.run(
+            [
+                sys.executable,
+                str(script),
+                "--catalog",
+                "concorde.operations.graph_catalog:catalog",
+            ],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
         )
+        self.assertEqual(0, checked.returncode, checked.stdout + checked.stderr)
+        self.assertIn("0 Graph Spec finding(s)", checked.stdout)
+        refused = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        self.assertNotEqual(0, refused.returncode)
 
-    @verifies("scenario.harness.graph-api-only")
+    @verifies("scenario.execution.graph-spec-mismatch")
+    def test_a_graph_diverging_from_its_graph_spec_is_reported_with_its_document(
+        self,
+    ):
+        repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
+        # The catalog's Terminal Agent Operation now compiles a different topology.
+        diverged = {
+            "terminal_agent_operation": lambda: __import__(
+                "tests.concorde.support.sample_graph", fromlist=["build_batch_graph"]
+            ).build_batch_graph(
+                lambda name: lambda state: {},
+                name="terminal_agent_operation",
+                item_node="execute_item",
+            )
+        }
+        document = "specs/concorde/harness/execution/control-flow.md"
+        findings = [
+            finding
+            for finding in graph_spec_findings(repository, diverged)
+            if finding.source == document
+        ]
+        rules = {finding.rule_id for finding in findings}
+        self.assertLessEqual({"CONCORDE-GRAPH-003", "CONCORDE-GRAPH-006"}, rules)
+        for finding in findings:
+            self.assertEqual("error", finding.severity)
+            self.assertIn("terminal_agent_operation", finding.message)
+
+    @verifies("scenario.execution.functional-api-refused")
     def test_a_graph_outside_the_graph_api_is_a_finding(self):
         from langgraph.func import entrypoint
 
@@ -387,7 +442,7 @@ class GraphSpecTests(unittest.TestCase):
             [(finding.rule_id, finding.message) for finding in findings],
         )
 
-    @verifies("scenario.harness.graph-api-only")
+    @verifies("scenario.execution.functional-api-refused")
     def test_functional_api_imports_are_found_by_parsing_not_running(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

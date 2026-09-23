@@ -2,8 +2,8 @@
   "profile_version": 16,
   "registry": ".concorde/specs.json",
   "protocol": {
-    "version": "11.0.0",
-    "digest": "sha256:1fa79a865f09bb86920156e880fb95a7d756dafa7fdf85e61ea8c26cf270718a"
+    "version": "11.1.0",
+    "digest": "sha256:9af41afbeaedc37819ac0208551bcc9adf6e9dbb5cd14ddf65b442e1262b80db"
   },
   "operation_configuration": {
     "data": {
@@ -19,7 +19,9 @@
       "module": "module.harness.execution",
       "argv": [
         "{python}",
-        "scripts/development/check-graph-specs.py"
+        "scripts/development/check-graph-specs.py",
+        "--catalog",
+        "concorde.operations.graph_catalog:catalog"
       ],
       "timeout_seconds": 120,
       "inputs": [
@@ -41,21 +43,68 @@
         "no:cacheprovider",
         "-n",
         "8",
-        "tests/concorde/harness/test_scoped_protocol.py",
-        "tests/concorde/operations/test_review.py",
-        "tests/concorde/operations/test_check_execution.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/operations"
       ],
       "timeout_seconds": 180,
       "inputs": [
         "pyproject.toml",
         "conftest.py",
-        "tests/concorde/support/pytest_timing.py",
+        "tests/concorde/support",
         "agents",
         "src",
         "protocol",
-        "tests/concorde/harness",
+        "operations",
         "tests/concorde/operations"
+      ]
+    },
+    {
+      "id": "check.delivery.runtime",
+      "module": "module.delivery",
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "8",
+        "tests/concorde/delivery"
+      ],
+      "timeout_seconds": 180,
+      "inputs": [
+        "pyproject.toml",
+        "conftest.py",
+        "tests/concorde/support",
+        "agents",
+        "src",
+        "protocol",
+        "operations",
+        "tests/concorde/delivery"
+      ]
+    },
+    {
+      "id": "check.validation.runtime",
+      "module": "module.validation",
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "8",
+        "tests/concorde/validation"
+      ],
+      "timeout_seconds": 180,
+      "inputs": [
+        "pyproject.toml",
+        "conftest.py",
+        "tests/concorde/support",
+        "agents",
+        "src",
+        "protocol",
+        "operations",
+        "tests/concorde/validation"
       ]
     },
     {
@@ -81,14 +130,18 @@
         "-p",
         "no:cacheprovider",
         "-n",
-        "4",
+        "8",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_boundaries.py",
-        "tests/concorde/harness/test_worker_binding.py",
-        "tests/concorde/harness/test_check_executor.py"
+        "tests/concorde/harness/test_check_executor.py",
+        "tests/concorde/harness/test_configured_checks.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "timeout_seconds": 180,
       "inputs": [
+        "pyproject.toml",
+        "conftest.py",
+        "tests/concorde/support",
         "agents",
         "src",
         "protocol",
@@ -106,8 +159,7 @@
         "no:cacheprovider",
         "-n",
         "4",
-        "tests/concorde/spec/test_module_model.py",
-        "tests/concorde/spec/test_module_architecture.py"
+        "tests/concorde/spec/test_module_model.py"
       ],
       "timeout_seconds": 120,
       "inputs": [
@@ -172,6 +224,48 @@
         "docsite/tests",
         "docsite/tsconfig.json",
         "docsite/vitest.config.ts"
+      ]
+    },
+    {
+      "id": "check.distribution.package",
+      "module": "module.distribution",
+      "argv": [
+        "{python}",
+        "scripts/concorde.py",
+        "check-package"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        "agents",
+        "operations",
+        "pi/extensions",
+        "pi/workflows",
+        "pi/package.json",
+        "pi/package-lock.json",
+        "pi/native-runtime-contract.json",
+        "prompts",
+        "protocol",
+        "scripts",
+        "src",
+        "specs/concorde",
+        "concorde.json"
+      ]
+    },
+    {
+      "id": "check.issues.store",
+      "module": "module.issues",
+      "argv": [
+        "{python}",
+        "scripts/issues.py",
+        "check"
+      ],
+      "timeout_seconds": 60,
+      "inputs": [
+        ".concorde/issues",
+        ".concorde/config.json",
+        ".concorde/specs.json",
+        "scripts/issues.py",
+        "src"
       ]
     }
   ]

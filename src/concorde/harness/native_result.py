@@ -9,8 +9,18 @@ from __future__ import annotations
 
 import re
 
+from ..issues.shapes import BLOCKER
 from ..spec.repository import SpecError
-from ..spec.typed_data import canonical, decode
+from ..spec.typed_data import (
+    DIGEST,
+    PATH,
+    STRING,
+    array,
+    canonical,
+    decode,
+    obj,
+    register,
+)
 
 MAX_PROPOSAL_BYTES = 1024 * 1024
 MAX_CONTROL_BYTES = 8000
@@ -69,3 +79,58 @@ def staging_control(
             "native staging control is not canonical JSON", "invalid_completion"
         )
     return value
+
+
+# The result every non-review Agent call returns; the fields an Agent may fill are limited by its
+# definition.
+DOCUMENT_CHANGE = obj({"path": PATH, "content": {"type": "string"}})
+TASK_ITEM = obj(
+    {
+        "id": STRING,
+        "target_id": STRING,
+        "description": STRING,
+        "acceptance": STRING,
+        "complete": {"type": "boolean"},
+    }
+)
+AGENT_STAGE_RESULT = obj(
+    {
+        "context_id": DIGEST,
+        "outcome": {
+            "enum": [
+                "completed",
+                "sufficient",
+                "spec_incomplete",
+                "unsupported",
+                "conflicting",
+                "failed",
+            ]
+        },
+        "answer": {"type": "string"},
+        "blockers": array(BLOCKER),
+        "documents": array(DOCUMENT_CHANGE),
+        "plan": {"type": "string"},
+        "tasks": array(TASK_ITEM),
+        "issue_decision": obj(
+            {
+                "action": {
+                    "enum": [
+                        "develop",
+                        "spec-repair",
+                        "verify",
+                        "resolved",
+                        "duplicate",
+                        "not-actionable",
+                        "needs-decision",
+                    ]
+                },
+                "intent": STRING,
+                "rationale": STRING,
+                "duplicate_of": {"anyOf": [STRING, {"type": "null"}]},
+            }
+        ),
+    },
+    ("issue_decision",),
+)
+
+register("concorde-agent-stage-result", 3, AGENT_STAGE_RESULT)

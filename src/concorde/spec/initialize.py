@@ -8,23 +8,84 @@ from pathlib import Path
 from .changes import apply_files, file_change
 from .repository import (
     PROFILE_VERSION,
+    PROTOCOL_MANIFEST_PATH,
     REGISTRY_SCHEMA,
     SpecError,
     digest,
     identifier,
     read_file,
 )
-from .typed_data import checked_path, decode, validate_typed
+from .typed_data import (
+    DIGEST,
+    PATH,
+    STRING,
+    array,
+    checked_path,
+    decode,
+    obj,
+    register,
+    typed,
+    typed_schema,
+)
 from .validation import validate_repository
+
+# Spec tooling's own typed values: the concorde-init request and response and the proposal they
+# carry. The worker configuration is Request admission's type, referred to by name only.
+PROPOSAL_FILE = obj(
+    {
+        "path": PATH,
+        "before_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+        "content": {"type": "string"},
+    }
+)
+PROPOSAL = obj(
+    {
+        "action": {"enum": ["initialize"]},
+        "base_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+        "source_digest": DIGEST,
+        "files": array(PROPOSAL_FILE),
+    }
+)
+PROPOSAL_VERSION = 2
+INIT_REQUEST = obj(
+    {
+        "action": {"enum": ["propose", "apply"]},
+        "name": STRING,
+        "target_id": STRING,
+        "configuration": typed_schema("concorde-operation-configuration"),
+        "proposal": typed_schema("concorde-project-proposal"),
+        "proposal_digest": DIGEST,
+        "run_in_primary": {"type": "boolean"},
+    },
+    (
+        "name",
+        "target_id",
+        "configuration",
+        "proposal",
+        "proposal_digest",
+        "run_in_primary",
+    ),
+)
+INIT_REQUEST_VERSION = 4
+INIT_RESPONSE = obj(
+    {
+        "status": {"enum": ["proposed", "applied"]},
+        "proposal": {
+            "anyOf": [typed_schema("concorde-project-proposal"), {"type": "null"}]
+        },
+        "proposal_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+        "files": array(PATH),
+    }
+)
+INIT_RESPONSE_VERSION = 2
+
+register("concorde-project-proposal", PROPOSAL_VERSION, PROPOSAL)
+register("concorde-init-request", INIT_REQUEST_VERSION, INIT_REQUEST)
+register("concorde-init-response", INIT_RESPONSE_VERSION, INIT_RESPONSE)
 
 
 def protocol_binding(package: Path) -> dict:
-    from ..distribution.build import BuildError, verify_fresh
-
-    try:
-        verify_fresh(package)
-    except BuildError as error:
-        raise SpecError(str(error), error.code) from error
+    """The binding of the running package's Protocol manifest."""
     raw = read_file(package, "protocol/manifest.json")
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
@@ -35,8 +96,6 @@ def installed_protocol_binding(root: Path) -> dict:
     Initialization and explicit acceptance bind this copy; neither creates it. A project without it
     has not had Concorde installed.
     """
-    from ..distribution.project_defaults import PROTOCOL_MANIFEST_PATH
-
     try:
         raw = read_file(root, PROTOCOL_MANIFEST_PATH)
     except (SpecError, OSError) as error:
@@ -83,6 +142,17 @@ def initial_module_metadata(
         "defines": defines,
         "relations": [],
     }
+
+
+def source_digest(root: Path, documents: set[str]) -> str:
+    """The digest of the project state a proposal is computed from: the installed Protocol
+    binding and the existing files the root Module's realization binds."""
+    return digest(
+        {
+            "protocol": installed_protocol_binding(root),
+            "entries": existing_files(root, documents),
+        }
+    )
 
 
 def existing_files(root: Path, documents: set[str]) -> list[str]:
@@ -179,7 +249,15 @@ def project_proposal(
     target_id: str = "module.project",
 ) -> dict:
     identifier(target_id)
-    configuration = validate_typed(configuration, "concorde-operation-configuration")
+    # The worker configuration is Request admission's typed value; it is stored unchanged.
+    if (
+        not isinstance(configuration, dict)
+        or configuration.get("type_id") != "concorde-operation-configuration"
+    ):
+        raise SpecError(
+            "configuration must be a concorde-operation-configuration value",
+            "invalid_input",
+        )
     if not isinstance(name, str) or not name.strip():
         raise SpecError("project name is required", "invalid_input")
     if checked_path(root, ".concorde/config.json").exists():
@@ -220,18 +298,32 @@ def project_proposal(
     # topology-artifact ignore file) is the installer's output.
     return {
         "type_id": "concorde-project-proposal",
-        "schema_version": 1,
+        "schema_version": PROPOSAL_VERSION,
         "action": "initialize",
         "base_digest": None,
+        "source_digest": source_digest(root, {path, path + ".json"}),
         "files": files,
     }
 
 
+def proposal_digest(proposal: dict) -> str:
+    """The ``sha256:`` digest of the canonical JSON of a proposal typed value."""
+    return digest(proposal)
+
+
 def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
     if (
-        set(proposal) != {"type_id", "schema_version", "action", "base_digest", "files"}
+        set(proposal)
+        != {
+            "type_id",
+            "schema_version",
+            "action",
+            "base_digest",
+            "source_digest",
+            "files",
+        }
         or proposal["type_id"] != "concorde-project-proposal"
-        or proposal["schema_version"] != 1
+        or proposal["schema_version"] != PROPOSAL_VERSION
         or proposal["action"] not in {"initialize"}
     ):
         raise SpecError("invalid project proposal envelope", "invalid_proposal")
@@ -276,6 +368,13 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         raise SpecError(
             "initialization cannot replace existing files", "invalid_proposal"
         )
+    documents = allowed - {".concorde/config.json", ".concorde/specs.json"}
+    if source_digest(root, documents) != proposal["source_digest"]:
+        # The project's files changed since propose: it would now propose something else.
+        raise SpecError(
+            "the project changed since this proposal was made; propose again",
+            "stale_proposal",
+        )
 
     def verify():
         report = validate_repository(root, package_root=package)
@@ -294,3 +393,73 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         "profile_version": PROFILE_VERSION,
         "protocol": installed_protocol_binding(root),
     }
+
+
+def run(request) -> dict:
+    """Entry point of ``concorde-init``: propose or apply the first Spec of a project."""
+    host, data = request.host, request.data
+    if host.mode == "describe-policy":
+        raise SpecError(
+            "the initialization proposal is the preview of concorde-init",
+            "use_proposal",
+        )
+    if data["action"] == "apply":
+        if not {"proposal", "proposal_digest"} <= set(data):
+            raise SpecError(
+                "apply requires the proposal and its proposal_digest",
+                "invalid_input",
+                "/proposal",
+            )
+        proposal = data["proposal"]
+        # Apply accepts only the exact proposal propose returned, named by its digest.
+        if proposal_digest(proposal) != data["proposal_digest"]:
+            raise SpecError(
+                "proposal_digest is not the digest of the given proposal",
+                "invalid_proposal",
+                "/proposal_digest",
+            )
+        value = apply_project_proposal(
+            host.project_root,
+            host.package_root,
+            {
+                "type_id": proposal["type_id"],
+                "schema_version": proposal["schema_version"],
+                **proposal["data"],
+            },
+        )
+        return typed(
+            "concorde-init-response",
+            {
+                "status": "applied",
+                "proposal": None,
+                "proposal_digest": None,
+                "files": value["files"],
+            },
+        )
+    if not {"name", "configuration"} <= set(data):
+        raise SpecError(
+            "initialization proposal requires name and configuration", "invalid_input"
+        )
+    value = project_proposal(
+        host.project_root,
+        host.package_root,
+        data["name"],
+        data["configuration"],
+        data.get("target_id", "module.project"),
+    )
+    proposal = typed(
+        "concorde-project-proposal",
+        {
+            key: value[key]
+            for key in ("action", "base_digest", "source_digest", "files")
+        },
+    )
+    return typed(
+        "concorde-init-response",
+        {
+            "status": "proposed",
+            "proposal": proposal,
+            "proposal_digest": proposal_digest(proposal),
+            "files": [item["path"] for item in value["files"]],
+        },
+    )

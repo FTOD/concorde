@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 from ..spec.repository import SpecError
@@ -21,10 +20,7 @@ from .execution_error import ExecutionFailure, failure
 from .host import OperationHost
 from .timing import timed
 
-# An installed consumer keeps the framework below this project-relative root (the installer's
-# FRAMEWORK_ROOT); a source checkout is its own framework.
-INSTALLED_FRAMEWORK_ROOT = ".concorde/framework"
-# How long a relayed launcher may cancel its worker after the host was interrupted.
+# How long a relayed launcher may cancel its work after the host was interrupted.
 RELAY_GRACE_SECONDS = 30
 
 
@@ -43,47 +39,16 @@ def source_checkout(root: Path) -> bool:
     return (root / "concorde.json").is_file() and (root / "src/concorde").is_dir()
 
 
-@timed("relay.local_admission")
-def verify_local_execution(host: OperationHost) -> None:
-    """Installed entry admission is local and read-only; source-private fixtures stay separate."""
-    if (
-        host.package_root.name != "framework"
-        or host.package_root.parent.name != ".concorde"
-    ):
-        return
-    from ..distribution.local_installation import verify_installation
-
-    if host.package_root != host.project_root / INSTALLED_FRAMEWORK_ROOT:
-        raise SpecError(
-            "installed execution requires this worktree's local Framework",
-            "local_installation_required",
-        )
-    try:
-        local = verify_installation(host.project_root)
-        import langgraph.graph
-
-        runtime = local.python.parent.parent
-        if Path(sys.prefix).resolve() != runtime or not Path(
-            langgraph.graph.__file__
-        ).resolve().is_relative_to(runtime):
-            raise ValueError(
-                "the executing interpreter or LangGraph dependency is not worktree-local"
-            )
-    except (ValueError, OSError) as error:
-        raise SpecError(
-            f"local installation unavailable: {error}; run the explicit installer before retrying",
-            "local_installation_required",
-        ) from error
-
-
 def relay_launcher(
     host: OperationHost, candidate: Path, *, bootstrap: bool = False
 ) -> list[str]:
-    """Select only verified candidate-local code and dependencies, never provider execution."""
+    """The candidate's own interpreter and launcher, never the relaying worktree's."""
     if source_checkout(candidate):
-        from ..distribution.build import verify_fresh
+        # A candidate of Concorde's own source is never installed into: it must already have
+        # its own fresh build, environment and launcher.
+        from .admission import verify_build
 
-        verify_fresh(candidate)
+        verify_build(candidate)
         python = candidate / ".venv/bin/python"
         launcher = candidate / "scripts/run-operation.py"
         if (
@@ -97,19 +62,14 @@ def relay_launcher(
                 "missing_runtime",
             )
         return [str(python), str(launcher)]
-    from ..distribution.local_installation import admit_package, ensure_installation
-
-    try:
-        source = admit_package(host.package_root)
-        local = ensure_installation(
-            candidate, source, bootstrap=bootstrap, preserve_project=True
-        )
-    except (ValueError, OSError) as error:
+    installation = host.services.installation if host.services else None
+    if installation is None:
         raise SpecError(
-            f"candidate local installation unavailable: {error}; explicitly install/update this worktree before retrying",
+            "no local installation service was supplied to install the candidate",
             "local_installation_required",
-        ) from error
-    return [str(local.python), str(local.launcher)]
+        )
+    python, launcher = installation.install(candidate, host.package_root, bootstrap)
+    return [str(python), str(launcher)]
 
 
 @timed("relay.process")
@@ -123,22 +83,19 @@ def relay_operation(
     interrupt reaches the launcher as SIGTERM, which cancels its worker and prints its result;
     only a launcher that does not finish within the grace period is killed."""
     try:
-        if not source_checkout(candidate):
-            state = read_change(candidate, required=True)
-            target = host.relay_target or {}
-            if target.get("change_id") != state["change_id"] or target.get(
-                "path"
-            ) != str(candidate):
-                raise SpecError(
-                    "relay target does not own this candidate", "workspace_mismatch"
-                )
-            # Reject conflicting root intent before installation writes; review intent stays independent.
-            if operation not in {
-                "concorde-code-review",
-                "concorde-spec-review",
-                "concorde-context-solve",
-            }:
-                resume_owner(state, invocation["input"]["data"])
+        # Every candidate, Concorde's own source included, must be the one whose change status
+        # names the requested change and path.
+        state = read_change(candidate, required=True)
+        target = host.relay_target or {}
+        if target.get("change_id") != state["change_id"] or target.get("path") != str(
+            candidate
+        ):
+            raise SpecError(
+                "relay target does not own this candidate", "workspace_mismatch"
+            )
+        # Reject conflicting owner intent of a mutation before installation writes.
+        if target.get("mutates"):
+            resume_owner(state, invocation["input"]["data"])
         argv = [
             *relay_launcher(
                 host,
@@ -282,11 +239,6 @@ def bind_worktree(
         refresh_registry(host.project_root)
         return host, None
     if mutation and not host.allow_primary_worktree:
-        if task.get("_issue_recovery"):
-            raise SpecError(
-                "pending Issue disposition must recover in its owning worktree; do not create another candidate",
-                "workspace_mismatch",
-            )
         if primary is None:
             raise SpecError(
                 "mutations require a committed Git worktree", "workspace_mismatch"

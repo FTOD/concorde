@@ -10,6 +10,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.delivery.manual_merge import record_manual_merge
+from concorde.delivery.records import manual_merge, receipt
 from concorde.harness.change_worktree import (
     ensure_change,
     git,
@@ -17,18 +19,21 @@ from concorde.harness.change_worktree import (
     read_change,
     refresh_registry,
     save_change,
-    save_target_state,
-    target_state,
 )
 from concorde.harness.status_store import (
     all_status,
     primary_root,
     read_status,
-    record_manual_merge,
     run_path,
     status_path,
     write_run,
     write_status,
+)
+from concorde.planning.records import (
+    planning_records,
+    save_target_state,
+    target_state,
+    targets,
 )
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
@@ -49,7 +54,7 @@ class StatusStoreTests(unittest.TestCase):
         self.candidate = Path(self.temp.name) / "candidate"
         git(self.primary, "worktree", "add", "-b", "task", str(self.candidate))
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_status_and_runs_are_only_primary_and_identity_survives_rename(self):
         state = ensure_change(self.candidate, task={"task": "work"})
         self.assertEqual(self.primary, primary_root(self.candidate))
@@ -88,7 +93,7 @@ class StatusStoreTests(unittest.TestCase):
         self.assertEqual(1, len(all_status(self.primary)))
         self.assertEqual("", git(self.primary, "status", "--porcelain").stdout)
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_unavailable_primary_never_falls_back_to_candidate(self):
         moved = self.primary.with_name("temporarily-unavailable")
         self.primary.rename(moved)
@@ -100,7 +105,7 @@ class StatusStoreTests(unittest.TestCase):
         finally:
             moved.rename(self.primary)
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_late_write_never_recreates_missing_source(self):
         from concorde.harness.host import OperationHost
         from concorde.harness.status_store import record_run
@@ -134,7 +139,9 @@ class StatusStoreTests(unittest.TestCase):
             run_path(unversioned, ".concorde/runs/run/result").read_bytes(),
         )
 
-    @verifies("scenario.harness.primary-status")
+    @verifies(
+        "scenario.worktrees.primary-status", "scenario.worktrees.change-id-unique"
+    )
     def test_explicit_id_registration_race_has_one_winner(self):
         from concorde.harness import change_worktree
 
@@ -176,7 +183,9 @@ class StatusStoreTests(unittest.TestCase):
             write_status(self.primary, winners[0], create=True)
         self.assertEqual(winners, all_status(self.primary))
 
-    @verifies("scenario.harness.primary-status", "scenario.harness.workspace-inventory")
+    @verifies(
+        "scenario.worktrees.primary-status", "scenario.worktrees.workspace-inventory"
+    )
     def test_recreated_worktree_never_inherits_old_incarnation(self):
         for same_branch in (True, False):
             with self.subTest(same_branch=same_branch):
@@ -208,7 +217,7 @@ class StatusStoreTests(unittest.TestCase):
                 git(self.primary, "worktree", "remove", "--force", str(self.candidate))
                 git(self.primary, "worktree", "add", str(self.candidate), "task")
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_stale_replacements_reject_all_fields_not_a_preservation_allowlist(self):
         state = ensure_change(self.candidate, task={"task": "work"}, mode="maintenance")
         before = (self.primary / status_path(state["change_id"])).read_bytes()
@@ -217,13 +226,8 @@ class StatusStoreTests(unittest.TestCase):
             before, (self.primary / status_path(state["change_id"])).read_bytes()
         )
         stale = copy.deepcopy(state)
-        state.update(
-            status="blocked",
-            phase="review",
-            blockers=[{"reason": "blocked"}],
-            validation={"checks": ["new"]},
-            validated_tree="new-tree",
-        )
+        state.update(status="blocked", phase="review")
+        planning_records(state)["gaps"].append({"reason": "blocked"})
         save_change(self.candidate, state)
         stale.update(phase="implementation")
         for save in (save_change, write_status):
@@ -234,11 +238,10 @@ class StatusStoreTests(unittest.TestCase):
         progress(self.candidate, phase="waiting")
         current = read_change(self.candidate, required=True)
         self.assertEqual("blocked", current["status"])
-        self.assertEqual(state["blockers"], current["blockers"])
-        self.assertEqual(state["validation"], current["validation"])
+        self.assertEqual(state["sections"], current["sections"])
         self.assertEqual("waiting", current["phase"])
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_target_cas_preserves_independent_updates_and_rejects_stale_validation(
         self,
     ):
@@ -250,7 +253,8 @@ class StatusStoreTests(unittest.TestCase):
         stale = copy.deepcopy(target)
         # A whole-status caller must advance target revisions as well.
         state = read_change(self.candidate, required=True)
-        state["targets"]["module.example"].update(checks=["new validation"])
+        targets(state)["module.example"].update(checks=["new validation"])
+        targets(state)["module.example"]["revision"] += 1
         save_change(self.candidate, state)
         stale["phase"] = "implementation"
         with self.assertRaises(SpecError) as error:
@@ -260,7 +264,7 @@ class StatusStoreTests(unittest.TestCase):
         other = target_state(self.candidate, "module.other", None, create=True)
         other["plan"] = "independent"
         save_target_state(self.candidate, other)
-        progress(self.candidate, status="blocked", blockers=[{"reason": "new blocker"}])
+        progress(self.candidate, status="blocked")
         first["phase"] = "review"
         save_target_state(self.candidate, first)
         # Same in-memory target can save again after a successful update.
@@ -268,15 +272,14 @@ class StatusStoreTests(unittest.TestCase):
         save_target_state(self.candidate, first)
         result = read_change(self.candidate, required=True)
         self.assertEqual(
-            ["new validation"], result["targets"]["module.example"]["checks"]
+            ["new validation"], targets(result)["module.example"]["checks"]
         )
-        self.assertEqual("independent", result["targets"]["module.other"]["plan"])
+        self.assertEqual("independent", targets(result)["module.other"]["plan"])
         self.assertEqual("blocked", result["status"])
-        self.assertEqual([{"reason": "new blocker"}], result["blockers"])
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_target_snapshot_rejects_recreated_incarnation_with_equal_revision(self):
-        from concorde.spec.contract_shapes import CHECK_RESULT
+        from concorde.harness.checks import CHECK_RESULT
         from concorde.spec.repository import digest
         from concorde.spec.typed_data import check_schema
 
@@ -315,20 +318,22 @@ class StatusStoreTests(unittest.TestCase):
         with self.assertRaises(SpecError) as error:
             save_target_state(self.candidate, stale)
         self.assertEqual("workspace_mismatch", error.exception.code)
-        # Whole-status saves must not provide a second laundering entry point.
-        current = read_change(self.candidate, required=True)
-        current["targets"]["module.example"] = stale
-        for writer in (save_change, write_status):
-            with self.assertRaises(SpecError):
-                writer(self.candidate, current)
         self.assertEqual(
             before, (self.primary / status_path(new["change_id"])).read_bytes()
         )
+        # A whole-status write stores Planning's section without interpreting it; the stale
+        # entry is still refused when Planning reads it, never adopted by the new change.
+        current = read_change(self.candidate, required=True)
+        targets(current)["module.example"] = stale
+        save_change(self.candidate, current)
+        with self.assertRaises(SpecError) as laundered:
+            target_state(self.candidate, "module.example", None)
+        self.assertEqual("workspace_mismatch", laundered.exception.code)
         self.assertEqual(
             old_bytes, (self.primary / status_path(old["change_id"])).read_bytes()
         )
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_target_ownership_is_required_and_not_just_incarnation(self):
         first = ensure_change(
             self.primary, task={"task": "first"}, allow_primary=True, mode="direct"
@@ -364,7 +369,7 @@ class StatusStoreTests(unittest.TestCase):
         )
         # Loading an unbound on-disk target refuses it, never adds current ownership.
         saved = read_change(self.primary, required=True)
-        saved["targets"]["module.example"].pop("owner")
+        targets(saved)["module.example"].pop("owner")
         path = self.primary / status_path(second["change_id"])
         path.write_text(json.dumps(saved))
         unbound = path.read_bytes()
@@ -372,7 +377,7 @@ class StatusStoreTests(unittest.TestCase):
             target_state(self.primary, "module.example", None)
         self.assertEqual(unbound, path.read_bytes())
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_unsaved_target_cannot_be_adopted_by_another_task(self):
         old = ensure_change(self.candidate, task={"task": "old"}, mode="maintenance")
         old["target_id"] = "module.example"
@@ -389,9 +394,9 @@ class StatusStoreTests(unittest.TestCase):
         self.assertEqual(
             before, (self.primary / status_path(new["change_id"])).read_bytes()
         )
-        self.assertEqual({}, read_change(self.candidate)["targets"])
+        self.assertEqual({}, targets(read_change(self.candidate)))
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_new_unsaved_target_keeps_binding_through_rename_and_noop(self):
         state = ensure_change(self.candidate, task={"task": "work"}, mode="maintenance")
         state["target_id"] = "module.example"
@@ -408,7 +413,7 @@ class StatusStoreTests(unittest.TestCase):
         self.assertEqual(owner, value["owner"])
         self.assertEqual("renamed", read_change(self.candidate)["branch"])
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_manual_merge_refuses_replacement_even_with_prior_evidence(self):
         for recorded in (False, True):
             with self.subTest(recorded=recorded):
@@ -448,7 +453,7 @@ class StatusStoreTests(unittest.TestCase):
                 git(self.primary, "worktree", "remove", "--force", str(self.candidate))
                 git(self.primary, "worktree", "add", str(self.candidate), "task")
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_manual_merge_rename_and_absent_source_retry(self):
         state = ensure_change(self.candidate, task={"task": "work"}, mode="maintenance")
         git(self.candidate, "branch", "-m", "renamed")
@@ -459,11 +464,11 @@ class StatusStoreTests(unittest.TestCase):
         retried = record_manual_merge(
             self.primary, state["change_id"], commit="HEAD", cleanup="removed"
         )
-        self.assertEqual(recorded["manual_merge"], retried["manual_merge"])
+        self.assertEqual(manual_merge(recorded), manual_merge(retried))
         self.assertEqual("removed", retried["cleanup"]["status"])
         self.assertFalse(self.candidate.exists())
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_cleanup_only_update_reuses_recorded_merge_or_is_rejected(self):
         state = ensure_change(self.candidate, task={"task": "work"}, mode="maintenance")
         with self.assertRaises(SpecError) as unrecorded:
@@ -472,7 +477,7 @@ class StatusStoreTests(unittest.TestCase):
             )
         self.assertEqual("stale_evidence", unrecorded.exception.code)
         untouched = read_status(self.primary, state["change_id"]) or {}
-        self.assertIsNone(untouched["manual_merge"])
+        self.assertIsNone(manual_merge(untouched))
         recorded = record_manual_merge(
             self.primary, state["change_id"], commit="HEAD", cleanup="pending"
         )
@@ -486,11 +491,11 @@ class StatusStoreTests(unittest.TestCase):
         updated = record_manual_merge(
             self.primary, state["change_id"], commit=None, cleanup="removed"
         )
-        self.assertEqual(recorded["manual_merge"], updated["manual_merge"])
+        self.assertEqual(manual_merge(recorded), manual_merge(updated))
         self.assertEqual("removed", updated["cleanup"]["status"])
         self.assertEqual(updated, read_status(self.primary, state["change_id"]))
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_manual_merge_refuses_other_task_in_same_primary_incarnation(self):
         first = ensure_change(
             self.primary, task={"task": "first"}, allow_primary=True, mode="direct"
@@ -512,7 +517,7 @@ class StatusStoreTests(unittest.TestCase):
         )
         self.assertEqual(second, read_change(self.primary))
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_direct_primary_task_and_manual_merge_keep_cleanup_separate(self):
         direct = ensure_change(
             self.primary, task={"task": "simple"}, allow_primary=True
@@ -524,10 +529,10 @@ class StatusStoreTests(unittest.TestCase):
         )
         self.assertEqual("merged", result["outcome"])
         self.assertEqual("pending", result["cleanup"]["status"])
-        self.assertIsNone(result["delivery"])
+        self.assertIsNone(receipt(result))
         self.assertTrue(self.candidate.exists())
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_one_child_owner_and_stable_id_collision_are_enforced(self):
         from concorde.harness.status_store import coordinate_child
 
@@ -558,7 +563,7 @@ class StatusStoreTests(unittest.TestCase):
                 self.primary, allow_primary=True, change_id=state["change_id"]
             )
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_manual_merge_cannot_be_invented_after_unrecorded_cleanup(self):
         state = ensure_change(
             self.candidate, task={"task": "maintenance"}, mode="maintenance"
@@ -568,9 +573,9 @@ class StatusStoreTests(unittest.TestCase):
             record_manual_merge(
                 self.primary, state["change_id"], commit="HEAD", cleanup="removed"
             )
-        self.assertIsNone(read_status(self.primary, state["change_id"])["manual_merge"])
+        self.assertIsNone(manual_merge(read_status(self.primary, state["change_id"])))
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_terminal_direct_tasks_do_not_claim_subsequent_primary_tasks(self):
         first = ensure_change(
             self.primary, task={"task": "first"}, allow_primary=True, mode="direct"
@@ -586,7 +591,7 @@ class StatusStoreTests(unittest.TestCase):
         self.assertNotEqual(first["change_id"], second["change_id"])
         self.assertEqual(2, len(all_status(self.primary)))
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_runtime_writes_do_not_replace_tracked_project_files(self):
         tracked = self.primary / ".concorde/runs/tracked/result"
         tracked.parent.mkdir(parents=True)
@@ -597,7 +602,7 @@ class StatusStoreTests(unittest.TestCase):
             write_run(self.candidate, ".concorde/runs/tracked/result", b"replace")
         self.assertEqual(b"project owned", tracked.read_bytes())
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_run_artifacts_survive_candidate_deletion(self):
         from concorde.harness.host import OperationHost
         from concorde.harness.status_store import record_run
@@ -626,97 +631,11 @@ class StatusStoreTests(unittest.TestCase):
         )
         self.assertFalse(self.candidate.exists())
 
-    @verifies("scenario.harness.primary-status", "scenario.harness.worktree-relay")
-    def test_source_primary_cannot_relay_a_mutation_by_change_id(self):
-        from concorde.harness.host import OperationHost
-        from concorde.harness.relay import bind_worktree
-
-        state = ensure_change(
-            self.candidate, task={"task": "maintenance"}, mode="maintenance"
-        )
-        (self.primary / "concorde.json").write_text("{}")
-        with self.assertRaises(SpecError) as error:
-            bind_worktree(
-                OperationHost(self.primary, self.primary),
-                True,
-                {"change_id": state["change_id"]},
-            )
-        self.assertEqual("fresh_session_required", error.exception.code)
-        host, workspace = bind_worktree(
-            OperationHost(self.candidate, self.candidate),
-            True,
-            {"change_id": state["change_id"]},
-        )
-        self.assertEqual(str(self.candidate), workspace["path"])
-        self.assertNotIn("relay", workspace)
-
-    @verifies("scenario.harness.worktree-relay")
-    def test_source_carrying_relay_checks_existing_build_without_rebuilding(self):
-        from concorde.distribution.build import BuildError
-        from concorde.harness.host import OperationHost
-        from concorde.harness.relay import relay_operation
-
-        (self.candidate / "concorde.json").write_text("{}")
-        (self.candidate / "src/concorde").mkdir(parents=True)
-        with (
-            patch(
-                "concorde.distribution.build.verify_fresh",
-                side_effect=BuildError("stale", "stale_build"),
-            ) as verify,
-            patch("subprocess.Popen") as launch,
-        ):
-            with self.assertRaises(BuildError):
-                relay_operation(
-                    OperationHost(self.primary, self.primary),
-                    "concorde-main",
-                    {},
-                    self.candidate,
-                )
-            verify.assert_called_once_with(self.candidate)
-            launch.assert_not_called()
-        (self.candidate / ".venv/bin").mkdir(parents=True)
-        (self.candidate / ".venv/bin/python").write_text("fixture interpreter")
-        (self.candidate / "scripts").mkdir()
-        (self.candidate / "scripts/run-operation.py").write_text("fixture launcher")
-        with (
-            patch("concorde.distribution.build.verify_fresh") as verify,
-            patch("subprocess.Popen") as launch,
-        ):
-            launch.return_value.communicate.return_value = (
-                '{"type_id":"concorde-operation-result"}',
-                "diagnostics",
-            )
-            result, diagnostics = relay_operation(
-                OperationHost(self.primary, self.primary),
-                "concorde-main",
-                {},
-                self.candidate,
-            )
-            verify.assert_called_once_with(self.candidate)
-            launch.assert_called_once()
-            self.assertEqual("concorde-main", launch.call_args.args[0][-1])
-            self.assertEqual(
-                str(self.candidate / ".venv/bin/python"), launch.call_args.args[0][0]
-            )
-            self.assertNotIn("PYTHONPATH", launch.call_args.kwargs["env"])
-            self.assertNotIn("PYTHONHOME", launch.call_args.kwargs["env"])
-            self.assertEqual("diagnostics", diagnostics)
-
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.worktrees.primary-status")
     def test_private_skill_selection_cannot_redirect_to_source_primary(self):
-        import io
+        from concorde.distribution.session_selection import runtime_selection
+        from concorde.spec.repository import SpecError
 
-        from concorde.harness.entry import json_main
-
-        request = {
-            "type_id": "concorde-operation-invocation",
-            "schema_version": 3,
-            "operation_id": "concorde-main",
-            "mode": "execute",
-            "configuration": None,
-            "input": {},
-        }
-        output = io.StringIO()
         with (
             patch.dict(
                 "os.environ",
@@ -726,14 +645,10 @@ class StatusStoreTests(unittest.TestCase):
                     ),
                 },
             ),
-            patch("sys.argv", ["run-operation.py"]),
-            patch("sys.stdin", io.StringIO(json.dumps(request))),
-            patch("sys.stdout", output),
             patch("pathlib.Path.cwd", return_value=self.primary),
+            self.assertRaises(SpecError) as refused,
         ):
-            self.assertEqual(3, json_main(self.candidate, "concorde-main", None))
-        self.assertEqual(
-            "workspace_mismatch", json.loads(output.getvalue())["errors"][0]["code"]
-        )
+            runtime_selection(self.candidate)
+        self.assertEqual("workspace_mismatch", refused.exception.code)
         self.assertFalse((self.primary / ".concorde/status").exists())
         self.assertFalse((self.primary / ".concorde/runs").exists())

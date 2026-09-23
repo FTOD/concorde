@@ -44,12 +44,8 @@ def selection_path(root: Path, path: Path, *, exists: bool = True) -> Path:
     return path
 
 
-def select_session(
-    candidate: Path, *, mode: str, pi_entry: Path | None, runtime: Path
-) -> dict:
-    """Verify the entire current Pi entry/catalog and its candidate implementation."""
-    if mode not in {"maintenance", "test", "task"}:
-        raise BuildError("unsupported task session mode")
+def select_session(candidate: Path, *, pi_entry: Path, runtime: Path) -> dict:
+    """The test selection of one candidate: its exact private Pi entry, catalog and launcher."""
     # Relative candidate roots are convenient for the CLI, but aliases are not identities.
     root = Path(os.path.abspath(candidate))
     if (
@@ -58,10 +54,8 @@ def select_session(
         or not root.is_dir()
     ):
         raise BuildError("candidate must be a real, non-aliased directory")
-    if mode == "maintenance" and pi_entry is not None:
-        raise BuildError("maintenance sessions must be Concorde-catalog-free")
-    if mode in {"test", "task"} and pi_entry is None:
-        raise BuildError("test/task sessions require an explicit candidate Pi entry")
+    if pi_entry is None:
+        raise BuildError("a test selection requires the candidate's private Pi entry")
     manifest_path = _exact(root, root / "generated/build-manifest.json")
     manifest_bytes = manifest_path.read_bytes()
     try:
@@ -126,33 +120,29 @@ def select_session(
     runtime_record = recorded(runtime)
     if runtime != root / "scripts/run-operation.py":
         raise BuildError("private runtime must be the candidate launcher")
-    entry = None
-    if pi_entry is not None:
-        if pi_entry != root / PRIVATE_PI_SESSION_SHIM:
-            raise BuildError(
-                "only the exact private candidate Pi entry may be selected"
-            )
-        entry = recorded(pi_entry, built=True)
-        content = pi_entry.read_text(encoding="utf-8")
-        match = re.search(
-            r"const CATALOG: SessionCatalog = (\{.*?\n\});\n\nexport default",
-            content,
-            re.S,
-        )
-        if not match:
-            raise BuildError("private Pi entry has no embedded catalog")
-        # Exact embedded bytes, not just a subset of names or interpreted metadata.
-        catalog_content = match.group(1)
-        entry.update(
-            content=content,
-            catalog={
-                "content": catalog_content,
-                "digest": _digest(catalog_content.encode()),
-            },
-        )
+    if pi_entry != root / PRIVATE_PI_SESSION_SHIM:
+        raise BuildError("only the exact private candidate Pi entry may be selected")
+    entry = recorded(pi_entry, built=True)
+    content = pi_entry.read_text(encoding="utf-8")
+    match = re.search(
+        r"const CATALOG: SessionCatalog = (\{.*?\n\});\n\nexport default",
+        content,
+        re.S,
+    )
+    if not match:
+        raise BuildError("private Pi entry has no embedded catalog")
+    # Exact embedded bytes, not just a subset of names or interpreted metadata.
+    catalog_content = match.group(1)
+    entry.update(
+        content=content,
+        catalog={
+            "content": catalog_content,
+            "digest": _digest(catalog_content.encode()),
+        },
+    )
     return {
         "schema_version": 2,
-        "mode": mode,
+        "mode": "test",
         "candidate": str(root),
         "fresh_context": True,
         "fork_context": False,
@@ -172,8 +162,9 @@ def select_session(
                 "--no-prompt-templates",
                 "--no-themes",
                 "--no-extensions",
-            ]
-            + (["-e", str(pi_entry)] if pi_entry else []),
+                "-e",
+                str(pi_entry),
+            ],
         },
         "execution_evidence": None,
     }
@@ -183,18 +174,22 @@ def load_selection(root: Path, path: Path) -> dict:
     """Reverify saved launch inputs; any other schema or field is refused."""
     try:
         value = decode(selection_path(root, path).read_text(encoding="utf-8"))
-        if type(value["schema_version"]) is not int or value["schema_version"] != 2:
+        if (
+            type(value["schema_version"]) is not int
+            or value["schema_version"] != 2
+            or value["mode"] != "test"
+        ):
             raise BuildError(
                 "unsupported private selection schema; reselect the Pi entry"
             )
         expected = select_session(
             root,
-            mode=value["mode"],
-            pi_entry=Path(value["pi_entry"]["path"])
-            if value["pi_entry"] is not None
-            else None,
+            pi_entry=Path(value["pi_entry"]["path"]),
             runtime=Path(value["runtime"]["path"]),
         )
+    except BuildError:
+        # A refusal of the recomputation keeps its own code (stale_build for changed bytes).
+        raise
     except (OSError, UnicodeError, ValueError, KeyError, TypeError) as error:
         raise BuildError(f"invalid session selection: {error}") from error
     if canonical(value) != canonical(expected):
@@ -212,3 +207,43 @@ def save_selection(root: Path, path: Path, value: dict) -> None:
         path.relative_to(root.resolve()).as_posix(),
         (json.dumps(value, sort_keys=True) + "\n").encode(),
     )
+
+
+def runtime_selection(package_root: Path) -> dict | None:
+    """The verified session selection of this launcher run, as its session provenance.
+
+    Fails closed before any capability runs; project data never selects code. A selection pins the
+    running package; it may name a disposable consumer project as data, but never redirects into
+    a sibling worktree of the same source repository.
+    """
+    from ..spec.repository import SpecError
+
+    if not os.environ.get("CONCORDE_SESSION_SELECTION"):
+        return None
+    if package_root.resolve() != Path.cwd().resolve():
+        from ..harness.change_worktree import git
+
+        package_common = git(
+            package_root,
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+            check=False,
+        )
+        project_common = git(
+            Path.cwd(),
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+            check=False,
+        )
+        if (
+            package_common.returncode == 0
+            and project_common.returncode == 0
+            and package_common.stdout.strip() == project_common.stdout.strip()
+        ):
+            raise SpecError(
+                "private selection cannot redirect into another source worktree",
+                "workspace_mismatch",
+            )
+    return load_selection(package_root, Path(os.environ["CONCORDE_SESSION_SELECTION"]))

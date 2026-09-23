@@ -61,9 +61,7 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
         cls.project_temporary.cleanup()
         cls.runtime_temporary.cleanup()
 
-    @verifies(
-        "scenario.distribution.install-apply", "scenario.concorde.adopt-initialize"
-    )
+    @verifies("scenario.distribution.install-apply")
     def test_apply_installs_cleanly(self):
         self.assertEqual(0, self.install_result.returncode, self.install_result.stderr)
         self.assertEqual(
@@ -104,25 +102,30 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
 
     def test_describe_policy_init_propose_works_without_the_consumer_building(self):
         # The installer already built the framework as part of --apply; a consumer never runs a
-        # Concorde build themselves (AGENTS.md's "Building this worktree" is source-checkout-only
-        # guidance). concorde-init has no project registry yet to resolve configuration=null
-        # against, so this passes an explicit configuration instead. describe-policy cannot preview
-        # init/configure at all (workflow-host-boundary.md: "use_proposal"); it always reports that
-        # documented deterministic-proposal response rather than "described", so both are accepted.
+        # Concorde build themselves. concorde-init takes its configuration from its request, so the
+        # envelope configuration is null. describe-policy cannot preview initialization: the
+        # proposal is the preview, so the request is refused with use_proposal.
         invocation = {
             "type_id": "concorde-operation-invocation",
             "schema_version": 3,
             "operation_id": "concorde-init",
             "mode": "describe-policy",
-            "configuration": {
-                "type_id": "concorde-operation-configuration",
-                "schema_version": 2,
-                "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
-            },
+            "configuration": None,
             "input": {
                 "type_id": "concorde-init-request",
-                "schema_version": 3,
-                "data": {"action": "propose"},
+                "schema_version": 4,
+                "data": {
+                    "action": "propose",
+                    "name": "Consumer",
+                    "configuration": {
+                        "type_id": "concorde-operation-configuration",
+                        "schema_version": 2,
+                        "data": {
+                            "model": "openai-codex/gpt-6-astra",
+                            "thinking": "medium",
+                        },
+                    },
+                },
             },
         }
         process = subprocess.run(
@@ -138,8 +141,6 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             env=child_environment(),
         )
         result = json.loads(process.stdout)
-        if result["status"] == "described":
-            return
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("use_proposal", result["errors"][0]["code"], result)
 

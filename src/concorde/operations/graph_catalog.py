@@ -4,7 +4,7 @@ Every Graph Concorde runs is a LangGraph ``StateGraph`` built by a factory in th
 Harness package or the Issues package. This catalog names each factory by its compiled graph
 name and builds it with stub node functions, so inspection, publication and the Graph Spec check
 all look at exactly the topology execution compiles: the same nodes, the same edges, the same
-conditional routing. Building a catalog entry never resolves a context or starts an WorkerProfile.
+conditional routing. Building a catalog entry never resolves a context or starts an Agent.
 """
 
 from __future__ import annotations
@@ -22,7 +22,10 @@ def _stub(name: str):
 def catalog() -> dict[str, Callable[[], object]]:
     """Only genuine explicitly selected StateGraph Operations; never native flow mirrors."""
     from ..harness.operation_node import OperationNode
+    from .catalog import register_types
 
+    # The Graphs' State schemas are the registered typed values of their Agents.
+    register_types()
     return {
         "terminal_agent_operation": lambda: OperationNode("context_assessor").graph()
     }

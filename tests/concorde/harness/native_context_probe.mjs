@@ -20,7 +20,9 @@ execFileSync(python, [
   "-c",
   `import sys;sys.path.insert(0,${JSON.stringify(candidate + "/src")});sys.path.append(${JSON.stringify(fixtureSource)})
 from pathlib import Path
-from tests.concorde.spec import support
+from concorde.operations.catalog import register_types
+register_types()
+from tests.concorde.support import spec_project as support
 support.PACKAGE=Path(${JSON.stringify(candidate)})
 project=support.project
 if not (Path(${JSON.stringify(root)})/".concorde/specs.json").exists(): project(Path(${JSON.stringify(root)}))`,
@@ -55,9 +57,6 @@ def guarded(name,*args,**kwargs):
  if ${process.env.CONCORDE_NATIVE_PROBE_PROJECT ? "False" : "True"} and '--runtime-check' not in sys.argv and (name=='langgraph' or name.startswith('langgraph.')): raise AssertionError('Native path imported LangGraph')
  return original(name,*args,**kwargs)
 builtins.__import__=guarded
-from concorde.harness.worker_executor import WorkerExecutor
-def forbidden(*a,**k): raise AssertionError('Native path launched a hidden Pi-RPC worker')
-WorkerExecutor.__call__=forbidden
 `,
 );
 process.env.PYTHONPATH = guard + path.delimiter + path.join(candidate, "src");

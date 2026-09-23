@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import ast
 import hashlib
 import json
 import shutil
 import sys
 import tempfile
 import unittest
-from dataclasses import FrozenInstanceError, asdict
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,12 +15,9 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution.build import (
     MODEL_ROOTS,
-    PUBLIC_OPERATIONS,
     BuildError,
-    ModelInstructions,
     build,
     check_build,
-    load_model_instructions,
     verify_fresh,
     write_build,
 )
@@ -30,14 +25,7 @@ from concorde.distribution.build import (
     PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
 )
 
-# Imported eagerly: the wire-helper test below patches ``subprocess.Popen`` while it invokes an
-# Operation, and a module first imported under that patch would keep the mock in any
-# definition-time default (``pi_rpc.run_prompt`` once did), leaking into every later test of the
-# same process.
-from concorde.harness.admission import run_operation  # noqa: E402
-from concorde.spec.typed_data import typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
-from tests.concorde.support.native_planning import OperationHost  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
 
@@ -53,7 +41,7 @@ class BuildGoldenTests(unittest.TestCase):
         expected = {
             path.removeprefix("generated/")
             for path in self.by_path
-            if path.startswith(("generated/agents/", "generated/native/"))
+            if path.startswith("generated/native/")
         }
         expected.add("pi/concorde-session.ts")
         actual = {
@@ -66,7 +54,7 @@ class BuildGoldenTests(unittest.TestCase):
     @verifies("scenario.distribution.build-render")
     def test_agent_bodies_match_golden_bytes_exactly(self):
         for path, output in self.by_path.items():
-            if path.startswith(("generated/agents/", "generated/native/")):
+            if path.startswith("generated/native/"):
                 with self.subTest(path=path):
                     golden = (GOLDEN / path.removeprefix("generated/")).read_bytes()
                     self.assertEqual(output.content, golden)
@@ -77,7 +65,7 @@ class BuildGoldenTests(unittest.TestCase):
             p for p in self.by_path if p.startswith("generated/session/")
         ]
         agent_outputs = [
-            path for path in self.by_path if path.startswith("generated/agents/")
+            path for path in self.by_path if path.startswith("generated/native/")
         ]
         self.assertEqual(session_outputs, [PI_SESSION_SHIM])
         self.assertEqual(len(agent_outputs), 7)
@@ -86,7 +74,7 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertTrue(all(path.count("/") == 2 for path in agent_outputs))
         self.assertEqual(
             set(agent_outputs),
-            {f"generated/agents/{agent}.md" for agent in MODEL_ROOTS},
+            {f"generated/native/{agent}.md" for agent in MODEL_ROOTS},
         )
 
     def test_manifest_has_sorted_keys_and_trailing_newline(self):
@@ -110,8 +98,63 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertFalse(
             any(path.startswith("generated/docs/") for path in self.by_path)
         )
-        schemas = json.loads(self.by_path["generated/protocol/schemas.json"].content)
+        schemas = json.loads(self.by_path["generated/schemas.json"].content)
         self.assertIn("concorde-context-solve-request", schemas)
+
+
+class ProtocolAssetTests(unittest.TestCase):
+    """The rendered Protocol assets are the Protocol text alone, in reading order."""
+
+    PRINCIPLES_CHAPTERS = (
+        "principles",
+        "model",
+        "relations",
+        "context",
+        "boundaries",
+        "format",
+        "checks",
+        "views",
+    )
+    MODULE_PARTS = ("module", "templates/module", "templates/scenario")
+
+    @verifies("scenario.distribution.build-protocol-assets")
+    def test_protocol_assets_hold_the_chapters_in_order_and_nothing_else(self):
+        protocol = REPOSITORY_ROOT / "protocol"
+        by_path = {output.path: output for output in build(REPOSITORY_ROOT).outputs}
+        for path, parts, adapter in (
+            (
+                "generated/protocol/principles.md",
+                self.PRINCIPLES_CHAPTERS,
+                "prompts/protocol/principles.md",
+            ),
+            (
+                "generated/protocol/kinds/module.md",
+                self.MODULE_PARTS,
+                "prompts/protocol/kinds/module.md",
+            ),
+        ):
+            with self.subTest(asset=path):
+                output = by_path[path]
+                expected = "\n".join(
+                    (protocol / f"{part}.md").read_text(encoding="utf-8")
+                    for part in parts
+                )
+                self.assertEqual(expected, output.content.decode("utf-8"))
+                # Only the Protocol text and its adapter contribute: no configuration,
+                # Agent profile or execution rule is a source of either asset.
+                self.assertEqual(
+                    sorted([adapter] + [f"protocol/{part}.md" for part in parts]),
+                    sorted(output.sources),
+                )
+                text = output.content.decode("utf-8")
+                for foreign in (
+                    "concorde.json",
+                    ".concorde/",
+                    "run-operation",
+                    "concorde-session",
+                    "WorkerProfile",
+                ):
+                    self.assertNotIn(foreign, text)
 
 
 class BuildDeterminismTests(unittest.TestCase):
@@ -169,10 +212,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertFalse(current)
         self.assertTrue(differences)
 
-    @verifies(
-        "scenario.distribution.build-check",
-        "scenario.distribution.build-stale-blocks-execution",
-    )
+    @verifies("scenario.distribution.build-check")
     def test_independent_protocol_edit_invalidates_runtime_rule_projection(self):
         write_build(self.root)
         chapter = self.root / "protocol/principles.md"
@@ -210,23 +250,23 @@ class BuildCheckLifecycleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_check_reports_an_unexpected_file_in_an_owned_directory(self):
         write_build(self.root)
-        (self.root / "generated/agents/extra.md").write_text(
+        (self.root / "generated/native/extra.md").write_text(
             "not a build output\n", encoding="utf-8"
         )
         current, differences = check_build(self.root)
         self.assertFalse(current)
-        self.assertIn("generated/agents/extra.md", differences)
+        self.assertIn("generated/native/extra.md", differences)
 
     @verifies("scenario.distribution.build-check")
     def test_check_reports_a_modified_owned_file(self):
         write_build(self.root)
-        target = self.root / "generated/agents/planner.md"
+        target = self.root / "generated/native/planner.md"
         target.write_text(
             target.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8"
         )
         current, differences = check_build(self.root)
         self.assertFalse(current)
-        self.assertIn("generated/agents/planner.md", differences)
+        self.assertIn("generated/native/planner.md", differences)
 
 
 class BuildFreshnessTests(unittest.TestCase):
@@ -244,7 +284,6 @@ class BuildFreshnessTests(unittest.TestCase):
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
         )
 
-    @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_closed_with_no_manifest(self):
         with self.assertRaises(BuildError) as failure:
             verify_fresh(self.root)
@@ -254,7 +293,6 @@ class BuildFreshnessTests(unittest.TestCase):
         write_build(self.root)
         verify_fresh(self.root)  # must not raise
 
-    @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_after_editing_a_recorded_source(self):
         write_build(self.root)
         edited = self.root / "prompts/native/context-assessor.md"
@@ -265,7 +303,6 @@ class BuildFreshnessTests(unittest.TestCase):
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
 
-    @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_role_and_python_contract_edits_both_invalidate_build(self):
         write_build(self.root)
         for relative in (
@@ -281,7 +318,6 @@ class BuildFreshnessTests(unittest.TestCase):
                 self.assertEqual("stale_build", failure.exception.code)
                 path.write_text(before)
 
-    @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_when_a_recorded_source_is_gone(self):
         write_build(self.root)
         (self.root / "prompts/native/context-assessor.md").unlink()
@@ -289,136 +325,14 @@ class BuildFreshnessTests(unittest.TestCase):
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
 
-    @verifies("scenario.distribution.load-agent")
-    def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
-        write_build(self.root)
-        prompt = load_model_instructions(self.root, "concorde-planner")
-        self.assertEqual(prompt.name, "concorde-planner")
-        self.assertIs(type(prompt), ModelInstructions)
-        self.assertIsNotNone(prompt.effects)
-        self.assertTrue(prompt.body.strip())
-        self.assertIsNotNone(prompt.binding)
-        self.assertEqual(prompt.binding.agent, "planner")
-        self.assertEqual(prompt.binding.spec_path, "agents/planner/spec.md")
-
-        edited = self.root / "agents/planner/spec.md"
-        edited.write_text(
-            edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8"
-        )
-        with self.assertRaises(BuildError) as failure:
-            load_model_instructions(self.root, "concorde-planner")
-        self.assertEqual(failure.exception.code, "stale_build")
-
-    @verifies("scenario.distribution.load-agent")
-    def test_worker_instruction_records_retain_every_field_and_binding_digest(self):
-        from concorde.harness.worker_profile import (
-            binding_digest,
-            binding_from_json,
-            binding_json,
-            profile_digest,
-            worker_profile,
-        )
-
-        def digest(content):
-            return "sha256:" + hashlib.sha256(content).hexdigest()
-
-        write_build(self.root)
-        for name in MODEL_ROOTS:
-            with self.subTest(worker=name):
-                prompt = load_model_instructions(self.root, name)
-                profile = worker_profile(name)
-                binding = prompt.binding
-                self.assertIs(type(prompt), ModelInstructions)
-                self.assertEqual(
-                    {
-                        "name",
-                        "description",
-                        "source_path",
-                        "body",
-                        "effects",
-                        "binding",
-                    },
-                    set(asdict(prompt)),
-                )
-                self.assertEqual("concorde-" + name, prompt.name)
-                self.assertEqual(f"Concorde {name} agent.", prompt.description)
-                self.assertEqual(profile.spec, prompt.source_path)
-                self.assertEqual(profile.contract.effects, prompt.effects)
-                self.assertEqual(profile.name, binding.agent)
-                self.assertEqual(profile.spec, binding.spec_path)
-                self.assertEqual(
-                    f"generated/agents/{name}.md", binding.instructions_path
-                )
-                self.assertEqual(
-                    (self.root / binding.instructions_path).read_text(), prompt.body
-                )
-                self.assertEqual(
-                    digest((self.root / profile.spec).read_bytes()), binding.spec_digest
-                )
-                self.assertEqual(
-                    digest(prompt.body.encode()), binding.instructions_digest
-                )
-                self.assertEqual(
-                    profile_digest(self.root, profile), binding.profile_digest
-                )
-                self.assertEqual(
-                    digest((self.root / "generated/build-manifest.json").read_bytes()),
-                    binding.build_manifest_digest,
-                )
-                self.assertEqual(profile.timeout_seconds, binding.timeout_seconds)
-                self.assertEqual(binding_digest(binding), binding.digest)
-                self.assertEqual(binding, binding_from_json(binding_json(binding)))
-                self.assertEqual(
-                    {
-                        "agent",
-                        "spec_path",
-                        "spec_digest",
-                        "instructions_path",
-                        "instructions_digest",
-                        "profile_digest",
-                        "build_manifest_digest",
-                        "timeout_seconds",
-                        "digest",
-                    },
-                    set(asdict(binding)),
-                )
-                with self.assertRaises(FrozenInstanceError):
-                    prompt.body = "replacement"
-
-    @verifies("scenario.distribution.load-agent")
-    def test_public_catalog_entries_do_not_imply_worker_instructions(self):
-        write_build(self.root)
-        for name in PUBLIC_OPERATIONS:
-            with self.subTest(operation=name), self.assertRaises(BuildError) as failure:
-                load_model_instructions(self.root, name)
-            self.assertEqual("unknown_agent", failure.exception.code)
-
-    @verifies("scenario.distribution.load-agent")
-    def test_load_agent_accepts_underscore_and_hyphenated_names(self):
-        write_build(self.root)
-        by_external = load_model_instructions(self.root, "concorde-planner")
-        by_underscore = load_model_instructions(self.root, "planner")
-        self.assertEqual(by_external.body, by_underscore.body)
-        self.assertEqual(by_external.name, "concorde-planner")
-
-    @verifies("scenario.distribution.load-agent")
-    def test_load_agent_accepts_a_hyphenated_multiword_agent_name(self):
-        write_build(self.root)
-        by_external = load_model_instructions(self.root, "concorde-code-reviewer")
-        by_underscore = load_model_instructions(self.root, "code_reviewer")
-        self.assertEqual(by_external.body, by_underscore.body)
-        self.assertEqual(by_external.name, "concorde-code-reviewer")
-        self.assertEqual(by_external.binding.agent, "code_reviewer")
-
 
 class WireHelperBuildTests(unittest.TestCase):
     @verifies(
         "scenario.distribution.build-render",
         "scenario.distribution.build-write",
         "scenario.distribution.build-check",
-        "scenario.distribution.build-stale-blocks-execution",
     )
-    def test_wire_helper_change_invalidates_and_rebuilds_actual_schema_outputs(self):
+    def test_a_schema_source_change_invalidates_until_rebuilt(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             for directory in ("agents", "prompts", "protocol", "operations"):
@@ -438,28 +352,6 @@ class WireHelperBuildTests(unittest.TestCase):
                     if p.is_file()
                 }
 
-            def invoke_model_backed_operation():
-                # The fixture is this invocation's package root: a top-level model-backed
-                # operation verifies the fixture build before admitting anything else.
-                def launched(launch):
-                    raise AssertionError("an WorkerProfile launched on a stale build")
-
-                host = OperationHost(
-                    root, root, mode="describe-policy", executor=launched
-                )
-                return run_operation(
-                    "concorde-spec-review",
-                    None,
-                    typed(
-                        "concorde-spec-review-request",
-                        {
-                            "target_id": "module.fixture",
-                            "task": "Review",
-                        },
-                    ),
-                    host_context=host,
-                )
-
             with (
                 patch(
                     "subprocess.Popen", side_effect=AssertionError("build process I/O")
@@ -470,56 +362,24 @@ class WireHelperBuildTests(unittest.TestCase):
                 verify_fresh(root)
                 self.assertEqual((True, ()), check_build(root))
                 self.assertEqual(first, build(root))
-                admitted = invoke_model_backed_operation()
-                self.assertNotEqual(
-                    "stale_build", (admitted["errors"] or [{}])[0].get("code"), admitted
-                )
-                helper = root / "src/concorde/spec/wire_shapes.py"
+                helper = root / "src/concorde/spec/typed_data.py"
                 before = contents()
-
-                class DescribeStrings(ast.NodeTransformer):
-                    def visit_Dict(self, node):
-                        self.generic_visit(node)
-                        if any(
-                            isinstance(k, ast.Constant)
-                            and k.value == "type"
-                            and isinstance(v, ast.Constant)
-                            and v.value == "string"
-                            for k, v in zip(node.keys, node.values, strict=True)
-                        ):
-                            node.keys.append(ast.Constant("description"))
-                            node.values.append(
-                                ast.Constant("Fixture helper schema change")
-                            )
-                        return node
-
-                changed = DescribeStrings().visit(ast.parse(helper.read_text()))
                 helper.write_text(
-                    ast.unparse(ast.fix_missing_locations(changed)) + "\n"
+                    helper.read_text() + "\n# Fixture schema source change.\n"
                 )
                 self.assertEqual(
-                    {"src/concorde/spec/wire_shapes.py"},
+                    {"src/concorde/spec/typed_data.py"},
                     {p for p, data in contents().items() if before.get(p) != data},
                 )
                 with self.assertRaises(BuildError) as failure:
                     verify_fresh(root)
                 self.assertEqual("stale_build", failure.exception.code)
-                before_invocation = contents()
-                refused = invoke_model_backed_operation()
-                self.assertEqual("blocked", refused["status"], refused)
-                self.assertEqual("stale_build", refused["errors"][0]["code"], refused)
-                self.assertIsNone(refused["output"])
-                self.assertEqual(before_invocation, contents())
                 before_check = contents()
                 current, differences = check_build(root)
                 self.assertFalse(current)
-                self.assertIn("generated/protocol/schemas.json", differences)
+                self.assertIn("generated/build-manifest.json", differences)
                 self.assertEqual(before_check, contents())
                 rebuilt = write_build(root)
-                schema_path = "generated/protocol/schemas.json"
-                schema = (root / schema_path).read_bytes()
-                self.assertNotEqual(before[schema_path], schema)
-                self.assertIn("Fixture helper schema change", schema.decode())
                 verify_fresh(root)
                 self.assertEqual((True, ()), check_build(root))
                 self.assertEqual(rebuilt, build(root))
@@ -541,89 +401,44 @@ class BuildErrorTests(unittest.TestCase):
             with self.assertRaises(BuildError):
                 build(root)
 
-    def test_broken_schema_helper_fails_the_build_with_build_error(self):
+    def test_a_source_free_root_renders_the_registered_schemas_without_sources(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             for directory in ("agents", "prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
-            shutil.copytree(
-                REPOSITORY_ROOT / "src/concorde/spec",
-                root / "src/concorde/spec",
-                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-            )
             (root / "protocol/manifest.json").unlink()
-            helper = root / "src/concorde/spec/wire_shapes.py"
-            helper.write_text(
-                helper.read_text(encoding="utf-8") + "\nSTRING = {\n", encoding="utf-8"
-            )
-            for surface in (build, check_build, write_build):
-                with (
-                    self.subTest(surface=surface.__name__),
-                    self.assertRaises(BuildError) as failure,
-                ):
-                    surface(root)
-                self.assertEqual("invalid_build", failure.exception.code)
-                self.assertIn("wire_shapes.py", str(failure.exception))
-            self.assertFalse((root / "generated").exists())
-
-    def test_incomplete_schema_source_tree_fails_closed_while_a_source_free_root_falls_back(
-        self,
-    ):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            for directory in ("agents", "prompts", "protocol", "operations"):
-                shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
-            shutil.copytree(
-                REPOSITORY_ROOT / "src/concorde/spec",
-                root / "src/concorde/spec",
-                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-            )
-            (root / "protocol/manifest.json").unlink()
-            (root / "src/concorde/spec/contracts.py").unlink()
-            with self.assertRaises(BuildError) as failure:
-                build(root)
-            self.assertEqual("invalid_build", failure.exception.code)
-            self.assertIn("contracts.py", str(failure.exception))
-            self.assertFalse((root / "generated").exists())
-            shutil.rmtree(root / "src")
             rendered = build(root)
             schemas = next(
-                o
-                for o in rendered.outputs
-                if o.path == "generated/protocol/schemas.json"
+                o for o in rendered.outputs if o.path == "generated/schemas.json"
             )
-            self.assertEqual((), schemas.sources)
+            self.assertIn("concorde-plan-artifact", json.loads(schemas.content))
             self.assertFalse(
                 any(
-                    s.startswith("src/concorde/spec/")
+                    s.startswith("src/concorde/")
                     for o in rendered.outputs
                     for s in o.sources
                 )
             )
 
-    def test_root_inventory_missing_an_operation_request_schema_fails_the_build_with_build_error(
-        self,
-    ):
-        with tempfile.TemporaryDirectory() as temporary:
+    @verifies("scenario.distribution.build-guidance-invalid")
+    def test_a_capability_without_a_registered_request_schema_fails_the_build(self):
+        from concorde.distribution import build as build_module
+
+        registered = build_module.registered_schemas
+
+        def without_request(project_root):
+            payload, sources = registered(project_root)
+            payload.pop("concorde-context-solve-request")
+            return payload, sources
+
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.object(build_module, "registered_schemas", without_request),
+        ):
             root = Path(temporary)
             for directory in ("agents", "prompts", "protocol", "operations"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
-            shutil.copytree(
-                REPOSITORY_ROOT / "src/concorde/spec",
-                root / "src/concorde/spec",
-                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-            )
             (root / "protocol/manifest.json").unlink()
-            contracts = root / "src/concorde/spec/contracts.py"
-            contracts.write_text(
-                contracts.read_text(encoding="utf-8")
-                + (
-                    "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
-                    "def exported_types():\n"
-                    "    return tuple(n for n in _ORIGINAL_EXPORTED_TYPES() if n != 'concorde-context-solve-request')\n"
-                ),
-                encoding="utf-8",
-            )
             for surface in (build, check_build, write_build):
                 with (
                     self.subTest(surface=surface.__name__),
@@ -663,7 +478,7 @@ class StaleOutputRemovalTests(unittest.TestCase):
         self.assertFalse(stale.parent.exists())
         self.assertEqual((True, ()), check_build(self.root))
 
-    @verifies("scenario.distribution.build-write")
+    @verifies("scenario.distribution.build-write-refused")
     def test_removal_preflights_every_path_and_preserves_unverified_bytes(self):
         from tests.concorde.support.build_fixture import build_package_copy
 
@@ -673,24 +488,39 @@ class StaleOutputRemovalTests(unittest.TestCase):
                 build_package_copy(root)
                 old = self.recorded(root, "generated/native/retired-a.md")
                 other = self.recorded(root, "generated/native/retired-b.md")
+                offending = "generated/native/retired-b.md"
                 if defect == "modified":
                     other.write_text("user edit")
                 elif defect == "link":
                     other.unlink()
                     other.symlink_to(old)
                 elif defect == "unknown":
-                    (root / "generated/agents/unknown.md").write_text("user data")
+                    offending = "generated/native/unknown.md"
+                    (root / offending).write_text("user data")
                 else:
+                    offending = PI_SESSION_SHIM
                     dest = root / PI_SESSION_SHIM
                     dest.unlink()
                     dest.symlink_to(old)
-                manifest = (root / "generated/build-manifest.json").read_bytes()
-                with self.assertRaises(BuildError):
+                # A changed source means a successful write would rewrite outputs too.
+                edited = root / "prompts/native/context-assessor.md"
+                edited.write_text(edited.read_text() + "A changed sentence.\n")
+
+                def snapshot(root=root):
+                    return {
+                        path.relative_to(root).as_posix(): (
+                            path.readlink() if path.is_symlink() else path.read_bytes()
+                        )
+                        for path in (root / "generated").rglob("*")
+                        if path.is_file() or path.is_symlink()
+                    }
+
+                before = snapshot()
+                with self.assertRaises(BuildError) as failure:
                     write_build(root)
+                self.assertIn(offending, str(failure.exception))
+                self.assertEqual(before, snapshot())
                 self.assertEqual(b"old generated bytes\n", old.read_bytes())
-                self.assertEqual(
-                    manifest, (root / "generated/build-manifest.json").read_bytes()
-                )
 
 
 if __name__ == "__main__":

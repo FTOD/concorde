@@ -39,6 +39,9 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--allow-primary-worktree", action="store_true")
     docsite.add_argument("--format", choices=["json"], default="json")
 
+    check_package = subparsers.add_parser("check-package")
+    check_package.add_argument("--format", choices=["json"], default="json")
+
     build = subparsers.add_parser("build")
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
@@ -50,7 +53,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     selection = subparsers.add_parser("select-session")
     selection_mode = selection.add_mutually_exclusive_group(required=True)
-    selection_mode.add_argument("--mode", choices=["maintenance", "test", "task"])
+    selection_mode.add_argument("--mode", choices=["test"])
     selection_mode.add_argument("--verify", type=Path)
     selection.add_argument("--pi-entry", type=Path)
     selection.add_argument("--runtime", type=Path)
@@ -71,34 +74,32 @@ def create_parser() -> argparse.ArgumentParser:
     status.add_argument("--manual-merge")
     status.add_argument("--cleanup", choices=["pending", "retained", "removed"])
 
-    usage = subparsers.add_parser("usage")
-    usage.add_argument(
-        "--run",
-        help="root invocation id of one operation run; default: every recorded run",
-    )
-    usage.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
 def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
-    if arguments.tool == "status":
-        from ..harness.change_worktree import ensure_change
-        from ..harness.status_store import (
-            all_status,
-            coordinate_child,
-            primary_root,
-            record_manual_merge,
+    if arguments.tool == "check-package":
+        from collections import Counter
+
+        from .package_validation import validate_package
+
+        findings = tuple(validate_package(root))
+        counts = Counter(finding.severity for finding in findings)
+        return ToolResult(
+            "check-package",
+            ".",
+            "invalid" if counts["error"] else "success",
+            findings=findings,
         )
+    if arguments.tool == "status":
+        from ..delivery.manual_merge import record_manual_merge
+        from ..harness.change_worktree import ensure_change
+        from ..harness.status_store import all_status, coordinate_child, primary_root
         from ..spec.repository import SpecError
 
         if root.resolve() != primary_root(root) and any(
-            (
-                arguments.register,
-                arguments.child,
-                arguments.manual_merge,
-                arguments.cleanup,
-            )
+            (arguments.register, arguments.child)
         ):
             raise SpecError(
                 "status coordination requires primary", "primary_session_required"
@@ -158,54 +159,14 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                 )
             selected = load_selection(root, arguments.verify)
         else:
-            if arguments.runtime is None:
-                raise BuildError("selection requires --runtime")
+            if arguments.runtime is None or arguments.pi_entry is None:
+                raise BuildError("selection requires --pi-entry and --runtime")
             selected = select_session(
-                root,
-                mode=arguments.mode,
-                pi_entry=arguments.pi_entry,
-                runtime=arguments.runtime,
+                root, pi_entry=arguments.pi_entry, runtime=arguments.runtime
             )
             if arguments.output:
                 save_selection(root, arguments.output, selected)
         return ToolResult("select-session", ".", "success", result=selected)
-    if arguments.tool == "usage":
-        from ..harness.usage import read_usage, summarize_usage
-
-        records = read_usage(root, arguments.run)
-        if arguments.run and not records:
-            return ToolResult(
-                "usage",
-                ".",
-                "invalid",
-                findings=(
-                    Finding(
-                        "CONCORDE-USAGE-001",
-                        "error",
-                        f".concorde/runs/{arguments.run}/usage.jsonl",
-                        "no usage records exist for this run",
-                        "Pass the root invocation id printed by the operation result, or omit --run.",
-                    ),
-                ),
-            )
-        return ToolResult(
-            "usage",
-            ".",
-            "success",
-            result={
-                "runs": sorted(
-                    {
-                        run_id
-                        for r in records
-                        if isinstance(r, dict)
-                        and isinstance(run_id := r.get("root_invocation_id"), str)
-                        and run_id
-                    }
-                ),
-                "records": len(records),
-                **summarize_usage(records),
-            },
-        )
     if arguments.tool == "docsite":
         from ..views.docsite_scaffold import apply_docsite, propose_docsite
 
@@ -383,17 +344,59 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
     )
 
 
+TOOLS = frozenset(
+    {
+        "validate",
+        "registry",
+        "docsite",
+        "build",
+        "check-package",
+        "protocol-manifest",
+        "status",
+        "select-session",
+    }
+)
+
+
+def _failed(tool: str, message: str) -> dict:
+    return envelope(
+        tool,
+        ".",
+        "failed",
+        [],
+        [
+            Finding(
+                "CONCORDE-RUN-001",
+                "error",
+                ".concorde/config.json",
+                message,
+                "Correct the project configuration or runtime environment and retry.",
+            )
+        ],
+        {},
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
+    words = list(sys.argv[1:] if argv is None else argv)
+    requested = next((word for word in words if word in TOOLS), "validate")
     arguments: argparse.Namespace | None = None
     try:
-        arguments = parser.parse_args(argv)
+        try:
+            arguments = parser.parse_args(words)
+        except SystemExit as exit_:
+            # --help ends normally; a refused command line is a failure like any other and
+            # still prints exactly one envelope rather than only argparse's usage text.
+            if exit_.code in (0, None):
+                raise
+            raise ValueError(f"invalid command line: {' '.join(words)}") from None
         if arguments.tool == "protocol-manifest":
             payload = tool_envelope(_protocol_manifest(arguments))
             sys.stdout.write(canonical_json(payload))
             return exit_code(payload["status"])
         if arguments.tool == "docsite":
-            from ..harness.worktree import require_isolated_worktree
+            from ..harness.change_worktree import require_isolated_worktree
 
             require_isolated_worktree(
                 arguments.project_root,
@@ -404,38 +407,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = dispatch(arguments)
         payload = tool_envelope(result)
     except Exception as error:  # noqa: BLE001 -- command boundary always returns the normative envelope
-        tool = (
-            arguments.tool
-            if arguments is not None
-            else (argv[0] if argv else "validate")
-        )
-        payload = envelope(
-            tool
-            if tool
-            in {
-                "validate",
-                "registry",
-                "docsite",
-                "build",
-                "protocol-manifest",
-                "usage",
-                "status",
-                "select-session",
-            }
-            else "validate",
-            ".",
-            "failed",
-            [],
-            [
-                Finding(
-                    "CONCORDE-RUN-001",
-                    "error",
-                    ".concorde/config.json",
-                    str(error),
-                    "Correct the project configuration or runtime environment and retry.",
-                )
-            ],
-            {},
-        )
+        tool = arguments.tool if arguments is not None else requested
+        payload = _failed(tool if tool in TOOLS else "validate", str(error))
     sys.stdout.write(canonical_json(payload))
     return exit_code(payload["status"])

@@ -6,17 +6,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.admission import run_operation
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.harness.revisions import target_revision
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import (
+from tests.concorde.support.spec_project import (
     CONFIGURATION,
     PACKAGE,
-    ModelProcessDouble,
     block,
     entry_of,
     read_json,
@@ -24,7 +22,7 @@ from tests.concorde.spec.support import (
     sync_registry,
     update_module,
 )
-from tests.concorde.support.native_planning import OperationHost
+from concorde.harness.host import OperationHost
 
 PROMISES = {
     "kind": "document",
@@ -39,7 +37,7 @@ def uses(target, meaning="#uses-extra", **extra):
 
 class ContextSelectionTests(unittest.TestCase):
     def setUp(self):
-        from tests.concorde.spec.support import project
+        from tests.concorde.support.spec_project import project
 
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -98,7 +96,9 @@ class ContextSelectionTests(unittest.TestCase):
             s for s in resolved["sources"] if s["path"] == "specs/audit/module.md"
         )
         self.assertEqual([{"relation": "owns", "id": "scope.audit"}], entry["reasons"])
-        self.assertFalse(resolved["shares"])
+        # A context record carries only Protocol relations: sharing a file adds nothing.
+        self.assertEqual(3, resolved["schema_version"])
+        self.assertNotIn("shares", resolved)
         scenario = r.spec_context("scenario.transfer.debit").value
         self.assertEqual("service.transfer", scenario["module_id"])
         self.assertIn(
@@ -179,7 +179,7 @@ class ContextSelectionTests(unittest.TestCase):
 
     @verifies("scenario.spec.impact-indexes")
     def test_impact_indexes_name_whom_a_change_concerns(self):
-        from tests.concorde.spec.support import set_realization
+        from tests.concorde.support.spec_project import set_realization
 
         self.audit_uses_transfer(relies_on=["req.transfer.pure"])
         update_module(
@@ -224,7 +224,7 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(scopes, {module: r.spec_scope(module) for module in r.modules})
         self.assertNotIn("specs/transfer/obligations.md", r.spec_scope("scope.audit"))
 
-    @verifies("scenario.spec.query-files")
+    @verifies("scenario.spec.query-files", "scenario.spec.query-invalid-target")
     def test_spec_files_read_no_bodies_and_refuse_other_identities(self):
         update_module(self.root, "scope.audit", includes=[PROMISES])
         r = self.repository()
@@ -244,6 +244,7 @@ class ContextSelectionTests(unittest.TestCase):
         for identity in (
             "document.bank",
             "req.transfer.pure",
+            "concept.ledger.account",
             "realization.ledger.store",
             "specs/bank/module.md",
         ):
@@ -336,44 +337,6 @@ class ContextSelectionTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertIn("CHK.owns.unique", {f.rule_id for f in report.findings})
 
-    def test_provider_documents_never_add_files_or_write_authority(self):
-        r = self.repository()
-        target = r.module("service.transfer")
-        self.assertIn("specs/ledger/module.md", r.spec_context(target.id).paths)
-        self.assertNotIn("app/ledger.py", r.bound_files(target))
-        self.assertTrue(all(node.owner == target.id for node in r.realizations(target)))
-        self.assertNotIn("specs/ledger/module.md", r.spec_scope(target.id))
-        snap = resolve_context(r, target.id, phase="implementation").value
-        self.assertNotIn(
-            "app/ledger.py", [a["path"] for a in snap["implementation_artifacts"]]
-        )
-        before = (self.root / "specs/ledger/module.md").read_bytes()
-
-        def callback(stage, snapshot, result, cwd):
-            if stage == "context-solve":
-                result["documents"] = [
-                    {
-                        "path": "specs/ledger/module.md",
-                        "content": before.decode() + "\nUnauthorized.\n",
-                    }
-                ]
-
-        double = ModelProcessDouble(callback)
-        host = OperationHost(
-            self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
-        )
-        result = run_operation(
-            "concorde-context-solve",
-            CONFIGURATION,
-            typed(
-                "concorde-context-solve-request",
-                {"target_id": target.id, "task": "Clarify"},
-            ),
-            host_context=host,
-        )
-        self.assertEqual("blocked", result["status"])
-        self.assertEqual(before, (self.root / "specs/ledger/module.md").read_bytes())
-
     def test_provider_bytes_invalidate_code_review_identity_without_expanding_code(
         self,
     ):
@@ -387,13 +350,13 @@ class ContextSelectionTests(unittest.TestCase):
             {"target_id": "service.transfer", "task": "Inspect transfer"},
             host,
         )
-        before, _ = inputs(run, "code")
+        before = inputs(run, "code")
         snapshot = resolve_context(
             self.repository(), "service.transfer", phase="code-review"
         )
         path = self.root / "specs/ledger/module.md"
         path.write_text(path.read_text() + "\nClarified provider guarantee.\n")
-        after, _ = inputs(run, "code")
+        after = inputs(run, "code")
         self.assertNotEqual(before["input_digest"], after["input_digest"])
         self.assertNotEqual(
             before["revision"]["spec_digest"], after["revision"]["spec_digest"]
@@ -405,78 +368,6 @@ class ContextSelectionTests(unittest.TestCase):
         with self.assertRaises(SpecError) as caught:
             recheck_context(self.repository(), snapshot)
         self.assertEqual("stale_context", caught.exception.code)
-
-    def _review_directly_edited_document(self, block_consumer):
-        update_module(self.root, "module.ledger", includes=[PROMISES])
-        path = self.root / "specs/transfer/promises.md"
-        before = path.read_bytes()
-        proposed = before.decode() + "\nClarified canonical promise.\n"
-
-        def callback(stage, snapshot, result, cwd):
-            if stage == "spec-review":
-                self.assertIn(
-                    "Clarified canonical promise.",
-                    (cwd / "specs/transfer/promises.md").read_text(),
-                )
-                if block_consumer and snapshot["target_id"] == "module.ledger":
-                    result.update(
-                        status="findings",
-                        blockers=[
-                            {
-                                "question": "Which limit applies?",
-                                "needed_contract": "service.transfer canonical limit",
-                                "blocked_step": "Rely on the proposed limit",
-                            }
-                        ],
-                    )
-
-        path.write_text(proposed)
-        double = ModelProcessDouble(callback)
-        host = OperationHost(
-            self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
-        )
-        result = run_operation(
-            "concorde-spec-review",
-            CONFIGURATION,
-            typed(
-                "concorde-spec-review-request",
-                {
-                    "target_id": "service.transfer",
-                    "task": "Clarify the canonical promise",
-                },
-            ),
-            host_context=host,
-        )
-        return result, double, before, proposed, path
-
-    @verifies("scenario.spec.impact-indexes")
-    def test_direct_owner_edit_is_reviewed_in_each_selecting_context(self):
-        result, double, _, proposed, path = self._review_directly_edited_document(False)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(proposed, path.read_text())
-        # Banking uses the transfer Module; the ledger includes the edited document.
-        self.assertEqual(
-            {"service.transfer", "module.ledger", "scope.bank"},
-            {
-                c["snapshot"]["target_id"]
-                for c in double.calls
-                if c["stage"] == "spec-review"
-            },
-        )
-
-    def test_consumer_rejection_does_not_rollback_or_approve_direct_edits(self):
-        result, _, before, proposed, path = self._review_directly_edited_document(True)
-        self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"], result)
-        self.assertEqual(proposed, path.read_text())
-        self.assertNotEqual(before, path.read_bytes())
-        from tests.concorde.operations.test_review import issue_observation
-
-        self.assertEqual(
-            "module.ledger",
-            issue_observation(self.root, result["output"]["data"]["blockers"][0])[
-                "source"
-            ]["target_id"],
-        )
 
     @verifies("scenario.spec.participation")
     def test_contract_participants_need_the_definition_in_context(self):
@@ -556,55 +447,10 @@ class ContextSelectionTests(unittest.TestCase):
             "concorde-context-snapshot",
             resolve_context(self.repository(), "scope.bank").value,
         )
-        self.assertEqual(7, value["schema_version"])
-        for old in (1, 2, 3, 4, 5, 6):
+        self.assertEqual(8, value["schema_version"])
+        for old in (1, 2, 3, 4, 5, 6, 7):
             with self.assertRaises(TypedDataError):
                 validate_typed({**value, "schema_version": old})
-
-    def test_reviewer_attributes_provider_definition_to_its_owner(self):
-        def callback(stage, snapshot, result, cwd):
-            if stage == "spec-review" and snapshot["target_id"] == "service.transfer":
-                result.update(
-                    status="findings",
-                    issues=[
-                        {
-                            "id": "finding.provider",
-                            "severity": "advisory",
-                            "target_id": "module.ledger",
-                            "document": "specs/ledger/module.md",
-                            "contract": "scenario.ledger.read",
-                            "location": {"path": "specs/ledger/module.md", "line": 1},
-                            "problem": "Clarify the return description.",
-                            "affected_task": "Read a balance",
-                        }
-                    ],
-                )
-
-        double = ModelProcessDouble(callback)
-        host = OperationHost(
-            self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
-        )
-        result = run_operation(
-            "concorde-spec-review",
-            CONFIGURATION,
-            typed(
-                "concorde-spec-review-request",
-                {"target_id": "service.transfer", "task": "Review balance reads"},
-            ),
-            host_context=host,
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        review = result["output"]["data"]["reviews"][0]["data"]
-        self.assertEqual("service.transfer", review["target_id"])
-        from tests.concorde.operations.test_review import issue_observation
-
-        self.assertEqual(
-            "module.ledger",
-            issue_observation(self.root, review["issues"][0])["report"][
-                "owner_target_id"
-            ],
-        )
-        self.assertTrue(all(not item["write_paths"] for item in host.descriptions))
 
     def test_ownership_transfer_changes_every_selecting_context(self):
         update_module(self.root, "module.ledger", includes=[PROMISES])

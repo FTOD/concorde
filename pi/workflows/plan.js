@@ -12,7 +12,7 @@ function stop(message, child, key) {
       key,
   );
 }
-const request = __CONCORDE_PLAN__;
+const request = __CONCORDE_WORKFLOW__;
 function control(text) {
   if (typeof text !== "string" || text.length > 30000)
     throw new Error("Invalid Host planning control");
@@ -85,17 +85,17 @@ function childEvidence(child, key, ticket) {
 }
 await runs.host("bind", {
   kind: "command",
-  command: request.bind,
+  command: request.commands.bind,
   timeoutMs: 30000,
 });
 const assessment = await runs.run("assessor", request.assessor);
-childEvidence(assessment, "assessor", request.ticket);
+childEvidence(assessment, "assessor", request.ticket + ":assessor");
 // Native child completion and independent Host acceptance precede dependency advance.
 const advance = control(
   (
     await runs.host("advance", {
       kind: "command",
-      command: request.advance,
+      command: request.commands.advance,
       timeoutMs: 60000,
     })
   ).stdout,
@@ -107,7 +107,7 @@ return control(
   (
     await runs.host("finalize", {
       kind: "command",
-      command: request.finalize,
+      command: request.commands.finalize,
       timeoutMs: 60000,
     })
   ).stdout,

@@ -26,7 +26,7 @@ class UserSessionTodoInstructionTests(unittest.TestCase):
             with self.subTest(clause=clause):
                 self.assertIn(clause, self.text)
 
-    @verifies("scenario.distribution.user-session-todo-collection")
+    @verifies("scenario.session.todo-collection")
     def test_consent_maturity_and_implementation_intent(self):
         self.assert_obligations(
             "always remain available to chat, answer questions, read relevant sources",
@@ -46,7 +46,7 @@ class UserSessionTodoInstructionTests(unittest.TestCase):
             "batching needs an explicit user request",
         )
 
-    @verifies("scenario.distribution.user-session-todo-unsettled")
+    @verifies("scenario.session.todo-unsettled")
     def test_immature_choice_and_no_action_need_separate_consent(self):
         self.assert_obligations(
             "If an explicit TODO request is still underspecified, ask whether to continue "
@@ -57,7 +57,7 @@ class UserSessionTodoInstructionTests(unittest.TestCase):
             "closing or deleting an issue in that case requires separate user confirmation",
         )
 
-    @verifies("scenario.distribution.user-session-todo-collection")
+    @verifies("scenario.session.todo-collection")
     def test_lightweight_content_deduplication_and_verified_persistence(self):
         self.assert_obligations(
             "one task per `.md` file under `.concorde/todos/`",
@@ -77,7 +77,7 @@ class UserSessionTodoInstructionTests(unittest.TestCase):
             "stop on concurrent changes rather than overwriting another session's work",
         )
 
-    @verifies("scenario.distribution.user-session-todo-promotion")
+    @verifies("scenario.session.todo-promotion")
     def test_transfer_order_failure_and_partial_issue_safeguards(self):
         promotion = self.text.split("### Promote an issue", 1)[1]
         steps = (
@@ -108,7 +108,32 @@ class UserSessionTodoInstructionTests(unittest.TestCase):
             "preserve the issue and explain the blocker",
         )
 
-    @verifies("scenario.distribution.user-session-todo-collection")
+    @verifies("scenario.session.todo-promotion-failure")
+    def test_a_failed_transfer_keeps_the_issue_and_a_verified_note(self):
+        promotion = self.text.split("### Promote an issue", 1)[1]
+        # Deletion comes only after the note is written and verified ...
+        self.assertLess(
+            promotion.index("then reread and verify it"),
+            promotion.index(
+                "Only after that succeeds delete the corresponding source issue"
+            ),
+        )
+        # ... so a failed write or verification keeps the Issue, and a failed deletion keeps
+        # both, reports the partial transfer and makes a retry update the same note.
+        failure = promotion.index("A failed write or verification preserves the source")
+        partial = promotion.index(
+            "If deletion fails, retain the verified task and source, report the partial "
+            "transfer, and update that same task on retry rather than duplicating it"
+        )
+        self.assertLess(failure, partial)
+        self.assert_obligations(
+            "If current references, concurrent edits or ownership prevent safe deletion, "
+            "preserve the issue and explain the blocker",
+            "Preserve prior records on a failed write; report failure rather than claiming "
+            "the task was saved",
+        )
+
+    @verifies("scenario.session.todo-collection")
     def test_only_coordinator_projection_and_no_consumer_package_leakage(self):
         source = build(REPOSITORY_ROOT)
         coordinator_path = ".pi/extensions/concorde-coordinator.ts"

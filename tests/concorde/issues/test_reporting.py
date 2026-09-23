@@ -6,21 +6,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.native_planning import OperationHost
-from concorde.harness.admission import run_operation
-from concorde.harness.worker_executor import OperationExecutionError
 from concorde.issues.reporting import IssueReporter
 from concorde.issues.store import list_issues, read_issue
 from concorde.spec.repository import SpecError
-from concorde.spec.typed_data import TypedDataError, typed
+from concorde.spec.typed_data import TypedDataError
 from concorde.spec.verification import verifies
-from tests.concorde.issues.test_store import report, source
-from tests.concorde.spec.support import (
-    CONFIGURATION,
-    PACKAGE,
-    ModelProcessDouble,
-    project,
-)
+from tests.concorde.support.issue_reports import report, source
 
 
 class ReportingBoundaryTests(unittest.TestCase):
@@ -77,114 +68,3 @@ class ReportingBoundaryTests(unittest.TestCase):
         reply = admitted(report(issue_id=first["issue_id"], expected_revision=revision))
         self.assertEqual(first["issue_id"], reply["receipt"]["issue_id"])
         self.assertEqual(read_issue(self.root, first["issue_id"])[1], reply["revision"])
-
-
-class ReportingIntegrationTests(unittest.TestCase):
-    def setUp(self):
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
-        project(self.root)
-
-    def call(self, behavior, *, operation="concorde-plan", mode="execute"):
-        def callback(stage, snapshot, data, cwd):
-            if stage == "plan" or operation == "concorde-context-solve":
-                reporter = double.calls[-1]["report_issue"]
-                self.assertIsNotNone(reporter)
-                self.assertIn("report_issue", double.calls[-1]["launch"].tools)
-                self.assertEqual((), double.calls[-1]["launch"].write_paths)
-                behavior(reporter, data)
-
-        double = ModelProcessDouble(callback)
-        host = OperationHost(
-            self.root,
-            PACKAGE,
-            mode=mode,
-            executor=double.executor,
-            allow_primary_worktree=True,
-        )
-        request = {"target_id": "service.transfer", "task": "Plan transfer"}
-        return run_operation(
-            operation,
-            CONFIGURATION,
-            typed(operation + "-request", request),
-            host_context=host,
-        )
-
-    @staticmethod
-    def observed(reporter, key):
-        return reporter(report(report_key=key, owner_target_id=None, evidence=[]))
-
-    @verifies("scenario.issues.report-independent")
-    def test_multiple_issues_do_not_stop_or_fail_a_completed_stage(self):
-        def work(reporter, data):
-            self.observed(reporter, "one")
-            self.observed(reporter, "two")
-
-        result = self.call(work)
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(2, len(list_issues(self.root)))
-        self.assertTrue(all(item["type"] == "gap" for item in list_issues(self.root)))
-
-    @verifies("scenario.issues.report-independent")
-    def test_assessment_can_report_without_acquiring_project_write_authority(self):
-        result = self.call(
-            lambda reporter, data: self.observed(reporter, "query"),
-            operation="concorde-context-solve",
-        )
-        self.assertEqual("succeeded", result["status"], result)
-        self.assertGreaterEqual(len(list_issues(self.root)), 1)
-        self.assertFalse((self.root / ".concorde/status").exists())
-
-    @verifies("scenario.issues.report-survives-failure")
-    def test_failed_or_invalid_worker_completion_cannot_erase_accepted_reports(self):
-        for failure in ("invalid", "cancelled", "limit_exhausted"):
-            with self.subTest(failure=failure):
-                before = len(list_issues(self.root))
-
-                def work(reporter, data, failure=failure):
-                    self.observed(reporter, failure)
-                    if failure == "invalid":
-                        data.pop("answer")
-                    else:
-                        raise OperationExecutionError(
-                            "Interrupted after reporting",
-                            outcome="cancelled"
-                            if failure == "cancelled"
-                            else "limit_exhausted",
-                        )
-
-                result = self.call(work)
-                self.assertNotEqual("succeeded", result["status"], result)
-                self.assertEqual(before + 1, len(list_issues(self.root)))
-
-    @verifies("scenario.issues.store-boundary")
-    def test_repository_validation_binds_issue_bytes_and_rejects_corruption(self):
-        from concorde.spec.validation import validate_repository
-
-        before = validate_repository(self.root)
-        result = self.call(lambda reporter, data: self.observed(reporter, "validation"))
-        self.assertEqual("succeeded", result["status"], result)
-        after = validate_repository(self.root)
-        self.assertEqual("success", after.status)
-        self.assertNotEqual(
-            before.result["source_digest"], after.result["source_digest"]
-        )
-        path = next((self.root / ".concorde/issues").glob("I-*.md"))
-        path.write_text(
-            path.read_text().replace("Retry ownership", "Corrupted ownership")
-        )
-        invalid = validate_repository(self.root)
-        self.assertEqual("invalid", invalid.status)
-        self.assertIn("CONCORDE-ISSUE-001", [item.rule_id for item in invalid.findings])
-
-    @verifies("scenario.issues.report-authority")
-    def test_preview_never_launches_a_reporter_or_creates_an_issue(self):
-        result = self.call(
-            lambda *_: self.fail("preview launched a worker"), mode="describe-policy"
-        )
-        self.assertEqual("described", result["status"], result)
-        self.assertEqual([], list_issues(self.root))
-        self.assertEqual(
-            [".gitignore"], [p.name for p in (self.root / ".concorde/issues").iterdir()]
-        )

@@ -10,25 +10,25 @@
   "homepage": {
     "eyebrow": "Specs · Pi Agents · Independent evidence",
     "title": "Specify the architecture. Guide your agents.",
-    "description": "Concorde keeps your project's Specs at the center of AI-assisted development. Your agent reads and selects contracts, answers questions and edits Specs, metadata and registry directly within its grant. Native Pi Agents and Workflows contribute proposals to finite Host acceptance; optional StateGraph Operations are selected separately. Evidence binds to current inputs; direct edits never supply successful review or completion.",
+    "description": "Concorde keeps your project's Specs at the center of AI-assisted development. Your Pi session reads Specs, answers questions and edits them with you, then calls Concorde's Operations one explicit step at a time. Model steps run as native Pi Agent calls or pi workflows and count only after the Host accepts their proposals; richer flows may be LangGraph Graphs. Evidence binds to current inputs; direct edits never supply successful review or completion.",
     "features": {
       "title": "Context and permission, managed around the Spec.",
       "items": [
         {
           "title": "Read complete Module specifications.",
-          "description": "Module Specs explain purpose, terminology, correct use, design and relationships for a reader who does not know the code. Implementation Specs hold the precise requirements, scenarios and contracts. Paired metadata binds entities to the files that realize them, and tests declare the scenarios they verify."
+          "description": "Module documents explain purpose, terminology, correct use, design and relationships for a reader who does not know the code. Implementation documents hold the precise requirements, scenarios and contracts. Paired metadata binds entities to the files that realize them, and tests declare the scenarios they verify."
         },
         {
-          "title": "Give each domain worker one Module's context.",
-          "description": "A worker receives its Module's own documents and explicit references, one level deep, the vendored documentation of the libraries that Module declares, and its task. Only code-writing and code-review phases read source contents. A missing promise becomes a reported Spec gap, never a guess from code."
+          "title": "Give each Agent call exactly its context.",
+          "description": "An Agent call receives four kinds of context: the Spec context its Module's declarations select, the names (and, for code phases, the contents) of its Module's files, the contracts of the tools it may use, and its task. A missing promise becomes a reported Spec gap, never a guess from code."
         },
         {
           "title": "Distinguish grants from enforced isolation.",
           "description": "Domain Agents have fresh context and terminal tool ceilings. Native file, network and credential restrictions are prompt policy, not OS confinement. Only programmer receives a code-write grant. Configured checks and tester commands separately enforce read-only governing files with writable external scratch; unavailable isolation refuses execution."
         },
         {
-          "title": "Choose Agents, Workflows or optional Operations.",
-          "description": "An Agent is a callable Pi agent with one canonical Concorde definition, a Workflow is native pi-subagents composition, an Operation is an explicitly selected StateGraph flow, and a Host service is finite deterministic work. Agents defines nine Agents as a peer of Operations. The user session is the external Pi session that talks to the user, not a tenth Agent. Genuine Graph Specs remain with their owners."
+          "title": "Operations, Agents and two kinds of control flow.",
+          "description": "An Operation is one cataloged entry: a Host service, a single Agent call, a pi workflow run by pi-subagents, or a LangGraph Graph built with the Graph API. Agents defines the seven domain Agents; the Pi session owns the two Task subagents. Every flow is explained in its owner's Spec by a step table or a Graph Spec."
         },
         {
           "title": "Develop in candidate worktrees.",
@@ -36,7 +36,7 @@
         },
         {
           "title": "Track problems as Issues.",
-          "description": "Workers record attributed bugs, contract gaps and limitations as Git-versioned Issues. concorde-issues lists, shows, reports, reopens or assesses one selected Issue. Repairs return to the calling agent for authorized edits or explicit capability selection; verification never fabricates completion."
+          "description": "Agents record attributed bugs, contract gaps and limitations as Git-versioned Issues. concorde-issues lists, shows, reports, reopens or solves one selected Issue; solving runs in a candidate, returns Spec repairs to the developer and closes an Issue only after checks."
         }
       ]
     },
@@ -69,7 +69,7 @@
     },
     "reference": {
       "title": "Agents and public capabilities",
-      "description": "Eleven public capability adapters retain their concorde-* names. Agents owns seven Domain Agents and two Task subagents; consumer packages contain eight definitions, excluding source-only maintenance-worker, and statically register only generic tester. The user session remains external. Init, configure, validate and deliver make no model calls; no removed workflow has an alias.",
+      "description": "Eleven Operations, all public, keep their concorde-* names. Agents defines seven domain Agents; the Pi session owns two Task subagents, of which consumer packages carry only the tester. Init, configure, validate and deliver make no model calls.",
       "tables": [
         {
           "title": "Public capabilities",
@@ -126,10 +126,10 @@
           ]
         },
         {
-          "title": "Callable Pi Agents",
-          "description": "The Agents Module owns the canonical contracts. Domain Agents receive invocation-owned projections; Task subagents receive explicit task/worktree grants rather than domain stage schemas. No Agent delegates tasks. Registration is discovery, not authority or execution evidence.",
+          "title": "Agents and Task subagents",
+          "description": "Agents defines each domain Agent once: tools, effects, instructions and output contract. Task subagents belong to the Pi session and receive explicit task and worktree grants. No Agent or Task subagent delegates.",
           "columns": [
-            "Agents",
+            "Name",
             "Responsibility and authority"
           ],
           "rows": [
@@ -160,40 +160,44 @@
           ]
         },
         {
-          "title": "Shared execution services",
-          "description": "The Operations hierarchy groups behavior providers, including composed providers. Supporting Modules own their separate contracts; using them neither transfers ownership nor expands context references.",
+          "title": "Modules",
+          "description": "Dependencies point inward: Spec tooling and Observation use nothing, the Harness never uses Operations or its providers, and outer Modules use what they need.",
           "columns": [
             "Module",
             "Responsibility"
           ],
           "rows": [
             [
-              "Operations",
-              "Own explicit StateGraph composition and compatibility capability adapters/dispatch, not the Agent definitions."
-            ],
-            [
-              "Agents",
-              "Define all nine callable Agents and their interaction, family and distribution scope; the user session remains external."
+              "Spec tooling",
+              "Load and check Specs, compute context and boundary sets, register typed values and propose the first Spec."
             ],
             [
               "Harness",
-              "Admit requests and native calls, freeze context, enforce terminal tool ceilings and independently accept results. Configured checks/tester commands have separate OS isolation; native file policy is not a sandbox."
+              "Admit requests, compose context, run Agent calls and workflows, run checks in the read-only boundary, manage candidate worktrees and observe timing. Native file policy is not a sandbox."
             ],
             [
-              "Spec",
-              "Resolve stable identities, complete paired document units, explicit references and scenario coverage from test declarations."
+              "Agents",
+              "Define the seven domain Agents; the tools preflight allows come from these definitions."
             ],
             [
-              "Distribution",
-              "Build fresh worker instructions and the private Pi catalog, install the Pi session tool and provision the managed runtime. No standalone Skills are published or installed."
+              "Operations",
+              "Hold the Operation catalog and dispatch; its providers are Planning, Implementation, Review, Validation, Delivery and Issue solving."
             ],
             [
               "Issues",
-              "Retain attributed problems, assess an explicitly selected Issue, and verify actual caller-selected repairs."
+              "Keep Issue records and the report service Agents use."
+            ],
+            [
+              "Pi session",
+              "Configure the developer's Pi session: the concorde tool, session selection, Task subagents and coordinator instructions."
+            ],
+            [
+              "Distribution",
+              "Build, check and install the package, provision the managed runtime and launch requests."
             ],
             [
               "Views",
-              "Publish Module Specs and Implementation Specs as a navigable documentation site."
+              "Publish Module documents and Implementation documents as a navigable documentation site."
             ]
           ]
         },
@@ -207,23 +211,23 @@
           "rows": [
             [
               "python3 scripts/run-operation.py <operation> < invocation.json",
-              "Submit a typed compatibility request. Cognitive capabilities require prepared native Pi transport; bare CLI execution refuses without it."
+              "Submit a typed request. Model-backed capabilities need the prepared native Pi transport; a bare CLI call refuses without it."
             ],
             [
               "concorde tool in a Pi session",
-              "Describe the eleven public capabilities, prepare exact native calls/workflows, or run finite Host services."
+              "Describe the eleven public capabilities, prepare native Agent calls and workflows, or run Host services."
             ],
             [
               "python3 scripts/concorde.py <command>",
-              "build, validate, select-session, protocol-manifest, docsite and usage: render assets, check the project, verify exact private Pi provenance, accept a Protocol binding, scaffold a docsite and summarize worker usage."
+              "build, validate, check-package, select-session, protocol-manifest, registry, docsite and status: render assets, check the project and package, verify a private Pi selection, bind the Protocol, sync the registry, scaffold a docsite and coordinate change status."
             ],
             [
               "python3 scripts/install-concorde.py",
-              "Preview or apply Pi-only installation; legacy retirement removes only unchanged receipt-owned outputs and preserves external CLI-owned Skills and user content."
+              "Preview or apply the Pi-only installation; files the installer owns are removed only when unchanged, and user content is preserved."
             ],
             [
               "python3 scripts/issues.py",
-              "List and show Issues from the command line."
+              "List, show or check Issues from the command line."
             ],
             [
               "npm --prefix docsite run <script>",

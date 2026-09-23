@@ -18,7 +18,12 @@ from concorde.distribution import installation
 from concorde.distribution.build import write_build
 from concorde.distribution.prompt_resolver import resolve_role_prompt
 from concorde.distribution.session_selection import save_selection, select_session
-from concorde.harness.pi_rpc import PiRpcError, PiRun, _records, run_prompt
+from tests.concorde.support.pi_prompt_client import (
+    PiRpcError,
+    PiRun,
+    read_records,
+    run_prompt,
+)
 from concorde.spec.verification import verifies
 from tests.concorde.support.fake_openai_provider import FakeOpenAIProvider
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -64,7 +69,7 @@ def replacement_prompts(argv, project, env, session):
     )
     records = queue.Queue()
     threading.Thread(
-        target=_records, args=(process.stdout, records), daemon=True
+        target=read_records, args=(process.stdout, records), daemon=True
     ).start()
     events = []
 
@@ -136,7 +141,7 @@ def replacement_prompts(argv, project, env, session):
 
 
 class ConsumerInstallRoleTests(unittest.TestCase):
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents", "scenario.session.consumer-tester")
     def test_consumer_install_update_preserve_user_append_bytes_and_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -158,6 +163,33 @@ class ConsumerInstallRoleTests(unittest.TestCase):
                 ".concorde/framework/prompts/user-session",
             ):
                 self.assertFalse((root / source_only).exists())
+            # The generic tester is the only project agent, bound to the installed entry.
+            self.assertEqual(
+                ["tester.md"], sorted(p.name for p in (root / ".pi/agents").iterdir())
+            )
+            definition = (root / ".pi/agents/tester.md").read_text()
+            front = dict(
+                line.split(": ", 1)
+                for line in definition.split("---", 2)[1].strip().splitlines()
+            )
+            extensions = [
+                (root / ".pi/agents" / item).resolve()
+                for item in front["extensions"].split(", ")
+            ]
+            self.assertIn(
+                (root / ".pi/extensions/concorde-session.ts").resolve(), extensions
+            )
+            self.assertTrue(all(path.is_file() for path in extensions), extensions)
+            self.assertNotIn("Source maintenance worker", definition)
+            # No brief lifecycle extension anywhere in the installation.
+            self.assertEqual(
+                [],
+                [
+                    p
+                    for p in root.rglob("concorde-brief-lifecycle*")
+                    if ".venv" not in p.parts
+                ],
+            )
 
 
 @unittest.skipUnless(shutil.which("pi"), "real Pi is required")
@@ -189,7 +221,6 @@ class EffectiveRolePromptTests(unittest.TestCase):
             self.selection,
             select_session(
                 self.source,
-                mode="test",
                 pi_entry=self.source / "generated/session/pi/concorde-session.ts",
                 runtime=self.source / "scripts/run-operation.py",
             ),
@@ -350,8 +381,9 @@ class EffectiveRolePromptTests(unittest.TestCase):
         )
 
     @verifies(
-        "scenario.distribution.task-subagents",
-        "scenario.distribution.user-session-todo-collection",
+        "scenario.session.task-subagents",
+        "scenario.session.todo-collection",
+        "scenario.session.coordinator-only",
     )
     def test_source_user_session_and_child_effective_prompts_fresh_and_resumed(self):
         identities = {
@@ -393,7 +425,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 self.assertEqual(ids[0], ids[2])
                 self.assertNotEqual(ids[0], ids[1])
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents", "scenario.session.consumer-tester")
     def test_installed_user_session_generic_and_tester_isolated_with_user_append(self):
         consumer = self.root / "consumer"
         consumer.mkdir()
@@ -416,7 +448,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 else:
                     self.assertIn("# Independent tester", system)
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_rpc_new_and_switch_session_reload_role_safe_resources(self):
         for role in ("user-session", "maintenance-worker", "tester"):
             self.run_role(
@@ -432,7 +464,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
             replacements=True,
         )
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.session.task-subagents")
     def test_negative_control_reproduces_unconditional_append_leak(self):
         (self.source / APPEND).write_text(
             resolve_role_prompt(
@@ -450,9 +482,9 @@ class EffectiveRolePromptTests(unittest.TestCase):
         self.assertNotIn(IDENTITY, system)
 
     @verifies(
-        "scenario.distribution.private-selection",
-        "scenario.distribution.task-subagents",
-        "scenario.agents.tester-independent",
+        "scenario.session.select",
+        "scenario.session.task-subagents",
+        "scenario.session.tester-independent",
     )
     def test_missing_binding_still_blocks_private_entry_loading(self):
         with self.assertRaises(PiRpcError) as raised:

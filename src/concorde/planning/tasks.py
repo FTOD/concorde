@@ -2,24 +2,17 @@
 
 from __future__ import annotations
 
-from ..harness.change_worktree import (
-    status_path,
-    read_change,
-    save_target_state,
-    target_state,
-)
+from ..harness.change_worktree import read_change, status_path
 from ..review.review import repair_feedback, require_spec_review
-from ..spec.impact import change_scope
+from .gaps import record_gaps
+from .records import save_target_state, target_state
+from .scope import change_scope
 from ..spec.repository import SpecError, digest
+from ..harness.status_store import record_artifact
 from ..spec.typed_data import (
-    artifact,
     canonical,
     typed,
 )
-
-
-def tasks(run) -> dict:
-    raise SpecError("Task authoring requires its native Pi Agent", "native_required")
 
 
 def prepare_tasks(run):
@@ -138,7 +131,6 @@ def persist_tasks(run, result, state, repair, scope_repair):
     if repair is None:
         state.pop("repair_review", None)
     state.pop("component_revisions", None)
-    state.pop("coordination", None)
     state.update(
         tasks=tasks,
         checks=[],
@@ -147,11 +139,11 @@ def persist_tasks(run, result, state, repair, scope_repair):
         status="active",
     )
     save_target_state(run.repository.root, state)
-    run.record_gaps("tasks", [])
+    record_gaps(run, "tasks", [])
     return run.response(
         answer=result["answer"],
         artifacts=[
-            artifact(
+            record_artifact(
                 run.repository.root,
                 "change",
                 status_path(

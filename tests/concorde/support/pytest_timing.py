@@ -71,14 +71,12 @@ TIMING_NOTE = (
 # --maxschedchunk 1) starts each on its own worker immediately. Correctness never depends on it;
 # an outdated entry only costs wall time. Prefer fixing a slow test over extending this list.
 HEAVY: tuple[str, ...] = (
-    "tests/concorde/harness/test_installed_worker_runtime.py::",
     "tests/concorde/distribution/test_local_installation.py::LocalInstallationTests::"
     "test_source_and_installed_provider_supply_independent_git_worktree_installs",
     "tests/concorde/harness/test_tester_tmp.py::",
     "tests/concorde/spec/test_distribution.py::",
-    "tests/concorde/harness/test_worktree_lifecycle.py::",
+    "tests/concorde/delivery/test_deliver.py::",
     "tests/concorde/distribution/test_install_concorde.py::",
-    "tests/concorde/operations/test_review.py::",
     "tests/concorde/spec/test_module_model.py::",
 )
 
@@ -177,8 +175,6 @@ def fingerprint(tests: list[str]) -> dict:
         "concorde.json",
         "pyproject.toml",
         "uv.lock",
-        "package.json",
-        "package-lock.json",
         ".concorde/config.json",
         ".concorde/specs.json",
         ".pi/APPEND_SYSTEM.md",
