@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 11.0.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 11.1.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -964,8 +964,11 @@ them, so that a harness can widen the task's read boundary, schedule review, or 
 
 Two rules follow from the model:
 
-- **Shared files.** When several Modules bind a file, a task that writes it MUST also be able to read
-  the documents of every binding Module, because it can otherwise break a promise it cannot see.
+- **Shared files.** When several Modules bind a file, a task that writes it MUST be bound to every
+  binding Module. The file carries the promises of all of them, and a writer bound to only one
+  could break a promise it cannot see. Binding the task to every binder keeps its reads within the
+  `SpecContext` of the Modules it is bound to (rule 3 below); no extra read is granted for sharing.
+  A task that only reads the file needs no such widening.
 - **Atomic reconciliation.** Some changes are only valid if other Modules change with them: a
   contract version increment requires every participant's `participates` version to move, and
   retiring or re-owning a concept requires its importers to follow. Such a change is a

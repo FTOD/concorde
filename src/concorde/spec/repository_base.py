@@ -22,7 +22,7 @@ from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode, safe_path
 
 PROFILE_VERSION = 16
-PROTOCOL_VERSION = "11.0.0"
+PROTOCOL_VERSION = "11.1.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")

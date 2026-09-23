@@ -63,3 +63,11 @@ Module ownership exclusivity. The paired document. One-level, non-recursive cont
 Both members of a document travelling together. Anchors addressable but not selectable. The
 separation of context from change authority. Evidence originating from what runs. Honest gaps over
 inferred promises.
+
+## Version 11.1
+
+Version 11.1 changes one boundary rule and no document format. Under 11.0, a task writing a file
+bound by several Modules received read access to every binding Module's documents in addition to
+its own context. Under 11.1 such a task MUST instead be bound to every binding Module, so its reads
+stay within the `SpecContext` of the Modules it is bound to. Specifications need no change; a
+harness that granted the extra read replaces it with the wider task binding.
