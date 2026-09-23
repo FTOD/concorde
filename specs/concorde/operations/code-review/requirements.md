@@ -39,8 +39,8 @@ the bound Modules' Spec context that it judges the code against.
 
 ### req.code-review.basis-resolves — Cited identities exist
 
-The code review host SHALL end a run `failed` when a finding cites a stable identity that the bound
-Modules' Spec context does not define.
+The code review host SHALL end a run `failed` when a finding cites a stable identity or a document
+that the bound Modules' Spec context does not define, or when a blocking finding names no basis.
 
 ## Verdict
 

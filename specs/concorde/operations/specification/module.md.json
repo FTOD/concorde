@@ -53,11 +53,6 @@
         "src/concorde/specification/",
         "prompts/workers/specify.md",
         "tests/concorde/specification/"
-      ],
-      "pending": [
-        "src/concorde/specification/",
-        "prompts/workers/specify.md",
-        "tests/concorde/specification/"
       ]
     }
   ],

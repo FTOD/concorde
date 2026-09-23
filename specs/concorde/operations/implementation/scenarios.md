@@ -75,7 +75,7 @@ change and the test report are in the [contracts](contracts.md).
 
 - GIVEN a task worktree whose bound Module has a failing configured check
 - WHEN the main agent runs `test` for that Module
-- THEN the worker reads the check log, the Spec and the code without running a command
+- THEN the worker receives the failing check result with the last part of its log and reads the Spec and the code without running a command
 - AND the test report keeps the host's failing check result
 - AND it names the scenario or requirement concerned, the likely cause and whether the code, a test, the Spec or the environment is at fault
 - BUT the result status is `ok`, because the run itself succeeded

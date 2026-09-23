@@ -11,7 +11,7 @@ in the [contracts](contracts.md).
 - WHEN the main agent runs `code_review` for that Module
 - THEN the host computes the diff and runs the Module's configured checks before launching the reviewer
 - AND the result has status `ok` and a report with verdict `clean`
-- AND the report records the base, the context identity and the check results it examined
+- AND the report records the base and the check results it examined, and the host evidence the context identity
 
 ### scenario.code-review.all-blocking — Every blocking finding in one report
 

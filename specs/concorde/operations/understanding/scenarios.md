@@ -45,6 +45,13 @@ is in the [contracts](contracts.md).
 - THEN the result has status `failed`
 - AND the unknown identity is listed as host evidence
 
+### scenario.understanding.inconsistent — An inconsistent assessment fails the run
+
+- GIVEN a worker whose assessment carries a plan although `--plan` was not given, or is marked insufficient without a Spec gap
+- WHEN the host checks the assessment
+- THEN the result has status `failed` with each inconsistency as host evidence
+- BUT the worker is not resumed
+
 ### scenario.understanding.change-detected — A change to the worktree fails the run
 
 - GIVEN an understand run whose write audit finds a changed or new file in the task worktree

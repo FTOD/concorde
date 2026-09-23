@@ -59,11 +59,6 @@
         "src/concorde/understanding/",
         "prompts/workers/understand.md",
         "tests/concorde/understanding/"
-      ],
-      "pending": [
-        "src/concorde/understanding/",
-        "prompts/workers/understand.md",
-        "tests/concorde/understanding/"
       ]
     }
   ],

@@ -40,6 +40,15 @@ task worktree's Specs do not define.
 
 The unknown identities are returned as host evidence; the host never drops or corrects them.
 
+### req.understanding.consistent — Inconsistent assessments fail the run
+
+The understand host SHALL end a run `failed` when the assessment lists Spec gaps although it is
+sufficient or none although it is insufficient, carries a plan that was not requested or follows an
+insufficient Spec, carries no plan although one was requested and the Spec is sufficient, or has no
+entry for a bound Module.
+
+Each inconsistency is returned as host evidence. The run is not resumed to repair it.
+
 ## Effects
 
 ### req.understanding.no-writes — The worktree is left unchanged

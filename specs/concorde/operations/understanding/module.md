@@ -40,12 +40,13 @@ yet. The plan is optional and exists only inside a sufficient assessment.
 The main agent runs the Operation in a task worktree, usually before specifying or implementing:
 
 ```text
-concorde run understand --task <task-id> --modules <module-id>[,<module-id>…] --goal "<text>" [--plan]
+concorde run understand --task <task-id> --modules <module-id>[,<module-id>…] --goal "<text>" [--plan] [--input <run-id>]…
 ```
 
 `--modules` names the Modules the worker is bound to (by default the task's Modules), `--goal`
-states in plain words what the main agent wants to know or do, and `--plan` asks for a plan in
-addition to the assessment. For example,
+states in plain words what the main agent wants to know or do, `--plan` asks for a plan in
+addition to the assessment, and each `--input` admits the output of an earlier `ok` run of the
+task, such as the assessment a Spec repair followed, as task material in the brief. For example,
 with `--modules module.issues --goal "let reports carry a severity" --plan`, the worker reads the
 Issues Spec and the Specs it selects, sees that the Issues code lives in files such as
 `src/concorde/issues/store.py` without reading them, and answers either with a plan (change the
@@ -75,7 +76,10 @@ The result status is `ok` whenever the worker completed an assessment, sufficien
 the goal at all, for example because the goal is ambiguous or concerns Modules that were not bound,
 and the result then carries the worker's [escalation](../../vocabulary.md#concept.concorde.escalation).
 It is `failed` when the host could not run the worker, the worker changed a file, or the assessment
-names a Module that does not exist. Running the Operation again with the same inputs is safe: it
+names a Module that does not exist or is inconsistent: gaps listed although it is sufficient or
+missing although it is not, a plan that was not requested or follows an insufficient Spec, no plan
+although one was requested for a sufficient Spec, or no entry for a bound Module. A failed or
+blocked result carries no `output`; the worker's own answer stays in the `worker` field. Running the Operation again with the same inputs is safe: it
 changes nothing and produces a fresh assessment.
 
 ## Design
@@ -93,10 +97,10 @@ happens to do.
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Compute the `understand` [grant](../../spec-tooling/spec/module.md#concept.spec.grant) for the bound Modules from the task worktree's Specs and freeze it with its context identity | Workers, Spec core | the Specs cannot be loaded or a Module is unknown (`failed`) |
-| 2 | Generate the worker settings, the tool list and the [brief](../../harness/workers/module.md#concept.workers.brief) with the goal, the plan request and the grant's read and names lists | Workers | — |
+| 2 | Generate the worker settings, the tool list and the [brief](../../harness/workers/module.md#concept.workers.brief) with the goal, the plan request, the task's goal, the admitted inputs and the grant's read and names lists | Workers | — |
 | 3 | Launch the worker and wait for its [worker result](../../harness/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error or timeout (`failed`) |
 | 4 | [Audit](../../harness/workers/module.md#concept.workers.audit) the task worktree: the grant has no writable path, so any change is a violation, and write the run record | Workers | any change (`failed`) |
-| 5 | Check that every Module named in the assessment exists in the task worktree's Specs | host | an unknown Module (`failed`) |
+| 5 | Check that every Module named in the assessment exists in the task worktree's Specs and that the assessment is consistent | host | an unknown Module or an inconsistent assessment (`failed`) |
 | 6 | Return the Operation result | host | — |
 
 The worker gets the tools Read, Glob and Grep only: no Edit, Write or Bash, no web tools and no
@@ -106,16 +110,19 @@ inconsistent assessment is not repaired by a second round either; the run fails 
 decides, which keeps every accepted assessment the product of one reading of one frozen grant.
 
 The host treats the assessment as the worker's claim. It verifies only what it can decide from
-declarations, namely that the named Modules exist, and adds its own evidence: the grant, the
-context identity, the audit and the transcript path. Whether a plan is good is for the main agent
-and for later Operations to find out. The precise obligations are in the
-[requirements](requirements.md) and illustrated by the [scenarios](scenarios.md).
+declarations and from the assessment's own shape, namely that the named Modules exist and that
+gaps, sufficiency, plan and `--plan` agree, sets `goal` to its own `--goal` argument, and adds its
+own evidence: the grant, the context identity, the audit and the transcript path. Whether a plan
+is good is for the main agent and for later Operations to find out. The precise obligations are in
+the [requirements](requirements.md) and illustrated by the [scenarios](scenarios.md).
 
 <a id="realization.understanding.operation"></a>
 
 The **Understand Operation** realization holds the Operation's host steps, the worker instructions
-for task type `understand` and the result schema, and its tests. All of it is pending: the files do
-not exist yet.
+for task type `understand` and the result schema, and its tests: the package
+`src/concorde/understanding/`, whose `operation.py` declares the `UNDERSTAND` provider the catalog
+names, the prompt `prompts/workers/understand.md` rendered to `generated/workers/understand.md`,
+and `tests/concorde/understanding/`, which run the Operation end to end against a fake worker.
 
 ## Relationships
 

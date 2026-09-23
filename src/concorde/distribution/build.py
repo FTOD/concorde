@@ -31,15 +31,34 @@ class BuildError(ValueError):
 PROTOCOL_KINDS = ("module",)
 PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
-# Prompt roots rendered one to one: ``prompts/<name>.md`` becomes ``generated/<name>.md``.
+# Prompt roots rendered one to one: ``prompts/<name>.md`` becomes ``generated/<name>.md``. Every
+# file directly in ``prompts/workers/`` and ``prompts/main-session/`` is a root as well.
 PROMPT_ROOTS: tuple[str, ...] = (
     "prompts/protocol/principles.md",
     *(f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS),
 )
+PROMPT_ROOT_DIRECTORIES: tuple[str, ...] = ("prompts/workers", "prompts/main-session")
 
 # The build owns exactly these locations under `generated/`; `generated/` is a shared, ignored
 # root, and check_build never judges locations it does not own.
-GENERATED_OWNED_DIRS: tuple[str, ...] = ("generated/protocol",)
+GENERATED_OWNED_DIRS: tuple[str, ...] = (
+    "generated/protocol",
+    "generated/workers",
+    "generated/main-session",
+)
+
+
+def prompt_roots(project_root: Path) -> tuple[str, ...]:
+    """The fixed roots and every Markdown file directly in a root directory, sorted."""
+    found = [
+        path.relative_to(project_root).as_posix()
+        for directory in PROMPT_ROOT_DIRECTORIES
+        for path in sorted((project_root / directory).glob("*.md"))
+        if path.is_file()
+    ]
+    return (*PROMPT_ROOTS, *found)
+
+
 GENERATED_OWNED_FILES: tuple[str, ...] = ("generated/build-manifest.json",)
 
 # Inputs whose change makes every render stale even though no prompt includes them.
@@ -108,8 +127,9 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
 def build(project_root: str | Path) -> BuildResult:
     """Render every prompt root; raise BuildError on any failure. Writes nothing."""
     root = Path(project_root)
-    outputs = [render_prompt(root, item) for item in PROMPT_ROOTS]
-    unreachable = find_unreachable_prompts(root, list(PROMPT_ROOTS))
+    roots = prompt_roots(root)
+    outputs = [render_prompt(root, item) for item in roots]
+    unreachable = find_unreachable_prompts(root, list(roots))
     if unreachable:
         raise BuildError(
             f"unreachable prompt files (no root includes them): {list(unreachable)}"

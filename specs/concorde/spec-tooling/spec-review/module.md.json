@@ -79,10 +79,6 @@
       "entries": [
         "src/concorde/spec_review/",
         "tests/concorde/spec_review/"
-      ],
-      "pending": [
-        "src/concorde/spec_review/",
-        "tests/concorde/spec_review/"
       ]
     },
     {
@@ -91,9 +87,6 @@
       "title": "Reviewer brief",
       "meaning": "#realization.spec-review.checklist",
       "entries": [
-        "prompts/workers/review-spec.md"
-      ],
-      "pending": [
         "prompts/workers/review-spec.md"
       ]
     }

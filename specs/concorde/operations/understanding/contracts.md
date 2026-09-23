@@ -2,7 +2,7 @@
 
 The exact shape of what [Understanding](module.md) returns. The assessment is the `output` of the
 Operation result. The worker proposes it as the Operation-specific part of its answer, and the host
-passes it on unchanged once its checks have passed.
+passes it on once its checks have passed, with `goal` set to its own `--goal` argument.
 
 ## Assessment
 
@@ -100,7 +100,7 @@ passes it on unchanged once its checks have passed.
       }
     }
   },
-  "semantics": "One assessment of the bound Modules' Specs for the stated goal, as proposed by the understand worker. goal repeats the --goal argument. modules has one entry per bound Module summarizing what it promises that matters for the goal, taken only from its Spec context. sufficient is true when the Specs state every promise the goal needs. gaps lists each Spec gap: the Module and the project-relative document where the promise belongs, what is missing, why the goal needs it and a suggested repair; gaps is empty exactly when sufficient is true. plan is null unless --plan was given and sufficient is true. A plan names the Modules to change, the files to declare as pending entries of a named realization of a named Module, the ordered Operations to run next with their Modules and purpose, and the decisions left to the main agent. Every Module identity must exist in the task worktree's Specs, which the host checks; everything else is the worker's claim and is never restated by the host as fact.",
+  "semantics": "One assessment of the bound Modules' Specs for the stated goal, as proposed by the understand worker. goal is the --goal argument, set by the host. modules has one entry per bound Module summarizing what it promises that matters for the goal, taken only from its Spec context. sufficient is true when the Specs state every promise the goal needs. gaps lists each Spec gap: the Module and the project-relative document where the promise belongs, what is missing, why the goal needs it and a suggested repair; gaps is empty exactly when sufficient is true. plan is null unless --plan was given and sufficient is true. A plan names the Modules to change, the files to declare as pending entries of a named realization of a named Module, the ordered Operations to run next with their Modules and purpose, and the decisions left to the main agent. Every Module identity must exist in the task worktree's Specs, and gaps, sufficient, plan and the --plan argument must agree as stated above, with one modules entry per bound Module; the host checks both. Everything else is the worker's claim and is never restated by the host as fact.",
   "example": {
     "goal": "let Issue reports carry a severity",
     "modules": [

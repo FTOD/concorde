@@ -64,12 +64,6 @@
         "prompts/workers/implement.md",
         "prompts/workers/test.md",
         "tests/concorde/implementation/"
-      ],
-      "pending": [
-        "src/concorde/implementation/",
-        "prompts/workers/implement.md",
-        "prompts/workers/test.md",
-        "tests/concorde/implementation/"
       ]
     }
   ],

@@ -53,7 +53,7 @@ concorde run test --task <task-id> --modules <module-id>[,<module-id>…] [--foc
 
 `--modules` defaults to the task's Modules. For `implement`, `--goal` states the change, each
 `--input` admits the output of an earlier `ok` run of the task (an assessment with its plan, a code
-review report with blocking findings or a test report) as task material, and `--rounds` overrides the maximum number of resume rounds, three by default. For example, after a `specify`
+review report with blocking findings or a test report) as task material, and `--rounds` overrides the maximum number of resume rounds, zero or more and three by default. For example, after a `specify`
 run declared `src/concorde/issues/severity.py` as pending, `implement --modules module.issues
 --goal "accept and store the report severity"` lets the worker create that file and change the
 other Issues files, and returns once the Issues checks pass or the rounds are used up.
@@ -69,8 +69,10 @@ bound; the worker's [escalation](../../vocabulary.md#concept.concorde.escalation
 the run is not resumed. It is `failed` when checks still fail after the last round, when the write
 audit found a change outside the grant, or when the host could not run the worker. A run with no
 configured check for its Modules ends `ok` with no check evidence, which the result states, and
-the main agent should then run `test` or add checks. The worker's edits stay in the task worktree
-uncommitted whatever the status.
+the main agent should then run `test` or add checks. Whenever the worker returned a result, the
+output holds the code change whatever the status, so a `blocked` or `failed` run still shows what
+changed and which checks failed. The worker's edits stay in the task worktree uncommitted whatever
+the status.
 
 <a id="concept.implementation.test-report"></a>
 
@@ -81,8 +83,9 @@ decide whether the checks passed; the worker adds, for each failure, the scenari
 concerns, its likely cause and whether the defect is in the code, in a test, in the Spec or in the
 environment. The status is `ok` whenever the checks ran and the worker interpreted them, passing or
 not; `blocked` when the worker could not interpret them; `failed` when the host could not run the
-checks or the worker, or the audit found any change. Running `test` again is safe: it changes
-nothing.
+checks or the worker, or the audit found any change. Only an `ok` run carries a test report; the
+host evidence of any other run still lists the check results. Running `test` again is safe: it
+changes nothing.
 
 ## Design
 
@@ -106,13 +109,16 @@ is to report it.
 | 5 | [Audit](../../harness/workers/module.md#concept.workers.audit) the task worktree against the grant | Workers | a write outside the grant (`failed`); worker `blocked` or `failed` (passed on) |
 | 6 | Run the bound Modules' [configured checks](../../harness/checks/module.md#concept.checks.configured-check) outside the worker | Workers, Check execution | — |
 | 7 | While a check fails and rounds remain, [resume](../../harness/workers/module.md#concept.workers.resume-round) the same worker session with the failed [check results](../../harness/checks/module.md#concept.checks.check-result) and repeat steps 5 and 6 | Workers, worker | rounds used up with a check failing (`failed`) |
-| 8 | Remove pre-created files and directories that are still empty, perform the deletions the worker proposed inside its writable paths when the audit was clean, and write the run record | Workers | — |
-| 9 | Clear the pending marker of every pending entry of the bound Modules that now exists | host, Spec core | — |
+| 8 | Perform the deletions the worker proposed inside its writable paths when the audit was clean, and write the run record | Workers | — |
+| 9 | Remove every pre-created file and directory that is still empty, then clear the pending marker of every pending entry of the bound Modules that now exists | host, Spec core | — |
 | 10 | Return the Operation result | host | — |
 
 Once the worker has been launched, steps 8 to 10 run whatever status the run ends with, so the
 Specs and the run record are consistent even after a failure. Steps 1 to 8 are the standard worker
-sequence that Workers performs; step 9 is this Operation's own.
+sequence that Workers performs; step 9 is this Operation's own, and the host composes the code
+change from the worker's run record: the changed and created files from the last audit, compared
+with the paths that existed before the run, the deletions Workers performed or refused, the rounds
+and the check results of the last round that ran checks.
 
 The worker gets the tools Read, Glob, Grep, Edit, Write and Bash. Bash runs inside Claude Code's
 sandbox, which can read the granted files and the configured toolchain and write only the grant's
@@ -142,16 +148,16 @@ to count as created.
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Compute the `test` grant for the bound Modules and freeze it with its context identity | Workers, Spec core | the Specs cannot be loaded or a Module is unknown (`failed`) |
+| 1 | Compute the `test` grant for the bound Modules, which Workers freezes with its context identity when it launches the worker | Workers, Spec core | the Specs cannot be loaded or a Module is unknown (`failed`) |
 | 2 | Run the bound Modules' configured checks outside any worker and keep their logs in the run directory | host, Check execution | a check cannot be started (`failed`) |
-| 3 | Generate the worker settings, the tool list and the brief with the focus, the check results and their log paths, and the grant's read and names lists | Workers | — |
+| 3 | Generate the worker settings, the tool list and the brief with the focus, the check results with their log paths and the last part of every log that did not pass, and the grant's read and names lists | Workers | — |
 | 4 | Launch the worker and wait for its worker result | Workers, worker | launch error or timeout (`failed`); worker `blocked` (passed on) |
 | 5 | Audit the task worktree: the grant has no writable path, so any change is a violation, and write the run record | Workers | any change (`failed`) |
 | 6 | Return the Operation result | host | — |
 
 The `test` worker gets Read, Glob and Grep only. It never runs a command: running checks is
-evidence produced by the host for the task, and the check logs are task material, so reading them
-widens nothing. A failing check is not a failed run; the test report records it, and it is up to
+evidence produced by the host for the task, and the check logs are task material, so the brief
+carries the last part of every log that did not pass and widens nothing. A failing check is not a failed run; the test report records it, and it is up to
 the main agent to follow up with `implement`, `specify` or a decision.
 
 The precise obligations of both Operations are in the [requirements](requirements.md) and
@@ -160,8 +166,9 @@ illustrated by the [scenarios](scenarios.md).
 <a id="realization.implementation.operations"></a>
 
 The **Implement and test Operations** realization holds both Operations' host steps, the worker
-instructions for task types `implement` and `test`, their result schemas and their tests. All of
-it is pending: the files do not exist yet.
+instructions for task types `implement` and `test`, their result schemas and their tests. Each
+worker returns only its part of the output (`addresses`, or `failures` and `notes`) with its
+summary; the host adds everything it observed itself.
 
 ## Relationships
 

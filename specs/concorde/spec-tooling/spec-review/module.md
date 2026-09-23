@@ -10,8 +10,7 @@ requirements and scenarios, how well the design is explained, the honesty of dia
 coherence of terminology. It returns every blocking finding it can establish in one pass, with a
 verdict the host derives from them. Spec review never edits a Spec, never repairs what it finds and
 never calls another Operation; the main agent decides what to change. It does not repeat structural
-validation, which Spec core owns, and does not judge code, which Code review owns. The Operation,
-its checklist and its tests are designed but not yet implemented.
+validation, which Spec core owns, and does not judge code, which Code review owns.
 
 ## Terminology
 
@@ -52,7 +51,9 @@ concorde run spec_review --task <task-id> --modules module.checkout,module.inven
 
 It runs in the background like any Operation and writes an Operation result when it ends. Each named
 Module is reviewed on its own, from the Specs of the task worktree, so a Spec change made on the
-task branch is what gets judged.
+task branch is what gets judged, committed or not. The result's status is `ok` when every Module
+could be reviewed, whatever the verdict; it is `blocked` or `failed` only when the verdict is
+`incomplete`, and the result then still carries the findings of every Module that was reviewed.
 
 <a id="concept.spec-review.finding"></a>
 
@@ -64,7 +65,8 @@ requirement that states two obligations, a scenario whose outcome cannot be test
 section that never shows a normal path; everything else is `advisory`. A reviewer reports every
 blocking finding it can establish in one pass instead of stopping at the first, so one round of
 changes can address them all. With `--check-findings` a second worker checks each finding against
-the same Specs and marks it `confirmed` or `disputed` with a reason.
+the same Specs and marks it `confirmed` or `disputed` with a reason; a Module without findings needs
+no checker.
 
 <a id="concept.spec-review.verdict"></a>
 
@@ -90,19 +92,24 @@ optionally runs the checker, and derives the verdict itself. The exact steps are
 
 The **Review host** runs that sequence: it validates the Modules, asks Spec core for each grant,
 launches the reviewers and the optional checker through the Harness, derives the verdict and
-returns the Operation result. It and its tests are pending: they do not exist yet.
+returns the Operation result. In this version it reviews the Modules one after another.
 
 <a id="realization.spec-review.checklist"></a>
 
 The **Reviewer brief** is the checklist every reviewer and checker receives: the dimensions, what
-counts as blocking, the one-pass rule, and the shape of a finding. It is pending as well.
+counts as blocking, the one-pass rule, and the shape of a finding. The host appends the role, the
+reviewed Module with its own documents, the task's goal for orientation and, for a checker, the
+numbered findings to check.
 
 Deriving the verdict in the host rather than taking a worker's word keeps the outcome
 deterministic: a worker contributes findings, which remain its claims, and the host counts them.
 One reviewer per Module keeps each worker's context exactly one Module's Spec context, which is
 also the scope of its judgment: a reviewer judges only the reviewed Module's own documents. A
 problem it notices in a provider's selected document is reported as an advisory finding naming the
-provider and never blocks this Module's verdict; reviewing the provider is a separate run.
+provider and never blocks this Module's verdict; reviewing the provider is a separate run. The host
+enforces this rather than trusting it: it names each finding after the Module that owns the cited
+document and counts a blocking finding about any document the reviewed Module does not own as
+advisory, recording the correction as its own evidence.
 
 A reviewer cannot widen its own view. When it cannot judge something without a document outside
 its grant, it reports a `context` finding that names what it needed, and the main agent, which has

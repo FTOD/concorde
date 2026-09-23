@@ -68,7 +68,10 @@ reports a new error; the result then carries an [escalation](../../vocabulary.md
 with the worker's options or the validation findings. It is `failed` when the host could not run
 the worker or the write audit found a change outside the grant. In every case the worker's edits
 stay in the task worktree uncommitted: the main agent inspects them, runs `specify` again with a
-corrected intent, repairs them itself or discards them.
+corrected intent, repairs them itself or discards them. Whenever the host observed the worktree
+after the worker, a `blocked` or `failed` result still carries the Spec change as its `output`, so
+the main agent sees what was left behind; after an audit violation or a failure before the worker
+ran it carries none.
 
 Two limits apply in this version. The worker can write only documents its Modules already own,
 so it cannot create a new document: it returns the documents it would need as proposals, and the
@@ -90,7 +93,7 @@ goes, and the separate `implement` run is the only one that may create it.
 | --- | --- | --- | --- |
 | 1 | Validate the task worktree's Specs as a baseline | host, Spec core | the Specs cannot be loaded (`failed`) |
 | 2 | Compute the `specify` [grant](../../spec-tooling/spec/module.md#concept.spec.grant) for the bound Modules from the task worktree's Specs and freeze it with its context identity | Workers, Spec core | a Module is unknown (`failed`) |
-| 3 | Generate the worker settings, the tool list and the [brief](../../harness/workers/module.md#concept.workers.brief) with the intent, the task material and the grant's write, read and names lists | Workers | — |
+| 3 | Generate the worker settings, the tool list and the [brief](../../harness/workers/module.md#concept.workers.brief) with the intent, the task's goal, the admitted inputs and the grant's write, read and names lists | Workers | — |
 | 4 | Launch the worker and wait for its [worker result](../../harness/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on) |
 | 5 | [Audit](../../harness/workers/module.md#concept.workers.audit) the task worktree against the grant, perform the proposed deletions inside it and write the run record | Workers | a write outside the grant (`failed`) |
 | 6 | Regenerate the mirrored fields of the [project registry](../../spec-tooling/spec/module.md#concept.spec.registry) from the changed entries | host, Spec core | — |
@@ -102,9 +105,10 @@ When the worker ends `blocked` or `failed` after editing documents, steps 6 to 8
 the result shows the state it left behind; the status stays the worker's. Only an audit violation
 skips them.
 
-The worker gets the tools Read, Glob, Grep, Edit and Write: no Bash, because nothing in a Spec
-change needs a command, no web tools and no MCP server. Pending files are never pre-created, because
-the grant contains no implementation path.
+The worker has one round and the host runs no configured checks. It gets the tools Read, Glob,
+Grep, Edit and Write: no Bash, because nothing in a Spec change needs a command, no web tools and
+no MCP server. Pending files are never pre-created, because the grant contains no implementation
+path.
 
 Validation is structural: the host runs the [structural checks](../../spec-tooling/spec/module.md#concept.spec.structural-check)
 of Spec core, the same ones `concorde validate` runs, on the whole task worktree. Comparing with
@@ -125,8 +129,10 @@ The precise obligations are in the [requirements](requirements.md) and illustrat
 <a id="realization.specification.operation"></a>
 
 The **Specify Operation** realization holds the Operation's host steps, the worker instructions for
-task type `specify` and the result schema, and its tests. All of it is pending: the files do not
-exist yet.
+task type `specify` and the result schema, and its tests: the package
+`src/concorde/specification/`, whose `operation.py` declares the `SPECIFY` provider the catalog
+names, the prompt `prompts/workers/specify.md` rendered to `generated/workers/specify.md`, and
+`tests/concorde/specification/`, which run the Operation end to end against a fake worker.
 
 ## Relationships
 

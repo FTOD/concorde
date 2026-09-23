@@ -1,7 +1,7 @@
 # Spec review Operation
 
 The exact host sequence, arguments and result of the `spec_review` Operation of
-[Spec review](module.md). It is designed and not yet implemented.
+[Spec review](module.md).
 
 ## Invocation
 
@@ -14,28 +14,52 @@ checker. The Operation takes no other argument and needs no user consent.
 
 ## Host sequence {#host-sequence}
 
-The host runs these steps for each named Module; Modules are independent, and their reviewers may
-run at the same time because none of them writes.
+The host runs these steps for each named Module. Modules are independent and none of their
+reviewers writes, so their reviews could run at the same time; this version runs them one after
+another. Step 1 validates the task worktree once for all Modules.
 
 | # | Step | Actor | On failure |
 | --- | --- | --- | --- |
-| 1 | Load the task worktree's Specs and validate the Module | host (Spec core) | loading error: the Operation fails; structural error: the Module is `incomplete`, with the findings as host evidence |
+| 1 | Load the task worktree's Specs and validate the Module | host (Spec core) | loading error: the Operation fails; structural error in the Module's own documents or about the Module or a node it defines: the Module is `incomplete`, with the findings as host evidence |
 | 2 | Compute the `review-spec` grant for the Module with the task worktree as root and freeze it with its context identity | host (Spec core) | the Module is `incomplete` |
 | 3 | Generate the reviewer's settings, tool list and brief from the grant and the Reviewer brief | host (Workers) | the Operation fails |
-| 4 | Launch the reviewer and wait for its worker result with findings | host (Workers) | `blocked`, `failed` or timeout: the Module is `incomplete` |
+| 4 | Launch the reviewer and wait for its worker result with findings; there is one round and no resume | host (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
 | 5 | Audit that the worktree has no change | host (Workers) | any change: the Module is `incomplete`, with the audit violations as host evidence |
-| 6 | With `--check-findings`, launch the checker under the same grant with the reviewer's findings as task material, then audit again | host (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
-| 7 | Derive the Module's outcome from its findings | host | — |
+| 6 | With `--check-findings` and at least one finding, launch the checker under the same grant with the reviewer's numbered findings as task material, then audit again | host (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
+| 7 | Normalize the findings and derive the Module's outcome from them | host | a finding whose path is not in the task worktree: the Module is `incomplete`, with `invalid-output` evidence |
 | 8 | Write a run record per worker | host (Workers) | the Operation fails |
 
 After every Module is done, the host derives the verdict and returns the Operation result. No step
 runs configured checks and no step resumes a worker, because a review changes no file.
 
+Normalizing a finding means: an absolute path inside the task worktree becomes relative to it;
+`module` becomes the Module that owns the cited document when the path is a registered document or
+its metadata file; and a `blocking` finding whose path is not one of the reviewed Module's own
+documents or their metadata files becomes `advisory`, with `finding-scope` host evidence naming it.
+A checker status applies to the finding at its position; a status for an unknown position or a
+second status for the same finding is ignored, and a finding without a status keeps `check` null.
+
+## Result status
+
+| Verdict | Status | Escalation |
+| --- | --- | --- |
+| `accepted` or `changes_required` | `ok` | none |
+| `incomplete`, and some incomplete Module failed: a worker failed, a launch error, a timeout, an invalid result, an audit violation or a grant that could not be computed | `failed` | that of the first incomplete Module |
+| `incomplete` otherwise: a structural error or a `blocked` worker | `blocked` | that of the first incomplete Module |
+
+A loading error in step 1 is `failed` with no output. In every other case the result's `output` is
+the review payload, including for `blocked` and `failed`, so the findings of the Modules that were
+reviewed are never lost. The escalation of an incomplete Module is the worker's own when its worker
+ended `blocked` or `failed`, and the host's otherwise; the summary names every incomplete Module and
+counts the blocking findings that stand. The `worker` field holds the last worker result.
+
 ## Reviewer result
 
 A reviewer ends with the ordinary worker result plus `findings`, an array of findings. The checker
 ends with the worker result plus `checks`, one `{finding, status, reason}` per finding it received,
-where `finding` is the finding's position and `status` is `confirmed` or `disputed`.
+where `finding` is the finding's position in the numbered list the checker received, starting at
+1, and `status` is `confirmed` or `disputed`. Both end `ok` when they could do their work; a
+`blocked` or `failed` worker still returns an empty `findings` or `checks` array.
 
 A finding is `{module, path, anchor, line, dimension, severity, problem, evidence, suggestion}`.
 `module` is the reviewed Module, or the provider whose selected document the finding concerns;
@@ -124,5 +148,8 @@ The Operation result carries this payload:
 }
 ```
 
-The host adds the Operation result's own evidence: the grant and context identity of every worker,
-audit violations, run record paths and the structural findings of step 1.
+The host adds the Operation result's own evidence, each item naming the Module and worker it
+concerns: the grant and context identity of every worker, the audits, the transcript paths, the
+structural findings of step 1 (kind `structural`), the scope corrections of step 7 (kind
+`finding-scope`) and any unusable finding (kind `invalid-output`). The worker run identities are in
+the result's `worker_runs`, reviewer before checker, in Module order.

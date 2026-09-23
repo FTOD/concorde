@@ -63,11 +63,6 @@
         "src/concorde/code_review/",
         "prompts/workers/review-code.md",
         "tests/concorde/code_review/"
-      ],
-      "pending": [
-        "src/concorde/code_review/",
-        "prompts/workers/review-code.md",
-        "tests/concorde/code_review/"
       ]
     }
   ],

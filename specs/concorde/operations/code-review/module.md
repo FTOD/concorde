@@ -63,7 +63,8 @@ The Operation returns an [Operation result](../module.md#concept.operations.resu
 whenever the review completed, whatever the verdict; `blocked` when the reviewer could not judge
 the change at all, for example because the diff consists of files no bound Module binds; and
 `failed` when the host could not run the reviewer, the audit found any change, or a finding cites
-a promise that does not exist.
+a promise that does not exist. Only an `ok` run carries a report; the host evidence of any other
+run still names the base, the diff's paths and the check results.
 
 <a id="concept.code-review.finding"></a>
 
@@ -91,15 +92,18 @@ changed but adds no source, so the host cuts it down to what the grant already m
 | 1 | Compute the `review-code` [grant](../../spec-tooling/spec/module.md#concept.spec.grant) for the bound Modules from the task worktree's Specs and freeze it with its context identity | Workers, Spec core | the Specs cannot be loaded or a Module is unknown (`failed`) |
 | 2 | Compute the diff from the base to the task worktree, including uncommitted and untracked files, keep the contents of paths the grant makes readable and list every other changed path by name only | host, Spec core | the base cannot be resolved (`failed`) |
 | 3 | Run the bound Modules' [configured checks](../../harness/checks/module.md#concept.checks.configured-check) outside any worker | host, Check execution | a check cannot be started (`failed`) |
-| 4 | Generate the worker settings, the tool list and the [brief](../../harness/workers/module.md#concept.workers.brief) with the focus, the diff, the [check results](../../harness/checks/module.md#concept.checks.check-result) and the grant's read and names lists | Workers | — |
+| 4 | Generate the worker settings, the tool list and the [brief](../../harness/workers/module.md#concept.workers.brief) with the focus, the diff, the changed paths listed by name only, the [check results](../../harness/checks/module.md#concept.checks.check-result) with the last part of every log that did not pass, and the grant's read and names lists | Workers | — |
 | 5 | Launch the reviewer and wait for its [worker result](../../harness/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error or timeout (`failed`); worker `blocked` (passed on) |
 | 6 | [Audit](../../harness/workers/module.md#concept.workers.audit) the task worktree: the grant has no writable path, so any change is a violation, and write the run record | Workers | any change (`failed`) |
-| 7 | Check that every basis identity resolves in the bound Modules' Spec context, then derive the verdict from the findings | host, Spec core | an unresolved basis (`failed`) |
+| 7 | Check that every basis resolves in the bound Modules' Spec context and that every blocking finding has one, then derive the verdict from the findings | host, Spec core | an unresolved or missing basis (`failed`) |
 | 8 | Return the Operation result | host | — |
 
 The reviewer gets Read, Glob and Grep only: no Edit, Write or Bash, no web tools and no MCP
 server. It cannot run the tests itself, so the host runs the configured checks first and hands over
-their results; a failing check is something the reviewer interprets, not a reason to stop.
+their results; a failing check is something the reviewer interprets, not a reason to stop. The
+diff runs from the base commit to the task worktree, uncommitted and untracked files included, and
+new files appear in full. A very large diff is cut short in the brief with a note; the reviewer
+then reads the remaining changed files directly, which its grant already allows.
 
 There is no resume round. The reviewer is instructed to report every blocking finding it can
 establish in a single pass rather than the first one it meets, because each extra review round
@@ -109,15 +113,18 @@ when to review again.
 
 The reviewer judges only against the Specs in its context, never against its own taste or against
 another Module's code, so a finding the main agent disagrees with can be traced to a written
-promise. The host verifies what it can decide, namely that every cited identity exists and which
-verdict follows, and otherwise keeps the findings as the reviewer's claims. The precise obligations
+promise. The host verifies what it can decide, namely that every cited basis exists and which
+verdict follows, and otherwise keeps the findings as the reviewer's claims. A basis resolves when it
+is a stable identity defined by a document of a bound Module's Spec context, or a path of such a
+document, optionally followed by an anchor. The precise obligations
 are in the [requirements](requirements.md) and illustrated by the [scenarios](scenarios.md).
 
 <a id="realization.code-review.operation"></a>
 
 The **Code review Operation** realization holds the Operation's host steps, the worker
-instructions for task type `review-code`, the result schema and its tests. All of it is pending:
-the files do not exist yet.
+instructions for task type `review-code`, the result schema and its tests. The reviewer returns
+only its findings with its summary; the host adds the base, the paths, the check results and the
+verdict.
 
 ## Relationships
 
