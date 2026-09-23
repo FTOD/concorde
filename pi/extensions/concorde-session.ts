@@ -277,7 +277,9 @@ export function concordeSession(
   const verifySelection = () => {
     if (!selectionPath) return;
     if (explicitSelectionPath() !== selectionPath)
-      throw new Error("private Pi selection cannot change during a session");
+      throw new Error(
+        "private Pi selection cannot change during a session; start a fresh session",
+      );
     const python = catalog.interpreters
       .map((item) => path.resolve(root, item))
       .find((item) => fs.existsSync(item));
@@ -434,6 +436,15 @@ export function concordeSession(
           finishSelection("ok");
         } catch (error) {
           finishSelection("error");
+          // The entry verified this selection when it loaded; a failure now means the selection
+          // or the selected bytes changed, which only a fresh session with a new selection fixes.
+          if (
+            error instanceof Error &&
+            !error.message.includes("fresh session")
+          )
+            error.message =
+              "private Pi selection no longer verifies; start a fresh session with a new selection\n" +
+              error.message;
           throw error;
         }
         const operation = operations.get(params.operation);

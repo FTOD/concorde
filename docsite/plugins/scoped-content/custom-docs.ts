@@ -14,7 +14,12 @@ export interface CustomDocsExtension {
 export function customDocsConfiguration(siteDir: string, identity: SiteIdentity, registry: ScopedRegistry) {
   const collections = identity.customDocs ?? [];
   for (const collection of collections) {
-    const directory = realpathSync(resolve(siteDir, collection.path));
+    let directory: string;
+    try {
+      directory = realpathSync(resolve(siteDir, collection.path));
+    } catch {
+      throw new Error(`customDocs ${collection.id}.path does not exist: ${collection.path}`);
+    }
     if (!statSync(directory).isDirectory()) throw new Error(`customDocs ${collection.id}.path must name a directory.`);
     if (collection.sidebarPath && !statSync(resolve(siteDir, collection.sidebarPath)).isFile()) {
       throw new Error(`customDocs ${collection.id}.sidebarPath must name a file.`);

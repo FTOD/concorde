@@ -99,7 +99,7 @@ def json_main(
     selection; it hands admission the catalog's declarations, the dispatcher and the installation
     service through ``services``.
     """
-    host = None
+    mode = None
     try:
         if sys.argv[1:]:
             raise SpecError(
@@ -111,6 +111,7 @@ def json_main(
         value = validate_invocation(
             decode(raw.decode() if isinstance(raw, bytes) else raw), operation
         )
+        mode = value["mode"]
         from .status_store import primary_root
 
         host = OperationHost(
@@ -131,8 +132,9 @@ def json_main(
         )
     except Exception as error:
         result = invocation_failure(operation, error)
-        # Once the envelope has selected a host, a refusal belongs to that admitted mode.
-        if host is not None and host.mode in {"execute", "describe-policy"}:
-            result["mode"] = host.mode
+        # Once the envelope itself was valid, a refusal belongs to its admitted mode, also when
+        # the workspace refuses the request before a host is created for it.
+        if mode in {"execute", "describe-policy"}:
+            result["mode"] = mode
     print(canonical(result))
     return 0 if result["status"] in {"succeeded", "described"} else 3

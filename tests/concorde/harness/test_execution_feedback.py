@@ -244,3 +244,76 @@ class ExecutionFeedbackTests(unittest.TestCase):
         for secret in ("super-secret", "hidden", "private"):
             self.assertNotIn(secret, text)
         self.assertIn("ordinary error", text)
+
+
+DISPLAY_PROBE = """
+import { errorDisplay } from "./pi/error-display.mjs";
+import { failure } from "./pi/execution-error.mjs";
+const record = failure("large cause password=private", {
+  code: "relay_failed",
+  layer: "relay",
+  category: "transport",
+  attempt: "attempt-1",
+  diagnostics: "x".repeat(30000) + " api_key=hidden",
+});
+console.log(errorDisplay(record));
+"""
+
+
+class FeedbackDisplayTests(unittest.TestCase):
+    """Pi's bounded display of causal feedback records larger than its limit."""
+
+    def display(self, temporary):
+        root = Path(__file__).resolve().parents[3]
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", DISPLAY_PROBE],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env={**os.environ, "TMPDIR": str(temporary)},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    @verifies("scenario.admission.feedback-export")
+    def test_a_large_record_is_exported_to_a_private_file(self):
+        import hashlib
+
+        with tempfile.TemporaryDirectory() as raw:
+            display = self.display(Path(raw))
+            diagnostics = display["diagnostics"]
+            self.assertFalse(diagnostics["complete"])
+            self.assertEqual(
+                ("relay_failed", "relay", "transport", "attempt-1"),
+                (
+                    display["code"],
+                    display["layer"],
+                    display["category"],
+                    display["attempt"],
+                ),
+            )
+            path = Path(diagnostics["reference"])
+            # A new private directory under the temporary root holds the whole record.
+            self.assertEqual(Path(raw).resolve(), path.parent.parent.resolve())
+            self.assertEqual(0o600, path.stat().st_mode & 0o777)
+            saved = path.read_bytes()
+            self.assertEqual(len(saved), diagnostics["bytes"])
+            self.assertEqual(hashlib.sha256(saved).hexdigest(), diagnostics["sha256"])
+            record = json.loads(saved)
+            self.assertEqual("relay_failed", record["code"])
+            self.assertIn("x" * 30000, record["diagnostics"]["text"])
+            for secret in ("private", "hidden"):
+                self.assertNotIn(secret, saved.decode())
+                self.assertNotIn(secret, json.dumps(display))
+
+    @verifies("scenario.admission.feedback-export")
+    def test_a_failed_export_is_reported_as_incomplete(self):
+        with tempfile.TemporaryDirectory() as raw:
+            display = self.display(Path(raw) / "missing")
+        diagnostics = display["diagnostics"]
+        self.assertFalse(diagnostics["complete"])
+        self.assertIsNone(diagnostics["reference"])
+        self.assertTrue(diagnostics["export_error"])
+        self.assertGreater(diagnostics["bytes"], 30000)
+        self.assertEqual("relay_failed", display["code"])

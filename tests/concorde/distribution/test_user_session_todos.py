@@ -108,6 +108,31 @@ class UserSessionTodoInstructionTests(unittest.TestCase):
             "preserve the issue and explain the blocker",
         )
 
+    @verifies("scenario.session.todo-promotion-failure")
+    def test_a_failed_transfer_keeps_the_issue_and_a_verified_note(self):
+        promotion = self.text.split("### Promote an issue", 1)[1]
+        # Deletion comes only after the note is written and verified ...
+        self.assertLess(
+            promotion.index("then reread and verify it"),
+            promotion.index(
+                "Only after that succeeds delete the corresponding source issue"
+            ),
+        )
+        # ... so a failed write or verification keeps the Issue, and a failed deletion keeps
+        # both, reports the partial transfer and makes a retry update the same note.
+        failure = promotion.index("A failed write or verification preserves the source")
+        partial = promotion.index(
+            "If deletion fails, retain the verified task and source, report the partial "
+            "transfer, and update that same task on retry rather than duplicating it"
+        )
+        self.assertLess(failure, partial)
+        self.assert_obligations(
+            "If current references, concurrent edits or ownership prevent safe deletion, "
+            "preserve the issue and explain the blocker",
+            "Preserve prior records on a failed write; report failure rather than claiming "
+            "the task was saved",
+        )
+
     @verifies("scenario.session.todo-collection")
     def test_only_coordinator_projection_and_no_consumer_package_leakage(self):
         source = build(REPOSITORY_ROOT)

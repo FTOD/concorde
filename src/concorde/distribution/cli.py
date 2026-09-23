@@ -344,11 +344,53 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
     )
 
 
+TOOLS = frozenset(
+    {
+        "validate",
+        "registry",
+        "docsite",
+        "build",
+        "check-package",
+        "protocol-manifest",
+        "status",
+        "select-session",
+    }
+)
+
+
+def _failed(tool: str, message: str) -> dict:
+    return envelope(
+        tool,
+        ".",
+        "failed",
+        [],
+        [
+            Finding(
+                "CONCORDE-RUN-001",
+                "error",
+                ".concorde/config.json",
+                message,
+                "Correct the project configuration or runtime environment and retry.",
+            )
+        ],
+        {},
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
+    words = list(sys.argv[1:] if argv is None else argv)
+    requested = next((word for word in words if word in TOOLS), "validate")
     arguments: argparse.Namespace | None = None
     try:
-        arguments = parser.parse_args(argv)
+        try:
+            arguments = parser.parse_args(words)
+        except SystemExit as exit_:
+            # --help ends normally; a refused command line is a failure like any other and
+            # still prints exactly one envelope rather than only argparse's usage text.
+            if exit_.code in (0, None):
+                raise
+            raise ValueError(f"invalid command line: {' '.join(words)}") from None
         if arguments.tool == "protocol-manifest":
             payload = tool_envelope(_protocol_manifest(arguments))
             sys.stdout.write(canonical_json(payload))
@@ -365,38 +407,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = dispatch(arguments)
         payload = tool_envelope(result)
     except Exception as error:  # noqa: BLE001 -- command boundary always returns the normative envelope
-        tool = (
-            arguments.tool
-            if arguments is not None
-            else (argv[0] if argv else "validate")
-        )
-        payload = envelope(
-            tool
-            if tool
-            in {
-                "validate",
-                "registry",
-                "docsite",
-                "build",
-                "check-package",
-                "protocol-manifest",
-                "status",
-                "select-session",
-            }
-            else "validate",
-            ".",
-            "failed",
-            [],
-            [
-                Finding(
-                    "CONCORDE-RUN-001",
-                    "error",
-                    ".concorde/config.json",
-                    str(error),
-                    "Correct the project configuration or runtime environment and retry.",
-                )
-            ],
-            {},
-        )
+        tool = arguments.tool if arguments is not None else requested
+        payload = _failed(tool if tool in TOOLS else "validate", str(error))
     sys.stdout.write(canonical_json(payload))
     return exit_code(payload["status"])

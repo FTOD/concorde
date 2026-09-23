@@ -429,7 +429,7 @@ class CheckTests(unittest.TestCase):
             self.project.repository()
         self.assertIn("CHK.contains.acyclic", self.rules())
 
-    @verifies("scenario.spec.composition-checks")
+    @verifies("scenario.spec.composition-checks", "scenario.spec.multiple-roots")
     def test_more_than_one_root_is_a_warning(self):
         self.metadata(
             "app",
@@ -441,7 +441,7 @@ class CheckTests(unittest.TestCase):
         self.assertIn("CHK.contains.root", self.rules("warning"))
         self.assertNotIn("CHK.contains.root", self.rules())
 
-    @verifies("scenario.spec.relies-on")
+    @verifies("scenario.spec.relies-on", "scenario.spec.relies-on-invalid")
     def test_relies_on_names_owned_nodes_and_every_linked_one(self):
         def narrow(ids):
             self.metadata(
@@ -602,7 +602,7 @@ class CheckTests(unittest.TestCase):
         )
         self.assertIn("CHK.relation.type", self.rules())
 
-    @verifies("scenario.spec.name-collision")
+    @verifies("scenario.spec.name-collision", "scenario.spec.name-collision-contrasted")
     def test_same_named_nodes_of_different_owners_need_a_contrast(self):
         def concept(title):
             self.metadata(
@@ -867,15 +867,333 @@ class CheckTests(unittest.TestCase):
         for finding in report.findings:
             self.assertTrue(finding.remediation)
 
-    @verifies("scenario.spec.unbound-file")
+    @verifies("scenario.spec.unbound-file", "scenario.spec.bound-spec-member")
     def test_bound_document_members_and_generated_outputs_are_never_bound(self):
+        for entries in (
+            ["src/consumer.py", "specs/provider/module.md.json"],
+            ["src/consumer.py", "specs/provider/"],
+        ):
+            with self.subTest(entries=entries):
+                self.metadata(
+                    "consumer",
+                    lambda value, entries=entries: value["defines"][0].update(
+                        entries=entries
+                    ),
+                )
+                findings = self.project.findings("CHK.binds.no-spec")
+                self.assertEqual(1, len(findings), [f.message for f in findings])
+                self.assertIn(f"binds {entries[1]},", findings[0].message)
+                self.assertEqual("realization.consumer.view", findings[0].subject_id)
+
+    def snapshot(self):
+        return {
+            str(path.relative_to(self.root)): path.read_bytes()
+            for path in sorted(self.root.rglob("*"))
+            if path.is_file() and not path.is_symlink()
+        }
+
+    @verifies("scenario.spec.validate-unreadable-registry")
+    def test_an_unreadable_registry_is_one_finding_and_no_exception(self):
+        (self.root / ".concorde/specs.json").write_text("{not json")
+        before = self.snapshot()
+        report = self.project.validate()
+        self.assertEqual("invalid", report.status)
+        errors = [f for f in report.findings if f.severity == "error"]
+        self.assertEqual(["CONCORDE-SOURCE-008"], [f.rule_id for f in errors])
+        self.assertIn("JSON", errors[0].message)
+        self.assertEqual(before, self.snapshot())
+
+    @verifies("scenario.spec.node-unexplained")
+    def test_an_anchor_followed_only_by_links_is_a_warning(self):
+        self.edit(
+            self.entry("consumer"),
+            "Renders one thing.",
+            "[Provider](../provider/module.md)\n\n### Rendering",
+        )
+        findings = self.project.findings("CHK.node.explained")
+        self.assertEqual(["warning"], [f.severity for f in findings])
+        self.assertEqual("specs/consumer/module.md", findings[0].source)
+        self.assertEqual("success", self.project.validate().status)
+
+    @verifies("scenario.spec.terminology-import-invalid")
+    def test_malformed_terminology_rows_are_errors(self):
+        entry = self.entry("consumer")
+        original = (self.root / entry).read_text()
+        cases = {
+            # An import row that carries a definition.
+            "CHK.terminology.import-row": original.replace(
+                "| [Thing](../provider/module.md#concept.provider.thing) | |",
+                "| [Thing](../provider/module.md#concept.provider.thing) | A copied definition. |",
+            ),
+            # A defining row with no matching concept.
+            "CHK.terminology.rows": original.replace(
+                "| [Thing](../provider/module.md#concept.provider.thing) | |",
+                "| [Thing](../provider/module.md#concept.provider.thing) | |\n| Widget | Not declared. |",
+            ),
+        }
+        for rule, text in cases.items():
+            with self.subTest(rule):
+                (self.root / entry).write_text(text)
+                self.assertIn(rule, self.rules())
+        (self.root / entry).write_text(original)
+        # A topic of the provider imports the provider's own concept.
+        topic = DocumentSource(
+            "# Rules\n\nHow things are kept.\n\n## Terminology\n\n"
+            "| Term | Definition |\n| --- | --- |\n"
+            "| [Thing](module.md#concept.provider.thing) | |\n\n"
+            "## Keeping\n\nThings are kept until removed.\n",
+            {
+                "schema_version": 3,
+                "document": {
+                    "id": "document.provider.rules",
+                    "owner": "module.provider",
+                    "role": "module",
+                },
+                "defines": [],
+                "relations": [],
+            },
+        )
+        self.project.write("specs/provider/rules.md", topic)
+        self.metadata(
+            "provider",
+            lambda value: value["module"]["owns"].append("specs/provider/rules.md"),
+        )
+        findings = self.project.findings("CHK.imports.foreign")
+        self.assertEqual(
+            [("error", "specs/provider/rules.md", "concept.provider.thing")],
+            [(f.severity, f.source, f.subject_id) for f in findings],
+        )
+
+    @verifies("scenario.spec.import-owner-warning")
+    def test_an_import_from_an_unrelated_module_in_context_is_a_warning(self):
         self.metadata(
             "consumer",
-            lambda value: value["defines"][0].update(
-                entries=["src/consumer.py", "specs/provider/module.md.json"]
+            lambda value: value["module"].update(
+                uses=[],
+                includes=[
+                    {
+                        "kind": "document",
+                        "target": "document.provider.module",
+                        "reason": "the Thing definition",
+                    }
+                ],
             ),
         )
-        self.assertIn("CHK.binds.no-spec", self.rules())
+        self.edit(
+            self.entry("consumer"),
+            '    consumer["Consumer"] -->|reads things from| provider["Provider"]',
+            "",
+        )
+        self.assertNotIn("CHK.context.reconciled", self.rules())
+        findings = self.project.findings("CHK.imports.owner")
+        self.assertEqual(
+            [("warning", "specs/consumer/module.md", "concept.provider.thing")],
+            [(f.severity, f.source, f.subject_id) for f in findings],
+        )
+        self.assertIn("module.provider", findings[0].message)
+
+    @verifies("scenario.spec.mutual-uses")
+    def test_two_modules_that_use_each_other_select_each_other_one_level(self):
+        self.metadata(
+            "provider",
+            lambda value: value["module"]["uses"].append(
+                {"target": "module.consumer", "meaning": "#notifies"}
+            ),
+        )
+        self.edit(
+            self.entry("provider"),
+            "The store holds every thing.",
+            'The store holds every thing.\n\n<a id="notifies"></a>\n\n'
+            "The provider notifies the consumer of new things.",
+        )
+        report = self.project.validate()
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        self.assertEqual(
+            set(),
+            {
+                f.rule_id
+                for f in report.findings
+                if f.rule_id.startswith(("CHK.uses.", "CHK.contains."))
+            },
+        )
+        repository = self.project.repository()
+        provider = repository.spec_context("module.provider").paths
+        consumer = repository.spec_context("module.consumer").paths
+        for path in ("specs/consumer/module.md", "specs/consumer/obligations.md"):
+            self.assertIn(path, provider)
+        for path in ("specs/provider/module.md", "specs/provider/obligations.md"):
+            self.assertIn(path, consumer)
+        # One level deep: neither context follows the other's relations to the parent.
+        self.assertNotIn("specs/app/module.md", provider)
+        self.assertNotIn("specs/app/module.md", consumer)
+
+    @verifies("scenario.spec.includes-redundant")
+    def test_a_redundant_inclusion_is_a_warning_and_selects_once(self):
+        self.metadata(
+            "consumer",
+            lambda value: value["module"]["includes"].append(
+                {
+                    "kind": "document",
+                    "target": "document.provider.module",
+                    "reason": "the Thing definition",
+                }
+            ),
+        )
+        findings = self.project.findings("CHK.includes.redundant")
+        self.assertEqual(
+            [("warning", "module.consumer")],
+            [(f.severity, f.subject_id) for f in findings],
+        )
+        self.assertEqual("success", self.project.validate().status)
+        sources = (
+            self.project.repository().spec_context("module.consumer").value["sources"]
+        )
+        entries = [s for s in sources if s["path"] == "specs/provider/module.md"]
+        self.assertEqual(1, len(entries))
+        self.assertEqual(
+            [
+                {
+                    "relation": "includes",
+                    "kind": "document",
+                    "id": "document.provider.module",
+                },
+                {"relation": "uses", "id": "module.provider"},
+            ],
+            entries[0]["reasons"],
+        )
+
+    @verifies("scenario.spec.relates-module-source")
+    def test_a_module_may_be_the_source_of_relates(self):
+        self.relation(
+            "consumer",
+            {
+                "type": "relates",
+                "source": "module.consumer",
+                "verb": "reads things from",
+                "target": "module.provider",
+            },
+        )
+        report = self.project.validate()
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        self.assertEqual({"CONCORDE-COVERAGE-001"}, self.rules("warning"))
+
+    @verifies("scenario.spec.checked-flowchart")
+    def test_a_checked_flowchart_that_asserts_only_declarations_passes(self):
+        entry = self.entry("consumer")
+        # Local realization, qualified provider concept and Module titles, each edge declared.
+        text = (self.root / entry).read_text()
+        self.assertIn('view["View"] -->|shows| thing["Provider / Thing"]', text)
+        self.assertIn(
+            'consumer["Consumer"] -->|reads things from| provider["Provider"]', text
+        )
+        (self.root / entry).write_text(
+            text
+            + "\n```mermaid illustrative\nflowchart LR\n    x[Anything] -->|feeds| y[Else]\n```\n"
+            + "\n```mermaid illustrative\nsequenceDiagram\n    A->>B: hi\n```\n"
+        )
+        report = self.project.validate()
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        self.assertEqual(
+            [],
+            [f.rule_id for f in report.findings if f.rule_id.startswith("CHK.view.")],
+        )
+
+    @verifies("scenario.spec.check-input-missing")
+    def test_a_configured_check_with_a_missing_or_linked_input_is_an_error(self):
+        (self.root / "data").mkdir()
+        (self.root / "data/real.txt").write_text("input\n")
+        (self.root / "data/link.txt").symlink_to("real.txt")
+        config = read_json(self.root, ".concorde/config.json")
+        config["checks"] = [
+            {
+                "id": "check.consumer",
+                "module": "module.consumer",
+                "argv": ["{python}", "-c", "open('ran', 'w').close()"],
+                "timeout_seconds": 10,
+                "inputs": ["data/missing.txt", "data/link.txt", "data/real.txt"],
+            }
+        ]
+        write_json(self.root, ".concorde/config.json", config)
+        findings = self.project.findings("CONCORDE-CHECK-001")
+        self.assertEqual(
+            [
+                ("error", "data/link.txt", "check.consumer"),
+                ("error", "data/missing.txt", "check.consumer"),
+            ],
+            sorted((f.severity, f.source, f.subject_id) for f in findings),
+        )
+        for finding in findings:
+            self.assertIn("check.consumer", finding.message)
+            self.assertIn(finding.source, finding.message)
+        self.assertFalse((self.root / "ran").exists())
+
+    @verifies("scenario.spec.registry-check")
+    def test_checking_the_registry_reports_each_stale_record_and_writes_nothing(self):
+        self.project.save_metadata(
+            self.entry("consumer"),
+            {
+                **self.project.metadata(self.entry("consumer")),
+                "module": {
+                    **self.project.metadata(self.entry("consumer"))["module"],
+                    "title": "Viewer",
+                },
+            },
+        )
+        registry = read_json(self.root, ".concorde/specs.json")
+        registry["modules"][1]["owns"] = registry["modules"][1]["owns"][:1]
+        write_json(self.root, ".concorde/specs.json", registry)
+        before = self.snapshot()
+        checked = registry_command(self.root, write=False)
+        self.assertEqual("invalid", checked.status)
+        self.assertEqual(
+            [
+                ("CHK.registry.mirror", "module.consumer"),
+                ("CHK.registry.mirror", "module.provider"),
+            ],
+            sorted((f.rule_id, f.subject_id) for f in checked.findings),
+        )
+        self.assertEqual(before, self.snapshot())
+
+    @verifies("scenario.spec.unbound-exemptions")
+    def test_documents_control_records_generated_outputs_and_external_material_need_no_binding(
+        self,
+    ):
+        subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
+        self.project.write("generated/out.txt", "rendered\n")
+        self.project.write(".concorde/reflections/note.json", "{}\n")
+        self.project.write("reference/lib/api.md", "## connect(url)\n")
+        self.project.write("scripts/export.py", "print('export')\n")
+        self.metadata(
+            "consumer",
+            lambda value: value["module"]["includes"].append(
+                {
+                    "kind": "external",
+                    "target": "reference/lib/",
+                    "reason": "the library API",
+                }
+            ),
+        )
+        subprocess.run(("git", "add", "-A"), cwd=self.root, check=True)
+        tracked = subprocess.run(
+            ("git", "ls-files"),
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.split()
+        for path in (
+            "specs/provider/module.md",
+            "specs/provider/module.md.json",
+            ".concorde/specs.json",
+            "generated/out.txt",
+            "reference/lib/api.md",
+        ):
+            self.assertIn(path, tracked)
+        # Only the source file no realization covers is reported.
+        self.assertEqual(
+            ["scripts/export.py"],
+            [f.source for f in self.project.findings("CHK.binds.unbound")],
+        )
 
     def test_link_fragments_name_definitions_in_the_linked_document(self):
         self.edit(

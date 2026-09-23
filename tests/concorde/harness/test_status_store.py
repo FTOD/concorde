@@ -139,7 +139,9 @@ class StatusStoreTests(unittest.TestCase):
             run_path(unversioned, ".concorde/runs/run/result").read_bytes(),
         )
 
-    @verifies("scenario.worktrees.primary-status")
+    @verifies(
+        "scenario.worktrees.primary-status", "scenario.worktrees.change-id-unique"
+    )
     def test_explicit_id_registration_race_has_one_winner(self):
         from concorde.harness import change_worktree
 

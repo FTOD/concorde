@@ -10,6 +10,7 @@ from concorde.spec.verification import scan_declarations, verifies
 from tests.concorde.support.spec_project import (
     DocumentSource,
     SpecProject,
+    block,
     module_document,
     register_module,
     write_document,
@@ -238,18 +239,105 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             [f.subject_id for f in findings if f.rule_id == "CONCORDE-COVERAGE-001"],
         )
 
-    @verifies("scenario.spec.verification-declarations")
+    @verifies(
+        "scenario.spec.verification-declarations", "scenario.spec.spec-coverage-syntax"
+    )
     def test_reading_never_carries_test_declarations(self):
         path = self.root / "specs/shop/notes.md"
         path.write_text(
             path.read_text() + '\nThe test uses @verifies("scenario.shop.submit").\n'
         )
-        self.assertIn("CHK.evidence.no-spec-coverage", self.rules())
+        line = (
+            path.read_text()
+            .splitlines()
+            .index('The test uses @verifies("scenario.shop.submit").')
+        )
+        findings = self.project.findings("CHK.evidence.no-spec-coverage")
+        self.assertEqual(
+            [("error", "specs/shop/notes.md", line + 1)],
+            [(f.severity, f.source, f.line) for f in findings],
+        )
         path.write_text(
             str(NOTES)
             + '\n```python\n@verifies("scenario.shop.submit")\ndef test(): ...\n```\n'
         )
         self.assertNotIn("CHK.evidence.no-spec-coverage", self.rules())
+
+    @verifies("scenario.spec.verifies-unknown")
+    def test_a_declaration_of_an_unknown_scenario_is_an_error_at_that_declaration(
+        self,
+    ):
+        self.write(
+            "tests/shop/test_cart.py",
+            "from concorde.spec.verification import verifies\n\n\n"
+            "@verifies('scenario.shop.submit')\ndef test_submit():\n    pass\n\n\n"
+            "@verifies('scenario.shop.unknown')\ndef test_unknown():\n    pass\n",
+        )
+        findings = self.project.findings("CHK.verifies.resolves")
+        self.assertEqual(
+            [("error", "tests/shop/test_cart.py", "scenario.shop.unknown")],
+            [(f.severity, f.source, f.subject_id) for f in findings],
+        )
+        self.assertEqual(9, findings[0].line)
+        self.assertIn("test_unknown", findings[0].message)
+
+    @verifies("scenario.spec.document-role-misplaced")
+    def test_definitions_in_the_wrong_role_and_bad_roles_are_reported(self):
+        notes = self.root / "specs/shop/notes.md"
+        contract = {
+            "id": "contract.shop.order",
+            "version": 1,
+            "schema": {"type": "integer"},
+            "semantics": "The order number.",
+            "example": 3,
+        }
+        for label, extra in {
+            "requirement": REQUIREMENT.replace("single-order", "notes"),
+            "scenario": SCENARIO.replace("scenario.shop.submit", "scenario.shop.notes"),
+            "contract": block("concorde-contract", contract),
+        }.items():
+            with self.subTest(label):
+                notes.write_text(str(NOTES) + "\n## Extra\n\n" + extra)
+                findings = self.project.findings("CHK.defines.role")
+                self.assertEqual(
+                    [("error", "specs/shop/notes.md")],
+                    [(f.severity, f.source) for f in findings],
+                )
+                self.assertIn(label, findings[0].message)
+        notes.write_text(str(NOTES))
+        self.assertEqual([], self.project.findings("CHK.defines.role"))
+        # A concept defined in an implementation document.
+        obligations = self.project.metadata("specs/shop/obligations.md")
+        obligations["defines"].append(
+            {
+                "id": "concept.shop.order",
+                "type": "concept",
+                "title": "Order",
+                "meaning": "#concept.shop.order",
+            }
+        )
+        self.project.save_metadata("specs/shop/obligations.md", obligations)
+        findings = self.project.findings("CHK.defines.role")
+        self.assertIn(
+            ("specs/shop/obligations.md.json", "concept.shop.order"),
+            [(f.source, f.subject_id) for f in findings],
+        )
+        obligations["defines"].pop()
+        self.project.save_metadata("specs/shop/obligations.md", obligations)
+        # A missing or unknown role.
+        metadata = self.project.metadata("specs/shop/notes.md")
+        for label, document in {
+            "missing": {k: v for k, v in metadata["document"].items() if k != "role"},
+            "unknown": {**metadata["document"], "role": "topic"},
+        }.items():
+            with self.subTest(label):
+                self.project.save_metadata(
+                    "specs/shop/notes.md", {**metadata, "document": document}
+                )
+                self.assertIn(
+                    "specs/shop/notes.md.json",
+                    [f.source for f in self.project.findings("CHK.document.role")],
+                )
 
     def test_the_decorator_records_scenarios_and_returns_the_function(self):
         @verifies("scenario.shop.submit", "scenario.shop.other")
@@ -293,10 +381,16 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         )
         self.assertIn("CONCORDE-COVERAGE-003", self.rules())
 
-    @verifies("scenario.spec.verification-declarations")
+    @verifies(
+        "scenario.spec.verification-declarations", "scenario.spec.coverage-uncovered"
+    )
     def test_a_module_binding_nothing_reports_no_uncovered_scenario(self):
         self.write("tests/shop/test_cart.py", "def test_nothing():\n    pass\n")
-        self.assertIn("CONCORDE-COVERAGE-001", self.rules("warning"))
+        findings = self.project.findings("CONCORDE-COVERAGE-001")
+        self.assertEqual(
+            [("warning", "scenario.shop.submit", "specs/shop/obligations.md")],
+            [(f.severity, f.subject_id, f.source) for f in findings],
+        )
         self.write("specs/shop/module.md", shop(nodes=[]))
         (self.root / "specs/shop/notes.md").write_text(
             "# Notes\n\nNothing is bound yet.\n"
@@ -305,7 +399,9 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.assertEqual("success", report.status, [f.message for f in report.findings])
         self.assertNotIn("CONCORDE-COVERAGE-001", self.rules("warning"))
 
-    @verifies("scenario.spec.verification-declarations")
+    @verifies(
+        "scenario.spec.verification-declarations", "scenario.spec.coverage-foreign-test"
+    )
     def test_a_declaration_in_a_file_the_owner_does_not_bind_is_a_warning(self):
         self.write(
             "specs/other/module.md",
@@ -346,7 +442,13 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             report.status,
             [f.message for f in report.findings if f.severity == "error"],
         )
-        self.assertIn("CONCORDE-COVERAGE-002", self.rules("warning"))
+        (foreign,) = self.project.findings("CONCORDE-COVERAGE-002")
+        self.assertEqual(
+            ("warning", "tests/other/test_shop.py", "scenario.shop.submit"),
+            (foreign.severity, foreign.source, foreign.subject_id),
+        )
+        self.assertIn("test_x", foreign.message)
+        # The scenario still counts as declared.
         self.assertNotIn("CONCORDE-COVERAGE-001", self.rules("warning"))
 
 

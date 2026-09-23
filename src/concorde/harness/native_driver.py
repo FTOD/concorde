@@ -264,7 +264,9 @@ def _slot_failure(directory, *, missing=False):
             else "native invocation is invalidated; fresh admission required",
             code="invalid_completion",
             layer="native-slot",
-            category="no-submission" if missing and not paths else "host-refusal",
+            # A run without a stored proposal is a missing submission even when schema
+            # rejections were observed; those stay its causes.
+            category="no-submission" if missing else "host-refusal",
             causes=[_record(path) for path in paths],
             references=[str(path) for path in paths],
         )

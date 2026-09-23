@@ -224,7 +224,7 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(scopes, {module: r.spec_scope(module) for module in r.modules})
         self.assertNotIn("specs/transfer/obligations.md", r.spec_scope("scope.audit"))
 
-    @verifies("scenario.spec.query-files")
+    @verifies("scenario.spec.query-files", "scenario.spec.query-invalid-target")
     def test_spec_files_read_no_bodies_and_refuse_other_identities(self):
         update_module(self.root, "scope.audit", includes=[PROMISES])
         r = self.repository()
@@ -244,6 +244,7 @@ class ContextSelectionTests(unittest.TestCase):
         for identity in (
             "document.bank",
             "req.transfer.pure",
+            "concept.ledger.account",
             "realization.ledger.store",
             "specs/bank/module.md",
         ):

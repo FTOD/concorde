@@ -92,7 +92,9 @@ class GraphSpecTests(unittest.TestCase):
                     self.assertTrue(shape["edges"])
             bound.assert_not_called()
 
-    @verifies("scenario.execution.graph-spec-match")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_comparison_reports_missing_nodes_edges_conditions_and_state(self):
         compiled = topology(
             (
@@ -168,7 +170,9 @@ class GraphSpecTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.execution.graph-spec-match")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_parts_require_state_nodes_and_edges_in_order(self):
         compiled = topology(
             (
@@ -215,7 +219,9 @@ class GraphSpecTests(unittest.TestCase):
             problems(STATE, NODES, EDGES, role="module"),
         )
 
-    @verifies("scenario.execution.graph-spec-match")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_nodes_table_names_every_compiled_node_with_its_diagram_state(self):
         compiled = topology(
             (
@@ -270,7 +276,9 @@ class GraphSpecTests(unittest.TestCase):
             problems("**Nodes.** Two nodes.\n\n"),
         )
 
-    @verifies("scenario.execution.graph-spec-match")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_owner_reading_links_the_exact_graph_spec(self):
         body = (
             "#### Sequential work items Graph (`batch_graph`) {#host-batch}\n\n"
@@ -316,7 +324,9 @@ class GraphSpecTests(unittest.TestCase):
             link_problems(section(STATE, NODES, EDGES), [linking]),
         )
 
-    @verifies("scenario.execution.graph-spec-match")
+    @verifies(
+        "scenario.execution.graph-spec-match", "scenario.execution.graph-spec-mismatch"
+    )
     def test_unknown_duplicate_and_missing_bindings_are_findings(self):
         repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
         limited = {
@@ -378,6 +388,33 @@ class GraphSpecTests(unittest.TestCase):
             timeout=120,
         )
         self.assertNotEqual(0, refused.returncode)
+
+    @verifies("scenario.execution.graph-spec-mismatch")
+    def test_a_graph_diverging_from_its_graph_spec_is_reported_with_its_document(
+        self,
+    ):
+        repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
+        # The catalog's Terminal Agent Operation now compiles a different topology.
+        diverged = {
+            "terminal_agent_operation": lambda: __import__(
+                "tests.concorde.support.sample_graph", fromlist=["build_batch_graph"]
+            ).build_batch_graph(
+                lambda name: lambda state: {},
+                name="terminal_agent_operation",
+                item_node="execute_item",
+            )
+        }
+        document = "specs/concorde/harness/execution/control-flow.md"
+        findings = [
+            finding
+            for finding in graph_spec_findings(repository, diverged)
+            if finding.source == document
+        ]
+        rules = {finding.rule_id for finding in findings}
+        self.assertLessEqual({"CONCORDE-GRAPH-003", "CONCORDE-GRAPH-006"}, rules)
+        for finding in findings:
+            self.assertEqual("error", finding.severity)
+            self.assertIn("terminal_agent_operation", finding.message)
 
     @verifies("scenario.execution.functional-api-refused")
     def test_a_graph_outside_the_graph_api_is_a_finding(self):

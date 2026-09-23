@@ -245,7 +245,7 @@ class SessionToolTests(unittest.TestCase):
         self.assertFalse(results[2]["ok"])
         self.assertIn("unknown Concorde Operation", results[2]["error"])
 
-    @verifies("scenario.session.run-host")
+    @verifies("scenario.session.run-host", "scenario.session.run-refused")
     def test_a_blocked_result_is_an_error_carrying_the_envelope(self):
         [result] = self.drive([{"params": RUN}], scenario="blocked")["results"]
         self.assertFalse(result["ok"], result)
@@ -271,7 +271,7 @@ class SessionToolTests(unittest.TestCase):
         self.assertGreaterEqual(result["elapsed_ms"], 5000)
         self.assertLess(result["elapsed_ms"], 30000)
 
-    @verifies("scenario.session.run-host")
+    @verifies("scenario.session.large-result")
     def test_a_large_result_is_saved_to_a_file(self):
         [result] = self.drive([{"params": RUN}], scenario="large")["results"]
         self.assertTrue(result["ok"], result)
@@ -279,9 +279,15 @@ class SessionToolTests(unittest.TestCase):
         self.assertTrue(match, result["text"][-300:])
         saved = Path(match.group(1))
         self.addCleanup(shutil.rmtree, saved.parent, True)
-        self.assertEqual(
-            "succeeded", json.loads(saved.read_text(encoding="utf-8"))["status"]
-        )
+        whole = saved.read_text(encoding="utf-8")
+        self.assertEqual("succeeded", json.loads(whole)["status"])
+        # The reply holds the text cut at the 48 KiB limit; the private file holds all of it.
+        limit = 48 * 1024
+        self.assertGreater(len(whole.encode()), limit)
+        reply = result["text"].split("\n\n[Result truncated", 1)[0]
+        self.assertEqual(whole.encode()[:limit].decode(), reply)
+        self.assertEqual(0o600, saved.stat().st_mode & 0o777)
+        self.assertTrue(saved.parent.is_relative_to(Path(tempfile.gettempdir())))
 
 
 @unittest.skipUnless(installed_pi(), "the pi executable is not installed")
@@ -367,6 +373,7 @@ class RealPiSessionTests(unittest.TestCase):
     @verifies(
         "scenario.session.select",
         "scenario.session.describe",
+        "scenario.session.explicit-request-only",
     )
     def test_pi_advertises_the_exact_candidate_tool_and_answers_describe(self):
         run, requests = self.drive(
@@ -425,6 +432,7 @@ class RealPiSessionTests(unittest.TestCase):
     @verifies(
         "scenario.session.select",
         "scenario.session.task-subagents",
+        "scenario.session.entry-requires-selection",
     )
     def test_native_child_binding_loads_exact_entry_without_global_env(self):
         run, _ = self.drive(
@@ -458,7 +466,7 @@ class RealPiSessionTests(unittest.TestCase):
         )
         self.assertEqual([], raised.exception.run.tool_results)
 
-    @verifies("scenario.session.select")
+    @verifies("scenario.session.select", "scenario.session.entry-requires-selection")
     def test_missing_selection_cannot_load_private_entry(self):
         with self.assertRaises(PiRpcError) as raised:
             self.drive([{"text": "no operation"}], use_selection=False)

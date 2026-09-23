@@ -94,7 +94,10 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             repository.module("module.a", scenario="scenario.b.value")
         self.assertEqual("invalid_focus", raised.exception.code)
 
-    @verifies("scenario.spec.reject-unsupported-profile")
+    @verifies(
+        "scenario.spec.reject-unsupported-profile",
+        "scenario.spec.reject-configuration-profile",
+    )
     def test_only_profile_16_with_the_installed_protocol_binding_is_admitted(self):
         config = json.loads((self.root / ".concorde/config.json").read_text())
         for profile in (14, 15, 17):
@@ -103,9 +106,14 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
                     ".concorde/config.json",
                     json.dumps({**config, "profile_version": profile}),
                 )
+                written = (self.root / ".concorde/config.json").read_bytes()
                 with self.assertRaises(SpecError) as raised:
                     self.repository()
                 self.assertEqual("unsupported_profile", raised.exception.code)
+                # The configuration is refused as written, never reinterpreted or rewritten.
+                self.assertEqual(
+                    written, (self.root / ".concorde/config.json").read_bytes()
+                )
         self.write(
             ".concorde/config.json",
             json.dumps(
@@ -257,7 +265,7 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
         self.assertTrue(sets.writable("specs/a/details.md.json"))
         self.assertFalse(sets.writable("specs/b/module.md"))
 
-    @verifies("scenario.spec.directory-entry")
+    @verifies("scenario.spec.directory-entry", "scenario.spec.longest-entry")
     def test_the_longest_entry_owns_a_nested_file(self):
         self.write("source/nested/deep.py", "def deep():\n    return 1\n")
         self.relist(
@@ -273,6 +281,10 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
         self.assertEqual(
             "realization.a.shared",
             repository.realization_for_path(target, "source/nested/deep.py").id,
+        )
+        self.assertEqual(
+            "realization.a.shared",
+            repository.realization_for_path(target, "source/shared.py").id,
         )
         self.assertEqual(
             "realization.a.adapter",
@@ -343,7 +355,7 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             {"module.a": ("source/shared.py",)}, repository.shared_files("module.b")
         )
 
-    @verifies("scenario.spec.pending-entries")
+    @verifies("scenario.spec.pending-entries", "scenario.spec.pending-materialized")
     def test_a_pending_directory_validates_until_delivery_confirms_it(self):
         self.relist(
             {
@@ -458,7 +470,7 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             "success", validate_repository(self.root, package_root=PACKAGE).status
         )
 
-    @verifies("scenario.spec.pending-entries")
+    @verifies("scenario.spec.pending-entries", "scenario.spec.missing-entry")
     def test_missing_entries_that_are_not_pending_are_errors(self):
         self.relist(
             {
@@ -821,6 +833,108 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
                     self.assertIn(rule, rule_ids(report), errors(report))
                 finally:
                     fixture.doCleanups()
+
+    def snapshot(self):
+        return {
+            str(path.relative_to(self.root)): path.read_bytes()
+            for path in sorted(self.root.rglob("*"))
+            if path.is_file()
+        }
+
+    @verifies("scenario.spec.pending-confirm")
+    def test_confirming_pending_entries_rewrites_only_the_affected_metadata(self):
+        from concorde.spec import content_changes
+
+        self.relist(
+            {
+                "realization.a.adapter": (
+                    ["source/a.py", "source/new.py", "source/later.py"],
+                    ["source/new.py", "source/later.py"],
+                ),
+                "realization.a.shared": (["source/shared.py"], ()),
+            }
+        )
+        self.relist(
+            {
+                "realization.b.shared": (
+                    ["source/shared.py", "source/b.py"],
+                    ["source/b.py"],
+                )
+            },
+            module_id="module.b",
+        )
+        self.write("source/new.py", "def added():\n    return 1\n")
+        self.write("source/b.py", "def b():\n    return 2\n")
+        before = self.snapshot()
+        with patch.object(
+            content_changes, "apply_files", wraps=content_changes.apply_files
+        ) as transaction:
+            confirmed, missing = confirm_pending_files(self.root, PACKAGE)
+        self.assertEqual(1, transaction.call_count)
+        self.assertEqual(
+            ["specs/a/module.md.json", "specs/b/module.md.json"],
+            sorted(item["path"] for item in transaction.call_args.args[1]),
+        )
+        self.assertEqual(
+            [
+                {
+                    "module": "module.a",
+                    "realization": "realization.a.adapter",
+                    "path": "source/new.py",
+                },
+                {
+                    "module": "module.b",
+                    "realization": "realization.b.shared",
+                    "path": "source/b.py",
+                },
+            ],
+            confirmed,
+        )
+        self.assertEqual(["source/later.py"], missing)
+        after = self.snapshot()
+        self.assertEqual(
+            ["specs/a/module.md.json", "specs/b/module.md.json"],
+            sorted(path for path in after if after[path] != before.get(path)),
+        )
+        self.assertEqual(set(before), set(after))
+        pending = {
+            record["id"]: record["pending"]
+            for module in ("module.a", "module.b")
+            for record in self.metadata(module)["defines"]
+            if record["type"] == "realization"
+        }
+        self.assertEqual(["source/later.py"], pending["realization.a.adapter"])
+        self.assertEqual([], pending["realization.b.shared"])
+
+    @verifies("scenario.spec.external-reference-invalid")
+    def test_missing_untracked_or_overlapping_external_material_is_an_error(self):
+        import subprocess
+
+        self.write("reference/tracked/api.md", "api\n")
+        subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
+        subprocess.run(("git", "add", "-A"), cwd=self.root, check=True)
+        self.write("reference/untracked/api.md", "api\n")
+        self.declare_reference(
+            entries=(
+                "reference/tracked/",
+                "reference/missing/",
+                "reference/untracked/",
+                "source/shared.py",
+            )
+        )
+        report = validate_repository(self.root, package_root=PACKAGE)
+        exists = [
+            f.message for f in report.findings if f.rule_id == "CHK.external.exists"
+        ]
+        overlap = [
+            f.message for f in report.findings if f.rule_id == "CHK.external.no-overlap"
+        ]
+        self.assertEqual(2, len(exists), exists)
+        self.assertTrue(any("reference/missing/" in m for m in exists), exists)
+        self.assertTrue(any("reference/untracked/" in m for m in exists), exists)
+        self.assertEqual(1, len(overlap), overlap)
+        self.assertIn("source/shared.py", overlap[0])
+        self.assertFalse(any("reference/tracked/" in m for m in exists + overlap))
 
 
 if __name__ == "__main__":

@@ -189,6 +189,48 @@ else:
                     private_tmp=True,
                 )
 
+    @verifies("scenario.checks.tester-private-tmp")
+    def test_tester_tmp_is_scratch_backed_with_host_tmp_read_only_aside(self):
+        with (
+            tempfile.TemporaryDirectory(prefix="concorde-tester-", dir="/tmp") as raw,
+            tempfile.TemporaryDirectory(prefix="concorde-host-", dir="/tmp") as host,
+        ):
+            project = Path(raw) / "project"
+            project.mkdir()
+            (project / "input.txt").write_text("project-input")
+            host_file = Path(host) / "host.txt"
+            host_file.write_text("host-input")
+            code = """
+import os,sys
+from pathlib import Path
+host = Path(sys.argv[1])
+scratch = Path(os.environ['CONCORDE_CHECK_TMPDIR'])
+marker = Path('/tmp') / ('marker-' + sys.argv[2])
+marker.write_text('private')
+assert (scratch / 'private-tmp' / marker.name).read_text() == 'private'
+assert not host.exists() and not host.parent.exists()
+view = Path(os.environ['CONCORDE_TEST_HOST_TMP']) / host.relative_to('/tmp')
+assert view.read_text() == 'host-input'
+try: view.write_text('bad')
+except OSError as error: assert error.errno == 30, error
+else: raise AssertionError('host /tmp writable through its view')
+assert Path(sys.argv[3], 'input.txt').read_text() == 'project-input'
+assert Path(sys.executable).exists()
+print(scratch)
+"""
+            name = uuid.uuid4().hex
+            result = execute_check(
+                project,
+                [sys.executable, "-c", code, str(host_file), name, str(project)],
+                timeout=10,
+                environment=child_environment(),
+                private_tmp=True,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse(Path("/tmp", "marker-" + name).exists())
+            self.assertFalse(Path(result.stdout.decode().strip()).exists())
+            self.assertEqual("host-input", host_file.read_text())
+
 
 @unittest.skipUnless(shutil.which("pi"), "real Pi required")
 class RegisteredTesterTemporaryTests(unittest.TestCase):

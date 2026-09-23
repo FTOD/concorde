@@ -187,6 +187,9 @@ def load_selection(root: Path, path: Path) -> dict:
             pi_entry=Path(value["pi_entry"]["path"]),
             runtime=Path(value["runtime"]["path"]),
         )
+    except BuildError:
+        # A refusal of the recomputation keeps its own code (stale_build for changed bytes).
+        raise
     except (OSError, UnicodeError, ValueError, KeyError, TypeError) as error:
         raise BuildError(f"invalid session selection: {error}") from error
     if canonical(value) != canonical(expected):

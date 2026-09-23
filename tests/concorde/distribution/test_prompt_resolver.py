@@ -76,7 +76,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(self.root, "prompts/root.md", _prompt("worker", body))
         self.assertEqual(body, resolve_role_prompt(self.root, "prompts/root.md").body)
 
-    @verifies("scenario.distribution.prompt-references")
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_invalid_targets_fail_without_expansion(self):
         for target in (
             "../outside.md",
@@ -100,7 +100,7 @@ class PromptResolverRuleTests(unittest.TestCase):
                     "CONCORDE-PROMPT-MISSING-001", failure.exception.rule_id
                 )
 
-    @verifies("scenario.distribution.prompt-references")
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_symlink_file_and_directory_are_rejected(self):
         _write(self.root, "actual/leaf.md", _prompt("worker", "Leaf\n"))
         (self.root / "prompts").mkdir()
@@ -119,7 +119,7 @@ class PromptResolverRuleTests(unittest.TestCase):
                     "CONCORDE-PROMPT-MISSING-001", failure.exception.rule_id
                 )
 
-    @verifies("scenario.distribution.prompt-references")
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_malformed_bindings_fail(self):
         _write(self.root, "prompts/leaf.md", _prompt("worker", "Leaf\n"))
         for arguments in ('NAME="unfinished', "bare", "NAME=a NAME=b", "9NAME=a"):
@@ -135,7 +135,7 @@ class PromptResolverRuleTests(unittest.TestCase):
                     "CONCORDE-PROMPT-UNRESOLVED-001", failure.exception.rule_id
                 )
 
-    @verifies("scenario.distribution.prompt-references")
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_worker_spec_cannot_include_outside_prompts(self):
         _write(self.root, "agents/example/spec.md", "@other/leaf.md\n")
         with self.assertRaises(PromptResolverError) as failure:
@@ -144,6 +144,7 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 1. cycle -----------------------------------------------------
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_cycle_between_two_prompts_is_rejected(self):
         _write(
             self.root,
@@ -159,6 +160,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-CYCLE-001")
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_self_cycle_is_rejected(self):
         _write(
             self.root,
@@ -171,6 +173,7 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 2. diamond: same file reached twice within one root ----------
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_diamond_inclusion_is_rejected_and_reports_both_paths(self):
         _write(
             self.root,
@@ -202,6 +205,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         self.assertIn("left.md", message)
         self.assertIn("right.md", message)
 
+    @verifies("scenario.distribution.prompt-references")
     def test_same_root_can_be_resolved_twice_without_diamond(self):
         _write(
             self.root, "prompts/workflow-host/shared.md", _prompt("worker", "Shared\n")
@@ -223,6 +227,7 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 3. missing target ---------------------------------------------
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_missing_include_target_is_rejected(self):
         _write(
             self.root,
@@ -233,6 +238,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-MISSING-001")
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_unsafe_include_path_is_rejected(self):
         _write(
             self.root,
@@ -245,6 +251,7 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 4. unresolved directive or variable ----------------------------
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_unbound_variable_is_rejected(self):
         _write(
             self.root,
@@ -260,6 +267,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-UNRESOLVED-001")
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_directive_with_bad_parameter_syntax_is_rejected(self):
         _write(self.root, "prompts/workflow-host/leaf.md", _prompt("worker", "Leaf\n"))
         _write(
@@ -271,6 +279,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-UNRESOLVED-001")
 
+    @verifies("scenario.distribution.prompt-references")
     def test_reserved_variables_pass_through_unresolved(self):
         _write(
             self.root,
@@ -289,6 +298,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         self.assertIn("{SCRIPT}", result.body)
         self.assertIn("{FRAMEWORK}", result.body)
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_prompt_with_invalid_audience_is_rejected(self):
         _write(self.root, "prompts/workflow-host/a.md", _prompt("nonsense", "Body\n"))
         with self.assertRaises(PromptResolverError) as context:
@@ -297,6 +307,7 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 5. audience incompatibility -------------------------------------
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_worker_root_cannot_include_ambient_prompt(self):
         _write(
             self.root,
@@ -312,6 +323,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-AUDIENCE-001")
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_ambient_root_cannot_include_worker_prompt(self):
         _write(
             self.root,
@@ -329,6 +341,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             )
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-AUDIENCE-001")
 
+    @verifies("scenario.distribution.prompt-references")
     def test_shared_prompt_is_includable_from_either_audience(self):
         _write(
             self.root,
@@ -354,6 +367,7 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 6. include of a skill source or of anything under specs/ -------
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_include_of_skill_source_is_rejected(self):
         _write(
             self.root,
@@ -369,6 +383,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-SCOPE-001")
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_include_of_spec_document_is_rejected(self):
         _write(self.root, "specs/example/system.md", "# Example\n")
         _write(
@@ -382,6 +397,7 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 7. crossing the prompts/protocol/ boundary ----------------------
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_protocol_prompt_cannot_include_outside_protocol(self):
         _write(
             self.root,
@@ -393,6 +409,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             resolve_role_prompt(self.root, "prompts/protocol/principles.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-PROTOCOL-001")
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_non_protocol_prompt_cannot_include_protocol(self):
         _write(
             self.root,
@@ -408,6 +425,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-PROTOCOL-001")
 
+    @verifies("scenario.distribution.prompt-references")
     def test_protocol_prompt_may_include_another_protocol_prompt(self):
         _write(
             self.root,
@@ -420,6 +438,7 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 8. unreachable prompt files given a set of roots ----------------
 
+    @verifies("scenario.distribution.prompt-references")
     def test_protocol_adapter_includes_plain_standard_and_tracks_its_bytes(self):
         _write(
             self.root,
@@ -439,6 +458,7 @@ class PromptResolverRuleTests(unittest.TestCase):
             result.sources, ("prompts/protocol/principles.md", "protocol/principles.md")
         )
 
+    @verifies("scenario.distribution.prompt-reference-invalid")
     def test_worker_prompt_cannot_import_independent_standard(self):
         _write(self.root, "protocol/principles.md", "# Standard\n")
         _write(

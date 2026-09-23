@@ -70,7 +70,7 @@ class SessionSelectionTests(unittest.TestCase):
             ".pi/extensions/concorde-session.ts", [o.path for o in installed.outputs]
         )
 
-    @verifies("scenario.session.select")
+    @verifies("scenario.session.select-refused")
     def test_selection_never_falls_back(self):
         for path in (
             "concorde-context-solve",
@@ -95,7 +95,7 @@ class SessionSelectionTests(unittest.TestCase):
                 runtime=self.runtime,
             )
 
-    @verifies("scenario.session.select")
+    @verifies("scenario.session.select-refused")
     def test_aliased_entry_and_empty_tester_selection_are_rejected(self):
         with self.assertRaises(BuildError):
             select_session(self.root, pi_entry=None, runtime=self.runtime)
@@ -111,7 +111,7 @@ class SessionSelectionTests(unittest.TestCase):
                 runtime=self.runtime,
             )
 
-    @verifies("scenario.session.select")
+    @verifies("scenario.session.select-verify")
     def test_saved_selection_is_reverified_before_runtime_use(self):
         import json
         from concorde.distribution.session_selection import load_selection
@@ -310,7 +310,7 @@ class SessionSelectionTests(unittest.TestCase):
         with self.assertRaises(BuildError):
             save_selection(self.root, path, selected)
 
-    @verifies("scenario.session.select")
+    @verifies("scenario.session.select-refused")
     def test_source_symlink_ancestors_and_foreign_runtime_are_refused(self):
         with self.assertRaises(BuildError):
             select_session(
@@ -377,7 +377,7 @@ class SessionSelectionTests(unittest.TestCase):
             [p.read_bytes() for p in (directory / "pi").glob("*.ts")],
         )
 
-    @verifies("scenario.session.select")
+    @verifies("scenario.session.select", "scenario.session.select-verify")
     def test_cli_saves_and_reverifies_without_primary_or_discovery_mutation(self):
         import io
         import json
@@ -455,3 +455,161 @@ class SessionSelectionTests(unittest.TestCase):
             ".concorde/runs",
         ):
             self.assertFalse((self.root / relative).exists(), relative)
+
+
+class SelectionRefusalAndVerificationTests(unittest.TestCase):
+    setUp = SessionSelectionTests.setUp
+
+    def select(self, **changes):
+        return select_session(
+            self.root,
+            **{"pi_entry": self.pi_entry, "runtime": self.runtime, **changes},
+        )
+
+    def cli(self, *argv: str) -> tuple[int, dict]:
+        import io
+        import json
+        from unittest.mock import patch
+
+        from concorde.distribution.cli import main
+
+        with patch("sys.stdout", io.StringIO()) as output:
+            code = main(["--project-root", str(self.root), "select-session", *argv])
+        return code, json.loads(output.getvalue())
+
+    @verifies("scenario.session.select-refused")
+    def test_a_stale_build_or_another_checkouts_assets_yield_no_record(self):
+        primary_entry = REPOSITORY_ROOT / "generated/session/pi/concorde-session.ts"
+        for case, changes in {
+            "primary checkout entry": {"pi_entry": primary_entry},
+            "primary checkout launcher": {
+                "runtime": REPOSITORY_ROOT / "scripts/run-operation.py"
+            },
+            "installed-layout entry": {
+                "pi_entry": self.root / ".pi/extensions/concorde-session.ts"
+            },
+            "relative entry": {
+                "pi_entry": Path("generated/session/pi/concorde-session.ts")
+            },
+        }.items():
+            with self.subTest(case=case), self.assertRaises(BuildError):
+                self.select(**changes)
+        source = self.root / "src/concorde/harness/entry.py"
+        source.write_text(source.read_text() + "\n# not rebuilt\n")
+        with self.assertRaises(BuildError) as stale:
+            self.select()
+        self.assertEqual("stale_build", stale.exception.code)
+        code, envelope = self.cli(
+            "--mode",
+            "test",
+            "--pi-entry",
+            str(self.pi_entry),
+            "--runtime",
+            str(self.runtime),
+            "--output",
+            str(self.root / ".concorde/work/refused.json"),
+        )
+        self.assertNotEqual(0, code)
+        self.assertEqual("failed", envelope["status"])
+        self.assertEqual({}, envelope["result"])
+        self.assertFalse((self.root / ".concorde/work/refused.json").exists())
+
+    @verifies("scenario.session.select-verify")
+    def test_verifying_an_unchanged_candidate_returns_the_same_record(self):
+        import json
+
+        path = self.root / ".concorde/work/pi-selection.json"
+        code, created = self.cli(
+            "--mode",
+            "test",
+            "--pi-entry",
+            str(self.pi_entry),
+            "--runtime",
+            str(self.runtime),
+            "--output",
+            str(path),
+        )
+        self.assertEqual(0, code, created)
+        for _ in range(2):
+            code, verified = self.cli("--verify", str(path))
+            self.assertEqual(0, code, verified)
+            self.assertEqual(created["result"], verified["result"])
+        self.assertEqual(created["result"], json.loads(path.read_text()))
+
+    @verifies("scenario.session.select-verify-changed")
+    def test_a_changed_build_entry_catalog_or_launcher_fails_with_stale_build(self):
+        from concorde.distribution.session_selection import (
+            load_selection,
+            save_selection,
+        )
+
+        path = self.root / ".concorde/work/pi-selection.json"
+        save_selection(self.root, path, self.select())
+        guidance = next((self.root / "prompts/operation-guidance").glob("*.md"))
+        cases = {
+            # A rebuild after a source change: a different build manifest.
+            "build": (self.root / "pi/extensions/concorde-session.ts", True),
+            # Entry bytes changed after the build.
+            "entry": (self.pi_entry, False),
+            # A rebuilt catalog: capability guidance is embedded in the entry.
+            "catalog": (guidance, True),
+            # The launcher itself.
+            "launcher": (self.runtime, False),
+        }
+        for case, (changed, rebuild) in cases.items():
+            with self.subTest(case=case):
+                before = changed.read_bytes()
+                try:
+                    changed.write_bytes(before + b"\n// changed\n")
+                    if rebuild:
+                        write_build(self.root)
+                    with self.assertRaises(BuildError) as refused:
+                        load_selection(self.root, path)
+                    self.assertEqual("stale_build", refused.exception.code)
+                    code, envelope = self.cli("--verify", str(path))
+                    self.assertNotEqual(0, code)
+                    self.assertEqual("failed", envelope["status"])
+                finally:
+                    changed.write_bytes(before)
+                    write_build(self.root)
+        self.assertEqual(self.select(), load_selection(self.root, path))
+
+    @verifies("scenario.session.selection-no-evidence")
+    def test_a_saved_selection_claims_no_loading_tool_use_or_model_execution(self):
+        import json
+
+        from concorde.distribution.session_selection import (
+            load_selection,
+            save_selection,
+        )
+
+        path = self.root / ".concorde/work/pi-selection.json"
+        save_selection(self.root, path, self.select())
+        for value in (json.loads(path.read_text()), load_selection(self.root, path)):
+            self.assertIsNone(value["execution_evidence"])
+            # Only launch inputs: the contract's fields, nothing recording what happened.
+            self.assertEqual(
+                {
+                    "schema_version",
+                    "mode",
+                    "candidate",
+                    "fresh_context",
+                    "fork_context",
+                    "discover_catalogs",
+                    "inherit_catalogs",
+                    "task_delegation",
+                    "build_digest",
+                    "runtime",
+                    "implementation",
+                    "pi_entry",
+                    "launch",
+                    "execution_evidence",
+                },
+                set(value),
+            )
+            self.assertEqual({"path", "digest"}, set(value["runtime"]))
+            self.assertEqual({"path", "digest"}, set(value["implementation"]))
+            self.assertEqual(
+                {"path", "digest", "content", "catalog"}, set(value["pi_entry"])
+            )
+            self.assertEqual({"cwd", "pi_args"}, set(value["launch"]))

@@ -984,19 +984,32 @@ def inspect_worktree(project_root: str | Path) -> WorktreeBoundary:
     )
 
 
+ISOLATION_GUIDANCE = (
+    "Create a unique branch and linked worktree from the primary worktree's committed HEAD "
+    "(git worktree add -b <branch> <path> HEAD) and retry from that worktree's root."
+)
+
+
 def require_isolated_worktree(
     project_root: str | Path,
     *,
     allow_primary_worktree: bool = False,
 ) -> WorktreeBoundary:
-    """Require a linked worktree unless the developer explicitly authorized primary mutation."""
+    """Require a linked worktree unless the developer explicitly authorized primary mutation.
+
+    Every refusal says how to obtain an isolated worktree.
+    """
 
     candidate = Path(project_root)
     if candidate.is_symlink():
-        raise WorktreeBoundaryError(f"project root may not be a symlink: {candidate}")
+        raise WorktreeBoundaryError(
+            f"project root may not be a symlink: {candidate}. {ISOLATION_GUIDANCE}"
+        )
     root = candidate.resolve()
     if not root.is_dir():
-        raise WorktreeBoundaryError(f"project root is not a directory: {root}")
+        raise WorktreeBoundaryError(
+            f"project root is not a directory: {root}. {ISOLATION_GUIDANCE}"
+        )
     try:
         probe = subprocess.run(
             ("git", "-C", str(root), "rev-parse", "--is-inside-work-tree"),
@@ -1007,7 +1020,7 @@ def require_isolated_worktree(
     except OSError as error:
         if not allow_primary_worktree:
             raise WorktreeBoundaryError(
-                f"cannot execute Git worktree preflight: {error}"
+                f"cannot execute Git worktree preflight: {error}. {ISOLATION_GUIDANCE}"
             ) from error
         probe = None
     if probe is None or probe.returncode != 0 or probe.stdout.strip() != "true":
@@ -1023,9 +1036,14 @@ def require_isolated_worktree(
         raise WorktreeBoundaryError(
             "agent-authored mutation requires a committed linked Git worktree; this directory is "
             "not a Git worktree. Use --allow-primary-worktree only when the developer explicitly "
-            "authorized mutation of this current directory."
+            "authorized mutation of this current directory. " + ISOLATION_GUIDANCE
         )
-    boundary = inspect_worktree(project_root)
+    try:
+        boundary = inspect_worktree(project_root)
+    except WorktreeBoundaryError as error:
+        raise WorktreeBoundaryError(
+            f"Git worktree preflight failed: {error}. {ISOLATION_GUIDANCE}"
+        ) from error
     if boundary.isolated or allow_primary_worktree:
         return boundary
     raise WorktreeBoundaryError(

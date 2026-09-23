@@ -243,6 +243,104 @@ sys.exit(17)
             (self.root / f".concorde/runs/stale/{check_id}.log").read_bytes(),
         )
 
+    @verifies("scenario.checks.tester-private-tmp")
+    def test_ordinary_configured_check_keeps_the_default_tmp_boundary(self):
+        repo, target, check_id = self.configure("""
+import os,tempfile
+assert 'CONCORDE_TEST_HOST_TMP' not in os.environ
+try: tempfile.mkdtemp(prefix='concorde-configured-', dir='/tmp')
+except OSError as error: assert error.errno == 30, error
+else: raise AssertionError('configured check received a writable /tmp')
+""")
+        [result] = configured_checks(repo, target, "default-boundary")
+        log = self.root / f".concorde/runs/default-boundary/{check_id}.log"
+        self.assertEqual(
+            ("passed", 0), (result["status"], result["exit_code"]), log.read_bytes()
+        )
+
+    @verifies("scenario.checks.configured-run")
+    def test_candidate_checks_log_in_the_primary_run_directory(self):
+        import subprocess
+
+        self.config["checks"].append(
+            {
+                "id": "check.transfer-second",
+                "module": "service.transfer",
+                "argv": ["{python}", "-c", "import sys; print('second'); sys.exit(3)"],
+                "timeout_seconds": 10,
+            }
+        )
+        self.save_config()
+
+        def git(*args, cwd=self.root):
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=t",
+                    "-c",
+                    "user.email=t@example.invalid",
+                    *args,
+                ],
+                cwd=cwd,
+                check=True,
+                capture_output=True,
+            )
+
+        git("init", "-q", "-b", "main")
+        git("add", "-A")
+        git("commit", "-q", "-m", "fixture")
+        candidate = Path(self.temporary.name + "-candidate")
+        self.addCleanup(lambda: __import__("shutil").rmtree(candidate, True))
+        git("worktree", "add", "-q", "-b", "candidate", str(candidate))
+        repo = SpecRepository(candidate, PACKAGE)
+        target = repo.module("service.transfer")
+        before = check_revision(repo, target)
+        results = configured_checks(repo, target, "candidate-run")
+        self.assertEqual(
+            ["check.transfer", "check.transfer-second"],
+            [r["check_id"] for r in results],
+        )
+        # The fixture implementation is deliberately wrong, so its own check fails too.
+        for result, (status, code) in zip(results, (("failed", 1), ("failed", 3))):
+            log = self.root / f".concorde/runs/candidate-run/{result['check_id']}.log"
+            self.assertEqual(
+                {
+                    "check_id": result["check_id"],
+                    "target_id": "service.transfer",
+                    "status": status,
+                    "exit_code": code,
+                    "source_digest": before,
+                    "log_digest": digest(log.read_bytes()),
+                },
+                result,
+            )
+        self.assertIn(
+            b"second",
+            (
+                self.root / ".concorde/runs/candidate-run/check.transfer-second.log"
+            ).read_bytes(),
+        )
+        self.assertFalse((candidate / ".concorde/runs/candidate-run").exists())
+
+    @verifies("scenario.checks.sandbox-refused")
+    def test_unsupported_platform_saves_diagnostics_and_claims_no_status(self):
+        repo, target, check_id = self.configure(
+            "open('unlisted-new.txt','w').write('unsafe')"
+        )
+        with patch("concorde.harness.check_executor.sys.platform", "darwin"):
+            with self.assertRaises(SpecError) as caught:
+                configured_checks(repo, target, "refused")
+        self.assertEqual("check_sandbox_unavailable", caught.exception.code)
+        self.assertIn(
+            b"no read-only check backend is available for darwin",
+            (self.root / f".concorde/runs/refused/{check_id}.log").read_bytes(),
+        )
+        self.assertFalse((self.root / "unlisted-new.txt").exists())
+        self.assertEqual(
+            [], [p for p in (self.root / ".concorde/runs").rglob("*.json")]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

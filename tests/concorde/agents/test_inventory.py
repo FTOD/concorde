@@ -101,7 +101,7 @@ class AgentInventoryTests(unittest.TestCase):
             self.assertNotIn(".pi/agents/maintenance-worker.md", consumer)
             self.assertNotIn(".pi/extensions/concorde-coordinator.ts", consumer)
 
-    @verifies("scenario.agents.inventory")
+    @verifies("scenario.agents.inventory-drift")
     def test_metadata_drift_refuses_instead_of_creating_another_authority(self):
         path = "specs/concorde/agents/definitions.md"
         with tempfile.TemporaryDirectory() as directory:
@@ -118,7 +118,7 @@ class AgentInventoryTests(unittest.TestCase):
             output.write_text(json.dumps(metadata))
             self.assertTrue(_validate_spec_agents_block(root, {path: "reading"}))
 
-    @verifies("scenario.agents.inventory")
+    @verifies("scenario.agents.inventory-drift")
     def test_missing_agent_and_malformed_metadata_are_findings(self):
         path = "specs/concorde/agents/definitions.md"
         with tempfile.TemporaryDirectory() as directory:
@@ -132,6 +132,59 @@ class AgentInventoryTests(unittest.TestCase):
             self.assertTrue(_validate_spec_agents_block(root, {path: "reading"}))
             (root / "agents/planner/__init__.py").unlink()
             self.assertTrue(_validate_spec_agents_block(root, {path: "reading"}))
+
+    @verifies("scenario.agents.inventory-drift")
+    def test_each_inventory_difference_is_a_finding_without_a_second_definition(self):
+        path = "specs/concorde/agents/definitions.md"
+        metadata = json.loads((REPOSITORY_ROOT / (path + ".json")).read_text())
+        entries = metadata["extensions"]["concorde.agents"]
+
+        def drifted(**change):
+            value = json.loads(json.dumps(metadata))
+            value["extensions"]["concorde.agents"] = change["entries"]
+            return value
+
+        missing = entries[1:]
+        duplicated = [*entries, entries[0]]
+        other_hook = [
+            {**entries[0], "hook": "concorde.planning.hooks:other"},
+            *entries[1:],
+        ]
+        other_source = [{**entries[0], "source": "agents/other/spec.md"}, *entries[1:]]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            build_package_copy(root)
+            output = root / (path + ".json")
+            output.parent.mkdir(parents=True)
+            for label, value in {
+                "missing Agent": drifted(entries=missing),
+                "duplicated Agent": drifted(entries=duplicated),
+                "different hook": drifted(entries=other_hook),
+                "different source": drifted(entries=other_source),
+            }.items():
+                with self.subTest(label):
+                    output.write_text(json.dumps(value))
+                    findings = _validate_spec_agents_block(root, {path: "reading"})
+                    self.assertEqual(
+                        ["CONCORDE-SPEC-AGENTS-001"], [f.rule_id for f in findings]
+                    )
+            output.write_text(json.dumps(metadata))
+            self.assertEqual([], _validate_spec_agents_block(root, {path: "reading"}))
+            # An unlisted Agent directory is a finding, never a second definition in use.
+            extra = root / "agents/extra_reviewer"
+            extra.mkdir()
+            (extra / "spec.md").write_text("# Extra reviewer\n")
+            (extra / "__init__.py").write_text(
+                (root / "agents/planner/__init__.py").read_text()
+            )
+            findings = _validate_spec_agents_block(root, {path: "reading"})
+            self.assertEqual(
+                ["CONCORDE-SPEC-AGENTS-001"], [f.rule_id for f in findings]
+            )
+            self.assertEqual("agents/__init__.py", findings[0].source)
+        self.assertNotIn("extra_reviewer", agents.AGENTS)
+        with self.assertRaises(KeyError):
+            agents.definition("extra_reviewer")
 
     @verifies("scenario.agents.invalid-definition")
     def test_a_definition_outside_the_rules_refuses_loading(self):

@@ -135,6 +135,20 @@ class InitialModuleTests(unittest.TestCase):
                 [f.message for f in report.findings if f.severity == "error"],
             )
 
+    @verifies("scenario.spec.reject-not-installed")
+    def test_a_project_without_the_protocol_copy_is_not_initialized(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "README.md").write_text("# Existing project\n")
+            before = sorted(str(p.relative_to(root)) for p in root.rglob("*"))
+            with self.assertRaises(SpecError) as raised:
+                project_proposal(root, PACKAGE, "New project", CONFIGURATION)
+            self.assertEqual("not_installed", raised.exception.code)
+            self.assertEqual(
+                before, sorted(str(p.relative_to(root)) for p in root.rglob("*"))
+            )
+            self.assertEqual("# Existing project\n", (root / "README.md").read_text())
+
     @verifies("scenario.spec.reject-already-initialized")
     def test_an_already_configured_project_refuses_a_second_initialization(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -161,7 +175,11 @@ class InitialModuleTests(unittest.TestCase):
                 before, {path: (root / path).read_bytes() for path in paths}
             )
 
-    @verifies("scenario.spec.reject-invalid-proposal")
+    @verifies(
+        "scenario.spec.reject-invalid-proposal",
+        "scenario.spec.reject-stale-proposal",
+        "scenario.spec.reject-proposal-outside-files",
+    )
     def test_apply_rejects_an_invalid_out_of_bound_or_stale_proposal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

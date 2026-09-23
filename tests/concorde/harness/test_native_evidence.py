@@ -114,27 +114,27 @@ class NativeEvidenceTests(unittest.TestCase):
             self.add_child(index)
         self.assertEqual(len(self.verify()), 40)
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.workflow-coverage-gap")
     def test_gate_success_does_not_override_native_failure(self):
         self.metadata[0]["exitCode"] = 1
         with self.assertRaisesRegex(SpecError, "execution did not succeed"):
             self.verify()
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.workflow-coverage-gap")
     def test_no_caller_success_boolean_can_replace_metadata(self):
         self.status["workflow"]["emits"][0]["ok"] = True
         self.metadata[0]["exitCode"] = 1
         with self.assertRaises(SpecError):
             self.verify()
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.workflow-coverage-gap")
     def test_incomplete_aggregate_cannot_commit(self):
         self.add_child(1)
         self.status["steps"][1]["status"] = "running"
         with self.assertRaises(SpecError):
             self.verify()
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.workflow-coverage-gap")
     def test_unvisited_scope_is_not_coverage(self):
         self.add_child(1)
         self.status["steps"].pop()
@@ -175,7 +175,7 @@ class NativeEvidenceTests(unittest.TestCase):
         with self.assertRaises(SpecError):
             self.verify()
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.workflow-coverage-gap")
     def test_missing_metadata_fails_closed(self):
         self.write()
         (self.root / "metadata-0.json").unlink()
@@ -191,13 +191,13 @@ class NativeEvidenceTests(unittest.TestCase):
                 ),
             )
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.workflow-coverage-gap")
     def test_duplicate_native_child_does_not_double_count(self):
         self.status["steps"].append(dict(self.status["steps"][0]))
         with self.assertRaises(SpecError):
             self.verify()
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.workflow-coverage-gap")
     def test_nonterminal_or_skipped_children_never_supply_coverage(self):
         for state in ("pending", "running", "paused", "skipped", "failed", "stopped"):
             with self.subTest(state=state):
@@ -205,13 +205,19 @@ class NativeEvidenceTests(unittest.TestCase):
                 with self.assertRaises(SpecError):
                     self.verify()
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.foreign-producer")
     def test_new_artifact_version_needs_an_explicit_adapter(self):
         self.status["lifecycleArtifactVersion"] = 3
-        with self.assertRaises(SpecError):
+        with self.assertRaises(SpecError) as refused:
             self.verify()
+        self.assertEqual("unsupported_version", refused.exception.code)
+        del self.status["lifecycleArtifactVersion"]
+        self.metadata[0]["schema_version"] = 1
+        with self.assertRaises(SpecError) as refused:
+            self.verify()
+        self.assertEqual("unsupported_version", refused.exception.code)
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.workflow-coverage-gap")
     def test_malformed_native_fields_fail_closed(self):
         for value in (None, [], "verified", False):
             with self.subTest(value=value):

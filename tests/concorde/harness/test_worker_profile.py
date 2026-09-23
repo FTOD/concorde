@@ -114,7 +114,7 @@ class BindAgentBuildTests(unittest.TestCase):
         self.assertEqual(by_external, bind_agent(self.root, "code_reviewer"))
         self.assertEqual("code_reviewer", by_external.agent)
 
-    @verifies("scenario.context.agent-bind")
+    @verifies("scenario.context.agent-bind", "scenario.context.agent-bind-stale-build")
     def test_changed_instructions_stale_the_build(self):
         before = bind_agent(self.root, "programmer")
         role = self.root / "agents/programmer/spec.md"
@@ -125,7 +125,7 @@ class BindAgentBuildTests(unittest.TestCase):
         write_build(self.root)
         self.assertNotEqual(before.digest, bind_agent(self.root, "programmer").digest)
 
-    @verifies("scenario.context.definition-inconsistent")
+    @verifies("scenario.context.unknown-agent")
     def test_unknown_agent_name_fails_closed(self):
         for name in (
             "concorde-not-a-real-agent",
@@ -137,7 +137,7 @@ class BindAgentBuildTests(unittest.TestCase):
                 bind_agent(self.root, name)
             self.assertEqual("unknown_agent", failure.exception.code)
 
-    @verifies("scenario.context.definition-inconsistent")
+    @verifies("scenario.context.agent-bind-stale-build")
     def test_missing_rendered_instructions_is_stale_build(self):
         (self.root / "generated/native/planner.md").unlink()
         with self.assertRaises(SpecError) as failure:

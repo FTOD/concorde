@@ -200,7 +200,10 @@
         "pi/extensions/concorde-session.ts",
         "tests/concorde/distribution/test_pi_session.py",
         "tests/concorde/support/fake_launcher.py",
-        "tests/concorde/support/pi_session_harness.mts"
+        "tests/concorde/support/pi_session_harness.mts",
+        "tests/concorde/distribution/test_session_tool.py",
+        "tests/concorde/distribution/session_tool_harness.mjs",
+        "tests/concorde/distribution/session_launcher_fixture.py"
       ],
       "pending": []
     },

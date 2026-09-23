@@ -203,7 +203,9 @@
         "tests/concorde/harness/feedback_export_driver.py",
         "tests/concorde/support/operation_json.py",
         "tests/concorde/harness/test_configure.py",
-        "tests/concorde/harness/test_admission.py"
+        "tests/concorde/harness/test_admission.py",
+        "tests/concorde/harness/test_admission_workspace.py",
+        "tests/concorde/harness/test_admission_finalization.py"
       ]
     }
   ],

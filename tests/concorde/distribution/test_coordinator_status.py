@@ -214,3 +214,148 @@ class CoordinatorStatusTests(unittest.TestCase):
             self.assertEqual(manual_merge(merged), manual_merge(removed))
             self.assertEqual("removed", removed["cleanup"]["status"])
             self.assertEqual(removed, read_status(primary, change_id))
+
+
+class CoordinatorFailureTests(unittest.TestCase):
+    """The documented status commands on a real primary with a registered candidate."""
+
+    IDENTITY = "You are the source user session and its coordinator"
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.primary = Path(temporary.name) / "primary"
+        self.primary.mkdir()
+        git(self.primary, "init", "-q", "-b", "trunk")
+        git(self.primary, "config", "user.name", "Test")
+        git(self.primary, "config", "user.email", "test@example.invalid")
+        (self.primary / "file").write_text("base")
+        git(self.primary, "add", ".")
+        git(self.primary, "commit", "-qm", "base")
+        self.candidate = Path(temporary.name) / "candidate"
+        git(
+            self.primary,
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "candidate",
+            str(self.candidate),
+        )
+        self.prompt = " ".join(
+            resolve_role_prompt(
+                REPOSITORY_ROOT, "prompts/user-session/source/coordinator.md"
+            ).body.split()
+        )
+
+    def status(self, *argv, root=None):
+        return dispatch(
+            create_parser().parse_args(
+                ["--project-root", str(root or self.primary), "status", *argv]
+            )
+        ).result
+
+    @verifies("scenario.session.coordinator-register-repeat")
+    def test_registering_a_candidate_again_returns_its_existing_record(self):
+        first = self.status(
+            "--register",
+            str(self.candidate),
+            "--task",
+            "first goal",
+            "--mode",
+            "maintenance",
+        )
+        again = self.status(
+            "--register",
+            str(self.candidate),
+            "--task",
+            "first goal",
+            "--mode",
+            "maintenance",
+        )
+        self.assertEqual(first, again)
+        # A repeated registration with other words neither re-keys nor rewrites the record.
+        reworded = self.status(
+            "--register",
+            str(self.candidate),
+            "--task",
+            "another goal",
+            "--mode",
+            "maintenance",
+        )
+        self.assertEqual(first["change_id"], reworded["change_id"])
+        self.assertEqual(first, read_status(self.primary, first["change_id"]))
+        self.assertEqual(
+            "maintenance", read_status(self.primary, first["change_id"])["mode"]
+        )
+        self.assertEqual([first], self.status()["tasks"])
+        self.assertIn(
+            "registration can return an existing record without changing its goal or mode",
+            self.prompt,
+        )
+        self.assertIn("Do not invent a second ID", self.prompt)
+
+    @verifies("scenario.session.coordinator-ownership-failure")
+    def test_failed_bind_or_release_changes_no_owner_and_the_instructions_stop(self):
+        state = self.status(
+            "--register", str(self.candidate), "--task", "goal", "--mode", "maintenance"
+        )
+        change = state["change_id"]
+        bound = self.status(
+            "--change-id", change, "--child", "author-run", "--phase", "maintenance"
+        )
+        # Another coordinator's bind or release attempt fails and leaves the owner in place.
+        for argv in (
+            ("--child", "other-run", "--phase", "maintenance"),
+            ("--child", "other-run", "--phase", "maintenance", "--release"),
+        ):
+            with self.subTest(argv=argv), self.assertRaises(SpecError):
+                self.status("--change-id", change, *argv)
+            self.assertEqual(bound, read_status(self.primary, change))
+        # A candidate cannot bind its own children.
+        with self.assertRaises(SpecError):
+            self.status(
+                "--change-id",
+                change,
+                "--child",
+                "author-run",
+                "--phase",
+                "maintenance",
+                root=self.candidate,
+            )
+        self.assertEqual(bound, read_status(self.primary, change))
+        for obligation in (
+            "Registration failure or an absent/mismatched record blocks launch",
+            "if child identity or binding cannot be verified, stop dependent work",
+            "Never claim ownership or successful handoff from an attempted command",
+            "do not clear another coordinator's owner",
+            "Any release/binding failure blocks the handoff, never permits concurrent ownership",
+            "If launch fails, retain the registration and report failure",
+        ):
+            self.assertIn(obligation, self.prompt)
+
+    @verifies("scenario.session.coordinator-only")
+    def test_coordinator_instructions_are_projected_only_for_the_user_session(self):
+        from concorde.distribution.build import build
+
+        outputs = build(REPOSITORY_ROOT).outputs
+        carrying = {
+            output.path
+            for output in outputs
+            if self.IDENTITY.encode() in output.content
+            or b"# Concorde source coordinator" in output.content
+        }
+        # Only the user session's coordinator extension carries them: no Task subagent
+        # definition, no Agent instruction and no catalog does.
+        self.assertEqual({".pi/extensions/concorde-coordinator.ts"}, carrying)
+        paths = {output.path for output in outputs}
+        self.assertTrue(any(path.startswith("generated/native/") for path in paths))
+        for name in ("maintenance-worker", "tester"):
+            definition = next(
+                o for o in outputs if o.path == f".pi/agents/{name}.md"
+            ).content.decode()
+            front = definition.split("---", 2)[1]
+            self.assertIn("systemPromptMode: replace", front)
+            self.assertIn("inheritProjectContext: false", front)
+            self.assertIn("inheritGlobalContext: false", front)
+            self.assertNotIn("concorde-coordinator", front)

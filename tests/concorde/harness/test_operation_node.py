@@ -139,6 +139,84 @@ class TerminalAgentGraphTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             node.graph().invoke(data)  # State cannot supply the trusted launcher.
 
+    def run_to_failure(self, graph, data, context):
+        """Stream the Graph until it raises; return the updates it made and the error."""
+        updates = []
+        with self.assertRaises(BaseException) as caught:
+            for update in graph.stream(data, context=context, stream_mode="updates"):
+                updates.append(update)
+        return updates, caught.exception
+
+    @verifies("scenario.execution.operation-without-service")
+    def test_without_a_service_the_operation_refuses_even_if_state_names_one(self):
+        called = []
+
+        def smuggled(value):
+            called.append(value)
+            return {}
+
+        data = _stage_context()["data"]
+        graph = OperationNode("planner").graph()
+        for state, context in (
+            (data, None),
+            ({**data, "launcher": smuggled}, None),
+            ({**data, "launcher": smuggled}, OperationRuntimeContext()),
+        ):
+            with self.subTest(state=sorted(state), context=context):
+                updates, error = self.run_to_failure(graph, state, context)
+                self.assertIsInstance(error, RuntimeError)
+                self.assertIn("inspection only", str(error))
+                self.assertEqual([], updates)
+        self.assertEqual([], called)
+
+    @verifies("scenario.execution.operation-service-failure")
+    def test_a_failing_service_stops_the_graph_with_causal_feedback(self):
+        data = _stage_context()["data"]
+
+        def raises(value):
+            raise ValueError("native service lost its run")
+
+        def rejected(value):
+            return {"outcome": "completed"}
+
+        def foreign_field(value):
+            return {
+                "context_id": value["data"]["snapshot"]["data"]["context_id"],
+                "outcome": "completed",
+                "answer": "Planned",
+                "blockers": [],
+                "documents": [],
+                "plan": "Plan",
+                "tasks": [],
+                "issue_decision": {"action": "develop", "reason": "not the planner's"},
+            }
+
+        async def asynchronous(value):
+            return {}
+
+        cases = {
+            "raises": (raises, ValueError, "native service lost its run"),
+            "rejected result": (rejected, TypedDataError, ""),
+            "field the Agent may not populate": (foreign_field, Exception, ""),
+            "awaitable to a synchronous invocation": (
+                asynchronous,
+                RuntimeError,
+                "Use ainvoke",
+            ),
+        }
+        graph = OperationNode("planner").graph()
+        for name, (service, kind, message) in cases.items():
+            with self.subTest(case=name):
+                updates, error = self.run_to_failure(
+                    graph, data, OperationRuntimeContext(launcher=service)
+                )
+                self.assertIsInstance(error, kind)
+                self.assertIn(message, str(error))
+                self.assertEqual([], updates)
+                feedback = error.feedback
+                self.assertEqual("operation", feedback["layer"])
+                self.assertEqual("native-service", feedback["causes"][0]["layer"])
+
     def test_arbitrary_compatibility_names_do_not_register_operations(self):
         with self.assertRaises(SpecError) as refused:
             OperationNode("normalize_plan")

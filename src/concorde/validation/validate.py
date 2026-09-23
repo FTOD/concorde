@@ -144,16 +144,17 @@ def validate(run, run_checks: bool = True) -> dict:
         run.repository.root, run.target.id, run.host.package_root
     )
     if report.status != "success":
-        input_errors = [
-            finding.message
+        # Every structural error is listed; a check-input error names its check, Module and path.
+        errors = [
+            f"{finding.rule_id} {finding.source}: {finding.message}"
             for finding in report.findings
-            if finding.rule_id == "CONCORDE-CHECK-001"
+            if finding.severity == "error"
         ]
         return _failed(
             run,
             "invalid_spec",
             "Spec structure or shared contracts failed deterministic validation."
-            + (" " + "; ".join(input_errors) if input_errors else ""),
+            + (" " + "; ".join(errors) if errors else ""),
             state,
         )
     checked_targets = checked_modules(

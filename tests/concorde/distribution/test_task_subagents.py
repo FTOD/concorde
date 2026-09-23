@@ -111,6 +111,51 @@ class TaskSubagentsTests(unittest.TestCase):
             self.assertEqual(action["action"], "conflict")
             self.assertEqual(path.read_text(), "user-owned tester")
 
+    @verifies("scenario.session.projection-conflict")
+    def test_a_changed_or_foreign_projection_is_never_overwritten(self):
+        from tests.concorde.support.build_fixture import build_package_copy
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            build_package_copy(root)
+            path = root / ".pi/agents/tester.md"
+            path.write_text("local edit")
+            manifest = (root / "generated/build-manifest.json").read_bytes()
+            with self.assertRaises(BuildError) as refused:
+                write_build(root)
+            self.assertIn(".pi/agents/tester.md", str(refused.exception))
+            self.assertEqual("local edit", path.read_text())
+            self.assertEqual(
+                manifest, (root / "generated/build-manifest.json").read_bytes()
+            )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / ".pi/agents/maintenance-worker.md"
+            path.parent.mkdir(parents=True)
+            path.write_text("a file the build never wrote")
+            with self.assertRaises(BuildError) as refused:
+                build_package_copy(root)
+            self.assertIn(".pi/agents/maintenance-worker.md", str(refused.exception))
+            self.assertEqual("a file the build never wrote", path.read_text())
+            self.assertFalse((root / "generated").exists())
+            self.assertFalse((root / ".pi/agents/tester.md").exists())
+        package = installation.Package(
+            REPOSITORY_ROOT, json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / ".pi/agents/tester.md"
+            path.parent.mkdir(parents=True)
+            path.write_text("user-owned tester")
+            actions, desired, _ = installation.installation_plan(root, package)
+            [conflict] = [a for a in actions if a["action"] == "conflict"]
+            self.assertEqual(".pi/agents/tester.md", conflict["path"])
+            with self.assertRaises(installation.InstallError):
+                installation.apply_plan(root, package, actions, desired)
+            self.assertEqual("user-owned tester", path.read_text())
+            self.assertFalse((root / installation.RECEIPT_PATH).exists())
+            self.assertFalse((root / ".concorde/framework").exists())
+
     @verifies("scenario.session.task-subagents", "scenario.session.tester-independent")
     def test_actual_project_discovery_and_effective_tools(self):
         subagents = Path(

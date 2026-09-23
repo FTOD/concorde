@@ -134,8 +134,11 @@
       "meaning": "#realization.issues.tests",
       "entries": [
         "tests/concorde/issues/__init__.py",
+        "tests/concorde/issues/test_records.py",
+        "tests/concorde/issues/test_reporting.py",
         "tests/concorde/issues/test_store.py",
-        "tests/concorde/issues/test_reporting.py"
+        "tests/concorde/issues/test_store_check.py",
+        "tests/concorde/issues/test_worker_reports.py"
       ]
     }
   ],

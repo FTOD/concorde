@@ -95,41 +95,6 @@ class TaskControlValueTests(unittest.TestCase):
                         "concorde-task-identity-constraints", {"reserved_task_ids": []}
                     )["data"]["reserved_task_ids"],
                 )
-                for ids, field in (
-                    (["duplicate", "duplicate"], "/data/reserved_task_ids"),
-                    ([""], "/data/reserved_task_ids/0"),
-                    ([" "], "/data/reserved_task_ids/0"),
-                    ([1], "/data/reserved_task_ids/0"),
-                    ("task.one", "/data/reserved_task_ids"),
-                ):
-                    with (
-                        self.subTest(ids=ids),
-                        self.assertRaises(TypedDataError) as raised,
-                    ):
-                        typed(
-                            "concorde-task-identity-constraints",
-                            {"reserved_task_ids": ids},
-                        )
-                    self.assertEqual(
-                        ("invalid_field", field),
-                        (raised.exception.code, raised.exception.field),
-                    )
-                for update, field in (
-                    ({"tasks_digest": "sha256:" + "A" * 64}, "/data/tasks_digest"),
-                    ({"reason": "skip_validation"}, "/data/reason"),
-                ):
-                    with (
-                        self.subTest(update=update),
-                        self.assertRaises(TypedDataError) as raised,
-                    ):
-                        typed(
-                            "concorde-task-scope-feedback",
-                            {**examples["concorde-task-scope-feedback"], **update},
-                        )
-                    self.assertEqual(
-                        ("invalid_field", field),
-                        (raised.exception.code, raised.exception.field),
-                    )
             for guard in guards:
                 guard.assert_not_called()
             self.assertEqual(before_examples, json.dumps(examples, sort_keys=True))
@@ -140,6 +105,100 @@ class TaskControlValueTests(unittest.TestCase):
                     for path in root.rglob("*")
                     if path.is_file()
                 },
+            )
+
+    @verifies("scenario.planning.task-control-values-refused")
+    def test_invalid_task_control_values_are_refused_with_code_and_field(self):
+        scope = {
+            "tasks_digest": "sha256:" + "a" * 64,
+            "reason": "implementation_boundary",
+        }
+        identities = {"reserved_task_ids": ["task.previous"]}
+        cases = (
+            # An unknown field.
+            (
+                "concorde-task-scope-feedback",
+                {**scope, "authority": "write"},
+                "/data/authority",
+            ),
+            (
+                "concorde-task-identity-constraints",
+                {**identities, "extra": 1},
+                "/data/extra",
+            ),
+            # A malformed digest and another reason value.
+            (
+                "concorde-task-scope-feedback",
+                {**scope, "tasks_digest": "sha256:" + "A" * 64},
+                "/data/tasks_digest",
+            ),
+            (
+                "concorde-task-scope-feedback",
+                {**scope, "tasks_digest": "a" * 64},
+                "/data/tasks_digest",
+            ),
+            (
+                "concorde-task-scope-feedback",
+                {**scope, "reason": "skip_validation"},
+                "/data/reason",
+            ),
+            # A blank or repeated reserved identity.
+            (
+                "concorde-task-identity-constraints",
+                {"reserved_task_ids": [""]},
+                "/data/reserved_task_ids/0",
+            ),
+            (
+                "concorde-task-identity-constraints",
+                {"reserved_task_ids": [" "]},
+                "/data/reserved_task_ids/0",
+            ),
+            (
+                "concorde-task-identity-constraints",
+                {"reserved_task_ids": ["dup", "dup"]},
+                "/data/reserved_task_ids",
+            ),
+            # A wrong type.
+            (
+                "concorde-task-identity-constraints",
+                {"reserved_task_ids": [1]},
+                "/data/reserved_task_ids/0",
+            ),
+            (
+                "concorde-task-identity-constraints",
+                {"reserved_task_ids": "task.one"},
+                "/data/reserved_task_ids",
+            ),
+            (
+                "concorde-task-scope-feedback",
+                {**scope, "tasks_digest": 7},
+                "/data/tasks_digest",
+            ),
+        )
+        for name, data, field in cases:
+            with (
+                self.subTest(name=name, data=data),
+                self.assertRaises(TypedDataError) as raised,
+            ):
+                typed(name, data)
+            self.assertEqual(
+                ("invalid_field", field),
+                (raised.exception.code, raised.exception.field),
+            )
+        # Another version.
+        for name, data in (
+            ("concorde-task-scope-feedback", scope),
+            ("concorde-task-identity-constraints", identities),
+        ):
+            value = {**typed(name, data), "schema_version": 2}
+            with (
+                self.subTest(name=name, version=2),
+                self.assertRaises(TypedDataError) as raised,
+            ):
+                validate_typed(value, name)
+            self.assertEqual(
+                ("unsupported_version", "/schema_version"),
+                (raised.exception.code, raised.exception.field),
             )
 
 

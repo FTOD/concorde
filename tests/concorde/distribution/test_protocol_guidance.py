@@ -186,7 +186,10 @@ class ProtocolGuidanceTests(InstallerTestCase):
             root.read_text(),
         )
 
-    @verifies("scenario.distribution.install-conflict-rejected")
+    @verifies(
+        "scenario.distribution.install-conflict-rejected",
+        "scenario.distribution.install-stale-plan",
+    )
     def test_stale_preview_rejects_new_user_edits_or_symlink_before_writing(self):
         actions, desired, _ = installer.installation_plan(self.root, self.package)
         path = self.root / "AGENTS.md"
@@ -200,6 +203,7 @@ class ProtocolGuidanceTests(InstallerTestCase):
         with self.assertRaises(installer.InstallError):
             installer.apply_plan(self.root, self.package, actions, desired)
 
+    @verifies("scenario.distribution.install-apply-rollback")
     def test_failure_restores_root_bytes_mode_and_receipt(self):
         path = self.root / "AGENTS.md"
         path.write_bytes(b"user instructions")
@@ -224,6 +228,118 @@ class ProtocolGuidanceTests(InstallerTestCase):
         self.assertIn(
             f'"version": "{PROTOCOL_VERSION}"',
             (self.root / ".concorde/framework/protocol/manifest.json").read_text(),
+        )
+
+    def snapshot(self):
+        return {
+            path.relative_to(self.root).as_posix(): (
+                path.read_bytes(),
+                path.stat().st_mode & 0o777,
+            )
+            for path in self.root.rglob("*")
+            if path.is_file()
+        }
+
+    @verifies("scenario.distribution.install-remove-guidance-repeat")
+    def test_removing_the_blocks_again_changes_no_file_or_receipt_record(self):
+        agents = self.root / "AGENTS.md"
+        agents.write_bytes(b"# Project rules\n")
+        self.install()
+        self.assertEqual("installed", self.install(cleanup=True))
+        self.assertEqual(b"# Project rules\n", agents.read_bytes())
+        before = self.snapshot()
+        for _ in range(2):
+            actions, _, _ = installer.installation_plan(
+                self.root, self.package, remove_protocol_guidance=True
+            )
+            self.assertEqual([], actions)
+            self.assertEqual("unchanged", self.install(cleanup=True))
+            self.assertEqual(before, self.snapshot())
+
+    @verifies("scenario.distribution.install-stale-plan")
+    def test_a_recomputed_plan_or_package_identity_that_differs_is_refused(self):
+        # A desired output that appeared after the preview changes the recomputed plan.
+        actions, desired, _ = installer.installation_plan(self.root, self.package)
+        before = self.snapshot()
+        session = self.root / ".pi/extensions/concorde-session.ts"
+        session.parent.mkdir(parents=True)
+        session.write_text("developer file\n")
+        with_developer_file = self.snapshot()
+        with self.assertRaisesRegex(installer.InstallError, "changed since preview"):
+            installer.apply_plan(self.root, self.package, actions, desired)
+        self.assertEqual(with_developer_file, self.snapshot())
+        session.unlink()
+        session.parent.rmdir()
+        (self.root / ".pi").rmdir()
+        # The package the preview admitted changes before the receipt is written.
+        actions, desired, _ = installer.installation_plan(self.root, self.package)
+        real_identity = installer.package_identity
+        calls = []
+
+        def drifting(package):
+            calls.append(package)
+            identity = real_identity(package)
+            if len(calls) > 1:
+                identity = {**identity, "digest": "sha256:" + "1" * 64}
+            return identity
+
+        with (
+            patch.object(installer, "package_identity", side_effect=drifting),
+            self.assertRaisesRegex(installer.InstallError, "package changed"),
+        ):
+            installer.apply_plan(self.root, self.package, actions, desired)
+        self.assertEqual(before, self.snapshot())
+
+    @verifies("scenario.distribution.install-apply-rollback")
+    def test_a_failed_upgrade_restores_every_created_replaced_and_removed_file(self):
+        self.install()
+        receipt_path = self.root / installer.RECEIPT_PATH
+        receipt = json.loads(receipt_path.read_text())
+        # A superseded owned output the upgrade removes.
+        retired = self.root / ".concorde/framework/prompts/removed/old.md"
+        retired.parent.mkdir(parents=True)
+        retired.write_bytes(b"retired owned bytes\n")
+        retired.chmod(0o600)
+        receipt["outputs"].append(
+            {
+                "path": retired.relative_to(self.root).as_posix(),
+                "role": "framework",
+                "sha256": installer._sha256(retired.read_bytes()),
+            }
+        )
+        receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+        receipt_path.chmod(0o640)
+        # An owned output the upgrade recreates.
+        (self.root / ".pi/extensions/concorde-session.ts").unlink()
+        # An owned root block the upgrade replaces, inside a developer's file mode.
+        agents = self.root / "AGENTS.md"
+        agents.chmod(0o600)
+        upgraded = guidance.entry().replace(b"before Concorde", b"before any Concorde")
+        before = self.snapshot()
+        with (
+            patch.object(guidance, "entry", return_value=upgraded),
+            patch.object(
+                installer, "provision_runtime", side_effect=OSError("late failure")
+            ),
+        ):
+            actions, _, _ = installer.installation_plan(self.root, self.package)
+            by_action = {}
+            for item in actions:
+                by_action.setdefault(item["action"], set()).add(item["path"])
+            self.assertIn(".pi/extensions/concorde-session.ts", by_action["create"])
+            self.assertIn("AGENTS.md", by_action["update"])
+            self.assertIn(
+                ".concorde/framework/prompts/removed/old.md", by_action["remove"]
+            )
+            with self.assertRaisesRegex(OSError, "late failure"):
+                self.install()
+        self.assertEqual(before, self.snapshot())
+        self.assertFalse(
+            [
+                p
+                for p in self.root.rglob(".concorde-*")
+                if p.name != ".concorde-runtime.json"
+            ]
         )
 
 
@@ -274,6 +390,7 @@ class SupersededOutputTests(InstallerTestCase):
     @verifies(
         "scenario.distribution.install-conflict-rejected",
         "scenario.distribution.install-upgrade",
+        "scenario.distribution.install-stale-plan",
     )
     def test_superseded_file_changed_after_preview_is_not_deleted(self):
         path, _ = self.owned_superseded()
@@ -284,7 +401,10 @@ class SupersededOutputTests(InstallerTestCase):
         self.assertEqual(b"new user edit", path.read_bytes())
         self.assertFalse((self.root / ".pi").exists())
 
-    @verifies("scenario.distribution.install-upgrade")
+    @verifies(
+        "scenario.distribution.install-upgrade",
+        "scenario.distribution.install-apply-rollback",
+    )
     def test_failed_upgrade_restores_removed_bytes_modes_and_receipt_then_retries(self):
         path, receipt = self.owned_superseded(b"old owned")
         path.chmod(0o600)

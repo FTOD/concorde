@@ -4,18 +4,24 @@ These tests deliberately fail (rather than skip or substitute mocks) when Linux 
 enforcement is unavailable. Run them on an enforcement-capable Linux host.
 """
 
+import _thread
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import uuid
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.check_executor import CheckSandboxError, execute_check
+from concorde.harness.check_executor import (
+    CheckCancelled,
+    CheckSandboxError,
+    execute_check,
+)
 from concorde.spec.verification import verifies
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import RUNTIME_ROOT
@@ -321,6 +327,85 @@ time.sleep(60)
                 except (FileNotFoundError, PermissionError, ProcessLookupError):
                     continue
                 self.assertNotIn(token.encode(), command, str(path))
+
+
+def running(token: str) -> bool:
+    """Whether any host-visible process carries ``token`` in its command line."""
+    for path in Path("/proc").glob("[0-9]*/cmdline"):
+        try:
+            if token.encode() in path.read_bytes():
+                return True
+        except (FileNotFoundError, PermissionError, ProcessLookupError):
+            continue
+    return False
+
+
+class CheckCancellationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name) / "project"
+        self.root.mkdir()
+
+    def cancel_running(self, cancel):
+        """Run a command with a detached descendant and cancel it once both are running."""
+        token = "concorde-cancel-" + uuid.uuid4().hex
+        child = (
+            "import os,time\nos.setsid()\nif os.fork(): os._exit(0)\ntime.sleep(60)\n"
+        )
+        code = (
+            "import subprocess,sys,time\n"
+            "sys.stdout.write('o'*300000); sys.stdout.flush()\n"
+            "sys.stderr.write('e'*70000); sys.stderr.flush()\n"
+            f"subprocess.Popen([sys.executable,'-c',{child!r},{token!r}]).wait()\n"
+            "time.sleep(60)\n"
+        )
+        seen = []
+
+        def evidence(scratch, result, failure):
+            seen.append((scratch, scratch.is_dir(), result, failure))
+
+        def trigger():
+            deadline = time.monotonic() + 20
+            while not running(token) and time.monotonic() < deadline:
+                time.sleep(0.02)
+            cancel()
+
+        helper = threading.Thread(target=trigger, daemon=True)
+        started = time.monotonic()
+        helper.start()
+        with self.assertRaises(CheckCancelled) as caught:
+            execute_check(
+                self.root,
+                [sys.executable, "-c", code],
+                timeout=30,
+                environment=child_environment(),
+                evidence=evidence,
+                cancel_event=self.event,
+            )
+        helper.join(5)
+        self.assertLess(time.monotonic() - started, 20)
+        error = caught.exception
+        self.assertEqual(b"o" * 300000, error.stdout)
+        self.assertEqual(b"e" * 70000, error.stderr)
+        self.assertEqual((300000, 70000), (error.stdout_bytes, error.stderr_bytes))
+        self.assertFalse(running(token))  # the whole process tree has ended
+        [(scratch, existed, result, failure)] = seen
+        self.assertTrue(existed)  # evidence ran before the scratch was removed
+        self.assertIsNone(result)
+        self.assertIs(error, failure)
+        self.assertFalse(scratch.exists())
+
+    @verifies("scenario.checks.cancelled")
+    def test_cancel_event_ends_the_tree_and_keeps_drained_output(self):
+        self.event = threading.Event()
+        self.cancel_running(self.event.set)
+
+    @verifies("scenario.checks.cancelled")
+    def test_host_interrupt_ends_the_tree_and_keeps_drained_output(self):
+        self.assertIs(threading.current_thread(), threading.main_thread())
+        self.event = None
+        self.cancel_running(_thread.interrupt_main)
 
 
 if __name__ == "__main__":

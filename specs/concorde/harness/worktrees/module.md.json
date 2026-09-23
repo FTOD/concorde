@@ -111,7 +111,8 @@
         "tests/concorde/harness/test_change_worktree.py",
         "tests/concorde/harness/test_status_store.py",
         "tests/concorde/harness/test_worktree_boundary.py",
-        "tests/concorde/harness/test_worktree_lifecycle.py"
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/harness/test_worktrees_scenarios.py"
       ]
     }
   ],

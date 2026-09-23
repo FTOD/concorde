@@ -184,6 +184,7 @@
       "title": "Issue solving tests",
       "meaning": "#realization.issue-solving.tests",
       "entries": [
+        "tests/concorde/issue_solving/",
         "tests/concorde/issues/test_graph.py",
         "tests/concorde/harness/test_native_issues.py",
         "tests/concorde/harness/native_issue_probe.mjs"

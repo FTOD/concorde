@@ -49,6 +49,19 @@ export function nativeContext(
     };
   pi.on("tool_call", async (event, ctx) => {
     if (planning?.matches(event)) return planning.before(event);
+    // Every Concorde Workflow is named `concorde.<capability>.<ticket>`; only the registered one
+    // may launch, so a call naming any other is blocked rather than left to pi-subagents.
+    const workflow = (event.input as any).workflow;
+    if (
+      event.toolName === "subagent" &&
+      typeof workflow === "string" &&
+      workflow.startsWith("concorde.")
+    )
+      return {
+        block: true,
+        reason:
+          "Use exactly the registered native workflow call once; no other Concorde workflow",
+      };
     // A subagent call naming a Concorde Agent (every Agent's call name is `concorde-` plus its
     // name) or the prepared call's Agent concerns this extension; a Task subagent does not.
     const agent = (event.input as any).agent;

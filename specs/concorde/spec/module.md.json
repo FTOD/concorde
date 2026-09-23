@@ -185,6 +185,7 @@
         "tests/concorde/spec/test_checks.py",
         "tests/concorde/spec/test_context_selection.py",
         "tests/concorde/spec/test_distribution.py",
+        "tests/concorde/spec/test_file_transactions.py",
         "tests/concorde/spec/test_initialize.py",
         "tests/concorde/spec/test_module_model.py",
         "tests/concorde/spec/test_requirements_and_verification.py",

@@ -142,12 +142,16 @@ class TaskAuthorHook:
     """The task author in ``tasks``."""
 
     def prepare(self, run, admitted):
+        if admitted is None:
+            # The required Spec review, then the pending gaps, before the plan checks.
+            require_spec_review(run)
+            stop = _pending_stop(run, "tasks")
+            if stop is not None:
+                _mark_active(run, "tasks")
+                return StagePlan(stop=stop)
         inputs = with_issue_context(run, prepare_tasks(run)[1])
         if admitted is None:
             _mark_active(run, "tasks")
-            stop = _pending_stop(run, "tasks")
-            if stop is not None:
-                return StagePlan(stop=stop)
         return StagePlan(stage_inputs=inputs)
 
     def recheck(self, run, descriptor):

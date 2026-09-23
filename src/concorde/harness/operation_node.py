@@ -120,6 +120,10 @@ class OperationNode:
                 value, selected = prepare(state, runtime)
                 result = selected(value)
                 if isawaitable(result):
+                    # Close the refused coroutine so it is never left pending.
+                    close = getattr(result, "close", None)
+                    if callable(close):
+                        close()
                     raise RuntimeError(
                         "Use ainvoke for an asynchronous native Agent service"
                     )

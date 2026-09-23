@@ -141,7 +141,7 @@ def replacement_prompts(argv, project, env, session):
 
 
 class ConsumerInstallRoleTests(unittest.TestCase):
-    @verifies("scenario.session.task-subagents")
+    @verifies("scenario.session.task-subagents", "scenario.session.consumer-tester")
     def test_consumer_install_update_preserve_user_append_bytes_and_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -163,6 +163,33 @@ class ConsumerInstallRoleTests(unittest.TestCase):
                 ".concorde/framework/prompts/user-session",
             ):
                 self.assertFalse((root / source_only).exists())
+            # The generic tester is the only project agent, bound to the installed entry.
+            self.assertEqual(
+                ["tester.md"], sorted(p.name for p in (root / ".pi/agents").iterdir())
+            )
+            definition = (root / ".pi/agents/tester.md").read_text()
+            front = dict(
+                line.split(": ", 1)
+                for line in definition.split("---", 2)[1].strip().splitlines()
+            )
+            extensions = [
+                (root / ".pi/agents" / item).resolve()
+                for item in front["extensions"].split(", ")
+            ]
+            self.assertIn(
+                (root / ".pi/extensions/concorde-session.ts").resolve(), extensions
+            )
+            self.assertTrue(all(path.is_file() for path in extensions), extensions)
+            self.assertNotIn("Source maintenance worker", definition)
+            # No brief lifecycle extension anywhere in the installation.
+            self.assertEqual(
+                [],
+                [
+                    p
+                    for p in root.rglob("concorde-brief-lifecycle*")
+                    if ".venv" not in p.parts
+                ],
+            )
 
 
 @unittest.skipUnless(shutil.which("pi"), "real Pi is required")
@@ -356,6 +383,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
     @verifies(
         "scenario.session.task-subagents",
         "scenario.session.todo-collection",
+        "scenario.session.coordinator-only",
     )
     def test_source_user_session_and_child_effective_prompts_fresh_and_resumed(self):
         identities = {
@@ -397,7 +425,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
                 self.assertEqual(ids[0], ids[2])
                 self.assertNotEqual(ids[0], ids[1])
 
-    @verifies("scenario.session.task-subagents")
+    @verifies("scenario.session.task-subagents", "scenario.session.consumer-tester")
     def test_installed_user_session_generic_and_tester_isolated_with_user_append(self):
         consumer = self.root / "consumer"
         consumer.mkdir()

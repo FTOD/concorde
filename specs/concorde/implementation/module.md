@@ -110,7 +110,8 @@ work, compares recorded component work with the derived tasks and writes task co
 
 <a id="realization.implementation.tests"></a>
 
-The **Implementation tests** cover a scripted native programmer run against a real candidate.
+The **Implementation tests** cover a scripted native programmer run against a real candidate, and
+the native driver's own actions against a real candidate with synthetic native records.
 
 ## Relationships
 

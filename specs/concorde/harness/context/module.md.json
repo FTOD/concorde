@@ -159,7 +159,9 @@
         "tests/concorde/harness/test_boundaries.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_external_references.py",
-        "tests/concorde/harness/test_worker_profile.py"
+        "tests/concorde/harness/test_worker_profile.py",
+        "tests/concorde/harness/test_context_delivery.py",
+        "tests/concorde/harness/test_context_checks.py"
       ]
     }
   ],

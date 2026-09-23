@@ -35,7 +35,8 @@
       "meaning": "#realization.session.tester-tool",
       "entries": [
         "pi/extensions/concorde-tester.ts",
-        "src/concorde/distribution/tester_check.py"
+        "src/concorde/distribution/tester_check.py",
+        "tests/concorde/distribution/test_tester_command.py"
       ],
       "pending": []
     },
@@ -69,7 +70,8 @@
       "entries": [
         "pi/extensions/concorde-brief-lifecycle.ts",
         "tests/concorde/distribution/brief_lifecycle_fixture.mjs",
-        "tests/concorde/distribution/user_session_brief_fixture.mjs"
+        "tests/concorde/distribution/user_session_brief_fixture.mjs",
+        "tests/concorde/distribution/test_brief_lifecycle.py"
       ],
       "pending": []
     },

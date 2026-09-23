@@ -381,7 +381,7 @@ class TargetAdmissionTests(unittest.TestCase):
         }
         return files, git_value(self.primary, "worktree", "list", "--porcelain")
 
-    @verifies("scenario.admission.unknown-target")
+    @verifies("scenario.admission.unknown-target", "scenario.admission.invalid-focus")
     def test_unresolved_target_or_focus_binds_nothing_and_starts_no_worker(self):
         before = self.snapshot()
         requests = (

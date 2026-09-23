@@ -220,6 +220,7 @@
       "meaning": "#realization.distribution.launcher",
       "entries": [
         "scripts/run-operation.py",
+        "tests/concorde/distribution/test_launcher.py",
         "tests/concorde/distribution/test_launcher_termination.py"
       ],
       "pending": []
@@ -236,7 +237,8 @@
         "scripts/concorde.py",
         "scripts/concorde.sh",
         "scripts/concorde.ps1",
-        "tests/concorde/distribution/__init__.py"
+        "tests/concorde/distribution/__init__.py",
+        "tests/concorde/distribution/test_cli.py"
       ],
       "pending": []
     },

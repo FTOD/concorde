@@ -35,34 +35,37 @@ class NativeRuntimeTests(unittest.TestCase):
     def save(self):
         self.contract.write_text(json.dumps(self.expected))
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.foreign-producer")
     def test_known_versionless_producer_is_explicit(self):
         admitted = admit_native_runtime(self.package, contract=self.contract)
         self.assertEqual(admitted.format, FORMAT)
         self.assertIsNone(admitted.artifact_version)
         self.assertEqual(admitted.source_digest, digest(self.expected["sources"]))
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.foreign-producer")
     def test_same_version_with_changed_serialization_is_not_admitted(self):
         self.package.joinpath("writer.ts").write_text("// different format\n")
-        with self.assertRaises(SpecError):
+        with self.assertRaises(SpecError) as refused:
             admit_native_runtime(self.package, contract=self.contract)
+        self.assertEqual("unsupported_version", refused.exception.code)
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.foreign-producer")
     def test_unknown_package_contract_has_no_fallback(self):
         self.expected["package_version"] = "0.70.0"
         self.save()
-        with self.assertRaises(SpecError):
+        with self.assertRaises(SpecError) as refused:
             admit_native_runtime(self.package, contract=self.contract)
+        self.assertEqual("unsupported_version", refused.exception.code)
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.foreign-producer")
     def test_absent_version_is_not_silently_called_schema_three(self):
         self.expected["artifact_version"] = 3
         self.save()
-        with self.assertRaises(SpecError):
+        with self.assertRaises(SpecError) as refused:
             admit_native_runtime(self.package, contract=self.contract)
+        self.assertEqual("unsupported_version", refused.exception.code)
 
-    @verifies("scenario.execution.workflow-coverage")
+    @verifies("scenario.execution.foreign-producer")
     def test_missing_source_blocks_compatibility(self):
         self.package.joinpath("writer.ts").unlink()
         with self.assertRaises(SpecError):
