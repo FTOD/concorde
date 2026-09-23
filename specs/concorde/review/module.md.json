@@ -9,6 +9,7 @@
     "title": "Review",
     "owns": [
       "specs/concorde/review/module.md",
+      "specs/concorde/review/design.md",
       "specs/concorde/review/requirements.md",
       "specs/concorde/review/scenarios.md",
       "specs/concorde/review/contracts.md"

@@ -9,6 +9,7 @@
     "title": "Pi session",
     "owns": [
       "specs/concorde/session/module.md",
+      "specs/concorde/session/design.md",
       "specs/concorde/session/task-subagents.md",
       "specs/concorde/session/interfaces.md",
       "specs/concorde/session/requirements.md",

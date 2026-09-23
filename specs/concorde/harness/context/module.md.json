@@ -9,6 +9,7 @@
     "title": "Task context",
     "owns": [
       "specs/concorde/harness/context/module.md",
+      "specs/concorde/harness/context/design.md",
       "specs/concorde/harness/context/requirements.md",
       "specs/concorde/harness/context/scenarios.md",
       "specs/concorde/harness/context/records.md"

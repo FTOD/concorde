@@ -1,0 +1,10 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.checks.design",
+    "owner": "module.harness.checks",
+    "role": "module"
+  },
+  "defines": [],
+  "relations": []
+}

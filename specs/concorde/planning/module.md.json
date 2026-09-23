@@ -9,6 +9,7 @@
     "title": "Planning",
     "owns": [
       "specs/concorde/planning/module.md",
+      "specs/concorde/planning/design.md",
       "specs/concorde/planning/workflow.md",
       "specs/concorde/planning/scenarios.md"
     ],

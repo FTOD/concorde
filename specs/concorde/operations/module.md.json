@@ -9,32 +9,56 @@
     "title": "Operations",
     "owns": [
       "specs/concorde/operations/module.md",
+      "specs/concorde/operations/design.md",
       "specs/concorde/operations/catalog.md"
     ],
     "contains": [
       {
         "target": "module.planning",
-        "meaning": "#contains-planning"
+        "meaning": "#contains-planning",
+        "relies_on": [
+          "concept.planning.assessment",
+          "concept.planning.plan",
+          "concept.planning.task"
+        ]
       },
       {
         "target": "module.implementation",
-        "meaning": "#contains-implementation"
+        "meaning": "#contains-implementation",
+        "relies_on": [
+          "concept.implementation.component-work"
+        ]
       },
       {
         "target": "module.review",
-        "meaning": "#contains-review"
+        "meaning": "#contains-review",
+        "relies_on": [
+          "concept.review.spec-review",
+          "concept.review.code-review",
+          "concept.review.finding"
+        ]
       },
       {
         "target": "module.validation",
-        "meaning": "#contains-validation"
+        "meaning": "#contains-validation",
+        "relies_on": [
+          "concept.validation.evidence",
+          "concept.validation.ready"
+        ]
       },
       {
         "target": "module.delivery",
-        "meaning": "#contains-delivery"
+        "meaning": "#contains-delivery",
+        "relies_on": [
+          "concept.delivery.delivered-branch"
+        ]
       },
       {
         "target": "module.issue-solving",
-        "meaning": "#contains-issue-solving"
+        "meaning": "#contains-issue-solving",
+        "relies_on": [
+          "concept.issue-solving.decision"
+        ]
       }
     ],
     "uses": [

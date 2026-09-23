@@ -289,10 +289,26 @@ or an entry cannot be read.
 
 ## Verification declarations {#verification-declarations}
 
-The syntax is shown in the [Module entry](module.md#concept.spec.verification-declaration). The
-decorator is `verifies` from `concorde.spec.verification`; at run time it only attaches the
-identities to the test function and returns it unchanged, and it refuses an argument that does not
-begin with `scenario.`.
+A [verification declaration](module.md#concept.spec.verification-declaration) is written in the
+test's own source. A Python test uses the `verifies` decorator from `concorde.spec.verification` on
+a test function or method; a TypeScript test uses an own-line comment directly above its `it`,
+`test` or `describe` call, with several identities separated by commas or spaces:
+
+```python
+from concorde.spec.verification import verifies
+
+@verifies("scenario.checkout.submit", "scenario.checkout.retry")
+def test_submit_once():
+    ...
+```
+
+```typescript
+// verifies: scenario.checkout.render
+it("renders the page", () => {});
+```
+
+At run time the decorator only attaches the identities to the test function and returns it
+unchanged, and it refuses an argument that does not begin with `scenario.`.
 
 The scanner reads bound files ending in `.py`, `.ts`, `.tsx`, `.mts` or `.cts` by parsing them,
 never by importing, compiling or running them. In Python it reads module-level functions and the

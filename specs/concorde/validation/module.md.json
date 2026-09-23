@@ -9,6 +9,7 @@
     "title": "Validation",
     "owns": [
       "specs/concorde/validation/module.md",
+      "specs/concorde/validation/design.md",
       "specs/concorde/validation/records.md",
       "specs/concorde/validation/requirements.md",
       "specs/concorde/validation/scenarios.md"

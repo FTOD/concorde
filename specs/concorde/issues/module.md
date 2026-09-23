@@ -42,132 +42,71 @@ needs attention again. Keeping these four apart is the main idea of the Module.
 <a id="concept.issues.issue"></a><a id="concept.issues.report"></a>
 
 **What an Issue is.** Each Issue is one file, `.concorde/issues/I-<32 hex digits>.md`, committed
-with the branch like any other project file. It holds a list of Issue reports and a list of
-dispositions, and its status is `open` or `closed`. A reporter classifies each report as a `bug`
-(a defect or failure), a `gap` (an implementation/Spec mismatch, a conflict between Specs, or a
-missing necessary promise) or a `limitation` (behaviour that is consistent but insufficient). A
-report also names the Module that owns the broken promise when the reporter knows it, and `null`
-when it does not; the Issue's owner is then the Module that reported it. For example, a worker
-planning a payment retry finds that no Spec says how often to retry; it reports a `gap` of subtype
-`missing-contract`, owner `module.payments`, and cites the Spec file it read as evidence.
-
-Reports are never edited. A later observation about the same problem is appended as a new report,
-and it may classify the problem differently or name another owner; the first report stays exactly
-as it was accepted. Because the files travel with Git, every worktree has its own copy: closing an
-Issue in a candidate says nothing about the primary branch until the candidate's branch is merged.
+with the branch like any other project file, holding its reports and dispositions and a status of
+`open` or `closed`. A reporter classifies each report as a `bug`, a `gap` (an implementation/Spec
+mismatch, a conflict between Specs or a missing necessary promise) or a `limitation`, and names the
+Module that owns the broken promise, or `null` when it does not know; the Issue's owner is then the
+reporting Module. For example, a worker planning a payment retry finds that no Spec says how often
+to retry; it reports a `gap` of subtype `missing-contract`, owner `module.payments`, citing the Spec
+file it read. Reports are never edited: a later observation is appended as a new report. Because
+the files travel with Git, closing an Issue in a candidate says nothing about the primary branch
+until the candidate's branch is merged.
 
 **Who reports.** Reports reach the store only through the reporting service, which a caller builds
-for one reporter with explicit limits: the Modules the reporter may name as owner, the files it may
-cite as evidence, the Issues it may append to, and the provenance of the reporter (invocation,
-agent, capability, phase, reporting Module, context identity, change and Git `HEAD`). Three callers
-use it:
-
-- Agent execution gives every Agent call a `report_issue` tool whose calls it forwards to a service
-  built from that call's frozen context, as the [report](interface.md#contract.issues.report) and
-  [receipt](interface.md#contract.issues.receipt) contracts describe;
-- the Host reports problems it finds itself, for example missing dependency promises found before
-  planning;
-- the developer reports through the `report` action of the `concorde-issues` capability.
-
-The service answers with a receipt and the record's current revision only after the record is on
-disk. The reporter then keeps working: a report is an observation, not a stop.
+for one reporter with explicit limits: the Modules it may name as owner, the files it may cite, the
+Issues it may append to, and its provenance. Agent execution gives every Agent call a `report_issue`
+tool backed by such a service, as the [report](interface.md#contract.issues.report) and
+[receipt](interface.md#contract.issues.receipt) contracts describe; the Host reports problems it
+finds itself; and the developer reports through the `concorde-issues` capability. The service
+answers with a receipt only after the record is on disk, and the reporter keeps working.
 
 <a id="concept.issues.blocker"></a>
 
-**Blockers and review references.** When a problem stops a worker's task, the worker's result lists
-a [Blocker](interface.md#contract.issues.blocker): the receipt of the report plus the `blocked_step`
-it cannot do. A reviewer's finding refers to reports the same way, with a `severity` of `blocking`
-or `advisory` and the affected task; each blocking reference becomes a Blocker. Before a result is
-accepted, the reference check confirms that every reference names a report the worker made in this
-call or was explicitly given, at most once. How long a Blocker keeps a stage from proceeding is
-decided and recorded by the Module that accepted the result. Issues promises only independence:
-disposing an Issue never touches a Blocker, and releasing a Blocker never disposes an Issue, so a
-workaround can let work continue while the problem stays open.
-
-**Issue material for later calls.** A later model call can be given recorded problems in two
-shapes. [Issue context](interface.md#contract.issues.context) gives the description, impact and
-basis of each referenced report, never the whole record. An
-[Issue selection](interface.md#contract.issues.selection) describes one selected Issue with its
-revision, the latest problem and any feedback, verification summary and duplicate candidates; a
-reporter given a selection may append to that Issue.
+**Blockers and references.** A result lists a [Blocker](interface.md#contract.issues.blocker), the
+receipt of a report plus the `blocked_step` it cannot do, when a problem stops its task; a
+reviewer's blocking finding reference becomes one. The reference check accepts only reports the
+worker made in this call or was given, each at most once. The Module that accepted the result
+decides how long a Blocker holds a stage back; Issues promises only that disposing an Issue never
+touches a Blocker and releasing a Blocker never disposes an Issue. Later model calls receive recorded
+problems as an [Issue context](interface.md#contract.issues.context) of referenced reports or an
+[Issue selection](interface.md#contract.issues.selection) of one Issue.
 
 <a id="concept.issues.disposition"></a>
 
-**Closing and reopening.** A disposition has a reason (`resolved`, `duplicate`, `not-actionable`
-or `reopened`), a note, at least one evidence reference and the actor. `duplicate` names another
-open Issue. Only an open Issue can be closed and only a closed Issue can be reopened. Closed Issues
-stay in the directory with all their reports, because reopening needs them. The store checks the
-shape, the revision and the transition of a disposition; whether a caller may dispose an Issue at
-all is the caller's decision.
+**Closing and reopening.** A disposition has a reason (`resolved`, `duplicate`, `not-actionable` or
+`reopened`), a note, at least one evidence reference and the actor; `duplicate` names another open
+Issue. Only an open Issue can be closed and only a closed one reopened. Closed Issues stay with all
+their reports, because reopening needs them. Whether a caller may dispose an Issue at all is the
+caller's decision.
 
-**Inspection and the store check.** Outside a Pi session, `python3 scripts/issues.py list`,
-`show <id>` and `check` print the records or check them without launching anything. Concorde's
-configured check `check.issues.store` runs the `check` action whenever Validation or Delivery runs
-this Module's checks: it fails for any record that is malformed, misnamed or has an inconsistent
-history.
-
-**When an owner no longer exists.** An Issue whose owner is not a registered Module, typically
-because a change removed that Module, is still listed and shown like any other. The store check
-reports it as a finding and fails while the Issue is open; a closed Issue with an unknown owner is
-reported without failing. The open Issue is repaired by appending a report that names a registered
-owner, or by closing it.
-
-**Errors.** A request that names an unknown Issue, supplies an `expected_revision` that no longer
-matches the file, appends to a closed Issue, reuses a report key for different content, or names an
-owner, evidence path or Issue outside the reporter's limits is refused, and nothing is written.
-Repeating an identical report returns the same receipt instead of a second copy.
+**Inspection and the store check.** `python3 scripts/issues.py list`, `show <id>` and `check` work
+outside a Pi session. The configured check `check.issues.store` runs `check` whenever this Module's
+checks run: it fails for a malformed, misnamed or inconsistent record, and for an open Issue whose
+owner is no longer a registered Module. Such an Issue is still listed and shown; it is repaired by
+appending a report naming a registered owner, or by closing it. Requests naming an unknown Issue, a
+stale `expected_revision`, a closed Issue to append to, a reused report key or anything outside the
+reporter's limits are refused and write nothing; an identical report repeated returns the same
+receipt.
 
 ## Design
 
 <a id="realization.issues.store"></a>
 
 **The Issue store** is the only code through which the Host creates, appends to, disposes or
-restores an Issue record. Git operations that move committed record files between branches, such as
-creating a candidate, delivering or merging, are not store writes, and the store never runs Git.
-Every file holds one identity heading and one JSON record, so the JSON is the single source of
-content and no prose copy can drift from it. Each write checks the file's current byte digest
-against the revision the caller read, publishes through a file transaction and syncs the directory
-before acknowledging, so a reply of success means the record is on disk and a concurrent writer is
-never silently overwritten.
-
-**One lock for the repository.** All store writes of every worktree take one exclusive lock,
-`.concorde/runs/issues.lock` in the primary worktree's run records. Records are per-branch files,
-but one Host process may write in a candidate and in the primary, and Issue identities are
-allocated without a counter; a single lock keeps allocation and publication from interleaving
-anywhere in the repository. The lock is cooperative: it orders the Host's own writers, and a hand
-edit bypasses it, which the revision check then detects at the next write.
-
-**Identity without counters.** An Issue's identity is derived from the reporting invocation and the
-reporter's key, so two branches never allocate the same identity and a retried report finds its
-earlier result.
-
-**The store checks form, not truth.** It checks shapes, digests and legal transitions; it cannot
-judge whether evidence is true. That is why deciding who may close or reopen an Issue stays with
-the capabilities that do it, not with the store.
+restores an Issue record; Git moves of committed files between branches are not store writes. Each
+file holds one identity heading and one JSON record. Each write checks the revision its caller read,
+publishes through a file transaction and syncs before acknowledging, all under one repository-wide
+lock in the primary worktree's run records. The store checks form, not truth, so deciding who may
+dispose stays with its callers.
 
 <a id="realization.issues.reporting"></a>
 
-**The reporting service** takes its limits from its caller before the reporter starts. Because the
-reporter never supplies provenance, a root path or a disposition, reporting cannot become a
-file-write grant or a way to forge who said what. Reports are saved the moment they are accepted,
-so they survive a reporter that later fails, times out, is cancelled or submits an invalid result;
-that survival says nothing about whether the reporter's own task succeeded. The same code holds the
-reference check that stage results pass through and builds the Issue context of referenced reports.
-
-**Why reports, Blockers and dispositions are separate.** Reports are cheap and immediate, so
-workers can record everything they notice without ending their task. Blockers are task-local
-judgments recorded by the stage that made them, so replanning cannot lose a dependency and closing
-the Issue cannot silently release it. Dispositions need evidence, so a closed Issue means something
-was checked, not merely that someone stopped looking.
-
-**Store validity is a configured check, not part of Spec validation.** Spec tooling validates Specs
-and knows nothing of Issues. Checking the records as this Module's configured check keeps that
-separation and still runs on every delivery, which runs every configured check. Issue bytes are not
-part of any other Module's evidence.
-
-**Typed values.** The report, receipt, Blocker, selection and context shapes are registered with
-Spec tooling's typed-value registry by this Module; Spec tooling does not know them. The shapes
-live in `src/concorde/spec/issue_shapes.py` and belong in `src/concorde/issues/shapes.py`.
+**The reporting service** takes its limits and the provenance from its caller, so reporting cannot
+become a write grant or a way to forge who said what, and it saves each report at once, so reports
+survive a reporter that later fails. The same code holds the reference check and builds Issue
+context. Keeping reports, Blockers and dispositions apart lets workers report freely, keeps a
+dependency from being lost by replanning, and makes a closed Issue mean that something was checked.
+The reasons are explained in [Issues design](design.md).
 
 <a id="realization.issues.tests"></a>
 

@@ -9,6 +9,7 @@
     "title": "Candidate worktrees",
     "owns": [
       "specs/concorde/harness/worktrees/module.md",
+      "specs/concorde/harness/worktrees/design.md",
       "specs/concorde/harness/worktrees/requirements.md",
       "specs/concorde/harness/worktrees/scenarios.md",
       "specs/concorde/harness/worktrees/records.md"

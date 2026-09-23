@@ -89,7 +89,7 @@ the whole run.
 
 This covers alternative path names, hard links, inherited file descriptors and nested namespaces.
 It restricts file writes only; reads, the network, host sockets and the environment are not limited,
-as the [entry](module.md#why-a-read-only-filesystem-and-nothing-more) explains.
+as [the design topic](design.md#enforcement) explains.
 
 ### req.checks.fail-closed — No run without the boundary
 

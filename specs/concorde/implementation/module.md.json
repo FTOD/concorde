@@ -9,6 +9,7 @@
     "title": "Implementation",
     "owns": [
       "specs/concorde/implementation/module.md",
+      "specs/concorde/implementation/design.md",
       "specs/concorde/implementation/programmer.md"
     ],
     "contains": [],

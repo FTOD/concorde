@@ -9,6 +9,7 @@
     "title": "Agents",
     "owns": [
       "specs/concorde/agents/module.md",
+      "specs/concorde/agents/design.md",
       "specs/concorde/agents/definitions.md"
     ],
     "contains": [],

@@ -7,6 +7,7 @@
       "entry": "specs/concorde/module.md",
       "owns": [
         "specs/concorde/module.md",
+        "specs/concorde/design.md",
         "specs/concorde/vocabulary.md",
         "specs/concorde/requirements.md",
         "specs/concorde/scenarios.md",
@@ -104,6 +105,7 @@
       "entry": "specs/concorde/spec/module.md",
       "owns": [
         "specs/concorde/spec/module.md",
+        "specs/concorde/spec/design.md",
         "specs/concorde/spec/validation.md",
         "specs/concorde/spec/requirements.md",
         "specs/concorde/spec/scenarios.md",
@@ -125,7 +127,8 @@
       "title": "Harness",
       "entry": "specs/concorde/harness/module.md",
       "owns": [
-        "specs/concorde/harness/module.md"
+        "specs/concorde/harness/module.md",
+        "specs/concorde/harness/design.md"
       ],
       "contains": [
         {
@@ -201,6 +204,7 @@
       "entry": "specs/concorde/harness/admission/module.md",
       "owns": [
         "specs/concorde/harness/admission/module.md",
+        "specs/concorde/harness/admission/design.md",
         "specs/concorde/harness/admission/requirements.md",
         "specs/concorde/harness/admission/scenarios.md",
         "specs/concorde/harness/admission/contracts.md"
@@ -301,6 +305,7 @@
       "entry": "specs/concorde/harness/context/module.md",
       "owns": [
         "specs/concorde/harness/context/module.md",
+        "specs/concorde/harness/context/design.md",
         "specs/concorde/harness/context/requirements.md",
         "specs/concorde/harness/context/scenarios.md",
         "specs/concorde/harness/context/records.md"
@@ -371,6 +376,7 @@
       "entry": "specs/concorde/harness/execution/module.md",
       "owns": [
         "specs/concorde/harness/execution/module.md",
+        "specs/concorde/harness/execution/design.md",
         "specs/concorde/harness/execution/agent-calls.md",
         "specs/concorde/harness/execution/interfaces.md",
         "specs/concorde/harness/execution/control-flow.md"
@@ -519,6 +525,7 @@
       "entry": "specs/concorde/harness/checks/module.md",
       "owns": [
         "specs/concorde/harness/checks/module.md",
+        "specs/concorde/harness/checks/design.md",
         "specs/concorde/harness/checks/boundary.md",
         "specs/concorde/harness/checks/records.md"
       ],
@@ -563,6 +570,7 @@
       "entry": "specs/concorde/harness/worktrees/module.md",
       "owns": [
         "specs/concorde/harness/worktrees/module.md",
+        "specs/concorde/harness/worktrees/design.md",
         "specs/concorde/harness/worktrees/requirements.md",
         "specs/concorde/harness/worktrees/scenarios.md",
         "specs/concorde/harness/worktrees/records.md"
@@ -600,6 +608,7 @@
       "entry": "specs/concorde/agents/module.md",
       "owns": [
         "specs/concorde/agents/module.md",
+        "specs/concorde/agents/design.md",
         "specs/concorde/agents/definitions.md"
       ],
       "contains": [],
@@ -690,32 +699,56 @@
       "entry": "specs/concorde/operations/module.md",
       "owns": [
         "specs/concorde/operations/module.md",
+        "specs/concorde/operations/design.md",
         "specs/concorde/operations/catalog.md"
       ],
       "contains": [
         {
           "target": "module.planning",
-          "meaning": "#contains-planning"
+          "meaning": "#contains-planning",
+          "relies_on": [
+            "concept.planning.assessment",
+            "concept.planning.plan",
+            "concept.planning.task"
+          ]
         },
         {
           "target": "module.implementation",
-          "meaning": "#contains-implementation"
+          "meaning": "#contains-implementation",
+          "relies_on": [
+            "concept.implementation.component-work"
+          ]
         },
         {
           "target": "module.review",
-          "meaning": "#contains-review"
+          "meaning": "#contains-review",
+          "relies_on": [
+            "concept.review.spec-review",
+            "concept.review.code-review",
+            "concept.review.finding"
+          ]
         },
         {
           "target": "module.validation",
-          "meaning": "#contains-validation"
+          "meaning": "#contains-validation",
+          "relies_on": [
+            "concept.validation.evidence",
+            "concept.validation.ready"
+          ]
         },
         {
           "target": "module.delivery",
-          "meaning": "#contains-delivery"
+          "meaning": "#contains-delivery",
+          "relies_on": [
+            "concept.delivery.delivered-branch"
+          ]
         },
         {
           "target": "module.issue-solving",
-          "meaning": "#contains-issue-solving"
+          "meaning": "#contains-issue-solving",
+          "relies_on": [
+            "concept.issue-solving.decision"
+          ]
         }
       ],
       "uses": [
@@ -793,6 +826,7 @@
       "entry": "specs/concorde/planning/module.md",
       "owns": [
         "specs/concorde/planning/module.md",
+        "specs/concorde/planning/design.md",
         "specs/concorde/planning/workflow.md",
         "specs/concorde/planning/scenarios.md"
       ],
@@ -932,6 +966,7 @@
       "entry": "specs/concorde/implementation/module.md",
       "owns": [
         "specs/concorde/implementation/module.md",
+        "specs/concorde/implementation/design.md",
         "specs/concorde/implementation/programmer.md"
       ],
       "contains": [],
@@ -1063,6 +1098,7 @@
       "entry": "specs/concorde/review/module.md",
       "owns": [
         "specs/concorde/review/module.md",
+        "specs/concorde/review/design.md",
         "specs/concorde/review/requirements.md",
         "specs/concorde/review/scenarios.md",
         "specs/concorde/review/contracts.md"
@@ -1215,6 +1251,7 @@
       "entry": "specs/concorde/validation/module.md",
       "owns": [
         "specs/concorde/validation/module.md",
+        "specs/concorde/validation/design.md",
         "specs/concorde/validation/records.md",
         "specs/concorde/validation/requirements.md",
         "specs/concorde/validation/scenarios.md"
@@ -1312,6 +1349,7 @@
       "entry": "specs/concorde/delivery/module.md",
       "owns": [
         "specs/concorde/delivery/module.md",
+        "specs/concorde/delivery/design.md",
         "specs/concorde/delivery/records.md",
         "specs/concorde/delivery/requirements.md",
         "specs/concorde/delivery/scenarios.md"
@@ -1386,6 +1424,7 @@
       "entry": "specs/concorde/distribution/module.md",
       "owns": [
         "specs/concorde/distribution/module.md",
+        "specs/concorde/distribution/design.md",
         "specs/concorde/distribution/installation.md",
         "specs/concorde/distribution/interfaces.md",
         "specs/concorde/distribution/requirements.md",
@@ -1518,6 +1557,7 @@
       "entry": "specs/concorde/issues/module.md",
       "owns": [
         "specs/concorde/issues/module.md",
+        "specs/concorde/issues/design.md",
         "specs/concorde/issues/interface.md",
         "specs/concorde/issues/requirements.md",
         "specs/concorde/issues/scenarios.md"
@@ -1594,6 +1634,7 @@
       "entry": "specs/concorde/views/module.md",
       "owns": [
         "specs/concorde/views/module.md",
+        "specs/concorde/views/design.md",
         "specs/concorde/views/requirements.md",
         "specs/concorde/views/scenarios.md",
         "specs/concorde/views/contracts.md",
@@ -1672,6 +1713,7 @@
       "entry": "specs/concorde/issue-solving/module.md",
       "owns": [
         "specs/concorde/issue-solving/module.md",
+        "specs/concorde/issue-solving/design.md",
         "specs/concorde/issue-solving/workflow.md",
         "specs/concorde/issue-solving/requirements.md",
         "specs/concorde/issue-solving/scenarios.md"
@@ -1809,6 +1851,7 @@
       "entry": "specs/concorde/session/module.md",
       "owns": [
         "specs/concorde/session/module.md",
+        "specs/concorde/session/design.md",
         "specs/concorde/session/task-subagents.md",
         "specs/concorde/session/interfaces.md",
         "specs/concorde/session/requirements.md",

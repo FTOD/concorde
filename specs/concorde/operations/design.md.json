@@ -1,0 +1,10 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.operations.design",
+    "owner": "module.operations",
+    "role": "module"
+  },
+  "defines": [],
+  "relations": []
+}

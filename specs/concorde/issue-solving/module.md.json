@@ -9,6 +9,7 @@
     "title": "Issue solving",
     "owns": [
       "specs/concorde/issue-solving/module.md",
+      "specs/concorde/issue-solving/design.md",
       "specs/concorde/issue-solving/workflow.md",
       "specs/concorde/issue-solving/requirements.md",
       "specs/concorde/issue-solving/scenarios.md"

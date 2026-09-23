@@ -9,6 +9,7 @@
     "title": "Check execution",
     "owns": [
       "specs/concorde/harness/checks/module.md",
+      "specs/concorde/harness/checks/design.md",
       "specs/concorde/harness/checks/boundary.md",
       "specs/concorde/harness/checks/records.md"
     ],

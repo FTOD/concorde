@@ -9,6 +9,7 @@
     "title": "Agent execution",
     "owns": [
       "specs/concorde/harness/execution/module.md",
+      "specs/concorde/harness/execution/design.md",
       "specs/concorde/harness/execution/agent-calls.md",
       "specs/concorde/harness/execution/interfaces.md",
       "specs/concorde/harness/execution/control-flow.md"

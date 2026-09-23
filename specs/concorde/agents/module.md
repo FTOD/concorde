@@ -37,117 +37,69 @@ Task subagents it launches, such as the tester, are not Agents; the Pi session c
 | [Review result](../review/module.md#concept.review.result) | |
 | [Decision](../issue-solving/module.md#concept.issue-solving.decision) | |
 
-Learn Agent and Agent definition first. The Harness words say how a definition is bound and run;
-the provider words name what each Agent's result means and who accepts it.
-
 ## Usage
 
 <a id="concept.agents.agent"></a>
 
-An **Agent** is always called through a capability, never by typing its name into a prompt. The
-user session runs a capability; the Host prepares an exact [Agent call](../harness/execution/module.md#concept.execution.agent-call)
-from the Agent's definition; the user session passes that call unchanged to Pi's `subagent` tool.
-The Agent starts fresh, reads its capsule and submits one typed result. That result is a
-[proposal](../harness/execution/module.md#concept.execution.proposal): the Host checks it against the
-current inputs and only then records it, so the user session reads the Host's accepted result, not
-the Agent's own words. There are seven Agents:
+An **Agent** is always called through a capability: the Host prepares an exact
+[Agent call](../harness/execution/module.md#concept.execution.agent-call) from its definition, the
+user session passes it unchanged to Pi's `subagent` tool, and the Agent starts fresh, reads its
+capsule and submits one typed result, a [proposal](../harness/execution/module.md#concept.execution.proposal)
+the Host checks before recording. The seven Agents:
 
-| Agent | Called by | What it does | What it returns | Tools |
-| --- | --- | --- | --- | --- |
-| context assessor | `concorde-context-solve`, first step of `concorde-plan` | Decides whether the Module's Spec says enough for the task | An [assessment](../planning/module.md#concept.planning.assessment): sufficient, or a gap, prohibition or contradiction | read, grep, find, ls |
-| planner | `concorde-plan`, after a sufficient assessment | Writes a contract-level plan from the Spec alone | A [plan](../planning/module.md#concept.planning.plan) | read, grep, find, ls |
-| task author | `concorde-tasks` | Turns the accepted plan into implementation tasks with observable acceptance | New, incomplete [tasks](../planning/module.md#concept.planning.task) | read, grep, find, ls |
-| programmer | `concorde-implement` | Changes the Module's own implementation files in the candidate | The tasks, marked complete where fulfilled, which is the Module's [completion](../implementation/module.md#concept.implementation.completion) claim | read, grep, find, ls, edit, write, bash, run_checks |
-| spec reviewer | `concorde-spec-review`, Issue verification | Reviews one Module's Specs against representative tasks | A [review result](../review/module.md#concept.review.result) with [findings](../review/module.md#concept.review.finding) | read, grep, find, ls |
-| code reviewer | `concorde-code-review`, Issue verification | Reviews the Module's code against its Spec and runs its checks | A review result with findings | read, grep, find, ls, run_checks |
-| issue solver | `concorde-issues` with action `solve` | Chooses the next bounded action for one Issue | One [decision](../issue-solving/module.md#concept.issue-solving.decision) | read, grep, find, ls |
+| Agent | Called by | Returns |
+| --- | --- | --- |
+| context assessor | `concorde-context-solve`, first step of `concorde-plan` | An [assessment](../planning/module.md#concept.planning.assessment) |
+| planner | `concorde-plan` after a sufficient assessment | A [plan](../planning/module.md#concept.planning.plan) |
+| task author | `concorde-tasks` | New, incomplete [tasks](../planning/module.md#concept.planning.task) |
+| programmer | `concorde-implement` | The tasks marked complete where fulfilled, a [completion](../implementation/module.md#concept.implementation.completion) claim |
+| spec reviewer | `concorde-spec-review`, Issue verification | A [review result](../review/module.md#concept.review.result) with [findings](../review/module.md#concept.review.finding) |
+| code reviewer | `concorde-code-review`, Issue verification | A review result with findings |
+| issue solver | `concorde-issues` action `solve` | One [decision](../issue-solving/module.md#concept.issue-solving.decision) |
 
-For example, `concorde-plan` first runs the context assessor on "add retries to the client". If the
-client Module's Spec never says which failures may be retried, the assessor reports that gap and
-the planner does not run. Neither Agent looks at code to guess the policy. The developer settles it
-in the Spec and calls the capability again, which starts fresh Agents.
-
-Every Agent can read what its capsule holds and file an
-[Issue report](../issues/module.md#concept.issues.report) through `report_issue`. Only the
-programmer has `edit`, `write` and `bash`. Only the programmer and the code reviewer can ask the
-Host to run the Module's [configured checks](../harness/checks/module.md#concept.checks.configured-check)
-through `run_checks`; the code reviewer has no shell, so running checks is the only way it can
-execute anything. No Agent can delegate, call a capability or start another agent.
+Every Agent has `read`, `grep`, `find`, `ls` and `report_issue`, through which it files an
+[Issue report](../issues/module.md#concept.issues.report). Only the programmer has `edit`, `write`
+and `bash`. The programmer and the code reviewer also have `run_checks` for the Module's
+[configured checks](../harness/checks/module.md#concept.checks.configured-check); the code reviewer
+has no shell. No Agent can delegate, call a capability or start another agent.
 
 <a id="concept.agents.definition"></a>
 
-**Agent definitions.** Each Agent has one **Agent definition**, the `DEFINITION` record of the
-package `agents/<name>/`. It names the Agent's instructions (`agents/<name>/spec.md`, rendered after
-the shared native rules in `prompts/native/<name>.md`; the two reviewers also include one shared
-text on review scope and result shape), its workspace (a private capsule, or the candidate itself
-for the Agents that work on code), the parts of the Module's context it reads, whether it writes
-implementation, the [stage inputs](../harness/context/module.md#concept.context.stage-input) it
-accepts and requires, its typed input and result and the result fields it may fill, its tools, its
-default time limit, and the `module:attribute` entry point of its
-[Agent hook](../harness/execution/module.md#concept.execution.agent-hook) in the provider. The
-package `agents` lists the seven definitions. [Agent definitions](definitions.md) gives every field
-and every Agent's exact values.
-
-To change what an Agent does, edit its instructions; to change what it may use, edit its definition.
-Both change the instruction or definition digest that Task context binds into every call, so a
-call prepared before the edit is refused as stale instead of running under the old terms. A new
-Agent needs a definition here and a hook in its provider; nothing in the Harness changes.
-
-Errors surface through the capability that ran the Agent. A failed, cancelled, timed-out or invalid
-run stays a failure even if the Agent made progress; the programmer's partial edits stay in the
-candidate. Repeating a step always starts a fresh Agent with freshly admitted inputs.
+**Agent definitions.** Each Agent's **Agent definition** is the `DEFINITION` of `agents/<name>/`:
+its instructions (`agents/<name>/spec.md` after the shared rules in `prompts/native/<name>.md`), its
+workspace, the context parts it reads and whether it writes implementation, the
+[stage inputs](../harness/context/module.md#concept.context.stage-input) it accepts, its typed input
+and result, its tools, its time limit, and the entry point of its provider's
+[Agent hook](../harness/execution/module.md#concept.execution.agent-hook).
+[Agent definitions](definitions.md) gives every field and value. Edit the instructions to change
+what an Agent does and the definition to change what it may use; a new Agent needs a definition
+here and a hook in its provider. A failed, cancelled or invalid run surfaces through its capability
+and stays a failure (the programmer's partial edits remain); a repeat starts a fresh Agent.
 
 ## Design
 
-### One definition, many uses
+One definition per Agent is the single source that binding, launch preflight, rendering and model
+selection derive from, so nothing can grant an Agent more than it declares. The tool list and the
+result are enforced; which files an Agent's tools reach, and its network and credentials, are not:
+readers can read any path the user can, and the programmer's `bash` reaches any path and could run
+Concorde's launcher. Agents are fresh and terminal; no definition may list a delegating tool
+([req.agents.terminal](definitions.md#req.agents.terminal)). Hooks are named by entry point so the
+Harness imports no provider. [In depth](design.md) gives the reasons.
 
 <a id="realization.agents.inventory"></a>
 
-The central choice is that an Agent's identity and its limits are stated once, and every other part
-of Concorde derives from that statement instead of keeping its own copy. The **Agent inventory**,
-the `agents` package, lists the seven definitions. Task context turns a definition into an
-[Agent binding](../harness/context/module.md#concept.context.agent-binding) for one call, Agent
-execution's launch preflight allows exactly the tools the definition lists, the build renders the
-instructions it names, and model selection keys its per-Agent overrides by its name. A launch with
-more tools than the definition, or a proposal with fields the definition does not allow, is
-refused rather than tolerated, so a capability cannot quietly give an Agent more than its definition
-says.
-
-### What the definitions declare, and what is not enforced
+The **Agent inventory**, the `agents` package, lists the seven definitions and is what every
+consumer reads to learn which Agents exist.
 
 <a id="realization.agents.definitions"></a>
 
 The **Agent definitions** are the seven definition packages with their instructions and the shared
-native rules. They declare the most an Agent may use, and the Harness enforces part of it:
-
-- The tool list is enforced at launch. An Agent without `edit`, `write` or `bash` cannot change a
-  file through Pi's tools, which is why only the programmer, whose definition writes
-  implementation, has them, and why the code reviewer checks code through `run_checks` inside the
-  read-only check boundary instead of a shell.
-- Which files an Agent reads or writes with those tools is not enforced. File scope, network and
-  credential limits are written into its instructions. A reader's file tools accept any path the
-  developer's user can read, and the programmer's `bash` reaches any path and could run Concorde's
-  launcher.
-- The result is enforced: whatever an Agent claims, the Host checks and its provider accepts.
-
-Agents are fresh and terminal on purpose. A fresh conversation cannot carry a previous step's
-assumptions forward as if they were evidence, and an Agent without delegation cannot widen its own
-grant by handing work to another agent. That no definition may list a delegating tool is this
-Module's [req.agents.terminal](definitions.md#req.agents.terminal).
-
-### Why hooks are named, not imported
-
-Each definition names its provider's Agent hook by an entry-point string rather than importing it.
-The Harness can then run any Agent without importing any provider, and a provider can change how
-its Agent's results are prepared and accepted without touching this Module or the Harness. The
-instructions an Agent follows and the rules its result is checked against therefore live with
-different owners on purpose: the instructions here, the acceptance with the provider.
+native rules.
 
 <a id="realization.agents.tests"></a>
 
-The **Agent tests** load every definition, compare the inventory with its metadata and prepare a
-call for each Agent to check the tools it receives. They show what Agents are given, not that a
-model follows its instructions.
+The **Agent tests** load every definition, compare the inventory with its metadata and check the
+tools each prepared call receives; they do not show that a model follows its instructions.
 
 ## Relationships
 

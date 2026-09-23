@@ -9,6 +9,7 @@
     "title": "Spec tooling",
     "owns": [
       "specs/concorde/spec/module.md",
+      "specs/concorde/spec/design.md",
       "specs/concorde/spec/validation.md",
       "specs/concorde/spec/requirements.md",
       "specs/concorde/spec/scenarios.md",

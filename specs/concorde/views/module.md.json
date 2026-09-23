@@ -9,6 +9,7 @@
     "title": "Views",
     "owns": [
       "specs/concorde/views/module.md",
+      "specs/concorde/views/design.md",
       "specs/concorde/views/requirements.md",
       "specs/concorde/views/scenarios.md",
       "specs/concorde/views/contracts.md",

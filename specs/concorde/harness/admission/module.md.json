@@ -9,6 +9,7 @@
     "title": "Request admission",
     "owns": [
       "specs/concorde/harness/admission/module.md",
+      "specs/concorde/harness/admission/design.md",
       "specs/concorde/harness/admission/requirements.md",
       "specs/concorde/harness/admission/scenarios.md",
       "specs/concorde/harness/admission/contracts.md"

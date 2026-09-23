@@ -9,6 +9,7 @@
     "title": "Delivery",
     "owns": [
       "specs/concorde/delivery/module.md",
+      "specs/concorde/delivery/design.md",
       "specs/concorde/delivery/records.md",
       "specs/concorde/delivery/requirements.md",
       "specs/concorde/delivery/scenarios.md"
