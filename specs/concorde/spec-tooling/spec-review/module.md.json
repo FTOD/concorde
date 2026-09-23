@@ -1,0 +1,140 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.spec-review.module",
+    "owner": "module.spec-review",
+    "role": "module"
+  },
+  "module": {
+    "title": "Spec review",
+    "owns": [
+      "specs/concorde/spec-tooling/spec-review/module.md",
+      "specs/concorde/spec-tooling/spec-review/operation.md",
+      "specs/concorde/spec-tooling/spec-review/requirements.md",
+      "specs/concorde/spec-tooling/spec-review/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.structural-check",
+          "concept.spec.grant",
+          "concept.spec.context-identity"
+        ]
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers",
+        "relies_on": [
+          "concept.workers.brief",
+          "concept.workers.worker-result",
+          "concept.workers.run-record"
+        ]
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.operation",
+          "concept.operations.host",
+          "concept.operations.result"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.spec-review.review",
+      "type": "concept",
+      "title": "Spec review",
+      "meaning": "#concept.spec-review.review"
+    },
+    {
+      "id": "concept.spec-review.finding",
+      "type": "concept",
+      "title": "Review finding",
+      "meaning": "#concept.spec-review.finding"
+    },
+    {
+      "id": "concept.spec-review.verdict",
+      "type": "concept",
+      "title": "Review verdict",
+      "meaning": "#concept.spec-review.verdict"
+    },
+    {
+      "id": "realization.spec-review.operation",
+      "type": "realization",
+      "title": "Review host",
+      "meaning": "#realization.spec-review.operation",
+      "entries": [
+        "src/concorde/spec_review/",
+        "tests/concorde/spec_review/"
+      ],
+      "pending": [
+        "src/concorde/spec_review/",
+        "tests/concorde/spec_review/"
+      ]
+    },
+    {
+      "id": "realization.spec-review.checklist",
+      "type": "realization",
+      "title": "Reviewer brief",
+      "meaning": "#realization.spec-review.checklist",
+      "entries": [
+        "prompts/workers/review-spec.md"
+      ],
+      "pending": [
+        "prompts/workers/review-spec.md"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "validates and computes grants with",
+      "target": "module.spec"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "launches reviewers through",
+      "target": "module.harness.workers"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "hands reviewers",
+      "target": "realization.spec-review.checklist"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "collects",
+      "target": "concept.spec-review.finding"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "derives",
+      "target": "concept.spec-review.verdict"
+    },
+    {
+      "type": "relates",
+      "source": "concept.spec-review.verdict",
+      "verb": "is derived from",
+      "target": "concept.spec-review.finding"
+    }
+  ],
+  "extensions": {}
+}

@@ -53,6 +53,7 @@ class StoreCheckTests(unittest.TestCase):
             source(target_id="module.removed"),
         )
 
+    @verifies("scenario.issues.store-check-pass")
     def test_valid_records_and_an_absent_directory_pass(self):
         self.assertEqual((0, {"errors": [], "notes": []}), self.run_check())
         report_issue(

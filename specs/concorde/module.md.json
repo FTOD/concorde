@@ -17,88 +17,36 @@
     ],
     "contains": [
       {
-        "target": "module.spec",
-        "meaning": "#contains-spec",
-        "relies_on": [
-          "concept.spec.registry",
-          "concept.spec.structural-check",
-          "concept.spec.boundary-set",
-          "concept.spec.typed-value"
-        ]
+        "target": "module.spec-tooling",
+        "meaning": "#contains-spec-tooling"
       },
       {
         "target": "module.harness",
         "meaning": "#contains-harness"
       },
       {
-        "target": "module.agents",
-        "meaning": "#contains-agents",
-        "relies_on": [
-          "concept.agents.agent",
-          "concept.agents.definition"
-        ]
+        "target": "module.tasks",
+        "meaning": "#contains-tasks"
       },
       {
         "target": "module.operations",
-        "meaning": "#contains-operations",
-        "relies_on": [
-          "concept.operations.operation",
-          "concept.operations.catalog"
-        ]
+        "meaning": "#contains-operations"
       },
       {
         "target": "module.issues",
-        "meaning": "#contains-issues",
-        "relies_on": [
-          "concept.issues.issue",
-          "concept.issues.report"
-        ]
+        "meaning": "#contains-issues"
       },
       {
-        "target": "module.session",
-        "meaning": "#contains-session",
-        "relies_on": [
-          "concept.session.session-entry",
-          "concept.session.selection",
-          "concept.session.coordinator"
-        ]
+        "target": "module.main-session",
+        "meaning": "#contains-main-session"
       },
       {
         "target": "module.distribution",
-        "meaning": "#contains-distribution",
-        "relies_on": [
-          "concept.distribution.package",
-          "concept.distribution.launcher",
-          "concept.distribution.protocol-copy",
-          "concept.distribution.managed-runtime"
-        ]
-      },
-      {
-        "target": "module.views",
-        "meaning": "#contains-views",
-        "relies_on": [
-          "concept.views.published-site"
-        ]
+        "meaning": "#contains-distribution"
       }
     ],
     "uses": [],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.admission.module",
-        "reason": "defines Capability declaration, which the Framework entry names"
-      },
-      {
-        "kind": "document",
-        "target": "document.execution.module",
-        "reason": "defines Workflow and Graph, which the Framework entry names"
-      },
-      {
-        "kind": "document",
-        "target": "document.worktrees.module",
-        "reason": "defines Candidate, which the Framework entry names"
-      }
-    ],
+    "includes": [],
     "participates": []
   },
   "defines": [
@@ -112,7 +60,6 @@
         "AGENTS.md",
         "LICENSE",
         ".gitignore",
-        ".gitmodules",
         ".python-version",
         "docs/",
         ".github/workflows/validate-source-checkout.yml"
@@ -132,32 +79,29 @@
         "tests/concorde/__init__.py",
         "tests/concorde/support/__init__.py",
         "tests/concorde/support/paths.py",
-        "tests/concorde/support/environment.py",
         "tests/concorde/support/pytest_timing.py",
-        "scripts/development/init-references.py",
-        "scripts/development/check-docsite-types.py",
-        "tests/concorde/support/contract_project.py",
-        "tests/concorde/support/issue_reports.py",
-        "tests/concorde/support/native_probe.py",
-        "tests/concorde/support/pi_session_project.py",
-        "tests/concorde/support/session_catalog.py",
-        "tests/concorde/support/shared_file_project.py",
+        "tests/concorde/support/environment.py",
         "tests/concorde/support/spec_project.py",
-        "tests/concorde/support/stage_context.py",
-        "tests/concorde/support/worktree_project.py",
-        "tests/concorde/development/"
+        "tests/concorde/support/shared_file_project.py",
+        "tests/concorde/support/issue_reports.py",
+        "tests/concorde/development/",
+        "scripts/development/init-references.py",
+        "scripts/development/analyze-timing.py",
+        "scripts/development/check-docsite-types.py"
       ],
       "pending": []
     },
     {
       "id": "realization.concorde.acceptance-tests",
       "type": "realization",
-      "title": "Framework acceptance tests",
+      "title": "Acceptance tests",
       "meaning": "#realization.concorde.acceptance-tests",
       "entries": [
         "tests/concorde/acceptance/"
       ],
-      "pending": []
+      "pending": [
+        "tests/concorde/acceptance/"
+      ]
     }
   ],
   "relations": []

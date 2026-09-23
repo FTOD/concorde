@@ -20,7 +20,6 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
-.langgraph_api/
 
 # Logs and local environment
 *.log
@@ -43,18 +42,12 @@ Thumbs.db
 .concorde/reflections/plans/
 .concorde/reflections/worktrees/
 
-# Concorde: rendered client projections (build output; sources are prompts/ and pi/)
-.claude/skills/concorde-*/
-.agents/skills/concorde-*/
-.pi/extensions/concorde-session.ts
 
 .venv
 .concorde/runs/
+.concorde/tasks/
 
 node_modules
 
 # Retired vendored delegation dependency; local checkout may be retained.
 /reference/pi-subagents/
-
-# Candidate-only ephemeral launch/context scratch; never a durable run archive.
-.concorde/work/

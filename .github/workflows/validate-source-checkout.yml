@@ -43,10 +43,6 @@ jobs:
       - name: Validate the Spec and package
         run: python3 scripts/concorde.py validate
 
-      - name: Install the Pi extension dependencies
-        # Populates npm's cache with the locked tarballs the offline test installs are seeded from.
-        run: npm ci --prefix pi
-
       - name: Run the full Python test suite
         env:
           PYTHONPATH: src
@@ -69,8 +65,7 @@ jobs:
       - name: Test the docsite
         run: npm test --prefix docsite
 
-      # Publishes rendered Agent instructions/Wire contracts from generated/docs/*.json and fails
-      # when generated/build-manifest.json is missing or stale, so the docsite never lags the
-      # Concorde build above.
+      # Fails when generated/build-manifest.json is missing or stale, so the docsite never lags
+      # the Concorde build above.
       - name: Validate the docsite against the current build
         run: npm --prefix docsite run validate

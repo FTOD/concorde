@@ -1,0 +1,73 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.specification.module",
+    "owner": "module.specification",
+    "role": "module"
+  },
+  "module": {
+    "title": "Specification",
+    "owns": [
+      "specs/concorde/operations/specification/module.md",
+      "specs/concorde/operations/specification/requirements.md",
+      "specs/concorde/operations/specification/scenarios.md",
+      "specs/concorde/operations/specification/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.specification.spec-change",
+      "type": "concept",
+      "title": "Spec change",
+      "meaning": "#concept.specification.spec-change"
+    },
+    {
+      "id": "realization.specification.operation",
+      "type": "realization",
+      "title": "Specify Operation",
+      "meaning": "#realization.specification.operation",
+      "entries": [
+        "src/concorde/specification/",
+        "prompts/workers/specify.md",
+        "tests/concorde/specification/"
+      ],
+      "pending": [
+        "src/concorde/specification/",
+        "prompts/workers/specify.md",
+        "tests/concorde/specification/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.specification.operation",
+      "verb": "produces",
+      "target": "concept.specification.spec-change"
+    }
+  ],
+  "extensions": {}
+}

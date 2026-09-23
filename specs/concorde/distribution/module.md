@@ -2,200 +2,179 @@
 
 ## Purpose
 
-Distribution turns the Concorde checkout into something a developer can run: it builds the
-generated files and records them in a build manifest, checks that the package is current, installs
-Concorde and its Python environment into other projects, makes each worktree there runnable, and
-provides the launcher and the `concorde` command line. It does not decide what a capability does
-(the providers and the Harness do), how the Pi session uses Concorde (Pi session does), or a
-project's Specs and configuration (`concorde-init` and `concorde-configure` do). It creates no
-worktrees and grants no Agent anything.
+Distribution turns the Concorde checkout into something a developer can run and install. It
+describes the package, builds the generated files from their prompt sources and records them in a
+build manifest, provides the `concorde` command-line interface that routes each command to the
+Module that owns it, writes the Protocol copy a project carries, and installs Concorde into another
+project together with the main-session guidance. It does not decide what a command does (the
+owning Module does), what the main agent is told (Main session does) or what a project's Specs and
+configuration say (initialization and the developer do): the installer never writes Specs. The
+installer and the tests of this Module are not implemented yet.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Package | The set of Concorde files described by `concorde.json` that is built, checked and installed as one unit. |
+| Package | The set of Concorde files, described by `concorde.json`, that is built, checked and installed as one unit. |
+| Build | The deterministic rendering of every registered prompt root under `prompts/` into plain files under `generated/`. |
 | Build manifest | The generated record of the digest of every source the build read and of every output it wrote. |
-| Launcher | The script that runs one public capability request read from its standard input and prints one result envelope. |
-| Consumer project | A project other than a Concorde source checkout into which Concorde is installed. |
-| Installation receipt | The file in a consumer project that records which files the installer owns there and the exact bytes it last wrote. |
+| Command-line interface | The `concorde` command, whose subcommands each print exactly one JSON result envelope and exit with a status derived from it. |
 | Protocol copy | The rendered Spec Protocol bundle placed in a project under `.concorde/protocol/`, whose manifest digest the project configuration binds. |
-| Managed runtime | The installer-owned Python environment at `.concorde/.venv`, with locked LangGraph and Pi dependencies, that runs Concorde in a consumer project. |
-| Local installation | A complete, verified installation of one exact package in one worktree: Framework files, session entry, managed runtime and receipt. |
+| Installer | The program that places the Protocol copy, the `concorde` command and the main-session guidance into a project without writing its Specs. |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
-| [Capability](../vocabulary.md#concept.concorde.capability) | |
-| [Host](../vocabulary.md#concept.concorde.host) | |
-| [Operation catalog](../operations/module.md#concept.operations.catalog) | |
-| [Agent definition](../agents/module.md#concept.agents.definition) | |
-| [Session entry](../session/module.md#concept.session.session-entry) | |
-| [Capability catalog](../session/module.md#concept.session.catalog) | |
-| [Capability request](../harness/admission/module.md#concept.admission.capability-request) | |
+| [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
+| [Protocol binding](../spec-tooling/spec/module.md#concept.spec.protocol-binding) | |
+| [Registry](../spec-tooling/spec/module.md#concept.spec.registry) | |
+| [Structural check](../spec-tooling/spec/module.md#concept.spec.structural-check) | |
+| [Scaffold proposal](../spec-tooling/views/module.md#concept.views.scaffold-proposal) | |
+| [Main-session guidance](../main-session/module.md#concept.main-session.guidance) | |
 
-The package and build manifest describe what the build produces; the launcher, receipt, Protocol
-copy, managed runtime and local installation describe where Concorde runs.
+The package, the build and its manifest describe what the checkout produces; the command-line
+interface, the Protocol copy and the installer describe how a project receives and runs it.
 
 ## Usage
 
-Whoever changes a source the build reads rebuilds in the same worktree with
-`python3 scripts/concorde.py build`; `build --check` renders in memory and writes nothing. The
-build writes the native Agent instructions, the private session entry, the Protocol assets and the
-exported schemas under `generated/`, and the Task subagent files under `.pi/`, all listed in the
-build manifest ([outputs](interfaces.md#build-outputs)). After a Protocol text change,
-`protocol-manifest --write --bind-project` accepts the new asset digests and rebinds this checkout.
+<a id="concept.distribution.package"></a>
 
-<a id="realization.distribution.package-check"></a>
+**The package.** The package is this checkout, described by `concorde.json`: name, version,
+licence, repository, the architecture profile, the Python runtime requirement, the package roots
+the installer ships (`docsite`, `prompts`, `protocol`, `scripts`, `src`), the install locations and
+the supported client, `claude-code`. Everything the installer ships comes from it, and the build
+reads it as an input so that a changed descriptor makes every render stale. Views reads its package
+roots to confirm that the docsite template ships.
 
-The **package check**, `scripts/concorde.py check-package`, reports whether the package builds and
-its outputs are current: prompts, guidance, exported schemas, the package manifest, freshness and
-drift. It is a configured check of this checkout and runs before installing from a source
-checkout; `validate` checks Specs only.
+<a id="concept.distribution.build"></a><a id="concept.distribution.build-manifest"></a>
 
-`install-concorde.py --target DIR` previews one action per path and writes nothing; `--apply`
-installs the Framework under `.concorde/framework/`, the Protocol copy, the session and observer
-entries and the tester definition under `.pi/`, a marked block in `AGENTS.md`, and the managed
-runtime at `.concorde/.venv`, recording all of it in the installation receipt. A file the developer
-changed is a conflict, never overwritten. An update never changes the accepted Protocol; the
-developer accepts a new one through `concorde-configure`. [Installing and updating](installation.md)
-covers every action, preservation and local installations.
+**Building.** Whoever changes a source the build reads rebuilds in the same worktree with
+`python3 scripts/concorde.py build`. The build resolves every prompt root under `prompts/`, expands
+its `@path.md` include lines and `{KEY}` parameters, and writes each result one to one under
+`generated/`, for example `prompts/protocol/principles.md` to `generated/protocol/principles.md`.
+It then writes the **build manifest** `generated/build-manifest.json` with the digest of every
+source and output. `build --check` renders in memory, writes nothing and reports every stale or
+missing output. Today the only prompt roots are the Protocol bundle; the main-session guidance and
+the worker briefs become prompt roots when their Modules add them, and a prompt file that no root
+includes fails the build, so a new prompt cannot be forgotten. `generated/` is ignored by Git: a
+checkout always rebuilds.
 
-Pi session's `concorde` tool starts the launcher, `scripts/run-operation.py <capability>`, with a
-capability request on standard input. The launcher resolves the name in the Operation catalog,
-refuses anything else, and hands the request to Request admission, which prints one result
-envelope. Installed, it first re-enters the managed runtime. `scripts/concorde.py` also routes
-`validate` and `registry` to Spec tooling, `status` to Candidate worktrees, `select-session` to Pi
-session and `docsite` to Views, always printing one JSON envelope ([command line](interfaces.md#command-line)).
+After a Protocol change, `python3 scripts/concorde.py protocol-manifest --write --bind-project`
+accepts the fresh digests into the tracked `protocol/manifest.json`, binds the project
+configuration to that manifest and refreshes this checkout's own Protocol copy. Without `--write` it
+only reports whether the tracked manifest matches the build.
 
-Errors: an edited, unrecorded or linked output stops `build` before anything is written; a stale
-build or incomplete local installation is refused by admission; an installer conflict or a second
-concurrent installer writes nothing; a failed apply restores files and receipt, but a failed
-runtime rebuild leaves no managed runtime until an installation succeeds.
+<a id="concept.distribution.cli"></a>
+
+**The command line.** `scripts/concorde.py` (or the `concorde.sh` and `concorde.ps1` wrappers, or
+`python -m concorde` with `src/` on the path) takes a global `--project-root` and one subcommand:
+
+| Command | Does | Owned by |
+| --- | --- | --- |
+| `validate [target]` | runs the structural checks | [Spec core](../spec-tooling/spec/module.md) |
+| `registry --write` or `--check` | regenerates or checks the registry mirror | [Spec core](../spec-tooling/spec/module.md) |
+| `docsite --propose` or `--apply` | proposes or applies the docsite scaffold | [Views](../spec-tooling/views/module.md) |
+| `build [--check]` | renders or checks the generated files | Distribution |
+| `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
+
+Every command prints exactly one JSON result envelope and exits with its status; a refused command
+line or an unexpected error still prints one `failed` envelope rather than a traceback. The
+`grant`, `task`, `run` and `init` commands will be added by Spec core, Tasks, Operations and
+initialization respectively; Distribution only routes them.
+
+<a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
+
+**Installing into a project.** The **installer**, `python3 scripts/install-concorde.py <project>`,
+is designed but not implemented. It places the **Protocol copy** under `.concorde/protocol/` (the
+tracked manifest and every rendered asset it lists), the `concorde` command, and the
+[main-session guidance](../main-session/module.md#concept.main-session.guidance) as Claude Code
+guidance: a project skill and a delimited block in the project's `CLAUDE.md`. It also seeds
+Concorde-owned defaults when they are absent, such as `.concorde/issues/.gitignore`. It never
+writes Specs, the registry or the Protocol binding; initialization proposes the first Spec, and
+the developer accepts a new Protocol copy by updating the binding. It refuses to copy from a
+package whose build is stale. Until it exists, tests and `protocol-manifest --bind-project` write
+the Protocol copy with the same helper.
 
 ## Design
 
-<a id="concept.distribution.package"></a><a id="realization.distribution.build"></a>
+<a id="realization.distribution.descriptor"></a>
 
-The **package** is described by `concorde.json`. The **build renderer** is one pure function from
-sources to outputs that renders both the private layout of this checkout and the installed layout,
-so an installed catalog cannot drift from the tested one. It renders each Agent's instructions once,
-the session entries with their catalogs, Pi session's Task subagent files, and Protocol assets from
-the Protocol text alone; it starts no process and uses no network.
+The **package descriptor** `concorde.json` is the package's identity. Keeping it an input of the
+build means a version or licence change is never shipped with renders made before it.
 
-<a id="concept.distribution.build-manifest"></a>
+<a id="realization.distribution.build"></a>
 
-The **build manifest** is the one agreement with everything that must not use stale outputs:
-admission, Task context and Pi session each refuse work when a recorded source no longer matches
-([contract](interfaces.md#contract.distribution.build-manifest)). The build removes only outputs
-whose bytes the previous manifest recorded and stops on any unknown or edited file.
+The **build renderer** is a pure function of the source tree followed by a guarded write. Includes
+must be safe repository-relative Markdown paths, may not reach a Spec document, may not form a
+cycle or reach one file twice within a root, and must agree on audience; Protocol prompts include
+only Protocol text. An output is written only inside the build-owned locations
+`generated/protocol/` and `generated/build-manifest.json`, because `generated/` is shared; an owned
+output the build no longer produces is removed only when its bytes match the previous manifest,
+and links or unknown files stop the build before anything changes. The manifest lets any consumer
+check freshness cheaply by rehashing the recorded sources instead of rebuilding. The resolver still
+knows two source shapes of the removed Operation guidance and Agent Specs; no root uses them.
 
-<a id="concept.distribution.launcher"></a><a id="realization.distribution.launcher"></a><a id="realization.distribution.cli"></a>
+<a id="realization.distribution.command"></a>
 
-The **launcher** imports the Operation catalog and injects into admission what admission must not
-import: the declarations, Operations' dispatcher, the local installation service and a verified
-session selection. It also offers `--runtime-check` and `--native-context`, and handles SIGTERM like
-Ctrl-C. The **command-line interface** only routes subcommands to their owners.
+The **command entry points** are thin: they parse the command line, hand the request to the owning
+Module's function, and wrap the outcome in the shared envelope from Spec core. A command's meaning
+therefore changes only in its owner, and the entry points never interpret Specs themselves.
 
-<a id="concept.distribution.consumer-project"></a><a id="concept.distribution.receipt"></a><a id="concept.distribution.protocol-copy"></a><a id="realization.distribution.installer"></a>
+<a id="realization.distribution.protocol-copy-writer"></a>
 
-The **installer** installs into a **consumer project** and replaces only files whose bytes equal
-what its **installation receipt** recorded, owning `AGENTS.md` only within its block. It places the
-**Protocol copy** but never rebinds the project to it, and never ships Pi session's source-only files.
+The **Protocol copy writer** builds the copy from the tracked manifest and the rendered assets,
+after checking that the build is fresh and that each asset still has its recorded digest. A project
+therefore receives exactly the Protocol the manifest names, which is what Spec core's
+[Protocol binding](../spec-tooling/spec/module.md#concept.spec.protocol-binding) accepts.
 
-<a id="concept.distribution.managed-runtime"></a><a id="realization.distribution.runtime-provisioner"></a><a id="concept.distribution.local-installation"></a><a id="realization.distribution.local-installation-service"></a>
+<a id="realization.distribution.installer"></a>
 
-The **runtime provisioner** marks the **managed runtime** verified only after every capability's
-runtime check passed inside it. The **local installation service** verifies that a worktree holds a
-complete **local installation** of exactly the admitted package, installing one only on an explicit
-bootstrap, and never falls back to another environment.
+The **installer program** will reuse the Protocol copy writer and the build, and install the
+rendered main-session guidance; it is pending.
 
-Not enforced: Distribution sandboxes nothing, and its installation lock excludes only other
-installers. Why each choice was made is in [Design notes](design.md).
+<a id="realization.distribution.tests"></a>
+
+The **Distribution tests** will exercise the build, the command line and the installer on fixture
+projects; they are pending. The obligations they verify are in the
+[requirements](requirements.md) and [scenarios](scenarios.md).
 
 ## Relationships
 
 ```mermaid
 flowchart LR
-    accTitle: Distribution realizations and collaborators
-    accDescr: How the build, the launcher and the installer relate to each other and to their collaborators.
+    accTitle: Distribution structure
+    accDescr: The build renderer reads the package descriptor and records the build manifest; the Protocol copy writer writes the Protocol copy; the command entry points run the build and route commands to Spec core and Views; the installer program places the Protocol copy through the writer and installs the main-session guidance; Distribution uses Spec core, Views and Main session.
     build[Build renderer] -->|records| manifest[Build manifest]
-    build -->|renders| entry[Pi session / Session entry]
-    build -->|renders instructions from| agents[Agents]
-    build -->|reads capabilities from| operations[Operations]
-    check[Package check] -->|compares outputs with| manifest
-    launcher[Launcher] -->|hands each capability request to| admission[Request admission]
-    launcher -->|resolves capabilities through| operations
-    launcher -->|re-executes inside| runtime[Managed runtime]
-    installer[Installer] -->|installs into| consumer[Consumer project]
-    installer -->|writes| receipt[Installation receipt]
-    installer -->|deploys| protocol[Protocol copy]
-    installer -->|provisions through| provisioner[Runtime provisioner]
-    provisioner -->|verifies| runtime
-    service[Local installation service] -->|verifies| local[Local installation]
-    cli[Command-line interface] -->|routes docsite to| views[Views]
+    build -->|reads| descriptor[Package descriptor]
+    writer[Protocol copy writer] -->|writes| copy[Protocol copy]
+    command[Command entry points] -->|runs| build
+    command -->|routes validate and registry to| spec[Spec core]
+    command -->|routes docsite to| views[Views]
+    installer[Installer program] -->|places through| writer
+    installer -->|installs| mainsession[Main session]
+    distribution[Distribution] -->|uses| spec
+    distribution -->|uses| views
+    distribution -->|uses| mainsession
 ```
 
 <a id="uses-spec"></a>
 
-**Spec tooling** owns the Protocol text, the [Protocol binding](../spec/module.md#concept.spec.protocol-binding),
-the [registry](../spec/module.md#concept.spec.registry), the [structural checks](../spec/module.md#concept.spec.structural-check)
-and [typed values](../spec/module.md#concept.spec.typed-value). Distribution renders the Protocol
-assets, exports the registered schemas, rebinds the Protocol for `protocol-manifest --bind-project`
-and routes `validate` and `registry` to it. When Spec tooling rejects a project, Distribution reports
-that and changes nothing.
-
-<a id="uses-admission"></a>
-
-**Request admission** receives every [capability request](../harness/admission/module.md#concept.admission.capability-request)
-and returns the [result envelope](../harness/admission/module.md#concept.admission.result-envelope)
-the launcher prints. The launcher passes the [capability declarations](../harness/admission/module.md#concept.admission.capability-declaration)
-of the [declaration contract](../harness/admission/contracts.md#contract.admission.capability-declaration)
-unread, apart from resolving the name and entry point for the runtime check, and adds no check.
-
-<a id="uses-execution"></a>
-
-**Agent execution** prepares and accepts native [Agent calls](../harness/execution/module.md#concept.execution.agent-call)
-and [workflows](../harness/execution/module.md#concept.execution.workflow); the launcher's
-`--native-context` entry only routes a step to it and returns the step's result.
-
-<a id="uses-worktrees"></a>
-
-**Candidate worktrees** keeps [change status](../harness/worktrees/module.md#concept.worktrees.change-status)
-in the [primary worktree](../harness/worktrees/module.md#concept.worktrees.primary-worktree) and creates
-each [candidate](../harness/worktrees/module.md#concept.worktrees.candidate). `status` routes to it,
-`docsite` asks it whether the worktree is isolated, and relaying into a consumer candidate is when
-admission uses the local installation service.
-
-<a id="uses-observation"></a>
-
-**Observation** records passive [diagnostic spans](../harness/observation/module.md#concept.observation.diagnostic-span)
-for installer, provisioner and local installation steps; a span never changes a result.
-
-<a id="uses-agents"></a>
-
-**Agents** provides every [Agent definition](../agents/module.md#concept.agents.definition) and so
-the list of [Agents](../agents/module.md#concept.agents.agent). The build renders one instruction
-file per Agent and fails when a definition is missing or refused.
-
-<a id="uses-operations"></a>
-
-**Operations** keeps the [Operation catalog](../operations/module.md#concept.operations.catalog) of
-every [Operation](../operations/module.md#concept.operations.operation). The launcher resolves
-capabilities and hands admission its declarations and dispatcher; the build lists its public
-capabilities, with each entry's session path, in every catalog; the provisioner checks each one.
-
-<a id="uses-session"></a>
-
-**Pi session** defines the [session entry](../session/module.md#concept.session.session-entry), the
-[capability catalog](../session/module.md#concept.session.catalog) and its
-[contract](../session/interfaces.md#contract.session.catalog), the
-[guidance](../session/module.md#concept.session.guidance) format and the
-[session selection](../session/module.md#concept.session.selection). Distribution renders entries by
-that contract, calls Pi session's projector, omits everything marked
-[source-only](../session/requirements.md#req.session.source-only), and verifies an active selection
-through it in the launcher.
+**Spec core** owns `validate` and `registry`, the [structural checks](../spec-tooling/spec/module.md#concept.spec.structural-check)
+and the [registry](../spec-tooling/spec/module.md#concept.spec.registry) they work on, the Protocol
+text and manifest the build renders, and the
+[Protocol binding](../spec-tooling/spec/module.md#concept.spec.protocol-binding) that
+`protocol-manifest --bind-project` rewrites and the installer leaves to the developer.
+Distribution relies on Spec core's result envelope for every command and never interprets a Spec
+itself; when Spec core refuses a project, the command prints that refusal unchanged.
 
 <a id="uses-views"></a>
 
-**Views** publishes the Specs. `docsite` routes to its scaffold and prints its
-[proposal](../views/module.md#concept.views.scaffold-proposal); the installer ships `docsite/` by
-Views' [template inventory rule](../views/requirements.md#req.views.template-inventory), so installer
-and scaffold agree on the template.
+**Views** owns the docsite scaffold. The `docsite` command only routes `--propose` and `--apply` to
+it; the [scaffold proposal](../spec-tooling/views/module.md#concept.views.scaffold-proposal) and
+every file it writes are Views' responsibility, and an `--apply` without `--proposal` is refused
+before Views is called.
+
+<a id="uses-main-session"></a>
+
+**Main session** owns the guidance the main agent receives, authored under `prompts/main-session/`.
+Distribution renders it as a prompt root once it exists and the installer places the rendered
+[main-session guidance](../main-session/module.md#concept.main-session.guidance) into the project's
+Claude Code configuration without changing its content. If the guidance is missing or stale, the
+installer refuses instead of installing an older copy.

@@ -1,0 +1,91 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.implementation.module",
+    "owner": "module.implementation",
+    "role": "module"
+  },
+  "module": {
+    "title": "Implementation",
+    "owns": [
+      "specs/concorde/operations/implementation/module.md",
+      "specs/concorde/operations/implementation/requirements.md",
+      "specs/concorde/operations/implementation/scenarios.md",
+      "specs/concorde/operations/implementation/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.implementation.code-change",
+      "type": "concept",
+      "title": "Code change",
+      "meaning": "#concept.implementation.code-change"
+    },
+    {
+      "id": "concept.implementation.test-report",
+      "type": "concept",
+      "title": "Test report",
+      "meaning": "#concept.implementation.test-report"
+    },
+    {
+      "id": "realization.implementation.operations",
+      "type": "realization",
+      "title": "Implement and test Operations",
+      "meaning": "#realization.implementation.operations",
+      "entries": [
+        "src/concorde/implementation/",
+        "prompts/workers/implement.md",
+        "prompts/workers/test.md",
+        "tests/concorde/implementation/"
+      ],
+      "pending": [
+        "src/concorde/implementation/",
+        "prompts/workers/implement.md",
+        "prompts/workers/test.md",
+        "tests/concorde/implementation/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.implementation.operations",
+      "verb": "produces",
+      "target": "concept.implementation.code-change"
+    },
+    {
+      "type": "relates",
+      "source": "realization.implementation.operations",
+      "verb": "produces",
+      "target": "concept.implementation.test-report"
+    }
+  ],
+  "extensions": {}
+}

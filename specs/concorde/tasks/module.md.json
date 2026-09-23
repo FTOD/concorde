@@ -1,0 +1,105 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.tasks.module",
+    "owner": "module.tasks",
+    "role": "module"
+  },
+  "module": {
+    "title": "Tasks",
+    "owns": [
+      "specs/concorde/tasks/module.md",
+      "specs/concorde/tasks/contracts.md",
+      "specs/concorde/tasks/requirements.md",
+      "specs/concorde/tasks/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.tasks.task",
+      "type": "concept",
+      "title": "Task",
+      "meaning": "#concept.tasks.task"
+    },
+    {
+      "id": "concept.tasks.task-record",
+      "type": "concept",
+      "title": "Task record",
+      "meaning": "#concept.tasks.task-record"
+    },
+    {
+      "id": "concept.tasks.decision-log",
+      "type": "concept",
+      "title": "Decision log",
+      "meaning": "#concept.tasks.decision-log"
+    },
+    {
+      "id": "concept.tasks.task-state",
+      "type": "concept",
+      "title": "Task state",
+      "meaning": "#concept.tasks.task-state"
+    },
+    {
+      "id": "realization.tasks.store",
+      "type": "realization",
+      "title": "Task store",
+      "meaning": "#realization.tasks.store",
+      "entries": [
+        "src/concorde/tasks/",
+        "tests/concorde/tasks/"
+      ],
+      "pending": [
+        "src/concorde/tasks/",
+        "tests/concorde/tasks/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "writes",
+      "target": "concept.tasks.task-record"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "creates",
+      "target": "concept.tasks.decision-log"
+    },
+    {
+      "type": "relates",
+      "source": "concept.tasks.task-record",
+      "verb": "describes",
+      "target": "concept.tasks.task"
+    },
+    {
+      "type": "relates",
+      "source": "concept.tasks.task-record",
+      "verb": "holds",
+      "target": "concept.tasks.task-state"
+    },
+    {
+      "type": "relates",
+      "source": "concept.tasks.decision-log",
+      "verb": "explains the choices of",
+      "target": "concept.tasks.task"
+    }
+  ],
+  "extensions": {}
+}

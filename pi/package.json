@@ -1,9 +1,0 @@
-{
-  "name": "concorde-pi-runtime",
-  "private": true,
-  "type": "module",
-  "description": "Dependencies for the terminal Concorde Pi worker extension.",
-  "dependencies": {
-    "typebox": "1.1.38"
-  }
-}

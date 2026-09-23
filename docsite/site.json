@@ -243,8 +243,8 @@
     },
     "links": [
       {
-        "label": "Agents",
-        "to": "/specs/concorde/agents/module"
+        "label": "Harness",
+        "to": "/specs/concorde/harness/module"
       },
       {
         "label": "Spec Protocol",

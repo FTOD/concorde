@@ -36,11 +36,7 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--url")
     docsite.add_argument("--base-url")
     docsite.add_argument("--github-pages", action="store_true")
-    docsite.add_argument("--allow-primary-worktree", action="store_true")
     docsite.add_argument("--format", choices=["json"], default="json")
-
-    check_package = subparsers.add_parser("check-package")
-    check_package.add_argument("--format", choices=["json"], default="json")
 
     build = subparsers.add_parser("build")
     build.add_argument("--check", action="store_true")
@@ -51,122 +47,11 @@ def create_parser() -> argparse.ArgumentParser:
     protocol_manifest.add_argument("--bind-project", action="store_true")
     protocol_manifest.add_argument("--format", choices=["json"], default="json")
 
-    selection = subparsers.add_parser("select-session")
-    selection_mode = selection.add_mutually_exclusive_group(required=True)
-    selection_mode.add_argument("--mode", choices=["test"])
-    selection_mode.add_argument("--verify", type=Path)
-    selection.add_argument("--pi-entry", type=Path)
-    selection.add_argument("--runtime", type=Path)
-    selection.add_argument("--output", type=Path)
-
-    status = subparsers.add_parser("status")
-    status.add_argument("--register", type=Path)
-    status.add_argument("--task")
-    status.add_argument(
-        "--mode", choices=["operation", "maintenance", "direct"], default="maintenance"
-    )
-    status.add_argument("--change-id")
-    status.add_argument("--child")
-    status.add_argument(
-        "--phase", choices=["maintenance", "test", "task"], default="maintenance"
-    )
-    status.add_argument("--release", action="store_true")
-    status.add_argument("--manual-merge")
-    status.add_argument("--cleanup", choices=["pending", "retained", "removed"])
-
     return parser
 
 
 def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
-    if arguments.tool == "check-package":
-        from collections import Counter
-
-        from .package_validation import validate_package
-
-        findings = tuple(validate_package(root))
-        counts = Counter(finding.severity for finding in findings)
-        return ToolResult(
-            "check-package",
-            ".",
-            "invalid" if counts["error"] else "success",
-            findings=findings,
-        )
-    if arguments.tool == "status":
-        from ..delivery.manual_merge import record_manual_merge
-        from ..harness.change_worktree import ensure_change
-        from ..harness.status_store import all_status, coordinate_child, primary_root
-        from ..spec.repository import SpecError
-
-        if root.resolve() != primary_root(root) and any(
-            (arguments.register, arguments.child)
-        ):
-            raise SpecError(
-                "status coordination requires primary", "primary_session_required"
-            )
-        if arguments.register:
-            if primary_root(arguments.register) != root.resolve():
-                raise SpecError(
-                    "registered candidate belongs to another repository",
-                    "workspace_mismatch",
-                )
-            if not arguments.task:
-                raise SpecError("registration requires a task goal", "invalid_input")
-            result = ensure_change(
-                arguments.register.resolve(),
-                task={"task": arguments.task},
-                change_id=arguments.change_id,
-                allow_primary=True,
-                mode=arguments.mode,
-            )
-        elif arguments.child and arguments.change_id:
-            result = coordinate_child(
-                root,
-                arguments.change_id,
-                child_id=arguments.child,
-                phase=arguments.phase,
-                release=arguments.release,
-            )
-        elif (arguments.manual_merge or arguments.cleanup) and arguments.change_id:
-            # Without --manual-merge, --cleanup updates only the outcome of an
-            # already recorded manual merge; it is never silently ignored.
-            result = record_manual_merge(
-                root,
-                arguments.change_id,
-                commit=arguments.manual_merge,
-                cleanup=arguments.cleanup or "pending",
-            )
-        elif any(
-            (
-                arguments.child,
-                arguments.manual_merge,
-                arguments.release,
-                arguments.cleanup,
-            )
-        ):
-            raise SpecError("status update requires a change ID", "invalid_input")
-        else:
-            result = {"tasks": all_status(root)}
-        return ToolResult("status", ".", "success", result=result)
-    if arguments.tool == "select-session":
-        from .session_selection import load_selection, save_selection, select_session
-        from .build import BuildError
-
-        if arguments.verify:
-            if arguments.pi_entry or arguments.runtime or arguments.output:
-                raise BuildError(
-                    "--verify accepts only a saved selection, not replacement inputs"
-                )
-            selected = load_selection(root, arguments.verify)
-        else:
-            if arguments.runtime is None or arguments.pi_entry is None:
-                raise BuildError("selection requires --pi-entry and --runtime")
-            selected = select_session(
-                root, pi_entry=arguments.pi_entry, runtime=arguments.runtime
-            )
-            if arguments.output:
-                save_selection(root, arguments.output, selected)
-        return ToolResult("select-session", ".", "success", result=selected)
     if arguments.tool == "docsite":
         from ..views.docsite_scaffold import apply_docsite, propose_docsite
 
@@ -215,7 +100,7 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                             "error",
                             "generated/",
                             f"Build outputs are stale or missing: {', '.join(differences)}",
-                            "Run `python -m concorde build` to refresh private Pi and runtime outputs.",
+                            "Run `python3 scripts/concorde.py build` to refresh the generated outputs.",
                         ),
                     ),
                     result={"differences": list(differences)},
@@ -350,10 +235,7 @@ TOOLS = frozenset(
         "registry",
         "docsite",
         "build",
-        "check-package",
         "protocol-manifest",
-        "status",
-        "select-session",
     }
 )
 
@@ -395,15 +277,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             payload = tool_envelope(_protocol_manifest(arguments))
             sys.stdout.write(canonical_json(payload))
             return exit_code(payload["status"])
-        if arguments.tool == "docsite":
-            from ..harness.change_worktree import require_isolated_worktree
-
-            require_isolated_worktree(
-                arguments.project_root,
-                allow_primary_worktree=getattr(
-                    arguments, "allow_primary_worktree", False
-                ),
-            )
         result = dispatch(arguments)
         payload = tool_envelope(result)
     except Exception as error:  # noqa: BLE001 -- command boundary always returns the normative envelope

@@ -26,7 +26,9 @@ class ReportingBoundaryTests(unittest.TestCase):
             frozenset({"specs/service/module.md"}),
         )
 
-    @verifies("scenario.issues.report-authority")
+    @verifies(
+        "scenario.issues.report-unknown-owner", "scenario.issues.report-authority"
+    )
     def test_unknown_owner_is_honest_but_foreign_owners_paths_and_forged_provenance_are_refused(
         self,
     ):
@@ -46,7 +48,7 @@ class ReportingBoundaryTests(unittest.TestCase):
         self.assertEqual(2, len(list_issues(self.root)))
         self.assertFalse((self.root / ".concorde/status").exists())
 
-    @verifies("scenario.issues.report-authority")
+    @verifies("scenario.issues.report-authority", "scenario.issues.report-append")
     def test_reporter_cannot_append_to_an_issue_it_was_not_granted(self):
         first = self.reporter(report())["receipt"]
         _, revision = read_issue(self.root, first["issue_id"])

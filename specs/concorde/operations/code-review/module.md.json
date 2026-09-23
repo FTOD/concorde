@@ -1,0 +1,89 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.code-review.module",
+    "owner": "module.code-review",
+    "role": "module"
+  },
+  "module": {
+    "title": "Code review",
+    "owns": [
+      "specs/concorde/operations/code-review/module.md",
+      "specs/concorde/operations/code-review/requirements.md",
+      "specs/concorde/operations/code-review/scenarios.md",
+      "specs/concorde/operations/code-review/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.code-review.review",
+      "type": "concept",
+      "title": "Code review report",
+      "meaning": "#concept.code-review.review"
+    },
+    {
+      "id": "concept.code-review.finding",
+      "type": "concept",
+      "title": "Code review finding",
+      "meaning": "#concept.code-review.finding"
+    },
+    {
+      "id": "realization.code-review.operation",
+      "type": "realization",
+      "title": "Code review Operation",
+      "meaning": "#realization.code-review.operation",
+      "entries": [
+        "src/concorde/code_review/",
+        "prompts/workers/review-code.md",
+        "tests/concorde/code_review/"
+      ],
+      "pending": [
+        "src/concorde/code_review/",
+        "prompts/workers/review-code.md",
+        "tests/concorde/code_review/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.code-review.operation",
+      "verb": "produces",
+      "target": "concept.code-review.review"
+    },
+    {
+      "type": "relates",
+      "source": "concept.code-review.review",
+      "verb": "holds",
+      "target": "concept.code-review.finding"
+    }
+  ],
+  "extensions": {}
+}

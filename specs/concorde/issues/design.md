@@ -1,16 +1,16 @@
 # Issues design
 
 This topic explains the choices the [Issues](module.md) entry summarizes: how the store keeps
-records safe, why one lock serves the whole repository, how the reporting service stays within its
-limits, and why store validity is a configured check. Shapes and operations are in the
+records safe, what its lock serializes, how the reporting service stays within its limits, and why
+store validity is a configured check. Shapes and operations are in the
 [Issue interface](interface.md).
 
 ## One record, one source
 
 Every Issue file holds one identity heading and one JSON record, so the JSON is the single source of
 content and no prose copy can drift from it. An Issue's identity is derived from the reporting
-invocation and the reporter's key, not from a counter, so two branches never allocate the same
-identity and a retried report finds its earlier result. Reports are never rewritten; a later
+invocation and the reporter's key, not from a counter, so two branches never allocate conflicting
+identities and a retried report finds its earlier result. Reports are never rewritten; a later
 observation may classify the problem differently or name another owner, and the first report stays
 as it was accepted.
 
@@ -20,49 +20,46 @@ Each write checks the file's current byte digest against the revision its caller
 through a file transaction and syncs the directory before acknowledging. A reply of success means
 the record is on disk, and a concurrent writer is never silently overwritten. The store never
 deletes a record file, and it never runs Git: moving committed record files between branches, by
-creating a candidate, delivering or merging, is not a store write.
+committing on a task branch or merging it, is not a store write.
 
-## One lock for the repository
+## One lock per worktree
 
-All store writes of every worktree take one exclusive lock, `.concorde/runs/issues.lock` in the
-primary worktree's run records. Records are per-branch files, but one Host process may write in a
-candidate and in the primary, and identities are allocated without a counter; a single lock keeps
-allocation and publication from interleaving anywhere in the repository. The lock is cooperative:
-it orders the Host's own writers, and a hand edit bypasses it, which the revision check then detects
-at the next write. When the primary worktree cannot be found, the store refuses to write rather than
-lock locally.
+All store writes into one worktree take one exclusive lock, `.concorde/runs/issues.lock` of that
+worktree; the runs directory is ignored by Git, so the lock never enters history. Records are
+per-branch files, so writers in different worktrees never touch the same file, and because
+identities are derived rather than counted they need no shared allocation state either. The lock
+orders writers inside one worktree, such as several threads of one host process. It is
+cooperative: a hand edit bypasses it, and the revision check detects that edit at the next write.
 
 ## Form, not truth
 
 The store checks shapes, digests and legal transitions; it cannot judge whether evidence is true.
-That is why deciding who may close or reopen an Issue stays with the capabilities that do it.
+That is why the decision to close or reopen an Issue stays with its caller, normally the main agent
+on the branch that fixed the problem, so that the closure and the fix are merged together.
 
 ## The reporting service
 
 The service takes its limits from its caller before the reporter starts. Because the reporter never
 supplies provenance, a root path or a disposition, reporting cannot become a file-write grant or a
 way to forge who said what. Reports are saved the moment they are accepted, so they survive a
-reporter that later fails, times out, is cancelled or submits an invalid result; that survival says
-nothing about whether the reporter's own task succeeded.
-
-## Reports, Blockers and dispositions
-
-Reports are cheap and immediate, so workers can record everything they notice without ending their
-task. Blockers are task-local judgments recorded by the stage that made them, so replanning cannot
-lose a dependency and closing the Issue cannot silently release it. Dispositions need evidence, so a
-closed Issue means something was checked, not merely that someone stopped looking.
+reporter that later fails, times out or is cancelled; that survival says nothing about whether the
+reporter's own task succeeded.
 
 ## Store validity as a configured check
 
-Spec tooling validates Specs and knows nothing of Issues. Checking the records as this Module's
-configured check keeps that separation and still runs on every delivery, which runs every
-configured check; Issue bytes are part of no other Module's evidence. An open Issue whose owner was
-removed fails the check because it can no longer be solved; a closed one is only reported.
+Spec core validates Specs and knows nothing of Issues. Checking the records as this Module's
+configured check keeps that separation and still runs whenever this Module's checks run. An open
+Issue whose owner was removed fails the check because nobody can be asked to solve it; a closed one
+is only noted.
 
-## Typed values
+## Typed values and leftovers
 
-The report, receipt, selection and context shapes are registered with Spec tooling's typed-value
-registry by this Module as `concorde-issue-report@1`, `concorde-issue-receipt@1`,
-`concorde-issue-selection@1` and `concorde-issue-context@1`; the Blocker is a shape other types
-embed. Spec tooling does not know them. The shapes live in
-`src/concorde/issues/shapes.py`.
+The report and receipt shapes are registered with Spec core's typed-value registry as
+`concorde-issue-report@1` and `concorde-issue-receipt@1`; Spec core does not know them. The shapes
+live in `src/concorde/issues/shapes.py`.
+
+That file and the reference helpers still carry shapes of the removed autonomous Issue solving: a
+task-local blocker, a review-finding reference and the typed values `concorde-issue-selection@1`
+and `concorde-issue-context@1`. Nothing uses them, and this Specification makes no promise about
+them; they are candidates for removal, or for a contract of their own if a worker Operation comes
+to cite Issue reports in its result.

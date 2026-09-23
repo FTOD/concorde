@@ -1,0 +1,85 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.understanding.module",
+    "owner": "module.understanding",
+    "role": "module"
+  },
+  "module": {
+    "title": "Understanding",
+    "owns": [
+      "specs/concorde/operations/understanding/module.md",
+      "specs/concorde/operations/understanding/requirements.md",
+      "specs/concorde/operations/understanding/scenarios.md",
+      "specs/concorde/operations/understanding/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.understanding.assessment",
+      "type": "concept",
+      "title": "Assessment",
+      "meaning": "#concept.understanding.assessment"
+    },
+    {
+      "id": "concept.understanding.spec-gap",
+      "type": "concept",
+      "title": "Spec gap",
+      "meaning": "#concept.understanding.spec-gap"
+    },
+    {
+      "id": "realization.understanding.operation",
+      "type": "realization",
+      "title": "Understand Operation",
+      "meaning": "#realization.understanding.operation",
+      "entries": [
+        "src/concorde/understanding/",
+        "prompts/workers/understand.md",
+        "tests/concorde/understanding/"
+      ],
+      "pending": [
+        "src/concorde/understanding/",
+        "prompts/workers/understand.md",
+        "tests/concorde/understanding/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.understanding.operation",
+      "verb": "produces",
+      "target": "concept.understanding.assessment"
+    },
+    {
+      "type": "relates",
+      "source": "concept.understanding.assessment",
+      "verb": "reports",
+      "target": "concept.understanding.spec-gap"
+    }
+  ],
+  "extensions": {}
+}

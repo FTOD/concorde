@@ -1,14 +1,14 @@
 # Issue interface
 
-The canonical contracts, provenance, record file, store operations, reporting service and store
-check of [Issues](module.md). All shapes are closed: unknown fields are refused. Every shape below
-is registered as a typed value with version 1 under the name given with it.
+The canonical contracts, provenance, record file, store operations, reporting service and
+bookkeeping command of [Issues](module.md). All shapes are closed: unknown fields are refused. Both
+contracts below are registered as typed values with version 1 under the name given with them.
 
 ## Report
 
-A report is what a reporter submits: through the `report_issue` tool of an Agent call, through the
-Host's own reporting, or through the developer's `report` action. It is at most 64 KiB as canonical
-JSON; large logs are referenced by path, not copied.
+A report is what a reporter submits to its reporting service, or what a host-side caller passes to
+the store directly with the provenance it vouches for. It is at most 64 KiB as canonical JSON;
+large logs are referenced by path, not copied.
 
 ```concorde-contract
 {
@@ -82,164 +82,11 @@ JSON; large logs are referenced by path, not copied.
       "path": {"type": "string", "pattern": "^\\.concorde/issues/I-[0-9a-f]{32}\\.md$"}
     }
   },
-  "semantics": "The durable name of one accepted report, registered as typed value concorde-issue-receipt. report_id is the digest of the report together with its Host-supplied provenance, so the receipt always names that one immutable report, even after later reports or dispositions of the same Issue. path is the record file of issue_id. A receipt is returned only after the record is on disk. The report_issue tool answers {receipt, revision}, where revision is the digest of the record file after the write and is usable as a later expected_revision.",
+  "semantics": "The durable name of one accepted report, registered as typed value concorde-issue-receipt. report_id is the digest of the report together with its caller-supplied provenance, so the receipt always names that one immutable report, even after later reports or dispositions of the same Issue. path is the record file of issue_id. A receipt is returned only after the record is on disk. The reporting service answers {receipt, revision}, where revision is the digest of the record file after the write and is usable as a later expected_revision.",
   "example": {
     "issue_id": "I-0123456789abcdef0123456789abcdef",
     "report_id": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "path": ".concorde/issues/I-0123456789abcdef0123456789abcdef.md"
-  }
-}
-```
-
-## Blocker
-
-```concorde-contract
-{
-  "id": "contract.issues.blocker",
-  "version": 1,
-  "schema": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": ["issue_id", "report_id", "path", "blocked_step"],
-    "properties": {
-      "issue_id": {"type": "string", "pattern": "^I-[0-9a-f]{32}$"},
-      "report_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-      "path": {"type": "string", "pattern": "^\\.concorde/issues/I-[0-9a-f]{32}\\.md$"},
-      "blocked_step": {"type": "string", "minLength": 1}
-    }
-  },
-  "semantics": "A stage result's statement that the report named by the receipt fields stops one step of its task; blocked_step names that step. A Blocker is a judgment of the result that lists it, not a second problem record: it carries no problem text. A review finding's reference with severity blocking becomes the Blocker whose blocked_step is the finding's affected_task. Disposing the Issue does not release a Blocker, and releasing a Blocker does not dispose the Issue.",
-  "example": {
-    "issue_id": "I-0123456789abcdef0123456789abcdef",
-    "report_id": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "path": ".concorde/issues/I-0123456789abcdef0123456789abcdef.md",
-    "blocked_step": "Choose the retry limit for failed payments"
-  }
-}
-```
-
-## Issue selection
-
-```concorde-contract
-{
-  "id": "contract.issues.selection",
-  "version": 1,
-  "schema": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": ["type_id", "schema_version", "data"],
-    "properties": {
-      "type_id": {"const": "concorde-issue-selection"},
-      "schema_version": {"type": "integer", "const": 1},
-      "data": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["issue_id", "revision", "problem", "type", "feedback", "verification",
-                     "duplicates"],
-        "properties": {
-          "issue_id": {"type": "string", "pattern": "^I-[0-9a-f]{32}$"},
-          "revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-          "problem": {"type": "string", "minLength": 1},
-          "type": {"enum": ["bug", "gap", "limitation"]},
-          "feedback": {"type": "string"},
-          "verification": {"type": "string"},
-          "duplicates": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["issue_id", "revision", "problem"],
-              "properties": {
-                "issue_id": {"type": "string", "pattern": "^I-[0-9a-f]{32}$"},
-                "revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-                "problem": {"type": "string", "minLength": 1}
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "semantics": "One selected Issue given to a model call as task material. revision is the record digest the selection was made at. problem is the latest report's description and impact, type its classification. feedback carries the developer's clarification and the previous step's feedback, possibly empty; verification summarizes a completed verification, possibly empty. duplicates lists other open Issues offered as possible duplicates, each at the revision it was offered. A reporter whose call received a selection may append reports to the selected Issue. The selection adds no source to the call's context.",
-  "example": {
-    "type_id": "concorde-issue-selection",
-    "schema_version": 1,
-    "data": {
-      "issue_id": "I-0123456789abcdef0123456789abcdef",
-      "revision": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-      "problem": "A transfer leaves the balance unchanged.\nImpact: Customers see stale balances.",
-      "type": "bug",
-      "feedback": "",
-      "verification": "",
-      "duplicates": []
-    }
-  }
-}
-```
-
-## Issue context
-
-```concorde-contract
-{
-  "id": "contract.issues.context",
-  "version": 1,
-  "schema": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": ["type_id", "schema_version", "data"],
-    "properties": {
-      "type_id": {"const": "concorde-issue-context"},
-      "schema_version": {"type": "integer", "const": 1},
-      "data": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["observations"],
-        "properties": {
-          "observations": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["receipt", "description", "impact", "basis"],
-              "properties": {
-                "receipt": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["issue_id", "report_id", "path"],
-                  "properties": {
-                    "issue_id": {"type": "string", "pattern": "^I-[0-9a-f]{32}$"},
-                    "report_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-                    "path": {"type": "string", "minLength": 1}
-                  }
-                },
-                "description": {"type": "string", "minLength": 1},
-                "impact": {"type": "string", "minLength": 1},
-                "basis": {"type": "string", "minLength": 1}
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "semantics": "The problem text of referenced reports given to a later model call. Each observation holds one receipt, at most once, with that exact report's description, impact and basis, never the whole record, its provenance or later reports. A reporter whose call received an Issue context may cite those receipts in its result and may append to their Issues. The context adds no source to the call's context.",
-  "example": {
-    "type_id": "concorde-issue-context",
-    "schema_version": 1,
-    "data": {
-      "observations": [
-        {
-          "receipt": {
-            "issue_id": "I-0123456789abcdef0123456789abcdef",
-            "report_id": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            "path": ".concorde/issues/I-0123456789abcdef0123456789abcdef.md"
-          },
-          "description": "No Spec of module.payments states how often a failed payment is retried.",
-          "impact": "Planning cannot choose a retry limit without inventing a promise.",
-          "basis": "The Module entry and its requirements describe retries but give no limit."
-        }
-      ]
-    }
   }
 }
 ```
@@ -250,13 +97,16 @@ The caller of the reporting service supplies the provenance of every report, nev
 
 | Field | Meaning |
 | --- | --- |
-| `invocation_id` | the invocation the reporter belongs to |
-| `agent` | the reporting Agent, `host` or `developer` |
-| `operation` | the capability the invocation runs |
-| `phase` | the stage, or `report` for the developer's action |
+| `invocation_id` | the invocation the reporter belongs to, such as an Operation run |
+| `agent` | who reports, such as a worker's task type, `host`, `main-agent` or `developer` |
+| `operation` | the Operation the invocation runs, or a caller-chosen name outside Operations |
+| `phase` | the step of that invocation |
 | `target_id` | the reporting Module |
 | `context_id` | digest of the reporter's context |
-| `change_id`, `head` | the change and Git `HEAD`, each nullable |
+| `change_id`, `head` | the task and Git `HEAD`, each nullable |
+
+These fields are free strings apart from `context_id`; the store records them as given and derives
+the Issue identity from `invocation_id` and the report key.
 
 ## Record file
 
@@ -286,7 +136,7 @@ the owner is `null`. Its revision is the SHA-256 digest of the file's bytes.
 
 ## Store operations
 
-These are Host library operations. None launches a model or runs Git.
+These are library operations for host-side callers. None launches a model or runs Git.
 
 | Operation | Behaviour |
 | --- | --- |
@@ -298,8 +148,9 @@ These are Host library operations. None launches a model or runs Git.
 | `dispose_issue(root, id, expected_revision, ...)` | Under the lock, checks the revision (`stale_issue`), and for `duplicate` that the other Issue exists, is open and, when given, still has `duplicate_revision`; appends the disposition and returns the new revision. |
 | `restore_issue(root, id, original, expected_revision)` | Under the lock, writes the open `original` bytes only over exactly `expected_revision`; does nothing when `original` is already on disk; otherwise `stale_issue`. |
 
-Every write runs under the exclusive lock `.concorde/runs/issues.lock` of the primary worktree,
-which serializes the writes of all worktrees of the repository. It checks the file's previous
+Every write runs under the exclusive lock `.concorde/runs/issues.lock` of the worktree `root`
+names, which serializes the writes into that worktree; writes into different worktrees touch
+different files and take different locks. It checks the file's previous
 digest, publishes a staged file through a file transaction, and syncs the directory before
 returning. A failed write is never reported as success. No operation deletes a record file.
 
@@ -310,46 +161,45 @@ A caller binds one reporting service for one reporter before the reporter starts
 - **provenance**, as above; its `target_id` must be among the admitted owners;
 - **admitted owners**: the Modules the reporter may name as `owner_target_id`;
 - **evidence paths**: the files the reporter may cite;
-- **selected Issues**: the Issues the reporter may append to, besides those it created itself in
-  this call;
-- **admitted receipts**: the receipts the reporter was given, which its result may reference.
+- **selected Issues**: the Issues the reporter may append to, besides those it created itself
+  through the same service;
+- **admitted receipts**: the receipts the reporter was given, kept for a later reference check.
 
-For an Agent call, Agent execution derives these from the call's frozen context: the bound Module,
-the Modules it uses and the owner of every selected Spec document as owners; every selected Spec
-document path, every implementation file in the snapshot and every path of a review patch as
-evidence paths; the Issues of an Issue selection and of an Issue context as selected Issues. For
-the developer's `report` action the agent is `developer` and the phase `report`.
+The caller derives these limits from what the reporter is working on, for example the task's bound
+Modules as owners and their Spec and implementation files as evidence paths. No command or
+Operation binds a reporting service in this version.
 
 A report naming an owner outside the admitted owners, evidence outside the evidence paths, or an
 append to an Issue neither selected nor created earlier by the same service fails with
 `permission_denied`. The service answers `{receipt, revision}`.
 
-## References
+A reference check, kept from the previous design and unused in this version, accepts in a result
+only receipts the service created or admitted, each at most once (`permission_denied`,
+`invalid_completion`), and resolves each to its exact report (`stale_issue`).
 
-| Operation | Behaviour |
+## Bookkeeping command
+
+`python3 scripts/issues.py <action> [<id>] [--root <path>]` works on the project at `--root`
+(default the current directory) and refuses, with exit status 2 and `{"error": …}`, a directory
+without `.concorde/config.json`, a `show` without an Issue identity, an identity given to another
+action, or an unreadable record.
+
+| Action | Output |
 | --- | --- |
-| `validate_references(root, references, admitted)` | Every reference must name a receipt the reporter created or was admitted (`permission_denied`), at most once (`invalid_completion`), and must resolve to its report (`stale_issue`). |
-| `review_blockers(references)` | Turns each finding reference of severity `blocking` into the Blocker with `blocked_step` equal to its `affected_task`. |
-| `observation_context(root, references)` | Builds the Issue context of the referenced reports. |
-| `requires_contract_repair(root, references)` | True when a referenced report is a `gap` of subtype `missing-contract` or `spec-conflict`. |
+| `list` | `{"issues": [...]}`: the summary rows of `list_issues`, unfiltered |
+| `show <id>` | `{"issue": <record>, "revision": <digest>}` |
+| `check` | `{"errors": [...], "notes": [...]}`, exit status 1 when `errors` is nonempty and 0 otherwise |
 
-## Store check
+`check` reads the configured registry and every entry of `.concorde/issues/` except hidden files
+such as `.gitignore`. Each error names the file: an entry that is not a regular file named
+`I-<32 hex digits>.md`, a record that does not read as valid, or an open Issue whose owner is not a
+registered Module (`<id> names unknown owner <module>`). A closed Issue with an unknown owner
+produces the same text as a note, which does not change the exit status. An absent directory
+passes. Concorde's configuration registers it as the configured check `check.issues.store` of
+`module.issues`, with the argument vector `["{python}", "scripts/issues.py", "check"]` and a
+60-second timeout.
 
-`python3 scripts/issues.py check [--root <path>]` reads every record under `.concorde/issues/` and
-the project registry, prints one JSON finding per problem and exits nonzero when any record is
-invalid or any open Issue's owner is not a registered Module. A closed Issue with an unknown owner
-is printed as a finding and does not change the exit status. An absent directory passes. Concorde's
-configuration registers it as:
-
-```json
-{"id": "check.issues.store", "module": "module.issues",
- "argv": ["{python}", "scripts/issues.py", "check"],
- "timeout_seconds": 60,
- "inputs": [".concorde/issues", ".concorde/specs.json"]}
-```
-
-`list` and `show <id>` print the summary rows or one record with its revision. The script refuses a
-directory that is not an initialized Concorde project.
+The command records no report and no disposition.
 
 ## Errors
 

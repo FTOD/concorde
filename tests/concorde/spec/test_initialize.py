@@ -6,7 +6,6 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
 
 from concorde.distribution.project_defaults import install_project_defaults
 from concorde.spec import initialize
@@ -14,7 +13,7 @@ from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from tests.concorde.support.spec_project import CONFIGURATION, PACKAGE
+from tests.concorde.support.spec_project import PACKAGE
 
 
 class InitialModuleTests(unittest.TestCase):
@@ -29,7 +28,7 @@ class InitialModuleTests(unittest.TestCase):
             install_project_defaults(
                 root, PACKAGE
             )  # the installer's outputs precede initialization
-            proposal = project_proposal(root, PACKAGE, "New project", CONFIGURATION)
+            proposal = project_proposal(root, PACKAGE, "New project")
             self.assertEqual(
                 [
                     ".concorde/config.json",
@@ -112,7 +111,7 @@ class InitialModuleTests(unittest.TestCase):
                 (root / path).parent.mkdir(parents=True, exist_ok=True)
                 (root / path).write_text(content)
             install_project_defaults(root, PACKAGE)
-            proposal = project_proposal(root, PACKAGE, "App", CONFIGURATION)
+            proposal = project_proposal(root, PACKAGE, "App")
             metadata = json.loads(
                 next(
                     f for f in proposal["files"] if f["path"].endswith("module.md.json")
@@ -144,7 +143,7 @@ class InitialModuleTests(unittest.TestCase):
             (root / "README.md").write_text("# Existing project\n")
             before = sorted(str(p.relative_to(root)) for p in root.rglob("*"))
             with self.assertRaises(SpecError) as raised:
-                project_proposal(root, PACKAGE, "New project", CONFIGURATION)
+                project_proposal(root, PACKAGE, "New project")
             self.assertEqual("not_installed", raised.exception.code)
             self.assertEqual(
                 before, sorted(str(p.relative_to(root)) for p in root.rglob("*"))
@@ -161,7 +160,7 @@ class InitialModuleTests(unittest.TestCase):
             apply_project_proposal(
                 root,
                 PACKAGE,
-                project_proposal(root, PACKAGE, "New project", CONFIGURATION),
+                project_proposal(root, PACKAGE, "New project"),
             )
             paths = [
                 ".concorde/config.json",
@@ -171,7 +170,7 @@ class InitialModuleTests(unittest.TestCase):
             ]
             before = {path: (root / path).read_bytes() for path in paths}
             with self.assertRaises(SpecError) as raised:
-                project_proposal(root, PACKAGE, "Second project", CONFIGURATION)
+                project_proposal(root, PACKAGE, "Second project")
             self.assertEqual("already_initialized", raised.exception.code)
             self.assertEqual(
                 before, {path: (root / path).read_bytes() for path in paths}
@@ -188,7 +187,7 @@ class InitialModuleTests(unittest.TestCase):
             from concorde.distribution.project_defaults import install_project_defaults
 
             install_project_defaults(root, PACKAGE)
-            original = project_proposal(root, PACKAGE, "New project", CONFIGURATION)
+            original = project_proposal(root, PACKAGE, "New project")
 
             def mutated(update):
                 proposal = copy.deepcopy(original)
@@ -289,13 +288,7 @@ class ProposalBindingTests(unittest.TestCase):
     """Apply accepts only the exact proposal propose returned, named by its digest."""
 
     def init(self, root, data):
-        request = SimpleNamespace(
-            host=SimpleNamespace(
-                mode="execute", project_root=root, package_root=PACKAGE
-            ),
-            data=data,
-        )
-        return initialize.run(request)["data"]
+        return initialize.initialize(root, PACKAGE, data)
 
     @verifies(
         "scenario.spec.reject-invalid-proposal",
@@ -310,7 +303,7 @@ class ProposalBindingTests(unittest.TestCase):
             (root / "app.py").write_text("print('app')\n")
             proposed = self.init(
                 root,
-                {"action": "propose", "name": "App", "configuration": CONFIGURATION},
+                {"action": "propose", "name": "App"},
             )
             proposal, named = proposed["proposal"], proposed["proposal_digest"]
             self.assertEqual(digest(proposal), named)

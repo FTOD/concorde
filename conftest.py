@@ -8,10 +8,3 @@ classes under ``tests/concorde``; pytest-xdist only schedules them across worker
 """
 
 pytest_plugins = ["tests.concorde.support.pytest_timing"]
-
-
-def pytest_sessionstart(session):
-    """Register every owner's typed values once per test process, as the launcher does."""
-    from concorde.operations.catalog import register_types
-
-    register_types()

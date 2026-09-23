@@ -27,7 +27,6 @@ from concorde.views.docsite_template import (
     adapter_files,
     workflow_template,
 )  # noqa: E402
-from tests.concorde.support.operation_json import CONFIGURATION
 
 IGNORED_PACKAGE_DIRS = {
     "node_modules",
@@ -49,7 +48,7 @@ def _init_project(
     apply_project_proposal(
         root,
         REPOSITORY_ROOT,
-        project_proposal(root, REPOSITORY_ROOT, name, CONFIGURATION, module_id),
+        project_proposal(root, REPOSITORY_ROOT, name, module_id),
     )
 
 
@@ -470,7 +469,6 @@ class DocsiteScaffoldTests(unittest.TestCase):
                     str(self.root),
                     "docsite",
                     "--propose",
-                    "--allow-primary-worktree",
                 ]
             )
         self.assertEqual(exit_code, 0)
@@ -487,7 +485,6 @@ class DocsiteScaffoldTests(unittest.TestCase):
                     str(self.root),
                     "docsite",
                     "--apply",
-                    "--allow-primary-worktree",
                 ]
             )
         self.assertEqual(exit_code, 1)

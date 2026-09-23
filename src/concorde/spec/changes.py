@@ -1,4 +1,5 @@
 """Digest-bound, rollback-safe document/configuration changes owned by the host."""
+
 from __future__ import annotations
 
 import os
@@ -15,13 +16,22 @@ def file_change(root: Path, path: str, content: str) -> dict:
     return {"path": path, "before_digest": before, "content": content}
 
 
-def apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]:
+def apply_files(
+    root: Path, changes: list[dict], allowed: set[str], *, verify=None
+) -> list[str]:
     backups: dict[str, bytes | None] = {}
     if not changes or len({x["path"] for x in changes}) != len(changes):
-        raise SpecError("change set must be nonempty with unique paths", "invalid_proposal")
+        raise SpecError(
+            "change set must be nonempty with unique paths", "invalid_proposal"
+        )
     for item in changes:
-        if set(item) != {"path", "before_digest", "content"} or item["path"] not in allowed:
-            raise SpecError("change is outside its host-authorized boundary", "permission_denied")
+        if (
+            set(item) != {"path", "before_digest", "content"}
+            or item["path"] not in allowed
+        ):
+            raise SpecError(
+                "change is outside its host-authorized boundary", "permission_denied"
+            )
         if not isinstance(item["content"], str):
             raise SpecError("document content must be UTF-8 text", "invalid_proposal")
         path = checked_path(root, item["path"])
@@ -30,9 +40,12 @@ def apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=No
             raise SpecError(f"stale change input: {item['path']}", "stale_proposal")
         backups[item["path"]] = before
     changed = []
+
     def write(path: Path, data: bytes):
         path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor, temporary = tempfile.mkstemp(prefix=".concorde-write-", dir=path.parent)
+        descriptor, temporary = tempfile.mkstemp(
+            prefix=".concorde-write-", dir=path.parent
+        )
         try:
             with os.fdopen(descriptor, "wb") as stream:
                 stream.write(data)
@@ -41,11 +54,13 @@ def apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=No
             os.replace(temporary, path)
         finally:
             Path(temporary).unlink(missing_ok=True)
+
     try:
         for item in changes:
             path = checked_path(root, item["path"])
-            observed=read_file(root,item["path"]) if path.exists() else None
-            if observed!=backups[item["path"]]:raise SpecError("source changed during apply","stale_proposal")
+            observed = read_file(root, item["path"]) if path.exists() else None
+            if observed != backups[item["path"]]:
+                raise SpecError("source changed during apply", "stale_proposal")
             write(path, item["content"].encode())
             changed.append(item["path"])
         if verify:
@@ -62,8 +77,11 @@ def apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=No
     return changed
 
 
-def confirm_pending_files(root: Path, package_root: Path | None = None) -> tuple[list[dict], list[str]]:
+def confirm_pending_files(
+    root: Path, package_root: Path | None = None
+) -> tuple[list[dict], list[str]]:
     """Confirm existing entries in metadata without changing human reading."""
     from .content_changes import confirm_pending_units
     from .repository import SpecRepository
+
     return confirm_pending_units(SpecRepository(root, package_root))

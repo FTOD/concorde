@@ -2,7 +2,7 @@
 
 These words are used by every part of Concorde, so they are defined once here, at the root, and
 imported by the Modules that use them. Words that belong to one Module's own interface, such as
-Agent, Operation, Candidate or Issue, are defined by that Module instead. Read this page first if
+Operation, Task, Grant or Issue, are defined by that Module instead. Read this page first if
 Concorde is new to you.
 
 ## Terminology
@@ -10,108 +10,116 @@ Concorde is new to you.
 | Term | Definition |
 | --- | --- |
 | Developer | The person who uses Concorde to specify, change and understand a project. |
-| User session | The developer's Pi coding-agent session with Concorde's session integration loaded, which talks with the developer, reads and edits Specs, and decides which Concorde capability to call next. |
-| Task subagent | A fresh Pi agent, either the tester or the maintenance worker, to which the user session hands one complete task in one fixed worktree and which cannot delegate further. |
-| Capability | One named Concorde entry, such as `concorde-plan`, that the user session calls through the Pi `concorde` tool. |
+| Main agent | The developer-facing Claude Code session in the primary worktree that discusses the project, splits work into tasks, runs Operations and merges their results. |
+| Worker | One headless Claude Code process that performs one bounded task of one task type under a frozen grant and reports only to the Operation host that launched it. |
 | Module | One cohesive responsibility of the software, with its own Spec; it need not be a package or directory. |
 | Spec | The documents in which a Module explains what it is for, how to use it, how it is designed and what it precisely promises. |
-| Context | Everything one Agent call may know: the union of its Spec context, implementation context, capability context and task context. |
-| Spec context | The read-only reading that the bound Modules' declarations select: the Protocol's SpecContext of those Modules together with their ExternalContext. |
-| Implementation context | The code side of a call's context: the names of the bound Modules' implementation files, and the contents of their implementation scope when the task boundary grants them. |
-| Capability context | The definitions of the tools an Agent may use together with the contracts of the Operations and Host services those tools reach. |
-| Task context | The material produced for one task, namely the task and its constraints, the admitted stage artifacts and workspace metadata, which adds no Spec or code source. |
-| Boundary | The complete read and write limits one task receives: what it may read and what it may change. |
-| Host | The trusted, non-model part of Concorde that admits requests, prepares Agent calls, checks their results and records what was accepted. |
-| Worker | One fresh Pi agent that pi-subagents launches for one Agent call of a task, such as writing a plan or reviewing code. |
+| Task type | One of the six Protocol task types (understand, specify, implement, test, review-spec, review-code) that fixes the access level of every boundary set a task receives. |
+| Context | Everything one worker may know: the union of its Spec context, implementation context, capability context and task context. |
+| Spec context | The read-only documents the bound Modules' declarations select: the Protocol's SpecContext of those Modules together with their ExternalContext. |
+| Implementation context | The code side of a worker's context: the names of the bound Modules' implementation files, and the contents of those files when the task type grants them. |
+| Capability context | The tools a worker may use and the contracts those tools reach, which tell it what it can do and never what the project promises. |
+| Task context | The material produced for one task, namely its brief, constraints and admitted artifacts, which adds no Spec or code source. |
+| Boundary | The read and write limits one task receives, fixed by its task type and its bound Modules. |
 | Evidence | A recorded check or review result, bound to the exact inputs it examined. |
+| Escalation | A structured report of a problem one tier cannot resolve, with its evidence and options, passed to the tier above. |
 
-The words fall into four groups: who works (developer, user session, Task subagent), what is called
-and by whom (capability, Host, worker), what is described (Module, Spec), and what a model may know
-and do (context and its four kinds, boundary, evidence).
+The words fall into four groups: who works (developer, main agent, worker), what is described
+(Module, Spec), what a worker may know and do (task type, context and its four kinds, boundary),
+and how results and problems travel (evidence, escalation).
 
-## The people and sessions
+## The people and agents
 
-<a id="concept.concorde.developer"></a><a id="concept.concorde.user-session"></a><a id="concept.concorde.task-subagent"></a>
+<a id="concept.concorde.developer"></a><a id="concept.concorde.main-agent"></a>
 
-The **developer** works through a **user session**: an ordinary Pi coding-agent conversation in
-which Concorde's session integration is loaded. The user session is where understanding and
-decisions happen. It reads Specs, answers questions, edits Specs directly when the developer agrees,
-and chooses which capability to call next. Concorde never decides the next step on its own, and no
-capability calls the next one.
+The **developer** works with a **main agent**: an ordinary Claude Code session opened in the
+project's primary worktree. The main agent is where understanding and decisions happen. It
+discusses the state of the project with the developer, answers questions, and sets the direction
+of larger changes. It splits work into tasks, each a branch with its own worktree, decides which
+tasks run in parallel, and runs Operations inside those worktrees. Concorde adds no permission
+limits to the main agent, but the main agent normally does not edit the project itself.
 
-When a task is large or needs isolation, the user session can hand it to a **Task subagent**: a
-fresh Pi agent with its own worktree and an explicit task. Two kinds exist. The **tester** runs
-independent tests of a candidate and reports failures without repairing them. The **maintenance
-worker** authors a change to Concorde's own source checkout. A Task subagent does the whole task and
-reports back; it cannot delegate further. Task subagents are not Agents: they are defined,
-projected and guarded by the Pi session Module, not by the Agents Module.
+The main agent decides ordinary design uncertainties on its own, records them, and reports them at
+the end. It asks the developer only when a decision has a major impact.
 
-## Capabilities, Host and workers
+<a id="concept.concorde.worker"></a>
 
-<a id="concept.concorde.capability"></a><a id="concept.concorde.host"></a><a id="concept.concorde.worker"></a>
-
-A **capability** is what the user session calls: `concorde-plan`, `concorde-implement`,
-`concorde-validate` and the others listed in the [Framework entry](module.md#usage). Every call goes
-through the **Host**, the deterministic part of Concorde. The Host checks the request, binds it to a
-Module and a worktree, prepares any model work, and later accepts or rejects what came back.
-
-Model work runs as **workers**. A worker is one fresh Pi agent, launched through the pi-subagents
-extension for one Agent call, holding one bound context. A worker's answer is only a proposal. It
-becomes a result when the Host has checked it against the current inputs. This split is the main
-safety property of Concorde: nothing a model says can by itself change what counts as accepted.
+A **worker** is one headless Claude Code process that an Operation host launches for one bounded
+task, such as assessing a Module, changing its Spec or changing its code. It works under a frozen
+grant computed from the Specs of the task's worktree, needs no human input, and reports only to the
+host that launched it. It never touches Git, never runs Operations and never starts other agents.
+A worker's answer is a proposal: the host audits what it changed and runs the checks itself before
+anything counts.
 
 ## Specs, context and boundaries
 
 <a id="concept.concorde.module"></a><a id="concept.concorde.spec"></a>
 
-A **Module** is one responsibility, such as planning a change or publishing documentation. Its
+A **Module** is one responsibility, such as reviewing code or publishing documentation. Its
 **Spec** is the set of documents it owns, written under the Spec Protocol: an entry that explains
 the Module, optional topics, and implementation documents with precise requirements, scenarios and
-contracts. A Module may span several directories, share files with others, or have no files at all.
+contracts. A Module may span several directories, share files with others, or have no files at
+all.
+
+<a id="concept.concorde.task-type"></a>
+
+Every task has a **task type**. The Spec Protocol defines six of them and, for each, the access
+level of every boundary set of the bound Modules: `understand` reads Specs and only the names of
+code files, `specify` may change the bound Modules' own documents, `implement` may change their
+code, `test` and `review-code` read their code, and `review-spec` reads their Specs.
 
 <a id="concept.concorde.context"></a>
 
-The **context** of one Agent call is everything the call may know. It always has the same four
-kinds, each computed from declarations rather than chosen by hand. Some kinds may be empty for a
-given call, but never all four.
+The **context** of one worker is everything it may know. It always has the same four kinds, each
+computed from declarations or produced for the task rather than chosen by hand. Some kinds may be
+empty for a given task, but never all four.
 
 <a id="concept.concorde.spec-context"></a>
 
-The **Spec context** is what the Protocol calls the SpecContext of the bound Modules, the documents
-they own and the documents their `contains`, `uses` and `includes` select, one level deep, together
-with their ExternalContext, the pinned third-party material they include. It is read only. A
-provider's Specs arrive here instead of its code.
+The **Spec context** is what the Protocol calls the SpecContext of the bound Modules, the
+documents they own and the documents their `contains`, `uses` and `includes` select, one level
+deep, together with their ExternalContext, the pinned third-party material they include. It is
+read only. A provider's Specs arrive here instead of its code.
 
 <a id="concept.concorde.implementation-context"></a>
 
 The **implementation context** starts from the Protocol's ImplementationContext, the names of the
-files the bound Modules' realizations bind. Only when the task boundary grants it, as for a
-programmer or a code reviewer, does it also carry the contents of the files in the bound Modules'
-ImplementationScope; a planner sees only the names.
+files the bound Modules' realizations bind. Only when the task type grants it, as for
+`implement`, `test` and `review-code`, does it also carry the contents of the files in the bound
+Modules' ImplementationScope; an `understand` worker sees only the names.
 
 <a id="concept.concorde.capability-context"></a>
 
-The **capability context** is not a Protocol set. It is the definition of each tool the bound Agent
-may use, taken from the Agent's definition, and the contracts of the Operations and Host services
-those tools reach, such as the Issue report service or the Host's check runner. It tells the model
+The **capability context** is not a Protocol set. It is the list of tools the worker may use, fixed
+by its Operation and task type, and the contract of the result it must return. It tells the model
 what it can do, never what the project promises.
 
 <a id="concept.concorde.task-context"></a>
 
-The **task context** is what the Protocol calls task material: the task and its constraints, the
-stage artifacts admitted for this step (an accepted plan, a task list, a review result) and
-metadata about the workspace. It is produced for the task and adds no source; it never replaces a
-Spec document or a file.
+The **task context** is what the Protocol calls task material: the brief with the task and its
+constraints, the admitted artifacts of earlier steps, such as an accepted assessment or the diff to
+review, and the explicit lists of paths the worker may change, read or only know by name. It is
+produced for the task and adds no source; it never replaces a Spec document or a file.
 
 <a id="concept.concorde.boundary"></a>
 
-A task's **boundary** adds what it may change: typically the bound Modules' own documents or their
-implementation files, depending on the task. The Protocol defines the sets a boundary is composed
-from; which sets a task receives, and how far Concorde enforces them, is explained by the
-[Harness](harness/module.md).
+A task's **boundary** is the read and write limits its task type assigns to its bound Modules. The
+Protocol defines the sets and the task types; how far Concorde enforces the boundary of a worker is
+explained by the [Harness](harness/module.md).
+
+## Results and problems
 
 <a id="concept.concorde.evidence"></a>
 
 **Evidence** is what a check or an independent review recorded about specific inputs. When any of
 those inputs change, the evidence no longer applies; it is never a permanent property of a Module,
 and a Spec never stores it.
+
+<a id="concept.concorde.escalation"></a>
+
+An **escalation** is how a problem travels up. A worker that cannot finish returns a structured
+result that names the problem, what it tried, its evidence, the options it sees and its
+recommendation. The Operation host adds the evidence it produced itself, such as audit findings and
+check output, and never turns a worker's claim into a fact. The main agent decides what it can,
+records the decision in the task's decision log, and escalates to the developer only when the
+impact is major.

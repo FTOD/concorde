@@ -1,72 +1,49 @@
 # Framework requirements
 
-These obligations hold across the whole Framework. Each is one that no single Module can keep
-alone: every Module named in its explanation has to keep its part. A Module's own obligations are
-in that Module's requirements, and are linked from here rather than restated.
+These requirements hold for the Framework as a whole. Each Module states the precise behaviour it
+contributes; a requirement here promises what the Modules achieve together.
+
+## Runtime
+
+### req.concorde.claude-code-only — Claude Code is the only agent runtime
+
+The Framework SHALL run its main-agent guidance and every worker on Claude Code only in this version.
+
+Pi and pi-subagents are not supported. A future version may add them without changing the Spec
+Protocol, because the Protocol defines visibility, not how an agent is run.
 
 ## Boundaries
 
-### req.concorde.routing-no-access — Selection grants no access
+### req.concorde.grant-from-task-worktree — Grants come from the task's own Specs
 
-Selecting a Module or a scenario for a request SHALL NOT by itself widen what the Host grants an
-Agent call beyond the boundary sets of the Modules the call is bound to.
+Every grant a worker receives SHALL be computed from the Specs in the worktree of the task it works on.
 
-Spec tooling computes the sets, Task context composes the call's context from them, and Agent
-execution launches the call with that context. A scenario focus, a link, a registry entry or a
-Module named in a request's text adds nothing. How far the grant is enforced on a running worker is
-stated honestly in the [Harness](harness/module.md).
+### req.concorde.no-wider-than-type — A worker never exceeds its task type
 
-### req.concorde.read-no-mutate — Read-only capabilities change nothing
+A worker's readable and writable paths SHALL NOT exceed what its task type assigns to its bound Modules.
 
-A read or preview capability SHALL NOT modify project Specs, implementation files or the registry.
+### req.concorde.workers-no-git — Workers have no Git access
 
-Reporting an Issue while doing read-only work is the one permitted side effect: it adds an Issue
-record and gives the reporting Agent no other write access. A preview is any call that the
-capability declares as describing its effect instead of performing it.
+A worker SHALL NOT be able to read or change Git metadata; diffs, commits and merges belong to the host and the main agent.
 
-### req.concorde.dependency-layering — Dependencies follow the layering rules
+## Results and problems
 
-Every `uses` declared by a Concorde Module SHALL target a provider that the [dependency layering
-rules](module.md#dependency-layering) permit for that Module.
+### req.concorde.escalation-evidence — A problem travels up with its evidence
 
-The rules are decidable from the registry alone. They keep the foundations free of the Modules
-built on them, which is what keeps each Module's Spec context small.
+Every Operation result that is not successful SHALL carry the problem, the evidence the host produced and the worker's own report kept apart.
 
-## Results
+### req.concorde.spec-gaps-stop — Automatic rounds never repair Specs
 
-### req.concorde.versioned-result — Every call returns a versioned result
+An Operation SHALL stop and return an escalation instead of resuming a worker when the failure is a Spec gap, a needed path outside the grant, or a failed structural Spec check.
 
-Every capability call SHALL return a versioned result that keeps an admission failure, an execution
-failure and the provider's domain outcome distinct.
-
-Request admission defines the result envelope; each provider must map its own outcomes into the
-domain part and never report an execution failure as a domain outcome, or the reverse.
-
-### req.concorde.no-stale-replay — Repeated mutations use current state
-
-A repeated mutating request SHALL be admitted against the current saved state, or require a fresh
-proposal, instead of replaying an effect computed from stale inputs.
-
-Every provider re-reads its inputs and compares them with what the earlier attempt recorded; a
-proposal-based capability such as `concorde-init` or `concorde-configure` refuses a proposal whose
-recorded inputs have changed.
+Only failures of configured checks against code are fed back to the same worker automatically.
 
 ## Change control
 
-### req.concorde.spec-gaps-stop — Automatic loops never repair Specs
+### req.concorde.delivery-separate — Delivery is its own Operation
 
-An automatic revision loop SHALL NOT change a Spec document to resolve a gap or finding it
-produced.
+Changes of a task SHALL reach the task branch only through the `delivery` Operation, which commits them together with their evidence.
 
-A workflow or Graph may repeat Agent calls to repair code after a failed check or a blocking code
-review, but a missing or contradictory promise stops the work and is reported for the developer.
-Spec documents change only through the user session or a Task subagent acting for it. An Issue solver may still close an Issue as a duplicate or as not actionable
-on its own; that changes an Issue record, not a Spec.
+### req.concorde.merge-by-main-agent — The main agent merges delivered tasks
 
-### req.concorde.delivery-separate — Delivery needs its own request
-
-Delivering a candidate SHALL require its own explicit request after the candidate is ready.
-
-No other capability delivers. Validation marks a candidate ready and stops there; Delivery
-publishes it on its own branch; updating the primary branch is a further request that states the
-developer's explicit merge authorization.
+The main agent SHALL be able to merge a delivered task branch into the primary branch without asking the developer for authorization.

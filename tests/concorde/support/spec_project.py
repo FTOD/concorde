@@ -5,13 +5,8 @@ from pathlib import Path
 
 from concorde.distribution.project_defaults import install_project_defaults
 from concorde.spec.initialize import apply_project_proposal, project_proposal
-from concorde.spec.typed_data import typed
 
 PACKAGE = Path(__file__).resolve().parents[3]
-CONFIGURATION = typed(
-    "concorde-operation-configuration",
-    {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
-)
 MIRRORED = ("owns", "contains", "uses", "includes", "participates")
 
 
@@ -590,10 +585,9 @@ class SpecProject:
             self.root,
             ".concorde/config.json",
             {
-                "profile_version": 16,
+                "profile_version": 17,
                 "registry": ".concorde/specs.json",
                 "protocol": protocol_binding(PACKAGE),
-                "operation_configuration": CONFIGURATION,
                 "checks": list(checks),
             },
         )
@@ -660,7 +654,7 @@ def project(root):
     apply_project_proposal(
         root,
         PACKAGE,
-        project_proposal(root, PACKAGE, "Bank", CONFIGURATION, "scope.bank"),
+        project_proposal(root, PACKAGE, "Bank", "scope.bank"),
     )
     for path in ("specs/project/module.md", "specs/project/module.md.json"):
         (root / path).unlink()

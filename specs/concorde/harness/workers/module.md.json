@@ -1,0 +1,184 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.harness-workers.module",
+    "owner": "module.harness.workers",
+    "role": "module"
+  },
+  "module": {
+    "title": "Workers",
+    "owns": [
+      "specs/concorde/harness/workers/module.md",
+      "specs/concorde/harness/workers/launch.md",
+      "specs/concorde/harness/workers/contracts.md",
+      "specs/concorde/harness/workers/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.grant",
+          "concept.spec.context-identity"
+        ]
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks",
+        "relies_on": [
+          "concept.checks.configured-check",
+          "concept.checks.check-result"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.workers.worker-settings",
+      "type": "concept",
+      "title": "Worker settings",
+      "meaning": "#concept.workers.worker-settings"
+    },
+    {
+      "id": "concept.workers.deny-rules",
+      "type": "concept",
+      "title": "Deny rules",
+      "meaning": "#concept.workers.deny-rules"
+    },
+    {
+      "id": "concept.workers.write-hook",
+      "type": "concept",
+      "title": "Write hook",
+      "meaning": "#concept.workers.write-hook"
+    },
+    {
+      "id": "concept.workers.brief",
+      "type": "concept",
+      "title": "Brief",
+      "meaning": "#concept.workers.brief"
+    },
+    {
+      "id": "concept.workers.worker-result",
+      "type": "concept",
+      "title": "Worker result",
+      "meaning": "#concept.workers.worker-result"
+    },
+    {
+      "id": "concept.workers.audit",
+      "type": "concept",
+      "title": "Write audit",
+      "meaning": "#concept.workers.audit"
+    },
+    {
+      "id": "concept.workers.resume-round",
+      "type": "concept",
+      "title": "Resume round",
+      "meaning": "#concept.workers.resume-round"
+    },
+    {
+      "id": "concept.workers.run-record",
+      "type": "concept",
+      "title": "Run record",
+      "meaning": "#concept.workers.run-record"
+    },
+    {
+      "id": "concept.workers.run-directory",
+      "type": "concept",
+      "title": "Run directory",
+      "meaning": "#concept.workers.run-directory"
+    },
+    {
+      "id": "realization.workers.runtime",
+      "type": "realization",
+      "title": "Worker runtime",
+      "meaning": "#realization.workers.runtime",
+      "entries": [
+        "src/concorde/harness/settings.py",
+        "src/concorde/harness/write_hook.py",
+        "src/concorde/harness/workers.py",
+        "src/concorde/harness/audit.py",
+        "src/concorde/harness/runs.py",
+        "tests/concorde/harness/workers/"
+      ],
+      "pending": [
+        "src/concorde/harness/settings.py",
+        "src/concorde/harness/write_hook.py",
+        "src/concorde/harness/workers.py",
+        "src/concorde/harness/audit.py",
+        "src/concorde/harness/runs.py",
+        "tests/concorde/harness/workers/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "concept.workers.worker-settings",
+      "verb": "carries",
+      "target": "concept.workers.deny-rules"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workers.worker-settings",
+      "verb": "carries",
+      "target": "concept.workers.write-hook"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workers.run-directory",
+      "verb": "holds",
+      "target": "concept.workers.worker-settings"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workers.run-directory",
+      "verb": "holds",
+      "target": "concept.workers.run-record"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workers.run-record",
+      "verb": "records",
+      "target": "concept.workers.audit"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workers.run-record",
+      "verb": "records",
+      "target": "concept.workers.resume-round"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workers.run-record",
+      "verb": "keeps",
+      "target": "concept.workers.worker-result"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workers.runtime",
+      "verb": "generates",
+      "target": "concept.workers.worker-settings"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workers.runtime",
+      "verb": "generates",
+      "target": "concept.workers.brief"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workers.runtime",
+      "verb": "writes",
+      "target": "concept.workers.run-record"
+    }
+  ]
+}

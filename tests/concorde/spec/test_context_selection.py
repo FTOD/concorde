@@ -6,14 +6,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.context import recheck_context, resolve_context
-from concorde.harness.revisions import target_revision
 from concorde.spec.repository import SpecError, SpecRepository, digest
-from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.support.spec_project import (
-    CONFIGURATION,
     PACKAGE,
     block,
     entry_of,
@@ -22,7 +18,6 @@ from tests.concorde.support.spec_project import (
     sync_registry,
     update_module,
 )
-from concorde.harness.host import OperationHost
 
 PROMISES = {
     "kind": "document",
@@ -255,53 +250,6 @@ class ContextSelectionTests(unittest.TestCase):
                 r.spec_context(identity).paths
             self.assertEqual("invalid_target", caught.exception.code)
 
-    def test_selection_changes_with_identical_files_invalidate_snapshot_and_revision(
-        self,
-    ):
-        self.audit_uses_transfer()
-        old = self.repository()
-        snap = resolve_context(old, "scope.audit")
-        revision = target_revision(old, old.module("scope.audit"))
-        update_module(self.root, "scope.audit", includes=[PROMISES])
-        new = self.repository()
-        self.assertEqual(
-            old.spec_context("scope.audit").paths, new.spec_context("scope.audit").paths
-        )
-        self.assertNotEqual(revision, target_revision(new, new.module("scope.audit")))
-        with self.assertRaisesRegex(SpecError, "changed"):
-            recheck_context(new, snap)
-        update_module(
-            self.root,
-            "scope.audit",
-            includes=[{**PROMISES, "target": "document.missing"}],
-        )
-        with self.assertRaises(SpecError) as failure:
-            recheck_context(old, snap)
-        self.assertEqual("stale_context", failure.exception.code)
-
-    def test_source_bytes_are_exact_and_each_document_is_indexed_once(self):
-        path = self.root / "specs/transfer/promises.md"
-        raw = path.read_bytes().replace(b"\n", b"\r\n")
-        path.write_bytes(raw)
-        update_module(self.root, "module.ledger", includes=[PROMISES])
-        r = self.repository()
-        source = next(
-            s
-            for s in r.spec_context("module.ledger").sources
-            if s["path"].endswith("promises.md")
-        )
-        self.assertEqual(digest(raw), source["digest"])
-        self.assertNotIn("content", source)
-        records = resolve_context(r, "module.ledger", task="Read").value[
-            "spec_resolution"
-        ]["sources"]
-        self.assertEqual(
-            1, sum(item["path"].endswith("promises.md") for item in records)
-        )
-        self.assertTrue(
-            all("content" not in item and "reasons" in item for item in records)
-        )
-
     @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_unreadable_documents_never_yield_a_partial_context(self):
         update_module(self.root, "scope.audit", includes=[PROMISES])
@@ -336,38 +284,6 @@ class ContextSelectionTests(unittest.TestCase):
             self.repository()
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertIn("CHK.owns.unique", {f.rule_id for f in report.findings})
-
-    def test_provider_bytes_invalidate_code_review_identity_without_expanding_code(
-        self,
-    ):
-        from concorde.harness.invocation import Invocation
-        from concorde.review.review import inputs
-
-        host = OperationHost(self.root, PACKAGE, allow_primary_worktree=True)
-        run = Invocation(
-            "concorde-code-review",
-            CONFIGURATION,
-            {"target_id": "service.transfer", "task": "Inspect transfer"},
-            host,
-        )
-        before = inputs(run, "code")
-        snapshot = resolve_context(
-            self.repository(), "service.transfer", phase="code-review"
-        )
-        path = self.root / "specs/ledger/module.md"
-        path.write_text(path.read_text() + "\nClarified provider guarantee.\n")
-        after = inputs(run, "code")
-        self.assertNotEqual(before["input_digest"], after["input_digest"])
-        self.assertNotEqual(
-            before["revision"]["spec_digest"], after["revision"]["spec_digest"]
-        )
-        self.assertEqual(
-            before["revision"]["implementation_digest"],
-            after["revision"]["implementation_digest"],
-        )
-        with self.assertRaises(SpecError) as caught:
-            recheck_context(self.repository(), snapshot)
-        self.assertEqual("stale_context", caught.exception.code)
 
     @verifies("scenario.spec.participation")
     def test_contract_participants_need_the_definition_in_context(self):
@@ -441,16 +357,6 @@ class ContextSelectionTests(unittest.TestCase):
                         if f.rule_id == "CHK.context.reconciled"
                     ],
                 )
-
-    def test_old_wire_payloads_are_not_reinterpreted(self):
-        value = typed(
-            "concorde-context-snapshot",
-            resolve_context(self.repository(), "scope.bank").value,
-        )
-        self.assertEqual(8, value["schema_version"])
-        for old in (1, 2, 3, 4, 5, 6, 7):
-            with self.assertRaises(TypedDataError):
-                validate_typed({**value, "schema_version": old})
 
     def test_ownership_transfer_changes_every_selecting_context(self):
         update_module(self.root, "module.ledger", includes=[PROMISES])

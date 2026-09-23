@@ -1,0 +1,87 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.delivery.module",
+    "owner": "module.delivery",
+    "role": "module"
+  },
+  "module": {
+    "title": "Delivery",
+    "owns": [
+      "specs/concorde/operations/delivery/module.md",
+      "specs/concorde/operations/delivery/contracts.md",
+      "specs/concorde/operations/delivery/requirements.md",
+      "specs/concorde/operations/delivery/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks"
+      },
+      {
+        "target": "module.validation",
+        "meaning": "#uses-validation"
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.delivery.delivery-commit",
+      "type": "concept",
+      "title": "Delivery commit",
+      "meaning": "#concept.delivery.delivery-commit"
+    },
+    {
+      "id": "concept.delivery.evidence-bundle",
+      "type": "concept",
+      "title": "Evidence bundle",
+      "meaning": "#concept.delivery.evidence-bundle"
+    },
+    {
+      "id": "realization.delivery.operation",
+      "type": "realization",
+      "title": "Delivery Operation",
+      "meaning": "#realization.delivery.operation",
+      "entries": [
+        "src/concorde/delivery/",
+        "tests/concorde/delivery/"
+      ],
+      "pending": [
+        "src/concorde/delivery/",
+        "tests/concorde/delivery/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.delivery.operation",
+      "verb": "creates",
+      "target": "concept.delivery.delivery-commit"
+    },
+    {
+      "type": "relates",
+      "source": "concept.delivery.delivery-commit",
+      "verb": "carries",
+      "target": "concept.delivery.evidence-bundle"
+    }
+  ],
+  "extensions": {}
+}

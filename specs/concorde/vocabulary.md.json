@@ -13,22 +13,16 @@
       "meaning": "#concept.concorde.developer"
     },
     {
-      "id": "concept.concorde.user-session",
+      "id": "concept.concorde.main-agent",
       "type": "concept",
-      "title": "User session",
-      "meaning": "#concept.concorde.user-session"
+      "title": "Main agent",
+      "meaning": "#concept.concorde.main-agent"
     },
     {
-      "id": "concept.concorde.task-subagent",
+      "id": "concept.concorde.worker",
       "type": "concept",
-      "title": "Task subagent",
-      "meaning": "#concept.concorde.task-subagent"
-    },
-    {
-      "id": "concept.concorde.capability",
-      "type": "concept",
-      "title": "Capability",
-      "meaning": "#concept.concorde.capability"
+      "title": "Worker",
+      "meaning": "#concept.concorde.worker"
     },
     {
       "id": "concept.concorde.module",
@@ -41,6 +35,12 @@
       "type": "concept",
       "title": "Spec",
       "meaning": "#concept.concorde.spec"
+    },
+    {
+      "id": "concept.concorde.task-type",
+      "type": "concept",
+      "title": "Task type",
+      "meaning": "#concept.concorde.task-type"
     },
     {
       "id": "concept.concorde.context",
@@ -79,30 +79,17 @@
       "meaning": "#concept.concorde.boundary"
     },
     {
-      "id": "concept.concorde.host",
-      "type": "concept",
-      "title": "Host",
-      "meaning": "#concept.concorde.host"
-    },
-    {
-      "id": "concept.concorde.worker",
-      "type": "concept",
-      "title": "Worker",
-      "meaning": "#concept.concorde.worker"
-    },
-    {
       "id": "concept.concorde.evidence",
       "type": "concept",
       "title": "Evidence",
       "meaning": "#concept.concorde.evidence"
+    },
+    {
+      "id": "concept.concorde.escalation",
+      "type": "concept",
+      "title": "Escalation",
+      "meaning": "#concept.concorde.escalation"
     }
   ],
-  "relations": [
-    {
-      "type": "contrasts",
-      "source": "concept.concorde.task-context",
-      "target": "module.harness.context",
-      "reason": "task context is one of the four kinds of an Agent call's context, the task material; the Task context Module composes all four kinds for a call and is not limited to this one"
-    }
-  ]
+  "relations": []
 }

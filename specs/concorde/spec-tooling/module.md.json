@@ -1,0 +1,44 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.spec-tooling.module",
+    "owner": "module.spec-tooling",
+    "role": "module"
+  },
+  "module": {
+    "title": "Spec tooling",
+    "owns": [
+      "specs/concorde/spec-tooling/module.md"
+    ],
+    "contains": [
+      {
+        "target": "module.spec",
+        "meaning": "#contains-spec"
+      },
+      {
+        "target": "module.spec-mcp",
+        "meaning": "#contains-spec-mcp"
+      },
+      {
+        "target": "module.spec-review",
+        "meaning": "#contains-spec-review"
+      },
+      {
+        "target": "module.views",
+        "meaning": "#contains-views"
+      }
+    ],
+    "uses": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

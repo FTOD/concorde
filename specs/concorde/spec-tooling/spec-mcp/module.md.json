@@ -1,0 +1,109 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.spec-mcp.module",
+    "owner": "module.spec-mcp",
+    "role": "module"
+  },
+  "module": {
+    "title": "Spec MCP server",
+    "owns": [
+      "specs/concorde/spec-tooling/spec-mcp/module.md",
+      "specs/concorde/spec-tooling/spec-mcp/requirements.md",
+      "specs/concorde/spec-tooling/spec-mcp/scenarios.md",
+      "specs/concorde/spec-tooling/spec-mcp/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.grant",
+          "concept.spec.context-identity",
+          "concept.spec.boundary-set",
+          "concept.spec.impact-index",
+          "concept.spec.structural-check",
+          "concept.spec.registry"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": [
+      {
+        "contract": "contract.spec-mcp.boundary-result",
+        "version": 1,
+        "role": "provided",
+        "peer": "external",
+        "meaning": "specs/concorde/spec-tooling/spec-mcp/contracts.md#boundary-participation"
+      }
+    ]
+  },
+  "defines": [
+    {
+      "id": "concept.spec-mcp.server",
+      "type": "concept",
+      "title": "Spec MCP server",
+      "meaning": "#concept.spec-mcp.server"
+    },
+    {
+      "id": "concept.spec-mcp.root",
+      "type": "concept",
+      "title": "Server root",
+      "meaning": "#concept.spec-mcp.root"
+    },
+    {
+      "id": "realization.spec-mcp.server",
+      "type": "realization",
+      "title": "Server program",
+      "meaning": "#realization.spec-mcp.server",
+      "entries": [
+        "src/concorde/spec_mcp/",
+        "tests/concorde/spec_mcp/"
+      ],
+      "pending": [
+        "src/concorde/spec_mcp/",
+        "tests/concorde/spec_mcp/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.spec-mcp.server",
+      "verb": "implements",
+      "target": "concept.spec-mcp.server"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-mcp.server",
+      "verb": "is rooted at",
+      "target": "concept.spec-mcp.root"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-mcp.server",
+      "verb": "answers with",
+      "target": "module.spec"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-mcp.server",
+      "verb": "returns",
+      "target": "concept.spec.grant"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-mcp.server",
+      "verb": "returns",
+      "target": "concept.spec.context-identity"
+    }
+  ],
+  "extensions": {}
+}

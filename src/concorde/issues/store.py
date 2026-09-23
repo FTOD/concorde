@@ -16,6 +16,7 @@ from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
 from ..spec.changes import apply_files
+from ..spec.typed_data import checked_path
 from .shapes import (
     ISSUE_ID,
     PROVENANCE,
@@ -24,7 +25,7 @@ from .shapes import (
     REPORT,
 )
 from ..spec.repository import SpecError, digest
-from ..spec.typed_data import canonical, check_schema, checked_path, decode
+from ..spec.typed_data import canonical, check_schema, decode
 
 DIRECTORY = ".concorde/issues"
 MAX_REPORT_BYTES = 64 * 1024
@@ -177,10 +178,8 @@ def list_issues(
 
 @contextmanager
 def _lock(root: Path):
-    # Runs is already host-local ignored state. No mutable allocation index enters Git history.
-    from ..harness.status_store import run_path
-
-    lock = run_path(root, ".concorde/runs/issues.lock")
+    # Runs is host-local ignored state. No mutable allocation index enters Git history.
+    lock = checked_path(root, ".concorde/runs/issues.lock")
     lock.parent.mkdir(parents=True, exist_ok=True)
     with lock.open("a+b") as stream:
         fcntl.flock(stream.fileno(), fcntl.LOCK_EX)

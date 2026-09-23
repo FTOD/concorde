@@ -1,0 +1,100 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.main-session.module",
+    "owner": "module.main-session",
+    "role": "module"
+  },
+  "module": {
+    "title": "Main session",
+    "owns": [
+      "specs/concorde/main-session/module.md",
+      "specs/concorde/main-session/requirements.md",
+      "specs/concorde/main-session/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.operation",
+          "concept.operations.result"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.tasks.task",
+          "concept.tasks.decision-log"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.issue"
+        ]
+      },
+      {
+        "target": "module.spec-mcp",
+        "meaning": "#uses-spec-mcp",
+        "relies_on": [
+          "concept.spec-mcp.server"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.main-session.guidance",
+      "type": "concept",
+      "title": "Main-session guidance",
+      "meaning": "#concept.main-session.guidance"
+    },
+    {
+      "id": "concept.main-session.escalation-policy",
+      "type": "concept",
+      "title": "Escalation policy",
+      "meaning": "#concept.main-session.escalation-policy"
+    },
+    {
+      "id": "realization.main-session.guidance",
+      "type": "realization",
+      "title": "Guidance sources",
+      "meaning": "#realization.main-session.guidance",
+      "entries": [
+        "prompts/main-session/",
+        "tests/concorde/main_session/"
+      ],
+      "pending": [
+        "prompts/main-session/",
+        "tests/concorde/main_session/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "concept.main-session.guidance",
+      "verb": "includes",
+      "target": "concept.main-session.escalation-policy"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.guidance",
+      "verb": "authors",
+      "target": "concept.main-session.guidance"
+    }
+  ],
+  "extensions": {}
+}

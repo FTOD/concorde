@@ -1,26 +1,18 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "name": "concorde",
-  "version": "8.0.0",
-  "description": "Concorde Framework: architecture-aware Specs, project understanding, explicit context and permissions, built-in agents, and branch-local Issues with bounded autonomous resolution",
+  "version": "9.0.0",
+  "description": "Concorde Framework: Spec tooling that checks, serves and publishes architecture Specs, and Operations that run headless Claude Code workers under Spec-derived permissions for a Claude Code main agent",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",
-  "architecture_profile": 16,
-  "workspace_protocol": 16,
-  "delivery_proposal": 10,
-  "format_lineage": "Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
+  "architecture_profile": 17,
   "runtime": {
-    "launcher": "scripts/run-operation.py",
     "python": ">=3.11",
-    "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv"
   },
   "package_roots": [
-    "agents",
-    "operations",
     "docsite",
-    "pi",
     "prompts",
     "protocol",
     "scripts",
@@ -30,5 +22,5 @@
     "framework_root": ".concorde/framework",
     "receipt": ".concorde/install.json"
   },
-  "client": "pi"
+  "client": "claude-code"
 }

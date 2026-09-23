@@ -2,163 +2,130 @@
 
 ## Purpose
 
-The Harness is how Concorde configures and runs an Agent for a task: context, control flow, Agents
-and models, and permission per Agent, all managed around the Spec. Every capability request enters
-through it; it decides what each Agent call may know, runs every model step as a fresh Agent call
-whose answer counts only after the Host has checked it, runs deterministic checks in a read-only
-sandbox, keeps every change in a candidate worktree, and times all of this without letting timing
-matter. The providers under Operations rely on it so that none of them implements these on its own.
-It does not decide what a capability does, define Agents (the Agents Module does) or compute the
-Spec's boundary sets (Spec tooling does), and it enforces only part of the boundaries it records.
+The Harness configures and runs workers. For every worker it decides three things from the frozen
+grant of the worker's task: what the worker may know, what it may touch, and how the run is
+controlled from launch to result. It also runs the project's configured checks outside every
+worker, so that a check result is never a worker's claim. Operation hosts rely on it to turn a
+grant, a brief and a task worktree into a confined Claude Code process, an audited set of changes
+and a run record they can trust. The Harness does not choose the task type or the Modules of a
+task, does not compute grants, which is the work of the Spec core, and does not judge whether a
+worker's output is right. Its enforcement guards against scope drift and mistakes, not against a
+malicious worker, and this version supports only Claude Code workers.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| [Capability](../vocabulary.md#concept.concorde.capability) | |
-| [User session](../vocabulary.md#concept.concorde.user-session) | |
-| [Host](../vocabulary.md#concept.concorde.host) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
-| [Context](../vocabulary.md#concept.concorde.context) | |
-| [Spec context](../vocabulary.md#concept.concorde.spec-context) | |
-| [Implementation context](../vocabulary.md#concept.concorde.implementation-context) | |
-| [Capability context](../vocabulary.md#concept.concorde.capability-context) | |
-| [Task context](../vocabulary.md#concept.concorde.task-context) | |
 | [Boundary](../vocabulary.md#concept.concorde.boundary) | |
-| [Capability declaration](admission/module.md#concept.admission.capability-declaration) | |
-| [Result envelope](admission/module.md#concept.admission.result-envelope) | |
-| [Context snapshot](context/module.md#concept.context.snapshot) | |
-| [Capsule](context/module.md#concept.context.capsule) | |
-| [Agent binding](context/module.md#concept.context.agent-binding) | |
-| [Agent call](execution/module.md#concept.execution.agent-call) | |
-| [Workflow](execution/module.md#concept.execution.workflow) | |
-| [Result gate](execution/module.md#concept.execution.result-gate) | |
+| [Evidence](../vocabulary.md#concept.concorde.evidence) | |
+| [Worker settings](workers/module.md#concept.workers.worker-settings) | |
+| [Deny rules](workers/module.md#concept.workers.deny-rules) | |
+| [Write hook](workers/module.md#concept.workers.write-hook) | |
+| [Write audit](workers/module.md#concept.workers.audit) | |
+| [Run record](workers/module.md#concept.workers.run-record) | |
 | [Configured check](checks/module.md#concept.checks.configured-check) | |
-| [Candidate](worktrees/module.md#concept.worktrees.candidate) | |
-| [Diagnostic span](observation/module.md#concept.observation.diagnostic-span) | |
+| [Read-only check boundary](checks/module.md#concept.checks.read-only-boundary) | |
 
-The Harness defines no words of its own; each child defines the words of its own interface. The
-four kinds of context are the root's: the Harness is where they are put together for one Agent
-call.
+A worker's boundary is carried by its worker settings, which hold the deny rules, the write hook and
+the Bash sandbox. The write audit and the configured checks happen outside the worker, and the run
+record keeps what the host observed.
 
 ## Usage
 
-Nobody calls "the Harness" as such. The user session calls a capability; **Request admission**
-checks it and places it in a candidate when it mutates; the provider asks **Agent execution** to run
-its Agent, for which **Task context** binds the Agent, freezes the snapshot and assembles the capsule;
-the Agent may run checks through **Check execution**; the result gate accepts the proposal only after
-Task context's recheck; **Candidate worktrees** keeps the change status and run record in the primary;
-and **Observation** times every step. The [design topic](design.md) follows one
-`concorde-implement` request through these steps.
+The Harness has no command of its own. An Operation host uses its two children in one sequence.
+After it has computed and frozen the grant of a task, it hands the grant, the task worktree and the
+task's brief to [Workers](workers/module.md), which pre-creates the pending files the grant makes
+writable, generates the worker settings, launches `claude -p` in the run directory, audits the
+worktree when the worker ends, runs the configured checks through
+[Check execution](checks/module.md), resumes the same worker session with the failures when checks
+fail, and returns the run record with the worker's structured result. Operations that need checks
+without a worker, such as validation, call Check execution directly.
+
+A worker never sees the Harness. It sees only its brief, which lists the paths it may write, read
+and only name, and the denials its tools return when it strays.
 
 ## Design
 
-**Specs decide, the Harness records and checks.** What an Agent may know is a snapshot frozen from
-the Spec's boundary sets, what it may do is its tool list fixed by its binding, and what counts as
-done is a result the Host accepted after rechecking the snapshot. A model step can only propose.
-Control flow uses only pi workflows and LangGraph Graphs (Graph API), both run by Agent execution.
+The Harness exists so that a worker's answer stays a proposal until the host has checked it. The
+host, not the worker, reads Git, audits the changes, runs the checks and writes the records, and
+the worker's permissions never widen during a run. v1 uses only the worker's own Claude Code
+configuration; there is no operating-system sandbox around the Claude process itself.
 
-**Six parts, below the providers.** Each part changes for its own reason. The parts use only Spec
-tooling, Issues, Agents, Observation, each other and Distribution's build manifest contract; what
-only a provider knows reaches them through the capability declaration and the Agent and Workflow
-hooks. The [design topic](design.md) explains the decomposition.
+### What is enforced in v1
 
-**What is enforced and what is not.** The Harness freezes the Protocol's sets exactly but enforces
-only part of them. This is a plain statement, not a plan:
-
-| Boundary | Enforced by | Not enforced |
+| Surface | Mechanism | What it stops |
 | --- | --- | --- |
-| Which capability runs, with which configuration, in which worktree | Request admission, for every request that enters through the launcher | Who starts the launcher: an Agent with a shell can call it like any other caller. |
-| An Agent's tools and the ban on delegation | the Agent binding and Agent execution's native preflight | — |
-| What an Agent reads | nothing at the operating-system level; the capsule holds exactly the delivered copies and is the Agent's working directory | Native Agent reads are not confined to the capsule. |
-| What the programmer writes | its instructions name the intended write paths | The programmer's edits and shell are not confined to its `ImplementationScope`. |
-| Spec documents (`SpecScope`) | no Agent definition declares a Spec write role and no result may carry Spec documents | `SpecScope` is not enforced: an Agent with `edit`, `write` or `bash` can change a Spec file on disk. |
-| An Agent's network and credentials | — | Not restricted: Agents run as the developer's user with the developer's network and credentials. |
-| What counts as a result | the result gate, reading pi-subagents' own records, and Task context's recheck | — |
-| Configured checks and tester commands | an operating-system read-only view of the project with private scratch | The check sandbox shares the host network, IPC sockets and environment. |
-| Delivery | explicit authorization for a primary merge and Delivery's own checks | Delivery runs no sandbox. |
-| The primary checkout | a candidate worktree keeps a change's files out of the primary until delivery | A worktree separates files, not permissions. |
+| Read, Glob, Grep | Generated `permissions.deny` rules listing the complement of the grant in the task worktree, the primary worktree outside the run's own directory, `.git`, `~/.claude` and the worker's credential | Reading ungranted and `names` files; Grep silently leaves them out of its results |
+| Edit, Write | The same deny rules, plus a write-only PreToolUse hook that denies every path outside the grant's `rw` list with a reason naming the path's level | Changing `ro` files and creating undeclared files, which deny rules alone cannot stop because a deny rule always beats an allow rule |
+| Bash | Claude Code's sandbox: `denyRead` of the task worktree and of `$HOME`, `allowRead` for granted files and the configured runtime paths, `allowWrite` for `rw` files and the run's writable directories, no network domain, and `allowUnsandboxedCommands: false` | Reading ungranted files, writing `ro` files, network access and escaping the sandbox with `dangerouslyDisableSandbox` |
+| Permission mode | `bypassPermissions` with `--allow-dangerously-skip-permissions`; the deny rules, the hook and the sandbox are the boundary | Nothing by itself; `dontAsk` would deny every write outside the working directory even when allowed |
+| Working directory | The run's own directory, never the task worktree | Claude Code adding the worktree to the Bash sandbox's readable and writable set |
+| Tool set | `--tools` per task type, never WebFetch or WebSearch, and no agent tool | Web access through tools and workers starting other agents |
+| MCP | `--strict-mcp-config` with no servers | Any tool beyond the listed ones |
+| Claude state and instructions | Its own `CLAUDE_CONFIG_DIR`, a cleared environment, `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` and `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` | The user's settings, memory, skills, plugins, transcripts and project instructions reaching the worker |
+| Git | No tool can read `.git`; diffs and commits belong to the host | A worker inspecting or rewriting history |
+| Changes | The host audits `git diff` and untracked files against the grant after every round, outside the worker | Any remaining write outside `rw` counting as a result |
+| Limits | Timeout, `--max-turns`, `--max-budget-usd`, and a kill of the worker's process group when a round ends | Runaway runs and leftover processes |
 
-An Agent that ignores its instructions can therefore read or write more than its context grants,
-but its result is still refused if any input it was given changed, and every change stays in a
-candidate until the developer delivers it.
+The exact settings, command line and records are in [Workers](workers/module.md), and the check
+boundary is in [Check execution](checks/module.md).
 
-<a id="realization.harness.packages"></a>
+### Known limits of v1
 
-The Harness binds only its Python package markers; all behaviour is bound by its children.
+- The Claude process and the write hook are not sandboxed. The file-tool boundary is only as good
+  as the generated deny rules are complete and the hook is correct.
+- File tools are denied only the paths the deny rules name. Other files the user can read outside
+  the task worktree and the primary worktree, such as the rest of the home directory, stay readable
+  to Read and Grep.
+- A read denial carries Claude Code's generic "denied by your permission settings" message, so the
+  brief states the grant explicitly. Write denials come from the hook and explain themselves.
+- Bash writes to single files inherit the bind-mount limits of Claude Code's Linux sandbox: such a
+  file cannot be deleted or renamed from Bash.
+- A file that Bash creates outside the `rw` paths appears to succeed but lands on a throw-away
+  file system and never reaches the worktree. The brief warns about this; the audit sees no change.
+- Writes to paths Git ignores are not audited.
+- The host audit is the last line of defense for a write outside `rw`.
+
+Future work, not part of v1: an outer `srt` sandbox around the whole worker process, credential
+injection through a proxy so that the worker never holds the API credential, a leader tier between
+the main agent and the workers, and Pi support.
+
+<a id="realization.harness.package"></a>
+
+The **Harness package** is the Python package marker of `concorde.harness`, which holds the code of
+both children. It carries no behaviour of its own.
 
 ## Relationships
 
 ```mermaid
-flowchart TB
-    accTitle: The parts of the Harness
-    accDescr: The Harness contains six Modules.
+flowchart LR
+    accTitle: The Harness and its children
+    accDescr: The Harness contains Workers and Check execution; Workers uses Check execution to run configured checks between resume rounds.
     harness[Harness]
-    admission[Request admission]
-    context[Task context]
-    execution[Agent execution]
+    workers[Workers]
     checks[Check execution]
-    worktrees[Candidate worktrees]
-    observation[Observation]
-    harness -->|contains| admission
-    harness -->|contains| context
-    harness -->|contains| execution
+    harness -->|contains| workers
     harness -->|contains| checks
-    harness -->|contains| worktrees
-    harness -->|contains| observation
+    workers -->|uses| checks
 ```
 
-<a id="contains-admission"></a>
+The two children split along who acts. Workers acts around a model process; Check execution runs
+deterministic commands and never starts a model. Workers relies on Check execution for the checks of
+a round, and Check execution knows nothing about workers.
 
-**Request admission** is the single entry of every capability request. The Harness relies on it to
-decide everything from the
-[capability declaration](admission/module.md#concept.admission.capability-declaration), to refuse
-invalid requests before any provider runs, to run mutations in a candidate through a
-[relay](admission/module.md#concept.admission.relay), and to answer each
-[capability request](admission/module.md#concept.admission.capability-request) with one
-[result envelope](admission/module.md#concept.admission.result-envelope). When it refuses, nothing
-else runs.
+<a id="contains-harness-workers"></a>
 
-<a id="contains-context"></a>
+**Workers** turns one frozen grant into worker settings, a brief and a launched Claude Code
+process; it audits the worktree after every round, resumes the worker when configured checks fail,
+performs the deletions the worker proposed, and writes the run record. The Harness relies on it for
+every guarantee in the enforcement table except the check boundary. When Workers cannot establish a
+part of the boundary, such as a run directory that a deny rule would cover, it refuses to launch and
+reports a host failure instead of running a weaker worker.
 
-**Task context** composes the four kinds of context of one Agent call, when a call is prepared and
-before its result is accepted. The Harness relies on it for the
-[Agent binding](context/module.md#concept.context.agent-binding), the
-[context snapshot](context/module.md#concept.context.snapshot) of exactly the bound Modules' sets
-and the [capsule](context/module.md#concept.context.capsule); a moved input gives
-`stale_context`, which stops acceptance.
+<a id="contains-harness-checks"></a>
 
-<a id="contains-execution"></a>
-
-**Agent execution** runs model work for every model-backed capability. The Harness relies on it to
-run each [Agent call](execution/module.md#concept.execution.agent-call) fresh, without delegation,
-with exactly its bound tools and [model selection](execution/module.md#concept.execution.model-selection);
-to run [Workflows](execution/module.md#concept.execution.workflow) and
-[Graphs](execution/module.md#concept.execution.graph) as the only control flow of model work; to
-reach providers only through [Agent hooks](execution/module.md#concept.execution.agent-hook) and
-[Workflow hooks](execution/module.md#concept.execution.workflow-hook); and to accept a proposal only
-through the [result gate](execution/module.md#concept.execution.result-gate). A failed or uncertain
-acceptance is final for that call.
-
-<a id="contains-checks"></a>
-
-**Check execution** runs [configured checks](checks/module.md#concept.checks.configured-check) and a
-tester's commands, for Agents, Validation, Delivery and testers. The Harness relies on its
-[read-only boundary](checks/module.md#concept.checks.read-only-boundary) with private scratch, the
-one operating-system boundary for project code, and on its refusal to run a check when that
-boundary cannot be established.
-
-<a id="contains-worktrees"></a>
-
-**Candidate worktrees** creates [candidates](worktrees/module.md#concept.worktrees.candidate) and
-keeps every [change status](worktrees/module.md#concept.worktrees.change-status) and
-[run record](worktrees/module.md#concept.worktrees.run-record) in the primary, for every executed
-request and mutation. The Harness relies on it so that a change never touches the primary before
-delivery, its records outlive the candidate, and a stale write fails instead of overwriting.
-
-<a id="contains-observation"></a>
-
-**Observation** records [diagnostic spans](observation/module.md#concept.observation.diagnostic-span)
-of the Harness's steps and the developer's Pi sessions. The Harness relies on it being passive: a
-span never decides an outcome, is never evidence, holds no content, and a failure to record one
-changes nothing.
+**Check execution** runs the configured checks of Modules in a read-only operating-system boundary
+with a fresh scratch directory, ends every process a check starts, and returns check results bound
+to the digest of what they measured. The Harness relies on it so that checks run outside workers
+and cannot change the files they judge. When the boundary cannot be established, no check runs.

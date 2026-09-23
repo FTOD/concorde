@@ -19,12 +19,12 @@ class PytestTimingTests(unittest.TestCase):
     def test_runner_fingerprints_and_default_cli(self):
         from tests.concorde.support import pytest_timing as runner
 
-        selected = ["tests/concorde/harness/test_timing.py::TimingTests::test_x"]
+        selected = ["tests/concorde/spec/test_typed_data.py::TypedDataTests::test_x"]
         first = runner.fingerprint(selected)
         self.assertEqual(first, runner.fingerprint(selected))
         self.assertNotEqual(first["digest"], runner.fingerprint(["other"])["digest"])
         read_bytes = Path.read_bytes
-        role = REPOSITORY_ROOT / "agents/planner/spec.md"
+        role = REPOSITORY_ROOT / "protocol/boundaries.md"
 
         def changed_role(path):
             content = read_bytes(path)
@@ -42,8 +42,8 @@ class PytestTimingTests(unittest.TestCase):
                 "no:cacheprovider",
                 "-n",
                 "2",
-                "tests/concorde/harness/test_timing.py",
-                "tests/concorde/harness/test_scoped_protocol.py",
+                "tests/concorde/spec/test_typed_data.py",
+                "tests/concorde/issues/test_reporting.py",
             ]
             report = Path(directory) / "report.json"
             # A caller may pass no reason, scope, phase or attempt.
@@ -93,21 +93,6 @@ class PytestTimingTests(unittest.TestCase):
                 self.assertEqual(
                     {"setup", "call", "teardown"}, set(unit["phase_seconds"])
                 )
-            traced = units[
-                "tests/concorde/harness/test_scoped_protocol.py::ScopedProtocolTests::"
-                "test_membership_changes_invalidate_snapshot"
-            ]
-            self.assertTrue(traced["telemetry_complete"])
-            self.assertEqual(
-                {"context.resolve", "context.recheck"},
-                {span["name"] for span in traced["runtime_spans"]},
-            )
-            self.assertTrue(all(s["layer"] == "B" for s in traced["runtime_spans"]))
-            self.assertEqual(
-                {traced["process_id"]},
-                {s["process_id"] for s in traced["runtime_spans"]},
-            )
-            self.assertIn(traced["worker"], {"gw0", "gw1"})
             # An explicitly scoped rerun recognizes unchanged declared inputs.
             # Values are joined with "=": an existing prior path as a separate argument would
             # be taken for a test path while pytest decides its rootdir.

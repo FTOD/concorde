@@ -17,7 +17,6 @@ from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.verification import verifies
 from concorde.views import docsite_scaffold
 from concorde.views.docsite_scaffold import propose_docsite
-from tests.concorde.support.operation_json import CONFIGURATION
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 PROPOSAL = ".concorde/docsite-proposal.json"
@@ -45,9 +44,7 @@ class ScaffoldApplyOutcomeTests(unittest.TestCase):
         apply_project_proposal(
             self.root,
             REPOSITORY_ROOT,
-            project_proposal(
-                self.root, REPOSITORY_ROOT, "Atlas", CONFIGURATION, "module.atlas"
-            ),
+            project_proposal(self.root, REPOSITORY_ROOT, "Atlas", "module.atlas"),
         )
         proposed = propose_docsite(self.root)
         self.assertEqual("proposal", proposed.status, proposed.findings)
@@ -66,7 +63,6 @@ class ScaffoldApplyOutcomeTests(unittest.TestCase):
                     "--apply",
                     "--proposal",
                     PROPOSAL,
-                    "--allow-primary-worktree",
                 ]
             )
         return json.loads(buffer.getvalue())

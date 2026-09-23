@@ -1,0 +1,75 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.validation.module",
+    "owner": "module.validation",
+    "role": "module"
+  },
+  "module": {
+    "title": "Validation",
+    "owns": [
+      "specs/concorde/operations/validation/module.md",
+      "specs/concorde/operations/validation/contracts.md",
+      "specs/concorde/operations/validation/requirements.md",
+      "specs/concorde/operations/validation/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks"
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.validation.readiness",
+      "type": "concept",
+      "title": "Readiness",
+      "meaning": "#concept.validation.readiness"
+    },
+    {
+      "id": "realization.validation.operation",
+      "type": "realization",
+      "title": "Validate Operation",
+      "meaning": "#realization.validation.operation",
+      "entries": [
+        "src/concorde/validation/",
+        "tests/concorde/validation/"
+      ],
+      "pending": [
+        "src/concorde/validation/",
+        "tests/concorde/validation/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.validation.operation",
+      "verb": "produces",
+      "target": "concept.validation.readiness"
+    }
+  ],
+  "extensions": {}
+}

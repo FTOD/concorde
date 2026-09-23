@@ -9,103 +9,57 @@
     "title": "Operations",
     "owns": [
       "specs/concorde/operations/module.md",
-      "specs/concorde/operations/design.md",
-      "specs/concorde/operations/catalog.md"
+      "specs/concorde/operations/host.md",
+      "specs/concorde/operations/contracts.md",
+      "specs/concorde/operations/requirements.md",
+      "specs/concorde/operations/scenarios.md"
     ],
     "contains": [
       {
-        "target": "module.planning",
-        "meaning": "#contains-planning",
-        "relies_on": [
-          "concept.planning.assessment",
-          "concept.planning.plan",
-          "concept.planning.task"
-        ]
+        "target": "module.understanding",
+        "meaning": "#contains-understanding"
+      },
+      {
+        "target": "module.specification",
+        "meaning": "#contains-specification"
       },
       {
         "target": "module.implementation",
-        "meaning": "#contains-implementation",
-        "relies_on": [
-          "concept.implementation.component-work"
-        ]
+        "meaning": "#contains-implementation"
       },
       {
-        "target": "module.review",
-        "meaning": "#contains-review",
-        "relies_on": [
-          "concept.review.spec-review",
-          "concept.review.code-review",
-          "concept.review.finding"
-        ]
+        "target": "module.code-review",
+        "meaning": "#contains-code-review"
       },
       {
         "target": "module.validation",
-        "meaning": "#contains-validation",
-        "relies_on": [
-          "concept.validation.evidence",
-          "concept.validation.ready"
-        ]
+        "meaning": "#contains-validation"
       },
       {
         "target": "module.delivery",
-        "meaning": "#contains-delivery",
-        "relies_on": [
-          "concept.delivery.delivered-branch"
-        ]
-      },
-      {
-        "target": "module.issue-solving",
-        "meaning": "#contains-issue-solving",
-        "relies_on": [
-          "concept.issue-solving.decision"
-        ]
+        "meaning": "#contains-delivery"
       }
     ],
     "uses": [
       {
-        "target": "module.harness.admission",
-        "meaning": "#uses-admission",
-        "relies_on": [
-          "concept.admission.capability-request",
-          "concept.admission.result-envelope",
-          "concept.admission.capability-declaration",
-          "contract.admission.capability-declaration"
-        ]
-      },
-      {
-        "target": "module.harness.execution",
-        "meaning": "#uses-execution",
-        "relies_on": [
-          "concept.execution.agent-call",
-          "concept.execution.workflow",
-          "concept.execution.graph",
-          "concept.execution.agent-hook",
-          "concept.execution.workflow-hook",
-          "concept.execution.graph-spec",
-          "concept.execution.terminal-agent-operation"
-        ]
-      },
-      {
-        "target": "module.agents",
-        "meaning": "#uses-agents",
-        "relies_on": [
-          "concept.agents.agent",
-          "concept.agents.definition"
-        ]
-      },
-      {
-        "target": "module.harness.context",
-        "meaning": "#uses-context",
-        "relies_on": [
-          "concept.context.phase"
-        ]
-      },
-      {
         "target": "module.spec",
-        "meaning": "#uses-spec",
-        "relies_on": [
-          "concept.spec.typed-value"
-        ]
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks"
+      },
+      {
+        "target": "module.spec-review",
+        "meaning": "#uses-spec-review"
       }
     ],
     "includes": [
@@ -113,22 +67,9 @@
         "kind": "document",
         "target": "document.concorde.vocabulary",
         "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "external",
-        "target": "reference/langgraph/",
-        "reason": "LangGraph Graph API (StateGraph, runtime context) that every cataloged Graph is built with"
       }
     ],
-    "participates": [
-      {
-        "contract": "contract.admission.capability-declaration",
-        "version": 1,
-        "role": "provided",
-        "peer": "module.harness.admission",
-        "meaning": "#uses-admission"
-      }
-    ]
+    "participates": []
   },
   "defines": [
     {
@@ -144,95 +85,69 @@
       "meaning": "#concept.operations.catalog"
     },
     {
-      "id": "realization.operations.catalog",
-      "type": "realization",
-      "title": "Catalog loader",
-      "meaning": "#realization.operations.catalog",
-      "entries": [
-        "operations/__init__.py",
-        "src/concorde/operations/catalog.py"
-      ]
+      "id": "concept.operations.host",
+      "type": "concept",
+      "title": "Operation host",
+      "meaning": "#concept.operations.host"
     },
     {
-      "id": "realization.operations.dispatch",
-      "type": "realization",
-      "title": "Dispatch",
-      "meaning": "#realization.operations.dispatch",
-      "entries": [
-        "src/concorde/operations/"
-      ]
+      "id": "concept.operations.result",
+      "type": "concept",
+      "title": "Operation result",
+      "meaning": "#concept.operations.result"
     },
     {
-      "id": "realization.operations.graph-catalog",
+      "id": "realization.operations.runner",
       "type": "realization",
-      "title": "Graph catalog",
-      "meaning": "#realization.operations.graph-catalog",
+      "title": "Catalog and runner",
+      "meaning": "#realization.operations.runner",
       "entries": [
-        "src/concorde/operations/graph_catalog.py"
-      ]
-    },
-    {
-      "id": "realization.operations.tests",
-      "type": "realization",
-      "title": "Operations tests",
-      "meaning": "#realization.operations.tests",
-      "entries": [
-        "tests/concorde/operations/__init__.py",
-        "tests/concorde/operations/test_dispatch.py",
-        "tests/concorde/operations/test_graph_catalog.py",
-        "tests/concorde/operations/test_operation_modules.py",
-        "tests/concorde/operations/test_run_operation.py"
+        "src/concorde/operations/",
+        "tests/concorde/operations/"
+      ],
+      "pending": [
+        "src/concorde/operations/",
+        "tests/concorde/operations/"
       ]
     }
   ],
   "relations": [
     {
-      "type": "contrasts",
-      "source": "concept.operations.operation",
-      "target": "concept.execution.terminal-agent-operation",
-      "reason": "an Operation is a cataloged entry a request can reach through dispatch; the Terminal Agent Operation is a Graph building block of Agent execution that no request reaches"
-    },
-    {
       "type": "relates",
-      "source": "realization.operations.catalog",
+      "source": "concept.operations.catalog",
       "verb": "lists",
       "target": "concept.operations.operation"
     },
     {
       "type": "relates",
-      "source": "realization.operations.catalog",
-      "verb": "provides declarations to",
-      "target": "module.harness.admission"
+      "source": "concept.operations.host",
+      "verb": "runs",
+      "target": "concept.operations.operation"
     },
     {
       "type": "relates",
-      "source": "realization.operations.catalog",
-      "verb": "checks the Agent names against",
-      "target": "module.agents"
+      "source": "concept.operations.host",
+      "verb": "returns",
+      "target": "concept.operations.result"
     },
     {
       "type": "relates",
-      "source": "realization.operations.catalog",
-      "verb": "registers request schemas through",
-      "target": "module.spec"
+      "source": "concept.operations.host",
+      "verb": "launches workers through",
+      "target": "module.harness.workers"
     },
     {
       "type": "relates",
-      "source": "realization.operations.dispatch",
-      "verb": "hands native Operations to",
-      "target": "module.harness.execution"
+      "source": "concept.operations.host",
+      "verb": "records runs in",
+      "target": "module.tasks"
     },
     {
       "type": "relates",
-      "source": "realization.operations.dispatch",
-      "verb": "runs child requests through",
-      "target": "module.harness.admission"
-    },
-    {
-      "type": "relates",
-      "source": "realization.operations.graph-catalog",
-      "verb": "lists",
-      "target": "concept.execution.graph"
+      "source": "realization.operations.runner",
+      "verb": "implements",
+      "target": "concept.operations.host"
     }
-  ]
+  ],
+  "extensions": {}
 }

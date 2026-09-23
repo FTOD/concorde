@@ -67,7 +67,10 @@ def tool_envelope(value: ToolResult) -> dict[str, Any]:
 
 
 def canonical_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    return (
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        + "\n"
+    )
 
 
 def exit_code(status: str) -> int:

@@ -70,13 +70,9 @@ beforeAll(async () => {
 sys.path.insert(0,sys.argv[1]+'/src')
 from concorde.spec.initialize import project_proposal,apply_project_proposal
 from concorde.distribution.project_defaults import install_project_defaults
-from concorde.spec.typed_data import typed
-from concorde.operations.catalog import register_types
-register_types()
 root=Path(sys.argv[2]);package=Path(sys.argv[1])
-config=typed('concorde-operation-configuration',{'model':'openai-codex/gpt-6-astra','thinking':'medium'})
 install_project_defaults(root,package)  # what the installer places before initialization
-apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config,'module.atlas'))`,
+apply_project_proposal(root,package,project_proposal(root,package,'Atlas','module.atlas'))`,
       repositoryRoot,
       root,
     ],
@@ -84,12 +80,7 @@ apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config
   );
   expect(initialized.status, initialized.stderr).toBe(0);
 
-  docsiteProposal = tool(
-    root,
-    "docsite",
-    "--propose",
-    "--allow-primary-worktree",
-  );
+  docsiteProposal = tool(root, "docsite", "--propose");
   expect(docsiteProposal.status).toBe("proposal");
   await writeFile(
     resolve(root, ".concorde/docsite-proposal.json"),
@@ -102,7 +93,6 @@ apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config
     "--apply",
     "--proposal",
     ".concorde/docsite-proposal.json",
-    "--allow-primary-worktree",
   );
   expect(applied.status).toBe("success");
   await symlink(
@@ -165,9 +155,7 @@ describe("a project holding only initialization outputs", () => {
 
   // verifies: scenario.views.scaffold-apply
   it("is unchanged on a second proposal and refuses to overwrite", () => {
-    expect(
-      tool(root, "docsite", "--propose", "--allow-primary-worktree").status,
-    ).toBe("unchanged");
+    expect(tool(root, "docsite", "--propose").status).toBe("unchanged");
     expect(
       tool(
         root,
@@ -175,7 +163,6 @@ describe("a project holding only initialization outputs", () => {
         "--apply",
         "--proposal",
         ".concorde/docsite-proposal.json",
-        "--allow-primary-worktree",
       ).status,
     ).toBe("unchanged");
   });

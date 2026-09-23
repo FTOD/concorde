@@ -21,7 +21,7 @@ from .schema import admit as admit
 from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode, safe_path
 
-PROFILE_VERSION = 16
+PROFILE_VERSION = 17
 PROTOCOL_VERSION = "12.0.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3

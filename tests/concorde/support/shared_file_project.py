@@ -135,19 +135,13 @@ class SharedFileProject:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
-        self.configuration = {
-            "type_id": "concorde-operation-configuration",
-            "schema_version": 2,
-            "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
-        }
         self.write(
             ".concorde/config.json",
             json.dumps(
                 {
-                    "profile_version": 16,
+                    "profile_version": 17,
                     "registry": ".concorde/specs.json",
                     "protocol": protocol_binding(PACKAGE),
-                    "operation_configuration": self.configuration,
                     "checks": [],
                 }
             ),

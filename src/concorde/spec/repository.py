@@ -22,7 +22,9 @@ from .repository_base import (
 )
 from .typed_data import TypedDataError, safe_path
 
-CONFIG_FIELDS = {"profile_version", "registry", "protocol", "operation_configuration"}
+CONFIG_FIELDS = {"profile_version", "registry", "protocol"}
+# Optional sections: configured checks, read here, and the worker settings the harness reads.
+OPTIONAL_CONFIG_FIELDS = {"checks", "workers"}
 
 
 def configured_checks(config: dict) -> list[dict]:
@@ -105,11 +107,11 @@ class SpecRepository(DocumentUnitRepository):
             )
         if (
             not CONFIG_FIELDS <= self.config.keys()
-            or self.config.keys() - CONFIG_FIELDS - {"checks"}
+            or self.config.keys() - CONFIG_FIELDS - OPTIONAL_CONFIG_FIELDS
         ):
             raise SpecError(
-                "configuration fields must be profile_version, registry, protocol, "
-                "operation_configuration and optional checks"
+                "configuration fields must be profile_version, registry, protocol "
+                "and optional checks and workers"
             )
         checks = configured_checks(self.config)
         super().__init__(

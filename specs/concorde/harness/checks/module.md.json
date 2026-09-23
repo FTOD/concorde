@@ -11,31 +11,17 @@
       "specs/concorde/harness/checks/module.md",
       "specs/concorde/harness/checks/design.md",
       "specs/concorde/harness/checks/boundary.md",
-      "specs/concorde/harness/checks/records.md"
+      "specs/concorde/harness/checks/service.md",
+      "specs/concorde/harness/checks/timing.md"
     ],
     "contains": [],
     "uses": [
-      {
-        "target": "module.harness.worktrees",
-        "meaning": "#uses-worktrees",
-        "relies_on": [
-          "concept.worktrees.primary-worktree",
-          "concept.worktrees.run-record"
-        ]
-      },
       {
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
           "concept.spec.registry",
           "concept.spec.boundary-set"
-        ]
-      },
-      {
-        "target": "module.harness.observation",
-        "meaning": "#uses-observation",
-        "relies_on": [
-          "concept.observation.diagnostic-span"
         ]
       }
     ],
@@ -74,16 +60,10 @@
       "meaning": "#concept.checks.scratch"
     },
     {
-      "id": "concept.checks.tester-command",
+      "id": "concept.checks.diagnostic-span",
       "type": "concept",
-      "title": "Tester command",
-      "meaning": "#concept.checks.tester-command"
-    },
-    {
-      "id": "concept.checks.tester-evidence",
-      "type": "concept",
-      "title": "Tester evidence",
-      "meaning": "#concept.checks.tester-evidence"
+      "title": "Diagnostic span",
+      "meaning": "#concept.checks.diagnostic-span"
     },
     {
       "id": "realization.checks.runner",
@@ -91,29 +71,13 @@
       "title": "Check runner",
       "meaning": "#realization.checks.runner",
       "entries": [
-        "src/concorde/harness/check_executor.py"
-      ],
-      "pending": []
-    },
-    {
-      "id": "realization.checks.configured-checks",
-      "type": "realization",
-      "title": "Configured check service",
-      "meaning": "#realization.checks.configured-checks",
-      "entries": [
+        "src/concorde/harness/check_executor.py",
+        "src/concorde/harness/timing.py",
         "src/concorde/harness/checks.py"
       ],
-      "pending": []
-    },
-    {
-      "id": "realization.checks.tester-evidence",
-      "type": "realization",
-      "title": "Tester evidence export",
-      "meaning": "#realization.checks.tester-evidence",
-      "entries": [
-        "src/concorde/harness/check_evidence.py"
-      ],
-      "pending": []
+      "pending": [
+        "src/concorde/harness/checks.py"
+      ]
     },
     {
       "id": "realization.checks.tests",
@@ -121,13 +85,8 @@
       "title": "Check tests",
       "meaning": "#realization.checks.tests",
       "entries": [
-        "tests/concorde/harness/test_check_evidence.py",
-        "tests/concorde/harness/test_check_executor.py",
-        "tests/concorde/harness/test_check_service.py",
-        "tests/concorde/harness/test_tester_tmp.py",
-        "tests/concorde/harness/structured_failure_driver.mjs",
-        "tests/concorde/harness/tester_command_driver.mjs",
-        "tests/concorde/harness/test_configured_checks.py"
+        "tests/concorde/harness/__init__.py",
+        "tests/concorde/harness/checks/"
       ],
       "pending": []
     }
@@ -135,37 +94,26 @@
   "relations": [
     {
       "type": "narrows",
-      "source": "concept.checks.tester-evidence",
-      "target": "concept.concorde.evidence"
-    },
-    {
-      "type": "narrows",
       "source": "concept.checks.check-result",
       "target": "concept.concorde.evidence"
     },
     {
       "type": "relates",
-      "source": "realization.checks.configured-checks",
+      "source": "realization.checks.runner",
       "verb": "runs",
       "target": "concept.checks.configured-check"
     },
     {
       "type": "relates",
-      "source": "realization.checks.configured-checks",
+      "source": "realization.checks.runner",
       "verb": "records",
       "target": "concept.checks.check-result"
     },
     {
       "type": "relates",
-      "source": "concept.checks.configured-check",
-      "verb": "runs inside",
-      "target": "concept.checks.read-only-boundary"
-    },
-    {
-      "type": "relates",
-      "source": "concept.checks.tester-command",
-      "verb": "runs inside",
-      "target": "concept.checks.read-only-boundary"
+      "source": "realization.checks.runner",
+      "verb": "records",
+      "target": "concept.checks.diagnostic-span"
     },
     {
       "type": "relates",
@@ -175,15 +123,15 @@
     },
     {
       "type": "relates",
-      "source": "concept.checks.read-only-boundary",
-      "verb": "provides",
-      "target": "concept.checks.scratch"
+      "source": "concept.checks.configured-check",
+      "verb": "runs inside",
+      "target": "concept.checks.read-only-boundary"
     },
     {
       "type": "relates",
-      "source": "realization.checks.tester-evidence",
-      "verb": "exports",
-      "target": "concept.checks.tester-evidence"
+      "source": "concept.checks.read-only-boundary",
+      "verb": "provides",
+      "target": "concept.checks.scratch"
     }
   ]
 }

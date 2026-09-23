@@ -45,7 +45,7 @@ class IssueStoreTests(unittest.TestCase):
             "Retry ownership is unspecified", (self.root / receipt["path"]).read_text()
         )
 
-    @verifies("scenario.issues.store-report")
+    @verifies("scenario.issues.store-empty", "scenario.issues.store-key-conflict")
     def test_query_does_not_create_a_collection_and_invocations_do_not_semantically_deduplicate(
         self,
     ):
@@ -58,7 +58,7 @@ class IssueStoreTests(unittest.TestCase):
             report_issue(self.root, report(title="Changed meaning"), source())
         self.assertEqual(2, len(list_issues(self.root)))
 
-    @verifies("scenario.issues.store-report")
+    @verifies("scenario.issues.store-append")
     def test_append_binds_current_bytes_preserves_observations_and_can_reclassify(self):
         first = report_issue(self.root, report(), source())
         _, revision = read_issue(self.root, first["issue_id"])
@@ -101,7 +101,11 @@ class IssueStoreTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.issues.store-disposition")
+    @verifies(
+        "scenario.issues.store-disposition",
+        "scenario.issues.store-disposition-stale",
+        "scenario.issues.store-disposition-invalid",
+    )
     def test_disposition_retains_record_and_requires_current_evidence(self):
         receipt = report_issue(self.root, report(), source())
         identifier = receipt["issue_id"]
@@ -154,7 +158,9 @@ class IssueStoreTests(unittest.TestCase):
             original["reports"], read_issue(self.root, identifier)[0]["reports"]
         )
 
-    @verifies("scenario.issues.store-disposition")
+    @verifies(
+        "scenario.issues.store-disposition", "scenario.issues.store-disposition-invalid"
+    )
     def test_duplicate_requires_another_existing_open_issue(self):
         first = report_issue(self.root, report(), source())
         second = report_issue(self.root, report(), source(invocation_id="worker-2"))
@@ -186,7 +192,7 @@ class IssueStoreTests(unittest.TestCase):
             read_issue(self.root, identifier)[0]["dispositions"][-1]["duplicate_of"],
         )
 
-    @verifies("scenario.issues.store-disposition")
+    @verifies("scenario.issues.store-disposition-stale")
     def test_duplicate_target_revision_is_checked_inside_the_transaction(self):
         first = report_issue(self.root, report(), source())
         second = report_issue(self.root, report(), source(invocation_id="second"))
@@ -264,7 +270,7 @@ class IssueStoreTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "path differs"):
             resolve_report(self.root, malformed)
 
-    @verifies("scenario.issues.store-concurrency")
+    @verifies("scenario.issues.branch-local")
     def test_git_style_branch_copies_have_independent_dispositions(self):
         import shutil
 

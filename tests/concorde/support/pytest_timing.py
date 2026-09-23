@@ -160,14 +160,9 @@ def fingerprint(tests: list[str]) -> dict:
         "src/",
         "scripts/",
         "tests/",
-        "agents/",
-        "operations/",
         "prompts/",
         "protocol/",
         "specs/",
-        "pi/",
-        ".pi/agents/",
-        ".pi/extensions/",
         ".concorde/protocol/",
     )
     exact = {
@@ -177,7 +172,6 @@ def fingerprint(tests: list[str]) -> dict:
         "uv.lock",
         ".concorde/config.json",
         ".concorde/specs.json",
-        ".pi/APPEND_SYSTEM.md",
     }
     entries = {}
     for name in sorted(set(files)):
@@ -192,7 +186,6 @@ def fingerprint(tests: list[str]) -> dict:
         runtime = {
             "python": platform.python_version(),
             "implementation": platform.python_implementation(),
-            "langgraph": importlib.metadata.version("langgraph"),
             "pytest": importlib.metadata.version("pytest"),
         }
     except importlib.metadata.PackageNotFoundError:

@@ -15,15 +15,14 @@ CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = Fal
             stdout_bytes: int | None = None, stderr_bytes: int | None = None)
 ```
 
-`execute_check` in `src/concorde/harness/check_executor.py` is trusted Host code; no argument comes
+`execute_check` in `src/concorde/harness/check_executor.py` is trusted host code; no argument comes
 from a registry, a task or a model except the command itself. It refuses, with
 `CheckSandboxError(RuntimeError)`, an empty command, a project that is not a directory, a
 nonpositive or nonfinite timeout, a platform other than Linux, a project at `/` or under `/proc`,
-`/dev` or `/sys`, a tester run whose project is `/tmp` itself, a missing root-owned system
-bubblewrap, missing namespace or process file descriptor support, a failed sandbox setup, and the
-absence of any writable temporary directory outside the project. The error carries the diagnostic
-output as bytes for the Host. A command that never received a trusted successful start is an
-isolation error, not a failed check.
+`/dev` or `/sys`, a missing root-owned system bubblewrap, missing namespace or process file
+descriptor support, a failed sandbox setup, and the absence of any writable temporary directory
+outside the project. The error carries the diagnostic output as bytes for the host. A command that
+never received a trusted successful start is an isolation error, not a failed check.
 
 | Outcome | Result |
 | --- | --- |
@@ -32,20 +31,21 @@ isolation error, not a failed check.
 | Cancellation (`cancel_event` set, or interrupt) | `CheckCancelled(KeyboardInterrupt)` after cleanup, carrying the drained output and observed byte counts |
 
 `evidence`, when given, is called after every descendant has ended and the pipes are drained but
-before the scratch is removed, with the scratch path and the result or exception. Only the tester
-path passes it. With `evidence`, each output stream keeps only its last 2 MiB while counting all
-bytes.
+before the scratch is removed, with the scratch path and the result or exception; with it, each
+output stream keeps only its last 2 MiB while counting all bytes. `private_tmp=True` selects a
+second profile, `tester-private-tmp-v1`, in which `/tmp` is a private directory backed by the
+scratch. That profile remains from an earlier caller; no current caller uses it, and its behaviour
+is not promised here.
 
-`CHECK_POLICY = "project-read-only-v1"` names the default boundary and
-`TESTER_CHECK_POLICY = "tester-private-tmp-v1"` the tester profile selected by `private_tmp=True`.
-The policy name is part of every configured check's measured digest.
+`CHECK_POLICY = "project-read-only-v1"` names the default boundary. The policy name is part of every
+configured check's measured digest.
 
 ## Scratch and environment
 
 The scratch is created below the first of the process temporary directory, an inherited
 `CONCORDE_CHECK_TMPDIR`, `/tmp` and `/var/tmp` that lies outside the project, and holds `tmp/`,
-`cache/`, `reports/` and `shm/` (plus `private-tmp/` and `host-tmp/` for a tester). The command's
-environment is the caller's `environment`, passed whole, with these values set:
+`cache/`, `reports/` and `shm/`. The command's environment is the caller's `environment`, passed
+whole, with these values set:
 
 | Variable | Value |
 | --- | --- |
@@ -55,29 +55,23 @@ environment is the caller's `environment`, passed whole, with these values set:
 | `CONCORDE_CHECK_TMPDIR` | `<scratch>` |
 | `CONCORDE_CHECK_REPORT_DIR` | `<scratch>/reports` |
 | `PYTHONDONTWRITEBYTECODE` | `1` (avoids routine cache writes; it is not the boundary) |
-| `CONCORDE_TEST_HOST_TMP` | `<scratch>/host-tmp`, tester profile only |
 
 ## The Linux boundary
 
 The runner starts bubblewrap with a fixed system search path and a minimal loader environment,
 passing the command's environment through an anonymous descriptor rather than its command line. It
-unshares user, PID and IPC namespaces, drops all capabilities, dies with the Host, binds the host
+unshares user, PID and IPC namespaces, drops all capabilities, dies with the host, binds the host
 filesystem recursively read-only, replaces `/proc` with the sandbox's PID view and `/dev` with a
 minimal private one, and binds only the scratch writable at its own path; shared memory is backed by
 the scratch. System file owners unmapped in a nested check's namespace are admitted only on those
-read-only mounts. The Host closes inherited descriptors, gives the command a null standard input and
+read-only mounts. The host closes inherited descriptors, gives the command a null standard input and
 reads both pipes; bubblewrap's own metadata descriptors are closed before the command runs. The
-command stays stopped until the Host holds a process file descriptor for the namespace's first
-process; at the end the Host kills the namespace and waits for it before removing the scratch.
+command stays stopped until the host holds a process file descriptor for the namespace's first
+process; at the end the host kills the namespace and waits for it before removing the scratch.
 
 The network namespace is shared, so the command reaches the host's network and abstract Unix
 sockets. Filesystem Unix sockets under read-only mounts stay connectable. The IPC namespace is
-private only for System V IPC and POSIX message queues.
-
-In the tester profile, `private-tmp/` is bound at `/tmp` and the host's existing `/tmp` is bound
-read-only at `host-tmp/`. The top-level `/tmp` ancestors of the governing project, the executing
-Framework and the Python prefixes are re-bound read-only at their own names; other `/tmp` names are
-hidden. No task input can add a mount.
+private only for System V IPC and POSIX message queues. No task input can add a mount.
 
 ## Requirements
 
@@ -123,51 +117,42 @@ started a new session or reset their parent-death signal.
 ### scenario.checks.scratch — A run reads its inputs and writes disposable output
 
 - GIVEN a command and an available temporary directory outside the project
-- WHEN the Host runs it
+- WHEN the host runs it
 - THEN project reads and writes to the issued temporary, cache and report directories succeed
 - AND repeated runs receive separate scratch directories, each removed after its run
 - BUT an ambient temporary path inside the project never becomes a writable mount
 
-### scenario.checks.tester-private-tmp — A tester command gets a private `/tmp`
-
-- GIVEN a tester command
-- WHEN the Host runs it in the tester profile
-- THEN `/tmp` is a private directory backed by its scratch
-- AND the host's existing `/tmp` is readable only through `$CONCORDE_TEST_HOST_TMP`
-- AND the project's and runtime's own paths under the host's `/tmp` stay readable at their names
-- BUT an ordinary configured check keeps the default boundary
-
-### scenario.checks.command-output — Output and exit status return to the Host
+### scenario.checks.command-output — Output and exit status return to the host
 
 - GIVEN a command that writes to standard output and standard error and exits with a given code
 - WHEN its run finishes
 - THEN the runner returns both byte streams and that exit code, with signal endings reported as 128 plus the signal
 - AND large output on both pipes is drained without blocking the command
-- BUT no project log file is ever handed to the command
+- AND the caller's environment reaches the command without appearing in the sandbox's command line
 
 ### scenario.checks.unavailable — Without the boundary nothing runs
 
-- GIVEN an unsupported platform, a missing trusted bubblewrap, a denied namespace setup or an unsupported project location
-- WHEN the Host asks to run a configured check or a tester command
-- THEN the run is refused with a sandbox error carrying the Host-side diagnostics
+- GIVEN an unsupported platform, a missing trusted bubblewrap, a denied namespace setup or a failed sandbox setup
+- WHEN the host asks to run a command
+- THEN the run is refused with a sandbox error carrying the host-side diagnostics
 - BUT no ordinary subprocess runs the command instead
 
 ### scenario.checks.descendants-end — Descendants end with their run
 
 - GIVEN a command that starts detached descendants
 - WHEN the initial command completes or fails
-- THEN the Host terminates every descendant before returning and only then removes the scratch
+- THEN the host terminates every descendant before returning and only then removes the scratch
 
 ### scenario.checks.timeout — A command past its deadline times out
 
-- GIVEN a command that is still running at its deadline, possibly with descendants
-- WHEN the deadline passes, including during sandbox setup
-- THEN the Host terminates the whole process tree and returns the partial output with `timed_out` set and exit code `-1`
+- GIVEN a command that is still running at its deadline, possibly with detached descendants
+- WHEN the deadline passes
+- THEN the host terminates the whole process tree and returns the partial output with `timed_out` set and exit code `-1`
 - BUT the result is never reported as a success
 
 ### scenario.checks.cancelled — A cancelled command ends cleanly
 
 - GIVEN a running command
-- WHEN the caller sets its cancel event or the Host is interrupted
-- THEN the Host terminates the whole process tree, drains both pipes and raises a cancellation carrying the drained output and byte counts
+- WHEN the caller sets its cancel event or the host is interrupted
+- THEN the host terminates the whole process tree, drains both pipes and raises a cancellation carrying the drained output and byte counts
 - AND the evidence callback, when given, still runs before the scratch is removed

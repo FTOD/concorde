@@ -11,7 +11,9 @@ class FrontMatterError(ValueError):
     def __init__(self, message: str, source: str = "", line: int | None = None):
         self.source = source
         self.line = line
-        location = f"{source}:{line}: " if source and line else f"{source}: " if source else ""
+        location = (
+            f"{source}:{line}: " if source and line else f"{source}: " if source else ""
+        )
         super().__init__(location + message)
 
 
@@ -24,7 +26,9 @@ def _scalar(value: str, source: str, line: int) -> Any:
     if not value:
         return None
     if any(token in value for token in ("&", "*", "!", "<<:")):
-        raise FrontMatterError("unsupported YAML tag, anchor, alias, or merge key", source, line)
+        raise FrontMatterError(
+            "unsupported YAML tag, anchor, alias, or merge key", source, line
+        )
     if value == "[]":
         return []
     if value == "{}":
@@ -39,7 +43,9 @@ def _scalar(value: str, source: str, line: int) -> Any:
         try:
             return json.loads(value)
         except json.JSONDecodeError as error:
-            raise FrontMatterError("inline collections must use JSON-compatible syntax", source, line) from error
+            raise FrontMatterError(
+                "inline collections must use JSON-compatible syntax", source, line
+            ) from error
     if value.startswith('"'):
         try:
             return json.loads(value)
@@ -63,7 +69,9 @@ def _meaningful(lines: list[str], source: str) -> list[tuple[int, int, str]]:
             raise FrontMatterError("indentation must use spaces", source, number)
         indent = len(raw) - len(raw.lstrip(" "))
         if indent % 2:
-            raise FrontMatterError("indentation must be in multiples of two", source, number)
+            raise FrontMatterError(
+                "indentation must be in multiples of two", source, number
+            )
         result.append((number, indent, raw.strip()))
     return result
 
@@ -100,8 +108,14 @@ def _parse_block(
                 else:
                     value, index = _parse_block(tokens, index + 1, indent + 2, source)
                     record[key.strip()] = value
-                if index < len(tokens) and tokens[index][1] == indent + 2 and not tokens[index][2].startswith("-"):
-                    continuation, index = _parse_block(tokens, index, indent + 2, source)
+                if (
+                    index < len(tokens)
+                    and tokens[index][1] == indent + 2
+                    and not tokens[index][2].startswith("-")
+                ):
+                    continuation, index = _parse_block(
+                        tokens, index, indent + 2, source
+                    )
                     record.update(continuation)
                 container.append(record)
                 continue
@@ -133,14 +147,24 @@ def parse_document(text: str, source: str = "") -> tuple[dict[str, Any], str]:
     normalized = text.replace("\r\n", "\n")
     lines = normalized.splitlines()
     if not lines or lines[0].strip() != "---":
-        raise FrontMatterError("document must begin with a front-matter fence", source, 1)
+        raise FrontMatterError(
+            "document must begin with a front-matter fence", source, 1
+        )
     try:
-        end = next(index for index, line in enumerate(lines[1:], start=1) if line.strip() == "---")
+        end = next(
+            index
+            for index, line in enumerate(lines[1:], start=1)
+            if line.strip() == "---"
+        )
     except StopIteration as error:
-        raise FrontMatterError("front matter has no closing fence", source, 1) from error
+        raise FrontMatterError(
+            "front matter has no closing fence", source, 1
+        ) from error
     tokens = _meaningful(lines[1:end], source)
     metadata, consumed = _parse_block(tokens, 0, 0, source) if tokens else ({}, 0)
     if consumed != len(tokens) or not isinstance(metadata, dict):
         line = tokens[consumed][0] if consumed < len(tokens) else 1
         raise FrontMatterError("invalid top-level mapping", source, line)
-    return metadata, "\n".join(lines[end + 1 :]).lstrip("\n") + ("\n" if end + 1 < len(lines) else "")
+    return metadata, "\n".join(lines[end + 1 :]).lstrip("\n") + (
+        "\n" if end + 1 < len(lines) else ""
+    )

@@ -11,15 +11,15 @@ situations.
 Accepting an Issue report SHALL NOT stop the reporter, start a repair or change the outcome of the
 reporter's task.
 
-A worker can report several problems and still complete its task. Whether a problem stops the task
-is stated separately, by a Blocker in the worker's result.
+A reporter can record several problems and still complete its task. Whether a problem stops the
+task is stated separately, in the reporter's own result.
 
 ### req.issues.report-limits — Reports stay within the reporter's limits
 
 The reporting service SHALL refuse a report whose owner, evidence paths or appended Issue lie
 outside the limits its caller admitted for that reporter.
 
-### req.issues.host-provenance — Provenance comes from the caller
+### req.issues.caller-provenance — Provenance comes from the caller
 
 The reporting service SHALL take every provenance field of a report from its caller, never from the
 report.
@@ -29,20 +29,15 @@ report.
 The Issue store SHALL return a receipt only after the record holding the report is durably
 published.
 
-### req.issues.references — Results reference only known reports
-
-A stage result SHALL reference only Issue reports made through the same reporting service or
-explicitly admitted as that reporter's input.
-
 ## Records
 
-### req.issues.host-writes — Only the store writes Issue records
+### req.issues.store-writes — Only the store writes Issue records
 
-Every Host write that creates, appends to, disposes or restores an Issue record SHALL go through the
-Issue store.
+Every program write that creates, appends to, disposes or restores an Issue record SHALL go through
+the Issue store.
 
-Git operations that move committed record files between branches, such as creating a candidate,
-delivering or merging, are not store writes, and the store never runs Git.
+Git operations that move committed record files between branches, such as committing on a task
+branch or merging it, are not store writes, and the store never runs Git.
 
 ### req.issues.retention — Reports are never rewritten
 
@@ -64,10 +59,10 @@ The Issue store SHALL write a record only over the exact revision its caller rea
 A creation requires that the record does not exist; an append, a disposition and a restoration name
 the revision they replace, and a mismatch fails with `stale_issue`.
 
-### req.issues.repository-lock — One lock serializes every store write
+### req.issues.worktree-lock — One lock serializes the writes into a worktree
 
-The Issue store SHALL perform every write while holding the one exclusive lock kept in the primary
-worktree's run records.
+The Issue store SHALL perform every write into a worktree while holding that worktree's one
+exclusive Issue lock.
 
 ### req.issues.legal-transitions — Dispositions alternate
 
