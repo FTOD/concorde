@@ -44,6 +44,8 @@ def create_parser() -> argparse.ArgumentParser:
     grant.add_argument("--type", dest="task_type", required=True)
     grant.add_argument("--format", choices=["json"], default="json")
 
+    subparsers.add_parser("spec-mcp")
+
     build = subparsers.add_parser("build")
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
@@ -249,6 +251,7 @@ TOOLS = frozenset(
         "registry",
         "docsite",
         "grant",
+        "spec-mcp",
         "build",
         "protocol-manifest",
     }
@@ -288,6 +291,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             if exit_.code in (0, None):
                 raise
             raise ValueError(f"invalid command line: {' '.join(words)}") from None
+        if arguments.tool == "spec-mcp":
+            # The stdio MCP session owns standard output; it prints no envelope.
+            from ..spec_mcp.server import main as serve
+
+            return serve()
         if arguments.tool == "protocol-manifest":
             payload = tool_envelope(_protocol_manifest(arguments))
             sys.stdout.write(canonical_json(payload))

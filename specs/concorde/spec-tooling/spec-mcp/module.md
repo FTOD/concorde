@@ -9,8 +9,7 @@ write. It is a local server that speaks the Model Context Protocol over standard
 so the main agent, or an agent in any project that uses Concorde, can use it without knowing
 Concorde's Python code. It answers only from the Specs of the one worktree it is rooted at, and it
 only reads. It adds no rule of its own: every answer is Spec core's. It is not how workers receive
-their grants, it enforces nothing, and in this version workers have no access to it. The server
-and its tests are designed but not yet implemented.
+their grants, it enforces nothing, and in this version workers have no access to it.
 
 ## Terminology
 
@@ -92,8 +91,9 @@ main agent often asks just after a Spec changed.
 <a id="realization.spec-mcp.server"></a>
 
 The **Server program** runs the stdio MCP session, resolves and holds the root, confines path
-arguments, maps each tool to Spec core and turns every failure into a tool error. It and its tests,
-which will exercise the server over a real stdio MCP connection, are pending: they do not exist yet.
+arguments, maps each tool to Spec core and turns every failure into a tool error. It is a small
+hand-written JSON-RPC session in `src/concorde/spec_mcp/` with no MCP library dependency, and its
+tests exercise it over a real stdio connection to `concorde spec-mcp`.
 
 Rooting the server at one worktree keeps answers honest when several tasks run at once. A task
 branch may declare a new pending file or a new `uses` that the primary does not have yet; a server

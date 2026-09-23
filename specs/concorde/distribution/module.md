@@ -72,13 +72,14 @@ only reports whether the tracked manifest matches the build.
 | `registry --write` or `--check` | regenerates or checks the registry mirror | [Spec core](../spec-tooling/spec/module.md) |
 | `docsite --propose` or `--apply` | proposes or applies the docsite scaffold | [Views](../spec-tooling/views/module.md) |
 | `grant --modules <ids> --type <task type> [--root <worktree>]` | prints a task type's grant | [Spec core](../spec-tooling/spec/module.md) |
+| `spec-mcp` | runs the stdio MCP server rooted at `CLAUDE_PROJECT_DIR` or the client's root; it prints no envelope | [Spec MCP server](../spec-tooling/spec-mcp/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 
 Every command prints exactly one JSON result envelope and exits with its status; a refused command
 line or an unexpected error still prints one `failed` envelope rather than a traceback. The
-`spec-mcp`, `task`, `run` and `init` commands will be added by the Spec MCP server, Tasks,
-Operations and initialization respectively; Distribution only routes them.
+`task`, `run` and `init` commands will be added by Tasks, Operations and initialization
+respectively; Distribution only routes them.
 
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
 
