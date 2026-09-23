@@ -6,14 +6,19 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from concorde.harness.host import OperationHost
-from concorde.harness.relay import (
-    relay_launcher,
-    relay_operation,
-    verify_local_execution,
-)
+from concorde.distribution.local_installation import LocalInstallationService
+from concorde.harness.host import AdmissionServices, OperationHost
+from concorde.harness.relay import relay_launcher, relay_operation
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
+
+
+SERVICE = LocalInstallationService()
+SERVICES = AdmissionServices(catalog={}, dispatcher=None, installation=SERVICE)
+
+
+def verify_local_execution(host):
+    SERVICE.verify(host.project_root, host.package_root)
 
 
 class LocalExecutionTests(unittest.TestCase):
@@ -25,7 +30,9 @@ class LocalExecutionTests(unittest.TestCase):
         self.candidate = self.root / "candidate"
         self.primary.mkdir()
         self.candidate.mkdir()
-        self.host = OperationHost(self.primary, self.primary / ".concorde/framework")
+        self.host = OperationHost(
+            self.primary, self.primary / ".concorde/framework", services=SERVICES
+        )
 
     @verifies("scenario.admission.candidate-installation")
     def test_relay_uses_only_verified_local_paths_and_explicit_bootstrap(self):
@@ -60,10 +67,12 @@ class LocalExecutionTests(unittest.TestCase):
         host = OperationHost(
             self.primary,
             self.host.package_root,
+            services=SERVICES,
             relay_target={
                 "path": str(self.candidate),
                 "change_id": "change.fixture",
                 "bootstrap_installation": True,
+                "mutates": True,
             },
         )
         with (
@@ -141,7 +150,7 @@ class LocalExecutionTests(unittest.TestCase):
         (self.candidate / "concorde.json").write_text("{}")
         (self.candidate / "src/concorde").mkdir(parents=True)
         with (
-            patch("concorde.distribution.build.verify_fresh"),
+            patch("concorde.harness.admission.verify_build"),
             patch(
                 "concorde.distribution.local_installation.ensure_installation"
             ) as ensure,

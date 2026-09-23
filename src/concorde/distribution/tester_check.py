@@ -25,7 +25,7 @@ def main() -> int:
     signal.signal(signal.SIGINT, cancel)
     selection = None
     if os.environ.get("CONCORDE_SESSION_SELECTION"):
-        from ..harness.entry import runtime_selection
+        from .session_selection import runtime_selection
 
         selection = runtime_selection(Path(__file__).resolve().parents[3])
     request = json.load(sys.stdin)

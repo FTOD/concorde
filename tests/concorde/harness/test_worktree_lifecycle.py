@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.harness import change_worktree, worktree_delivery
-from concorde.harness.admission import run_operation
+from concorde.operations.dispatch import run_operation
 from concorde.harness.change_worktree import (
     GUIDANCE_START,
     git,
@@ -210,6 +210,33 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("missing_change", result["errors"][0]["code"], result)
         self.assertEqual([], self.relayed)
 
+    @verifies("scenario.validation.without-change")
+    def test_validation_from_the_primary_needs_an_existing_change(self):
+        worktrees = git_value(self.primary, "worktree", "list", "--porcelain")
+        for request in (self.task, {**self.task, "change_id": "change.unknown"}):
+            for mode in ("execute", "describe-policy"):
+                with self.subTest(request=request, mode=mode):
+                    result = self.call_operation(
+                        self.primary,
+                        "concorde-validate",
+                        request,
+                        host=OperationHost(
+                            self.primary,
+                            PACKAGE,
+                            mode=mode,
+                            relay=self.relay_in_process(),
+                        ),
+                    )
+                    self.assertEqual("blocked", result["status"], result)
+                    self.assertEqual(
+                        "missing_change", result["errors"][0]["code"], result
+                    )
+                    self.assertEqual([], self.relayed)
+        self.assertFalse((self.primary / ".concorde/status").exists())
+        self.assertEqual(
+            worktrees, git_value(self.primary, "worktree", "list", "--porcelain")
+        )
+
     def configure_request(self, **extra):
         selection = typed(
             "concorde-operation-configuration",
@@ -245,7 +272,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
             ],
         )
 
-    @verifies("scenario.admission.primary-opt-in", "scenario.admission.relay")
+    @verifies(
+        "scenario.admission.primary-opt-in",
+        "scenario.admission.relay",
+        "scenario.admission.run-record",
+    )
     def test_configure_without_opt_in_is_relayed_into_a_candidate(self):
         selection, request = self.configure_request()
         result = self.call_operation(
@@ -261,6 +292,21 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(str(created), result["workspace"]["path"], result)
         self.assertEqual(selection, self.stored_configuration(created))
         self.assertEqual(CONFIGURATION, self.stored_configuration(self.primary))
+        # The envelope is the candidate's own; the relaying run record links to its run.
+        self.assertEqual(relayed["result"], result)
+        records = {
+            path.parent.name: json.loads(path.read_text())
+            for path in (self.primary / ".concorde/runs").glob("*/run.json")
+        }
+        self.assertEqual(result, records[result["invocation_id"]]["result"])
+        [relaying] = [
+            record
+            for record in records.values()
+            if record["relayed_run_id"] == result["invocation_id"]
+        ]
+        self.assertEqual(3, relaying["schema_version"])
+        self.assertNotEqual(result["invocation_id"], relaying["run_id"])
+        self.assertEqual(result, relaying["result"])
 
     @verifies("scenario.admission.primary-opt-in")
     def test_primary_opt_in_is_refused_elsewhere_and_by_other_capabilities(self):
@@ -303,16 +349,16 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     @verifies("scenario.admission.relay")
     def test_primary_relay_is_one_json_response_on_the_paired_cli(self):
-        """The default relay runs the candidate's launcher in a subprocess; validate needs no agent."""
-        operation = "concorde-validate"
-        task = {**self.task, "constraints": ["保留用户原文；不合并、不 push"]}
+        """The default relay runs the candidate's launcher in a subprocess; configure needs no agent."""
+        operation = "concorde-configure"
+        selection, request = self.configure_request()
         invocation = {
             "type_id": "concorde-operation-invocation",
             "schema_version": 3,
             "operation_id": operation,
             "mode": "execute",
             "configuration": CONFIGURATION,
-            "input": typed(operation + "-request", task),
+            "input": typed(operation + "-request", request),
         }
         process = subprocess.run(
             [sys.executable, str(PACKAGE / "scripts/run-operation.py"), operation],
@@ -331,7 +377,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(str(self.primary), result["workspace"]["primary_worktree"])
         state = read_change(created, required=True)
         self.assertEqual(state["change_id"], result["workspace"]["change_id"])
-        self.assertEqual(task["constraints"], state["constraints"])
+        # The declared default task is the change's recorded task.
+        self.assertEqual("Configure the project's operation settings", state["task"])
         self.assertIn(result["status"], {"succeeded", "blocked", "failed"}, result)
         self.assertEqual(
             0 if result["status"] == "succeeded" else 3,

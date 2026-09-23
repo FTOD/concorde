@@ -16,7 +16,6 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution.build import (
     MODEL_ROOTS,
-    PUBLIC_OPERATIONS,
     BuildError,
     ModelInstructions,
     build,
@@ -32,10 +31,11 @@ from concorde.distribution.build import (
 # Imported eagerly: the schema-source test below patches ``subprocess.Popen`` while it invokes an
 # Operation, and a module first imported under that patch would keep the mock in any
 # definition-time default, leaking into every later test of the same process.
-from concorde.harness.admission import run_operation  # noqa: E402
+from concorde.operations.dispatch import run_operation  # noqa: E402
 from concorde.spec.typed_data import typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 from concorde.harness.host import OperationHost  # noqa: E402
+from concorde.operations.catalog import PUBLIC_OPERATIONS  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
 

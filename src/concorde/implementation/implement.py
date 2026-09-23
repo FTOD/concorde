@@ -9,19 +9,14 @@ from ..harness.revisions import (
     unconfirmed_files,
 )
 from ..review.review import repair_feedback, require_spec_review
-from ..planning.scope import change_scope
+from ..planning.scope import change_scope, component_intent
 from ..spec.repository import SpecError
 from ..spec.typed_data import typed, canonical
 from ..spec.validation import validate_repository
 
 
-def component_intent(tasks: list[dict]) -> str:
-    return "\n\n".join(
-        task["description"] + "\nAcceptance: " + task["acceptance"] for task in tasks
-    )
-
-
 def implement(run) -> dict:
+    """Agent hook of the programmer; only the native driver prepares and accepts it."""
     raise SpecError(
         "Implementation requires its native Pi programmer", "native_required"
     )

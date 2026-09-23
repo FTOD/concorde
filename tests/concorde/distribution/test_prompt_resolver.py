@@ -280,7 +280,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/operation-guidance/concorde-x.md",
-            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@prompts/workflow-host/leaf.md\n',
+            '---\nname: concorde-x\ndescription: "X"\n---\n\n@prompts/workflow-host/leaf.md\n',
         )
         result = resolve_operation_guidance(
             self.root, "prompts/operation-guidance/concorde-x.md"
@@ -321,7 +321,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/operation-guidance/concorde-x.md",
-            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@prompts/workflow-host/leaf.md\n',
+            '---\nname: concorde-x\ndescription: "X"\n---\n\n@prompts/workflow-host/leaf.md\n',
         )
         with self.assertRaises(PromptResolverError) as context:
             resolve_operation_guidance(
@@ -343,7 +343,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/operation-guidance/concorde-x.md",
-            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\n@prompts/workflow-host/leaf.md\n',
+            '---\nname: concorde-x\ndescription: "X"\n---\n\n@prompts/workflow-host/leaf.md\n',
         )
         role_result = resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
         skill_result = resolve_operation_guidance(
@@ -358,7 +358,7 @@ class PromptResolverRuleTests(unittest.TestCase):
         _write(
             self.root,
             "prompts/operation-guidance/concorde-x.md",
-            '---\nname: concorde-x\ndescription: "X"\noperation: x\n---\n\nBody\n',
+            '---\nname: concorde-x\ndescription: "X"\n---\n\nBody\n',
         )
         _write(
             self.root,

@@ -23,12 +23,11 @@ from ..harness.change_worktree import (
     snapshot_tree,
     workspace_identity,
 )
-from ..harness.invocation import Invocation
+from ..harness.invocation import Invocation, native_call
 from ..harness.revisions import implementation_digest, target_revision
 from ..harness.execution_error import OperationExecutionError
 from ..harness.worker_profile import ContractError
 from ..spec.boundaries import scope_roots
-from ..operations.catalog import REVIEW_STAGES
 from ..planning.scope import change_scope
 from .impact import review_impact
 from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
@@ -121,14 +120,14 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
 def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
     repository = SpecRepository(run.repository.root, run.host.package_root)
     target = repository.module(run.target.id, run.task.get("focus_id"))
-    if mode not in REVIEW_STAGES:
+    if mode not in {"spec", "code"}:
         raise SpecError("review_mode must be spec or code", "invalid_input")
     if mode == "code" and not target.files:
         raise SpecError(
             "code review requires a Module whose entities list implementation files",
             "unsupported_target",
         )
-    _phase, role = REVIEW_STAGES[mode]
+    role = "concorde-" + review_agent(mode).replace("_", "-")
     prompt = load_model_instructions(run.host.package_root, role)
     native = run.host.package_root / (
         "generated/native/" + role.replace("_", "-") + ".md"
@@ -188,7 +187,7 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
                 "src/concorde/harness/checks.py",
                 "src/concorde/harness/revisions.py",
                 "src/concorde/operations/dispatch.py",
-                "src/concorde/operations/dispatch_routes.py",
+                "src/concorde/operations/catalog.py",
                 "src/concorde/planning/plan.py",
                 "src/concorde/planning/tasks.py",
                 "src/concorde/implementation/implement.py",
@@ -563,7 +562,7 @@ def code_review_peers(run) -> tuple:
 
 def _component_tasks(run, state):
     """Read explicit completed component selections; never resume legacy orchestration."""
-    from ..implementation.implement import component_intent
+    from ..planning.scope import component_intent
 
     work = (state or {}).get("targets", {}).get(run.target.id, {})
     allowed = set(change_scope(run.repository, run.target.id)) - {run.target.id}
@@ -625,10 +624,16 @@ def _code_scope_identity(run):
     )
 
 
-def review_scope(run, mode: str):
-    if run.host.native_assessment is not None:
-        return run.host.native_assessment(run)
-    raise SpecError("Public review requires its native Pi workflow", "native_required")
+def review_agent(mode: str) -> str:
+    """The reviewer Agent the catalog declares for the ``spec`` or ``code`` review."""
+    from ..operations.catalog import operation
+
+    return operation(f"concorde-{mode}-review").agents[0][0]
+
+
+def review_workflow(request):
+    """Workflow hook of both reviews: every review runs as a prepared native workflow."""
+    return native_call(request)
 
 
 def scope_members(run, mode, *, initialize=False):

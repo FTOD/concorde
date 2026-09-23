@@ -746,6 +746,29 @@ def resume_owner(state: dict, task: dict) -> dict:
     return result
 
 
+# The rule that admits a request for a Module other than the change's owner as a component
+# request. Planning owns it and registers it when its records load; with none registered no
+# such request is admitted.
+_COMPONENT_POLICY = None
+
+
+def register_component_policy(policy) -> None:
+    """Register ``policy(repository, change, task) -> bool``; only one rule may be registered."""
+    global _COMPONENT_POLICY
+    if _COMPONENT_POLICY not in {None, policy}:
+        raise SpecError(
+            "a component request policy is already registered", "invalid_input"
+        )
+    _COMPONENT_POLICY = policy
+
+
+def component_request(repository, change: dict, task: dict) -> bool:
+    """Whether ``task`` is a component request of ``change`` under the registered policy."""
+    return _COMPONENT_POLICY is not None and bool(
+        _COMPONENT_POLICY(repository, change, task)
+    )
+
+
 def bind_owner(root: Path, task: dict, *, coordinated: bool = False) -> dict:
     state = read_change(root, required=True)
     if task.get("change_id") not in {None, state["change_id"]}:

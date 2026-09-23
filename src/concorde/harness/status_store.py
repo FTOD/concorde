@@ -354,7 +354,12 @@ def record_manual_merge(
 
 @timed("evidence.record_run")
 def record_run(
-    host, *, operation: str, result: dict | None = None, task: dict | None = None
+    host,
+    *,
+    operation: str,
+    result: dict | None = None,
+    task: dict | None = None,
+    relayed_run_id: str | None = None,
 ) -> None:
     """Capture actual source provenance before execution and retain every final envelope."""
     from .change_worktree import (
@@ -404,7 +409,7 @@ def record_run(
                     entry["content"].encode(),
                 )
             record = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "run_id": host.invocation_id,
                 "root_run_id": host.root_invocation_id or host.invocation_id,
                 "change_id": change["change_id"] if change else None,
@@ -452,6 +457,7 @@ def record_run(
                 }
                 if host.session_provenance
                 else None,
+                "relayed_run_id": None,
                 "status": "started",
             }
             # A build catalog is not evidence of Pi extension loading or tool execution. Only an explicitly supplied,
@@ -479,7 +485,9 @@ def record_run(
                 change.setdefault("runs", []).append(relative)
                 write_status(host.project_root, change)
         if result is not None:
-            record.update(status=result["status"], result=result)
+            record.update(
+                status=result["status"], result=result, relayed_run_id=relayed_run_id
+            )
             record["artifacts"] = _archive_artifacts(
                 host.project_root, archive, host.invocation_id, result
             )

@@ -6,10 +6,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.change_worktree import read_change
+from concorde.harness.change_worktree import ensure_change, read_change
 from concorde.harness.checks import configured_checks, check_revision
 from concorde.harness.host import OperationHost
-from concorde.harness.admission import run_operation
+from concorde.operations.dispatch import run_operation
 from concorde.harness.check_executor import CheckSandboxError, execute_check
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.typed_data import typed
@@ -73,6 +73,8 @@ class CheckIntegrationTests(unittest.TestCase):
     def test_public_validation_reports_preflight_owner_without_executing_checks(self):
         self.config["checks"][0]["inputs"] = ["removed-lock.json"]
         _, target, check_id = self.configure("print('must not run')")
+        # Validation needs an existing change; this embedding host registers it in place.
+        ensure_change(self.root, allow_primary=True)
         with patch("concorde.harness.checks.execute_check") as execute:
             result = run_operation(
                 "concorde-validate",
@@ -221,6 +223,7 @@ sys.exit(17)
     @verifies("scenario.checks.read-only")
     def test_real_project_write_fails_validation_and_never_records_ready(self):
         self.configure("open('unlisted-new.txt','w').write('unsafe')")
+        ensure_change(self.root, allow_primary=True)
         result = run_operation(
             "concorde-validate",
             CONFIGURATION,

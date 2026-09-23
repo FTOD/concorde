@@ -12,9 +12,11 @@ from ..harness.change_worktree import (
     save_target_state,
     snapshot_tree,
     target_state,
+    workspace_identity,
 )
 from ..harness.checks import check_revision, configured_checks
-from ..harness.invocation import Invocation
+from ..harness.admission import bind_module_target
+from ..harness.invocation import Invocation, bind
 from ..harness.revisions import (
     impact_revisions,
     implementation_digest,
@@ -64,6 +66,38 @@ def checked_modules(repository, target, *, direct: bool = False) -> tuple:
     return tuple(
         module for module in repository.modules.values() if module.id in covered
     )
+
+
+def select_target(root, package, data: dict) -> tuple[dict, bool]:
+    """Target selection hook of ``concorde-validate``: validation needs an existing change.
+
+    In a linked worktree the request validates that worktree's change. Started in the primary
+    worktree or outside Git, a request that names no ``change_id`` is refused with
+    ``missing_change`` unless a change is registered there, so validation never creates an empty
+    candidate; an unknown ``change_id`` is refused the same way when the workspace is bound.
+    """
+    data = bind_module_target(root, package, data, mutates=True)
+    primary, current = workspace_identity(root)
+    linked = (
+        current is not None
+        and primary is not None
+        and current["path"] != primary["path"]
+    )
+    if data.get("change_id") is None and not linked and read_change(root) is None:
+        raise SpecError(
+            "validation needs an existing change; name its change_id or run it in the change's candidate",
+            "missing_change",
+            "/change_id",
+        )
+    return data, True
+
+
+def run(request) -> dict:
+    """Entry point of ``concorde-validate``."""
+    invocation = bind(request)
+    if request.host.mode == "describe-policy":
+        return invocation.response("described")
+    return validate(invocation, request.data.get("run_checks", True))
 
 
 def validate(run, run_checks: bool = True) -> dict:

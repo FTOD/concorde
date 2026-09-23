@@ -9,20 +9,20 @@ from ..harness.change_worktree import (
     target_state,
     work_path,
 )
+from ..harness.invocation import native_call
 from ..harness.revisions import target_revision
 from ..spec.changes import apply_files, file_change
 from ..spec.repository import SpecError
 from ..spec.typed_data import artifact
 
 
-def plan(run) -> dict:
-    raise SpecError("Planning requires its native Pi workflow", "native_required")
+def plan(request) -> dict:
+    """Workflow hook of ``concorde-plan``: planning always runs as a prepared native workflow."""
+    return native_call(request)
 
 
-def context_solve(run, operation: str) -> dict:
-    """One context-assessor stage; a sufficient assessment completes the operation."""
-    if run.host.native_assessment is not None:
-        return run.host.native_assessment(run)
+def context_solve(run) -> dict:
+    """Agent hook of the context assessor; only the native driver prepares and accepts it."""
     raise SpecError(
         "Context assessment requires the native Pi prepare/Agent boundary",
         "native_required",

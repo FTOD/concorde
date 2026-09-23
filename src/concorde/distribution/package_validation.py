@@ -13,13 +13,17 @@ import re
 from pathlib import Path
 from types import ModuleType
 
-from ..harness.operation_state import StateContract
 from ..harness.worker_profile import (
     WorkerProfile,
     validate_worker_profile,
 )
-from ..operations.catalog import MODEL_OPERATIONS, OPERATION_NAMES, register_types
-from ..spec.frontmatter import FrontMatterError, parse_document
+from ..operations.catalog import (
+    OPERATION_NAMES,
+    CatalogError,
+    load_catalog,
+    mirror,
+    register_types,
+)
 from ..spec.model import Finding
 from . import build
 from .build import BuildError, check_build, verify_fresh
@@ -80,7 +84,7 @@ def _finding(
 def _prompt_roots(root: Path) -> tuple[str, ...]:
     return (
         build.task_subagents.prompt_roots(root)
-        + tuple(build.OPERATION_GUIDANCE.values())
+        + tuple(build.guidance_sources().values())
         + tuple(build.MODEL_ROOTS.values())
         + tuple(f"prompts/native/{name}.md" for name in build.MODEL_ROOTS)
         + ("prompts/protocol/principles.md",)
@@ -124,9 +128,10 @@ def _validate_prompts(root: Path) -> list[Finding]:
         )
 
     known = (
-        frozenset(build.PUBLIC_OPERATIONS)
-        | frozenset(OPERATION_NAMES)
-        | frozenset(MODEL_OPERATIONS)
+        frozenset(OPERATION_NAMES)
+        | frozenset(
+            "concorde-" + name.replace("_", "-") for name in _agent_modules(root)
+        )
         | frozenset(schemas())
         | _PROTOCOL_VOCABULARY
     )
@@ -197,321 +202,73 @@ def _load_operations_package(root: Path, directory: str = "operations"):
     return module
 
 
-def _operation_modules(
-    root: Path,
-) -> tuple[ModuleType | None, dict[str, ModuleType | None]]:
-    inventory = _load_operations_package(root)
-    if inventory is None or not isinstance(
-        getattr(inventory, "OPERATIONS", None), tuple
-    ):
-        return None, {}
+def _agent_modules(root: Path) -> dict[str, ModuleType | None]:
+    """The Agent modules of ``root``'s ``agents`` package, None for one that cannot load."""
+    inventory = _load_operations_package(root, "agents")
     modules: dict[str, ModuleType | None] = {}
-    for name in inventory.OPERATIONS:
+    if inventory is None:
+        return modules
+    for name in inventory.DOMAIN_AGENTS:
         try:
             modules[name] = importlib.import_module(f"{inventory.__name__}.{name}")
         except Exception:  # noqa: BLE001 - reported as a finding, not a crash
             modules[name] = None
-    agents_inventory = _load_operations_package(root, "agents")
-    if agents_inventory is not None:
-        for name in agents_inventory.DOMAIN_AGENTS:
-            try:
-                modules[name] = importlib.import_module(
-                    f"{agents_inventory.__name__}.{name}"
-                )
-            except Exception:
-                modules[name] = None
-    return inventory, modules
+    return modules
 
 
-def _guidance_operations(root: Path) -> dict[str, list[str]]:
-    """Return {operation_module_name: [operation_name, ...]} from every prompts/operation-guidance/*.md source.
-
-    Discovers whatever Operation guidance sources actually exist at ``root`` rather than assuming the real
-    package's fixed public names, so a temporary fixture package with its own guidance set is
-    validated on its own terms.
-    """
-
-    result: dict[str, list[str]] = {}
-    guidance_root = root / GUIDANCE_ROOT
-    if guidance_root.is_symlink() or not guidance_root.is_dir():
-        return result
-    for path in sorted(guidance_root.glob("*.md")):
-        if path.is_symlink() or not path.is_file():
-            continue
-        relative = path.relative_to(root).as_posix()
-        try:
-            metadata, _ = parse_document(path.read_text(encoding="utf-8"), relative)
-        except (OSError, UnicodeError, FrontMatterError):
-            continue
-        operation = metadata.get("operation")
-        if isinstance(operation, str) and operation.strip():
-            result.setdefault(operation.strip(), []).append(path.stem)
-    return result
+def _catalog(root: Path):
+    """The Operation catalog of ``root``, or the loader's refusal."""
+    try:
+        return load_catalog(root), None
+    except CatalogError as error:
+        return None, error
 
 
 def _validate_operation_modules(root: Path) -> list[Finding]:
-    findings: list[Finding] = []
-    inventory, modules = _operation_modules(root)
-    if inventory is None:
+    """The catalog loads, and each public Operation has exactly its own guidance source.
+
+    The declaration rules are the catalog loader's; its refusal is reported, not repeated.
+    """
+    catalog, error = _catalog(root)
+    if catalog is None:
         return [
             _finding(
                 "CONCORDE-OPERATION-INVENTORY-001",
-                "operations/__init__.py",
-                "operations/__init__.py is missing, unsafe, or declares no OPERATIONS tuple.",
-                "Add operations/__init__.py with an explicit OPERATIONS inventory.",
+                f"operations/{error.declaration}.py",
+                str(error),
+                "Repair the declaration so the Operation catalog loads.",
             )
         ]
-
-    declared = set(modules)
-    actual = {
-        path.stem
-        for path in (root / "operations").glob("*.py")
-        if path.stem != "__init__"
-    }
-    actual.update(
-        path.parent.name for path in (root / "operations").glob("*/__init__.py")
+    findings: list[Finding] = []
+    guidance_root = root / GUIDANCE_ROOT
+    guidance = (
+        {
+            path.stem
+            for path in guidance_root.glob("*.md")
+            if path.is_file() and not path.is_symlink()
+        }
+        if guidance_root.is_dir() and not guidance_root.is_symlink()
+        else set()
     )
-    if len(inventory.OPERATIONS) != len(set(inventory.OPERATIONS)):
+    public = {name for name, item in catalog.items() if item.public}
+    for name in sorted(public - guidance):
         findings.append(
             _finding(
-                "CONCORDE-OPERATION-INVENTORY-001",
-                "operations/__init__.py",
-                "OPERATIONS must not contain duplicates.",
-                "Declare each operation exactly once.",
+                "CONCORDE-OPERATION-GUIDANCE-001",
+                f"{GUIDANCE_ROOT}{name}.md",
+                f"public operation {name!r} has no guidance source.",
+                "Add prompts/operation-guidance/<public name>.md.",
             )
         )
-    if set(inventory.OPERATIONS) != actual:
+    for name in sorted(guidance - public):
         findings.append(
             _finding(
-                "CONCORDE-OPERATION-INVENTORY-001",
-                "operations/__init__.py",
-                f"Declared OPERATIONS {sorted(declared)} differs from module files {sorted(actual)}.",
-                "List exactly the operation module files in OPERATIONS, one entry each.",
+                "CONCORDE-OPERATION-GUIDANCE-001",
+                f"{GUIDANCE_ROOT}{name}.md",
+                f"guidance source {name!r} names no public operation.",
+                "Remove the guidance source or declare its Operation.",
             )
         )
-
-    guidance_operations = _guidance_operations(root)
-    valid_modules: dict[str, ModuleType] = {}
-    for name in sorted(declared):
-        module = modules.get(name)
-        source = f"operations/{name}.py"
-        if module is None:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-CONSTANTS-001",
-                    source,
-                    f"operation module {name!r} could not be imported.",
-                    "Fix the import error in the operation module.",
-                )
-            )
-            continue
-        missing = [
-            attribute
-            for attribute in (
-                "PUBLIC",
-                "CONTEXT_SELECTION",
-                "DETERMINISTIC",
-                "PROFILE",
-                "USES",
-                "EXTERNAL_NAME",
-                *(("STATE", "run") if getattr(module, "KIND", None) != "agent" else ()),
-            )
-            if not hasattr(module, attribute)
-        ]
-        if missing:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-CONSTANTS-001",
-                    source,
-                    f"operation module {name!r} is missing mandatory constants: {missing}.",
-                    "Declare PUBLIC, CONTEXT_SELECTION, DETERMINISTIC, PROFILE, USES, EXTERNAL_NAME, STATE and run(state, runtime).",
-                )
-            )
-            continue
-        if (
-            type(module.PUBLIC) is not bool
-            or not isinstance(module.CONTEXT_SELECTION, str)
-            or type(module.DETERMINISTIC) is not bool
-            or module.PROFILE is not None
-            and not isinstance(module.PROFILE, WorkerProfile)
-            or not isinstance(module.USES, tuple)
-            or not all(isinstance(used, str) for used in module.USES)
-            or not isinstance(module.EXTERNAL_NAME, str)
-            or getattr(module, "KIND", None) != "agent"
-            and (
-                not isinstance(module.STATE, StateContract) or not callable(module.run)
-            )
-        ):
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-CONSTANTS-001",
-                    source,
-                    f"operation module {name!r} declares a mandatory constant with the wrong type.",
-                    "Use booleans, a WorkerProfile or None, a USES tuple, a StateContract and a callable run.",
-                )
-            )
-            continue
-        valid_modules[name] = module
-        if module.CONTEXT_SELECTION not in {"bound", "none"}:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-CONTEXT-001",
-                    source,
-                    f"operation {name!r} declares CONTEXT_SELECTION {module.CONTEXT_SELECTION!r}.",
-                    "CONTEXT_SELECTION must be bound or none.",
-                )
-            )
-        unknown_uses = sorted(set(module.USES) - declared)
-        if unknown_uses:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-USES-001",
-                    source,
-                    f"operation {name!r} USES unknown operations: {unknown_uses}.",
-                    "Name only operations listed in operations.OPERATIONS.",
-                )
-            )
-        if (
-            module.PROFILE is not None
-            and hasattr(module, "STATE")
-            and (
-                getattr(module, "KIND", None) == "agent"
-                or module.STATE.input_type != module.PROFILE.contract.context
-                or module.STATE.output_type != module.PROFILE.contract.result
-            )
-        ):
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-STATE-001",
-                    source,
-                    "State contract differs from the model execution profile.",
-                    "Use the profile's admitted input and output types.",
-                )
-            )
-        if len(module.USES) != len(set(module.USES)):
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-USES-001",
-                    source,
-                    "USES contains duplicate Operation identities.",
-                    "Declare each direct dependency once.",
-                )
-            )
-        known_types = schemas()
-        if getattr(module, "KIND", None) != "agent" and (
-            not isinstance(module.STATE.input_type, str)
-            or module.STATE.input_type not in known_types
-            or module.STATE.output_type is not None
-            and (
-                not isinstance(module.STATE.output_type, str)
-                or module.STATE.output_type not in known_types
-            )
-        ):
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-STATE-001",
-                    source,
-                    "State contract references an unknown type.",
-                    "Declare registered input and output schemas.",
-                )
-            )
-        if (
-            module.PUBLIC or hasattr(module, "REQUEST") or hasattr(module, "RESPONSE")
-        ) and (
-            not isinstance(getattr(module, "REQUEST", None), dict)
-            or not isinstance(getattr(module, "RESPONSE", None), dict)
-        ):
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-CONSTANTS-001",
-                    source,
-                    "Public/host adapters must retain both wire schemas.",
-                    "Declare REQUEST and RESPONSE; private State-only nodes need neither.",
-                )
-            )
-        expected_external = "concorde-" + name.replace("_", "-")
-        if module.EXTERNAL_NAME != expected_external:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-EXTERNALNAME-001",
-                    source,
-                    f"operation {name!r} EXTERNAL_NAME is {module.EXTERNAL_NAME!r}, expected {expected_external!r}.",
-                    "EXTERNAL_NAME is always 'concorde-' plus the module name with underscores hyphenated.",
-                )
-            )
-        guidance = guidance_operations.get(name, [])
-        should_have_guidance = module.PUBLIC
-        if should_have_guidance and guidance != [module.EXTERNAL_NAME]:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-GUIDANCE-001",
-                    source,
-                    f"public operation {name!r} must have exactly one guidance source matching its external name; found {guidance}.",
-                    "Add or deduplicate the prompts/operation-guidance/<name>.md source declaring operation: "
-                    + name
-                    + ".",
-                )
-            )
-        if not should_have_guidance and guidance:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-GUIDANCE-001",
-                    source,
-                    f"non-public operation {name!r} must have no public guidance; found {guidance}.",
-                    "Only PUBLIC=True operations appear in the Pi catalog; remove the guidance source.",
-                )
-            )
-
-    visiting: set[str] = set()
-    visited: set[str] = set()
-    model_calls: dict[str, bool | None] = {}
-
-    def visit(name: str, chain: tuple[str, ...]) -> bool | None:
-        module = valid_modules.get(name)
-        if module is None:
-            return None
-        if name in visited:
-            return model_calls[name]
-        if name in visiting:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-USES-001",
-                    f"operations/{name}.py",
-                    "operation USES graph is cyclic: " + " -> ".join((*chain, name)),
-                    "Remove one nested USES edge so the composition graph is acyclic.",
-                )
-            )
-            return None
-        visiting.add(name)
-        children = [visit(used, (*chain, name)) for used in module.USES]
-        calls_model = module.PROFILE is not None or any(children)
-        resolved = all(child is not None for child in children)
-        if resolved and module.DETERMINISTIC != (not calls_model):
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-DETERMINISTIC-001",
-                    f"operations/{name}.py",
-                    f"operation {name!r} declares DETERMINISTIC={module.DETERMINISTIC}, "
-                    f"but its WorkerProfile, routing and transitive USES declarations imply model_calls={calls_model}.",
-                    "Set DETERMINISTIC to true exactly when no supported path calls a model.",
-                )
-            )
-        if resolved and module.CONTEXT_SELECTION == "none" and calls_model:
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-CONTEXT-001",
-                    f"operations/{name}.py",
-                    f"operation {name!r} selects no WorkerProfile context but its composition calls a model.",
-                    "Model-backed operations must declare bound context selection.",
-                )
-            )
-        visiting.discard(name)
-        visited.add(name)
-        model_calls[name] = calls_model if resolved else None
-        return model_calls[name]
-
-    for name in sorted(declared):
-        visit(name, ())
     return findings
 
 
@@ -559,18 +316,18 @@ def _validate_agent_profile(
 def _validate_worker_profiles(root: Path) -> list[Finding]:
     """Rules CONCORDE-AGENT-INVENTORY-001, CONCORDE-AGENT-SPEC-001, CONCORDE-AGENT-HARNESS-001."""
 
-    inventory, modules = _operation_modules(root)
-    if inventory is None:
+    agents = _load_operations_package(root, "agents")
+    if agents is None:
         return [
             _finding(
                 "CONCORDE-OPERATION-INVENTORY-001",
-                "operations/__init__.py",
-                "Missing Operation inventory.",
-                "Declare the single OPERATIONS inventory.",
+                "agents/__init__.py",
+                "Missing Agents inventory.",
+                "Declare the single DOMAIN_AGENTS inventory.",
             )
         ]
+    modules = _agent_modules(root)
     findings: list[Finding] = []
-    agents = _load_operations_package(root, "agents")
     if agents is not None and len(agents.DOMAIN_AGENTS) != len(
         set(agents.DOMAIN_AGENTS)
     ):
@@ -587,9 +344,9 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
             findings.append(
                 _finding(
                     "CONCORDE-OPERATION-INVENTORY-001",
-                    "operations/__init__.py",
-                    f"Cannot load operation {name!r}.",
-                    "Repair the operation declaration.",
+                    f"agents/{name}/__init__.py",
+                    f"Cannot load Agent {name!r}.",
+                    "Repair the Agent definition.",
                 )
             )
             continue
@@ -830,43 +587,14 @@ def _metadata_inventories(
 
 
 def _operation_code_inventory(root: Path) -> dict | None:
-    inventory, modules = _operation_modules(root)
-    if inventory is None:
+    """The ``concorde.operations`` records the loaded catalog of ``root`` yields, by identity."""
+    catalog, _ = _catalog(root)
+    if catalog is None:
         return None
-    result = {}
-    for name, module in modules.items():
-        if (
-            module is None
-            or getattr(module, "KIND", None) == "agent"
-            or not hasattr(module, "PUBLIC")
-        ):
-            continue
-        profile = getattr(module, "PROFILE", None)
-        state = getattr(module, "STATE", None)
-        result[name.replace("_", "-")] = {
-            "kind": getattr(module, "KIND", None),
-            "public": module.PUBLIC,
-            "context_selection": getattr(module, "CONTEXT_SELECTION", None),
-            "deterministic": getattr(module, "DETERMINISTIC", None),
-            "public_name": (
-                getattr(module, "EXTERNAL_NAME", None) if module.PUBLIC else None
-            ),
-            "uses": list(getattr(module, "USES", ())),
-            "state": (
-                {"input": state.input_type, "output": state.output_type}
-                if state
-                else None
-            ),
-            "profile": (
-                {
-                    "workspace": profile.workspace,
-                    "tools": sorted(profile.tools),
-                }
-                if profile
-                else None
-            ),
-        }
-    return result
+    return {
+        record["id"]: {key: value for key, value in record.items() if key != "id"}
+        for record in mirror(catalog)
+    }
 
 
 def _validate_spec_operations_block(
@@ -892,35 +620,33 @@ def _validate_spec_operations_block(
         entries = None
     fields = {
         "id",
+        "public_name",
         "kind",
         "public",
-        "context_selection",
         "deterministic",
-        "public_name",
+        "owner",
+        "agents",
         "uses",
-        "state",
-        "profile",
     }
     if not isinstance(entries, list) or any(
         not isinstance(item, dict)
         or set(item) != fields
         or not isinstance(item["id"], str)
+        or not isinstance(item["public_name"], str)
+        or not isinstance(item["kind"], str)
         or type(item["public"]) is not bool
         or type(item["deterministic"]) is not bool
-        or item["context_selection"] not in ("bound", "none")
+        or not isinstance(item["owner"], str)
+        or not isinstance(item["agents"], list)
         or not isinstance(item["uses"], list)
-        or item["state"] is not None
-        and not isinstance(item["state"], dict)
-        or item["profile"] is not None
-        and not isinstance(item["profile"], dict)
         for item in entries
     ):
         return [
             _finding(
                 rule,
                 path,
-                "Malformed Operation State/profile inventory.",
-                "Declare id/public/context_selection/deterministic/public_name/uses/state/profile.",
+                "Malformed Operation catalog mirror.",
+                "Declare id/public_name/kind/public/deterministic/owner/agents/uses.",
             )
         ]
     declared = {
@@ -941,8 +667,8 @@ def _validate_spec_operations_block(
             _finding(
                 rule,
                 path,
-                "Missing operation code inventory.",
-                "Restore operations/__init__.py.",
+                "The Operation catalog does not load.",
+                "Repair the declarations so the catalog loads.",
             )
         ]
     for name in sorted(set(expected) - set(declared)):
@@ -970,7 +696,7 @@ def _validate_spec_operations_block(
                     rule,
                     path,
                     f"Operation {name!r} differs from its code declaration.",
-                    "Reconcile exposure, USES, State and the optional execution profile.",
+                    "Make the mirror record equal the fields its declaration states.",
                 )
             )
     return findings

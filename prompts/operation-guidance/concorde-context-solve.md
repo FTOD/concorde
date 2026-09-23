@@ -1,7 +1,6 @@
 ---
 name: concorde-context-solve
 description: "Agent entry: prepare a native context-assessor for the selected Module and task."
-operation: context_solve
 ---
 
 # concorde-context-solve

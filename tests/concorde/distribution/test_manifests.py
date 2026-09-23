@@ -77,24 +77,23 @@ class ManifestContractTests(unittest.TestCase):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
         sys.path.insert(0, str(REPOSITORY_ROOT))
         try:
-            from concorde.distribution.build import PUBLIC_OPERATIONS
             from concorde.harness.worker_profile import load_worker_profiles
-            from concorde.operations.catalog import load_operation_inventory
+            from concorde.operations.catalog import PUBLIC_OPERATIONS
         finally:
             sys.path.pop(0)
             sys.path.pop(0)
-        operations = load_operation_inventory()
+        import operations
+
+        # The launcher keeps no list of its own: it offers exactly the catalog's public names.
         launcher = ast.parse((REPOSITORY_ROOT / "scripts/run-operation.py").read_text())
-        launcher_operations = next(
-            ast.literal_eval(node.value)
-            for node in launcher.body
-            if isinstance(node, ast.Assign)
-            and any(
+        self.assertFalse(
+            any(
                 isinstance(target, ast.Name) and target.id == "PUBLIC_OPERATIONS"
+                for node in launcher.body
+                if isinstance(node, ast.Assign)
                 for target in node.targets
             )
         )
-        self.assertEqual(set(PUBLIC_OPERATIONS), set(launcher_operations))
         self.assertEqual(
             (
                 len(load_worker_profiles()),

@@ -19,6 +19,7 @@ from ..spec.typed_data import (
 
 
 def tasks(run) -> dict:
+    """Agent hook of the task author; only the native driver prepares and accepts it."""
     raise SpecError("Task authoring requires its native Pi Agent", "native_required")
 
 

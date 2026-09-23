@@ -1,7 +1,6 @@
 ---
 name: concorde-issues
 description: "Host bookkeeping or native solve workflow: inspect, report, reopen or assess branch-local Issues; return needed repairs to the caller or verify current work without automatic delivery."
-operation: issues
 ---
 
 # concorde-issues

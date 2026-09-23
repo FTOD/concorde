@@ -20,10 +20,6 @@ from concorde.spec.verification import verifies
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
-# A target already registered in this project's own .concorde/specs.json (self-hosted registry),
-# used only to make a schema-valid concorde-validate request; describe-policy never executes checks.
-SELF_HOSTED_TARGET = "module.operations"
-
 
 def _run(args: list[str], cwd: Path, **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(args, cwd=str(cwd), capture_output=True, text=True, **kwargs)
@@ -68,7 +64,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         checked_out = _run(["git", "checkout", "--quiet", self.head_sha], self.clone)
         self.assertEqual(0, checked_out.returncode, checked_out.stderr)
 
-    def _validate_invocation(self) -> dict:
+    def _issues_invocation(self) -> dict:
         # This fixture tests committed HEAD, not uncommitted transport renames in the caller.
         # Select the entry spelling from that exact revision's manifest, as for its Operation inventory.
         manifest = json.loads((self.clone / "concorde.json").read_text())
@@ -77,20 +73,19 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         invocation = {
             "type_id": f"concorde-{entry_kind}-invocation",
             "schema_version": 3,
-            f"{entry_kind}_id": "concorde-validate",
+            f"{entry_kind}_id": "concorde-issues",
             "mode": "describe-policy",
             "configuration": None,
+            # A model-backed capability: only those need a fresh build. Listing Issues answers
+            # without starting its workflow, so a fresh build is described.
             "input": {
-                "type_id": "concorde-validate-request",
+                "type_id": "concorde-issues-request",
                 "schema_version": 1,
-                "data": {
-                    "target_id": SELF_HOSTED_TARGET,
-                    "task": "Describe validation readiness for the workflow host Service",
-                },
+                "data": {"action": "list"},
             },
         }
         process = _run(
-            [sys.executable, launcher, "concorde-validate"],
+            [sys.executable, launcher, "concorde-issues"],
             self.clone,
             input=json.dumps(invocation),
             env=child_environment(),
@@ -144,7 +139,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             self.assertFalse((self.clone / relative).exists(), relative)
         self.assertEqual(7, len(list((self.clone / "generated/agents").glob("*.md"))))
 
-        described = self._validate_invocation()
+        described = self._issues_invocation()
         self.assertEqual("described", described["status"], described)
 
     @verifies(
@@ -154,7 +149,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
     def test_editing_a_prompt_without_rebuilding_fails_every_invocation_closed(self):
         build = _run([sys.executable, "scripts/concorde.py", "build"], self.clone)
         self.assertEqual(0, build.returncode, build.stderr)
-        described = self._validate_invocation()
+        described = self._issues_invocation()
         self.assertEqual("described", described["status"], described)
 
         prompt = self.clone / "prompts/workflow-host/task-request-fields.md"
@@ -164,7 +159,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             encoding="utf-8",
         )
 
-        blocked = self._validate_invocation()
+        blocked = self._issues_invocation()
         self.assertEqual("blocked", blocked["status"], blocked)
         self.assertEqual("stale_build", blocked["errors"][0]["code"], blocked)
 

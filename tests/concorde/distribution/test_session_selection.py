@@ -181,6 +181,7 @@ class SessionSelectionTests(unittest.TestCase):
         import io
         import json
         from unittest.mock import patch
+        from concorde.distribution.session_selection import runtime_selection
         from concorde.harness.entry import json_main
         from concorde.spec.typed_data import typed
 
@@ -192,12 +193,6 @@ class SessionSelectionTests(unittest.TestCase):
         path.write_text(json.dumps(selection))
         project = self.root / "disposable-project"
         project.mkdir()
-        observed = {}
-
-        def runner(data, runtime):
-            observed["host"] = runtime.context.host
-            return {"result": {"status": "described", "invocation_id": "fixture"}}
-
         request = {
             "type_id": "concorde-operation-invocation",
             "schema_version": 3,
@@ -209,6 +204,7 @@ class SessionSelectionTests(unittest.TestCase):
                 {"target_id": "module.project", "task": "Inspect disposable project"},
             ),
         }
+        described = {"status": "described", "invocation_id": "fixture"}
         with (
             patch.dict(
                 "os.environ",
@@ -218,13 +214,24 @@ class SessionSelectionTests(unittest.TestCase):
             patch("sys.stdin", io.StringIO(json.dumps(request))),
             patch("sys.stdout", io.StringIO()),
             patch("pathlib.Path.cwd", return_value=project),
+            patch(
+                "concorde.harness.entry.run_operation", return_value=described
+            ) as admitted,
         ):
-            self.assertEqual(0, json_main(self.root, "concorde-context-solve", runner))
-        self.assertEqual(project, observed["host"].project_root)
-        self.assertEqual(self.root, observed["host"].package_root)
-        self.assertEqual(
-            str(self.root), observed["host"].session_provenance["candidate"]
-        )
+            provenance = runtime_selection(self.root)
+            self.assertEqual(
+                0,
+                json_main(
+                    self.root,
+                    "concorde-context-solve",
+                    services=None,
+                    session_provenance=provenance,
+                ),
+            )
+        host = admitted.call_args.kwargs["host_context"]
+        self.assertEqual(project, host.project_root)
+        self.assertEqual(self.root, host.package_root)
+        self.assertEqual(str(self.root), host.session_provenance["candidate"])
 
     @verifies("scenario.session.select")
     def test_transitive_runtime_sources_and_entire_catalog_are_bound(self):
@@ -344,22 +351,12 @@ class SessionSelectionTests(unittest.TestCase):
 
     @verifies("scenario.session.select")
     def test_linked_source_redirect_is_refused_before_runner(self):
-        import io
-        import json
         from types import SimpleNamespace
-        from unittest.mock import Mock, patch
-        from concorde.harness.entry import json_main
+        from unittest.mock import patch
 
-        request = {
-            "type_id": "concorde-operation-invocation",
-            "schema_version": 3,
-            "operation_id": "concorde-plan",
-            "mode": "execute",
-            "configuration": None,
-            "input": {},
-        }
-        runner = Mock()
-        output = io.StringIO()
+        from concorde.distribution.session_selection import runtime_selection
+        from concorde.spec.repository import SpecError
+
         with (
             patch.dict(
                 "os.environ",
@@ -374,15 +371,10 @@ class SessionSelectionTests(unittest.TestCase):
                 return_value=SimpleNamespace(returncode=0, stdout="/same/git\n"),
             ),
             patch("pathlib.Path.cwd", return_value=self.root.parent),
-            patch("sys.argv", ["run-operation.py"]),
-            patch("sys.stdin", io.StringIO(json.dumps(request))),
-            patch("sys.stdout", output),
+            self.assertRaises(SpecError) as refused,
         ):
-            self.assertEqual(3, json_main(self.root, "concorde-plan", runner))
-        self.assertEqual(
-            "workspace_mismatch", json.loads(output.getvalue())["errors"][0]["code"]
-        )
-        runner.assert_not_called()
+            runtime_selection(self.root)
+        self.assertEqual("workspace_mismatch", refused.exception.code)
 
     @verifies("scenario.session.select")
     def test_run_archive_keeps_pi_bytes_without_loading_claim(self):
@@ -397,7 +389,7 @@ class SessionSelectionTests(unittest.TestCase):
         record_run(host, operation="concorde-plan")
         directory = self.root / ".concorde/runs" / host.invocation_id
         record = json.loads((directory / "run.json").read_text())
-        self.assertEqual(2, record["schema_version"])
+        self.assertEqual(3, record["schema_version"])
         self.assertNotIn("skill_provenance", record)
         self.assertIsNone(record["pi_provenance"]["execution_evidence"])
         self.assertEqual(

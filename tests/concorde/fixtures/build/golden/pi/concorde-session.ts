@@ -14,6 +14,364 @@ const CATALOG: SessionCatalog = {
   "launcher": "scripts/run-operation.py",
   "operations": [
     {
+      "description": "Agent entry: prepare a native context-assessor for the selected Module and task.",
+      "guidance": "# concorde-context-solve\n\nInvoke this capability to assess whether the selected Module Spec supports the task. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\n\nAction `run` prepares one complete Module context and returns `state: prepared`, `accepted: false`\nand an exact `call` object. Invoke the native Pi `subagent` tool with that object unchanged. It\nselects `concorde-context-assessor`, the Host-owned capsule cwd, fresh context, native output schema\nand a plain staging gate. Do not invent a workflow, invoke a Python model worker, change the native\narguments or fall back to another entry after a failure.\n\nThe native structured output is only a proposal. The Concorde tool-result hook independently\nchecks terminal native metadata and current inputs. Read `details.concorde_context`: only\n`accepted: true` means the Host accepted the assessment; its typed `result` still distinguishes\nsufficiency from a business-blocked assessment. A passing gate alone is not acceptance. Report\ncancelled, failed, stale or rejected runs explicitly; prepare a fresh invocation rather than replaying\nan old slot. Previously committed observations and evidence are not erased by a later stop.\n\nKnown dependency gaps/conflicts stop deterministically with `state: not-run`, without a child.\n`describe-policy` returns the intended prompt-level read policy without a capsule/model launch.\nThe assessor reads only the prepared complete Specs by policy, not by an OS confinement claim.\nIt writes no Specs, plan, tasks or implementation. Other capability workflows are unchanged.\n\nThe Pi host must explicitly select the supported installation with `CONCORDE_NATIVE_SUBAGENTS_ROOT`.\nA missing or incompatible runtime fails closed. This is a local process selection, not a global\nclient setting and not authorization. The prepared file Agent is an execution projection of the\ncandidate-built role, not another authored Agent source or task-status store.\n",
+      "kind": "agent-entry",
+      "name": "concorde-context-solve",
+      "request_schema": {
+        "$defs": {
+          "concorde-context-solve-request": {
+            "additionalProperties": false,
+            "properties": {
+              "change_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "constraints": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "focus_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "task": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "target_id",
+              "task"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/concorde-context-solve-request"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "integer"
+          },
+          "type_id": {
+            "const": "concorde-context-solve-request"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "type": "object"
+      },
+      "request_version": 1
+    },
+    {
+      "description": "Workflow: assess sufficiency, then call the planner for the explicitly selected Module.",
+      "guidance": "# concorde-plan\n\nInvoke this capability to plan work for the explicitly selected Module. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\n\nAssesses the complete Spec before accepting a nonempty revision-bound plan. Does not read implementation contents. Missing contracts return to the calling agent for direct Spec and paired metadata edits.\n\nThe calling agent chooses whether and when to invoke other capabilities. Report invalid or stale\ninputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews\nthe grant without launching a worker. Execution retains bounded context and authority.\n\n## Native invocation\n\nRun prepares an invocation-bound named native workflow. Invoke its exact returned `call` through\nnative `subagent` (async), then poll `concorde` with `operation: concorde-plan, action: result`.\nThe workflow runs a fresh assessor, independently accepts sufficiency, then prepares a fresh planner\nand independently accepts its nonempty plan. A passing gate or async launch receipt is not success.\nRead both native execution state and Host accepted/typed result; accepted blockers do not mean a plan\nwas persisted. No Python model scheduler or legacy worker fallback is used.\n\nFile scope is prompt-level policy. Only complete Specs and admitted references are supplied; no project\nimplementation contents, delegation, write or shell grants are added. Native runtime selection uses\n`CONCORDE_NATIVE_SUBAGENTS_ROOT`. The assigned candidate is reused; primary requests bind a managed\ncandidate while status and durable evidence remain primary-owned.\n",
+      "kind": "workflow",
+      "name": "concorde-plan",
+      "request_schema": {
+        "$defs": {
+          "concorde-plan-request": {
+            "additionalProperties": false,
+            "properties": {
+              "change_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "constraints": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "focus_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "task": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "target_id",
+              "task"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/concorde-plan-request"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "integer"
+          },
+          "type_id": {
+            "const": "concorde-plan-request"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "type": "object"
+      },
+      "request_version": 1
+    },
+    {
+      "description": "Agent entry: call the task-author to derive implementation acceptance tasks from the current accepted plan.",
+      "guidance": "# concorde-tasks\n\nInvoke this capability to derive implementation acceptance tasks from the current accepted plan. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\n\nRequires the managed change and current accepted plan for the same intent. Returns new incomplete tasks, preserving prior task identities in history. Optional repair_task_scope binds the exact incomplete task-list digest; optional repair_review names a current blocking code-review ArtifactRef for this same intent. Neither field bypasses currentness or review gates.\nEvery task targets a Module in the selected Module's change scope: itself, the Modules it contains\nor uses, the participants of contracts it defines or participates in, the Modules referencing its\nnodes and the Modules binding its files. Any other target is refused with `permission_denied`.\n\nThe calling agent chooses whether and when to invoke other capabilities. Report invalid or stale\ninputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews\nthe grant without launching a worker. Execution retains bounded context and authority.\n\n## Native invocation\n\nRun prepares a direct native task-author call from the exact current accepted plan. Invoke the\nreturned native `subagent` call unchanged. Inspect `details.concorde_native.accepted` and its typed\nresult, not native structured output or gate success alone. Reserved IDs and explicit scope/review\nrepair feedback remain Host-checked; failed/stale/empty/colliding results preserve prior tasks.\n\nFile scope is prompt-level policy. Only complete Specs and admitted references are supplied; no project\nimplementation contents, delegation, write or shell grants are added. Native runtime selection uses\n`CONCORDE_NATIVE_SUBAGENTS_ROOT`. The assigned candidate is reused; primary requests bind a managed\ncandidate while status and durable evidence remain primary-owned.\n",
+      "kind": "agent-entry",
+      "name": "concorde-tasks",
+      "request_schema": {
+        "$defs": {
+          "concorde-tasks-request": {
+            "additionalProperties": false,
+            "properties": {
+              "change_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "constraints": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "focus_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "repair_review": {
+                "additionalProperties": false,
+                "properties": {
+                  "digest": {
+                    "minLength": 1,
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "path": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "path",
+                  "digest"
+                ],
+                "type": "object"
+              },
+              "repair_task_scope": {
+                "additionalProperties": false,
+                "properties": {
+                  "tasks_digest": {
+                    "minLength": 1,
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tasks_digest"
+                ],
+                "type": "object"
+              },
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "task": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "target_id",
+              "task"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/concorde-tasks-request"
+          },
+          "schema_version": {
+            "const": 2,
+            "type": "integer"
+          },
+          "type_id": {
+            "const": "concorde-tasks-request"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "type": "object"
+      },
+      "request_version": 2
+    },
+    {
+      "description": "Agent entry: call the programmer to implement current accepted tasks inside the selected Module grant.",
+      "guidance": "# concorde-implement\n\nInvoke this capability to implement current accepted tasks inside the selected Module grant. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\n\nRequires a current accepted plan and tasks. The programmer may change only files the Module's realization entries bind, never Spec documents, their metadata or the registry. Component work (tasks for another Module of the change scope, such as a contract participant) and necessary contract changes return to the calling agent for separate selection, each as that Module's own implementation in the same candidate; no child workflow or Spec change runs automatically. Completion is not review, validation, readiness or delivery.\n\nThe calling agent chooses whether and when to invoke other capabilities. Report invalid or stale\ninputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews\nthe grant without launching a worker. Execution retains bounded context and authority.\n\n## Native execution\n\nRun prepares an exact direct native programmer call. Invoke returned `call` unchanged and inspect\n`details.concorde_native.accepted` plus the typed result. Its capsule index names the actual assigned\ncandidate and absolute intended implementation paths; write/edit those real paths, not copies.\nBroad file/shell and network/credential abstention are prompt-level policy, not OS confinement.\nUse the fixed Host run_checks service for genuinely recorded configured check outcomes.\nNo public Graph/Pi-RPC fallback or automatic downstream readiness/integration occurs.\n",
+      "kind": "agent-entry",
+      "name": "concorde-implement",
+      "request_schema": {
+        "$defs": {
+          "concorde-implement-request": {
+            "additionalProperties": false,
+            "properties": {
+              "change_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "constraints": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "focus_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "task": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "target_id",
+              "task"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/concorde-implement-request"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "integer"
+          },
+          "type_id": {
+            "const": "concorde-implement-request"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "type": "object"
+      },
+      "request_version": 1
+    },
+    {
+      "description": "Workflow: independently review a Module's complete Spec, including terminology semantic consistency, and return scoped read-only findings.",
+      "guidance": "# concorde-spec-review\n\nInvoke this capability to review the selected Spec, including terminology semantic consistency. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nThe request requires target_id and task. The calling agent selects the Module explicitly;\noptional focus_id must name its scenario. Constraints and a current-worktree change_id may be\nsupplied. There is no implicit routing. The host deterministically checks\nthe target and freezes its complete context before starting a fresh read-only reviewer.\n\nReview runs in the current worktree without creating a development change or requiring a preexisting\nIssue. It reads the Module's complete Spec context, its own documents and those its `contains`,\n`uses` and `includes` select (reading and metadata), but no implementation. Import rows are\nlink-only; it checks every local explanation of an imported term in that collection against the\nowner's canonical definition for semantic consistency; wording need not match. Report coverage\nand unresolved comparisons rather than assuming consistency. Reviewers have no write, network or\ncredential grants. The host persists review reports separately from reviewer authority.\n\nA managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.\nIn a managed change the scope adds the Modules a changed promise concerns: those selecting a changed\ndocument whole and those referencing a changed definition. A `relies_on` narrowing of unchanged\nnodes is not concerned. For the change's own Module every changed document of the candidate counts,\nso every Module the change edits is reviewed.\nDo not claim this compares against another branch or a merge base. Report the returned review\ncoverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do\nnot authorize repairs. describe-policy previews grants without launching agents or persisting\nreview results. A separate review intent cannot replace another task's required lifecycle review.\n\n## Native execution\n\nRun prepares an exact named async native review workflow. Invoke returned `call` unchanged, then\npoll this same capability with action `result`. Only full independently admitted scope can be accepted;\nnative success/staging alone is not accepted review. Each reviewer has fresh separate context.\nThe workflow uses two fixed Host steps regardless of reviewer count; native budgets remain enforced.\nNo public Graph/Pi-RPC fallback or automatic downstream readiness/integration occurs.\n",
+      "kind": "workflow",
+      "name": "concorde-spec-review",
+      "request_schema": {
+        "$defs": {
+          "concorde-spec-review-request": {
+            "additionalProperties": false,
+            "properties": {
+              "change_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "constraints": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "focus_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "task": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "target_id",
+              "task"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/concorde-spec-review-request"
+          },
+          "schema_version": {
+            "const": 2,
+            "type": "integer"
+          },
+          "type_id": {
+            "const": "concorde-spec-review-request"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "type": "object"
+      },
+      "request_version": 2
+    },
+    {
       "description": "Workflow: independently review or diagnose a Module's granted implementation against its Spec and return scoped read-only findings.",
       "guidance": "# concorde-code-review\n\nInvoke this capability to review or diagnose the selected implementation against its Spec. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nThe request requires target_id and task. The calling agent selects the Module explicitly;\noptional focus_id must name its scenario. Constraints and a current-worktree change_id may be\nsupplied. There is no implicit routing. The host deterministically checks\nthe target and freezes its complete context before starting a fresh read-only reviewer.\n\nReview runs in the current worktree without creating a development change or requiring a preexisting\nIssue. It reads the complete selected Module contract and only its admitted implementation files,\nexternal references and scoped changes. Reviewers have no write, network or credential grants.\nThe host persists review reports separately from reviewer authority.\n\nA managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.\nFor the change's own Module the scope includes every Module binding a file the candidate changed.\nDo not claim this compares against another branch or a merge base. Report the returned review\ncoverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do\nnot authorize repairs. describe-policy previews grants without launching agents or persisting\nreview results. A separate review intent cannot replace another task's required lifecycle review.\n\n## Native execution\n\nRun prepares an exact named async native review workflow. Invoke returned `call` unchanged, then\npoll this same capability with action `result`. Only full independently admitted scope can be accepted;\nnative success/staging alone is not accepted review. Each reviewer has fresh separate context.\nThe workflow uses two fixed Host steps regardless of reviewer count; native budgets remain enforced.\nNo public Graph/Pi-RPC fallback or automatic downstream readiness/integration occurs.\n",
       "kind": "workflow",
@@ -78,100 +436,165 @@ const CATALOG: SessionCatalog = {
       "request_version": 2
     },
     {
-      "description": "Host service: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy.",
-      "guidance": "# concorde-configure\n\nInvoke this capability to configure. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\nThis is a finite deterministic Host service: it runs no Agent cognition and selects no context.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\nInitialization uses its typed propose/apply request; use the published request schema.\nNo domain flags or positional task arguments are accepted. Configuration is never a context grant.\n\nUse the supplied target identity; if it is ambiguous, ask the user to identify it instead of\nsearching other Specs.\nThe user session coordinates needs and may delegate a complete task to one fresh Task\nsubagent, or handle a simple consumer-project task directly. Task subagents never delegate tasks or\nmove worktrees. They may invoke several public capabilities on the same change through delivery.\nDomain Agents are terminal Pi agents invoked directly or by authored native workflows; an explicitly\nselected StateGraph Operation uses its trusted execution service. All retain their file/tool grants.\n\nA mutating capability requested from a consumer primary normally runs in a host-created candidate;\na capability already in an assigned candidate reuses it. The requesting session stays where it\nstarted and receives path, branch and stable change_id. Uncommitted primary edits are not copied.\nDurable status and runs belong only to the primary coordinator, not duplicate candidate archives.\nTask-authorized `.concorde` edits in the owned workspace are not forbidden by directory name;\npreserve task scope, truthful evidence and concurrency safety, and obey actual worker grants.\n\nFor Concorde source maintenance, the user session creates a candidate and a fresh Concorde-catalog-free maintenance\nchild with inherited/discovered catalogs disabled. After the writer checks, commits and stops,\nthe user session chooses independent testing as none, targeted or full with scope and reason. When selected,\na separate fresh sibling tester receives only the exact candidate-built Pi entry, embedded catalog and runtime\nprovenance. Neither forks old Concorde instructions or delegates tasks. The tester never rewrites governing\nPi integration; failures return to maintenance and then a new tester. Maintenance may finish through\nordinary Git with explicit merge authorization, without Concorde delivery. Selection metadata alone\nis not evidence of extension loading, tool use or model execution. Never fall back to a global or primary integration.\n\nReport Spec gaps or blocked execution as returned. Spec-only Domain Agents never receive\nimplementation contents. Programmer and code-reviewer receive only their phase-admitted code;\nraw check logs remain Host diagnostics, not an implicit worker grant.\n\nFrom the primary worktree this request is relayed into a new candidate, and the new configuration\ntakes effect only when that candidate is delivered. Before calling it from the primary, ask the\ndeveloper which they want: to change or test this command (run in a candidate, effective after\ndelivery), or simply to configure this project now. Only for the second answer set\n`run_in_primary: true`, which applies the request in the primary worktree directly. Never set it\nwithout that answer.\n",
-      "kind": "host",
-      "name": "concorde-configure",
+      "description": "Host bookkeeping or native solve workflow: inspect, report, reopen or assess branch-local Issues; return needed repairs to the caller or verify current work without automatic delivery.",
+      "guidance": "# concorde-issues\n\nInvoke this capability to manage or solve explicitly selected Issues. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nChoose action list, show, report, reopen or solve. Show, reopen and solve require one issue_id;\nexpected_revision optionally rejects a changed selection. Report requires target_id and a classified\nreport; an append also names its issue_id and expected_revision inside the report. Reopen requires\na note. Only solve starts the bounded decision and verification lifecycle; other actions are\ncurrent-worktree bookkeeping. An Issue is not an implementation task, and reporting it neither\nstops a running agent nor approves a repair.\n\nSolve returns needed implementation or Spec repair to the calling agent with the selected target,\nintended behavior and rationale. It does not change Specs or implementation, or start planning\nor child development. The caller performs authorized Spec edits (reading, metadata or the entry's\n`module` block, then the registry mirror) or selects the supported planning/implementation\ncapabilities explicitly, then requests fresh verification with current inputs.\nA return-to-caller result preserves the open Issue and is not completed repair or readiness.\nSolve can run Issue-specific read-only verification, resolve, identify a duplicate or reject a\nmistaken report from evidence without mandatory human approval. Unresolved product/design choices\nare returned as needs-decision. Respect the host's bounded iteration limit and distinct execution\nfailures. Do not retry by widening permissions.\n\nFrom the primary worktree the host copies the selected Issue's exact bytes, including an uncommitted\nreport, into the candidate worktree it creates, without copying unrelated edits, and solves there;\nthis session receives the candidate's result and continues the change with its change_id.\nA successful solve ends at ready with the disposition included in verification. It does not deliver,\nmerge primary or claim another branch is fixed. Closed Issues remain recorded. Legacy Reflections\nare archived history, never automatically converted or used as current approval.\n\n## Native solve invocation\n\nList/show/report/reopen finish as finite Host calls. Solve action run prepares an exact named\n`concorde.issue.<ticket>` native workflow. Invoke its returned `call` with subagent unchanged, then\npoll concorde-issues action result. The workflow uses fresh terminal Issue decisions and flattened\nindependent Issue-specific/ordinary reviewers; Host services own attempts, currentness, closure\njournal/recovery and separate final validation. There is no nested workflow, coordinator model or\nlegacy Graph/RPC fallback. Accepted failed/conflicting/unsupported results are not ready candidates;\nstage-only gates and native terminal success alone never authorize disposition or delivery.\n",
+      "kind": "workflow",
+      "name": "concorde-issues",
       "request_schema": {
         "$defs": {
-          "concorde-configure-request": {
+          "concorde-issues-request": {
             "additionalProperties": false,
             "properties": {
-              "accept_protocol": {
-                "type": "boolean"
+              "action": {
+                "enum": [
+                  "list",
+                  "show",
+                  "report",
+                  "solve",
+                  "reopen"
+                ]
               },
-              "configuration": {
-                "additionalProperties": false,
-                "properties": {
-                  "data": {
-                    "$ref": "#/$defs/concorde-operation-configuration"
-                  },
-                  "schema_version": {
-                    "const": 2,
-                    "type": "integer"
-                  },
-                  "type_id": {
-                    "const": "concorde-operation-configuration"
-                  }
-                },
-                "required": [
-                  "type_id",
-                  "schema_version",
-                  "data"
-                ],
-                "type": "object"
-              },
-              "run_in_primary": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "configuration"
-            ],
-            "type": "object"
-          },
-          "concorde-operation-configuration": {
-            "additionalProperties": false,
-            "properties": {
-              "model": {
+              "change_id": {
                 "minLength": 1,
                 "type": "string"
               },
-              "thinking": {
-                "enum": [
-                  "off",
-                  "minimal",
-                  "low",
-                  "medium",
-                  "high",
-                  "xhigh",
-                  "max"
-                ]
-              },
-              "timeout_seconds": {
-                "type": "integer"
-              },
-              "workers": {
-                "additionalProperties": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "model": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "thinking": {
-                      "enum": [
-                        "off",
-                        "minimal",
-                        "low",
-                        "medium",
-                        "high",
-                        "xhigh",
-                        "max"
-                      ]
-                    },
-                    "timeout_seconds": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
+              "constraints": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
                 },
-                "properties": {},
+                "type": "array"
+              },
+              "expected_revision": {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "focus_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "issue_id": {
+                "minLength": 1,
+                "pattern": "I-[0-9a-f]{32}",
+                "type": "string"
+              },
+              "note": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "report": {
+                "additionalProperties": false,
+                "properties": {
+                  "basis": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "evidence": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "description": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "path": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "description"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "expected_revision": {
+                    "minLength": 1,
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  "impact": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "issue_id": {
+                    "minLength": 1,
+                    "pattern": "I-[0-9a-f]{32}",
+                    "type": "string"
+                  },
+                  "owner_target_id": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "report_key": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "subtype": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "implementation-spec-mismatch",
+                          "spec-conflict",
+                          "missing-contract"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "type": {
+                    "enum": [
+                      "bug",
+                      "gap",
+                      "limitation"
+                    ]
+                  }
+                },
+                "required": [
+                  "report_key",
+                  "type",
+                  "subtype",
+                  "title",
+                  "description",
+                  "impact",
+                  "basis",
+                  "owner_target_id",
+                  "evidence"
+                ],
                 "type": "object"
+              },
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "task": {
+                "minLength": 1,
+                "type": "string"
               }
             },
-            "required": [],
+            "required": [
+              "action"
+            ],
             "type": "object"
           }
         },
@@ -179,14 +602,14 @@ const CATALOG: SessionCatalog = {
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/$defs/concorde-configure-request"
+            "$ref": "#/$defs/concorde-issues-request"
           },
           "schema_version": {
-            "const": 3,
+            "const": 1,
             "type": "integer"
           },
           "type_id": {
-            "const": "concorde-configure-request"
+            "const": "concorde-issues-request"
           }
         },
         "required": [
@@ -196,16 +619,16 @@ const CATALOG: SessionCatalog = {
         ],
         "type": "object"
       },
-      "request_version": 3
+      "request_version": 1
     },
     {
-      "description": "Agent entry: prepare a native context-assessor for the selected Module and task.",
-      "guidance": "# concorde-context-solve\n\nInvoke this capability to assess whether the selected Module Spec supports the task. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\n\nAction `run` prepares one complete Module context and returns `state: prepared`, `accepted: false`\nand an exact `call` object. Invoke the native Pi `subagent` tool with that object unchanged. It\nselects `concorde-context-assessor`, the Host-owned capsule cwd, fresh context, native output schema\nand a plain staging gate. Do not invent a workflow, invoke a Python model worker, change the native\narguments or fall back to another entry after a failure.\n\nThe native structured output is only a proposal. The Concorde tool-result hook independently\nchecks terminal native metadata and current inputs. Read `details.concorde_context`: only\n`accepted: true` means the Host accepted the assessment; its typed `result` still distinguishes\nsufficiency from a business-blocked assessment. A passing gate alone is not acceptance. Report\ncancelled, failed, stale or rejected runs explicitly; prepare a fresh invocation rather than replaying\nan old slot. Previously committed observations and evidence are not erased by a later stop.\n\nKnown dependency gaps/conflicts stop deterministically with `state: not-run`, without a child.\n`describe-policy` returns the intended prompt-level read policy without a capsule/model launch.\nThe assessor reads only the prepared complete Specs by policy, not by an OS confinement claim.\nIt writes no Specs, plan, tasks or implementation. Other capability workflows are unchanged.\n\nThe Pi host must explicitly select the supported installation with `CONCORDE_NATIVE_SUBAGENTS_ROOT`.\nA missing or incompatible runtime fails closed. This is a local process selection, not a global\nclient setting and not authorization. The prepared file Agent is an execution projection of the\ncandidate-built role, not another authored Agent source or task-status store.\n",
-      "kind": "agent-entry",
-      "name": "concorde-context-solve",
+      "description": "Host service: run deterministic Spec and configured code checks and record readiness for the current candidate.",
+      "guidance": "# concorde-validate\n\nInvoke this capability to validate. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\nThis is a finite deterministic Host service: it runs no Agent cognition and selects no context.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\nInitialization uses its typed propose/apply request; use the published request schema.\nNo domain flags or positional task arguments are accepted. Configuration is never a context grant.\n\nUse the supplied target identity; if it is ambiguous, ask the user to identify it instead of\nsearching other Specs.\nThe user session coordinates needs and may delegate a complete task to one fresh Task\nsubagent, or handle a simple consumer-project task directly. Task subagents never delegate tasks or\nmove worktrees. They may invoke several public capabilities on the same change through delivery.\nDomain Agents are terminal Pi agents invoked directly or by authored native workflows; an explicitly\nselected StateGraph Operation uses its trusted execution service. All retain their file/tool grants.\n\nA mutating capability requested from a consumer primary normally runs in a host-created candidate;\na capability already in an assigned candidate reuses it. The requesting session stays where it\nstarted and receives path, branch and stable change_id. Uncommitted primary edits are not copied.\nDurable status and runs belong only to the primary coordinator, not duplicate candidate archives.\nTask-authorized `.concorde` edits in the owned workspace are not forbidden by directory name;\npreserve task scope, truthful evidence and concurrency safety, and obey actual worker grants.\n\nFor Concorde source maintenance, the user session creates a candidate and a fresh Concorde-catalog-free maintenance\nchild with inherited/discovered catalogs disabled. After the writer checks, commits and stops,\nthe user session chooses independent testing as none, targeted or full with scope and reason. When selected,\na separate fresh sibling tester receives only the exact candidate-built Pi entry, embedded catalog and runtime\nprovenance. Neither forks old Concorde instructions or delegates tasks. The tester never rewrites governing\nPi integration; failures return to maintenance and then a new tester. Maintenance may finish through\nordinary Git with explicit merge authorization, without Concorde delivery. Selection metadata alone\nis not evidence of extension loading, tool use or model execution. Never fall back to a global or primary integration.\n\nReport Spec gaps or blocked execution as returned. Spec-only Domain Agents never receive\nimplementation contents. Programmer and code-reviewer receive only their phase-admitted code;\nraw check logs remain Host diagnostics, not an implicit worker grant.\n\nStructural findings carry their Protocol check identity (`CHK.*`) and severity. Validation\nchecks document pairing, identity and ownership, schema-3 metadata, the entry's Purpose,\nTerminology, Usage, Design and Relationships structure, Terminology rows (one defining sentence per\nconcept; link-only import rows), requirement, scenario and contract syntax, local `meaning` anchors,\nunique stable IDs and identity links. The registry must mirror every entry's `module` block exactly\n(`registry --write` regenerates it). Composition, `uses` with `relies_on`, `includes`,\n`participates` versions and peers, realization entries and pending markers, unbound files and the\ncontext reconciliation are checked. An unmarked flowchart in a `module` document may only draw\ndeclared `relates`, `uses` and `contains` relations; other diagrams are marked `mermaid\nillustrative`. Metadata-only edits affect complete-context identity and evidence just as reading\nedits do.\n\nFor the Module a managed change is about, the configured checks cover every Module the candidate\nedits since its base commit, with every Module binding one of their files.\n\nTests declare verified scenario IDs in their own source. Unknown IDs and unreadable tests are errors;\nuncovered scenarios and tests that the scenario's owner does not bind are warnings. Warnings do not\nby themselves fail validation. No structural result proves reading completeness, semantic\ncompleteness or implementation conformance.\n",
+      "kind": "host",
+      "name": "concorde-validate",
       "request_schema": {
         "$defs": {
-          "concorde-context-solve-request": {
+          "concorde-validate-request": {
             "additionalProperties": false,
             "properties": {
               "change_id": {
@@ -222,6 +645,9 @@ const CATALOG: SessionCatalog = {
               "focus_id": {
                 "minLength": 1,
                 "type": "string"
+              },
+              "run_checks": {
+                "type": "boolean"
               },
               "target_id": {
                 "minLength": 1,
@@ -243,14 +669,14 @@ const CATALOG: SessionCatalog = {
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/$defs/concorde-context-solve-request"
+            "$ref": "#/$defs/concorde-validate-request"
           },
           "schema_version": {
             "const": 1,
             "type": "integer"
           },
           "type_id": {
-            "const": "concorde-context-solve-request"
+            "const": "concorde-validate-request"
           }
         },
         "required": [
@@ -320,70 +746,6 @@ const CATALOG: SessionCatalog = {
           },
           "type_id": {
             "const": "concorde-deliver-request"
-          }
-        },
-        "required": [
-          "type_id",
-          "schema_version",
-          "data"
-        ],
-        "type": "object"
-      },
-      "request_version": 1
-    },
-    {
-      "description": "Agent entry: call the programmer to implement current accepted tasks inside the selected Module grant.",
-      "guidance": "# concorde-implement\n\nInvoke this capability to implement current accepted tasks inside the selected Module grant. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\n\nRequires a current accepted plan and tasks. The programmer may change only files the Module's realization entries bind, never Spec documents, their metadata or the registry. Component work (tasks for another Module of the change scope, such as a contract participant) and necessary contract changes return to the calling agent for separate selection, each as that Module's own implementation in the same candidate; no child workflow or Spec change runs automatically. Completion is not review, validation, readiness or delivery.\n\nThe calling agent chooses whether and when to invoke other capabilities. Report invalid or stale\ninputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews\nthe grant without launching a worker. Execution retains bounded context and authority.\n\n## Native execution\n\nRun prepares an exact direct native programmer call. Invoke returned `call` unchanged and inspect\n`details.concorde_native.accepted` plus the typed result. Its capsule index names the actual assigned\ncandidate and absolute intended implementation paths; write/edit those real paths, not copies.\nBroad file/shell and network/credential abstention are prompt-level policy, not OS confinement.\nUse the fixed Host run_checks service for genuinely recorded configured check outcomes.\nNo public Graph/Pi-RPC fallback or automatic downstream readiness/integration occurs.\n",
-      "kind": "agent-entry",
-      "name": "concorde-implement",
-      "request_schema": {
-        "$defs": {
-          "concorde-implement-request": {
-            "additionalProperties": false,
-            "properties": {
-              "change_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "constraints": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "focus_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "target_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "task": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "target_id",
-              "task"
-            ],
-            "type": "object"
-          }
-        },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/concorde-implement-request"
-          },
-          "schema_version": {
-            "const": 1,
-            "type": "integer"
-          },
-          "type_id": {
-            "const": "concorde-implement-request"
           }
         },
         "required": [
@@ -610,462 +972,100 @@ const CATALOG: SessionCatalog = {
       "request_version": 3
     },
     {
-      "description": "Host bookkeeping or native solve workflow: inspect, report, reopen or assess branch-local Issues; return needed repairs to the caller or verify current work without automatic delivery.",
-      "guidance": "# concorde-issues\n\nInvoke this capability to manage or solve explicitly selected Issues. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nChoose action list, show, report, reopen or solve. Show, reopen and solve require one issue_id;\nexpected_revision optionally rejects a changed selection. Report requires target_id and a classified\nreport; an append also names its issue_id and expected_revision inside the report. Reopen requires\na note. Only solve starts the bounded decision and verification lifecycle; other actions are\ncurrent-worktree bookkeeping. An Issue is not an implementation task, and reporting it neither\nstops a running agent nor approves a repair.\n\nSolve returns needed implementation or Spec repair to the calling agent with the selected target,\nintended behavior and rationale. It does not change Specs or implementation, or start planning\nor child development. The caller performs authorized Spec edits (reading, metadata or the entry's\n`module` block, then the registry mirror) or selects the supported planning/implementation\ncapabilities explicitly, then requests fresh verification with current inputs.\nA return-to-caller result preserves the open Issue and is not completed repair or readiness.\nSolve can run Issue-specific read-only verification, resolve, identify a duplicate or reject a\nmistaken report from evidence without mandatory human approval. Unresolved product/design choices\nare returned as needs-decision. Respect the host's bounded iteration limit and distinct execution\nfailures. Do not retry by widening permissions.\n\nFrom the primary worktree the host copies the selected Issue's exact bytes, including an uncommitted\nreport, into the candidate worktree it creates, without copying unrelated edits, and solves there;\nthis session receives the candidate's result and continues the change with its change_id.\nA successful solve ends at ready with the disposition included in verification. It does not deliver,\nmerge primary or claim another branch is fixed. Closed Issues remain recorded. Legacy Reflections\nare archived history, never automatically converted or used as current approval.\n\n## Native solve invocation\n\nList/show/report/reopen finish as finite Host calls. Solve action run prepares an exact named\n`concorde.issue.<ticket>` native workflow. Invoke its returned `call` with subagent unchanged, then\npoll concorde-issues action result. The workflow uses fresh terminal Issue decisions and flattened\nindependent Issue-specific/ordinary reviewers; Host services own attempts, currentness, closure\njournal/recovery and separate final validation. There is no nested workflow, coordinator model or\nlegacy Graph/RPC fallback. Accepted failed/conflicting/unsupported results are not ready candidates;\nstage-only gates and native terminal success alone never authorize disposition or delivery.\n",
-      "kind": "workflow",
-      "name": "concorde-issues",
-      "request_schema": {
-        "$defs": {
-          "concorde-issues-request": {
-            "additionalProperties": false,
-            "properties": {
-              "action": {
-                "enum": [
-                  "list",
-                  "show",
-                  "report",
-                  "solve",
-                  "reopen"
-                ]
-              },
-              "change_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "constraints": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "expected_revision": {
-                "minLength": 1,
-                "pattern": "^sha256:[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "focus_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "issue_id": {
-                "minLength": 1,
-                "pattern": "I-[0-9a-f]{32}",
-                "type": "string"
-              },
-              "note": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "report": {
-                "additionalProperties": false,
-                "properties": {
-                  "basis": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "description": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "evidence": {
-                    "items": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "description": {
-                          "minLength": 1,
-                          "type": "string"
-                        },
-                        "path": {
-                          "minLength": 1,
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "path",
-                        "description"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
-                  "expected_revision": {
-                    "minLength": 1,
-                    "pattern": "^sha256:[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  "impact": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "issue_id": {
-                    "minLength": 1,
-                    "pattern": "I-[0-9a-f]{32}",
-                    "type": "string"
-                  },
-                  "owner_target_id": {
-                    "anyOf": [
-                      {
-                        "minLength": 1,
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "report_key": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "subtype": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "implementation-spec-mismatch",
-                          "spec-conflict",
-                          "missing-contract"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "title": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "type": {
-                    "enum": [
-                      "bug",
-                      "gap",
-                      "limitation"
-                    ]
-                  }
-                },
-                "required": [
-                  "report_key",
-                  "type",
-                  "subtype",
-                  "title",
-                  "description",
-                  "impact",
-                  "basis",
-                  "owner_target_id",
-                  "evidence"
-                ],
-                "type": "object"
-              },
-              "target_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "task": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "action"
-            ],
-            "type": "object"
-          }
-        },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/concorde-issues-request"
-          },
-          "schema_version": {
-            "const": 1,
-            "type": "integer"
-          },
-          "type_id": {
-            "const": "concorde-issues-request"
-          }
-        },
-        "required": [
-          "type_id",
-          "schema_version",
-          "data"
-        ],
-        "type": "object"
-      },
-      "request_version": 1
-    },
-    {
-      "description": "Workflow: assess sufficiency, then call the planner for the explicitly selected Module.",
-      "guidance": "# concorde-plan\n\nInvoke this capability to plan work for the explicitly selected Module. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\n\nAssesses the complete Spec before accepting a nonempty revision-bound plan. Does not read implementation contents. Missing contracts return to the calling agent for direct Spec and paired metadata edits.\n\nThe calling agent chooses whether and when to invoke other capabilities. Report invalid or stale\ninputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews\nthe grant without launching a worker. Execution retains bounded context and authority.\n\n## Native invocation\n\nRun prepares an invocation-bound named native workflow. Invoke its exact returned `call` through\nnative `subagent` (async), then poll `concorde` with `operation: concorde-plan, action: result`.\nThe workflow runs a fresh assessor, independently accepts sufficiency, then prepares a fresh planner\nand independently accepts its nonempty plan. A passing gate or async launch receipt is not success.\nRead both native execution state and Host accepted/typed result; accepted blockers do not mean a plan\nwas persisted. No Python model scheduler or legacy worker fallback is used.\n\nFile scope is prompt-level policy. Only complete Specs and admitted references are supplied; no project\nimplementation contents, delegation, write or shell grants are added. Native runtime selection uses\n`CONCORDE_NATIVE_SUBAGENTS_ROOT`. The assigned candidate is reused; primary requests bind a managed\ncandidate while status and durable evidence remain primary-owned.\n",
-      "kind": "workflow",
-      "name": "concorde-plan",
-      "request_schema": {
-        "$defs": {
-          "concorde-plan-request": {
-            "additionalProperties": false,
-            "properties": {
-              "change_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "constraints": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "focus_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "target_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "task": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "target_id",
-              "task"
-            ],
-            "type": "object"
-          }
-        },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/concorde-plan-request"
-          },
-          "schema_version": {
-            "const": 1,
-            "type": "integer"
-          },
-          "type_id": {
-            "const": "concorde-plan-request"
-          }
-        },
-        "required": [
-          "type_id",
-          "schema_version",
-          "data"
-        ],
-        "type": "object"
-      },
-      "request_version": 1
-    },
-    {
-      "description": "Workflow: independently review a Module's complete Spec, including terminology semantic consistency, and return scoped read-only findings.",
-      "guidance": "# concorde-spec-review\n\nInvoke this capability to review the selected Spec, including terminology semantic consistency. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nThe request requires target_id and task. The calling agent selects the Module explicitly;\noptional focus_id must name its scenario. Constraints and a current-worktree change_id may be\nsupplied. There is no implicit routing. The host deterministically checks\nthe target and freezes its complete context before starting a fresh read-only reviewer.\n\nReview runs in the current worktree without creating a development change or requiring a preexisting\nIssue. It reads the Module's complete Spec context, its own documents and those its `contains`,\n`uses` and `includes` select (reading and metadata), but no implementation. Import rows are\nlink-only; it checks every local explanation of an imported term in that collection against the\nowner's canonical definition for semantic consistency; wording need not match. Report coverage\nand unresolved comparisons rather than assuming consistency. Reviewers have no write, network or\ncredential grants. The host persists review reports separately from reviewer authority.\n\nA managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.\nIn a managed change the scope adds the Modules a changed promise concerns: those selecting a changed\ndocument whole and those referencing a changed definition. A `relies_on` narrowing of unchanged\nnodes is not concerned. For the change's own Module every changed document of the candidate counts,\nso every Module the change edits is reviewed.\nDo not claim this compares against another branch or a merge base. Report the returned review\ncoverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do\nnot authorize repairs. describe-policy previews grants without launching agents or persisting\nreview results. A separate review intent cannot replace another task's required lifecycle review.\n\n## Native execution\n\nRun prepares an exact named async native review workflow. Invoke returned `call` unchanged, then\npoll this same capability with action `result`. Only full independently admitted scope can be accepted;\nnative success/staging alone is not accepted review. Each reviewer has fresh separate context.\nThe workflow uses two fixed Host steps regardless of reviewer count; native budgets remain enforced.\nNo public Graph/Pi-RPC fallback or automatic downstream readiness/integration occurs.\n",
-      "kind": "workflow",
-      "name": "concorde-spec-review",
-      "request_schema": {
-        "$defs": {
-          "concorde-spec-review-request": {
-            "additionalProperties": false,
-            "properties": {
-              "change_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "constraints": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "focus_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "target_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "task": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "target_id",
-              "task"
-            ],
-            "type": "object"
-          }
-        },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/concorde-spec-review-request"
-          },
-          "schema_version": {
-            "const": 2,
-            "type": "integer"
-          },
-          "type_id": {
-            "const": "concorde-spec-review-request"
-          }
-        },
-        "required": [
-          "type_id",
-          "schema_version",
-          "data"
-        ],
-        "type": "object"
-      },
-      "request_version": 2
-    },
-    {
-      "description": "Agent entry: call the task-author to derive implementation acceptance tasks from the current accepted plan.",
-      "guidance": "# concorde-tasks\n\nInvoke this capability to derive implementation acceptance tasks from the current accepted plan. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\n\nRequires the managed change and current accepted plan for the same intent. Returns new incomplete tasks, preserving prior task identities in history. Optional repair_task_scope binds the exact incomplete task-list digest; optional repair_review names a current blocking code-review ArtifactRef for this same intent. Neither field bypasses currentness or review gates.\nEvery task targets a Module in the selected Module's change scope: itself, the Modules it contains\nor uses, the participants of contracts it defines or participates in, the Modules referencing its\nnodes and the Modules binding its files. Any other target is refused with `permission_denied`.\n\nThe calling agent chooses whether and when to invoke other capabilities. Report invalid or stale\ninputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews\nthe grant without launching a worker. Execution retains bounded context and authority.\n\n## Native invocation\n\nRun prepares a direct native task-author call from the exact current accepted plan. Invoke the\nreturned native `subagent` call unchanged. Inspect `details.concorde_native.accepted` and its typed\nresult, not native structured output or gate success alone. Reserved IDs and explicit scope/review\nrepair feedback remain Host-checked; failed/stale/empty/colliding results preserve prior tasks.\n\nFile scope is prompt-level policy. Only complete Specs and admitted references are supplied; no project\nimplementation contents, delegation, write or shell grants are added. Native runtime selection uses\n`CONCORDE_NATIVE_SUBAGENTS_ROOT`. The assigned candidate is reused; primary requests bind a managed\ncandidate while status and durable evidence remain primary-owned.\n",
-      "kind": "agent-entry",
-      "name": "concorde-tasks",
-      "request_schema": {
-        "$defs": {
-          "concorde-tasks-request": {
-            "additionalProperties": false,
-            "properties": {
-              "change_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "constraints": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "focus_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "repair_review": {
-                "additionalProperties": false,
-                "properties": {
-                  "digest": {
-                    "minLength": 1,
-                    "pattern": "^sha256:[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  "id": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "path": {
-                    "minLength": 1,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "path",
-                  "digest"
-                ],
-                "type": "object"
-              },
-              "repair_task_scope": {
-                "additionalProperties": false,
-                "properties": {
-                  "tasks_digest": {
-                    "minLength": 1,
-                    "pattern": "^sha256:[0-9a-f]{64}$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "tasks_digest"
-                ],
-                "type": "object"
-              },
-              "target_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "task": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "target_id",
-              "task"
-            ],
-            "type": "object"
-          }
-        },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/concorde-tasks-request"
-          },
-          "schema_version": {
-            "const": 2,
-            "type": "integer"
-          },
-          "type_id": {
-            "const": "concorde-tasks-request"
-          }
-        },
-        "required": [
-          "type_id",
-          "schema_version",
-          "data"
-        ],
-        "type": "object"
-      },
-      "request_version": 2
-    },
-    {
-      "description": "Host service: run deterministic Spec and configured code checks and record readiness for the current candidate.",
-      "guidance": "# concorde-validate\n\nInvoke this capability to validate. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\nThis is a finite deterministic Host service: it runs no Agent cognition and selects no context.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\nInitialization uses its typed propose/apply request; use the published request schema.\nNo domain flags or positional task arguments are accepted. Configuration is never a context grant.\n\nUse the supplied target identity; if it is ambiguous, ask the user to identify it instead of\nsearching other Specs.\nThe user session coordinates needs and may delegate a complete task to one fresh Task\nsubagent, or handle a simple consumer-project task directly. Task subagents never delegate tasks or\nmove worktrees. They may invoke several public capabilities on the same change through delivery.\nDomain Agents are terminal Pi agents invoked directly or by authored native workflows; an explicitly\nselected StateGraph Operation uses its trusted execution service. All retain their file/tool grants.\n\nA mutating capability requested from a consumer primary normally runs in a host-created candidate;\na capability already in an assigned candidate reuses it. The requesting session stays where it\nstarted and receives path, branch and stable change_id. Uncommitted primary edits are not copied.\nDurable status and runs belong only to the primary coordinator, not duplicate candidate archives.\nTask-authorized `.concorde` edits in the owned workspace are not forbidden by directory name;\npreserve task scope, truthful evidence and concurrency safety, and obey actual worker grants.\n\nFor Concorde source maintenance, the user session creates a candidate and a fresh Concorde-catalog-free maintenance\nchild with inherited/discovered catalogs disabled. After the writer checks, commits and stops,\nthe user session chooses independent testing as none, targeted or full with scope and reason. When selected,\na separate fresh sibling tester receives only the exact candidate-built Pi entry, embedded catalog and runtime\nprovenance. Neither forks old Concorde instructions or delegates tasks. The tester never rewrites governing\nPi integration; failures return to maintenance and then a new tester. Maintenance may finish through\nordinary Git with explicit merge authorization, without Concorde delivery. Selection metadata alone\nis not evidence of extension loading, tool use or model execution. Never fall back to a global or primary integration.\n\nReport Spec gaps or blocked execution as returned. Spec-only Domain Agents never receive\nimplementation contents. Programmer and code-reviewer receive only their phase-admitted code;\nraw check logs remain Host diagnostics, not an implicit worker grant.\n\nStructural findings carry their Protocol check identity (`CHK.*`) and severity. Validation\nchecks document pairing, identity and ownership, schema-3 metadata, the entry's Purpose,\nTerminology, Usage, Design and Relationships structure, Terminology rows (one defining sentence per\nconcept; link-only import rows), requirement, scenario and contract syntax, local `meaning` anchors,\nunique stable IDs and identity links. The registry must mirror every entry's `module` block exactly\n(`registry --write` regenerates it). Composition, `uses` with `relies_on`, `includes`,\n`participates` versions and peers, realization entries and pending markers, unbound files and the\ncontext reconciliation are checked. An unmarked flowchart in a `module` document may only draw\ndeclared `relates`, `uses` and `contains` relations; other diagrams are marked `mermaid\nillustrative`. Metadata-only edits affect complete-context identity and evidence just as reading\nedits do.\n\nFor the Module a managed change is about, the configured checks cover every Module the candidate\nedits since its base commit, with every Module binding one of their files.\n\nTests declare verified scenario IDs in their own source. Unknown IDs and unreadable tests are errors;\nuncovered scenarios and tests that the scenario's owner does not bind are warnings. Warnings do not\nby themselves fail validation. No structural result proves reading completeness, semantic\ncompleteness or implementation conformance.\n",
+      "description": "Host service: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy.",
+      "guidance": "# concorde-configure\n\nInvoke this capability to configure. The host owns context\nresolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed\ninput; do not perform it directly in this ambient conversation or inspect additional project files.\nThis is a finite deterministic Host service: it runs no Agent cognition and selects no context.\n\nTask requests select target_id and task, with optional focus_id (a scenario ID), constraints, and\nchange_id.\nInitialization uses its typed propose/apply request; use the published request schema.\nNo domain flags or positional task arguments are accepted. Configuration is never a context grant.\n\nUse the supplied target identity; if it is ambiguous, ask the user to identify it instead of\nsearching other Specs.\nThe user session coordinates needs and may delegate a complete task to one fresh Task\nsubagent, or handle a simple consumer-project task directly. Task subagents never delegate tasks or\nmove worktrees. They may invoke several public capabilities on the same change through delivery.\nDomain Agents are terminal Pi agents invoked directly or by authored native workflows; an explicitly\nselected StateGraph Operation uses its trusted execution service. All retain their file/tool grants.\n\nA mutating capability requested from a consumer primary normally runs in a host-created candidate;\na capability already in an assigned candidate reuses it. The requesting session stays where it\nstarted and receives path, branch and stable change_id. Uncommitted primary edits are not copied.\nDurable status and runs belong only to the primary coordinator, not duplicate candidate archives.\nTask-authorized `.concorde` edits in the owned workspace are not forbidden by directory name;\npreserve task scope, truthful evidence and concurrency safety, and obey actual worker grants.\n\nFor Concorde source maintenance, the user session creates a candidate and a fresh Concorde-catalog-free maintenance\nchild with inherited/discovered catalogs disabled. After the writer checks, commits and stops,\nthe user session chooses independent testing as none, targeted or full with scope and reason. When selected,\na separate fresh sibling tester receives only the exact candidate-built Pi entry, embedded catalog and runtime\nprovenance. Neither forks old Concorde instructions or delegates tasks. The tester never rewrites governing\nPi integration; failures return to maintenance and then a new tester. Maintenance may finish through\nordinary Git with explicit merge authorization, without Concorde delivery. Selection metadata alone\nis not evidence of extension loading, tool use or model execution. Never fall back to a global or primary integration.\n\nReport Spec gaps or blocked execution as returned. Spec-only Domain Agents never receive\nimplementation contents. Programmer and code-reviewer receive only their phase-admitted code;\nraw check logs remain Host diagnostics, not an implicit worker grant.\n\nFrom the primary worktree this request is relayed into a new candidate, and the new configuration\ntakes effect only when that candidate is delivered. Before calling it from the primary, ask the\ndeveloper which they want: to change or test this command (run in a candidate, effective after\ndelivery), or simply to configure this project now. Only for the second answer set\n`run_in_primary: true`, which applies the request in the primary worktree directly. Never set it\nwithout that answer.\n",
       "kind": "host",
-      "name": "concorde-validate",
+      "name": "concorde-configure",
       "request_schema": {
         "$defs": {
-          "concorde-validate-request": {
+          "concorde-configure-request": {
             "additionalProperties": false,
             "properties": {
-              "change_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "constraints": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "focus_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "run_checks": {
+              "accept_protocol": {
                 "type": "boolean"
               },
-              "target_id": {
-                "minLength": 1,
-                "type": "string"
+              "configuration": {
+                "additionalProperties": false,
+                "properties": {
+                  "data": {
+                    "$ref": "#/$defs/concorde-operation-configuration"
+                  },
+                  "schema_version": {
+                    "const": 2,
+                    "type": "integer"
+                  },
+                  "type_id": {
+                    "const": "concorde-operation-configuration"
+                  }
+                },
+                "required": [
+                  "type_id",
+                  "schema_version",
+                  "data"
+                ],
+                "type": "object"
               },
-              "task": {
-                "minLength": 1,
-                "type": "string"
+              "run_in_primary": {
+                "type": "boolean"
               }
             },
             "required": [
-              "target_id",
-              "task"
+              "configuration"
             ],
+            "type": "object"
+          },
+          "concorde-operation-configuration": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "thinking": {
+                "enum": [
+                  "off",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              },
+              "timeout_seconds": {
+                "type": "integer"
+              },
+              "workers": {
+                "additionalProperties": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "model": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "thinking": {
+                      "enum": [
+                        "off",
+                        "minimal",
+                        "low",
+                        "medium",
+                        "high",
+                        "xhigh",
+                        "max"
+                      ]
+                    },
+                    "timeout_seconds": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                },
+                "properties": {},
+                "type": "object"
+              }
+            },
+            "required": [],
             "type": "object"
           }
         },
@@ -1073,14 +1073,14 @@ const CATALOG: SessionCatalog = {
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/$defs/concorde-validate-request"
+            "$ref": "#/$defs/concorde-configure-request"
           },
           "schema_version": {
-            "const": 1,
+            "const": 3,
             "type": "integer"
           },
           "type_id": {
-            "const": "concorde-validate-request"
+            "const": "concorde-configure-request"
           }
         },
         "required": [
@@ -1090,7 +1090,7 @@ const CATALOG: SessionCatalog = {
         ],
         "type": "object"
       },
-      "request_version": 1
+      "request_version": 3
     }
   ],
   "schema_version": 2

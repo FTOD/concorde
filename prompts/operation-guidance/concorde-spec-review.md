@@ -1,7 +1,6 @@
 ---
 name: concorde-spec-review
 description: "Workflow: independently review a Module's complete Spec, including terminology semantic consistency, and return scoped read-only findings."
-operation: spec_review
 ---
 
 # concorde-spec-review

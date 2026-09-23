@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.harness.admission import run_operation
+from concorde.operations.dispatch import run_operation
 from concorde.harness.change_worktree import git, git_value, read_change
 from concorde.harness.host import OperationHost as RealHost
 from concorde.spec.typed_data import typed

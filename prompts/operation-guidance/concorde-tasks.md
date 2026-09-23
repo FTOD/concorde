@@ -1,7 +1,6 @@
 ---
 name: concorde-tasks
 description: "Agent entry: call the task-author to derive implementation acceptance tasks from the current accepted plan."
-operation: tasks
 ---
 
 # concorde-tasks

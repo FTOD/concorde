@@ -10,11 +10,8 @@ from pathlib import Path
 from concorde.distribution.build import load_model_instructions
 from concorde.distribution.package_validation import validate_package
 from concorde.spec.boundaries import scope_roots
-from concorde.operations.catalog import (
-    MODEL_OPERATIONS,
-    OPERATION_CONTRACTS,
-    OPERATION_NAMES,
-)
+from agents import DOMAIN_AGENTS
+from concorde.operations.catalog import OPERATION_NAMES
 from concorde.spec.repository import SpecRepository
 from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
@@ -26,13 +23,13 @@ from .support import PACKAGE, project
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([], validate_package(PACKAGE))
-        self.assertEqual(18, len(OPERATION_NAMES))
-        self.assertEqual(7, len(MODEL_OPERATIONS))
+        agents = tuple("concorde-" + name.replace("_", "-") for name in DOMAIN_AGENTS)
+        self.assertEqual(11, len(OPERATION_NAMES))
+        self.assertEqual(7, len(agents))
         self.assertIn("concorde-context-solve", OPERATION_NAMES)
         self.assertNotIn("concorde-ask", OPERATION_NAMES)
-        self.assertIn("concorde-planner", MODEL_OPERATIONS)
-        self.assertNotIn("concorde-main", MODEL_OPERATIONS)
-        for role in MODEL_OPERATIONS:
+        self.assertNotIn("concorde-planner", OPERATION_NAMES)
+        for role in agents:
             prompt = load_model_instructions(PACKAGE, role)
             self.assertEqual(role, prompt.name)
             self.assertTrue(prompt.body.strip())
@@ -84,7 +81,7 @@ class DistributionTests(unittest.TestCase):
             repo.source_bytes(path).decode()
             for path in repo.spec_context("module.harness").paths
         )
-        for op in OPERATION_CONTRACTS:
+        for op in OPERATION_NAMES:
             self.assertIn(op + "-request", text)
 
     def test_launcher_refuses_a_nonpublic_operation_name_and_accepts_a_public_operation(
@@ -117,17 +114,14 @@ class DistributionTests(unittest.TestCase):
             output = json.loads(result.stdout)
             self.assertEqual("blocked", output["status"])
             self.assertEqual("unknown_operation", output["errors"][0]["code"])
-            public_command = [sys.executable, launcher, "concorde-validate"]
+            public_command = [sys.executable, launcher, "concorde-issues"]
             public_value = {
                 "type_id": "concorde-operation-invocation",
                 "schema_version": 3,
-                "operation_id": "concorde-validate",
+                "operation_id": "concorde-issues",
                 "mode": "describe-policy",
                 "configuration": None,
-                "input": typed(
-                    "concorde-validate-request",
-                    {"target_id": "service.transfer", "task": "Explain transfer"},
-                ),
+                "input": typed("concorde-issues-request", {"action": "list"}),
             }
             result = subprocess.run(
                 public_command,

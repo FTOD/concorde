@@ -7,13 +7,23 @@ from .repository import SpecError, SpecRepository, read_file
 from .typed_data import canonical, decode, typed
 
 
-def project_operation(operation, configuration, task, host):
-    services = project_nodes(operation, configuration, task, host)
+def initialize(request) -> dict:
+    """Entry point of ``concorde-init``: propose or apply the first Spec of a project."""
+    return project_operation("concorde-init", request.data, request.host)
+
+
+def configure(request) -> dict:
+    """Entry point of ``concorde-configure``."""
+    return project_operation("concorde-configure", request.data, request.host)
+
+
+def project_operation(operation, task, host):
+    services = project_nodes(operation, task, host)
     action = services["select_action"]({})["route"]
     return services[action]({})["output"]
 
 
-def project_nodes(operation, configuration, task, host):
+def project_nodes(operation, task, host):
     END = "__end__"
 
     from .initialize import apply_project_proposal, project_proposal

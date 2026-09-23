@@ -24,7 +24,6 @@ from ..harness.worker_profile import (
     resolve_worker,
     worker_profile,
 )
-from ..operations.catalog import PUBLIC_OPERATIONS
 from ..spec.frontmatter import FrontMatterError, parse_document
 from . import task_subagents
 from .prompt_resolver import (
@@ -74,9 +73,21 @@ MODEL_ROOTS: dict[str, str] = {
     for agent in load_worker_profiles().values()
 }
 
-OPERATION_GUIDANCE: dict[str, str] = {
-    name: f"prompts/operation-guidance/{name}.md" for name in PUBLIC_OPERATIONS
-}
+# The Pi session catalog's name for each routed Operation kind.
+SESSION_KINDS = {"host": "host", "agent-call": "agent-entry", "pi-workflow": "workflow"}
+
+
+def guidance_sources() -> dict[str, str]:
+    """The guidance source of every public capability of the Operation catalog, in catalog order."""
+    from ..operations.catalog import PUBLIC_OPERATIONS
+
+    return {name: guidance_source(name) for name in PUBLIC_OPERATIONS}
+
+
+def guidance_source(name: str) -> str:
+    return f"prompts/operation-guidance/{name}.md"
+
+
 PROTOCOL_KINDS = ("module",)
 PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
@@ -120,7 +131,7 @@ def _sha256_file(project_root: Path, relative: str) -> str:
 
 
 def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
-    relative = OPERATION_GUIDANCE[name]
+    relative = guidance_source(name)
     path = project_root / relative
     try:
         text = path.read_text(encoding="utf-8")
@@ -134,7 +145,7 @@ def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
         raise BuildError(
             f"invalid operation guidance source front matter in {relative}: {error}"
         ) from error
-    required = {"name", "description", "operation"}
+    required = {"name", "description"}
     if set(metadata) != required:
         raise BuildError(
             f"operation guidance source {relative} must declare exactly {sorted(required)}, found {sorted(metadata)}"
@@ -149,10 +160,6 @@ def _guidance_metadata(project_root: Path, name: str) -> dict[str, object]:
     ):
         raise BuildError(
             f"operation guidance source {relative} requires a non-empty description"
-        )
-    if not isinstance(metadata["operation"], str) or not metadata["operation"].strip():
-        raise BuildError(
-            f"operation guidance source {relative} requires a non-empty operation"
         )
     return metadata
 
@@ -194,6 +201,8 @@ def _interpreters(prefix: str) -> list[str]:
 
 def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> BuildOutput:
     """Embed all public Operation guidance and versioned schemas in one Pi shim."""
+    from ..operations.catalog import PUBLIC_OPERATIONS, operation
+
     prefix = framework_prefix.strip("/")
     schemas, schema_sources = registered_schemas(project_root)
     sources: set[str] = set(schema_sources)
@@ -201,9 +210,7 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
     for name in PUBLIC_OPERATIONS:
         metadata = _guidance_metadata(project_root, name)
         try:
-            resolved = resolve_operation_guidance(
-                project_root, OPERATION_GUIDANCE[name]
-            )
+            resolved = resolve_operation_guidance(project_root, guidance_source(name))
         except PromptResolverError as error:
             raise BuildError(f"operation {name}: {error.rule_id}: {error}") from error
         guidance = re.sub(r"\n{3,}", "\n\n", resolved.body).strip("\n") + "\n"
@@ -231,16 +238,7 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
         operations.append(
             {
                 "name": name,
-                "kind": {
-                    "concorde-init": "host",
-                    "concorde-configure": "host",
-                    "concorde-validate": "host",
-                    "concorde-deliver": "host",
-                    "concorde-plan": "workflow",
-                    "concorde-spec-review": "workflow",
-                    "concorde-code-review": "workflow",
-                    "concorde-issues": "workflow",
-                }.get(name, "agent-entry"),
+                "kind": SESSION_KINDS[operation(name).kind],
                 "description": str(metadata["description"]),
                 "guidance": guidance,
                 "request_version": version,
@@ -248,7 +246,7 @@ def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> Buil
             }
         )
         sources.update(resolved.sources)
-        sources.add(OPERATION_GUIDANCE[name])
+        sources.add(guidance_source(name))
     catalog = {
         "schema_version": 2,
         "launcher": (
@@ -336,8 +334,14 @@ def registered_schemas(project_root: Path) -> tuple[dict, tuple[str, ...]]:
         sys.modules[importlib.util.resolve_name(name, catalog.__package__)]
         for name in catalog.RECORD_MODULES
     ]
-    modules.extend(catalog._MODULES.values())
-    sources = set()
+    sources = {
+        relative
+        for relative in (
+            f"operations/{item.id.replace('-', '_')}.py"
+            for item in catalog.CATALOG.values()
+        )
+        if (project_root / relative).is_file()
+    }
     for module in modules:
         location = Path(getattr(module, "__file__", "") or "").resolve()
         if location.is_relative_to(package):
@@ -394,7 +398,6 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         "src/concorde/spec/typed_data.py",
         "src/concorde/operations/catalog.py",
         "src/concorde/harness/worker_profile.py",
-        "src/concorde/harness/operation_state.py",
         "src/concorde/harness/operation_node.py",
         # The shim binds the tracked session extension; its behavior is part of the projection.
         PI_SESSION_EXTENSION,
@@ -456,7 +459,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
             )
         ]
         + list(task_subagents.prompt_roots(root))
-        + list(OPERATION_GUIDANCE.values())
+        + list(guidance_sources().values())
         + ["prompts/protocol/principles.md"]
         + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS]
     )

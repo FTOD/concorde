@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..spec.changes import apply_files
-from ..spec.repository import SpecError, SpecRepository, digest, read_file
+from ..spec.repository import SpecError, SpecRepository, digest
 from .store import (
     MAX_RECORD_BYTES,
     dispose_issue,
@@ -183,19 +182,68 @@ def prepare_request(root: Path, package: Path, task: dict) -> dict:
     return task
 
 
-def copy_selection(source: Path, destination: Path, task: dict) -> None:
-    """Carry only the selected exact Issue into a host-created candidate, including uncommitted reports."""
-    relative = issue_path(task["issue_id"])
-    raw = read_file(source, relative)
-    if digest(raw) != task["expected_revision"]:
-        raise SpecError("Issue changed while preparing its candidate", "stale_issue")
-    target = destination / relative
-    before = digest(read_file(destination, relative)) if target.exists() else None
-    apply_files(
-        destination,
-        [{"path": relative, "before_digest": before, "content": raw.decode()}],
-        {relative},
+def require_committed(root: Path, issue_id: str) -> None:
+    """Refuse a solve of an Issue whose record is not committed, unchanged, at ``HEAD``."""
+    from ..harness.change_worktree import git, workspace_identity
+
+    _, current = workspace_identity(root)
+    if current is None:
+        return
+    relative = issue_path(issue_id)
+    committed = git(
+        root, "rev-parse", "--verify", "--quiet", f"HEAD:{relative}", check=False
     )
+    working = git(root, "hash-object", "--", relative, check=False)
+    if (
+        committed.returncode != 0
+        or working.returncode != 0
+        or committed.stdout.strip() != working.stdout.strip()
+    ):
+        raise SpecError(
+            "only an Issue committed unchanged at HEAD can be solved; commit it first",
+            "uncommitted_issue",
+        )
+
+
+def select_target(root: Path, package: Path, data: dict) -> tuple[dict, bool]:
+    """Target selection hook of ``concorde-issues``: bind the Issue before a worktree is chosen.
+
+    Returns the bound request and whether it mutates: only ``solve`` of an open Issue does.
+    """
+    from ..harness.admission import bind_module_target
+
+    task = prepare_request(root, package, data)
+    mutates = task["action"] == "solve" and not task.get("_issue_closed")
+    if mutates and not task.get("_issue_recovery"):
+        require_committed(root, task["issue_id"])
+    return bind_module_target(root, package, task, mutates=mutates), mutates
+
+
+def issues(request) -> dict:
+    """Workflow hook of ``concorde-issues``: bookkeeping in place, solving as a native workflow."""
+    from ..harness.invocation import bind, native_call
+
+    task = request.data
+    if task["action"] == "solve" and (
+        request.host.native_assessment is not None or not task.get("_issue_closed")
+    ):
+        return native_call(request)
+    run = bind(request)
+    if request.host.mode == "describe-policy":
+        return run.response(
+            "described", "Host bookkeeping only; no worker is launched."
+        )
+    if task["action"] == "solve":
+        value = run.response(
+            "completed", "Issue is already disposed; no work replayed."
+        )
+        value["data"].update(
+            issues=[read_issue(run.repository.root, task["issue_id"])[0]],
+            decision="already-closed",
+        )
+        return value
+    nodes = issue_nodes(run)
+    return nodes[nodes["select_operation"]({})["route"]]({})["output"]
 
 
 def issue_nodes(run):

@@ -5,6 +5,8 @@ Built on Spec tooling's impact indexes; the policy itself is Planning's.
 
 from __future__ import annotations
 
+from ..harness.change_worktree import register_component_policy
+from ..harness.revisions import target_revision
 from ..spec.impact import binding_modules
 
 
@@ -47,3 +49,42 @@ def change_scope(repository, module_id: str) -> tuple[str, ...]:
         scope.update(item["module"] for item in repository.referenced_by(identity))
     scope.update(binding_modules(repository, module_id))
     return tuple(sorted(scope & set(repository.modules)))
+
+
+def component_intent(tasks: list[dict]) -> str:
+    """The component task derived from the owner's accepted tasks for one component Module."""
+    return "\n\n".join(
+        task["description"] + "\nAcceptance: " + task["acceptance"] for task in tasks
+    )
+
+
+def component_request(repository, change: dict, task: dict) -> bool:
+    """Whether ``task`` is a component request of ``change``.
+
+    It names a Module of an owner's change scope other than the owner, has no focus, and its task
+    and constraints equal the component task derived from the owner's current accepted tasks for
+    that Module, planned against the owner's current Spec revision.
+    """
+    for owner_id, record in change.get("targets", {}).items():
+        if owner_id not in repository.modules:
+            continue
+        selected = [
+            item
+            for item in record.get("tasks", [])
+            if item["target_id"] == task["target_id"]
+        ]
+        if (
+            task["target_id"] in set(change_scope(repository, owner_id)) - {owner_id}
+            and record.get("plan")
+            and record.get("spec_digest")
+            == target_revision(repository, repository.module(owner_id))
+            and selected
+            and task.get("task") == component_intent(selected)
+            and task.get("constraints", []) == record.get("constraints", [])
+            and task.get("focus_id") is None
+        ):
+            return True
+    return False
+
+
+register_component_policy(component_request)

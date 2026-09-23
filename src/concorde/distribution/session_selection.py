@@ -212,3 +212,51 @@ def save_selection(root: Path, path: Path, value: dict) -> None:
         path.relative_to(root.resolve()).as_posix(),
         (json.dumps(value, sort_keys=True) + "\n").encode(),
     )
+
+
+def runtime_selection(package_root: Path) -> dict | None:
+    """The verified session selection of this launcher run, as its session provenance.
+
+    Fails closed before any capability runs; project data never selects code. A selection pins the
+    running package; it may name a disposable consumer project as data, but never redirects into
+    a sibling worktree of the same source repository.
+    """
+    from ..spec.repository import SpecError
+
+    if not os.environ.get("CONCORDE_SESSION_SELECTION"):
+        return None
+    if package_root.resolve() != Path.cwd().resolve():
+        from ..harness.change_worktree import git
+
+        package_common = git(
+            package_root,
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+            check=False,
+        )
+        project_common = git(
+            Path.cwd(),
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+            check=False,
+        )
+        if (
+            package_common.returncode == 0
+            and project_common.returncode == 0
+            and package_common.stdout.strip() == project_common.stdout.strip()
+        ):
+            raise SpecError(
+                "private selection cannot redirect into another source worktree",
+                "workspace_mismatch",
+            )
+    selection = load_selection(
+        package_root, Path(os.environ["CONCORDE_SESSION_SELECTION"])
+    )
+    if selection["mode"] == "maintenance":
+        raise SpecError(
+            "maintenance authoring uses deterministic development commands, not public Operations",
+            "fresh_session_required",
+        )
+    return selection

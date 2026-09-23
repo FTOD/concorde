@@ -198,10 +198,10 @@ class IssueSolve:
         }
 
     def child(self, operation, payload, *, coordinated=True):
-        from ..harness.admission import invoke_operation
+        from ..operations.dispatch import run_child
 
         child_host = replace(self.run.host, coordinated=coordinated)
-        return invoke_operation(
+        return run_child(
             self.run.operation,
             operation,
             self.run.configuration,

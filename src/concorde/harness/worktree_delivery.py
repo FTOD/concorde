@@ -285,6 +285,11 @@ def _cleanup(host, receipt: dict, *, keep_worktree: bool = False) -> bool:
     return True
 
 
+def run(request) -> dict:
+    """Entry point of ``concorde-deliver``; the delivery session is checked here, not in admission."""
+    return deliver(request.host, request.configuration, request.data)
+
+
 def deliver(host, configuration: dict, task: dict) -> dict:
     primary = require_delivery_session(host, task["change_id"])
     if task.get("merge_primary") and (

@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.harness.native_context import execute
+from concorde.operations.dispatch import services
 from concorde.harness.native_runtime import FORMAT, NativeRuntimeBinding
 from concorde.harness.worker_profile import worker_profile
 from concorde.spec.typed_data import typed
@@ -74,6 +75,7 @@ class DomainToolTests(unittest.TestCase):
                 "native_root": str(self.root),
                 "session_id": "unit",
             },
+            services=services(),
         )
         self.assertEqual("prepared", prepared["state"], prepared)
         self.addCleanup(

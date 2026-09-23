@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 from concorde.harness.host import OperationHost
-from concorde.harness.admission import run_operation
+from concorde.operations.dispatch import run_operation
 from concorde.harness.change_worktree import (
     ensure_change,
     read_change,
     record_task_gaps,
     workspace_context,
 )
-from concorde.issues.graph import copy_selection
+from concorde.issues.graph import select_target
 from concorde.issues.store import read_issue, report_issue
 from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import typed
@@ -94,29 +95,30 @@ class IssueGraphTests(unittest.TestCase):
         self.assertEqual("stale_issue", result["errors"][0]["code"])
         self.assertFalse((self.root / ".concorde/status").exists())
 
-    def test_selection_copy_preserves_uncommitted_bytes_and_no_unrelated_file(self):
-        destination = self.root / "candidate"
-        destination.mkdir()
-        before, revision = read_issue(self.root, self.ref["issue_id"])
-        (self.root / "unrelated.txt").write_text("private local edit")
-        copy_selection(
-            self.root,
-            destination,
-            {"issue_id": self.ref["issue_id"], "expected_revision": revision},
-        )
-        self.assertEqual(
-            (before, revision), read_issue(destination, self.ref["issue_id"])
-        )
-        self.assertFalse((destination / "unrelated.txt").exists())
-        with self.assertRaises(SpecError):
-            copy_selection(
-                self.root,
-                destination,
-                {
-                    "issue_id": self.ref["issue_id"],
-                    "expected_revision": "sha256:" + "f" * 64,
-                },
+    @verifies("scenario.issue-solving.uncommitted-refused")
+    def test_uncommitted_issue_is_refused_before_a_candidate_exists(self):
+        def git(*arguments):
+            subprocess.run(
+                ["git", "-C", str(self.root), *arguments],
+                check=True,
+                capture_output=True,
             )
+
+        git("init", "-q", "-b", "main")
+        git("config", "user.email", "fixture@example.invalid")
+        git("config", "user.name", "Fixture")
+        git("add", "-A", "--", ".", ":!.concorde/issues")
+        git("commit", "-q", "-m", "fixture")
+        request = {"action": "solve", "issue_id": self.ref["issue_id"]}
+        with self.assertRaises(SpecError) as refused:
+            select_target(self.root, PACKAGE, request)
+        self.assertEqual("uncommitted_issue", refused.exception.code)
+        self.assertFalse((self.root / ".concorde/status").exists())
+        git("add", "-A")
+        git("commit", "-q", "-m", "issue")
+        data, mutates = select_target(self.root, PACKAGE, request)
+        self.assertTrue(mutates)
+        self.assertEqual("service.transfer", data["target_id"])
 
     def test_issue_identity_outlives_task_wording_and_released_dependencies(self):
         ensure_change(self.root, allow_primary=True)

@@ -611,7 +611,8 @@ class RealPiSessionTests(unittest.TestCase):
         self.assertEqual("concorde-operation-result", envelope["type_id"])
         self.assertEqual(3, envelope["schema_version"])
         self.assertEqual("concorde-validate", envelope["operation_id"])
-        self.assertEqual("invalid_field", envelope["errors"][0]["code"])
+        # The fixture project stores no configuration; admission checks it before the request.
+        self.assertEqual("configuration_mismatch", envelope["errors"][0]["code"])
 
     @verifies(
         "scenario.session.select",

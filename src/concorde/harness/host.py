@@ -1,20 +1,61 @@
-"""The trusted host of one operation invocation.
+"""The trusted host of one capability request and what the launcher hands admission.
 
 An ``OperationHost`` carries the project and package roots, the execution mode and the trusted
-services one invocation shares with its nested invocations.
+services one request shares with the capability requests nested in it. ``AdmissionServices`` is
+what admission must not import itself: the capability declarations, the dispatcher that runs an
+admitted request's declared entry point, and the local installation service. The launcher (or an
+embedding program) supplies them; admission only calls them.
 """
 
 from __future__ import annotations
 
-import importlib
 import uuid
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
-from ..operations.catalog import load_operation_inventory
 from ..spec.repository import SpecError
+
+
+class InstallationService(Protocol):
+    """The local installation service admission relies on (Distribution provides it)."""
+
+    def verify(self, project_root: Path, package_root: Path) -> None:
+        """Refuse a top-level run whose package is not this worktree's own installation."""
+
+    def install(
+        self, candidate: Path, package_root: Path, bootstrap: bool
+    ) -> tuple[Path, Path]:
+        """The candidate's own interpreter and launcher, installing only when ``bootstrap``."""
+
+
+@dataclass(frozen=True)
+class AdmissionServices:
+    """The capability declarations, the dispatcher and the installation service of one launcher.
+
+    ``catalog`` maps each capability name to its declaration as
+    ``contract.admission.capability-declaration`` defines it. ``dispatcher`` receives one
+    ``AdmittedRequest`` and returns the capability's response typed value. ``installation`` is
+    None for an embedding program that installs nothing.
+    """
+
+    catalog: Mapping[str, Mapping[str, Any]]
+    dispatcher: Callable[[AdmittedRequest], dict]
+    installation: InstallationService | None = None
+
+
+@dataclass(frozen=True)
+class AdmittedRequest:
+    """One capability request after admission: what the dispatcher and the entry point receive."""
+
+    operation: str
+    declaration: Mapping[str, Any]
+    configuration: dict | None
+    data: dict
+    mutates: bool
+    host: OperationHost
 
 
 @dataclass(frozen=True)
@@ -22,6 +63,7 @@ class OperationHost:
     project_root: Path
     package_root: Path
     mode: str = "execute"
+    services: AdmissionServices | None = None
     # Finite native context preparation/acceptance only; never a suspended model callback.
     native_assessment: Any = None
     native_transport: bool = False
@@ -41,8 +83,8 @@ class OperationHost:
     track_gaps: bool = False
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    # The top-level operation invocation's identity, inherited by every nested invocation so one
-    # Graph run keeps one run directory under .concorde/runs/<root_invocation_id>/.
+    # The top-level request's identity, inherited by every nested request so one run keeps one
+    # run directory under .concorde/runs/<root_invocation_id>/.
     root_invocation_id: str | None = None
     evidence: list[Any] = field(default_factory=list)
     lifecycle: dict = field(default_factory=dict)
@@ -62,56 +104,3 @@ class OperationHost:
         object.__setattr__(
             self, "session_root", (self.session_root or self.project_root).resolve()
         )
-
-
-def _operation_key(operation: str) -> str:
-    return operation[len("concorde-") :].replace("-", "_")
-
-
-def resolve_child_operation(parent_operation: str, child_operation: str):
-    """Return the child operation module for one in-process nested dispatch, or refuse it.
-
-    A parent may always invoke itself (recursive fan-out across component targets, as
-    ``review_scope`` and ``implement_scope`` do, is not operation composition and needs no
-    declared edge). Any other child must appear in the parent operation module's declared
-    ``USES``, or this raises ``SpecError(..., "undeclared_operation")``. Pure name resolution
-    with no side effect beyond importing the two modules; kept separate from ``invoke_operation``
-    so the declared composition graph can be checked exhaustively without executing anything.
-    """
-
-    inventory = load_operation_inventory()
-    from agents import DOMAIN_AGENTS
-
-    def namespace(key):
-        return "agents" if key in DOMAIN_AGENTS else inventory.__name__
-
-    parent_key, child_key = (
-        _operation_key(parent_operation),
-        _operation_key(child_operation),
-    )
-    for key, external in ((parent_key, parent_operation), (child_key, child_operation)):
-        if (
-            key not in (*inventory.OPERATIONS, *DOMAIN_AGENTS)
-            or inventory.external_name(key) != external
-        ):
-            raise SpecError(f"unknown operation: {external}", "unknown_operation")
-    if parent_key != child_key:
-        try:
-            parent_module = importlib.import_module(
-                f"{namespace(parent_key)}.{parent_key}"
-            )
-        except ImportError as error:
-            raise SpecError(
-                f"unknown parent operation: {parent_operation}", "unknown_operation"
-            ) from error
-        if child_key not in parent_module.USES:
-            raise SpecError(
-                f"{parent_operation} has no declared composition edge to {child_operation}",
-                "undeclared_operation",
-            )
-    try:
-        return importlib.import_module(f"{namespace(child_key)}.{child_key}")
-    except ImportError as error:
-        raise SpecError(
-            f"unknown operation: {child_operation}", "unknown_operation"
-        ) from error

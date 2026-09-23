@@ -18,7 +18,7 @@ from concorde.harness.configuration import (
     propose_configuration,
 )  # noqa: E402
 from concorde.harness.host import OperationHost  # noqa: E402
-from concorde.harness.admission import run_operation  # noqa: E402
+from concorde.operations.dispatch import run_operation  # noqa: E402
 from concorde.distribution.project_defaults import (
     PROTOCOL_MANIFEST_PATH,
     protocol_files,
@@ -70,9 +70,7 @@ class ConfigureTests(unittest.TestCase):
     def stored(self) -> dict:
         return json.loads(self.path.read_text())["operation_configuration"]
 
-    @verifies(
-        "scenario.admission.configure-apply", "scenario.concorde.configure-apply"
-    )
+    @verifies("scenario.admission.configure-apply", "scenario.concorde.configure-apply")
     def test_supported_configuration_is_applied_atomically(self):
         selection = configuration(
             model="anthropic/claude-sonnet-5",

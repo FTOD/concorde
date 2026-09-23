@@ -20,15 +20,13 @@ def invocation(
     configuration: dict | None = None,
     mode: str = "describe-policy",
 ) -> dict:
-    from concorde.operations.catalog import OPERATION_CONTRACTS
-
     return {
         "type_id": "concorde-operation-invocation",
         "schema_version": 3,
         "operation_id": operation,
         "mode": mode,
         "configuration": configuration or CONFIGURATION,
-        "input": typed(OPERATION_CONTRACTS[operation][0], data),
+        "input": typed(f"{operation}-request", data),
     }
 
 

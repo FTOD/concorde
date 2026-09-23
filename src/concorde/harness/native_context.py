@@ -35,7 +35,7 @@ from .context import (
     recheck_context,
     resolve_context,
 )
-from .entry import invocation_failure, runtime_selection, validate_invocation
+from .entry import invocation_failure, validate_invocation
 from .execution_error import (
     ExecutionFailure,
     OperationExecutionError,
@@ -276,6 +276,9 @@ def _execute(
     payload: dict,
     descriptor_path=None,
     expected_digest=None,
+    *,
+    services,
+    provenance=None,
 ):
     """Selected finite Host service. Model values cannot choose paths or actions."""
     descriptor = None
@@ -308,7 +311,6 @@ def _execute(
     }:
         raise SpecError("not a native read-only planning entry", "unknown_operation")
     validate_invocation(envelope, operation)
-    selection = runtime_selection(package_root)
     result = {}
 
     def service(run):
@@ -1031,7 +1033,8 @@ def _execute(
         native_assessment=service,
         native_transport=action != "accept",
         relay=relay,
-        session_provenance=selection,
+        services=services,
+        session_provenance=provenance,
     )
     envelope_result = run_operation(
         operation, envelope["configuration"], envelope["input"], host_context=host
@@ -1047,7 +1050,24 @@ def execute(
     payload: dict,
     descriptor_path=None,
     expected_digest=None,
+    *,
+    services=None,
+    provenance=None,
 ):
+    """One native step; ``services`` and ``provenance`` are what the launcher hands admission.
+
+    A step started by another step of the same native command inherits what the launcher handed
+    that command.
+    """
+    services = services or _LAUNCHED.get("services")
+    if services is None:
+        raise SpecError(
+            "a native step needs the services the launcher hands admission",
+            "invalid_input",
+        )
+    if provenance is None:
+        provenance = _LAUNCHED.get("provenance")
+    context = {"services": services, "provenance": provenance}
     if action == "prepare-planner":
         prior = _record(Path(descriptor_path))
         terminal = _record(Path(prior["directory"]) / "terminal.json")
@@ -1095,9 +1115,10 @@ def execute(
                 "session_id": prior["session_id"],
                 "native_session_id": prior["native_session_id"],
             },
+            **context,
         )
     if action in {"prepare", "prepare-review-item", "prepare-issue-item"}:
-        return _execute(package_root, action, payload)
+        return _execute(package_root, action, payload, **context)
     # One finite command at a time per owned slot. This is not a model scheduler.
     import fcntl
 
@@ -1106,12 +1127,20 @@ def execute(
         raise SpecError("native descriptor changed", "stale_context")
     with (Path(descriptor["directory"]) / "command.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        return _execute(package_root, action, payload, descriptor_path, expected_digest)
+        return _execute(
+            package_root, action, payload, descriptor_path, expected_digest, **context
+        )
 
 
-def main(package_root, args):
+# What the launcher handed the running ``--native-context`` command.
+_LAUNCHED: dict = {}
+
+
+def main(package_root, args, *, services, select_session):
+    """The ``--native-context`` entry; the launcher supplies admission's services and selection."""
     operation = None
     try:
+        _LAUNCHED.update(services=services, provenance=select_session())
         raw = sys.stdin.buffer.read(MAX_PROPOSAL_BYTES + 1)
         if len(raw) > MAX_PROPOSAL_BYTES:
             raise SpecError("native input exceeds 1 MiB", "invalid_input")

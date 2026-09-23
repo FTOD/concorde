@@ -1,18 +1,15 @@
 """Operation: run deterministic Spec and configured code checks and record readiness for the
 current candidate. Deterministic; runs no agent cognition and selects no context."""
 
-from concorde.harness.operation_state import StateContract, run_host
 from concorde.operations import shapes
 
-from . import external_name
 
 KIND = "host"
 PUBLIC = True
-CONTEXT_SELECTION = "none"
 DETERMINISTIC = True
-PROFILE = None
+OWNER = "module.validation"
+AGENTS = ()
 USES = ()
-EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
 REQUEST = shapes.obj(
     {
@@ -27,8 +24,12 @@ REQUEST_VERSION = 1
 RESPONSE_VERSION = 3
 
 
-STATE = StateContract(f"{EXTERNAL_NAME}-request", None)
-
-
-def run(state, runtime):
-    return run_host(EXTERNAL_NAME, state, runtime)
+MUTATION = {"policy": "always", "actions": []}
+WORKSPACE = "candidate"
+TARGET = {
+    "selection": "provider-hook",
+    "hook": "concorde.validation.validate:select_target",
+}
+DEFAULT_TASK = None
+CONFIGURATION = "stored"
+ENTRY_POINT = "concorde.validation.validate:run"

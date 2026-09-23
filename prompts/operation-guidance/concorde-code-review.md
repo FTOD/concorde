@@ -1,7 +1,6 @@
 ---
 name: concorde-code-review
 description: "Workflow: independently review or diagnose a Module's granted implementation against its Spec and return scoped read-only findings."
-operation: code_review
 ---
 
 # concorde-code-review

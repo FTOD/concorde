@@ -54,6 +54,8 @@ def prepare_scope(run, payload):
             run.host.package_root,
             "prepare-review-item",
             {**payload, "invocation": envelope},
+            services=run.host.services,
+            provenance=run.host.session_provenance,
         )
         if value.get("state") != "prepared":
             raise SpecError(

@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from concorde.harness.native_context import execute
 from concorde.harness.native_runtime import FORMAT, NativeRuntimeBinding
+from concorde.operations.dispatch import services
 from concorde.spec.repository import digest
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
@@ -64,11 +65,17 @@ class NativeContextTests(unittest.TestCase):
                 "native_root": str(self.root),
                 "session_id": "unit",
             },
+            services=services(),
         )
 
     def command(self, prepared, action, payload):
         return execute(
-            PACKAGE, action, payload, prepared["descriptor"], prepared["digest"]
+            PACKAGE,
+            action,
+            payload,
+            prepared["descriptor"],
+            prepared["digest"],
+            services=services(),
         )
 
     def proposal(self, prepared):

@@ -654,20 +654,20 @@ class StatusStoreTests(unittest.TestCase):
 
     @verifies("scenario.admission.relay")
     def test_source_carrying_relay_checks_existing_build_without_rebuilding(self):
-        from concorde.distribution.build import BuildError
         from concorde.harness.host import OperationHost
         from concorde.harness.relay import relay_operation
+        from concorde.spec.repository import SpecError
 
         (self.candidate / "concorde.json").write_text("{}")
         (self.candidate / "src/concorde").mkdir(parents=True)
         with (
             patch(
-                "concorde.distribution.build.verify_fresh",
-                side_effect=BuildError("stale", "stale_build"),
+                "concorde.harness.admission.verify_build",
+                side_effect=SpecError("stale", "stale_build"),
             ) as verify,
             patch("subprocess.Popen") as launch,
         ):
-            with self.assertRaises(BuildError):
+            with self.assertRaises(SpecError):
                 relay_operation(
                     OperationHost(self.primary, self.primary),
                     "concorde-main",
@@ -681,7 +681,7 @@ class StatusStoreTests(unittest.TestCase):
         (self.candidate / "scripts").mkdir()
         (self.candidate / "scripts/run-operation.py").write_text("fixture launcher")
         with (
-            patch("concorde.distribution.build.verify_fresh") as verify,
+            patch("concorde.harness.admission.verify_build") as verify,
             patch("subprocess.Popen") as launch,
         ):
             launch.return_value.communicate.return_value = (
@@ -706,19 +706,9 @@ class StatusStoreTests(unittest.TestCase):
 
     @verifies("scenario.worktrees.primary-status")
     def test_private_skill_selection_cannot_redirect_to_source_primary(self):
-        import io
+        from concorde.distribution.session_selection import runtime_selection
+        from concorde.spec.repository import SpecError
 
-        from concorde.harness.entry import json_main
-
-        request = {
-            "type_id": "concorde-operation-invocation",
-            "schema_version": 3,
-            "operation_id": "concorde-main",
-            "mode": "execute",
-            "configuration": None,
-            "input": {},
-        }
-        output = io.StringIO()
         with (
             patch.dict(
                 "os.environ",
@@ -728,14 +718,10 @@ class StatusStoreTests(unittest.TestCase):
                     ),
                 },
             ),
-            patch("sys.argv", ["run-operation.py"]),
-            patch("sys.stdin", io.StringIO(json.dumps(request))),
-            patch("sys.stdout", output),
             patch("pathlib.Path.cwd", return_value=self.primary),
+            self.assertRaises(SpecError) as refused,
         ):
-            self.assertEqual(3, json_main(self.candidate, "concorde-main", None))
-        self.assertEqual(
-            "workspace_mismatch", json.loads(output.getvalue())["errors"][0]["code"]
-        )
+            runtime_selection(self.candidate)
+        self.assertEqual("workspace_mismatch", refused.exception.code)
         self.assertFalse((self.primary / ".concorde/status").exists())
         self.assertFalse((self.primary / ".concorde/runs").exists())

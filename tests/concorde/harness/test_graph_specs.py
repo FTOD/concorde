@@ -81,18 +81,14 @@ class GraphSpecTests(unittest.TestCase):
 
     @verifies("scenario.execution.graph-spec-match")
     def test_catalog_compiles_every_graph_without_a_repository_or_agent(self):
-        with (
-            patch("concorde.harness.invocation.SpecRepository") as bound,
-            patch("concorde.operations.dispatch.SpecRepository") as dispatched,
-        ):
+        with patch("concorde.harness.invocation.SpecRepository") as bound:
             for name, build in catalog().items():
                 with self.subTest(graph=name):
                     shape = topology(build())
                     self.assertIn("__start__", shape["nodes"])
                     self.assertIn("__end__", shape["nodes"])
                     self.assertTrue(shape["edges"])
-            for repository in (bound, dispatched):
-                repository.assert_not_called()
+            bound.assert_not_called()
 
     @verifies("scenario.execution.graph-spec-match")
     def test_comparison_reports_missing_nodes_edges_conditions_and_state(self):

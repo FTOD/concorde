@@ -7,15 +7,36 @@ consume these stages under explicit caller selection; no stage authors project S
 
 from __future__ import annotations
 
-from ..operations.catalog import OPERATION_CONTRACTS, REVIEW_OPERATIONS
 from ..spec.repository import SpecError, SpecRepository, digest
-from ..spec.typed_data import typed
+from ..spec.typed_data import data_schema, typed
 from ..spec.validation import MISSING_PROMISES, module_dependency_findings
 from .change_worktree import WORK_PATH, blocker_scope, read_change
-from .host import (
-    OperationHost,
-)
+from .host import AdmittedRequest, OperationHost
 from .revisions import implementation_digest, target_revision
+
+
+# The capabilities whose own gaps are recorded only for a tracked or required step.
+READ_ONLY_STAGES = frozenset(
+    {"concorde-context-solve", "concorde-spec-review", "concorde-code-review"}
+)
+
+
+def bind(request: AdmittedRequest) -> Invocation:
+    """The Module-bound invocation of one admitted request."""
+    return Invocation(
+        request.operation, request.configuration, request.data, request.host
+    )
+
+
+def native_call(request: AdmittedRequest) -> dict:
+    """Hand an admitted Agent call or workflow to the native driver the Pi session supplied."""
+    driver = request.host.native_assessment
+    if driver is None:
+        raise SpecError(
+            f"{request.operation} runs only through the native preparation the Pi session supplies",
+            "native_required",
+        )
+    return driver(bind(request))
 
 
 class Invocation:
@@ -71,11 +92,13 @@ class Invocation:
             "artifacts": list(artifacts),
             "completed_operations": list(self.completed),
         }
-        if self.operation in REVIEW_OPERATIONS:
+        response_type = f"{self.operation}-response"
+        fields = data_schema(response_type).get("properties", {})
+        if "reviews" in fields:
             data["reviews"] = list(reviews)
-        if self.operation == "concorde-issues":
+        if "issues" in fields:
             data.update(issues=[], decision=None)
-        return typed(OPERATION_CONTRACTS[self.operation][1], data)
+        return typed(response_type, data)
 
     def blocker_revision(self, phase):
         spec = target_revision(self.repository, self.target)
@@ -138,7 +161,7 @@ class Invocation:
             self.host.track_gaps
             or assessment_intent
             or required_review
-            or self.operation not in {"concorde-context-solve", *REVIEW_OPERATIONS}
+            or self.operation not in READ_ONLY_STAGES
         ):
             from .change_worktree import record_task_gaps
 

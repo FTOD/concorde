@@ -1,144 +1,263 @@
-"""One executable Operation inventory, one USES relation, and State-based nodes."""
+"""The Operation catalog: its declarations, the loader, dispatch by kind and child requests."""
 
 from __future__ import annotations
 
-import importlib
-import agents
+import ast
+import json
+import shutil
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+import agents
 from langgraph.graph import END, START, StateGraph
-from langgraph.runtime import Runtime
 
+from concorde.harness.host import AdmittedRequest, OperationHost
 from concorde.harness.operation_node import OperationNode
-from concorde.harness.operation_state import OperationRuntimeContext, StateContract
-from concorde.harness.worker_profile import WorkerProfile
+from concorde.harness.operation_state import OperationRuntimeContext
 from concorde.operations.catalog import (
-    COMPOSITE_OPERATIONS,
-    DETERMINISTIC_OPERATIONS,
-    INTERNAL_OPERATIONS,
-    OPERATION_CONTRACTS,
+    CATALOG,
     OPERATION_NAMES,
     PUBLIC_OPERATIONS,
-    dependencies,
-    load_operation_inventory,
+    CatalogError,
+    load_catalog,
+    mirror,
 )
-from concorde.spec.typed_data import TypedDataError, typed
+from concorde.operations.dispatch import dispatch, run_child
+from concorde.spec.repository import SpecError
+from concorde.spec.typed_data import data_schema, type_version, typed
 from concorde.spec.verification import verifies
-
-operations = load_operation_inventory()
-
-
-def _modules():
-    return {
-        name: importlib.import_module(f"operations.{name}")
-        for name in operations.OPERATIONS
-    } | {
-        name: importlib.import_module(f"agents.{name}") for name in agents.DOMAIN_AGENTS
-    }
+from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-class OperationModuleContractTests(unittest.TestCase):
-    @verifies("scenario.execution.operation-state")
-    def test_one_inventory_includes_model_code_and_composed_nodes(self):
-        modules = _modules()
-        self.assertEqual(18, len(modules))
-        self.assertEqual(
-            set(OPERATION_NAMES), {m.EXTERNAL_NAME for m in modules.values()}
+def _fixture_root(directory: Path) -> Path:
+    """A copy of the declaration packages the loader reads."""
+    for name in ("operations", "agents"):
+        shutil.copytree(
+            REPOSITORY_ROOT / name,
+            directory / name,
+            ignore=shutil.ignore_patterns("__pycache__"),
         )
-        self.assertEqual(len(operations.OPERATIONS), len(set(operations.OPERATIONS)))
-        self.assertEqual(
-            7, sum(isinstance(m.PROFILE, WorkerProfile) for m in modules.values())
-        )
-        self.assertEqual(7, len(agents.DOMAIN_AGENTS))
-        for name, module in modules.items():
-            self.assertEqual(module.EXTERNAL_NAME, operations.external_name(name))
-            self.assertIn(module.KIND, {"agent", "agent-entry", "workflow", "host"})
-            if module.PROFILE:
-                self.assertEqual(module.KIND, "agent")
-                self.assertFalse(hasattr(module, "run"))
-                self.assertFalse(hasattr(module, "STATE"))
-                node = OperationNode(name)
+    return directory
+
+
+class CatalogTests(unittest.TestCase):
+    def test_the_catalog_holds_every_operation_and_no_agent(self):
+        self.assertEqual(11, len(CATALOG))
+        self.assertEqual(OPERATION_NAMES, PUBLIC_OPERATIONS)
+        agent_names = {"concorde-" + n.replace("_", "-") for n in agents.DOMAIN_AGENTS}
+        self.assertFalse(agent_names & set(CATALOG))
+        for name, operation in CATALOG.items():
+            with self.subTest(operation=name):
+                self.assertEqual("concorde-" + operation.id, name)
+                self.assertEqual(operation.deterministic, operation.kind == "host")
                 self.assertEqual(
-                    {"__start__", "terminal_agent", "__end__"},
-                    set(node.graph().get_graph().nodes),
+                    operation.declaration["model_backed"], not operation.deterministic
                 )
-            else:
-                self.assertIsInstance(module.STATE, StateContract)
-                self.assertTrue(callable(module.run))
-
-    def test_properties_and_transport_contracts_are_independent(self):
-        from concorde.spec.typed_data import data_schema, type_version
-
-        for module in _modules().values():
-            name = module.EXTERNAL_NAME
-            self.assertIs(type(module.PUBLIC), bool)
-            self.assertIs(type(module.DETERMINISTIC), bool)
-            self.assertIn(module.CONTEXT_SELECTION, {"bound", "none"})
-            self.assertEqual(module.PUBLIC, name in PUBLIC_OPERATIONS)
-            self.assertEqual(not module.PUBLIC, name in INTERNAL_OPERATIONS)
-            self.assertEqual(module.DETERMINISTIC, name in DETERMINISTIC_OPERATIONS)
-            if hasattr(module, "REQUEST"):
-                self.assertEqual(module.REQUEST, data_schema(f"{name}-request"))
-                self.assertEqual(module.RESPONSE, data_schema(f"{name}-response"))
+                self.assertEqual(operation.request, data_schema(f"{name}-request"))
+                self.assertEqual(operation.response, data_schema(f"{name}-response"))
                 self.assertEqual(
-                    module.REQUEST_VERSION, type_version(f"{name}-request")
+                    operation.request_version, type_version(f"{name}-request")
                 )
                 self.assertEqual(
-                    module.RESPONSE_VERSION, type_version(f"{name}-response")
+                    operation.response_version, type_version(f"{name}-response")
                 )
-                self.assertIsNone(module.STATE.output_type)
-            else:
-                self.assertNotIn(name, OPERATION_CONTRACTS)
-                self.assertIsNotNone(module.PROFILE)
-        self.assertEqual(11, len(OPERATION_CONTRACTS))
-        self.assertEqual(11, len(PUBLIC_OPERATIONS))
-        self.assertEqual(
-            set(PUBLIC_OPERATIONS),
-            {m.EXTERNAL_NAME for m in _modules().values() if m.PUBLIC},
+
+    def test_the_spec_mirror_equals_the_loaded_declarations(self):
+        document = json.loads(
+            (REPOSITORY_ROOT / "specs/concorde/operations/catalog.md.json").read_text()
         )
+        self.assertEqual(document["extensions"]["concorde.operations"], mirror())
 
     @verifies("scenario.review.separate-entries")
     def test_each_review_entry_uses_only_its_own_reviewer(self):
-        modules = _modules()
         for kind in ("spec", "code"):
             with self.subTest(kind=kind):
-                operation = f"concorde-{kind}-review"
-                module = modules[f"{kind}_review"]
-                self.assertEqual((f"{kind}_reviewer",), module.USES)
-                self.assertEqual({"target_id", "task"}, set(module.REQUEST["required"]))
+                operation = CATALOG[f"concorde-{kind}-review"]
+                self.assertEqual(
+                    ((f"{kind}_reviewer", f"{kind}-review"),), operation.agents
+                )
+                self.assertEqual(
+                    {"target_id", "task"}, set(operation.request["required"])
+                )
                 typed(
-                    operation + "-request",
+                    f"concorde-{kind}-review-request",
                     {"target_id": "module.example", "task": "Inspect"},
                 )
 
-    def test_uses_is_the_only_dependency_relation_and_is_acyclic(self):
-        modules = _modules()
-        self.assertEqual(("context_assessor", "planner"), modules["plan"].USES)
-        self.assertNotIn("specify", modules)
+    def test_only_issue_solving_composes_other_operations(self):
+        composing = {name: item.uses for name, item in CATALOG.items() if item.uses}
         self.assertEqual(
-            set(COMPOSITE_OPERATIONS),
-            {m.EXTERNAL_NAME for m in modules.values() if m.USES},
+            {
+                "concorde-issues": (
+                    "concorde-spec-review",
+                    "concorde-code-review",
+                    "concorde-validate",
+                )
+            },
+            composing,
         )
-        for module in modules.values():
-            self.assertEqual(
-                dependencies(module.EXTERNAL_NAME),
-                tuple(operations.external_name(n) for n in module.USES),
+
+    @verifies("scenario.operations.invalid-declaration")
+    def test_an_invalid_declaration_refuses_the_whole_catalog(self):
+        cases = (
+            ('KIND = "agent-call"', 'KIND = "graph"', "KIND"),
+            (
+                'AGENTS = (("task_author", "tasks"),)',
+                'AGENTS = (("ghost_author", "tasks"),)',
+                "AGENTS",
+            ),
+            (
+                'AGENTS = (("task_author", "tasks"),)',
+                'AGENTS = (("task_author", "dreaming"),)',
+                "AGENTS",
+            ),
+            (
+                'ENTRY_POINT = "concorde.planning.tasks:tasks"',
+                'ENTRY_POINT = "concorde.planning.tasks:missing"',
+                "/entry_point",
+            ),
+            ("USES = ()", 'USES = ("concorde-tasks",)', "USES"),
+        )
+        for before, after, field in cases:
+            with (
+                self.subTest(field=field, value=after),
+                tempfile.TemporaryDirectory() as raw,
+            ):
+                root = _fixture_root(Path(raw))
+                declaration = root / "operations/tasks.py"
+                text = declaration.read_text()
+                self.assertIn(before, text)
+                declaration.write_text(text.replace(before, after))
+                with self.assertRaises(CatalogError) as refused:
+                    load_catalog(root)
+                self.assertEqual("tasks", refused.exception.declaration)
+                self.assertEqual(field, refused.exception.field)
+
+    @verifies("scenario.operations.invalid-declaration")
+    def test_an_unlisted_declaration_file_refuses_the_catalog(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = _fixture_root(Path(raw))
+            (root / "operations/stray.py").write_text('"""Unlisted."""\n')
+            with self.assertRaises(CatalogError) as refused:
+                load_catalog(root)
+            self.assertEqual("stray", refused.exception.declaration)
+
+    def test_dispatch_and_the_loader_import_no_provider(self):
+        providers = {
+            "planning",
+            "implementation",
+            "review",
+            "validation",
+            "delivery",
+            "issue_solving",
+            "issues",
+            "distribution",
+            "session",
+        }
+        for relative in (
+            "src/concorde/operations/dispatch.py",
+            "src/concorde/operations/catalog.py",
+        ):
+            tree = ast.parse((REPOSITORY_ROOT / relative).read_text())
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    package = (node.module or "").split(".")
+                    with self.subTest(file=relative, module=node.module):
+                        self.assertFalse(providers & set(package))
+
+
+class DispatchTests(unittest.TestCase):
+    def request(self, operation, **host):
+        return AdmittedRequest(
+            operation=operation,
+            declaration=CATALOG[operation].declaration,
+            configuration=None,
+            data={"target_id": "module.example", "task": "Check"},
+            mutates=True,
+            host=OperationHost(REPOSITORY_ROOT, REPOSITORY_ROOT, **host),
+        )
+
+    @verifies("scenario.operations.host-dispatch")
+    def test_a_host_service_runs_its_declared_entry_point(self):
+        request = self.request("concorde-validate")
+        output = typed(
+            "concorde-validate-response",
+            {
+                "target_id": "module.example",
+                "focus_id": None,
+                "change_id": None,
+                "context_id": None,
+                "outcome": "ready",
+                "answer": "",
+                "artifacts": [],
+                "blockers": [],
+                "checks": [],
+                "completed_operations": [],
+            },
+        )
+        with patch("concorde.validation.validate.run", return_value=output) as entry:
+            self.assertIs(output, dispatch(request))
+        entry.assert_called_once_with(request)
+
+    @verifies("scenario.operations.native-without-pi")
+    def test_an_agent_call_without_the_native_driver_runs_no_hook(self):
+        for name in ("concorde-tasks", "concorde-implement", "concorde-plan"):
+            with (
+                self.subTest(operation=name),
+                patch("concorde.harness.invocation.Invocation") as bound,
+            ):
+                with self.assertRaises(SpecError) as refused:
+                    dispatch(self.request(name))
+                self.assertEqual("native_required", refused.exception.code)
+                bound.assert_not_called()
+
+    def test_an_agent_call_goes_to_the_native_driver(self):
+        seen = []
+        request = self.request("concorde-tasks", native_assessment=seen.append)
+        with patch("concorde.harness.invocation.Invocation") as bound:
+            dispatch(request)
+        self.assertEqual([bound.return_value], seen)
+
+
+class ChildRequestTests(unittest.TestCase):
+    host = OperationHost(REPOSITORY_ROOT, REPOSITORY_ROOT)
+    payload = typed(
+        "concorde-validate-request", {"target_id": "module.example", "task": "Check"}
+    )
+
+    @verifies("scenario.operations.child-undeclared")
+    def test_an_undeclared_child_is_refused_before_admission(self):
+        with patch("concorde.operations.dispatch.admit") as admit:
+            for parent, child, code in (
+                ("concorde-issues", "concorde-deliver", "undeclared_operation"),
+                ("concorde-plan", "concorde-validate", "undeclared_operation"),
+                ("concorde-issues", "concorde-issues", "undeclared_operation"),
+                ("concorde-issues", "concorde-planner", "unknown_operation"),
+                ("concorde-ghost", "concorde-validate", "unknown_operation"),
+            ):
+                with self.subTest(parent=parent, child=child):
+                    with self.assertRaises(SpecError) as refused:
+                        run_child(parent, child, {}, self.payload, self.host)
+                    self.assertEqual(code, refused.exception.code)
+            admit.assert_not_called()
+
+    @verifies("scenario.operations.child-declared")
+    def test_a_declared_child_passes_admission_as_its_own_request(self):
+        envelope = {"status": "succeeded"}
+        with patch(
+            "concorde.operations.dispatch.admit", return_value=envelope
+        ) as admit:
+            result = run_child(
+                "concorde-issues", "concorde-validate", {}, self.payload, self.host
             )
-        visited = set()
+        self.assertIs(envelope, result)
+        self.assertEqual(("concorde-validate", {}, self.payload), admit.call_args.args)
+        self.assertIsNotNone(admit.call_args.kwargs["host_context"].services)
 
-        def visit(name, chain):
-            self.assertNotIn(name, chain)
-            self.assertIn(name, modules)
-            if name in visited:
-                return
-            for child in modules[name].USES:
-                visit(child, (*chain, name))
-            visited.add(name)
 
-        for name in modules:
-            visit(name, ())
-
+class TerminalAgentGraphTests(unittest.TestCase):
     @verifies("scenario.execution.operation-state")
     def test_model_subgraph_projects_parent_state_and_preserves_unrelated_channels(
         self,
@@ -190,95 +309,6 @@ class OperationModuleContractTests(unittest.TestCase):
 
         with self.assertRaises(BuildError):
             OperationNode("normalize_plan")
-
-    @verifies("scenario.execution.operation-state")
-    def test_agent_has_no_retired_model_operation_alias(self):
-        planner = _modules()["planner"]
-        self.assertEqual(planner.KIND, "agent")
-        self.assertFalse(hasattr(planner, "run"))
-        self.assertFalse(hasattr(planner, "STATE"))
-
-    @verifies("scenario.execution.operation-result-state")
-    def test_host_state_node_preserves_failure_envelope_and_runtime_context(self):
-        from operations import validate
-
-        envelope = {
-            "status": "blocked",
-            "output": None,
-            "errors": [{"code": "fixture"}],
-        }
-        host = object()
-        # None is an admitted request to resolve initialized project configuration on the host.
-        context = OperationRuntimeContext(host=host, configuration=None)
-        with patch(
-            "concorde.harness.admission.run_operation",
-            return_value=envelope,
-        ) as run:
-            result = validate.run(
-                {"target_id": "module.fixture", "task": "Check"},
-                Runtime(context=context),
-            )
-        self.assertEqual({"result": envelope}, result)
-        self.assertEqual("concorde-validate", run.call_args.args[0])
-        self.assertIs(host, run.call_args.kwargs["host_context"])
-        with self.assertRaises(RuntimeError):
-            validate.run({"task": "Check"}, Runtime(context=None))
-
-    @verifies("scenario.execution.operation-result-state")
-    def test_wire_adapter_rejects_wrong_identity_before_state_projection(self):
-        from concorde.harness.admission import run_host_node
-
-        called = []
-        with self.assertRaises(TypedDataError):
-            run_host_node(
-                lambda *args: called.append(args),
-                None,
-                {},
-                typed(
-                    "concorde-implement-request",
-                    {"target_id": "module.x", "task": "Do"},
-                ),
-                "concorde-plan",
-            )
-        self.assertEqual([], called)
-
-
-class InProcessCompositionTests(unittest.TestCase):
-    def test_unregistered_identity_is_refused_before_dynamic_import(self):
-        from concorde.harness.host import resolve_child_operation
-        from concorde.spec.repository import SpecError
-
-        for parent, child in (
-            ("concorde-main", "concorde-ghost"),
-            ("concorde-ghost", "concorde-ghost"),
-            ("concorde-ghost", "concorde-planner"),
-        ):
-            with patch("concorde.harness.host.importlib.import_module") as load:
-                with self.assertRaises(SpecError) as failure:
-                    resolve_child_operation(parent, child)
-                self.assertEqual("unknown_operation", failure.exception.code)
-                load.assert_not_called()
-
-    def test_resolution_exactly_matches_uses_for_every_pair_including_model_nodes(self):
-        from concorde.harness.host import resolve_child_operation
-        from concorde.spec.repository import SpecError
-
-        modules = _modules()
-        for name, parent in modules.items():
-            for child_name, child in modules.items():
-                if name == child_name or child_name in parent.USES:
-                    self.assertIs(
-                        child,
-                        resolve_child_operation(
-                            parent.EXTERNAL_NAME, child.EXTERNAL_NAME
-                        ),
-                    )
-                else:
-                    with self.assertRaises(SpecError) as failure:
-                        resolve_child_operation(
-                            parent.EXTERNAL_NAME, child.EXTERNAL_NAME
-                        )
-                    self.assertEqual("undeclared_operation", failure.exception.code)
 
 
 if __name__ == "__main__":

@@ -2,18 +2,15 @@
 request, accept the Protocol the installer placed under .concorde/protocol/ by rebinding to it.
 Deterministic; runs no agent cognition and selects no context."""
 
-from concorde.harness.operation_state import StateContract, run_host
 from concorde.operations import shapes
 
-from . import external_name
 
 KIND = "host"
 PUBLIC = True
-CONTEXT_SELECTION = "none"
 DETERMINISTIC = True
-PROFILE = None
+OWNER = "module.harness.admission"
+AGENTS = ()
 USES = ()
-EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
 _CONFIGURATION = shapes.typed_schema("concorde-operation-configuration")
 
@@ -33,8 +30,9 @@ REQUEST_VERSION = 3
 RESPONSE_VERSION = 2
 
 
-STATE = StateContract(f"{EXTERNAL_NAME}-request", None)
-
-
-def run(state, runtime):
-    return run_host(EXTERNAL_NAME, state, runtime)
+MUTATION = {"policy": "always", "actions": []}
+WORKSPACE = "primary-opt-in"
+TARGET = {"selection": "none", "hook": None}
+DEFAULT_TASK = "Configure the project's operation settings"
+CONFIGURATION = "stored"
+ENTRY_POINT = "concorde.spec.project:configure"
