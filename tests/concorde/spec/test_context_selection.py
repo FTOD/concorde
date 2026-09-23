@@ -96,7 +96,9 @@ class ContextSelectionTests(unittest.TestCase):
             s for s in resolved["sources"] if s["path"] == "specs/audit/module.md"
         )
         self.assertEqual([{"relation": "owns", "id": "scope.audit"}], entry["reasons"])
-        self.assertFalse(resolved["shares"])
+        # A context record carries only Protocol relations: sharing a file adds nothing.
+        self.assertEqual(3, resolved["schema_version"])
+        self.assertNotIn("shares", resolved)
         scenario = r.spec_context("scenario.transfer.debit").value
         self.assertEqual("service.transfer", scenario["module_id"])
         self.assertIn(

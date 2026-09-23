@@ -342,6 +342,7 @@ the code's meaning in its own context.
 | `detached_primary` | the primary worktree has no attached branch to deliver onto | Delivery |
 | `detached_worktree` | a candidate has no attached branch | Candidate worktrees |
 | `dirty_primary` | a primary merge is blocked by local changes in the primary | Delivery |
+| `duplicate_type` | a type identity is registered again with another version or schema | Spec tooling |
 | `execution_cancelled` | the Host was interrupted or an Agent call was cancelled; the candidate is kept | Request admission, Agent execution |
 | `execution_failed` | any other failure outside the named codes | Request admission, Agent execution |
 | `execution_limit` | an Agent call ran past its time limit | Request admission, Agent execution |

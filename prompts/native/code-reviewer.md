@@ -18,3 +18,5 @@ no_findings, findings (including advisory), and incomplete coverage. Return the 
 and typed concorde-review-stage-result through native structured_output. Exact context/input/mode
 identities are mandatory. A passing staging gate is not accepted review; Host reconciles every
 admitted scope member before aggregate acceptance.
+
+@prompts/native/spec-gaps.md

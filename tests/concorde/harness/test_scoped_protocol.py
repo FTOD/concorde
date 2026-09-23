@@ -68,10 +68,10 @@ class ScopedProtocolTests(unittest.TestCase):
         context = resolve_context(repository, "service.transfer").value
         # The rule bundle is indexed by path and digest and granted as a file, never embedded.
         self.assertNotIn("content", context["protocol"][0])
-        self.assertIn(
-            "### P10. Fresh task sessions, never session moves",
-            repository.protocol_assets[context["protocol"][0]["path"]].decode(),
-        )
+        # The bundle carries only the Protocol chapters, no Framework profile.
+        principles = repository.protocol_assets[context["protocol"][0]["path"]].decode()
+        self.assertIn("## Two purposes", principles)
+        self.assertNotIn("Framework execution profile", principles)
         self.assertNotIn("UNTRUSTED_AMBIENT_GUIDANCE", json.dumps(context))
         path = self.root / ".concorde/config.json"
         config = json.loads(path.read_text())

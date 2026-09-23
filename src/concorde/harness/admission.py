@@ -15,12 +15,11 @@ from pathlib import Path
 
 from ..distribution.build import BuildError, verify_fresh
 from ..operations.dispatch import dispatch_graph_nodes
-from ..spec.contracts import DETERMINISTIC_OPERATIONS
+from ..operations.catalog import DETERMINISTIC_OPERATIONS, OPERATION_CONTRACTS
 from ..spec.repository import SpecError
 from ..spec.typed_data import (
-    DATA_SCHEMAS,
-    OPERATION_CONTRACTS,
     TypedDataError,
+    data_schema,
     canonical,
     validate_typed,
 )
@@ -279,7 +278,7 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             # change carries the candidate's change_id, the others adopt the candidate as is.
             data = dict(runtime_input["data"])
             request_type = OPERATION_CONTRACTS[operation][0]
-            if "change_id" in DATA_SCHEMAS[request_type].get("properties", {}):
+            if "change_id" in data_schema(request_type).get("properties", {}):
                 data["change_id"] = workspace["change_id"]
             invocation = {
                 "type_id": "concorde-operation-invocation",

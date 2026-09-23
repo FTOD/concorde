@@ -4,7 +4,7 @@ import unittest
 
 from concorde.harness.operation_node import OperationNode, state_schema, typed_state
 from concorde.harness.worker_profile import worker_profile
-from concorde.spec.typed_data import DATA_SCHEMAS, TypedDataError, typed
+from concorde.spec.typed_data import TypedDataError, data_schema, typed
 from concorde.spec.verification import verifies
 
 
@@ -25,7 +25,7 @@ def _stage_context():
         "protocol_binding": {"version": "7.0.0", "digest": "sha256:" + "4" * 64},
         "protocol": [],
         "spec_resolution": {
-            "schema_version": 2,
+            "schema_version": 3,
             "registration": {
                 "id": "service.fixture",
                 "kind": "module",
@@ -40,7 +40,6 @@ def _stage_context():
             "query_id": "service.fixture",
             "query_kind": "module",
             "module_id": "service.fixture",
-            "shares": False,
             "reading_entry": "specs/module.md",
             "documents": ["specs/module.md"],
             "references": [],
@@ -97,12 +96,12 @@ class OperationNodeTests(unittest.TestCase):
                     (node.input_type, node.result_type),
                 )
                 self.assertEqual(
-                    set(DATA_SCHEMAS[node.input_type]["properties"]),
+                    set(data_schema(node.input_type)["properties"]),
                     set(node.input_schema.__annotations__),
                 )
                 assert node.result_type is not None
                 self.assertEqual(
-                    set(DATA_SCHEMAS[node.result_type]["properties"]),
+                    set(data_schema(node.result_type)["properties"]),
                     set(node.output_schema.__annotations__),
                 )
                 union = state_schema(node.input_type, node.result_type, name="S")

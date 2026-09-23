@@ -1,8 +1,8 @@
 """Branch-local Issue management and solving, with reporting independent of execution."""
 
 from concorde.harness.operation_state import StateContract, run_host
-from concorde.spec import contract_shapes as shapes
-from concorde.spec.issue_shapes import ISSUE_ID, RECORD, REPORT
+from concorde.operations import shapes
+from concorde.issues.shapes import ISSUE_ID, RECORD, REPORT
 
 from . import external_name
 
@@ -40,6 +40,8 @@ RESPONSE = shapes.obj(
         "decision": {"anyOf": [shapes.STRING, {"type": "null"}]},
     }
 )
+REQUEST_VERSION = 1
+RESPONSE_VERSION = 2
 
 
 STATE = StateContract(f"{EXTERNAL_NAME}-request", None)

@@ -3,7 +3,7 @@ request, accept the Protocol the installer placed under .concorde/protocol/ by r
 Deterministic; runs no agent cognition and selects no context."""
 
 from concorde.harness.operation_state import StateContract, run_host
-from concorde.spec import contract_shapes as shapes
+from concorde.operations import shapes
 
 from . import external_name
 
@@ -29,6 +29,8 @@ REQUEST = shapes.obj(
     ("accept_protocol", "run_in_primary"),
 )
 RESPONSE = shapes.obj({"configuration": _CONFIGURATION, "status": {"const": "applied"}})
+REQUEST_VERSION = 3
+RESPONSE_VERSION = 2
 
 
 STATE = StateContract(f"{EXTERNAL_NAME}-request", None)

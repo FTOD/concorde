@@ -21,9 +21,21 @@ from ..harness.revisions import (
     issues_revision,
     target_revision,
 )
-from ..spec.impact import binding_modules, edited_modules
+from ..spec.impact import binding_modules
 from ..spec.repository import SpecError, SpecRepository
 from ..spec.validation import validate_repository
+
+
+def edited_modules(repository, paths) -> tuple[str, ...]:
+    """Modules whose write sets hold a changed path: the owner of a changed Spec document member
+    and every Module that binds a changed file. Paths in no write set concern no Module."""
+    result: set[str] = set()
+    for path in paths:
+        reading = repository.source_documents.get(path)
+        if reading is not None and reading in repository.units:
+            result.add(repository.units[reading].owner)
+        result.update(repository.implemented_by(path))
+    return tuple(sorted(result & set(repository.modules)))
 
 
 def checked_modules(repository, target, *, direct: bool = False) -> tuple:

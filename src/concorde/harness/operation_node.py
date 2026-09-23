@@ -15,7 +15,7 @@ from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import get_runtime
 
-from ..spec.typed_data import DATA_SCHEMAS, typed, validate_typed
+from ..spec.typed_data import data_schema, typed, validate_typed
 from .execution_error import exception_feedback, failure
 from .operation_state import OperationRuntimeContext
 from .worker_profile import (
@@ -28,15 +28,15 @@ from .worker_profile import (
 def typed_state(type_id: str, *, name: str | None = None) -> type:
     return TypedDict(
         name or type_id.replace("-", "_"),
-        dict.fromkeys(DATA_SCHEMAS[type_id]["properties"], Any),
+        dict.fromkeys(data_schema(type_id)["properties"], Any),
         total=False,
     )
 
 
 def state_schema(input_type: str, result_type: str | None, *, name: str) -> type:
-    fields = dict.fromkeys(DATA_SCHEMAS[input_type]["properties"], Any)
+    fields = dict.fromkeys(data_schema(input_type)["properties"], Any)
     fields.update(
-        dict.fromkeys(DATA_SCHEMAS[result_type]["properties"], Any)
+        dict.fromkeys(data_schema(result_type)["properties"], Any)
         if result_type
         else {"result": dict}
     )
@@ -84,7 +84,7 @@ class OperationNode:
             data = {
                 k: v
                 for k, v in state.items()
-                if k in DATA_SCHEMAS[self.input_type]["properties"]
+                if k in data_schema(self.input_type)["properties"]
             }
             value = typed(self.input_type, data)
             validate_worker_input(profile, value, phase=profile.contract.phase)

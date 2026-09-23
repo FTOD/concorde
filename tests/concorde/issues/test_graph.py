@@ -77,9 +77,9 @@ class IssueGraphTests(unittest.TestCase):
     @verifies("scenario.issue-solving.spec-repair-handback")
     def test_every_solver_action_has_an_explicit_declared_route(self):
         from concorde.issues.graph import DECISION_ROUTES, NODES
-        from concorde.spec.typed_data import DATA_SCHEMAS
+        from concorde.spec.typed_data import data_schema
 
-        actions = DATA_SCHEMAS["concorde-agent-stage-result"]["properties"][
+        actions = data_schema("concorde-agent-stage-result")["properties"][
             "issue_decision"
         ]["properties"]["action"]["enum"]
         self.assertEqual(set(actions), set(DECISION_ROUTES))

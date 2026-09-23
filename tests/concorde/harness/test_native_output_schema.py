@@ -1,6 +1,5 @@
 """The complete native schema crosses SDK argument validation, not just tool.execute."""
 
-import copy
 import json
 import os
 import subprocess
@@ -8,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from concorde.harness.native_context import native_output_schema
-from concorde.spec.typed_data import DATA_SCHEMAS
+from concorde.spec.typed_data import data_schema
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -17,7 +16,7 @@ class NativeOutputSchemaTests(unittest.TestCase):
     @verifies("scenario.execution.stage-proposal")
     def test_supported_payloads_are_reference_free_closed_and_independent(self):
         for kind in ("concorde-agent-stage-result", "concorde-review-stage-result"):
-            before = copy.deepcopy(DATA_SCHEMAS[kind])
+            before = data_schema(kind)
             result = native_output_schema(kind, "ticket")
             self.assertEqual(
                 result["properties"]["result"]["properties"]["data"], before
@@ -31,7 +30,7 @@ class NativeOutputSchemaTests(unittest.TestCase):
                 result["properties"]["result"]["properties"]["data"]["required"],
             )
             result["properties"]["result"]["properties"]["data"]["properties"].clear()
-            self.assertEqual(DATA_SCHEMAS[kind], before)
+            self.assertEqual(data_schema(kind), before)
         with self.assertRaises(ValueError):
             native_output_schema("concorde-context-snapshot")
 

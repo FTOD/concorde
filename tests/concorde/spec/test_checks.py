@@ -721,11 +721,27 @@ class CheckTests(unittest.TestCase):
             ),
             "CHK.view.marked": original
             + "\n```mermaid\nsequenceDiagram\n    A->>B: hi\n```\n",
+            # A reversed arrow points from its right node to its left one.
+            "CHK.view.edges  ": original.replace(
+                'view["View"] -->|shows| thing["Provider / Thing"]',
+                'view["View"] <--|shows| thing["Provider / Thing"]',
+            ),
+            # An edge without one direction asserts no declared relation.
+            "CHK.view.edges   ": original.replace("-->|shows|", "---|shows|"),
+            "CHK.view.edges    ": original.replace("-->|shows|", "<-->|shows|"),
         }
         for rule, text in cases.items():
             with self.subTest(rule):
                 (self.root / entry).write_text(text)
                 self.assertIn(rule.strip(), self.rules())
+        # The declared direction drawn with a reversed arrow is accepted.
+        (self.root / entry).write_text(
+            original.replace(
+                'view["View"] -->|shows| thing["Provider / Thing"]',
+                'thing["Provider / Thing"] <--|shows| view["View"]',
+            )
+        )
+        self.assertNotIn("CHK.view.edges", self.rules())
         (self.root / entry).write_text(
             original
             + "\n```mermaid illustrative\nsequenceDiagram\n    A->>B: hi\n```\n"
@@ -785,14 +801,21 @@ class CheckTests(unittest.TestCase):
         )
         self.assertEqual([], self.project.findings("CHK.registry.mirror"))
         self.assertEqual("unchanged", registry_command(self.root, write=True).status)
+        # The title is a mirrored field too: a renamed record is stale and regenerated.
+        title = registry["modules"][2]["title"]
         registry["modules"][2]["title"] = "Renamed"
         write_json(self.root, ".concorde/specs.json", registry)
+        self.assertIn("CHK.registry.mirror", self.rules())
+        self.assertEqual(
+            ["module.consumer"],
+            [f.subject_id for f in registry_command(self.root, write=False).findings],
+        )
         registry_command(self.root, write=True)
         self.assertEqual(
-            "Renamed",
+            title,
             read_json(self.root, ".concorde/specs.json")["modules"][2]["title"],
         )
-        self.assertIn("CHK.registry.mirror", self.rules())
+        self.assertEqual([], self.project.findings("CHK.registry.mirror"))
 
     @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_an_unreadable_registry_yields_no_repository(self):

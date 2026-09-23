@@ -151,9 +151,6 @@
       "entries": [
         "operations/__init__.py",
         "src/concorde/operations/catalog.py"
-      ],
-      "pending": [
-        "src/concorde/operations/catalog.py"
       ]
     },
     {

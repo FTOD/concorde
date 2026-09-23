@@ -2,7 +2,7 @@
 Deterministic; runs no agent cognition and selects no context."""
 
 from concorde.harness.operation_state import StateContract, run_host
-from concorde.spec import contract_shapes as shapes
+from concorde.operations import shapes
 
 from . import external_name
 
@@ -28,6 +28,8 @@ REQUEST = shapes.obj(
 )
 
 RESPONSE = shapes.operation_response()
+REQUEST_VERSION = 1
+RESPONSE_VERSION = 3
 
 
 STATE = StateContract(f"{EXTERNAL_NAME}-request", None)

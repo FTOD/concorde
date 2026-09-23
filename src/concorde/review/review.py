@@ -28,15 +28,19 @@ from ..harness.revisions import implementation_digest, target_revision
 from ..harness.execution_error import OperationExecutionError
 from ..harness.worker_profile import ContractError
 from ..spec.boundaries import scope_roots
-from ..spec.contracts import REVIEW_STAGES
-from ..spec.impact import change_scope, review_impact
+from ..operations.catalog import REVIEW_STAGES
+from ..planning.scope import change_scope
+from .impact import review_impact
 from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
+from ..harness.status_store import (
+    read_record,
+    record_artifact,
+    verify_record_artifacts,
+)
 from ..spec.typed_data import (
-    artifact,
     canonical,
     typed,
     validate_typed,
-    verify_artifacts,
 )
 
 
@@ -191,10 +195,13 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
                 "src/concorde/validation/validate.py",
                 "src/concorde/spec/project.py",
                 "src/concorde/spec/impact.py",
+                "src/concorde/planning/scope.py",
+                "src/concorde/review/impact.py",
+                "src/concorde/review/records.py",
                 "src/concorde/issues/reporting.py",
                 "src/concorde/issues/references.py",
                 "src/concorde/issues/store.py",
-                "src/concorde/spec/issue_shapes.py",
+                "src/concorde/issues/shapes.py",
                 "src/concorde/harness/change_worktree.py",
                 "src/concorde/harness/context.py",
             )
@@ -236,7 +243,9 @@ def _persist(run, value, *, failure=None) -> dict:
 
     destination = run_path(run.repository.root, path)
     write_run(run.repository.root, path, (canonical(value) + "\n").encode())
-    reference = artifact(run.repository.root, f"review.{run.target.id}.{mode}", path)
+    reference = record_artifact(
+        run.repository.root, f"review.{run.target.id}.{mode}", path
+    )
     if failure is not None:
         # An execution failure stays a host record beside the review.
         private = destination.with_suffix(".execution.json")
@@ -773,9 +782,9 @@ def repair_feedback(run, reference: dict) -> dict:
         raise SpecError(
             "repair requires the current recorded code review", "stale_evidence"
         )
-    verify_artifacts(run.repository.root, reference)
+    verify_record_artifacts(run.repository.root, reference)
     value = validate_typed(
-        json.loads(read_file(run.repository.root, reference["path"])),
+        json.loads(read_record(run.repository.root, reference["path"])),
         "concorde-review-result",
     )
     data = value["data"]
@@ -813,9 +822,9 @@ def repair_feedback(run, reference: dict) -> dict:
 def _current_artifact(run, mode: str, reference: dict) -> dict | None:
     """The same revision-bound evidence rules apply to owners and Spec consumers."""
     try:
-        verify_artifacts(run.repository.root, reference)
+        verify_record_artifacts(run.repository.root, reference)
         value = validate_typed(
-            json.loads(read_file(run.repository.root, reference["path"])),
+            json.loads(read_record(run.repository.root, reference["path"])),
             "concorde-review-result",
         )
         data = value["data"]

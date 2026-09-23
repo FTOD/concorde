@@ -10,14 +10,11 @@ from __future__ import annotations
 import copy
 import hashlib
 import importlib
-import importlib.abc
 import importlib.util
 import json
 import re
 import sys
-import uuid
 from dataclasses import dataclass
-from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -27,7 +24,7 @@ from ..harness.worker_profile import (
     resolve_worker,
     worker_profile,
 )
-from ..spec.contracts import PUBLIC_OPERATIONS
+from ..operations.catalog import PUBLIC_OPERATIONS
 from ..spec.frontmatter import FrontMatterError, parse_document
 from . import task_subagents
 from .prompt_resolver import (
@@ -95,7 +92,10 @@ GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/docs",
     "generated/session",
 )
-GENERATED_OWNED_FILES: tuple[str, ...] = ("generated/build-manifest.json",)
+GENERATED_OWNED_FILES: tuple[str, ...] = (
+    "generated/build-manifest.json",
+    "generated/schemas.json",
+)
 
 
 @dataclass(frozen=True)
@@ -195,7 +195,7 @@ def _interpreters(prefix: str) -> list[str]:
 def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> BuildOutput:
     """Embed all public Operation guidance and versioned schemas in one Pi shim."""
     prefix = framework_prefix.strip("/")
-    schemas, schema_sources, _ = _root_schemas(project_root)
+    schemas, schema_sources = registered_schemas(project_root)
     sources: set[str] = set(schema_sources)
     operations = []
     for name in PUBLIC_OPERATIONS:
@@ -311,105 +311,47 @@ def render_protocol_kind(project_root: Path, kind: str) -> BuildOutput:
     )
 
 
-def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str, ...]]:
-    """Evaluate schema sources in a private namespace, without stale module/pyc caches.
+SCHEMAS_PATH = "generated/schemas.json"
 
-    Returns the rendered schemas, the root-local source files they depend on, and the root's
-    exported identity sequence exactly as declared, so callers can judge uniqueness before the
-    schema dictionary collapses any duplicate.
+
+def registered_schemas(project_root: Path) -> tuple[dict, tuple[str, ...]]:
+    """The JSON Schema of every registered type, and the sources below ``project_root`` they
+    come from.
+
+    The build loads every owner through the Operation catalog's registration entry before it
+    exports, so the export holds exactly what the running package registers.
     """
-    source_root = project_root / "src/concorde"
-    if not (source_root / "spec").is_dir():
-        # A root without any schema source tree, such as a prompt-only fixture, renders the
-        # running package's schemas and binds no root-local schema source.
-        from ..spec.contracts import exported_types
-        from ..spec.typed_data import json_schema
+    from ..operations import catalog
+    from ..spec.typed_data import json_schema, registered_types
 
-        identities = tuple(exported_types())
-        return {name: json_schema(name) for name in identities}, (), identities
-    for required in ("contracts.py", "typed_data.py"):
-        if not (source_root / "spec" / required).is_file():
-            # A populated schema tree missing its entry modules is a broken root, never a
-            # reason to fall back to another package's schemas.
-            raise BuildError(
-                f"incomplete schema source tree: src/concorde/spec/{required} is missing"
-            )
-    namespace = "_concorde_build_" + uuid.uuid4().hex
-    sources: set[str] = set()
-
-    class Sources(importlib.abc.MetaPathFinder, importlib.abc.Loader):
-        def find_spec(self, fullname, path=None, target=None):
-            if fullname != namespace and not fullname.startswith(namespace + "."):
-                return None
-            parts = fullname.split(".")[1:]
-            location = source_root.joinpath(*parts)
-            if location.is_dir():
-                return importlib.util.spec_from_loader(fullname, self, is_package=True)
-            if location.with_suffix(".py").is_file():
-                return importlib.util.spec_from_loader(fullname, self)
-            return None
-
-        def create_module(self, spec):
-            return None
-
-        def exec_module(self, module):
-            location = source_root.joinpath(*module.__name__.split(".")[1:])
-            if location.is_dir():
-                module.__path__ = [str(location)]
-                # Namespace containers avoid unrelated package initialization.
-                return
-            location = location.with_suffix(".py")
-            relative = location.relative_to(project_root).as_posix()
-            from ..spec.typed_data import checked_path
-
-            location = checked_path(project_root, relative)
-            sources.add(relative)
-            module.__file__ = str(location)
-            try:
-                # Use the normal Python source-loader contract, but bypass timestamp-based bytecode
-                # caches: build identity covers these exact trusted package source bytes.
-                loader = SourceFileLoader(module.__name__, str(location))
-                code = loader.source_to_code(location.read_bytes(), str(location))
-                # pi-lens-ignore: S102
-                exec(code, module.__dict__)
-            except BuildError:
-                raise
-            except Exception as error:
-                raise BuildError(
-                    f"cannot evaluate schema source {relative}: {error}"
-                ) from error
-
-    finder = Sources()
-    sys.meta_path.insert(0, finder)
     try:
-        try:
-            contracts = importlib.import_module(namespace + ".spec.contracts")
-            provider = importlib.import_module(namespace + ".spec.typed_data")
-            identities = tuple(contracts.exported_types())
-            payload = {name: provider.json_schema(name) for name in identities}
-        except BuildError:
-            raise
-        except Exception as error:
-            # Every failure of the root's own schema sources stays inside the declared
-            # BuildError boundary instead of escaping as an undeclared exception.
-            raise BuildError(
-                f"cannot evaluate schema sources under {source_root}: {error}"
-            ) from error
-        return payload, tuple(sorted(sources)), identities
-    finally:
-        sys.meta_path.remove(finder)
-        for name in tuple(sys.modules):
-            if name == namespace or name.startswith(namespace + "."):
-                del sys.modules[name]
+        catalog.register_types()
+        payload = {name: json_schema(name) for name in registered_types()}
+    except (ValueError, KeyError, TypeError) as error:
+        raise BuildError(f"cannot export the registered schemas: {error}") from error
+    # The declaring files, named by their place in the package and bound when ``project_root``
+    # has them, so every process that renders this root records the same sources.
+    package = Path(__file__).resolve().parents[3]
+    modules = [
+        sys.modules[importlib.util.resolve_name(name, catalog.__package__)]
+        for name in catalog.RECORD_MODULES
+    ]
+    modules.extend(catalog._MODULES.values())
+    sources = set()
+    for module in modules:
+        location = Path(getattr(module, "__file__", "") or "").resolve()
+        if location.is_relative_to(package):
+            relative = location.relative_to(package).as_posix()
+            if (project_root / relative).is_file():
+                sources.add(relative)
+    return payload, tuple(sorted(sources))
 
 
-def render_protocol_schemas(project_root: Path) -> BuildOutput:
-    """Export schemas from the named root and bind every loaded source to the output."""
-    payload, sources, _ = _root_schemas(project_root)
+def render_schemas(project_root: Path) -> BuildOutput:
+    """Export every registered type's schema and bind the sources that declare them."""
+    payload, sources = registered_schemas(project_root)
     content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
-    return BuildOutput(
-        path="generated/protocol/schemas.json", content=content, sources=sources
-    )
+    return BuildOutput(path=SCHEMAS_PATH, content=content, sources=sources)
 
 
 def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
@@ -449,9 +391,8 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         "scripts/concorde.py",
         "scripts/install-concorde.py",
         "scripts/run-operation.py",
-        "src/concorde/spec/contracts.py",
-        "src/concorde/spec/contract_shapes.py",
-        "src/concorde/spec/wire_shapes.py",
+        "src/concorde/spec/typed_data.py",
+        "src/concorde/operations/catalog.py",
         "src/concorde/harness/worker_profile.py",
         "src/concorde/harness/operation_state.py",
         "src/concorde/harness/operation_node.py",
@@ -498,7 +439,7 @@ def build(project_root: str | Path, *, framework_prefix: str = "") -> BuildResul
     outputs.append(render_protocol_principles(root))
     for kind in PROTOCOL_KINDS:
         outputs.append(render_protocol_kind(root, kind))
-    outputs.append(render_protocol_schemas(root))
+    outputs.append(render_schemas(root))
 
     roots = (
         list(MODEL_ROOTS.values())

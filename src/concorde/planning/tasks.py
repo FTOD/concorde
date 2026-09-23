@@ -9,10 +9,10 @@ from ..harness.change_worktree import (
     target_state,
 )
 from ..review.review import repair_feedback, require_spec_review
-from ..spec.impact import change_scope
+from .scope import change_scope
 from ..spec.repository import SpecError, digest
+from ..harness.status_store import record_artifact
 from ..spec.typed_data import (
-    artifact,
     canonical,
     typed,
 )
@@ -151,7 +151,7 @@ def persist_tasks(run, result, state, repair, scope_repair):
     return run.response(
         answer=result["answer"],
         artifacts=[
-            artifact(
+            record_artifact(
                 run.repository.root,
                 "change",
                 status_path(

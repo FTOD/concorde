@@ -16,7 +16,7 @@ from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
 from ..spec.changes import apply_files
-from ..spec.issue_shapes import (
+from .shapes import (
     ISSUE_ID,
     PROVENANCE,
     RECEIPT,

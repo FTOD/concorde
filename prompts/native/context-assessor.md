@@ -30,3 +30,5 @@ and contradictory obligations. Never fabricate an Issue receipt or claim Host ac
 
 Structured output is only a proposal. A deterministic plain gate stages it. The parent
 Host independently checks native completion and current inputs before acceptance.
+
+@prompts/native/spec-gaps.md

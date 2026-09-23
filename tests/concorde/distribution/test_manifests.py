@@ -79,7 +79,7 @@ class ManifestContractTests(unittest.TestCase):
         try:
             from concorde.distribution.build import PUBLIC_OPERATIONS
             from concorde.harness.worker_profile import load_worker_profiles
-            from concorde.spec.contracts import load_operation_inventory
+            from concorde.operations.catalog import load_operation_inventory
         finally:
             sys.path.pop(0)
             sys.path.pop(0)
@@ -110,8 +110,8 @@ class ManifestContractTests(unittest.TestCase):
         self.assertTrue((REPOSITORY_ROOT / "scripts/run-operation.py").is_file())
 
     def test_issue_reporting_replaces_the_reflection_template_and_triage(self):
-        from concorde.spec.contracts import OPERATION_NAMES
-        from concorde.spec.issue_shapes import REPORT
+        from concorde.operations.catalog import OPERATION_NAMES
+        from concorde.issues.shapes import REPORT
 
         self.assertEqual(
             ["bug", "gap", "limitation"], REPORT["properties"]["type"]["enum"]

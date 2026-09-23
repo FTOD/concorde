@@ -27,7 +27,7 @@ from concorde.distribution.build import (
 from concorde.distribution.build import (
     PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
 )
-from concorde.spec.contracts import PUBLIC_OPERATIONS
+from concorde.operations.catalog import PUBLIC_OPERATIONS
 from concorde.spec.typed_data import json_schema
 from concorde.spec.verification import verifies
 from tests.concorde.support.pi_prompt_client import (

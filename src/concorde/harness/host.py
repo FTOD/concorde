@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..spec.contracts import load_operation_inventory
+from ..operations.catalog import load_operation_inventory
 from ..spec.repository import SpecError
 
 
@@ -39,7 +39,6 @@ class OperationHost:
     session_provenance: dict | None = None
     coordinated: bool = False
     track_gaps: bool = False
-    issue_intent: str | None = None
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     # The top-level operation invocation's identity, inherited by every nested invocation so one

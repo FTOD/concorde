@@ -215,6 +215,29 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         )
         self.assertIn("CONCORDE-COVERAGE-003", self.rules())
 
+    @verifies("scenario.spec.coverage-parse-error")
+    def test_an_unparsable_test_is_reported_and_the_scan_continues(self):
+        self.write("tests/shop/test_broken.py", "def broken(:\n    pass\n")
+        self.write(
+            "tests/shop/test_unknown.py",
+            "from concorde.spec.verification import verifies\n\n"
+            "@verifies('scenario.shop.unknown')\ndef test_x():\n    pass\n",
+        )
+        findings = self.project.validate().findings
+        self.assertEqual(
+            ["tests/shop/test_broken.py"],
+            [f.source for f in findings if f.rule_id == "CONCORDE-COVERAGE-003"],
+        )
+        self.assertEqual(
+            ["tests/shop/test_unknown.py"],
+            [f.source for f in findings if f.rule_id == "CHK.verifies.resolves"],
+        )
+        # Coverage still comes from every readable test.
+        self.assertNotIn(
+            "scenario.shop.submit",
+            [f.subject_id for f in findings if f.rule_id == "CONCORDE-COVERAGE-001"],
+        )
+
     @verifies("scenario.spec.verification-declarations")
     def test_reading_never_carries_test_declarations(self):
         path = self.root / "specs/shop/notes.md"

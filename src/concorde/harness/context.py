@@ -17,10 +17,22 @@ from ..spec.repository import (
     most_specific,
     read_file,
 )
-from ..spec.typed_data import canonical
+from ..spec.content_repository import LISTING_ENTRY, context_record_schema
+from ..spec.typed_data import (
+    ARTIFACT,
+    DIGEST,
+    PATH,
+    STRING,
+    array,
+    canonical,
+    obj,
+    register,
+    typed_schema,
+)
+from .status_store import WORKSPACE_CONTEXT
+from .worker_profile import WorkerProfile, validate_worker_artifacts
 
 RepositoryCore = SpecRepository
-from .worker_profile import WorkerProfile, validate_worker_artifacts
 
 PHASES = frozenset(
     {
@@ -36,15 +48,74 @@ PHASES = frozenset(
     }
 )
 CODE_PHASES = frozenset({"implementation", "code-review"})
-# Phases that write code. Their Spec context also holds the documents of every other Module that
-# binds a file in the task Module's ImplementationScope (Protocol shared-file rule), read-only.
-CODE_WRITING_PHASES = frozenset({"implementation"})
 # The Protocol copy the installer places in the project and the configuration binds, granted in
 # place like any other project file.
 PROTOCOL_PATHS = (
     ".concorde/protocol/principles.md",
     ".concorde/protocol/kinds/module.md",
 )
+
+
+# The stage inputs a snapshot may carry; each type is registered by its owning provider.
+STAGE_INPUT_TYPES = (
+    "concorde-plan-artifact",
+    "concorde-task-identity-constraints",
+    "concorde-implementation-task",
+    "concorde-task-scope-feedback",
+    "concorde-issue-selection",
+    "concorde-issue-context",
+    "concorde-review-result",
+)
+NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
+IMPLEMENTATION_ENTRY = obj(
+    {
+        "path": LISTING_ENTRY,
+        "entity_id": NULLABLE_ID,
+        "pending": {"type": "boolean"},
+        "directory": {"type": "boolean"},
+    }
+)
+IMPLEMENTATION_FILE = obj(
+    {"path": PATH, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"}}
+)
+EXTERNAL_REFERENCE = obj(
+    {"path": LISTING_ENTRY, "directory": {"type": "boolean"}, "digest": DIGEST}
+)
+CONTEXT_SNAPSHOT = obj(
+    {
+        "context_id": DIGEST,
+        "schema_version": {"const": 7},
+        "target_id": STRING,
+        "kind": {"const": "module"},
+        "focus_id": NULLABLE_ID,
+        "phase": STRING,
+        "task": STRING,
+        "constraints": array(STRING),
+        "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
+        "protocol": array(obj({"path": PATH, "digest": DIGEST})),
+        "spec_resolution": context_record_schema(),
+        "instructions": {"type": "string"},
+        "stage_inputs": array(
+            {"anyOf": [typed_schema(name) for name in STAGE_INPUT_TYPES]}
+        ),
+        "implementation_entries": array(IMPLEMENTATION_ENTRY),
+        "implementation_files": array(IMPLEMENTATION_FILE),
+        "implementation_artifacts": array(ARTIFACT),
+        # The Module's external inclusions, one tree digest per entry.
+        "external_references": array(EXTERNAL_REFERENCE),
+        "workspace": WORKSPACE_CONTEXT,
+    }
+)
+AGENT_STAGE_CONTEXT = obj(
+    {
+        "snapshot": typed_schema("concorde-context-snapshot"),
+        "change_id": NULLABLE_ID,
+        "expected_artifacts": array(PATH),
+    }
+)
+
+register("concorde-context-snapshot", 7, CONTEXT_SNAPSHOT)
+register("concorde-agent-stage-context", 5, AGENT_STAGE_CONTEXT)
 
 
 @dataclass(frozen=True)
@@ -246,21 +317,10 @@ def resolve_context(
                 "task-control stage inputs require the tasks phase",
                 "incompatible_handoff",
             )
-        if item.get("type_id") not in {
-            "concorde-plan-artifact",
-            "concorde-task-identity-constraints",
-            "concorde-implementation-task",
-            "concorde-task-scope-feedback",
-            "concorde-issue-selection",
-            "concorde-issue-context",
-            "concorde-issue-intent",
-            "concorde-review-result",
-        }:
+        if item.get("type_id") not in STAGE_INPUT_TYPES:
             raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
-    resolution = repository.spec_context(
-        focus_id or target.id, shares=phase in CODE_WRITING_PHASES
-    ).value
+    resolution = repository.spec_context(focus_id or target.id).value
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
 
@@ -339,10 +399,7 @@ def recheck_context(
     if current.config["protocol"] != value["protocol_binding"]:
         raise SpecError("context Protocol binding has changed", "stale_context")
     if (
-        current.spec_context(
-            value["focus_id"] or target.id,
-            shares=value["phase"] in CODE_WRITING_PHASES,
-        ).value
+        current.spec_context(value["focus_id"] or target.id).value
         != value["spec_resolution"]
     ):
         raise SpecError(
@@ -389,7 +446,7 @@ def _recheck_workspace(
 
 def assess_result(snapshot: ContextSnapshot, assessment: dict) -> dict:
     """Validate a task-specific judgment; no code or external document lookup occurs here."""
-    from ..spec.issue_shapes import BLOCKER
+    from ..issues.shapes import BLOCKER
     from ..spec.schema import validate
 
     validate(

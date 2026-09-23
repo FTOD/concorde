@@ -1,7 +1,11 @@
-"""Versioned JSON values admitted at operation and leaf data boundaries.
+"""Versioned JSON values admitted at capability and Agent boundaries.
 
-Schemas are ordinary JSON Schema objects. Validation uses the standard library so
-configuration and admission work before the managed graph runtime is installed.
+Every typed value is ``{type_id, schema_version, data}``. The owner of a type registers it here
+with its version and the schema of its ``data``; Spec tooling registers only its own types and
+imports no owner. A schema names another registered type with ``typed_schema(type_id)``, which is
+resolved when a value is checked, so an owner never imports the owner of a type it embeds. Checking
+uses the standard library only, so configuration and admission work before any managed runtime is
+installed.
 """
 
 from __future__ import annotations
@@ -13,7 +17,7 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .wire_shapes import ARTIFACT, PATH, STRING, array, obj, type_version, typed_schema
+from . import schema as _subset
 
 
 class TypedDataError(ValueError):
@@ -23,6 +27,142 @@ class TypedDataError(ValueError):
 
     def to_dict(self) -> dict[str, str]:
         return {"code": self.code, "field": self.field, "message": str(self)}
+
+
+# --- shared building blocks ----------------------------------------------------------------
+
+
+def obj(properties: dict, optional: tuple[str, ...] = ()) -> dict:
+    """A closed object whose listed properties are required unless named in ``optional``."""
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": [key for key in properties if key not in optional],
+        "additionalProperties": False,
+    }
+
+
+def array(items: dict, *, unique: bool = False) -> dict:
+    return {
+        "type": "array",
+        "items": items,
+        **({"uniqueItems": True} if unique else {}),
+    }
+
+
+STRING = {"type": "string", "minLength": 1}
+PATH = {**STRING, "format": "project-path"}
+DIGEST = {**STRING, "pattern": r"^sha256:[0-9a-f]{64}$"}
+ARTIFACT = obj({"id": STRING, "path": PATH, "digest": DIGEST})
+
+
+# --- registration --------------------------------------------------------------------------
+
+# type_id -> (schema_version, data schema). Owners fill it through ``register``.
+_TYPES: dict[str, tuple[int, dict]] = {}
+
+
+def _admissible(value: Any) -> Any:
+    """The schema with every registered-type reference replaced by ``true`` for the subset check."""
+    if isinstance(value, dict):
+        if "$ref" in value:
+            reference = value["$ref"]
+            if (
+                set(value) != {"$ref"}
+                or not isinstance(reference, str)
+                or not reference.strip()
+                or reference.startswith("#")
+            ):
+                raise TypedDataError(
+                    "invalid_input",
+                    "",
+                    "a registered schema refers to other types only through typed_schema()",
+                )
+            return True
+        return {key: _admissible(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_admissible(item) for item in value]
+    return value
+
+
+def register(type_id: str, version: int, schema: dict) -> None:
+    """Register ``type_id`` at ``version`` with the schema of its ``data``.
+
+    Registering the same identity again with the same version and an equal schema changes nothing;
+    another version or schema fails with ``duplicate_type`` and keeps the first registration.
+    """
+    if (
+        not isinstance(type_id, str)
+        or not type_id.strip()
+        or type_id != type_id.strip()
+    ):
+        raise TypedDataError(
+            "invalid_input", "type_id", "type_id must be a nonblank name"
+        )
+    if type(version) is not int or version < 1:
+        raise TypedDataError(
+            "invalid_input", "schema_version", "version must be a positive integer"
+        )
+    if not isinstance(schema, dict):
+        raise TypedDataError("invalid_input", type_id, "schema must be an object")
+    try:
+        _subset.admit(_admissible(schema))
+    except _subset.ContractError as error:
+        raise TypedDataError(
+            "invalid_input", type_id, f"schema is not admitted: {error}"
+        ) from error
+    existing = _TYPES.get(type_id)
+    if existing is not None:
+        if existing == (version, schema):
+            return
+        raise TypedDataError(
+            "duplicate_type",
+            type_id,
+            f"{type_id} is already registered with another version or schema",
+        )
+    _TYPES[type_id] = (version, copy.deepcopy(schema))
+
+
+def registered_types() -> tuple[str, ...]:
+    return tuple(sorted(_TYPES))
+
+
+def _registration(type_id: str, field: str = "") -> tuple[int, dict]:
+    try:
+        return _TYPES[type_id]
+    except (KeyError, TypeError):
+        raise TypedDataError(
+            "unknown_type", field, f"unknown data type: {type_id!r}"
+        ) from None
+
+
+def type_version(type_id: str) -> int:
+    """The registered schema version of ``type_id``."""
+    return _registration(type_id)[0]
+
+
+def data_schema(type_id: str) -> dict:
+    """A copy of the registered schema of the ``data`` of ``type_id``."""
+    return copy.deepcopy(_registration(type_id)[1])
+
+
+def typed_schema(type_id: str) -> dict:
+    """A schema fragment matching a whole typed value of ``type_id``, resolved at check time."""
+    return {"$ref": type_id}
+
+
+def _whole(type_id: str, field: str = "") -> dict:
+    version, schema = _registration(type_id, field)
+    return obj(
+        {
+            "type_id": {"const": type_id},
+            "schema_version": {"type": "integer", "const": version},
+            "data": schema,
+        }
+    )
+
+
+# --- checking ------------------------------------------------------------------------------
 
 
 def canonical(value: Any) -> str:
@@ -47,37 +187,6 @@ def decode(text: str) -> Any:
         raise TypedDataError("invalid_json", "", str(error)) from error
 
 
-# Operation identities and their paired context/result type IDs are declared by ``contracts``;
-# this mapping is populated from it at the end of this module.
-OPERATION_CONTRACTS: dict[str, tuple[str, str]] = {}
-
-
-# The Pi model selection of a worker: a provider/id model, a thinking level and a timeout. An absent
-# value keeps Pi's default model and thinking level and the worker profile's timeout.
-_SELECTION = {
-    "model": STRING,
-    "thinking": {"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]},
-    "timeout_seconds": {"type": "integer"},
-}
-
-
-DATA_SCHEMAS = {
-    "concorde-operation-configuration": obj(
-        {
-            **_SELECTION,
-            # Overrides keyed by a worker or by one of its
-            # children (worker/child); the most specific wins.
-            "workers": {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": obj(_SELECTION, tuple(_SELECTION)),
-            },
-        },
-        (*_SELECTION.keys(), "workers"),
-    ),
-}
-
-
 def _pointer(field: str, key: Any) -> str:
     return field + "/" + str(key).replace("~", "~0").replace("/", "~1")
 
@@ -94,7 +203,7 @@ def check_schema(value: Any, schema: dict, field: str = "") -> None:
             "invalid_field", field, "value does not match an admitted alternative"
         )
     if "$ref" in schema:
-        return check_schema(value, DATA_SCHEMAS[schema["$ref"]], field)
+        return check_schema(value, _whole(schema["$ref"], field), field)
     types = {
         "object": dict,
         "array": list,
@@ -112,15 +221,7 @@ def check_schema(value: Any, schema: dict, field: str = "") -> None:
         raise TypedDataError("invalid_field", field, f"expected {schema['const']!r}")
     if "enum" in schema and value not in schema["enum"]:
         raise TypedDataError("invalid_field", field, "unsupported value")
-    if expected == "object" and schema.get("format") == "typed-task":
-        if not isinstance(value, dict) or value.get("type_id") not in {
-            item[0] for item in OPERATION_CONTRACTS.values()
-        }:
-            raise TypedDataError(
-                "unknown_type", field, "expected an operation task input"
-            )
-        validate_typed(value, field=field)
-    elif expected == "object":
+    if expected == "object":
         properties = schema.get("properties", {})
         # A schema-valued additionalProperties admits a keyed map whose values share one schema.
         extra = schema.get("additionalProperties")
@@ -197,7 +298,7 @@ def validate_typed(value: Any, expected: str | None = None, field: str = "") -> 
     if not isinstance(value, dict):
         raise TypedDataError("invalid_field", field, "expected a TypedValue object")
     type_id = value.get("type_id")
-    if not isinstance(type_id, str) or type_id not in DATA_SCHEMAS:
+    if not isinstance(type_id, str) or type_id not in _TYPES:
         raise TypedDataError(
             "unknown_type", _pointer(field, "type_id"), "unknown data type"
         )
@@ -205,25 +306,23 @@ def validate_typed(value: Any, expected: str | None = None, field: str = "") -> 
         raise TypedDataError(
             "incompatible_handoff", _pointer(field, "type_id"), f"expected {expected}"
         )
-    if type(value.get("schema_version")) is not int or value[
-        "schema_version"
-    ] != type_version(type_id):
+    version = type_version(type_id)
+    if (
+        type(value.get("schema_version")) is not int
+        or value["schema_version"] != version
+    ):
         raise TypedDataError(
             "unsupported_version",
             _pointer(field, "schema_version"),
-            f"{type_id} requires schema_version {type_version(type_id)}",
+            f"{type_id} requires schema_version {version}",
         )
-    check_schema(value, typed_schema(type_id), field)
-    result = copy.deepcopy(value)
-    return result
+    check_schema(value, _whole(type_id, field), field)
+    return copy.deepcopy(value)
 
 
-def artifact(project: Path, identifier: str, relative: str) -> dict:
-    if relative.startswith((".concorde/runs/", ".concorde/status/")):
-        from ..harness.status_store import primary_root
-
-        project = primary_root(project)
-    path = checked_path(project, relative)
+def artifact(root: Path, identifier: str, relative: str) -> dict:
+    """``{id, path, digest}`` of a file below ``root``; the caller chooses the worktree."""
+    path = checked_path(root, relative)
     if not path.is_file():
         raise TypedDataError(
             "stale_reference", "", f"artifact does not exist: {relative}"
@@ -235,71 +334,61 @@ def artifact(project: Path, identifier: str, relative: str) -> dict:
     }
 
 
-def verify_artifacts(project: Path, value: Any, field: str = "") -> None:
+def verify_artifacts(root: Path, value: Any, field: str = "") -> None:
     if isinstance(value, dict):
         if set(value) == {"id", "path", "digest"}:
             check_schema(value, ARTIFACT, field)
-            if artifact(project, value["id"], value["path"]) != value:
+            if artifact(root, value["id"], value["path"]) != value:
                 raise TypedDataError(
                     "stale_reference", field, f"artifact bytes changed: {value['path']}"
                 )
         else:
             for key, item in value.items():
-                verify_artifacts(project, item, _pointer(field, key))
+                verify_artifacts(root, item, _pointer(field, key))
     elif isinstance(value, list):
         for index, item in enumerate(value):
-            verify_artifacts(project, item, _pointer(field, index))
+            verify_artifacts(root, item, _pointer(field, index))
 
 
 def json_schema(type_id: str) -> dict:
-    """Export a self-contained Draft 2020-12 schema for tooling and documentation."""
+    """Export a self-contained Draft 2020-12 schema of one registered type.
+
+    Every referenced type's data schema is placed in ``$defs``; each reference becomes the typed
+    envelope of that type whose ``data`` refers to its definition.
+    """
+
+    def envelope(name: str) -> dict:
+        version, _ = _registration(name)
+        return obj(
+            {
+                "type_id": {"const": name},
+                "schema_version": {"type": "integer", "const": version},
+                "data": {"$ref": "#/$defs/" + name},
+            }
+        )
+
+    pending: list[str] = []
 
     def expand(value):
         if isinstance(value, dict):
-            if "$ref" in value:
-                return {"$ref": "#/$defs/" + value["$ref"]}
-            if value.get("format") == "typed-task":
-                return {
-                    "anyOf": [
-                        expand(typed_schema(item[0]))
-                        for item in OPERATION_CONTRACTS.values()
-                    ]
-                }
+            if "$ref" in value and not value["$ref"].startswith("#"):
+                pending.append(value["$ref"])
+                return expand(envelope(value["$ref"]))
             return {key: expand(item) for key, item in value.items() if key != "format"}
         if isinstance(value, list):
             return [expand(item) for item in value]
         return value
 
-    definitions = {}
-    pending = [type_id]
-
-    def references(value):
-        if isinstance(value, dict):
-            if "$ref" in value:
-                yield value["$ref"].split("/")[-1]
-            for item in value.values():
-                yield from references(item)
-        elif isinstance(value, list):
-            for item in value:
-                yield from references(item)
-
+    root = expand(envelope(type_id))
+    pending.append(type_id)
+    definitions: dict[str, Any] = {}
     while pending:
         name = pending.pop()
         if name not in definitions:
-            definitions[name] = expand(DATA_SCHEMAS[name])
-            pending.extend(references(definitions[name]))
+            definitions[name] = None
+            definitions[name] = expand(_registration(name)[1])
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        **expand(typed_schema(type_id)),
+        **root,
         "$defs": definitions,
     }
-
-
-# Every registered operation entry point and its wire schemas are declared by ``contracts``;
-# the two shapes above are the host-owned values that no single operation owns.
-# Delayed until primitives exist: operation declarations import these shared shapes.
-from .contracts import contracts as _operation_contracts  # noqa: E402
-from .contracts import schemas as _operation_schemas  # noqa: E402
-
-DATA_SCHEMAS.update(_operation_schemas())
-OPERATION_CONTRACTS.update(_operation_contracts())

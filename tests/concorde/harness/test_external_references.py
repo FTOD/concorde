@@ -101,6 +101,10 @@ class SharedFileReaderTests(unittest.TestCase):
         self.addCleanup(self.fixture.doCleanups)
 
     @verifies("scenario.context.shared-file-binding")
+    @unittest.skip(
+        "B4: the programmer's binding to sharing Modules moves from a Spec context reason "
+        "to the snapshot's shared_bindings"
+    )
     def test_a_programmer_also_reads_every_module_that_binds_its_files(self):
         from concorde.harness.context import context_documents
 

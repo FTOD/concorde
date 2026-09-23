@@ -21,12 +21,12 @@ from ..distribution.build import load_model_instructions
 from ..issues.references import validate_references
 from ..issues.reporting import reporter_for_invocation
 from ..spec.boundaries import scope_roots
-from ..spec.issue_shapes import REPORT
+from ..issues.shapes import REPORT
 from ..spec.repository import SpecError, digest, read_file
-from ..spec.typed_data import DATA_SCHEMAS, canonical, decode, typed
-from ..spec.wire_shapes import type_version
+from ..spec.typed_data import canonical, data_schema, decode, type_version, typed
 from .admission import run_operation
 from .change_worktree import read_change, workspace_context
+from .checks import check_command
 from .context import (
     ContextSnapshot,
     context_documents,
@@ -67,7 +67,6 @@ def native_output_schema(result_type: str, ticket: str | None = None) -> dict:
         "concorde-review-stage-result",
     }:
         raise ValueError("unsupported native result type")
-    from copy import deepcopy
 
     return {
         "type": "object",
@@ -80,7 +79,7 @@ def native_output_schema(result_type: str, ticket: str | None = None) -> dict:
                 "properties": {
                     "type_id": {"const": result_type},
                     "schema_version": {"const": type_version(result_type)},
-                    "data": deepcopy(DATA_SCHEMAS[result_type]),
+                    "data": data_schema(result_type),
                 },
                 "required": ["type_id", "schema_version", "data"],
                 "additionalProperties": False,
@@ -645,7 +644,7 @@ def _execute(
                         "checksTimeoutMs": 10000
                         + 1000
                         * sum(
-                            run.repository.checks[key]["timeout_seconds"]
+                            check_command(run.repository.checks[key])[1]
                             for key in run.target.checks
                         ),
                     }

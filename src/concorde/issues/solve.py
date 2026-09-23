@@ -200,9 +200,7 @@ class IssueSolve:
     def child(self, operation, payload, *, coordinated=True):
         from ..harness.admission import invoke_operation
 
-        child_host = replace(
-            self.run.host, coordinated=coordinated, issue_intent=self.solution["intent"]
-        )
+        child_host = replace(self.run.host, coordinated=coordinated)
         return invoke_operation(
             self.run.operation,
             operation,

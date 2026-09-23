@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .changes import apply_files, file_change
 from .repository import SpecError, SpecRepository, read_file
-from .typed_data import OPERATION_CONTRACTS, canonical, decode, typed
+from .typed_data import canonical, decode, typed
 
 
 def project_operation(operation, configuration, task, host):
@@ -79,7 +79,7 @@ def project_nodes(operation, configuration, task, host):
         )
         return {
             "output": typed(
-                OPERATION_CONTRACTS[operation][1],
+                f"{operation}-response",
                 {"status": "applied", "proposal": None, "files": value["files"]},
             ),
             "route": END,
@@ -104,7 +104,7 @@ def project_nodes(operation, configuration, task, host):
         )
         return {
             "output": typed(
-                OPERATION_CONTRACTS[operation][1],
+                f"{operation}-response",
                 {
                     "status": "proposed",
                     "proposal": proposal,

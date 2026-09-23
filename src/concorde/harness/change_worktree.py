@@ -331,7 +331,7 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
         ) from error
     from ..issues.references import receipt
     from ..issues.store import resolve_report
-    from ..spec.issue_shapes import BLOCKER
+    from ..issues.shapes import BLOCKER
     from ..spec.repository import digest
     from ..spec.typed_data import check_schema
 

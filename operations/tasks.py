@@ -1,7 +1,7 @@
 """Operation: turn an admitted plan into tasks with observable acceptance conditions."""
 
 from concorde.harness.operation_state import StateContract, run_host
-from concorde.spec import contract_shapes as shapes
+from concorde.operations import shapes
 
 from . import external_name
 
@@ -22,6 +22,8 @@ REQUEST = shapes.obj(
     (*shapes.TASK_OPTIONAL, "repair_task_scope", "repair_review"),
 )
 RESPONSE = shapes.operation_response()
+REQUEST_VERSION = 2
+RESPONSE_VERSION = 3
 
 
 STATE = StateContract(f"{EXTERNAL_NAME}-request", None)

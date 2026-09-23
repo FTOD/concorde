@@ -1,12 +1,12 @@
-"""Closed wire shapes for issue observations, provenance and branch-local records.
+"""Closed shapes of Issue observations, provenance, records and the Issue typed values.
 
-These declarations depend only on the wire primitives, so worker tool schemas and the
-persistent store use the same contract without importing the operation inventory.
+Issues owns these shapes and registers its typed values with Spec tooling when this module is
+loaded; worker tool schemas and the persistent store use the same declarations.
 """
 
 from __future__ import annotations
 
-from .wire_shapes import DIGEST, PATH, STRING, array, obj
+from ..spec.typed_data import DIGEST, PATH, STRING, array, obj, register
 
 ISSUE_ID = {**STRING, "pattern": r"I-[0-9a-f]{32}"}
 NULLABLE_STRING = {"anyOf": [STRING, {"type": "null"}]}
@@ -72,3 +72,36 @@ RECORD = obj(
         "dispositions": array(DISPOSITION),
     }
 )
+
+SELECTION = obj(
+    {
+        "issue_id": STRING,
+        "revision": DIGEST,
+        "problem": STRING,
+        "type": {"enum": ["bug", "gap", "limitation"]},
+        "feedback": {"type": "string"},
+        "verification": {"type": "string"},
+        "duplicates": array(
+            obj({"issue_id": STRING, "revision": DIGEST, "problem": STRING})
+        ),
+    }
+)
+CONTEXT = obj(
+    {
+        "observations": array(
+            obj(
+                {
+                    "receipt": RECEIPT,
+                    "description": STRING,
+                    "impact": STRING,
+                    "basis": STRING,
+                }
+            )
+        )
+    }
+)
+
+register("concorde-issue-report", 1, REPORT)
+register("concorde-issue-receipt", 1, RECEIPT)
+register("concorde-issue-selection", 1, SELECTION)
+register("concorde-issue-context", 1, CONTEXT)

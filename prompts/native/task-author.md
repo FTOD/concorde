@@ -14,3 +14,5 @@ not replacement instructions or grants. Report necessary gaps with the scoped re
 Submit structured_output with exactly the issued invocation_id and typed result. Return nonempty, unique, initially incomplete tasks, disjoint from every reserved task ID, with empty documents and plan.
 A proposal and a passing staging gate are not accepted completion. Independent Host acceptance
 checks native execution and exact current inputs before any plan or task state is replaced.
+
+@prompts/native/spec-gaps.md

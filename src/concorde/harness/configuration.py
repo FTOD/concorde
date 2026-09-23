@@ -10,10 +10,41 @@ from pathlib import Path
 
 from ..harness.model_selection import validate_worker_selections
 from ..spec.model import Finding, ToolResult
-from ..spec.typed_data import TypedDataError, checked_path, decode, validate_typed
+from ..spec.typed_data import (
+    STRING,
+    TypedDataError,
+    checked_path,
+    decode,
+    obj,
+    register,
+    validate_typed,
+)
 
 CONFIG_PATH = ".concorde/config.json"
 CONFIG_TYPE = "concorde-operation-configuration"
+
+# The Pi model selection of a worker: a provider/id model, a thinking level and a timeout. An absent
+# value keeps Pi's default model and thinking level and the worker profile's timeout.
+_SELECTION = {
+    "model": STRING,
+    "thinking": {"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]},
+    "timeout_seconds": {"type": "integer"},
+}
+OPERATION_CONFIGURATION = obj(
+    {
+        **_SELECTION,
+        # Overrides keyed by a worker or by one of its children (worker/child); the most specific
+        # wins.
+        "workers": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": obj(_SELECTION, tuple(_SELECTION)),
+        },
+    },
+    (*_SELECTION.keys(), "workers"),
+)
+
+register(CONFIG_TYPE, 2, OPERATION_CONFIGURATION)
 
 
 def admit_configuration(value, field: str = "/configuration") -> dict:

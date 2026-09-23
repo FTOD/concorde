@@ -10,21 +10,28 @@ from .content_repository import DocumentUnitRepository, RepositoryCore  # noqa: 
 from .repository_base import *  # noqa: F403 - public facade for shared helpers
 from .repository_base import (
     PROFILE_VERSION,
+    PROTOCOL_DIR,
+    PROTOCOL_MANIFEST_PATH,
     PROTOCOL_VERSION,
     SpecError,
     decode,
     digest,
     identifier,
+    protocol_asset_path,
     read_file,
 )
 from .typed_data import TypedDataError, safe_path
 
 CONFIG_FIELDS = {"profile_version", "registry", "protocol", "operation_configuration"}
-CHECK_FIELDS = {"id", "module", "argv", "timeout_seconds"}
 
 
 def configured_checks(config: dict) -> list[dict]:
-    """The project's configured checks (``.concorde/config.json`` ``checks``), validated."""
+    """The project's configured checks (``.concorde/config.json`` ``checks``).
+
+    Spec tooling reads only what it needs: a unique ``id``, a registered ``module`` and the
+    optional unique, canonical ``inputs``. The command fields belong to Check execution, which
+    validates them when it runs the check.
+    """
     from .repository_base import check_input_error
 
     raw = config.get("checks", [])
@@ -34,13 +41,9 @@ def configured_checks(config: dict) -> list[dict]:
         )
     result, seen = [], set()
     for check in raw:
-        if (
-            not isinstance(check, dict)
-            or not CHECK_FIELDS <= check.keys()
-            or check.keys() - CHECK_FIELDS - {"inputs"}
-        ):
+        if not isinstance(check, dict) or not {"id", "module"} <= check.keys():
             raise SpecError(
-                "a configured check requires id, module, argv, timeout_seconds and optional inputs",
+                "a configured check requires an id and a module",
                 "invalid_spec",
                 "checks",
             )
@@ -51,24 +54,15 @@ def configured_checks(config: dict) -> list[dict]:
             )
         seen.add(key)
         identifier(check["module"])
-        if (
-            not isinstance(check["argv"], list)
-            or not check["argv"]
-            or any(not isinstance(x, str) or not x for x in check["argv"])
-        ):
-            raise SpecError("check argv must be a nonempty array of strings")
-        if (
-            type(check["timeout_seconds"]) is not int
-            or not 1 <= check["timeout_seconds"] <= 3600
-        ):
-            raise SpecError("check timeout must be 1..3600 seconds")
         inputs = check.get("inputs", [])
         if (
             not isinstance(inputs, list)
             or any(not isinstance(x, str) for x in inputs)
             or len(set(inputs)) != len(inputs)
         ):
-            raise SpecError("check inputs must be a unique string array")
+            raise SpecError(
+                "check inputs must be a unique string array", "invalid_spec", "checks"
+            )
         for path in inputs:
             try:
                 safe_path(path, path)
@@ -142,17 +136,6 @@ class SpecRepository(DocumentUnitRepository):
         manifest: an updated installation is rejected until the developer accepts it explicitly
         (configure with ``accept_protocol``), never adopted silently.
         """
-        from ..distribution.build import BuildError, verify_fresh
-        from ..distribution.project_defaults import (
-            PROTOCOL_DIR,
-            PROTOCOL_MANIFEST_PATH,
-            protocol_asset_path,
-        )
-
-        try:
-            verify_fresh(self.package_root)
-        except BuildError as error:
-            raise SpecError(str(error), error.code) from error
         try:
             raw = read_file(self.root, PROTOCOL_MANIFEST_PATH)
         except (SpecError, OSError) as error:

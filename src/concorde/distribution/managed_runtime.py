@@ -93,7 +93,7 @@ def load_runtime_spec(
         raise ManagedRuntimeError("runtime.python must be '>=3.11'")
     if venv != ".concorde/.venv":
         raise ManagedRuntimeError("runtime.venv must be .concorde/.venv")
-    from ..spec.contracts import PUBLIC_OPERATIONS
+    from ..operations.catalog import PUBLIC_OPERATIONS
 
     requirement_path = package_root / requirements
     launcher_path = package_root / launcher

@@ -48,8 +48,18 @@ from .repository_base import (
     reference_record,
 )
 from .syntax import Reading, parse_reading
-from .typed_data import canonical, check_schema, checked_path, decode, safe_path
-from .wire_shapes import CONTEXT_SCHEMA
+from .typed_data import (
+    DIGEST,
+    PATH,
+    STRING,
+    array,
+    canonical,
+    check_schema,
+    checked_path,
+    decode,
+    obj,
+    safe_path,
+)
 
 # A query naming a Module accepts its identity or its registered record.
 ModuleRef = str | Module
@@ -68,11 +78,49 @@ def severity(check: str) -> str:
     return "warning" if check in WARNING_CHECKS else "error"
 
 
-def unit_resolution_schema() -> dict:
-    """Closed paired-source resolution shape shared by all worker envelopes; roles never trim it."""
-    from .contracts import REFERENCE, TARGET_DESCRIPTOR
-    from .wire_shapes import DIGEST, PATH, SELECTION_REASON, STRING, array, obj
+# Version of a resolved Spec context record; 3 records only the Protocol relations that selected
+# each source.
+CONTEXT_SCHEMA = 3
+NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
+LISTING_ENTRY = {**STRING, "pattern": r"^[^/](?:[^/]*/)*[^/]*$"}
+# One relation that selected a context source: ``owns``, ``contains`` and ``uses`` name a Module;
+# ``includes`` also states whether it included a Module or one document.
+SELECTION_REASON = {
+    "anyOf": [
+        obj({"relation": {"enum": ["owns", "contains", "uses"]}, "id": STRING}),
+        obj(
+            {
+                "relation": {"const": "includes"},
+                "kind": {"enum": ["module", "document"]},
+                "id": STRING,
+            }
+        ),
+    ]
+}
+REFERENCE = {
+    "anyOf": [
+        obj({"kind": {"enum": ["module", "document"]}, "id": STRING}),
+        obj({"kind": {"const": "external"}, "path": LISTING_ENTRY}),
+    ]
+}
+# A Module's descriptor, as ``SpecRepository.module`` returns it.
+TARGET_DESCRIPTOR = obj(
+    {
+        "id": STRING,
+        "kind": {"const": "module"},
+        "title": STRING,
+        "documents": {**array(PATH, unique=True), "minItems": 1},
+        "references": array(REFERENCE, unique=True),
+        "parent": NULLABLE_ID,
+        "uses": array(STRING, unique=True),
+        "files": array(LISTING_ENTRY, unique=True),
+        "checks": array(STRING, unique=True),
+    }
+)
 
+
+def context_record_schema() -> dict:
+    """The closed schema of a Spec context record (``SpecContext.value``)."""
     source = obj(
         {
             "document_id": STRING,
@@ -89,7 +137,6 @@ def unit_resolution_schema() -> dict:
             "query_id": STRING,
             "query_kind": {"enum": ["module", "scenario"]},
             "module_id": STRING,
-            "shares": {"type": "boolean"},
             "reading_entry": PATH,
             "documents": array(PATH, unique=True),
             "references": array(REFERENCE, unique=True),
@@ -188,7 +235,7 @@ class DocumentUnitRepository:
         self.checks: dict[str, dict] = {}
         self._identity_paths: dict[str, str] = {}
         self._reference_digest_cache: dict[str, str] = {}
-        self._context_cache: dict[tuple[str, bool], dict[str, list[dict]]] = {}
+        self._context_cache: dict[str, dict[str, list[dict]]] = {}
         self._registry()
         self._documents()
         self._targets(configured_checks or [])
@@ -989,16 +1036,14 @@ class DocumentUnitRepository:
             query_id,
         )
 
-    def _context_paths(
-        self, module: ModuleRef, shares: bool = False
-    ) -> dict[str, list[dict]]:
+    def _context_paths(self, module: ModuleRef) -> dict[str, list[dict]]:
         """Spec(M) with every relation that selected each document (one level, never recursive).
 
-        With ``shares``, the owned documents of every other Module binding a file in M's
-        ImplementationScope are added with a ``shares`` reason (Protocol shared-file rule).
+        A file shared with another Module adds no document: binding a writing task to every
+        binding Module is the caller's decision.
         """
         target = self._resolve(module)
-        key = (target.id, shares)
+        key = target.id
         if key in self._context_cache:
             return {
                 path: list(reasons)
@@ -1030,12 +1075,6 @@ class DocumentUnitRepository:
                         "id": item["target"],
                     },
                 )
-        if shares:
-            for other, files in self.shared_files(target).items():
-                add(
-                    self.modules[other].documents,
-                    {"relation": "shares", "id": other, "files": list(files)},
-                )
         result = {
             path: sorted(
                 paths[path],
@@ -1051,16 +1090,12 @@ class DocumentUnitRepository:
         self._context_cache[key] = result
         return {path: list(reasons) for path, reasons in result.items()}
 
-    def spec_context(self, query_id: str, *, shares: bool = False) -> SpecContext:
-        """``SpecContext`` of a Module, or of a scenario's owner, with its source records.
-
-        ``shares`` adds the shared-file readers a code-writing task needs (see ``shared_files``);
-        it is recorded in the context, so it is part of the context identity.
-        """
+    def spec_context(self, query_id: str) -> SpecContext:
+        """``SpecContext`` of a Module, or of a scenario's owner, with its source records."""
         target, kind = self._query(query_id)
         sources = [
             record
-            for path, reasons in self._context_paths(target, shares).items()
+            for path, reasons in self._context_paths(target).items()
             for record in self.source_records(path, reasons)
         ]
         descriptor = target.descriptor()
@@ -1071,7 +1106,6 @@ class DocumentUnitRepository:
                     "query_id": query_id,
                     "query_kind": kind,
                     "module_id": target.id,
-                    "shares": shares,
                     "reading_entry": target.primary_document,
                     "documents": list(target.documents),
                     "references": descriptor["references"],
@@ -1080,7 +1114,7 @@ class DocumentUnitRepository:
                 }
             )
         )
-        check_schema(context.value, unit_resolution_schema())
+        check_schema(context.value, context_record_schema())
         return context
 
     def context_identities(self) -> dict[str, str]:
@@ -1111,9 +1145,7 @@ class DocumentUnitRepository:
     def recheck_context(self, context: SpecContext) -> None:
         value = context.value
         try:
-            current = self.fresh().spec_context(
-                value["query_id"], shares=value["shares"]
-            )
+            current = self.fresh().spec_context(value["query_id"])
             if current.serialized != context.serialized:
                 raise SpecError(
                     "context declarations, member roles or source bytes changed",
@@ -1495,5 +1527,5 @@ __all__ = [
     "RepositoryCore",
     "identifier",
     "reference_record",
-    "unit_resolution_schema",
+    "context_record_schema",
 ]

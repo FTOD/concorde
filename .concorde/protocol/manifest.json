@@ -10,11 +10,7 @@
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:d6dcf696146fb031593295af34dd8ef22f5f61acc7c04b4a0f01e46f9e0da536"
-    },
-    {
-      "path": "generated/protocol/schemas.json",
-      "digest": "sha256:90da469fd6a205dd9741d9bf739c20a2c5a914d9cfd033af72ea52e5ce609acd"
+      "digest": "sha256:738766d776d215ff3d853c45f3d97d48b6411dc44821921e49c3091a69fb6ec9"
     }
   ]
 }

@@ -8,7 +8,7 @@ import sys
 import unittest
 
 from concorde.spec.verification import verifies
-from concorde.spec.wire_shapes import type_version
+from concorde.spec.typed_data import type_version
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 LAUNCHER = REPOSITORY_ROOT / "scripts/run-operation.py"

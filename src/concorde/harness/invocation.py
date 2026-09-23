@@ -7,9 +7,9 @@ consume these stages under explicit caller selection; no stage authors project S
 
 from __future__ import annotations
 
-from ..spec.contracts import REVIEW_OPERATIONS
+from ..operations.catalog import OPERATION_CONTRACTS, REVIEW_OPERATIONS
 from ..spec.repository import SpecError, SpecRepository, digest
-from ..spec.typed_data import OPERATION_CONTRACTS, typed
+from ..spec.typed_data import typed
 from ..spec.validation import MISSING_PROMISES, module_dependency_findings
 from .change_worktree import WORK_PATH, blocker_scope, read_change
 from .host import (

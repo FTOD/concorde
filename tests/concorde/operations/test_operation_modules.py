@@ -13,16 +13,15 @@ from langgraph.runtime import Runtime
 from concorde.harness.operation_node import OperationNode
 from concorde.harness.operation_state import OperationRuntimeContext, StateContract
 from concorde.harness.worker_profile import WorkerProfile
-from concorde.spec.contracts import (
+from concorde.operations.catalog import (
     COMPOSITE_OPERATIONS,
     DETERMINISTIC_OPERATIONS,
     INTERNAL_OPERATIONS,
+    OPERATION_CONTRACTS,
     OPERATION_NAMES,
     PUBLIC_OPERATIONS,
-    contracts,
     dependencies,
     load_operation_inventory,
-    schemas,
 )
 from concorde.spec.typed_data import TypedDataError, typed
 from concorde.spec.verification import verifies
@@ -69,7 +68,8 @@ class OperationModuleContractTests(unittest.TestCase):
                 self.assertTrue(callable(module.run))
 
     def test_properties_and_transport_contracts_are_independent(self):
-        exported = schemas()
+        from concorde.spec.typed_data import data_schema, type_version
+
         for module in _modules().values():
             name = module.EXTERNAL_NAME
             self.assertIs(type(module.PUBLIC), bool)
@@ -79,13 +79,19 @@ class OperationModuleContractTests(unittest.TestCase):
             self.assertEqual(not module.PUBLIC, name in INTERNAL_OPERATIONS)
             self.assertEqual(module.DETERMINISTIC, name in DETERMINISTIC_OPERATIONS)
             if hasattr(module, "REQUEST"):
-                self.assertEqual(module.REQUEST, exported[f"{name}-request"])
-                self.assertEqual(module.RESPONSE, exported[f"{name}-response"])
+                self.assertEqual(module.REQUEST, data_schema(f"{name}-request"))
+                self.assertEqual(module.RESPONSE, data_schema(f"{name}-response"))
+                self.assertEqual(
+                    module.REQUEST_VERSION, type_version(f"{name}-request")
+                )
+                self.assertEqual(
+                    module.RESPONSE_VERSION, type_version(f"{name}-response")
+                )
                 self.assertIsNone(module.STATE.output_type)
             else:
-                self.assertNotIn(name, contracts())
+                self.assertNotIn(name, OPERATION_CONTRACTS)
                 self.assertIsNotNone(module.PROFILE)
-        self.assertEqual(11, len(contracts()))
+        self.assertEqual(11, len(OPERATION_CONTRACTS))
         self.assertEqual(11, len(PUBLIC_OPERATIONS))
         self.assertEqual(
             set(PUBLIC_OPERATIONS),

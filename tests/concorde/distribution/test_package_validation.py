@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
@@ -27,7 +28,7 @@ def external_name(name):
     return "concorde-" + name.replace("_", "-")
 """
 
-VALID_ALPHA = """from concorde.spec import contract_shapes as shapes
+VALID_ALPHA = """from concorde.operations import shapes
 from agents import planner
 from . import external_name
 from concorde.harness.operation_state import StateContract
@@ -649,7 +650,7 @@ class AgentRuleTests(unittest.TestCase):
 
 
 class ContractRuleTests(unittest.TestCase):
-    """Rule 3: exported type identities are unique; generated/protocol/schemas.json matches json_schema."""
+    """Rule 3: every type is registered once; generated/schemas.json matches json_schema."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -663,72 +664,41 @@ class ContractRuleTests(unittest.TestCase):
         )
 
     def test_stale_schemas_file_is_reported(self) -> None:
-        (self.root / "generated/protocol").mkdir(parents=True)
-        (self.root / "generated/protocol/schemas.json").write_text(
-            "{}", encoding="utf-8"
-        )
+        (self.root / "generated").mkdir(parents=True)
+        (self.root / "generated/schemas.json").write_text("{}", encoding="utf-8")
         findings = package_validation._validate_contracts(self.root)
         self.assertTrue(
             any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings
         )
 
     def test_current_schemas_file_has_no_findings(self) -> None:
-        (self.root / "generated/protocol").mkdir(parents=True)
+        (self.root / "generated").mkdir(parents=True)
         shutil.copy2(
-            REPOSITORY_ROOT / "generated/protocol/schemas.json",
-            self.root / "generated/protocol/schemas.json",
+            REPOSITORY_ROOT / "generated/schemas.json",
+            self.root / "generated/schemas.json",
         )
         self.assertEqual([], package_validation._validate_contracts(self.root))
 
-    def test_broken_schema_source_is_reported_without_raising(self) -> None:
-        (self.root / "generated/protocol").mkdir(parents=True)
-        shutil.copy2(
-            REPOSITORY_ROOT / "generated/protocol/schemas.json",
-            self.root / "generated/protocol/schemas.json",
-        )
-        shutil.copytree(
-            REPOSITORY_ROOT / "src/concorde/spec",
-            self.root / "src/concorde/spec",
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-        )
-        helper = self.root / "src/concorde/spec/wire_shapes.py"
-        helper.write_text(
-            helper.read_text(encoding="utf-8") + "\nSTRING = {\n", encoding="utf-8"
-        )
-        findings = package_validation._validate_contracts(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings
-        )
-        self.assertIn("wire_shapes.py", str(findings))
+    def test_a_conflicting_registration_is_reported_without_raising(self) -> None:
+        from concorde.spec.typed_data import TypedDataError
 
-    def test_duplicate_exported_type_identity_is_reported(self) -> None:
-        # The duplicate lives in the named root's own contracts, which the rendered schema
-        # dictionary would otherwise collapse silently.
-        (self.root / "generated/protocol").mkdir(parents=True)
-        shutil.copy2(
-            REPOSITORY_ROOT / "generated/protocol/schemas.json",
-            self.root / "generated/protocol/schemas.json",
-        )
-        shutil.copytree(
-            REPOSITORY_ROOT / "src/concorde/spec",
-            self.root / "src/concorde/spec",
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-        )
-        contracts = self.root / "src/concorde/spec/contracts.py"
-        contracts.write_text(
-            contracts.read_text(encoding="utf-8")
-            + (
-                "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
-                "def exported_types():\n"
-                "    return (*_ORIGINAL_EXPORTED_TYPES(), 'concorde-context-solve-request')\n"
-            ),
-            encoding="utf-8",
-        )
-        findings = package_validation._validate_contracts(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-CONTRACT-UNIQUE-001" for f in findings), findings
-        )
-        self.assertIn("concorde-context-solve-request", str(findings))
+        for code, rule in (
+            ("duplicate_type", "CONCORDE-CONTRACT-UNIQUE-001"),
+            ("invalid_schema", "CONCORDE-CONTRACT-SCHEMA-001"),
+        ):
+            with (
+                self.subTest(code=code),
+                patch.object(
+                    package_validation,
+                    "register_types",
+                    side_effect=TypedDataError(
+                        code, "concorde-context-solve-request", "conflict"
+                    ),
+                ),
+            ):
+                findings = package_validation._validate_contracts(self.root)
+            self.assertEqual([rule], [f.rule_id for f in findings])
+            self.assertIn("concorde-context-solve-request", str(findings))
 
 
 class BuildOutputRuleTests(unittest.TestCase):

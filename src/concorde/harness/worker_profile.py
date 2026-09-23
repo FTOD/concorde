@@ -179,7 +179,7 @@ def validate_worker_artifacts(
 ) -> None:
     contract = agent.contract
     types = [item["type_id"] for item in inputs]
-    allowed = set(contract.stage_inputs) | {"concorde-issue-intent"}
+    allowed = set(contract.stage_inputs)
     if "concorde-review-result" in types:
         allowed.add("concorde-issue-context")
     if (

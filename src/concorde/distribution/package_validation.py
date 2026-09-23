@@ -18,7 +18,7 @@ from ..harness.worker_profile import (
     WorkerProfile,
     validate_worker_profile,
 )
-from ..spec.contracts import MODEL_OPERATIONS, OPERATION_NAMES, exported_types, schemas
+from ..operations.catalog import MODEL_OPERATIONS, OPERATION_NAMES, register_types
 from ..spec.frontmatter import FrontMatterError, parse_document
 from ..spec.model import Finding
 from . import build
@@ -34,11 +34,27 @@ from .prompt_resolver import (
 
 _SUBJECT = "module.distribution"
 
+
+def exported_types() -> tuple[str, ...]:
+    """Every registered type identity, after the catalog loaded every owner."""
+    from ..spec.typed_data import registered_types
+
+    register_types()
+    return registered_types()
+
+
+def schemas() -> dict[str, dict]:
+    """Every registered type's ``data`` schema, keyed by type identity."""
+    from ..spec.typed_data import data_schema
+
+    return {name: data_schema(name) for name in exported_types()}
+
+
 _NAME_TOKEN = re.compile(r"concorde-[a-z][a-z0-9-]*")
 
 # Wire/Protocol vocabulary that legitimately appears as inline `concorde-…` prose terms but is not
-# an operation external name, or a member of contracts.schemas(): the two
-# envelope type_ids validated ad hoc (never through DATA_SCHEMAS/schemas()), and two Protocol
+# an operation external name, or a registered type: the two
+# envelope type_ids validated ad hoc (never registered), and two Protocol
 # structural terms (a document ID prefix, a machine-readable participant block name) defined only
 # in protocol/principles.md prose, not in any Python registry.
 _PROTOCOL_VOCABULARY = frozenset(
@@ -156,7 +172,7 @@ def _validate_prompts(root: Path) -> list[Finding]:
 def _load_operations_package(root: Path, directory: str = "operations"):
     """Load ``<root>/operations/__init__.py`` under a fresh private module name.
 
-    Root-parametrized, unlike ``contracts.load_operation_inventory()`` (which always
+    Root-parametrized, unlike ``catalog.load_operation_inventory()`` (which always
     loads the actual running checkout's package): this lets the validator check a temporary
     fixture package. A fresh unique name per call avoids any ``sys.modules`` collision between
     successive validations of different roots within one process, such as this module's own tests.
@@ -534,7 +550,7 @@ def _validate_agent_profile(
                 "CONCORDE-AGENT-PROFILE-001",
                 source,
                 f"agent {agent.name!r} contract references unexported types: {unknown}.",
-                "Reference only types in contracts.exported_types().",
+                "Reference only registered types.",
             )
         )
     return findings
@@ -669,43 +685,46 @@ def _validate_worker_profiles(root: Path) -> list[Finding]:
 
 def _validate_contracts(root: Path) -> list[Finding]:
     findings: list[Finding] = []
-    # Expect exactly what the build renders for this root: its own schema sources, evaluated
-    # afresh, so a root-local helper change never disagrees with a correctly rebuilt export.
-    from .build import BuildError, _root_schemas
+    # Expect exactly what the build exports: every type the running package registers.
+    from ..spec.typed_data import TypedDataError
+    from .build import SCHEMAS_PATH, BuildError, registered_schemas
 
     try:
-        expected, _, names = _root_schemas(root)
+        register_types()
+    except TypedDataError as error:
+        findings.append(
+            _finding(
+                "CONCORDE-CONTRACT-UNIQUE-001"
+                if error.code == "duplicate_type"
+                else "CONCORDE-CONTRACT-SCHEMA-001",
+                SCHEMAS_PATH,
+                f"{error.field}: {error}",
+                "Register every type identity once, with one version and schema.",
+            )
+        )
+        return findings
+    try:
+        expected, _ = registered_schemas(root)
     except BuildError as error:
         findings.append(
             _finding(
                 "CONCORDE-CONTRACT-SCHEMA-001",
-                "generated/protocol/schemas.json",
-                f"cannot evaluate this root's schema sources: {error}",
-                "Repair the schema sources under src/concorde/spec, then run `python -m concorde build`.",
+                SCHEMAS_PATH,
+                f"cannot export the registered schemas: {error}",
+                "Repair the registered schema, then run `python -m concorde build`.",
             )
         )
         return findings
-    names = list(names)
-    if len(names) != len(set(names)):
-        duplicates = sorted({name for name in names if names.count(name) > 1})
-        findings.append(
-            _finding(
-                "CONCORDE-CONTRACT-UNIQUE-001",
-                "src/concorde/spec/contracts.py",
-                f"exported type identities contain duplicates: {duplicates}.",
-                "Keep every exported type identity globally unique.",
-            )
-        )
-    schemas_path = root / "generated/protocol/schemas.json"
+    schemas_path = root / SCHEMAS_PATH
     try:
         documented = json.loads(schemas_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         findings.append(
             _finding(
                 "CONCORDE-CONTRACT-SCHEMA-001",
-                "generated/protocol/schemas.json",
+                SCHEMAS_PATH,
                 f"cannot read rendered schema export: {error}",
-                "Run `python -m concorde build` to render generated/protocol/schemas.json.",
+                f"Run `python -m concorde build` to render {SCHEMAS_PATH}.",
             )
         )
         return findings
@@ -713,9 +732,9 @@ def _validate_contracts(root: Path) -> list[Finding]:
         findings.append(
             _finding(
                 "CONCORDE-CONTRACT-SCHEMA-001",
-                "generated/protocol/schemas.json",
-                "rendered generated/protocol/schemas.json differs from the executable exported contracts.",
-                "Run `python -m concorde build` to re-render generated/protocol/schemas.json from concorde.spec.contracts.exported_types().",
+                SCHEMAS_PATH,
+                f"rendered {SCHEMAS_PATH} differs from the registered types.",
+                f"Run `python -m concorde build` to re-render {SCHEMAS_PATH}.",
             )
         )
     return findings
@@ -725,7 +744,7 @@ _SPEC_TYPE_TOKEN = re.compile(r"concorde-[a-z][a-z0-9-]*@[0-9]+")
 _ERROR_TABLE_ROW = re.compile(r"^\|\s*`([a-z][a-z0-9_]*)`\s*\|", re.MULTILINE)
 _CODE_SHAPE = re.compile(r"^[a-z][a-z0-9_]*$")
 
-# The wire envelope types are validated ad hoc (never through contracts.schemas()/exported_types(),
+# The wire envelope types are validated ad hoc (never registered,
 # see _PROTOCOL_VOCABULARY above) but are still real versioned identities the boundary document must
 # describe; their versions are not derivable from schemas() the way every other type's is.
 _ENVELOPE_VERSIONS = {
@@ -1067,9 +1086,9 @@ def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]
         ]
     path, text = boundary
     findings: list[Finding] = []
-    from ..spec.wire_shapes import type_version
+    from ..spec.typed_data import type_version
 
-    expected: dict[str, int] = {name: type_version(name) for name in schemas()}
+    expected: dict[str, int] = {name: type_version(name) for name in exported_types()}
     expected.update(_ENVELOPE_VERSIONS)
     found: dict[str, set[int]] = {}
     for token in _SPEC_TYPE_TOKEN.findall(text):

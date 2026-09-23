@@ -33,3 +33,5 @@ Shape example (replace identity placeholders and provide the actual justified de
 
 The example is a shape, not permission to invent identity, default to success or select needs-decision
 without its actual basis. Preserve the supplied schema and Host checks; prose alone is not submission.
+
+@prompts/native/spec-gaps.md

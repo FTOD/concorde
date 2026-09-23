@@ -21,7 +21,7 @@ catalog compiles from the executable factory:
 - the section's heading carries an explicit ``{#anchor}``, and a module-role document of the same
   owning Module links to it, so the Operation's explanation leads to its exact Graph Spec.
 
-It also holds the Graph API rule of the Framework profile: every catalog Graph is a compiled
+It also holds the Graph API rule: every catalog Graph is a compiled
 ``StateGraph``, and no Python file under ``src/``, ``scripts/`` or ``operations/`` imports LangGraph's Functional
 API (``langgraph.func``), which would hide control flow inside ordinary Python. Source files are
 parsed for that, never executed.

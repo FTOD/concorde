@@ -297,7 +297,6 @@ navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades
 
-The Framework execution profile defines candidate worktrees in [P10](../prompts/protocol/framework-profile.md#p10-fresh-task-sessions-never-session-moves).
 Concorde Spec Protocol 11.0.0 defines Module Specs as a checked graph whose realizations bind the
 files that realize each Module, and whose scenarios are declared by the tests that verify them.
 Root instructions and runtime drafts refer to that rule; the Pi

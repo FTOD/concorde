@@ -8,23 +8,72 @@ from pathlib import Path
 from .changes import apply_files, file_change
 from .repository import (
     PROFILE_VERSION,
+    PROTOCOL_MANIFEST_PATH,
     REGISTRY_SCHEMA,
     SpecError,
     digest,
     identifier,
     read_file,
 )
-from .typed_data import checked_path, decode, validate_typed
+from .typed_data import (
+    DIGEST,
+    PATH,
+    STRING,
+    array,
+    checked_path,
+    decode,
+    obj,
+    register,
+    typed_schema,
+)
 from .validation import validate_repository
+
+# Spec tooling's own typed values: the concorde-init request and response and the proposal they
+# carry. The worker configuration is Request admission's type, referred to by name only.
+PROPOSAL_FILE = obj(
+    {
+        "path": PATH,
+        "before_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+        "content": {"type": "string"},
+    }
+)
+PROPOSAL = obj(
+    {
+        "action": {"enum": ["initialize"]},
+        "base_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+        "files": array(PROPOSAL_FILE),
+    }
+)
+INIT_REQUEST = obj(
+    {
+        "action": {"enum": ["propose", "apply"]},
+        "name": STRING,
+        "target_id": STRING,
+        "configuration": typed_schema("concorde-operation-configuration"),
+        "proposal": typed_schema("concorde-project-proposal"),
+        "run_in_primary": {"type": "boolean"},
+    },
+    ("name", "target_id", "configuration", "proposal", "run_in_primary"),
+)
+INIT_REQUEST_VERSION = 3
+INIT_RESPONSE = obj(
+    {
+        "status": {"enum": ["proposed", "applied"]},
+        "proposal": {
+            "anyOf": [typed_schema("concorde-project-proposal"), {"type": "null"}]
+        },
+        "files": array(PATH),
+    }
+)
+INIT_RESPONSE_VERSION = 1
+
+register("concorde-project-proposal", 1, PROPOSAL)
+register("concorde-init-request", INIT_REQUEST_VERSION, INIT_REQUEST)
+register("concorde-init-response", INIT_RESPONSE_VERSION, INIT_RESPONSE)
 
 
 def protocol_binding(package: Path) -> dict:
-    from ..distribution.build import BuildError, verify_fresh
-
-    try:
-        verify_fresh(package)
-    except BuildError as error:
-        raise SpecError(str(error), error.code) from error
+    """The binding of the running package's Protocol manifest."""
     raw = read_file(package, "protocol/manifest.json")
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
@@ -35,8 +84,6 @@ def installed_protocol_binding(root: Path) -> dict:
     Initialization and explicit acceptance bind this copy; neither creates it. A project without it
     has not had Concorde installed.
     """
-    from ..distribution.project_defaults import PROTOCOL_MANIFEST_PATH
-
     try:
         raw = read_file(root, PROTOCOL_MANIFEST_PATH)
     except (SpecError, OSError) as error:
@@ -179,7 +226,15 @@ def project_proposal(
     target_id: str = "module.project",
 ) -> dict:
     identifier(target_id)
-    configuration = validate_typed(configuration, "concorde-operation-configuration")
+    # The worker configuration is Request admission's typed value; it is stored unchanged.
+    if (
+        not isinstance(configuration, dict)
+        or configuration.get("type_id") != "concorde-operation-configuration"
+    ):
+        raise SpecError(
+            "configuration must be a concorde-operation-configuration value",
+            "invalid_input",
+        )
     if not isinstance(name, str) or not name.strip():
         raise SpecError("project name is required", "invalid_input")
     if checked_path(root, ".concorde/config.json").exists():

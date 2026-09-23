@@ -125,12 +125,9 @@
       "title": "Typed values",
       "meaning": "#realization.spec.typed-values",
       "entries": [
-        "src/concorde/spec/contract_shapes.py",
-        "src/concorde/spec/contracts.py",
         "src/concorde/spec/frontmatter.py",
         "src/concorde/spec/schema.py",
-        "src/concorde/spec/typed_data.py",
-        "src/concorde/spec/wire_shapes.py"
+        "src/concorde/spec/typed_data.py"
       ],
       "pending": []
     },

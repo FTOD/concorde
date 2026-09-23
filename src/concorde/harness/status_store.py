@@ -15,11 +15,62 @@ import tempfile
 import sys
 from pathlib import Path
 
-from ..spec.repository import SpecError, identifier
-from ..spec.typed_data import canonical, checked_path, decode
+from ..issues.shapes import BLOCKER
+from ..spec.repository import SpecError, identifier, read_file
+from ..spec.typed_data import (
+    STRING,
+    array,
+    artifact,
+    canonical,
+    checked_path,
+    decode,
+    obj,
+)
 
 STATUS_PATH = ".concorde/status"
 RUNS_PATH = ".concorde/runs"
+
+# The workspace facts of a worktree (Candidate worktrees' records), embedded in context snapshots.
+NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
+WORKTREE_SUMMARY = obj(
+    {
+        "path": STRING,
+        "branch": NULLABLE_ID,
+        "head": NULLABLE_ID,
+        "managed": {"type": "boolean"},
+        "locked": {"type": "boolean"},
+        "change_id": NULLABLE_ID,
+        "target_id": NULLABLE_ID,
+        "task": {"type": "string"},
+        "phase": NULLABLE_ID,
+        "status": STRING,
+        "outcome": NULLABLE_ID,
+    }
+)
+COMPONENT_PROGRESS = obj(
+    {
+        "target_id": STRING,
+        "spec_status": STRING,
+        "implementation_status": STRING,
+        "outcome": NULLABLE_ID,
+    }
+)
+WORKSPACE_CONTEXT = obj(
+    {
+        "kind": {"enum": ["primary", "change", "unversioned"]},
+        "current_worktree": STRING,
+        "current_branch": NULLABLE_ID,
+        "primary_worktree": NULLABLE_ID,
+        "primary_branch": NULLABLE_ID,
+        "change_id": NULLABLE_ID,
+        "phase": NULLABLE_ID,
+        "status": NULLABLE_ID,
+        "outcome": NULLABLE_ID,
+        "blockers": array(BLOCKER),
+        "components": array(COMPONENT_PROGRESS),
+        "active_worktrees": array(WORKTREE_SUMMARY),
+    }
+)
 
 
 def primary_root(root: Path) -> Path:
@@ -34,6 +85,38 @@ def primary_root(root: Path) -> Path:
             "primary_unavailable",
         )
     return Path(primary["path"])
+
+
+def record_root(root: Path, relative: str) -> Path:
+    """The worktree that holds ``relative``: status and run records live only in the primary."""
+    if relative.startswith((STATUS_PATH + "/", RUNS_PATH + "/")):
+        return primary_root(root)
+    return root
+
+
+def read_record(root: Path, relative: str) -> bytes:
+    """The bytes of a project file, or of a status or run record in the primary worktree."""
+    return read_file(record_root(root, relative), relative)
+
+
+def record_artifact(root: Path, identifier: str, relative: str) -> dict:
+    """``{id, path, digest}`` of a project file, or of a status or run record in the primary."""
+    return artifact(record_root(root, relative), identifier, relative)
+
+
+def verify_record_artifacts(root: Path, value) -> None:
+    """Fail with ``stale_reference`` when any artifact embedded in ``value`` changed."""
+    from ..spec.typed_data import verify_artifacts
+
+    if isinstance(value, dict):
+        if set(value) == {"id", "path", "digest"} and isinstance(value["path"], str):
+            verify_artifacts(record_root(root, value["path"]), value)
+        else:
+            for item in value.values():
+                verify_record_artifacts(root, item)
+    elif isinstance(value, list):
+        for item in value:
+            verify_record_artifacts(root, item)
 
 
 def status_path(change_id: str) -> str:

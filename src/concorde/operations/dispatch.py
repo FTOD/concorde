@@ -12,8 +12,8 @@ from ..harness.relay import relay_operation
 from ..implementation.implement import implement
 from ..planning.plan import context_solve, plan
 from ..planning.tasks import tasks
-from ..spec.contracts import MODEL_STAGES, REVIEW_OPERATIONS
-from ..spec.impact import change_scope
+from .catalog import MODEL_STAGES, REVIEW_OPERATIONS
+from ..planning.scope import change_scope
 from ..spec.project import project_nodes, project_operation
 from ..spec.repository import SpecError, SpecRepository
 from ..validation.validate import validate

@@ -5,7 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.spec.impact import change_scope, changed_nodes, review_impact
+from concorde.planning.scope import change_scope
+from concorde.review.impact import review_impact
+from concorde.spec.impact import changed_nodes
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (

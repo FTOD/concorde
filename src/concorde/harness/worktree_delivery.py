@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ..spec.changes import confirm_pending_files
 from ..spec.repository import SpecError, SpecRepository, identifier, read_file
-from ..spec.typed_data import artifact, checked_path, typed
+from ..spec.typed_data import checked_path, typed
 from ..spec.validation import validate_repository
 from .change_worktree import (
     _inventory,
@@ -26,7 +26,13 @@ from .change_worktree import (
     workspace_identity,
 )
 
-from .status_store import read_status, status_path, write_status, write_run
+from .status_store import (
+    read_status,
+    record_artifact,
+    status_path,
+    write_status,
+    write_run,
+)
 
 
 def _read_receipt(root: Path, relative: str) -> dict | None:
@@ -714,7 +720,7 @@ def _response(root: Path, receipt: dict, complete: bool) -> dict:
             "blockers": [],
             "checks": promotion.get("checks", receipt["checks"]),
             "artifacts": [
-                artifact(root, "delivery", _receipt_path(receipt["change_id"]))
+                record_artifact(root, "delivery", _receipt_path(receipt["change_id"]))
             ],
             "completed_operations": ["concorde-deliver"] if complete else [],
         },

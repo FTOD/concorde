@@ -30,6 +30,12 @@ Shape example (replace identity placeholders and provide the actual justified de
 The example is a shape, not permission to invent identity, default to success or select needs-decision
 without its actual basis. Preserve the supplied schema and Host checks; prose alone is not submission.
 
+A Spec gap is a missing or conflicting promise of the Module that owns the behaviour you need.
+Report it through report_issue, naming the missing promise, the step it blocks and the owning
+Module, and continue only with work that does not depend on it. Never fill a gap from source code,
+memory or a guess. A failed command or check, an explicit prohibition and a missing runtime value
+whose failure behaviour the Spec defines are not Spec gaps.
+
 # concorde-issue-solver
 
 ## Responsibilities

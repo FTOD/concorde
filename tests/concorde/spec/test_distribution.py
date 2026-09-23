@@ -10,7 +10,11 @@ from pathlib import Path
 from concorde.distribution.build import load_model_instructions
 from concorde.distribution.package_validation import validate_package
 from concorde.spec.boundaries import scope_roots
-from concorde.spec.contracts import MODEL_OPERATIONS, OPERATION_NAMES, contracts
+from concorde.operations.catalog import (
+    MODEL_OPERATIONS,
+    OPERATION_CONTRACTS,
+    OPERATION_NAMES,
+)
 from concorde.spec.repository import SpecRepository
 from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
@@ -80,7 +84,7 @@ class DistributionTests(unittest.TestCase):
             repo.source_bytes(path).decode()
             for path in repo.spec_context("module.harness").paths
         )
-        for op in contracts():
+        for op in OPERATION_CONTRACTS:
             self.assertIn(op + "-request", text)
 
     def test_launcher_refuses_a_nonpublic_operation_name_and_accepts_a_public_operation(

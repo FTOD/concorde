@@ -176,7 +176,9 @@ class StatusStoreTests(unittest.TestCase):
             write_status(self.primary, winners[0], create=True)
         self.assertEqual(winners, all_status(self.primary))
 
-    @verifies("scenario.worktrees.primary-status", "scenario.worktrees.workspace-inventory")
+    @verifies(
+        "scenario.worktrees.primary-status", "scenario.worktrees.workspace-inventory"
+    )
     def test_recreated_worktree_never_inherits_old_incarnation(self):
         for same_branch in (True, False):
             with self.subTest(same_branch=same_branch):
@@ -276,7 +278,7 @@ class StatusStoreTests(unittest.TestCase):
 
     @verifies("scenario.worktrees.primary-status")
     def test_target_snapshot_rejects_recreated_incarnation_with_equal_revision(self):
-        from concorde.spec.contract_shapes import CHECK_RESULT
+        from concorde.harness.checks import CHECK_RESULT
         from concorde.spec.repository import digest
         from concorde.spec.typed_data import check_schema
 

@@ -25,6 +25,10 @@ PROFILE_VERSION = 16
 PROTOCOL_VERSION = "11.1.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
+# The installed Protocol copy the configuration binds; the installer places it there.
+PROTOCOL_DIR = ".concorde/protocol"
+PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
+RENDERED_PROTOCOL_PREFIX = "generated/protocol/"
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 HEADING = re.compile(r"^(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
 # Everything under these prefixes is a project-control record or generated output, owned by the
@@ -79,12 +83,21 @@ def digest(value: bytes | Any) -> str:
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
-def read_file(root: Path, relative: str) -> bytes:
-    """Read regular files only; reject path aliases and every symlink component."""
-    if relative.startswith((".concorde/runs/", ".concorde/status/")):
-        from ..harness.status_store import primary_root
+def protocol_asset_path(asset_path: str) -> str:
+    """Where a rendered Protocol asset lives in a project: ``generated/protocol/<name>`` is
+    installed as ``.concorde/protocol/<name>``."""
+    if not asset_path.startswith(RENDERED_PROTOCOL_PREFIX):
+        raise SpecError(
+            f"unexpected Protocol asset path: {asset_path}", "protocol_mismatch"
+        )
+    return PROTOCOL_DIR + "/" + asset_path[len(RENDERED_PROTOCOL_PREFIX) :]
 
-        root = primary_root(root)
+
+def read_file(root: Path, relative: str) -> bytes:
+    """Read regular files only; reject path aliases and every symlink component.
+
+    The caller chooses the worktree ``root``; Spec tooling never redirects a path elsewhere.
+    """
     path = checked_path(root, relative)
     if not path.is_file():
         raise SpecError(

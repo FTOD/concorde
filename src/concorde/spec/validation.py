@@ -46,6 +46,7 @@ from .syntax import (
     link_target,
     one_sentence,
     test_declarations,
+    UndirectedEdgeError,
 )
 from .typed_data import TypedDataError
 from .verification import DeclarationError, scan_declarations
@@ -932,6 +933,14 @@ class Checks:
     ) -> None:
         try:
             nodes, edges = flowchart_model(body)
+        except UndirectedEdgeError as error:
+            self.add(
+                "CHK.view.edges",
+                path,
+                f"checked flowchart edge must point in one declared direction: {error}",
+                line=line,
+            )
+            return
         except DiagramError as error:
             self.add(
                 "CHK.view.nodes",
@@ -1070,9 +1079,9 @@ class Checks:
                 realized.add(target.id)
             for file in repository.bound_files(target):
                 listed.setdefault(file, set()).add(target.id)
-        try:
-            declarations = scan_declarations(repository.root, listed)
-        except DeclarationError as problem:
+        problems: list[DeclarationError] = []
+        declarations = scan_declarations(repository.root, listed, problems)
+        for problem in problems:
             self.findings.append(
                 Finding(
                     "CONCORDE-COVERAGE-003",
@@ -1083,7 +1092,6 @@ class Checks:
                     line=problem.line,
                 )
             )
-            return
         scenarios = repository.scenario_nodes
         covered: set[str] = set()
         for declaration in declarations:
@@ -1290,6 +1298,13 @@ def validate_repository(
     registry_bytes: bytes | None = None,
     document_overrides: dict[str, bytes] | None = None,
 ) -> ToolResult:
+    """Validate the project's Specs and report every finding one run can establish.
+
+    Only a configuration, registry or Protocol binding that cannot be read ends the run early,
+    with one ``CONCORDE-SOURCE-008`` error. A ``target_id`` that names no registered Module is a
+    caller error and raises ``SpecError`` with ``unknown_target``; any other exception is a defect
+    of the validator and propagates unchanged.
+    """
     findings: list[Finding] = []
     artifacts: list[str] = []
     inputs: list[tuple[str, str]] = []
@@ -1301,6 +1316,19 @@ def validate_repository(
             document_overrides=document_overrides,
             _defer_document_admission=True,
         )
+        config_digest = digest(read_file(repository.root, ".concorde/config.json"))
+    except (SpecError, TypedDataError, OSError, UnicodeError) as problem:
+        repository = None
+        findings.append(
+            Finding(
+                "CONCORDE-SOURCE-008",
+                "error",
+                ".concorde/config.json",
+                str(problem),
+                "Reconcile the project configuration, registry and Protocol binding and retry.",
+            )
+        )
+    if repository is not None:
         if target_id and target_id != ".":
             repository.module(target_id)
         findings.extend(check_input_findings(repository, inputs))
@@ -1313,24 +1341,9 @@ def validate_repository(
         for path, unit in sorted(repository.units.items()):
             inputs.extend((member.path, member.digest) for member in unit.sources)
         findings.extend(spec_findings(repository))
-        inputs.append(
-            (
-                ".concorde/config.json",
-                digest(read_file(repository.root, ".concorde/config.json")),
-            )
-        )
+        inputs.append((".concorde/config.json", config_digest))
         inputs.append((repository.registry_path, digest(repository.registry_bytes)))
         inputs.append(("protocol", repository.config["protocol"]["digest"]))
-    except (ValueError, OSError, KeyError, TypeError) as problem:
-        findings.append(
-            Finding(
-                "CONCORDE-SOURCE-008",
-                "error",
-                ".concorde/config.json",
-                str(problem),
-                "Reconcile the project configuration, registry and Protocol binding and retry.",
-            )
-        )
     counts = Counter(f.severity for f in findings)
     return ToolResult(
         "validate",

@@ -9,7 +9,7 @@ from ..harness.revisions import (
     unconfirmed_files,
 )
 from ..review.review import repair_feedback, require_spec_review
-from ..spec.impact import change_scope
+from ..planning.scope import change_scope
 from ..spec.repository import SpecError
 from ..spec.typed_data import typed, canonical
 from ..spec.validation import validate_repository
@@ -118,9 +118,9 @@ def prepare_implementation(run, *, admitted_inputs=None):
         else:
             # The descriptor binds the exact accepted target state/reference. Re-evaluating
             # feedback against intentionally changed code would falsely make repair stale.
-            from ..spec.typed_data import verify_artifacts
+            from ..harness.status_store import verify_record_artifacts
 
-            verify_artifacts(run.repository.root, repair)
+            verify_record_artifacts(run.repository.root, repair)
             inputs = tuple(admitted_inputs)
     return state, local, revisions, inputs, None
 

@@ -1,7 +1,7 @@
 """Operation: independently review one Module's complete Spec, including terminology consistency."""
 
 from concorde.harness.operation_state import StateContract, run_host
-from concorde.spec import contract_shapes as shapes
+from concorde.operations import shapes
 
 from . import external_name
 
@@ -23,6 +23,10 @@ RESPONSE = {
     },
     "required": [*_BASE_RESPONSE["required"], "reviews"],
 }
+REQUEST_VERSION = 2
+RESPONSE_VERSION = 3
+
+
 STATE = StateContract(f"{EXTERNAL_NAME}-request", None)
 
 

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
 
-from ..spec.issue_shapes import PROVENANCE, REPORT
+from .shapes import PROVENANCE, REPORT
 from ..spec.repository import SpecError
 from ..spec.typed_data import check_schema, decode
 from .store import read_issue, report_issue, validate_report

@@ -22,7 +22,10 @@ def _stub(name: str):
 def catalog() -> dict[str, Callable[[], object]]:
     """Only genuine explicitly selected StateGraph Operations; never native flow mirrors."""
     from ..harness.operation_node import OperationNode
+    from .catalog import register_types
 
+    # The Graphs' State schemas are the registered typed values of their Agents.
+    register_types()
     return {
         "terminal_agent_operation": lambda: OperationNode("context_assessor").graph()
     }
