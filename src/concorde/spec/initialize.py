@@ -1,4 +1,4 @@
-"""Initialize a project with a Protocol 11 registry and an honest root Module stub."""
+"""Initialize a project with a Protocol 12 registry and an honest root Module stub."""
 
 from __future__ import annotations
 
@@ -359,7 +359,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         }
     except (KeyError, TypeError) as error:
         raise SpecError(
-            "project proposal registry is not a Protocol 11 registry",
+            "project proposal registry is not a Protocol 12 registry",
             "invalid_proposal",
         ) from error
     if proposal["base_digest"] is not None or any(

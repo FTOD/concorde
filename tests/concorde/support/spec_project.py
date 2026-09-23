@@ -1,4 +1,4 @@
-"""Protocol 11 consumer fixture shared by the test suite."""
+"""Protocol 12 consumer fixture shared by the test suite."""
 
 import json
 from pathlib import Path
@@ -244,7 +244,7 @@ def module_document(
     extra_owned=(),
     contracts="",
 ):
-    """A Protocol 11 Module entry and its obligations document.
+    """A Protocol 12 Module entry and its obligations document.
 
     ``nodes`` is ``(design prose, [node, ...])``; each node has ``id``, ``type`` (``concept`` or
     ``realization``), ``title``, ``meaning`` (explanatory prose), and ``definition`` (concepts) or
@@ -578,7 +578,7 @@ WORKSPACE = module_document(
 
 
 class SpecProject:
-    """A small Protocol 11 project written from DocumentSource values, for checks tests."""
+    """A small Protocol 12 project written from DocumentSource values, for checks tests."""
 
     def __init__(self, root: Path, checks=()):
         from concorde.distribution.project_defaults import write_protocol_copy

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-11.1.0-6264e8" alt="Spec Protocol 11.1.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-12.0.0-6264e8" alt="Spec Protocol 12.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/client-Pi-273449" alt="Client: Pi" /></a>
   <a href="#control-flow-pi-workflows-and-langgraph-graphs"><img src="https://img.shields.io/badge/control_flow-pi_workflows_%C2%B7_LangGraph-273449" alt="Control flow: pi workflows and LangGraph Graphs" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
@@ -266,7 +266,7 @@ For your own project, [scaffold a docsite](docsite/README.md#scaffold-a-docsite)
 
 ## The Spec Protocol in brief
 
-Concorde's independent **[Spec Protocol 11.1.0](protocol/README.md)** has two purposes: a human
+Concorde's independent **[Spec Protocol 12.0.0](protocol/README.md)** has two purposes: a human
 understands a project's backbone from its Specs without reading code, and a harness derives from
 the Specs exactly what each AI task may read and write. A Module's entry `module.md` answers five
 questions in order:

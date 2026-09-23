@@ -1,4 +1,4 @@
-"""Every family of Protocol 11 structural checks, each on a small fixture project."""
+"""Every family of Protocol 12 structural checks, each on a small fixture project."""
 
 from __future__ import annotations
 

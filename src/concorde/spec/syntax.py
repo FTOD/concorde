@@ -1,4 +1,4 @@
-"""Protocol 11 reading syntax: anchors, sections, Terminology tables, definitions and diagrams.
+"""Protocol 12 reading syntax: anchors, sections, Terminology tables, definitions and diagrams.
 
 Every parser here reads one reading document's text and returns what it declares together with
 the problems it found, each tagged with the identity of the check it violates. Nothing here reads

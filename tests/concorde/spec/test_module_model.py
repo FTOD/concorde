@@ -1,4 +1,4 @@
-"""Realizations, boundary sets and their use by the Harness, on a small Protocol 11 project."""
+"""Realizations, boundary sets and their use by the Harness, on a small Protocol 12 project."""
 
 from __future__ import annotations
 

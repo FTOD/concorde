@@ -1,4 +1,4 @@
-# Migration to Protocol 11
+# Migration to Protocol 11 and 12
 
 Version 11 replaces Protocol 10's prose model with a declared one. Version-10 registries, metadata
 and reading structures are invalid and MUST be migrated explicitly. No tool may silently
@@ -71,3 +71,13 @@ bound by several Modules received read access to every binding Module's document
 its own context. Under 11.1 such a task MUST instead be bound to every binding Module, so its reads
 stay within the `SpecContext` of the Modules it is bound to. Specifications need no change; a
 harness that granted the extra read replaces it with the wider task binding.
+
+## Version 12
+
+Version 12 makes task boundaries normative and changes no document format. Under 11, the
+Protocol defined the boundary sets and left the level each task receives to the harness, with an
+illustrative table. Under 12, the Protocol defines six task types (`understand`, `specify`,
+`implement`, `test`, `review-spec`, `review-code`), each assigning every boundary set one access
+level. The rule for tasks bound to several Modules and for paths in several sets is now stated.
+Specifications need no change. A harness that used its own task kinds maps each onto a task type,
+and MUST NOT grant a level the type does not assign.

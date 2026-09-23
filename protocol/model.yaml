@@ -14,7 +14,7 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "11.1.0"
+protocol: "12.0.0"
 model_version: 1
 
 context_channels:
@@ -372,6 +372,23 @@ boundary_sets:
     contents: every file covered by the Module's realization entries, including pending entries
 
 access_levels: [none, names, read, write]
+
+# The access level each task type assigns to each boundary set; see boundaries.md.
+# A task bound to several Modules applies its row to every bound Module; a path in
+# several sets receives the highest level, in the order of access_levels.
+task_types:
+  - id: understand
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: none, ExternalContext: read}
+  - id: specify
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: write, ExternalContext: read}
+  - id: implement
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: write, SpecScope: none, ExternalContext: read}
+  - id: test
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: none, ExternalContext: read}
+  - id: review-spec
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: none, ExternalContext: read}
+  - id: review-code
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: none, ExternalContext: read}
 
 reconciliation:
   statement: >

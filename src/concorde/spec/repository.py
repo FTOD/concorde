@@ -1,4 +1,4 @@
-"""Protocol 11 repository admission: project configuration, installed Protocol copy and Spec graph."""
+"""Protocol 12 repository admission: project configuration, installed Protocol copy and Spec graph."""
 
 from __future__ import annotations
 

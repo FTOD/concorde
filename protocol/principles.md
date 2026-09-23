@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 11.1.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 12.0.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -16,7 +16,7 @@ chapter says how its rules do.
    enough.
 2. **Boundaries.** A harness running an AI task can derive from the specification exactly what the
    task may read and what it may write. Different tasks need different boundaries, so the Protocol
-   defines the sets that boundaries are composed from, not one fixed boundary.
+   defines the sets that boundaries are composed from and the task types that compose them.
 
 The two support each other. A boundary is only useful if what lies inside it is understandable, and
 a Module that a human can understand as one responsibility is also the natural unit of a task.
@@ -81,7 +81,7 @@ own relations are in its entry's metadata; the project registry mirrors them for
 - **Context** — what a reader of a Module may read. See [Context](context.md).
 - **Scope** — what a task bound to a Module may be given to write. See
   [Boundaries](boundaries.md).
-- **Boundary** — the read and write sets a harness assigns to one task.
+- **Boundary** — the read and write sets a task receives, fixed by its task type.
 - **Views** — diagrams, indexes and pages a human reads. See [Views](views.md).
 - **Checks** — decidable rules that the graph is well formed. See [Checks](checks.md).
 
@@ -182,7 +182,7 @@ repair it.
 
 ## What the Protocol does not define
 
-Which boundary a particular task receives and how a harness enforces it. Docsite pages, navigation,
+Which task type a harness assigns to a piece of work, and how it enforces the resulting boundary. Docsite pages, navigation,
 themes and interaction. The serialization and location of the project registry, tool
 configuration, worker wire formats and context delivery. These are separate agreements; a change
 in any of them is not a Protocol version change.

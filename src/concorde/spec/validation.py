@@ -1,4 +1,4 @@
-"""Every decidable check of Spec Protocol 11 (``protocol/checks.md``), reported as findings.
+"""Every decidable check of Spec Protocol 12 (``protocol/checks.md``), reported as findings.
 
 A finding's ``rule_id`` is the check identity (``CHK.*``). A few tool findings keep a
 ``CONCORDE-*`` identity: link fragments, scenario coverage, configured check inputs, Issue records
@@ -1359,7 +1359,7 @@ def validate_repository(
             },
             "source_digest": digest(sorted(inputs)),
             "claims": [
-                "Protocol 11 structural checks (protocol/checks.md)",
+                "Protocol 12 structural checks (protocol/checks.md)",
                 "registry mirror of the entries' module blocks",
                 "configured check input availability and path safety",
                 "stable-identity link fragments",

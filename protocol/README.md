@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol **11.1.0** describes a project as a set of Modules, each explaining one
+Concorde Spec Protocol **12.0.0** describes a project as a set of Modules, each explaining one
 responsibility, connected by declared relations. It serves two purposes:
 
 1. **Understanding** — a human grasps the backbone of the project, its parts and main flows,
@@ -32,8 +32,8 @@ Architecture diagrams either assert only declared relations or are marked illust
 2. [Node types](model.md) — every kind of thing a specification declares, and why each exists.
 3. [Relations](relations.md) — every relation, its attributes and its checks.
 4. [Context](context.md) — the read side: three channels, selection and the reconciliation.
-5. [Boundaries](boundaries.md) — the write side, the impact of a write, and composing a task's
-   boundary.
+5. [Boundaries](boundaries.md) — the write side, the impact of a write, and the task types that
+   compose a task's boundary.
 6. [Module specifications](module.md) — what the reading content must explain.
 7. [Required format](format.md) — Module declaration, registry, metadata schema 3, identities, anchors, reading
    structure and definition syntax.

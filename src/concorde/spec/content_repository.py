@@ -1,4 +1,4 @@
-"""Protocol 11 Spec graph loader and the repository API every consumer reads.
+"""Protocol 12 Spec graph loader and the repository API every consumer reads.
 
 The registry says which Modules exist and where each entry is. Every declaration is read from the
 entries' ``module`` blocks and from the registered documents: the registry's mirrored fields are
@@ -184,7 +184,7 @@ class _Load:
 
 
 class DocumentUnitRepository:
-    """The loaded Protocol 11 graph of one project checkout."""
+    """The loaded Protocol 12 graph of one project checkout."""
 
     def __init__(
         self,
@@ -305,7 +305,7 @@ class DocumentUnitRepository:
         ):
             raise SpecError(
                 'the Spec registry must be {"schema_version": 3, "modules": [...]} '
-                "(Protocol 11); migrate explicitly",
+                "(Protocol 12); migrate explicitly",
                 "unsupported_profile",
             )
         self.registry = value

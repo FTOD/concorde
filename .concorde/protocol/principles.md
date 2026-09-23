@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 11.1.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 12.0.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -16,7 +16,7 @@ chapter says how its rules do.
    enough.
 2. **Boundaries.** A harness running an AI task can derive from the specification exactly what the
    task may read and what it may write. Different tasks need different boundaries, so the Protocol
-   defines the sets that boundaries are composed from, not one fixed boundary.
+   defines the sets that boundaries are composed from and the task types that compose them.
 
 The two support each other. A boundary is only useful if what lies inside it is understandable, and
 a Module that a human can understand as one responsibility is also the natural unit of a task.
@@ -81,7 +81,7 @@ own relations are in its entry's metadata; the project registry mirrors them for
 - **Context** — what a reader of a Module may read. See [Context](context.md).
 - **Scope** — what a task bound to a Module may be given to write. See
   [Boundaries](boundaries.md).
-- **Boundary** — the read and write sets a harness assigns to one task.
+- **Boundary** — the read and write sets a task receives, fixed by its task type.
 - **Views** — diagrams, indexes and pages a human reads. See [Views](views.md).
 - **Checks** — decidable rules that the graph is well formed. See [Checks](checks.md).
 
@@ -182,7 +182,7 @@ repair it.
 
 ## What the Protocol does not define
 
-Which boundary a particular task receives and how a harness enforces it. Docsite pages, navigation,
+Which task type a harness assigns to a piece of work, and how it enforces the resulting boundary. Docsite pages, navigation,
 themes and interaction. The serialization and location of the project registry, tool
 configuration, worker wire formats and context delivery. These are separate agreements; a change
 in any of them is not a Protocol version change.
@@ -896,9 +896,10 @@ boundary of what it may read and what it may write, derived from the specificati
 guessed. [Context](context.md) defines the read sets in detail; this chapter defines the write sets,
 the impact of a write, and how a harness composes sets into the boundary of one task.
 
-The Protocol defines the **sets**. Which sets a given task receives, at which access level, and how
-the boundary is enforced are decisions of the harness running the task. A specification never
-grants a task anything by itself.
+The Protocol defines the **sets** and the **task types**. A task type fixes which sets a task
+receives and at which access level, so two harnesses give the same task the same boundary. Which
+task type a harness assigns to a piece of work, and how it enforces the resulting boundary, remain
+the harness's decisions. A specification never grants a task anything by itself.
 
 ## Boundary sets of a Module
 
@@ -934,8 +935,8 @@ The following are outside every Module's write sets:
 A file bound by no Module is therefore not writable by any Module-scoped task. To change or create
 such a file, first bind it: add it to a realization as an entry, or as a `pending` entry when it
 does not exist yet. Declaring the file is a Spec change within `SpecScope(M)`; creating it is then
-within `ImplementationScope(M)`. This two-step shape is what lets a planning task decide where code
-may go before a coding task writes it.
+within `ImplementationScope(M)`. This two-step shape is what lets a `specify` task decide where
+code may go before an `implement` task writes it.
 
 ## The project registry
 
@@ -998,21 +999,41 @@ A harness MUST keep every boundary within these limits:
 4. **Task material adds no source.** A harness MAY supply material produced for the task, such as a
    plan, a brief or a diff since a baseline. It is not a Protocol source and widens no set.
 
-Within these limits, different tasks receive different boundaries. For example, bound to one
-Module M:
+## Task types
 
-| Task | `SpecContext` | `ImplementationContext` | `ImplementationScope` | `SpecScope` | `ExternalContext` |
+Every task has exactly one task type. The type assigns each boundary set of the bound Modules one
+access level:
+
+| Task type | `SpecContext` | `ImplementationContext` | `ImplementationScope` | `SpecScope` | `ExternalContext` |
 | --- | --- | --- | --- | --- | --- |
-| Explain or plan | read | names | none | none | read |
-| Write the Spec | read | names | none | write | read |
-| Implement | read | names | write | none | read |
-| Review code | read | names | read | none | read |
+| `understand` | read | names | none | none | read |
+| `specify` | read | names | none | write | read |
+| `implement` | read | names | write | none | read |
+| `test` | read | names | read | none | read |
+| `review-spec` | read | names | none | none | read |
+| `review-code` | read | names | read | none | read |
 
-This table is illustrative; the Protocol does not prescribe task kinds. What it guarantees is that
-each row can be computed exactly and stays inside rules 1 to 4.
+- **`understand`** learns what a Module promises and how it is realized, without reading code:
+  explaining, assessing, or planning a change. Planning is one use of understanding, not a task
+  type of its own.
+- **`specify`** changes the Module's own documents, including declaring `pending` realization
+  entries for files a later `implement` task will create.
+- **`implement`** changes the Module's realization: its bound files, and the pending files it
+  declares.
+- **`test`** reads the realization and its tests against the Specs. Running checks is evidence
+  produced for the task, not a wider read.
+- **`review-spec`** judges the Module's documents; **`review-code`** judges its realization against
+  its Specs. A diff since a baseline is task material (rule 4).
 
-A scenario-scoped task is bound to the scenario's owner. A task bound to several Modules receives
-the union of their sets at the levels the harness chooses.
+A `none` in the `SpecScope` column does not hide the Module's own documents: they are in
+`SpecContext`, which every type reads. Each row stays inside rules 1 to 4, and every level can be
+computed exactly from declarations. A harness MUST NOT give a task a level its type does not
+assign; it MAY give less, for example by withholding external material a task does not need.
+
+A scenario-scoped task is bound to the scenario's owner. A task bound to several Modules receives,
+for each bound Module, that Module's sets at the levels its type assigns. When a path falls into
+several sets, it receives the highest level any of them assigns, ordered `none`, `names`, `read`,
+`write`.
 
 # Required format
 

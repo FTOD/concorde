@@ -22,7 +22,7 @@ holds the Operation catalog and dispatch and contains the Modules that provide O
 Implementation, Review, Validation, Delivery and Issue solving keep their own artifacts and
 acceptance rules.
 
-The examples below use **Spec Protocol 11.1.0**. A project's Specs form one graph of declared nodes
+The examples below use **Spec Protocol 12.0.0**. A project's Specs form one graph of declared nodes
 and relations. Each Module has an entry `module.md` (Purpose, Terminology, Usage, Design,
 Relationships) and may add explanatory topics; precise requirements, scenarios and versioned
 contracts live in implementation documents owned by the same Module. Every document has paired
@@ -246,7 +246,7 @@ Module's Spec. Human navigation grants no extra Agent context.
 
 ## Concorde Spec Protocol entry and upgrades
 
-Spec Protocol 11.1.0 defines Module Specs as a checked graph whose realizations bind the files that
+Spec Protocol 12.0.0 defines Module Specs as a checked graph whose realizations bind the files that
 realize each Module, and whose scenarios are declared by the tests that verify them. The installer
 adds a receipt-owned `concorde-protocol` block to `AGENTS.md` that directs the user session to read
 `.concorde/protocol/principles.md`. Agents do not use ambient instruction discovery; they receive the

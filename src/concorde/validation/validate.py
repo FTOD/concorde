@@ -124,7 +124,7 @@ def validate(run, run_checks: bool = True) -> dict:
         _withdraw_readiness(run)
     change = read_change(run.repository.root)
     if change is not None:
-        # A pending entry is removed once its file exists (Protocol 11, CHK.binds.pending-subset).
+        # A pending entry is removed once its file exists (Protocol 12, CHK.binds.pending-subset).
         # In a candidate the host confirms created files before validating, as delivery does.
         from ..spec.changes import confirm_pending_files
 
