@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-10.0.0-6264e8" alt="Spec Protocol 10.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-11.0.0-6264e8" alt="Spec Protocol 11.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/client-Pi-273449" alt="Client: Pi" /></a>
   <a href="#native-workflows-and-optional-stategraph-operations"><img src="https://img.shields.io/badge/graphs-LangGraph-273449" alt="Native workflows; optional StateGraph Operations" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
@@ -13,7 +13,7 @@
 <p align="center">
   <a href="#why-concorde"><strong>Why Concorde</strong></a> ·
   <a href="#get-started"><strong>Get started</strong></a> ·
-  <a href="#explore-concorde"><strong>Docsite & Studio</strong></a> ·
+  <a href="#explore-concorde"><strong>Docsite</strong></a> ·
   <a href="https://ftod.github.io/concorde/"><strong>Explore the Specs</strong></a> ·
   <a href="docs/workflow-guide.md"><strong>Workflow guide</strong></a>
 </p>
@@ -29,7 +29,7 @@ file/tool policy. Native broad tools are not OS-confined by Concorde. A change i
 checked and independently reviewed there, and delivered only when you ask.
 
 You drive Concorde from the **Pi coding agent** through its `concorde` session tool. Pi is the
-only supported client; standalone Skills and Codex/Claude client integrations are retired.
+only supported client.
 Pi model providers, including OpenAI and Anthropic, remain supported. Model cognition runs through native pi-subagents Agents and authored workflows; deterministic actions
 are Host services. LangGraph is an optional execution boundary, not a scheduler under every call. The user session reads,
 answers and edits Specs directly, then chooses which capabilities to call and in what order.
@@ -40,19 +40,22 @@ answers and edits Specs directly, then chooses which capabilities to call and in
 
 A **Module** is one cohesive responsibility, such as planning a change or publishing documentation.
 It need not be a package or directory: its realization may span several, or be supplied entirely by
-its child Modules. Each Module owns one complete Spec in two parts:
+its child Modules. A project's Specs form one graph: Modules and the documents they own, the
+concepts, requirements, scenarios and contracts those documents define, and typed relations between
+them.
 
-- **Module Specs** explain it for a reader who does not know the code: Purpose, Terminology,
-  Usage, Design and Relationships, with a Mermaid diagram of how its entities collaborate.
-- **Implementation Specs** hold the precise obligations: `SHALL` requirements, `GIVEN`/`WHEN`/`THEN`
-  scenarios and structured interface contracts.
+- A Module's **entry** (`module.md`) explains it for a reader who does not know the code: Purpose,
+  Terminology, Usage, Design and Relationships. Explanatory topics can join it.
+- **Implementation documents** hold the precise obligations: `SHALL` requirements,
+  `GIVEN`/`WHEN`/`THEN` scenarios and versioned interface contracts.
 
-Every Markdown document has a paired `.md.json` metadata file that records its identity, owner and
-role, the entities it explains and the files or directory prefixes that realize them. The registry
-`.concorde/specs.json` records how Modules compose (`parent`), what they depend on (`uses`) and which
-other documents they explicitly include as context (`references`). Tests declare the scenarios they
-verify, so coverage is derived from the tests rather than from a list someone must maintain.
-Concorde checks all of this for consistency and tracks which Module contracts a shared file affects.
+Every Markdown document has a paired `.md.json` metadata file. The entry's metadata declares the
+Module's own relations — which documents it owns, which Modules it `contains` and `uses` (optionally
+naming exactly the promises it `relies_on`), what else it `includes`, and which contracts it
+`participates` in — and the registry `.concorde/specs.json` mirrors them for a global view. Each term
+is defined once, in its owner's Terminology table, and imported elsewhere by link. Realizations bind
+every file of the repository to the Modules it realizes, and tests declare the scenarios they verify.
+Concorde checks all of this, and computes from it what each task may read and write.
 
 ### Each domain Agent sees one Module's contract, and only what its phase needs
 
@@ -60,9 +63,9 @@ A worker bound to a Module receives four kinds of context, frozen for its invoca
 
 | Context            | What it contains                                                                                  | Who receives it                                                       |
 | :----------------- | :------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------- |
-| **Spec**           | The Module's own documents plus the ones it explicitly references, one level deep                 | Every phase                                                           |
-| **Implementation** | The files bound by the Module's entities                                                          | Names for every phase; contents only for code writing and code review |
-| **Resource**       | Vendored, version-pinned documentation and source of the libraries it declares, such as LangGraph | Planning, task authoring, code writing and code review, read-only     |
+| **Spec**           | The Module's own documents plus the ones its `uses`, `contains` and `includes` select, one level  | Every phase                                                           |
+| **Implementation** | The files bound by the Module's realizations                                                      | Names for every phase; contents only for code writing and code review |
+| **External**       | Vendored, version-pinned documentation and source it includes, such as LangGraph                  | Planning, task authoring, code writing and code review, read-only     |
 | **Task**           | The request, constraints and the stage artifacts admitted for this phase                          | Every phase                                                           |
 
 Planners and task authors reason from the Spec alone. If the Spec does not say something the task
@@ -85,7 +88,7 @@ responsibilities; a model proposal or successful stage-only gate is never domain
 An **Agent** is a callable native Pi agent with one canonical Concorde definition, either a Domain Agent
 or a Task subagent. A **Workflow** is an authored pi-subagents composition.
 An **Operation** is an explicitly selected LangGraph StateGraph flow. Finite non-model actions are
-**Host services**. These executable kinds do not change Module ownership or context references.
+**Host services**. These executable kinds do not change Module ownership or Spec relations.
 The compatibility `concorde-*` names and `operation_id` wire fields do not make every entry a Graph.
 
 Plan, review and bounded Issue solving use authored native workflows. Context assessment, tasks and
@@ -95,8 +98,7 @@ when asynchronous. Final acceptance separately reconciles actual native artifact
 
 `OperationNode(agent).graph()` is the optional typed StateGraph boundary. A trusted embedding supplies
 an authorized native launch/admission service through Runtime, synchronously or asynchronously. Its
-State cannot choose that authority. There is no default model runner or old RPC fallback. Studio
-inspects this exact boundary, not fake graph mirrors of native workflows.
+State cannot choose that authority. There is no default model runner or old RPC fallback.
 
 ### Find the Agent, not an execution wrapper
 
@@ -166,7 +168,7 @@ bypass unfinished planned work or selected required evidence.
 **Requirements.** A Git project on **Linux with [bubblewrap](https://github.com/containers/bubblewrap)**,
 working user, mount and PID namespaces and pidfd support: configured checks and tester commands use that enforced boundary. Native Agent file policies
 are not sandbox enforcement. **Python 3.11+**, **Node.js 18+** and npm, used for the managed runtime and Pi
-extension dependencies, not a Skills installer. The [Pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) on
+extension dependencies. The [Pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) on
 `PATH` (`npm install -g @earendil-works/pi-coding-agent`; Concorde is developed against 0.85.1),
 logged in with `pi` then `/login`: workers use that login and Pi's own model providers. The optional
 docsite needs Node.js **20+**.
@@ -179,8 +181,7 @@ cd concorde
 python3 scripts/concorde.py build
 ```
 
-**2. Preview the Pi-only installation into your project, then apply it.** There is no client
-selector; retired `--integration` flags are rejected, including `--integration pi`.
+**2. Preview the installation into your project, then apply it.**
 
 ```bash
 python3 scripts/install-concorde.py --target /absolute/path/to/project --preview
@@ -191,13 +192,10 @@ The installer provisions a locked managed runtime at `.concorde/.venv`, deploys 
 `.concorde/framework/`, places the Protocol at `.concorde/protocol/` and adds a guidance block to
 `AGENTS.md`. It installs a receipt-owned session extension under `.pi/extensions/` whose
 `concorde` tool describes and runs the eleven public capability entries. It preserves your content outside
-the entries it owns, and the launcher re-runs itself inside the managed runtime. No standalone
-Skills are installed and no Skills CLI runs.
+the entries it owns, and the launcher re-runs itself inside the managed runtime.
 
-Upgrades retire only unchanged receipt-owned outputs and exact owned root blocks. Edited,
-symlinked or unknown content conflicts safely. Old external CLI-owned `.agents/skills`,
-`.claude/skills` entries and `skills-lock.json` are left untouched, with a manual retirement notice;
-remove only your own retired Concorde entries, never those directories or locks wholesale.
+Upgrades update or remove only unchanged receipt-owned outputs and the exact owned root block.
+Edited, symlinked or unknown content conflicts safely.
 
 **3. Commit project inputs, then initialize the project.** Candidate worktrees start from committed
 `HEAD`, so commit your project files, root guidance and complete Protocol bundle first. Framework,
@@ -288,46 +286,25 @@ For your own project, [scaffold a docsite](docsite/README.md#scaffold-a-docsite)
 `python3 .concorde/framework/scripts/concorde.py docsite --propose` and then `--apply`; add
 `--github-pages` for a deployment workflow.
 
-### LangGraph Studio
-
-Start Concorde's local Agent Server with the locked Studio dependencies:
-
-```bash
-uv sync --locked --group studio
-python3 scripts/concorde.py build
-uv run --locked --group studio langgraph dev \
-  --config generated/langgraph.json --host 127.0.0.1 --port 2024 \
-  --n-jobs-per-worker 1 --no-browser
-```
-
-Open **[LangGraph Studio](https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024)** and
-select `terminal-agent-operation`. This inspects the actual optional typed StateGraph. Execution
-requires an explicitly supplied trusted native Agent service; no model is selected implicitly.
-See [the Operation API and Studio guide](scripts/development/STUDIO.md). Native capabilities do not
-redirect through `CONCORDE_STUDIO_URL`. Retaining the installed LangGraph dependency is intentional;
-optional execution does not mean untested removal of installed dependencies.
-
 ## The Spec Protocol in brief
 
-Concorde's independent **[Spec Protocol 10.0.0](protocol/README.md)** defines one specification
-category, the Module Spec, and which part of it is written for human reading. A Module's reading entry
-`module.md` answers five questions in order:
+Concorde's independent **[Spec Protocol 11.0.0](protocol/README.md)** has two purposes: a human
+understands a project's backbone from its Specs without reading code, and a harness derives from
+the Specs exactly what each AI task may read and write. A Module's entry `module.md` answers five
+questions in order:
 
 | Section           | The question it answers                                                          |
 | :---------------- | :------------------------------------------------------------------------------- |
 | **Purpose**       | What responsibility does this Module own, for whom and within which scope?       |
-| **Terminology**   | Which concepts does the reader need, each defined once in its canonical table?   |
+| **Terminology**   | Which words does the reader need, each defined once by its owner?                |
 | **Usage**         | When and how is it used, with which inputs, results, errors and limits?          |
-| **Design**        | How do its decomposition, state and constraints fulfill its guarantees, and why? |
-| **Relationships** | Which entities collaborate, under which conditions, as a labeled Mermaid view?   |
+| **Design**        | How do its decomposition, state and constraints fulfil its guarantees, and why?  |
+| **Relationships** | How does it collaborate with other Modules, shown in a diagram checked against the declared relations? |
 
-Explanatory topics join the entry with `document.role: module`. Formal requirements, scenarios and
-structured contracts live only in companions with `document.role: implementation`, owned by the same
-Module. Both roles are normative reading and both enter agent context whole; the docsite simply shows
-them in parallel tabs. A Module's context is its own documents plus its explicit `references`,
-expanded exactly one level: a Markdown link never adds a file to what an agent may read, and a
-metadata-only edit invalidates the reviews that relied on it. Structural validation and declared test
-coverage are evidence, not proof of semantic completeness.
+Every node and relation is declared exactly once. A Module's context is computed from its own
+declarations, one level deep: a Markdown link never adds a file to what an agent may read. Its write
+sets are its own documents and the files its realizations bind. Structural validation and declared
+test coverage are evidence, not proof that a Spec is sufficient.
 
 Start from the [Protocol](protocol/README.md), the [Module template](protocol/templates/module.md)
 or [Concorde's own root Spec](specs/concorde/module.md), which applies it to this repository.
@@ -357,7 +334,6 @@ Commands are relative to this checkout; installed projects use the same scripts 
 | `python3 scripts/concorde.py docsite` · `usage`                  | Scaffold a project docsite; summarize recorded worker usage per run.                                        |
 | `python3 scripts/install-concorde.py`                            | Preview or apply installation into a project.                                                               |
 | `python3 scripts/issues.py`                                      | Inspect branch-local Issues from the command line.                                                          |
-| [LangGraph Studio](scripts/development/STUDIO.md)                | Inspect/use the explicitly selected typed StateGraph Operation boundary.                                    |
 | `npm --prefix docsite run <script>`                              | `start`, `build`, `validate`, `typecheck`, `test`, `check`.                                                 |
 
 The CLI `validate` command checks the project directly; the `concorde-validate` Host service also
@@ -372,7 +348,7 @@ python3 scripts/development/init-references.py   # vendored references under ref
 npm ci --prefix pi                                # the Pi extensions workers load
 python3 scripts/concorde.py build --check
 python3 scripts/concorde.py validate
-python3 scripts/development/run-tests.py
+.venv/bin/python -m pytest                        # parallel by default; -n 0 runs in-process
 ```
 
 Concorde self-maintenance uses a fresh Concorde-catalog-free writer in a candidate, followed by a
@@ -389,11 +365,10 @@ reverify with `select-session --verify <absolute-selection>` before the fresh ho
 `CONCORDE_SESSION_SELECTION`, only the returned exact `-e` entry and discovery-disable flags, and
 a separate host-owned Pi configuration directory. Missing/stale artifacts or candidate Python
 block; selection is provenance, not evidence of extension loading, tool use or model execution.
-The host retains the actual file/tool grant; no global fallback or Studio redirect is allowed.
+The host retains the actual file/tool grant; no global fallback is allowed.
 
 Never edit build output under `generated/`; change `prompts/operation-guidance/`, other authored
-`prompts/`, canonical Agent/capability sources or `pi/extensions/` and rebuild. There is no standalone `skills/` product
-or `skills` publishing command. See the
+`prompts/`, canonical Agent/capability sources or `pi/extensions/` and rebuild. See the
 [source-checkout policy](AGENTS.md) and [development details](docs/workflow-guide.md#development).
 
 ---

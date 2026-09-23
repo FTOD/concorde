@@ -1,51 +1,205 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.spec.module",
     "owner": "module.spec",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Spec tooling",
+    "owns": [
+      "specs/concorde/spec/module.md",
+      "specs/concorde/spec/validation.md",
+      "specs/concorde/spec/requirements.md",
+      "specs/concorde/spec/scenarios.md",
+      "specs/concorde/spec/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution"
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.operation"
+        ]
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.agent"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.issue"
+        ]
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate",
+          "concept.worktrees.worktree"
+        ]
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-execution"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.spec.registry",
+      "id": "concept.spec.registry",
+      "type": "concept",
       "title": "Registry",
-      "kind": "concept",
-      "meaning": "#entity.spec.registry"
+      "meaning": "#concept.spec.registry"
     },
     {
-      "id": "entity.spec.protocol-binding",
+      "id": "concept.spec.document",
+      "type": "concept",
+      "title": "Document",
+      "meaning": "#concept.spec.document"
+    },
+    {
+      "id": "concept.spec.protocol-binding",
+      "type": "concept",
       "title": "Protocol binding",
-      "kind": "concept",
-      "meaning": "#entity.spec.protocol-binding"
+      "meaning": "#concept.spec.protocol-binding"
     },
     {
-      "id": "entity.spec.repository-api",
-      "title": "SpecRepository API",
-      "kind": "interface",
-      "meaning": "#entity.spec.repository-api"
+      "id": "concept.spec.structural-check",
+      "type": "concept",
+      "title": "Structural check",
+      "meaning": "#concept.spec.structural-check"
     },
     {
-      "id": "entity.spec.validator",
-      "title": "Validator",
-      "kind": "interface",
-      "meaning": "#entity.spec.validator"
+      "id": "concept.spec.boundary-set",
+      "type": "concept",
+      "title": "Boundary set",
+      "meaning": "#concept.spec.boundary-set"
     },
     {
-      "id": "entity.spec.init-operation",
-      "title": "Initialization operation",
-      "kind": "interface",
-      "meaning": "#entity.spec.init-operation"
+      "id": "concept.spec.impact-index",
+      "type": "concept",
+      "title": "Impact index",
+      "meaning": "#concept.spec.impact-index"
     },
     {
-      "id": "entity.spec.spec-model",
+      "id": "concept.spec.verification-declaration",
+      "type": "concept",
+      "title": "Verification declaration",
+      "meaning": "#concept.spec.verification-declaration"
+    },
+    {
+      "id": "concept.spec.typed-value",
+      "type": "concept",
+      "title": "Typed value",
+      "meaning": "#concept.spec.typed-value"
+    },
+    {
+      "id": "concept.spec.file-transaction",
+      "type": "concept",
+      "title": "File transaction",
+      "meaning": "#concept.spec.file-transaction"
+    },
+    {
+      "id": "concept.spec.initial-proposal",
+      "type": "concept",
+      "title": "Initial proposal",
+      "meaning": "#concept.spec.initial-proposal"
+    },
+    {
+      "id": "realization.spec.model",
+      "type": "realization",
       "title": "Spec model",
-      "kind": "program",
-      "files": [
-        "operations/init.py",
-        "scripts/development/check-spec-v5.py",
+      "meaning": "#realization.spec.model",
+      "entries": [
         "src/concorde/__init__.py",
-        "src/concorde/__main__.py",
-        "src/concorde/spec/",
+        "src/concorde/spec/"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.spec.typed-values",
+      "type": "realization",
+      "title": "Wire types and schemas",
+      "meaning": "#realization.spec.typed-values",
+      "entries": [
+        "src/concorde/spec/contract_shapes.py",
+        "src/concorde/spec/contracts.py",
+        "src/concorde/spec/frontmatter.py",
+        "src/concorde/spec/issue_shapes.py",
+        "src/concorde/spec/schema.py",
+        "src/concorde/spec/typed_data.py",
+        "src/concorde/spec/wire_shapes.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.spec.transactions",
+      "type": "realization",
+      "title": "Transaction writer",
+      "meaning": "#realization.spec.transactions",
+      "entries": [
+        "src/concorde/spec/changes.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.spec.initializer",
+      "type": "realization",
+      "title": "Project initializer",
+      "meaning": "#realization.spec.initializer",
+      "entries": [
+        "operations/init.py",
+        "src/concorde/spec/initialize.py",
+        "src/concorde/spec/project.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.spec.protocol-text",
+      "type": "realization",
+      "title": "Protocol text",
+      "meaning": "#realization.spec.protocol-text",
+      "entries": [
+        "protocol/"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.spec.protocol-assets",
+      "type": "realization",
+      "title": "Protocol assets",
+      "meaning": "#realization.spec.protocol-assets",
+      "entries": [
+        "prompts/protocol/",
+        "protocol/manifest.json"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.spec.tests",
+      "type": "realization",
+      "title": "Spec tests",
+      "meaning": "#realization.spec.tests",
+      "entries": [
         "tests/__init__.py",
         "tests/concorde/__init__.py",
         "tests/concorde/harness/test_host_tools.py",
@@ -54,52 +208,130 @@
         "tests/concorde/support/__init__.py",
         "tests/concorde/support/paths.py"
       ],
-      "meaning": "#entity.spec.spec-model"
-    },
-    {
-      "id": "entity.spec.typed-values",
-      "title": "Typed values",
-      "kind": "shared program",
-      "files": [
-        "src/concorde/spec/contract_shapes.py",
-        "src/concorde/spec/contracts.py",
-        "src/concorde/spec/frontmatter.py",
-        "src/concorde/spec/schema.py",
-        "src/concorde/spec/typed_data.py",
-        "src/concorde/spec/wire_shapes.py",
-        "tests/concorde/spec/test_typed_data.py"
-      ],
-      "meaning": "#entity.spec.typed-values"
-    },
-    {
-      "id": "entity.spec.file-transactions",
-      "title": "File transactions",
-      "kind": "shared program",
-      "files": [
-        "src/concorde/spec/changes.py"
-      ],
-      "meaning": "#entity.spec.file-transactions"
-    },
-    {
-      "id": "entity.spec.protocol-text",
-      "title": "Protocol text",
-      "kind": "authored standard",
-      "files": [
-        "protocol/"
-      ],
-      "meaning": "#entity.spec.protocol-text"
-    },
-    {
-      "id": "entity.spec.protocol-assets",
-      "title": "Protocol assets",
-      "kind": "program",
-      "files": [
-        "prompts/protocol/",
-        "protocol/manifest.json"
-      ],
-      "meaning": "#entity.spec.protocol-assets"
+      "pending": []
     }
   ],
-  "dependencies": [],
-  "bindings": []
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "loads",
+      "target": "concept.spec.registry"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "loads",
+      "target": "concept.spec.document"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "verifies",
+      "target": "concept.spec.protocol-binding"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "runs",
+      "target": "concept.spec.structural-check"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "computes",
+      "target": "concept.spec.boundary-set"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "computes",
+      "target": "concept.spec.impact-index"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "reads",
+      "target": "concept.spec.verification-declaration"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "checks the installed copy against",
+      "target": "realization.spec.protocol-assets"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "validates records of",
+      "target": "module.issues"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.model",
+      "verb": "runs package validation of",
+      "target": "module.distribution"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.initializer",
+      "verb": "proposes",
+      "target": "concept.spec.initial-proposal"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.initializer",
+      "verb": "writes through",
+      "target": "realization.spec.transactions"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.initializer",
+      "verb": "validates the result with",
+      "target": "realization.spec.model"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.initializer",
+      "verb": "runs as a Host tool through",
+      "target": "module.harness.execution"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.transactions",
+      "verb": "applies",
+      "target": "concept.spec.file-transaction"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.typed-values",
+      "verb": "checks",
+      "target": "concept.spec.typed-value"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.typed-values",
+      "verb": "collects request and response schemas from",
+      "target": "module.operations"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.typed-values",
+      "verb": "collects request and response schemas from",
+      "target": "module.agents"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.typed-values",
+      "verb": "resolves run artifacts in",
+      "target": "module.harness.worktrees"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec.protocol-assets",
+      "verb": "packages",
+      "target": "realization.spec.protocol-text"
+    }
+  ],
+  "extensions": {}
 }

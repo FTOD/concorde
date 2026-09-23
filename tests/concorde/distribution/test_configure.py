@@ -96,7 +96,7 @@ class ConfigureTests(unittest.TestCase):
         )
 
     @verifies("scenario.distribution.configure-apply")
-    def test_retired_launcher_fields_and_unknown_shapes_are_rejected(self):
+    def test_unknown_fields_and_shapes_are_rejected(self):
         self.assertEqual({}, validate_typed(configuration())["data"])
         for data in (
             {"integration": "codex", "enforcement": "native"},

@@ -18,8 +18,9 @@ from ..spec.repository import (
     most_specific,
     read_file,
 )
-from ..spec.repository_base import RepositoryCore
 from ..spec.typed_data import canonical
+
+RepositoryCore = SpecRepository
 from .worker_profile import WorkerProfile, validate_worker_artifacts
 
 PHASES = frozenset(
@@ -36,6 +37,9 @@ PHASES = frozenset(
     }
 )
 CODE_PHASES = frozenset({"implementation", "code-review"})
+# Phases that write code. Their Spec context also holds the documents of every other Module that
+# binds a file in the task Module's ImplementationScope (Protocol shared-file rule), read-only.
+CODE_WRITING_PHASES = frozenset({"implementation"})
 # The Protocol copy the installer places in the project and the configuration binds, granted in
 # place like any other project file.
 PROTOCOL_PATHS = (
@@ -68,19 +72,19 @@ def _protocol(repository: RepositoryCore) -> list[dict]:
 
 
 def _implementation_entries(repository: SpecRepository, target) -> list[dict]:
-    """The Module's declared listing entries; declarations only, never contents."""
-    try:
-        entities = repository.entity_files(target)
-    except SpecError:
-        entities = {}
+    """The Module's realization entries (its ImplementationScope); declarations only, never contents.
+
+    ``entity_id`` names the realization that lists the entry.
+    """
+    realizations = repository.realization_entries(target)
     result = []
     for entry in target.files:
-        entity = entities.get(entry)
+        realization = realizations.get(entry)
         result.append(
             {
                 "path": entry,
-                "entity_id": entity.id if entity else None,
-                "pending": bool(entity and entry in entity.pending),
+                "entity_id": realization.id if realization else None,
+                "pending": bool(realization and entry in realization.pending),
                 "directory": is_directory_entry(entry),
             }
         )
@@ -88,46 +92,44 @@ def _implementation_entries(repository: SpecRepository, target) -> list[dict]:
 
 
 def _implementation_files(repository: SpecRepository, target) -> list[dict]:
-    """File names of the Module's implementation context: existing bound files plus pending files."""
-    try:
-        entities = repository.entity_files(target)
-    except SpecError:
-        entities = {}
-    names: dict[str, dict] = {}
-    for path in repository.implementation_files(target):
-        entry = most_specific(entities, path)
-        names[path] = {
-            "path": path,
-            "entity_id": entities[entry].id if entry else None,
-            "pending": False,
-        }
-    for entry, entity in entities.items():
-        if (
-            entry in entity.pending
-            and not is_directory_entry(entry)
-            and entry not in names
-        ):
-            names[entry] = {"path": entry, "entity_id": entity.id, "pending": True}
-    return [names[path] for path in sorted(names)]
+    """The Module's ImplementationContext: names of existing bound files plus pending exact entries."""
+    realizations = repository.realization_entries(target)
+    names: list[dict] = []
+    for path in repository.implementation_context(target):
+        entry = most_specific(realizations, path)
+        realization = realizations[entry] if entry else None
+        names.append(
+            {
+                "path": path,
+                "entity_id": realization.id if realization else None,
+                "pending": bool(
+                    realization
+                    and path in realization.pending
+                    and not (repository.root / path).is_file()
+                ),
+            }
+        )
+    return names
 
 
 def _implementation_artifacts(repository: SpecRepository, target) -> list[dict]:
     return [
         {"id": path, "path": path, "digest": digest(read_file(repository.root, path))}
-        for path in repository.implementation_files(target)
+        for path in repository.bound_files(target)
     ]
 
 
 def _external_references(repository: SpecRepository, target) -> list[dict]:
-    """The Module's external references with one tree digest each; bytes are granted, never embedded."""
-    missing = repository.missing_external_references(target)
+    """The Module's ExternalContext with one tree digest per entry; bytes are granted, never embedded."""
+    entries = repository.external_context(target)
+    missing = [entry.path for entry in entries if not entry.exists]
     if missing:
         raise SpecError(
             f"external reference is not checked out: {', '.join(missing)}",
             "invalid_reference",
             target.id,
         )
-    return repository.external_reference_records(target)
+    return [entry.record() for entry in entries]
 
 
 def reference_grants(records: list[dict]) -> tuple[str, ...]:
@@ -254,7 +256,7 @@ def resolve_context(
             validate_worker_artifacts(agent, stage_inputs, require_all=False)
         except ValueError as error:
             raise SpecError(str(error), "incompatible_handoff") from error
-    target = repository.select(target_id, focus_id)
+    target = repository.module(target_id, focus_id)
     from ..spec.typed_data import validate_typed
 
     for item in stage_inputs:
@@ -278,12 +280,14 @@ def resolve_context(
         }:
             raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
-    resolution = repository.spec_context(focus_id or target.id).value
+    resolution = repository.spec_context(
+        focus_id or target.id, shares=phase in CODE_WRITING_PHASES
+    ).value
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
 
     manifest = {
-        "schema_version": 6,
+        "schema_version": 7,
         "target_id": target.id,
         "kind": target.kind,
         "focus_id": focus_id,
@@ -353,11 +357,14 @@ def recheck_context(
         else None,
         document_overrides=repository.document_overrides,
     )
-    target = current.select(value["target_id"], value["focus_id"])
+    target = current.module(value["target_id"], value["focus_id"])
     if current.config["protocol"] != value["protocol_binding"]:
         raise SpecError("context Protocol binding has changed", "stale_context")
     if (
-        current.spec_context(value["focus_id"] or target.id).value
+        current.spec_context(
+            value["focus_id"] or target.id,
+            shares=value["phase"] in CODE_WRITING_PHASES,
+        ).value
         != value["spec_resolution"]
     ):
         raise SpecError(

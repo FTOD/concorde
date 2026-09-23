@@ -21,6 +21,7 @@ from .contract_shapes import (
 from .issue_shapes import RECEIPT as ISSUE_RECEIPT
 from .issue_shapes import REPORT as ISSUE_REPORT
 from .issue_shapes import REVIEW_ISSUE
+from .wire_shapes import CONTEXT_SCHEMA, SELECTION_REASON
 
 DOCUMENT_CHANGE = obj({"path": PATH, "content": {"type": "string"}})
 TASK_ITEM = obj(
@@ -38,7 +39,7 @@ WORKER_OUTCOMES = {
 CHECK = obj(
     {
         "id": STRING,
-        "target_id": STRING,
+        "module": STRING,
         "argv": {**array(STRING), "minItems": 1},
         "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
         "inputs": array(PATH, unique=True),
@@ -79,13 +80,22 @@ IMPLEMENTATION_ENTRY = obj(
         "directory": {"type": "boolean"},
     }
 )
+REGISTRY_RECORD = obj(
+    {
+        "id": STRING,
+        "title": STRING,
+        "entry": PATH,
+        "owns": {**array(PATH, unique=True), "minItems": 1},
+        "contains": {"type": "array"},
+        "uses": {"type": "array"},
+        "includes": {"type": "array"},
+        "participates": {"type": "array"},
+    }
+)
 REGISTRY = obj(
     {
-        "schema_version": {"const": 5},
-        "project_id": STRING,
-        "entry_target": STRING,
-        "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
-        "checks": array(CHECK),
+        "schema_version": {"const": 3},
+        "modules": {**array(REGISTRY_RECORD), "minItems": 1},
     }
 )
 PROPOSAL_FILE = obj(
@@ -101,9 +111,9 @@ def load_operation_inventory():
     """Import the repository-root ``operations`` package normally.
 
     ``tests/concorde`` holds one flat package per Module and none of them is named
-    ``operations``, so test discovery (``unittest discover -s tests/concorde``) no longer risks
-    registering an unrelated test package under the plain ``operations`` name. A plain import
-    is therefore safe here.
+    ``operations``, so test collection (``pytest`` over ``tests/concorde``, imported as the
+    ``tests.concorde.*`` packages) no longer risks registering an unrelated test package under
+    the plain ``operations`` name. A plain import is therefore safe here.
     """
 
     import sys
@@ -246,17 +256,24 @@ def schemas() -> dict:
     )
     # Context index records (Framework profile P5, Spec context grant): a document is identified, owned
     # and digested, never embedded. Its bytes reach an WorkerProfile through the read-only grant of the path.
-    reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
-    source = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})
+    # Each reason is the Protocol relation that selected the document (owns, contains, uses,
+    # includes) or the shared-file rule (shares) that added it for a code-writing step.
+    source = obj(
+        {
+            **document_ref["properties"],
+            "reasons": array(SELECTION_REASON, unique=True),
+        }
+    )
 
     def resolution(source_shape):
         return obj(
             {
-                "schema_version": {"const": 1},
+                "schema_version": {"const": CONTEXT_SCHEMA},
                 "registration": TARGET_DESCRIPTOR,
                 "query_id": STRING,
                 "query_kind": {"enum": ["module", "scenario"]},
                 "module_id": STRING,
+                "shares": {"type": "boolean"},
                 "reading_entry": PATH,
                 "documents": array(PATH, unique=True),
                 "references": array(REFERENCE, unique=True),
@@ -328,7 +345,7 @@ def schemas() -> dict:
     result["concorde-context-snapshot"] = obj(
         {
             "context_id": DIGEST,
-            "schema_version": {"const": 6},
+            "schema_version": {"const": 7},
             "target_id": STRING,
             "kind": {"const": "module"},
             "focus_id": NULLABLE_ID,

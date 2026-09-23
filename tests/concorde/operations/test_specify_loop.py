@@ -32,11 +32,7 @@ class SpecReviewFreshnessTests(unittest.TestCase):
     gap = staticmethod(fixtures.ReviewTests.gap)
 
     def add_spec_consumer(self):
-        path = self.root / ".concorde/specs.json"
-        registry = json.loads(path.read_text())
-        bank = next(t for t in registry["targets"] if t["id"] == "scope.bank")
-        bank["references"].append({"kind": "module", "id": "service.transfer"})
-        path.write_text(json.dumps(registry))
+        # Banking uses the transfer Module, so it reads the transfer Specs: it is a Spec consumer.
         ensure_change(self.root, task=self.task, allow_primary=True)
         bind_owner(self.root, self.task)
 
@@ -146,15 +142,19 @@ class SpecReviewFreshnessTests(unittest.TestCase):
                     path = self.root / "specs/bank/module.md.json"
                     path.write_text(path.read_text() + "\n")
                 else:
-                    path = self.root / ".concorde/specs.json"
-                    registry = json.loads(path.read_text())
-                    bank = next(
-                        t for t in registry["targets"] if t["id"] == "scope.bank"
+                    from tests.concorde.spec.support import update_module
+
+                    update_module(
+                        self.root,
+                        "scope.bank",
+                        includes=[
+                            {
+                                "kind": "document",
+                                "target": "document.transfer.promises",
+                                "reason": "the transfer amount rules",
+                            }
+                        ],
                     )
-                    bank["references"].append(
-                        {"kind": "document", "id": "document.transfer.promises"}
-                    )
-                    path.write_text(json.dumps(registry))
                 self.assertIsNone(current_spec_scope(self.invocation()))
                 with self.assertRaises(SpecError):
                     verify_required(self.invocation())
@@ -255,71 +255,6 @@ class SpecReviewFreshnessTests(unittest.TestCase):
         self.assertEqual("succeeded", retry["status"], retry)
         self.assertIn("scope.bank", self.spec_review_targets())
         self.assertIsNotNone(current_spec_scope(self.invocation()))
-        verify_required(self.invocation())
-
-    @verifies(
-        "scenario.review.consumer-currentness",
-        "scenario.planning.historical-author-gap",
-    )
-    def test_consumer_historical_gap_is_task_attributed_for_reuse_and_readiness(self):
-        from concorde.harness.change_worktree import record_task_gaps
-        from concorde.issues.store import report_issue
-        from tests.concorde.issues.test_store import report, source
-
-        self.add_spec_consumer()
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-spec-review")["status"]
-        )
-        state = read_change(self.root, required=True)
-        peer = state["shared_spec_reviews"]["service.transfer"]["scope.bank"]
-        consumer_task = {
-            "target_id": "scope.bank",
-            "task": peer["task"],
-            "constraints": peer["constraints"],
-        }
-        run = Invocation(
-            "concorde-context-solve", self.configuration, consumer_task, self.host
-        )
-        ref = report_issue(
-            self.root,
-            report(owner_target_id="scope.bank", evidence=[]),
-            source(
-                target_id="scope.bank", operation="concorde-specify", phase="specify"
-            ),
-        )
-        record_task_gaps(
-            self.root,
-            "scope.bank",
-            peer["task"] + " Unrelated",
-            "specify",
-            [{**ref, "blocked_step": "Independent question"}],
-            run.blocker_revision("specify"),
-        )
-        self.assertIsNotNone(current_spec_scope(self.invocation()))
-        verify_required(self.invocation())
-        record_task_gaps(
-            self.root,
-            "scope.bank",
-            peer["task"],
-            "specify",
-            [{**ref, "blocked_step": "Review bank reliance"}],
-            run.blocker_revision("specify"),
-        )
-        history = read_change(self.root, required=True)["issue_blockers"]
-        self.assertIsNone(current_spec_scope(self.invocation()))
-        with self.assertRaises(SpecError):
-            verify_required(self.invocation())
-        path = self.root / "specs/bank/module.md"
-        path.write_text(path.read_text() + "\nBank owns retry decisions.\n")
-        result = self.call_operation("concorde-context-solve", consumer_task)
-        self.assertEqual("succeeded", result["status"], result)
-        updated = read_change(self.root, required=True)["issue_blockers"]
-        self.assertEqual("open", updated[0]["status"])
-        self.assertEqual("superseded", updated[1]["status"])
-        self.assertEqual(history[1]["contexts"], updated[1]["contexts"])
-        self.assertEqual(
-            "succeeded", self.call_operation("concorde-spec-review")["status"]
-        )
         verify_required(self.invocation())
 
 

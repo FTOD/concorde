@@ -29,4 +29,3 @@ def external_name(module_name: str) -> str:
 CAPABILITIES = OPERATIONS
 WORKFLOWS = ("plan", "spec_review", "code_review", "issues")
 HOST_TOOLS = ("init", "configure", "validate", "deliver")
-STATE_OPERATIONS = ("terminal_agent_operation",)

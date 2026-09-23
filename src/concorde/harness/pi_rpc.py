@@ -83,9 +83,15 @@ def run_prompt(
     env: Mapping[str, str],
     message: str,
     timeout: float,
-    popen=subprocess.Popen,
+    popen=None,
 ) -> PiRun:
-    """Run one prompt to settlement and return everything the process reported."""
+    """Run one prompt to settlement and return everything the process reported.
+
+    ``popen`` is the injectable process seam; ``None`` resolves ``subprocess.Popen`` at call
+    time, so whatever is bound when the prompt runs is used, not what was bound at import.
+    """
+    if popen is None:
+        popen = subprocess.Popen
     started = monotonic()
     deadline = started + timeout
     with Span("pi.process_start"):

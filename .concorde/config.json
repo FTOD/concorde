@@ -1,9 +1,9 @@
 {
-  "profile_version": 15,
+  "profile_version": 16,
   "registry": ".concorde/specs.json",
   "protocol": {
-    "version": "10.0.0",
-    "digest": "sha256:065df05e7da11ecf422b58c6e8e270b0442ae73baa54ce7614e9cbd21828273c"
+    "version": "11.0.0",
+    "digest": "sha256:1fa79a865f09bb86920156e880fb95a7d756dafa7fdf85e61ea8c26cf270718a"
   },
   "operation_configuration": {
     "data": {
@@ -12,5 +12,167 @@
     },
     "schema_version": 2,
     "type_id": "concorde-operation-configuration"
-  }
+  },
+  "checks": [
+    {
+      "id": "check.harness.graph-specs",
+      "module": "module.harness.execution",
+      "argv": [
+        "{python}",
+        "scripts/development/check-graph-specs.py"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "scripts",
+        "src/concorde",
+        "agents",
+        "operations",
+        "specs/concorde"
+      ]
+    },
+    {
+      "id": "check.operations.runtime",
+      "module": "module.operations",
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "8",
+        "tests/concorde/harness/test_scoped_protocol.py",
+        "tests/concorde/operations/test_review.py",
+        "tests/concorde/operations/test_check_execution.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
+      ],
+      "timeout_seconds": 180,
+      "inputs": [
+        "pyproject.toml",
+        "conftest.py",
+        "tests/concorde/support/pytest_timing.py",
+        "agents",
+        "src",
+        "protocol",
+        "tests/concorde/harness",
+        "tests/concorde/operations"
+      ]
+    },
+    {
+      "id": "check.harness.reference-versions",
+      "module": "module.harness.context",
+      "argv": [
+        "{python}",
+        "scripts/development/check-reference-versions.py"
+      ],
+      "timeout_seconds": 60,
+      "inputs": [
+        "reference/langgraph/libs/langgraph/pyproject.toml",
+        "uv.lock"
+      ]
+    },
+    {
+      "id": "check.harness.runtime",
+      "module": "module.harness",
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/harness/test_scoped_protocol.py",
+        "tests/concorde/harness/test_boundaries.py",
+        "tests/concorde/harness/test_worker_binding.py",
+        "tests/concorde/harness/test_check_executor.py"
+      ],
+      "timeout_seconds": 180,
+      "inputs": [
+        "agents",
+        "src",
+        "protocol",
+        "tests/concorde/harness"
+      ]
+    },
+    {
+      "id": "check.spec.model",
+      "module": "module.spec",
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/spec/test_module_model.py",
+        "tests/concorde/spec/test_module_architecture.py"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "src",
+        "protocol",
+        "tests/concorde/spec"
+      ]
+    },
+    {
+      "id": "check.views.publication-types",
+      "module": "module.views",
+      "argv": [
+        "{python}",
+        "scripts/development/check-docsite-types.py"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "docsite/tsconfig.json",
+        "docsite/plugins/scoped-content",
+        "docsite/src",
+        "docsite/package.json",
+        "docsite/package-lock.json",
+        "scripts/development/check-docsite-types.py"
+      ]
+    },
+    {
+      "id": "check.views.repository-regressions",
+      "module": "module.views",
+      "argv": [
+        "{python}",
+        "docsite/tests/repository/run-checks.py"
+      ],
+      "timeout_seconds": 600,
+      "inputs": [
+        "agents",
+        "operations",
+        "prompts",
+        "src",
+        "protocol",
+        "specs",
+        "docs",
+        "scripts",
+        "tests",
+        "concorde.json",
+        "pyproject.toml",
+        "README.md",
+        ".concorde/config.json",
+        ".concorde/specs.json",
+        ".github/workflows/deploy-docsite.yml",
+        "docsite/README.md",
+        "docsite/docusaurus.config.ts",
+        "docsite/package.json",
+        "docsite/package-lock.json",
+        "docsite/plugins",
+        "docsite/scaffold",
+        "docsite/scripts",
+        "docsite/custom-docs",
+        "docsite/sidebars.specs.ts",
+        "docsite/site.json",
+        "docsite/src",
+        "docsite/static",
+        "docsite/tests",
+        "docsite/tsconfig.json",
+        "docsite/vitest.config.ts"
+      ]
+    }
+  ]
 }

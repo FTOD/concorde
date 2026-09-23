@@ -58,11 +58,16 @@ export default function ContentProvenance({
           Owner: <code>{page.owner}</code>
         </div>
         <div>
-          Included by:{" "}
+          Selected by:{" "}
           {page.includedBy.map((m) => (
-            <span key={m.targetId}>
-              <code>{m.targetId}</code> (
-              {m.reasons.map((r) => `${r.kind}: ${r.id}`).join(", ")}){" "}
+            <span key={m.moduleId}>
+              <code>{m.moduleId}</code> (
+              {m.reasons
+                .map((r) =>
+                  [r.relation, r.kind, r.id].filter(Boolean).join(" "),
+                )
+                .join(", ")}
+              ){" "}
             </span>
           ))}
         </div>

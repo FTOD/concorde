@@ -5,6 +5,7 @@ import unittest
 from concorde.harness.context import recheck_context, resolve_context
 from concorde.spec.repository import SpecError
 from concorde.spec.verification import verifies
+from tests.concorde.spec.support import source_pairs
 from tests.concorde.spec.test_module_model import PACKAGE, ModuleImplementationTests
 
 
@@ -23,7 +24,7 @@ class ExternalReferenceTests(unittest.TestCase):
         from concorde.harness.worker_profile import worker_profile
 
         repository = self.fixture.repository()
-        expected = repository.external_reference_records(repository.select("module.a"))
+        expected = [entry.record() for entry in repository.external_context("module.a")]
         self.assertEqual(1, len(expected))
         for phase, agent, inputs in (
             ("context-solve", worker_profile("context-assessor"), ()),
@@ -50,7 +51,7 @@ class ExternalReferenceTests(unittest.TestCase):
                     agent=agent,
                     stage_inputs=inputs,
                 ).value
-                self.assertEqual(6, snapshot["schema_version"])
+                self.assertEqual(7, snapshot["schema_version"])
                 self.assertEqual(expected, snapshot["external_references"])
         ask = resolve_context(
             repository, "module.a", phase="context-solve", task="Adapt"
@@ -154,6 +155,72 @@ class ExternalReferenceTests(unittest.TestCase):
             self.assertFalse((destination / "reference/lib/diagram.png").exists())
             self.assertFalse((destination / "reference/lib/.git").exists())
             self.assertFalse((destination / "reference/other").exists())
+
+
+class SharedFileReaderTests(unittest.TestCase):
+    """A and B both bind ``source/shared.py``; neither selects the other's documents."""
+
+    def setUp(self):
+        self.fixture = ModuleImplementationTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+
+    @verifies("scenario.harness.shared-file-readers")
+    def test_a_programmer_also_reads_every_module_that_binds_its_files(self):
+        from concorde.harness.context import context_documents
+
+        def shared(value):
+            return [
+                source
+                for source in value["spec_resolution"]["sources"]
+                if any(reason["relation"] == "shares" for reason in source["reasons"])
+            ]
+
+        repository = self.fixture.repository()
+        for phase in ("plan", "code-review", "implementation"):
+            with self.subTest(phase=phase):
+                snapshot = resolve_context(repository, "module.a", phase=phase)
+                value = snapshot.value
+                granted = "\n".join(
+                    raw.decode()
+                    for raw in context_documents(repository, value).values()
+                )
+                if phase != "implementation":
+                    self.assertFalse(value["spec_resolution"]["shares"])
+                    self.assertEqual([], shared(value))
+                    self.assertNotIn("B_PRIVATE_SPEC", granted)
+                    continue
+                self.assertTrue(value["spec_resolution"]["shares"])
+                self.assertEqual(
+                    source_pairs(["specs/b/module.md", "specs/b/obligations.md"]),
+                    [source["path"] for source in shared(value)],
+                )
+                self.assertEqual(
+                    [
+                        {
+                            "relation": "shares",
+                            "id": "module.b",
+                            "files": ["source/shared.py"],
+                        }
+                    ],
+                    shared(value)[0]["reasons"],
+                )
+                self.assertIn("B_PRIVATE_SPEC", granted)
+                self.assertNotIn("B_PRIVATE_SPEC", snapshot.serialized)
+                # Reading the sharer's documents widens no write set.
+                self.assertFalse(
+                    {source["path"] for source in shared(value)}
+                    & set(repository.spec_scope("module.a"))
+                )
+        programmer = resolve_context(repository, "module.a", phase="implementation")
+        planner = resolve_context(repository, "module.a", phase="plan")
+        self.assertNotEqual(programmer.id, planner.id)
+        entry_b = self.fixture.root / "specs/b/module.md"
+        entry_b.write_text(entry_b.read_text() + "\nB reads nothing else.\n")
+        recheck_context(self.fixture.repository(), planner)
+        with self.assertRaises(SpecError) as raised:
+            recheck_context(self.fixture.repository(), programmer)
+        self.assertEqual("stale_context", raised.exception.code)
 
 
 if __name__ == "__main__":

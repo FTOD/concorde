@@ -1,87 +1,192 @@
-# Agent contracts
+# Agent interfaces
 
-These implementation specifications define Agent interaction, not a second copy of domain artifact schemas or acceptance predicates.
+This document gives the exact inventory, inputs, outputs and limits of every Agent. The
+[entry](module.md) explains what the Agents are for; the typed stage values named here are defined
+by the Harness, and the meaning of plans, tasks, findings and Issue decisions by their owning
+Modules.
 
-## Terminology
+## Inventory
 
-| Term | Meaning / definition |
+The `agents` Python package is the inventory:
+
+| Name | Value |
 | --- | --- |
-| [Domain Agent](module.md#terminology) | Defined in Agents. |
-| [Task subagent](../module.md#terminology) | Defined in Concorde Framework. |
-| [User session](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registration](module.md#terminology) | Defined in Agents. |
-| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| `agents.DOMAIN_AGENTS` | `spec_reviewer`, `context_assessor`, `planner`, `task_author`, `programmer`, `code_reviewer`, `issue_solver` |
+| `agents.TASK_SUBAGENT_PROFILES` | `tester`, plus `maintenance-worker` when `agents/source/` exists |
+| `agents.TASK_SUBAGENTS` | the names of those profiles |
+| `agents.AGENTS` | the hyphenated Domain Agent names followed by the Task subagent names: nine in the source checkout, eight in an installed package |
+| `agents.external_name(name)` | `concorde-` plus the hyphenated Domain Agent name, e.g. `concorde-task-author`; the name of the prepared native agent |
 
-## Inventory and compatibility
+Each Domain Agent module `agents/<name>/__init__.py` exports `PROFILE` (a Harness worker profile),
+`PUBLIC = False`, `CONTEXT_SELECTION = "bound"`, `DETERMINISTIC = False`, `USES = ()`,
+`EXTERNAL_NAME` and `KIND = "agent"`. It exports no `STATE` or `run`: a Domain Agent is not an
+Operation. Task subagent profiles are `TaskSubagentProfile` records with `name`, `prompt`, `tools`,
+`extensions`, `source_only` and an optional `acceptance_role`; they are never worker profiles.
 
-`agents.DOMAIN_AGENTS` selects the seven canonical domain modules. Their `PROFILE` is the existing Harness `WorkerProfile`, with unchanged stage wire identities, effects, tools and timeout. `agents.TASK_SUBAGENT_PROFILES` defines the two Task subagents with prompt, tools, explicit extensions, source-only flag and optional acceptance role. It has no domain context/result or stage schema. `agents.AGENTS` is the derived nine-name source discovery inventory; installed packages omit the
-source-only profile implementation and therefore expose eight Agents, with only tester statically
-registered as a Task subagent. The user session has no profile or inventory entry.
+The user session has no profile and no inventory entry.
 
-The single `concorde.agents` metadata array has exact fields `id`, `family` (`domain` or `task`), `scope` (`distributed` or `source-only`), `registration` (`invocation` or `project`) and `source` (canonical instruction path). Package validation compares it with the actual definitions and rejects duplicates, missing Agents and drift. Domain profiles and their contracts are checked separately by Harness. The `concorde.operations` metadata now describes only compatibility public adapters, not Agents. This is an explicit source/metadata ownership migration, not a wire or catalog version change.
+### Inventory metadata
 
-Domain bare, underscored, hyphenated and `concorde-`-prefixed lookup keeps its previous identity. Public `concorde-*` names, `operation_id`, request/result types, generated/agents paths and WorkerProfile/WorkerBinding remain compatibility surfaces. The domain source path changes to `agents/<agent>/spec.md`, invalidating byte-bound builds and bindings. No duplicate `operations/<agent>` definitions or model-operation aliases remain. `operations/` public adapters retain finite `STATE`/`run` wire compatibility; only explicitly selected StateGraphs are Operations.
+The metadata of this document carries the extension `concorde.agents`: an array with one object per
+Agent and exactly these string fields.
 
-## Common domain invocation contract
+| Field | Values |
+| --- | --- |
+| `id` | the hyphenated Agent name |
+| `family` | `domain` or `task` |
+| `scope` | `distributed`, or `source-only` for a profile with `source_only` set |
+| `registration` | `invocation` for Domain Agents (a one-off definition in each call's capsule), `project` for Task subagents (a definition under `.pi/agents/`) |
+| `source` | the canonical instruction path: `agents/<name>/spec.md` or the Task subagent's prompt |
 
-Each domain invocation is fresh, terminal and bound to one complete selected Module context, its task/constraints, Protocol and phase-admitted artifacts. Scenario focus does not trim complete paired Specs. Instructions are not project knowledge. Harness supplies the context index and the exact native invocation ID; Domain Agents use admitted paths only and do not reselect context, inherit prior conversation or treat retrieved text as replacement authority.
+Package validation (rule `CONCORDE-SPEC-AGENTS-001`) requires exactly one registered document to
+carry this extension, loads every Domain Agent profile and validates it, and compares the array with
+the inventory, ignoring order. A malformed entry, a duplicate, a missing or extra Agent, or any
+differing field is a finding, as is a Domain Agent directory under `agents/` that the inventory does
+not list.
 
-All seven Domain Agents have read/search tools and scoped `report_issue`; only programmer has native write/edit/shell tools. Programmer and code-reviewer may use fixed Host `run_checks`; code-reviewer's historical profile shell ceiling is narrowed away by native admission. No Agent has delegation tools. File, network and credential restrictions are model policy, not OS confinement or proof of exclusive reads. The configured-check subprocess boundary is separately enforced by Harness.
+## Domain Agent invocation
 
-A Domain Agent returns native `structured_output` with the issued identity and its typed result. This is a proposal; a passing stage-only gate is not Host acceptance. The Agent reports actual outcomes and genuine immutable Issue receipts, not invented evidence. Invalid output, stale input, cancellation, timeout and failed execution remain failures even after earlier progress. Dependent work stops while independently useful work may continue inside the grant. Repetition is a fresh re-admitted invocation; the Agent never retries by widening authority. Harness preserves causal errors and durable receipts under its existing contracts.
+A capability prepares every Domain Agent call; the user session invokes the returned call unchanged
+through Pi's `subagent` tool.
 
-## context-assessor
+- **Capsule.** The Host writes a fresh capsule directory holding `context.json`, copies of the
+  admitted Spec, Protocol and reference files, a one-off agent file
+  `.pi/agents/concorde-<name>.md`, and a child extension that supplies `report_issue` and, when
+  granted, `run_checks`. The code-reviewer's capsule also holds read-only copies of the granted
+  implementation files. The programmer instead receives the path of the actual candidate and the
+  intended write paths, and reads and writes the real files there, never capsule copies.
+- **Definition fields.** The prepared agent has `systemPromptMode: replace`, no inherited project
+  or global context, no Skills, `defaultContext: fresh`, `allowNestedSubagents: false`, the
+  profile's tools plus `report_issue`, and a timeout from the configured worker selection or else
+  the profile. Its `acceptanceRole` is `writer` for the programmer and `read-only` otherwise.
+- **Instructions.** `prompts/native/<name>.md` followed by `agents/<name>/spec.md`, rendered to
+  `generated/native/<name>.md`; `generated/agents/<name>.md` holds the same bytes.
+- **Result.** The Agent calls native structured output with exactly `invocation_id` (the issued
+  identity) and `result`, a typed `concorde-agent-stage-result` or `concorde-review-stage-result`
+  bound to the context identity in `context.json`. The Host admits it only after checking native
+  completion and current inputs.
 
-Use this read-only Domain Agent through `concorde-context-solve` or as plan's first workflow step to decide whether an explicit task has sufficient specified meaning. Input is the complete Spec-only context and task for phase `context-solve`; implementation names are visible but contents and external source investigation are not. It returns a sufficiency judgment, or an attributed missing promise, prohibition or contradiction, with no plan, tasks or documents. Its work completes when that judgment is supported by admitted Specs, not when the overall change is ready. Gaps report the question and blocked work rather than searching outside context. Reassessment after repair needs fresh inputs. [Planning assessment](../planning/assessment.md) owns outcome semantics and acceptance.
+### Domain Agent profiles
 
-## planner
+Stage pairs: **stage** is `concorde-agent-stage-context` / `concorde-agent-stage-result`;
+**review** is `concorde-review-stage-context` / `concorde-review-stage-result`.
 
-Use this read-only Domain Agent only after accepted sufficiency in the native plan workflow. Input is complete selected Specs, declared external references, task/constraints and optionally an admitted prior plan; never implementation contents. It returns an actionable contract-level plan and no tasks or document replacements. It may identify declared component work but cannot schedule it or acquire component code. Completion is a plan suitable for task authoring, subject to [Planning's plan contract](../planning/plan.md); empty/stale/invalid output cannot replace accepted state. Missing necessary meaning stops dependent planning, and a revised request starts a fresh planner rather than continuing hidden conversation.
+| Agent | Phase, pair | Workspace | Reads | Writes | Stage inputs (required in bold) | Result fields | Tools | Timeout |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| context-assessor | `context-solve`, stage | capsule | Spec context | none | none | `outcome`: `sufficient`, `spec_incomplete`, `unsupported`, `conflicting` | read, grep, find, ls | 1800 s |
+| planner | `plan`, stage | capsule | Spec context, references | none | `concorde-plan-artifact` | `plan` | read, grep, find, ls | 1800 s |
+| task-author | `tasks`, stage | capsule | Spec context, references | none | **`concorde-plan-artifact`**, **`concorde-task-identity-constraints`**, `concorde-implementation-task`, `concorde-review-result`, `concorde-task-scope-feedback` | `tasks` | read, grep, find, ls | 1800 s |
+| programmer | `implementation`, stage | project | Spec context, implementation, references | implementation | **`concorde-implementation-task`**, `concorde-review-result` | `tasks` | read, grep, find, ls, edit, write, bash, run_checks | 3600 s |
+| spec-reviewer | `spec-review`, review | capsule | Spec context | none | review input | review status | read, grep, find, ls | 1800 s |
+| code-reviewer | `code-review`, review | project | Spec context, implementation, references | none | review input | review status | read, grep, find, ls, run_checks | 3600 s |
+| issue-solver | `issue-solve`, stage | capsule | Spec context | none | **`concorde-issue-selection`** | `issue_decision` | read, grep, find, ls | 1800 s |
 
-## task-author
+No profile declares network access or credentials. The code-reviewer's profile also lists `bash`,
+which the native preparation removes for the `code-review` phase, so a native code-reviewer has no
+shell.
 
-Use this read-only Domain Agent through `concorde-tasks` to turn an accepted current plan into implementation acceptance tasks. Input includes complete Specs, declared references, the plan and reserved historical IDs; optional prior tasks and selected feedback require the domain's repair admission. No code contents are admitted. Output is a nonempty list of new, initially incomplete tasks, not a new plan, implementation or Spec edits. It defines acceptance the programmer can fulfill inside its grant, without requiring later review/readiness to have happened first. Missing IDs or changed intended behavior are gaps/conflicts, not reasons to invent metadata. [Planning task rules](../planning/tasks.md) own collisions, history, repair and acceptance; each replacement is a fresh admitted invocation.
+### context-assessor
 
-## programmer
+Decides whether the task can be carried out from the Module's complete Spec context. It sees the
+names of implementation files but never their contents, and does not search elsewhere for missing
+meaning. `sufficient` has no blockers; `spec_incomplete` carries real Issue receipts naming the
+missing question and the blocked step; `unsupported` means the Spec settles that the task is
+prohibited; `conflicting` means the Spec contradicts itself. It returns no documents, plan or tasks.
 
-Use this Domain Agent through `concorde-implement` for current accepted local tasks after required component admission. Input includes complete Specs, admitted references, accepted plan/tasks, optional current selected feedback and the selected Module's implementation contents. It writes only intended bound implementation paths in the actual candidate, not capsule copies; Specs, metadata, registry, configuration, governing integration and other worktrees stay outside its write authority. Read/search, write/edit/shell and fixed Host checks do not grant network, credentials, delegation, commit or delivery. It returns exact task identities/acceptance with honest completion and concrete check/deferred-check evidence. Missing external test inputs are not passing tests; actual unfulfilled obligations stay incomplete. Failed/cancelled work may leave partial edits. [Implementation](../implementation/execution-reference.md#implementation-implementation-operation) owns fulfillment and recovery; retry re-admits actual current work rather than assuming rollback.
+### planner
 
-## spec-reviewer
+Runs only after an accepted `sufficient` assessment. It writes an actionable, contract-level plan
+for the requested change from the Specs and the admitted external references alone, never from
+code, and may name the realizations (and so the files) a piece of work concerns. It returns no
+tasks or documents. A missing behavioural promise is reported as a gap instead of invented.
 
-Use this read-only Domain Agent in the Spec review workflow to assess complete specifications and design for the requested task. Input includes complete owned/referenced paired Specs, Protocol, task and scoped Spec changes, with no implementation contents or author conversation. It checks representative tasks and mandatory terminology semantic consistency; wording equality is not required. It returns coverage, supported Issue references and no-findings/findings/incomplete, not repairs. Missing canonical meaning stops dependent judgments; unexamined comparisons remain incomplete. A fresh reviewer is used for every selected owner/consumer context. [Review](../review/execution-reference.md#review-independent-review-operation) owns coverage selection, exact result admission and aggregation.
+### task-author
 
-## code-reviewer
+Turns the accepted plan into a nonempty list of tasks, each with a new `id` outside the reserved set
+in `concorde-task-identity-constraints`, a `target_id`, a `description`, observable `acceptance`
+that cites relevant requirement or scenario identities, and `complete: false`. Acceptance covers
+implementation only; later checks, reviews, readiness and delivery are never task conditions. With
+a prior task list and a `concorde-review-result` it writes repair tasks for the blocking findings;
+with `concorde-task-scope-feedback` it replaces a list that mixed implementation with later
+responsibilities. It reads no code.
 
-Use this read-only Domain Agent in the code review workflow to compare granted implementation and scoped changes against the complete selected contract. Input additionally includes the declared read-only implementation subset and references, never programmer reasoning or another reviewer's files. Its native tools are read/search and fixed Host checks, not shell/write/edit/delegation. It reports concrete contract defects, exact check outcomes, representative coverage and supported Issue judgments, without raw code/patch/log copies or repairs. Unavailable evidence is unknown, not a pass. Every affected consumer retains its own fresh context, even for shared files. [Review result](../review/review-result.md) owns findings and completion semantics; failed, incomplete and stale evidence cannot become clean review on retry.
+### programmer
 
-## issue-solver
+Fulfils the supplied tasks in the actual candidate, writing only files the Module's realizations
+bind, including pending entries. It never edits Specs, metadata, the registry, configuration,
+control state or other worktrees. Every test it writes declares the scenarios it verifies, naming
+only scenario identities in its context. It returns every task unchanged except `complete: true`
+for fulfilled ones, and states which checks it ran and what it deferred to the Host because an
+input was outside its grant. It never commits, reviews, marks ready or delivers. Partial edits stay
+in the candidate after a failure or cancellation.
 
-Use this read-only Domain Agent only when the caller requests solving a selected Issue. Input is complete Spec-only context and the Host-selected current Issue revision, bounded feedback/verification, clarification and admitted duplicate candidates; the report is an observation, not new product authority. It returns one bounded next-action decision and rationale with no documents, plan or tasks. Needed implementation or Spec edits return to the caller; verification is requested from fresh reviewers, not performed by this Agent. It never reads implementation, closes Issues or fabricates resolution from unrelated passing tests. Unsettled choices return a precise developer decision; execution failures remain distinct. [Issues lifecycle](../issues/lifecycle.md) owns decision/disposition evidence and bounded repetition. Each decision step is a new terminal invocation.
+### spec-reviewer
 
-## maintenance-worker
+Reads the Module's complete admitted Specs as a newcomer and checks them against representative
+tasks derived from the request, including a mandatory check that every imported term is used with
+its owner's meaning. It reports each concrete problem once through `report_issue` and returns
+`no_findings` (with nonempty covered tasks and no Issues), `findings`, or `incomplete`.
 
-Use this source-only Task subagent for explicitly authorized Concorde source maintenance in its assigned registered candidate. Input is the user session's frozen goal, stage, file/tool authority, current brief and evidence, not a domain stage envelope. It reads principles and complete affected paired Specs, then directly reconciles authorized source, metadata and registry. Its tools are read/search, bash, edit and write plus explicitly selected source observation/lifecycle assets; it receives no Concorde catalog or delegation tool. It does not create/move worktrees, write primary/foreign status or runs, launch tester, merge, push or clean up.
+### code-reviewer
 
-Output is verified committed candidate work when authorized, exact HEAD/dirty state, input-bound commands/results, artifacts, residual risks and next step. Self-checks are not independent acceptance. It preserves causal failures and reports meaningful changes through native supervisor with current task memory; it stops dependent work for a decision instead of inventing causes. Within an unfinished coherent stage the same author continues through feedback. New prompts do not govern its frozen launch. A completed stage hands off durably and stops before the user session releases exact ownership. Source-only scope prohibits consumer registration; [Task subagent collaboration](task-subagents.md) defines the common handoff policy.
+Compares the granted implementation and the scoped changes with the complete admitted contracts,
+runs the configured checks through `run_checks`, and reports concrete behaviour defects. A test
+that declares a scenario of this Module but does not exercise it is a defect. Implementation outside
+the grant belongs to other Modules' reviews. Results as for the spec-reviewer; unavailable evidence
+is never a pass.
 
-## tester
+### issue-solver
 
-Use this Task subagent when the user session selects targeted or full independent testing, in either source or consumer work. Input is exact scope/reason, tested revision, candidate-local Pi entry/catalog/runtime provenance, relevant complete paired Specs and the actual task/tool grant. It begins fresh with no author conversation, inherited catalog or Skills. Read/search tools remain read-only; commands use only `test_command` with enforced read-only governing artifacts and disposable external scratch. It cannot repair sources, profiles or runtime, delegate, move worktrees or integrate.
+Chooses the next bounded action for one selected Issue revision from the Spec context, bounded
+feedback and at most five admitted duplicate candidates. `issue_decision` has exactly `action`,
+`intent`, `rationale` and `duplicate_of`; `action` is one of `develop`, `spec-repair`, `verify`,
+`resolved`, `duplicate`, `not-actionable` or `needs-decision`, and `duplicate_of` is set only for
+`duplicate`. It reads no implementation, edits nothing and closes nothing; development and Spec
+repair return to the user session, and verification is done by fresh reviewers.
 
-Output records independent observations, commands, failures, skipped/unknown checks, retained evidence and residual risks against exact inputs. It distinguishes scripted fixtures from live model execution and source selection from actual loading. Selected nonsecret reports and bounded output must be exported through Harness before scratch cleanup; a scratch filename alone is not durable evidence. Export failure is reported alongside the original failure. Missing/stale local assets or unavailable isolation blocks testing without fallback. Failures return to the user session, never self-repair; a later testing round is a fresh tester after an exact stopped-owner handoff. Distribution registers only generic tester in consumers and preserves user-file collision boundaries.
+## Task subagent interfaces
 
-## Domain task-profile bindings
+Distribution projects each Task subagent profile into `.pi/agents/<name>.md` with this front
+matter, followed by the resolved prompt:
 
-Each worker fulfils exactly one task contract. The table uses these typed pairs: **stage** =
-`concorde-agent-stage-context` / `concorde-agent-stage-result`, **review** =
-`concorde-review-stage-context` / `concorde-review-stage-result`.
+| Field | tester | maintenance-worker |
+| --- | --- | --- |
+| `tools` | read, grep, find, ls, test_command | read, grep, find, ls, bash, edit, write |
+| `extensions` | `concorde-tester.ts` and the Concorde session entry to test | `concorde-maintenance.ts`, `concorde-brief-lifecycle.ts` |
+| `acceptanceRole` | `read-only` | none |
+| common | `systemPromptMode: replace`, `inheritProjectContext: false`, `inheritGlobalContext: false`, `inheritSkills: false`, `defaultContext: fresh`, `excludeTools: subagent`, `async: true`, `completionGuard: false` | same |
+| installed in consumers | yes | no |
 
-| Worker           | Pair and phase/action | Admitted stage artifacts                                                                                                                                               | Result and authority                                                                                |
-| ---------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| spec-reviewer    | review; spec-review   | none                                                                                                                                                                   | Independent Spec findings; no author artifacts or writes                                            |
-| context-assessor | stage; context-solve  | none                                                                                                                                                                   | Sufficient, incomplete, unsupported or conflicting assessment; no authored artifacts                |
-| planner          | stage; plan           | optional concorde-plan-artifact                                                                                                                                        | Plan only; external references readable; no source contents or writes                               |
-| task-author      | stage; tasks          | required concorde-plan-artifact and concorde-task-identity-constraints; optional concorde-implementation-task, concorde-review-result and concorde-task-scope-feedback | Implementation acceptance tasks with new IDs outside the reserved set; no source contents or writes |
-| programmer       | stage; implementation | required concorde-implementation-task; optional concorde-review-result                                                                                                 | Fulfilled tasks only; may write the selected Module's listed implementation paths                   |
-| code-reviewer    | review; code-review   | none                                                                                                                                                                   | Independent code findings; authorized code read-only                                                |
-| issue-solver     | stage; issue-solve    | required concorde-issue-selection                                                                                                                                      | Bounded next action or disposition; Spec-only, no project writes                                    |
+`test_command` takes `command` (a string of at most 32768 characters), `timeout` (1 to 3600
+seconds, default 600) and `reports` (relative names of files under `CONCORDE_CHECK_REPORT_DIR` to
+export). It runs the command in the Harness's operating-system read-only sandbox with fresh writable
+scratch in `CONCORDE_CHECK_TMPDIR`, a private `/tmp` backed by that scratch, and existing host
+`/tmp` inputs readable through `CONCORDE_TEST_HOST_TMP`. Before the scratch is removed, the Host
+exports bounded output and the named reports to primary run evidence and returns a manifest; an
+export failure is reported with the original result.
+
+The `concorde-maintenance.ts` extension blocks every tool call when the working directory is not a
+Concorde source checkout, and always blocks the `subagent` and `concorde` tools.
+
+The maintenance-worker's progress messages carry a fenced `task-brief` JSON object with string
+fields `goal`, `grant`, `stage`, `objective`, `blocker` (`"none"` when there is none) and `next`,
+and array fields `decisions`, `completed`, `checks` and `evidence`; each text is at most 2000
+characters, each list at most 16 entries and the object at most 12000 characters. The source user
+session uses the same fields with its `update_task_brief` tool.
+
+## Coordinator status commands
+
+The coordinator instructions use the primary checkout's status command, run in the primary
+checkout, never in a child:
+
+| Step | Command |
+| --- | --- |
+| Register a candidate | `scripts/concorde.py status --register "$candidate" --task "$goal" --mode maintenance` |
+| Read all records | `scripts/concorde.py status` |
+| Bind a launched child | `scripts/concorde.py status --change-id "$change_id" --child "$child_id" --phase maintenance` (or `--phase test`) |
+| Release a stopped child | the bind command with `--release`, using the current owner's phase |
+| Record an authorized merge | `scripts/concorde.py status --change-id "$change_id" --manual-merge "$commit" --cleanup pending` |
+
+Registering an already registered candidate returns the existing record without changing its goal
+or mode. The coordinator instructions are projected only into `.pi/extensions/concorde-coordinator.ts`,
+which appends them to the system prompt of the source user session.

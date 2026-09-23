@@ -9,7 +9,6 @@ local, object-sharing clone of this worktree's own repository at its exact curre
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -18,6 +17,7 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 # A target already registered in this project's own .concorde/specs.json (self-hosted registry),
@@ -93,7 +93,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             [sys.executable, launcher, "concorde-validate"],
             self.clone,
             input=json.dumps(invocation),
-            env={**os.environ, "CONCORDE_STUDIO_URL": ""},
+            env=child_environment(),
         )
         self.assertTrue(process.stdout.strip(), process.stderr)
         return json.loads(process.stdout)

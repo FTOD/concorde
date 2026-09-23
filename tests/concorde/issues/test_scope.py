@@ -56,7 +56,7 @@ class ComponentIssueTests(unittest.TestCase):
             "change_id": state["change_id"],
         }
 
-    @verifies("scenario.issues.component-scope")
+    @verifies("scenario.implementation.caller-components")
     def test_component_contexts_remain_separate(self):
         component = self.parent_tasks()
         result = self.call("concorde-implement")
@@ -86,7 +86,7 @@ class ComponentIssueTests(unittest.TestCase):
             "scope.bank", read_change(self.root, required=True)["target_id"]
         )
 
-    @verifies("scenario.issues.component-scope")
+    @verifies("scenario.planning.tasks-foreign-target")
     def test_foreign_component_is_not_a_write_grant(self):
         self.assertEqual("succeeded", self.call("concorde-plan")["status"])
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import shutil
@@ -11,6 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -48,11 +48,9 @@ class TaskSubagentsTests(unittest.TestCase):
         self.assertNotIn(
             "concorde-brief-lifecycle", source[".pi/agents/tester.md"].content.decode()
         )
-        self.assertNotIn(".pi/APPEND_SYSTEM.md", source)
         self.assertNotIn(".pi/extensions/concorde-session.ts", source)
         self.assertIn(".pi/agents/tester.md", installed)
         self.assertNotIn(".pi/agents/maintenance-worker.md", installed)
-        self.assertNotIn(".pi/APPEND_SYSTEM.md", installed)
         self.assertNotIn(".pi/extensions/concorde-coordinator.ts", installed)
         self.assertNotIn(
             "Source maintenance worker",
@@ -114,7 +112,9 @@ class TaskSubagentsTests(unittest.TestCase):
             self.assertEqual(action["action"], "conflict")
             self.assertEqual(path.read_text(), "user-owned tester")
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies(
+        "scenario.distribution.task-subagents", "scenario.agents.tester-independent"
+    )
     def test_actual_project_discovery_and_effective_tools(self):
         subagents = Path(
             os.environ.get(
@@ -147,11 +147,7 @@ class TaskSubagentsTests(unittest.TestCase):
                     str(pi_root),
                     str(REPOSITORY_ROOT),
                 ],
-                env={
-                    **os.environ,
-                    "PI_CODING_AGENT_DIR": directory,
-                    "TMPDIR": directory,
-                },
+                env=child_environment(PI_CODING_AGENT_DIR=directory, TMPDIR=directory),
                 capture_output=True,
                 text=True,
             )
@@ -203,11 +199,7 @@ class TaskSubagentsTests(unittest.TestCase):
                     str(pi_root),
                     str(consumer),
                 ],
-                env={
-                    **os.environ,
-                    "PI_CODING_AGENT_DIR": directory,
-                    "TMPDIR": directory,
-                },
+                env=child_environment(PI_CODING_AGENT_DIR=directory, TMPDIR=directory),
                 capture_output=True,
                 text=True,
             )
@@ -228,7 +220,9 @@ class TaskSubagentsTests(unittest.TestCase):
             )
 
     @verifies(
-        "scenario.harness.session-observation", "scenario.distribution.task-subagents"
+        "scenario.harness.session-observation",
+        "scenario.distribution.task-subagents",
+        "scenario.agents.tester-independent",
     )
     def test_native_hook_observation_and_readonly_commands(self):
         if not shutil.which("node"):
@@ -284,12 +278,9 @@ class TaskSubagentsTests(unittest.TestCase):
                     scratch,
                     provider.base_url,
                 ],
-                env={
-                    **os.environ,
-                    "PI_CODING_AGENT_DIR": scratch,
-                    "PI_OFFLINE": "1",
-                    "PI_TELEMETRY": "0",
-                },
+                env=child_environment(
+                    PI_CODING_AGENT_DIR=scratch, PI_OFFLINE="1", PI_TELEMETRY="0"
+                ),
                 capture_output=True,
                 text=True,
                 timeout=60,
@@ -336,24 +327,13 @@ class TaskSubagentsTests(unittest.TestCase):
             print(result.stdout)
 
     @verifies("scenario.distribution.test-timing")
-    def test_runner_fingerprints_and_legacy_cli(self):
-        path = REPOSITORY_ROOT / "scripts/development/run-tests.py"
-        spec = importlib.util.spec_from_file_location(
-            "concorde_test_runner_fixture", path
-        )
-        runner = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = runner
-        spec.loader.exec_module(runner)
-        first = runner.fingerprint(
-            sys.executable, ["tests.concorde.harness.test_timing"]
-        )
-        self.assertEqual(
-            first,
-            runner.fingerprint(sys.executable, ["tests.concorde.harness.test_timing"]),
-        )
-        self.assertNotEqual(
-            first["digest"], runner.fingerprint(sys.executable, ["other"])["digest"]
-        )
+    def test_runner_fingerprints_and_default_cli(self):
+        from tests.concorde.support import pytest_timing as runner
+
+        selected = ["tests/concorde/harness/test_timing.py::TimingTests::test_x"]
+        first = runner.fingerprint(selected)
+        self.assertEqual(first, runner.fingerprint(selected))
+        self.assertNotEqual(first["digest"], runner.fingerprint(["other"])["digest"])
         read_bytes = Path.read_bytes
         role = REPOSITORY_ROOT / "agents/planner/spec.md"
 
@@ -362,23 +342,25 @@ class TaskSubagentsTests(unittest.TestCase):
             return content + b"\nchanged role\n" if path == role else content
 
         with patch.object(Path, "read_bytes", changed_role):
-            changed = runner.fingerprint(
-                sys.executable, ["tests.concorde.harness.test_timing"]
-            )
+            changed = runner.fingerprint(selected)
         self.assertNotEqual(first["input"], changed["input"])
         with tempfile.TemporaryDirectory() as directory:
+            command = [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-p",
+                "no:cacheprovider",
+                "-n",
+                "2",
+                "tests/concorde/harness/test_timing.py",
+                "tests/concorde/harness/test_rpc_diagnostics.py",
+            ]
             report = Path(directory) / "report.json"
+            # A caller may pass no reason, scope, phase or attempt.
             result = subprocess.run(
-                [
-                    sys.executable,
-                    str(path),
-                    "--filter",
-                    "harness.test_timing",
-                    "--json",
-                    str(report),
-                    "-j",
-                    "1",
-                ],
+                [*command, f"--json={report}"],
+                cwd=REPOSITORY_ROOT,
                 capture_output=True,
                 text=True,
             )
@@ -386,7 +368,87 @@ class TaskSubagentsTests(unittest.TestCase):
             value = json.loads(report.read_text())
             self.assertEqual(value["reason"], "manual")
             self.assertEqual(value["scope"], "unspecified")
+            self.assertEqual(value["phase"], "unspecified")
+            self.assertEqual(value["attempt"], 1)
+            self.assertIsNone(value["prior_run_id"])
+            self.assertIsNone(value["same_declared_inputs"])
             self.assertTrue(all(s["layer"] == "C" for s in value["spans"]))
-            self.assertIsNone(value["units"][0]["setup_seconds"])
-            self.assertGreaterEqual(value["units"][0]["queue_seconds"], 0)
-            self.assertGreaterEqual(value["units"][0]["execution_seconds"], 0)
+            self.assertEqual(
+                {"test.total", "test.discovery", "test.unit"},
+                {s["name"] for s in value["spans"]},
+            )
+            self.assertEqual(value["totals"]["tests"], value["totals"]["collected"])
+            self.assertEqual(value["totals"]["failed"] + value["totals"]["error"], 0)
+            self.assertEqual(value["totals"]["workers"], 2)
+            self.assertGreaterEqual(value["discovery_seconds"], 0)
+            self.assertGreaterEqual(
+                value["elapsed_seconds"], value["discovery_seconds"]
+            )
+            self.assertIn("not elapsed wall time", value["timing_note"])
+            units = {unit["nodeid"]: unit for unit in value["units"]}
+            self.assertEqual(len(units), value["totals"]["tests"])
+            # Elapsed is the controller's own interval; unit seconds are summed concurrent work.
+            self.assertGreaterEqual(
+                value["elapsed_seconds"],
+                max(unit["execution_seconds"] for unit in units.values()),
+            )
+            self.assertAlmostEqual(
+                value["totals"]["unit_seconds"],
+                sum(unit["execution_seconds"] for unit in units.values()),
+                places=1,
+            )
+            for unit in units.values():
+                self.assertIsNone(unit["setup_seconds"])
+                self.assertGreaterEqual(unit["queue_seconds"], 0)
+                self.assertGreaterEqual(unit["execution_seconds"], 0)
+                self.assertEqual(
+                    {"setup", "call", "teardown"}, set(unit["phase_seconds"])
+                )
+            rpc = units[
+                "tests/concorde/harness/test_rpc_diagnostics.py::RpcDiagnosticsTests::"
+                "test_rejected_response_keeps_details_private"
+            ]
+            self.assertTrue(rpc["telemetry_complete"])
+            self.assertEqual(
+                {"pi.rpc_total", "pi.process_start", "pi.rpc_accept"},
+                {span["name"] for span in rpc["runtime_spans"]},
+            )
+            self.assertTrue(all(s["layer"] == "B" for s in rpc["runtime_spans"]))
+            self.assertEqual(
+                {rpc["process_id"]}, {s["process_id"] for s in rpc["runtime_spans"]}
+            )
+            self.assertIn(rpc["worker"], {"gw0", "gw1"})
+            # An explicitly scoped rerun recognizes unchanged declared inputs.
+            # Values are joined with "=": an existing prior path as a separate argument would
+            # be taken for a test path while pytest decides its rootdir.
+            again = Path(directory) / "again.json"
+            result = subprocess.run(
+                [
+                    *command,
+                    f"--json={again}",
+                    f"--prior={report}",
+                    "--reason=failure",
+                    "--scope=targeted",
+                    "--phase=maintenance",
+                    "--attempt=2",
+                ],
+                cwd=REPOSITORY_ROOT,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            second = json.loads(again.read_text())
+            self.assertEqual(second["prior_run_id"], value["run_id"])
+            self.assertEqual(
+                (second["reason"], second["scope"], second["phase"], second["attempt"]),
+                ("failure", "targeted", "maintenance", 2),
+            )
+            self.assertEqual(
+                second["fingerprint"]["digest"], value["fingerprint"]["digest"]
+            )
+            self.assertEqual(
+                second["same_declared_inputs"],
+                True if value["fingerprint"]["input_complete"] else None,
+            )
+            self.assertIn("same declared inputs as prior run", result.stdout)
+            self.assertFalse(second["fingerprint"]["environment_complete"])

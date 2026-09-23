@@ -218,10 +218,6 @@
               "build, validate, select-session, protocol-manifest, docsite and usage: render assets, check the project, verify exact private Pi provenance, accept a Protocol binding, scaffold a docsite and summarize worker usage."
             ],
             [
-              "LangGraph Studio",
-              "Inspect the optional terminal Agent StateGraph; execution needs a trusted native launch/admission service, with no public capability mirrors."
-            ],
-            [
               "python3 scripts/install-concorde.py",
               "Preview or apply Pi-only installation; legacy retirement removes only unchanged receipt-owned outputs and preserves external CLI-owned Skills and user content."
             ],
@@ -234,8 +230,8 @@
               "Start, build, validate, typecheck or test the documentation site."
             ],
             [
-              "python3 scripts/development/run-tests.py",
-              "Run deterministic Python tests without starting model-backed workers."
+              ".venv/bin/python -m pytest",
+              "Run deterministic Python tests in parallel without starting model-backed workers."
             ]
           ]
         }

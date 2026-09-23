@@ -1,883 +1,1264 @@
-"""Deterministic checks establish structure/contract evidence, never semantic completeness."""
+"""Every decidable check of Spec Protocol 11 (``protocol/checks.md``), reported as findings.
+
+A finding's ``rule_id`` is the check identity (``CHK.*``). A few tool findings keep a
+``CONCORDE-*`` identity: link fragments, scenario coverage, configured check inputs, Issue records
+and package validation. Passing these checks establishes structural conformance only; it never
+establishes that the Spec is sufficient or that the implementation conforms.
+"""
 
 from __future__ import annotations
 
-import os
-import re
+import json
+import subprocess
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
+from .content_model import metadata_path
+from .content_repository import DocumentUnitRepository, severity
 from .model import Finding, ToolResult
+from .repository import SpecRepository
 from .repository_base import (
-    ANCHOR_PREFIXES,
-    HEADING,
-    IDENTITY,
-    LIST_ITEM,
-    SKIPPED_DIRECTORIES,
-    SKIPPED_SUFFIXES,
-    RepositoryCore,
+    GENERATED_PREFIXES,
     SpecError,
-    SpecTarget,
-    digest,
+    bound_by,
     check_input_error,
     check_input_members,
+    control_path,
+    covers,
+    digest,
+    entry_base,
     entry_exists,
     is_directory_entry,
+    overlaps,
     read_file,
-    walk_lines,
 )
-from .repository import SpecRepository
-from .content_model import reading_problems
-
-from .typed_data import TypedDataError, checked_path
+from .syntax import (
+    LINK,
+    NODE_PREFIXES,
+    DiagramError,
+    diagram_type,
+    entry_section_problems,
+    explained,
+    first_line,
+    first_section,
+    flowchart_model,
+    link_target,
+    one_sentence,
+    test_declarations,
+)
+from .typed_data import TypedDataError
 from .verification import DeclarationError, scan_declarations
 
-
-LINK = re.compile(r"!?\[[^\]]*\]\(([^\s)]+)\)")
-
-
-DIAGRAM_KEYWORDS = (
-    "flowchart",
-    "graph",
-    "subgraph",
-    "end",
-    "classDef",
-    "class",
-    "style",
-    "linkStyle",
-    "direction",
-    "click",
-    "accTitle",
-    "accDescr",
-)
-EDGE = re.compile(
-    r"(?P<op>x--x|o--o|<-->|-->|---|-\.->|-\.-|==>|===|--x|--o|<--|<==)"
-    r"(?:[ \t]*\|(?P<label>[^|]*)\|)?"
-)
-INLINE_EDGE = re.compile(
-    r"--[ \t]+(?P<label>[^-]+?)[ \t]+-->|-\.[ \t]+(?P<label2>[^.]+?)[ \t]+\.->"
-    r"|==[ \t]+(?P<label3>[^=]+?)[ \t]+==>"
-)
-NODE = re.compile(r"(?P<id>[A-Za-z0-9_]+)(?::::\w+)?")
-OPENERS = ("(((", "[[", "[(", "((", "{{", "[/", "[\\", "[", "(", "{", ">")
-CLOSERS = (")))", "]]", ")]", "))", "}}", "/]", "\\]", "]", ")", "}")
+REMEDIATION = {
+    "CHK.registry.mirror": "Regenerate the registry's mirrored fields with `concorde.py registry --write`.",
+    "CHK.binds.unbound": "Add the file to a realization's entries of the Module it realizes.",
+    "CHK.context.reconciled": "Select the defining document through uses, contains or an includes with a reason, or remove the relation.",
+    "CHK.contrasts.required": "Declare a contrasts relation with a reason between the two nodes.",
+}
 
 
-class DiagramError(ValueError):
-    pass
-
-
-def _first_line(label: str) -> str:
-    text = label.strip()
-    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
-        text = text[1:-1]
-    text = re.split(r"<br\s*/?>", text)[0]
-    return text.strip()
-
-
-def _scan_node(line: str, position: int) -> tuple[str, str | None, int]:
-    match = NODE.match(line, position)
-    if not match:
-        raise DiagramError(
-            f"cannot interpret diagram text near {line[position : position + 20]!r}"
-        )
-    node_id = match.group("id")
-    if node_id in DIAGRAM_KEYWORDS:
-        raise DiagramError(
-            f"reserved Mermaid keyword cannot be a node identifier: {node_id}"
-        )
-    position = match.end()
-    rest = line[position:]
-    for opener in OPENERS:
-        if rest.startswith(opener):
-            inner_start = position + len(opener)
-            if line[inner_start : inner_start + 1] == '"':
-                end = line.find('"', inner_start + 1)
-                if end < 0:
-                    raise DiagramError("unterminated quoted node label")
-                label = line[inner_start + 1 : end]
-                after = end + 1
-            else:
-                closer_index = min(
-                    (
-                        line.find(c, inner_start)
-                        for c in CLOSERS
-                        if line.find(c, inner_start) >= 0
-                    ),
-                    default=-1,
-                )
-                if closer_index < 0:
-                    raise DiagramError("unterminated node label")
-                label = line[inner_start:closer_index]
-                after = closer_index
-            for closer in CLOSERS:
-                if line.startswith(closer, after):
-                    after += len(closer)
-                    break
-            else:
-                raise DiagramError("node shape is not closed")
-            if line.startswith(":::", after):
-                style = re.compile(r":::\w+").match(line, after)
-                if style is None:
-                    raise DiagramError("node style name is missing")
-                after = style.end()
-            return node_id, label, after
-    return node_id, None, position
-
-
-def flowchart_model(
-    text: str,
-) -> tuple[dict[str, str], list[tuple[str, str | None, str]]]:
-    """Node labels and labeled edges of one Mermaid flowchart; raises DiagramError when unreadable."""
-    nodes: dict[str, str] = {}
-    edges: list[tuple[str, str | None, str]] = []
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("%%"):
-            continue
-        head = re.split(r"[\s:]", line, 1)[0]
-        if head in DIAGRAM_KEYWORDS:
-            continue
-        position = 0
-        groups: list[list[str]] = []
-        pending_edges: list[str | None] = []
-        current: list[str] = []
-        while position < len(line):
-            while position < len(line) and line[position] in " \t":
-                position += 1
-            if position >= len(line):
-                break
-            if line.startswith("&", position):
-                position += 1
-                continue
-            inline = INLINE_EDGE.match(line, position)
-            if inline:
-                label = (
-                    inline.group("label")
-                    or inline.group("label2")
-                    or inline.group("label3")
-                )
-                groups.append(current)
-                current = []
-                pending_edges.append(label.strip() if label and label.strip() else None)
-                position = inline.end()
-                continue
-            edge = EDGE.match(line, position)
-            if edge:
-                label = edge.group("label")
-                groups.append(current)
-                current = []
-                pending_edges.append(label.strip() if label and label.strip() else None)
-                position = edge.end()
-                continue
-            node_id, label, position = _scan_node(line, position)
-            if label is not None:
-                nodes[node_id] = label
-            else:
-                nodes.setdefault(node_id, node_id)
-            current.append(node_id)
-        groups.append(current)
-        if len(groups) != len(pending_edges) + 1 or any(not group for group in groups):
-            raise DiagramError(f"cannot interpret diagram line: {raw.strip()!r}")
-        for index, label in enumerate(pending_edges):
-            for source in groups[index]:
-                for target in groups[index + 1]:
-                    edges.append((source, label, target))
-    return nodes, edges
-
-
-def _section_ranges(
-    body: str,
-) -> tuple[list[tuple[str, int, int, int]], list[tuple[int, str, str]]]:
-    """Heading sections of prose as (text, level, start line, end line) with the walked lines."""
-    lines = walk_lines(body)
-    headings = []
-    for number, kind, line in lines:
-        if kind != "prose":
-            continue
-        match = HEADING.match(line)
-        if match:
-            headings.append((match.group(2).strip(), len(match.group(1)), number))
-    total = lines[-1][0] if lines else 0
-    sections = []
-    for index, (text, level, start) in enumerate(headings):
-        end = total
-        for later_text, later_level, later_start in headings[index + 1 :]:
-            if later_level <= level:
-                end = later_start - 1
-                break
-        sections.append((text, level, start, end))
-    return sections, lines
-
-
-def reading_part_problems(
-    body: str, *, primary: bool = False, role: str = "module"
-) -> list[str]:
-    """Protocol reading completeness has a structural subset, independent of publication layout."""
-    return list(reading_problems(body, primary=primary, role=role))
-
-
-def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
-    fences: list[str] = []
-    current: list[str] | None = None
-    for number, kind, line in lines:
-        if number < start or number > end:
-            continue
-        if kind == "fence-open":
-            current = (
-                []
-                if re.match(
-                    r"^ {0,3}(?:`{3,}|~{3,})\s*" + re.escape(language) + r"\s*$", line
-                )
-                else None
-            )
-        elif kind == "fenced" and current is not None:
-            current.append(line)
-        elif kind == "fence-close" and current is not None:
-            fences.append("\n".join(current))
-            current = None
-    return fences
-
-
-def _relationship_fences(body: str) -> list[str]:
-    sections, lines = _section_ranges(body)
-    relationships = next(
-        (s for s in sections if s[0] == "Relationships" and s[1] == 2), None
-    )
-    return (
-        _fences_in_range(lines, relationships[2], relationships[3], "mermaid")
-        if relationships
-        else []
+def _finding(
+    check: str,
+    source: str,
+    message: str,
+    *,
+    line: int | None = None,
+    subject: str | None = None,
+) -> Finding:
+    return Finding(
+        check,
+        severity(check),
+        source,
+        message,
+        REMEDIATION.get(
+            check, "Repair the declaration so the Spec graph is well formed."
+        ),
+        line=line,
+        subject_id=subject,
     )
 
 
-def module_findings(
-    repository: RepositoryCore, target_id: str | None = None
-) -> tuple[Finding, ...]:
-    """Check the reading entry and companion reading parts, not semantic sufficiency."""
-    findings = []
-    for target in repository.targets.values():
-        if target_id is not None and target.id != target_id:
-            continue
-        path = target.primary_document
-        try:
-            document = repository.document(path)
-        except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(
-                Finding(
-                    "CONCORDE-MODULE-001",
-                    "error",
-                    path,
-                    str(problem),
-                    "Register a readable module.md reading entry.",
-                    subject_id=target.id,
-                )
-            )
-            continue
-        for owned_path in target.documents:
-            try:
-                owned = (
-                    document if owned_path == path else repository.document(owned_path)
-                )
-                problems = reading_part_problems(
-                    owned.body,
-                    primary=owned_path == path,
-                    role=owned.metadata["document"]["role"],
-                )
-            except (ValueError, OSError, KeyError, TypeError) as problem:
-                problems = [str(problem)]
-            for problem in problems:
-                findings.append(
-                    Finding(
-                        "CONCORDE-MODULE-001",
-                        "error",
-                        owned_path,
-                        problem,
-                        "Start the reading entry with Purpose, Terminology, Usage, Design and Relationships; keep machine declarations in its metadata companion.",
-                        subject_id=target.id,
-                    )
-                )
-    return tuple(findings)
+def normalize_title(value: str) -> str:
+    """Name normalization of CHK.contrasts.required: NFKC, casefold, one space per separator run."""
+    import re
+
+    text = unicodedata.normalize("NFKC", value).casefold()
+    return re.sub(r"[\s_-]+", " ", text).strip()
 
 
-def definition_findings(
-    repository: RepositoryCore, target_id: str | None = None
-) -> tuple[Finding, ...]:
-    """Parse scenarios, requirements and entities; check listings, identities and diagrams."""
-    findings = []
-    identities: dict[str, tuple[str, str]] = {}
-    for target in repository.targets.values():
-        identities.setdefault(target.id, ("Module", target.primary_document))
-    for path in repository.document_targets:
-        try:
-            document = repository.document(path)
-            identities.setdefault(document.document_id, ("document", path))
-        except (ValueError, OSError):
-            continue
-    for target in repository.targets.values():
-        try:
-            for contract in repository.contracts(target):
-                previous = identities.get(contract["id"])
-                if previous is not None:
-                    findings.append(
-                        Finding(
-                            "CONCORDE-IDENTITY-001",
-                            "error",
-                            contract["source"],
-                            f"canonical contract identity {contract['id']} is already used by {previous}",
-                            "Keep one globally unique identity for each definition.",
-                            subject_id=contract["id"],
-                        )
-                    )
-                identities[contract["id"]] = ("contract", contract["source"])
-        except (ValueError, OSError):
-            continue
-    for target in repository.targets.values():
-        if target_id is not None and target.id != target_id:
-            continue
-        try:
-            definitions = repository.definitions(target)
-        except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(
-                Finding(
-                    "CONCORDE-DEFINITION-001",
-                    "error",
-                    target.primary_document,
-                    str(problem),
-                    "Repair the scenario, requirement or entity definitions of this Module's documents.",
-                    subject_id=target.id,
-                )
-            )
-            continue
-        for kind, items in (
-            ("scenario", definitions.scenarios),
-            ("requirement", definitions.requirements),
-            ("entity", definitions.entities),
+class Checks:
+    """One pass over a loaded graph, collecting findings per check family."""
+
+    def __init__(self, repository: DocumentUnitRepository):
+        self.repository = repository
+        self.findings: list[Finding] = []
+        self.entries = {
+            module.entry: module.id for module in repository.declarations.values()
+        }
+
+    def add(self, check: str, source: str, message: str, **keys) -> None:
+        self.findings.append(_finding(check, source, message, **keys))
+
+    def run(self) -> list[Finding]:
+        for family in (
+            self.registry,
+            self.documents,
+            self.terminology,
+            self.nodes,
+            self.module_relations,
+            self.metadata_relations,
+            self.bindings,
+            self.external,
+            self.participation,
+            self.views,
+            self.reconciliation,
+            self.links,
+            self.evidence,
         ):
-            for item in items:
-                previous = identities.get(item.id)
-                if previous is not None and previous != (kind, item.document):
-                    findings.append(
-                        Finding(
-                            "CONCORDE-IDENTITY-001",
-                            "error",
-                            item.document,
-                            f"{kind} identity {item.id} is also used by a {previous[0]} in {previous[1]}",
-                            "Give every Module, document, scenario, requirement and entity a unique stable ID.",
-                            subject_id=item.id,
+            family()
+        return self.findings
+
+    # --- registry ------------------------------------------------------------------------
+
+    def registry(self) -> None:
+        repository = self.repository
+        fields = (
+            "id",
+            "title",
+            "entry",
+            "owns",
+            "contains",
+            "uses",
+            "includes",
+            "participates",
+        )
+        for record in repository.records:
+            module = repository.declarations.get(record["id"])
+            if module is None or module.block is None:
+                continue
+            if set(record) != set(fields):
+                self.add(
+                    "CHK.registry.mirror",
+                    repository.registry_path,
+                    f"registry record {record['id']} must have exactly the fields {list(fields)}",
+                    subject=record["id"],
+                )
+                continue
+            differing = [
+                name
+                for name in fields[1:]
+                if name != "entry" and record.get(name) != module.block.get(name)
+            ]
+            if differing:
+                self.add(
+                    "CHK.registry.mirror",
+                    repository.registry_path,
+                    f"registry record {record['id']} differs from its entry's module block in "
+                    + ", ".join(differing),
+                    subject=record["id"],
+                )
+
+    # --- documents -----------------------------------------------------------------------
+
+    def documents(self) -> None:
+        repository = self.repository
+        for module in repository.declarations.values():
+            entries = [
+                path
+                for path in module.owns
+                if path in repository.units
+                and repository.units[path].role == "module"
+                and path.split("/")[-1] == "module.md"
+            ]
+            if len(entries) > 1:
+                self.add(
+                    "CHK.document.entry",
+                    metadata_path(module.entry),
+                    f"Module {module.id} owns several module-role module.md documents: {entries}",
+                    subject=module.id,
+                )
+            if module.entry in repository.readings:
+                for problem in entry_section_problems(
+                    repository.readings[module.entry].text
+                ):
+                    self.add(
+                        problem.check, module.entry, problem.message, line=problem.line
+                    )
+        for path, unit in repository.units.items():
+            reading = repository.readings[path]
+            if unit.role != "module" or path in self.entries:
+                continue
+            defines_concepts = any(
+                concept.document == path
+                for concept in repository.concept_nodes.values()
+            )
+            imports = any(item["document"] == path for item in repository.imports)
+            if (
+                defines_concepts or imports or reading.terminology is not None
+            ) and first_section(reading.text) != "Terminology":
+                if defines_concepts or imports:
+                    self.add(
+                        "CHK.document.topic-terminology",
+                        path,
+                        "a module topic that defines or imports a concept starts with ## Terminology",
+                    )
+
+    # --- terminology ---------------------------------------------------------------------
+
+    def terminology(self) -> None:
+        repository = self.repository
+        for path, unit in repository.units.items():
+            reading = repository.readings[path]
+            rows = reading.terminology or []
+            defined = {
+                concept.title: concept
+                for concept in repository.concept_nodes.values()
+                if concept.document == path
+            }
+            titles = Counter(row.term for row in rows if row.href is None)
+            for row in rows:
+                if row.href is not None:
+                    continue
+                if unit.role != "module":
+                    self.add(
+                        "CHK.terminology.rows",
+                        path,
+                        f"only module documents define concepts in Terminology: {row.term}",
+                        line=row.line,
+                    )
+                elif row.term not in defined:
+                    self.add(
+                        "CHK.terminology.rows",
+                        path,
+                        f"Terminology row {row.term!r} is neither a concept this document defines "
+                        "nor an import link",
+                        line=row.line,
+                    )
+            for title, concept in defined.items():
+                if titles[title] != 1:
+                    self.add(
+                        "CHK.concept.definition",
+                        path,
+                        f"concept {concept.id} needs exactly one defining Terminology row titled "
+                        f"{title!r}; found {titles[title]}",
+                        subject=concept.id,
+                    )
+                elif not concept.definition or not one_sentence(concept.definition):
+                    self.add(
+                        "CHK.concept.definition",
+                        path,
+                        f"the definition of concept {concept.id} must be one nonempty sentence",
+                        subject=concept.id,
+                    )
+        seen: set[tuple[str, str]] = set()
+        for item in repository.imports:
+            path, line = item["document"], item["line"]
+            unit = repository.units[path]
+            concept = repository.concept_nodes.get(item["concept"] or "")
+            if unit.role != "module":
+                self.add(
+                    "CHK.terminology.import-row",
+                    path,
+                    "only module documents import concepts",
+                    line=line,
+                )
+                continue
+            if item["definition"].strip():
+                self.add(
+                    "CHK.terminology.import-row",
+                    path,
+                    f"import row {item['href']} must leave Definition empty",
+                    line=line,
+                )
+            if (
+                concept is None
+                or item["path"] != concept.document
+                or item["path"] == path
+            ):
+                self.add(
+                    "CHK.terminology.import-row",
+                    path,
+                    f"import row {item['href']} must link to a concept identity in its defining "
+                    "document",
+                    line=line,
+                )
+                continue
+            key = (path, concept.id)
+            if key in seen:
+                self.add(
+                    "CHK.terminology.rows",
+                    path,
+                    f"concept {concept.id} is imported twice",
+                    line=line,
+                )
+            seen.add(key)
+            if concept.owner == item["owner"]:
+                self.add(
+                    "CHK.imports.foreign",
+                    path,
+                    f"concept {concept.id} is owned by this document's own Module",
+                    line=line,
+                    subject=concept.id,
+                )
+            elif (
+                concept.owner not in repository.modules[item["owner"]].uses
+                and concept.owner not in self.ancestors(item["owner"])
+                and item["owner"] not in self.ancestors(concept.owner)
+            ):
+                self.add(
+                    "CHK.imports.owner",
+                    path,
+                    f"imported concept {concept.id} belongs to {concept.owner}, which "
+                    f"{item['owner']} neither uses, descends from nor contains transitively",
+                    line=line,
+                    subject=concept.id,
+                )
+
+    def ancestors(self, module_id: str) -> set[str]:
+        result, current = set(), self.repository.modules[module_id].parent
+        while current is not None and current not in result:
+            result.add(current)
+            current = self.repository.modules[current].parent
+        return result
+
+    # --- nodes -----------------------------------------------------------------------------
+
+    def nodes(self) -> None:
+        repository = self.repository
+        titles: dict[str, list[str]] = {}
+        for module in repository.declarations.values():
+            titles.setdefault(module.title, []).append(module.id)
+        for title, owners in titles.items():
+            if len(owners) > 1:
+                self.add(
+                    "CHK.node.title",
+                    repository.registry_path,
+                    f"Module title {title!r} is not unique: {', '.join(owners)}",
+                )
+        local: dict[tuple[str, str], list[str]] = {}
+        for node in (
+            *repository.concept_nodes.values(),
+            *repository.realization_nodes.values(),
+        ):
+            local.setdefault((node.owner, node.title), []).append(node.id)
+            unit = repository.units[node.document]
+            anchor_name = node.meaning[1:] if node.meaning.startswith("#") else None
+            anchor = repository.readings[node.document].anchors.get(anchor_name or "")
+            if anchor_name is None or anchor is None or not anchor.text.strip():
+                self.add(
+                    "CHK.node.meaning",
+                    unit.metadata.path,
+                    f"{node.id} meaning {node.meaning!r} must be a local anchor resolving to "
+                    "nonempty prose in its document",
+                    subject=node.id,
+                )
+        for (owner, title), identities in local.items():
+            if len(identities) > 1:
+                self.add(
+                    "CHK.node.title",
+                    repository.modules[owner].primary_document,
+                    f"title {title!r} is shared by {', '.join(identities)} of {owner}",
+                    subject=identities[0],
+                )
+        for path, reading in repository.readings.items():
+            reported: set[tuple[str, ...]] = set()
+            for anchor in reading.anchors.values():
+                if anchor.group in reported:
+                    continue
+                reported.add(anchor.group)
+                if not explained(anchor):
+                    self.add(
+                        "CHK.node.explained",
+                        path,
+                        f"anchor {', '.join(anchor.group)} has no explanatory prose",
+                        line=anchor.line,
+                    )
+
+    # --- Module-level relations ---------------------------------------------------------
+
+    def module_relations(self) -> None:
+        repository = self.repository
+        roots = [
+            target.id for target in repository.modules.values() if target.parent is None
+        ]
+        if len(roots) != 1:
+            self.add(
+                "CHK.contains.root",
+                repository.registry_path,
+                f"exactly one Module should have no parent; found {roots}",
+            )
+        for module in repository.declarations.values():
+            source = metadata_path(module.entry)
+            used = Counter(item["target"] for item in module.uses)
+            for target, count in used.items():
+                if target == module.id:
+                    self.add(
+                        "CHK.uses.no-self",
+                        source,
+                        f"{module.id} uses itself",
+                        subject=module.id,
+                    )
+                if count > 1:
+                    self.add(
+                        "CHK.uses.unique",
+                        source,
+                        f"{module.id} uses {target} more than once",
+                        subject=module.id,
+                    )
+            for kind in ("contains", "uses"):
+                for item in module.relations(kind):
+                    self.meaning(module, item, kind)
+                    if "relies_on" in item:
+                        self.relies_on(module, item, kind)
+            for item in module.participates:
+                self.meaning(module, item, "participates")
+            self.includes(module)
+
+    def meaning(self, module, item: dict, kind: str) -> None:
+        meaning = item.get("meaning")
+        valid = isinstance(meaning, str) and "#" in meaning
+        if valid:
+            location = meaning.split("#", 1)[0]
+            valid = (
+                not location or location in module.owns
+            ) and self.repository.meaning_text(module.id, meaning)
+        if not valid:
+            self.add(
+                "CHK.relation.meaning",
+                metadata_path(module.entry),
+                f"{kind} {item.get('target') or item.get('contract')} meaning {meaning!r} must "
+                "resolve to nonempty prose in a document the Module owns",
+                subject=module.id,
+            )
+
+    def relies_on(self, module, item: dict, kind: str) -> None:
+        repository = self.repository
+        target = item["target"]
+        for identity in item["relies_on"]:
+            node = repository.nodes.get(identity)
+            if (
+                node is None
+                or node.owner != target
+                or node.type not in {"requirement", "scenario", "contract", "concept"}
+            ):
+                self.add(
+                    "CHK.relies-on.owned",
+                    metadata_path(module.entry),
+                    f"{kind} {target} relies_on {identity}, which is not a requirement, scenario, "
+                    f"contract or concept owned by {target}",
+                    subject=module.id,
+                )
+        meaning = item.get("meaning")
+        if not isinstance(meaning, str) or "#" not in meaning:
+            return
+        location, anchor = meaning.split("#", 1)
+        path = location or module.entry
+        found = repository.readings.get(path, None)
+        region = found.anchors.get(anchor) if found else None
+        if region is None:
+            return
+        for match in LINK.finditer(region.raw):
+            linked = link_target(path, match.group(2))
+            if linked is None:
+                continue
+            node = repository.nodes.get(linked[1])
+            if (
+                node is not None
+                and node.owner == target
+                and linked[1] not in item["relies_on"]
+            ):
+                self.add(
+                    "CHK.relies-on.linked",
+                    path,
+                    f"the {kind} explanation links {linked[1]} of {target}, which relies_on does not list",
+                    line=region.line,
+                    subject=module.id,
+                )
+
+    def includes(self, module) -> None:
+        repository = self.repository
+        source = metadata_path(module.entry)
+        pairs = Counter((item["kind"], item["target"]) for item in module.includes)
+        for (kind, target), count in pairs.items():
+            if count > 1:
+                self.add(
+                    "CHK.includes.unique",
+                    source,
+                    f"{module.id} includes {kind} {target} more than once",
+                    subject=module.id,
+                )
+        for item in module.includes:
+            kind, target = item["kind"], item["target"]
+            if (kind == "module" and target == module.id) or (
+                kind == "document"
+                and repository._identity_paths.get(target) in module.owns
+            ):
+                self.add(
+                    "CHK.includes.no-self",
+                    source,
+                    f"{module.id} includes itself or a document it owns: {target}",
+                    subject=module.id,
+                )
+                continue
+            if kind == "external":
+                continue
+            selected = set(repository.selection({**item, "kind": kind}))
+            others = set(module.owns)
+            for relation in (*module.contains, *module.uses):
+                others.update(repository.selection({**relation, "kind": "module"}))
+            for other in module.includes:
+                if other is not item and other["kind"] in {"module", "document"}:
+                    others.update(repository.selection(other))
+            if selected and selected <= others:
+                self.add(
+                    "CHK.includes.redundant",
+                    source,
+                    f"{module.id} includes {kind} {target}, whose documents are already selected",
+                    subject=module.id,
+                )
+
+    # --- metadata relations ------------------------------------------------------------
+
+    def metadata_relations(self) -> None:
+        repository = self.repository
+        concepts = repository.concept_nodes
+        permitted = {
+            "narrows": ({"concept"}, {"concept"}),
+            "supersedes": ({"concept"}, {"concept"}),
+            "contrasts": ({"concept"}, {"concept", "module"}),
+            "relates": (
+                {"concept", "realization", "module"},
+                {"concept", "realization", "module"},
+            ),
+        }
+        relates: Counter = Counter()
+        contrasts: Counter = Counter()
+        supersedes: Counter = Counter()
+        narrows: dict[str, set[str]] = {}
+        for relation in repository.metadata_relations:
+            kind, path = relation["type"], relation["document"]
+            source_meta = metadata_path(path)
+            if not isinstance(relation.get("source"), str) or not isinstance(
+                relation.get("target"), str
+            ):
+                continue
+            source_type = self.node_type(relation["source"])
+            target_type = self.node_type(relation["target"])
+            sources, targets = permitted[kind]
+            if source_type not in sources or target_type not in targets:
+                self.add(
+                    "CHK.relation.endpoints",
+                    source_meta,
+                    f"{kind} {relation['source']} -> {relation['target']} needs a "
+                    f"{'/'.join(sorted(sources))} source and a {'/'.join(sorted(targets))} target",
+                )
+                continue
+            local = (
+                repository.nodes[relation["source"]].document == path
+                if relation["source"] in repository.nodes
+                else kind == "relates" and relation["source"] == relation["owner"]
+            )
+            if not local:
+                self.add(
+                    "CHK.relates.source" if kind == "relates" else "CHK.relation.site",
+                    source_meta,
+                    f"{kind} source {relation['source']} is not defined by this document"
+                    + (" nor its owning Module" if kind == "relates" else ""),
+                )
+            if kind == "relates" and isinstance(relation.get("verb"), str):
+                relates[
+                    (relation["source"], relation["verb"].strip(), relation["target"])
+                ] += 1
+            elif kind == "contrasts":
+                contrasts[frozenset((relation["source"], relation["target"]))] += 1
+            elif kind == "supersedes":
+                supersedes[relation["source"]] += 1
+                concept = concepts.get(relation["source"])
+                if concept is None or concept.retired is None:
+                    self.add(
+                        "CHK.concept.retired",
+                        source_meta,
+                        f"{relation['source']} supersedes another concept but is not retired",
+                    )
+            elif kind == "narrows":
+                narrows.setdefault(relation["source"], set()).add(relation["target"])
+        for (source, verb, target), count in relates.items():
+            if count > 1:
+                self.add(
+                    "CHK.relates.verb",
+                    repository.definer(source) or repository.registry_path,
+                    f"relates ({source}, {verb}, {target}) is declared more than once",
+                )
+        for pair, count in contrasts.items():
+            if count > 1:
+                self.add(
+                    "CHK.contrasts.once",
+                    repository.definer(sorted(pair)[0]) or repository.registry_path,
+                    f"contrasts between {' and '.join(sorted(pair))} is declared more than once",
+                )
+        for source, count in supersedes.items():
+            if count > 1:
+                self.add(
+                    "CHK.concept.retired",
+                    repository.definer(source) or repository.registry_path,
+                    f"{source} supersedes more than one concept",
+                )
+        for start in narrows:
+            stack, seen = list(narrows[start]), set()
+            while stack:
+                current = stack.pop()
+                if current == start:
+                    self.add(
+                        "CHK.narrows.acyclic",
+                        repository.definer(start) or repository.registry_path,
+                        f"narrows relates {start} to itself",
+                        subject=start,
+                    )
+                    break
+                if current not in seen:
+                    seen.add(current)
+                    stack.extend(narrows.get(current, ()))
+        self.collisions(contrasts)
+
+    def node_type(self, identity: str) -> str | None:
+        if identity in self.repository.declarations:
+            return "module"
+        node = self.repository.nodes.get(identity)
+        return node.type if node else None
+
+    def collisions(self, contrasts: Counter) -> None:
+        repository = self.repository
+        named: dict[str, list[tuple[str, str]]] = {}
+        for concept in repository.concept_nodes.values():
+            named.setdefault(normalize_title(concept.title), []).append(
+                (concept.id, concept.owner)
+            )
+        for module in repository.declarations.values():
+            named.setdefault(normalize_title(module.title), []).append(
+                (module.id, module.id)
+            )
+        for items in named.values():
+            for index, (first, first_owner) in enumerate(items):
+                for second, second_owner in items[index + 1 :]:
+                    if first_owner == second_owner:
+                        continue
+                    if (
+                        first in repository.declarations
+                        and second in repository.declarations
+                    ):
+                        continue
+                    if frozenset((first, second)) not in contrasts:
+                        self.add(
+                            "CHK.contrasts.required",
+                            repository.definer(first)
+                            or repository.definer(second)
+                            or repository.registry_path,
+                            f"{first} and {second} have equal normalized titles and no contrasts",
+                            subject=first,
                         )
+
+    # --- realizations ----------------------------------------------------------------
+
+    def bindings(self) -> None:
+        repository = self.repository
+        members = set(repository.source_documents)
+        outputs = generated_outputs(repository.root)
+        for module in repository.declarations.values():
+            listed: Counter = Counter()
+            for realization in repository.realizations(repository.modules[module.id]):
+                source = metadata_path(realization.document)
+                listed.update(realization.entries)
+                for entry in realization.pending:
+                    if entry not in realization.entries:
+                        self.add(
+                            "CHK.binds.pending-subset",
+                            source,
+                            f"{realization.id} pending entry {entry} is not one of its entries",
+                            subject=realization.id,
+                        )
+                    elif entry_exists(repository.root, entry):
+                        self.add(
+                            "CHK.binds.pending-subset",
+                            source,
+                            f"{realization.id} still marks {entry} pending although it exists",
+                            subject=realization.id,
+                        )
+                for entry in realization.entries:
+                    base = entry_base(entry)
+                    if (
+                        entry in members
+                        or control_path(base)
+                        or generated(base, outputs)
+                        or (
+                            is_directory_entry(entry)
+                            and any(covers(entry, m) for m in members)
+                        )
+                    ):
+                        self.add(
+                            "CHK.binds.no-spec",
+                            source,
+                            f"{realization.id} binds {entry}, a document member, generated output "
+                            "or control record, or a directory containing a document member",
+                            subject=realization.id,
+                        )
+                    if entry in realization.pending:
+                        continue
+                    if not entry_exists(repository.root, entry):
+                        kind = "directory" if is_directory_entry(entry) else "file"
+                        self.add(
+                            "CHK.binds.exists",
+                            source,
+                            f"{realization.id} binds {entry}, which is not an existing {kind}",
+                            subject=realization.id,
+                        )
+            for entry, count in listed.items():
+                if count > 1:
+                    self.add(
+                        "CHK.binds.disjoint",
+                        metadata_path(module.entry),
+                        f"several realizations of {module.id} list {entry}",
+                        subject=module.id,
+                    )
+        self.unbound(members, outputs)
+
+    def unbound(self, members: set[str], outputs: set[str]) -> None:
+        repository = self.repository
+        tracked = version_controlled(repository.root)
+        if tracked is None:
+            return
+        files, links = tracked
+        external = [
+            entry
+            for target in repository.modules.values()
+            for entry in repository.external_inclusions(target)
+        ]
+        entries = [
+            entry for module in repository.modules.values() for entry in module.files
+        ]
+        for path in files:
+            if (
+                path in members
+                or control_path(path)
+                or generated(path, outputs)
+                or any(covers(link + "/", path) or path == link for link in links)
+                or any(covers(entry, path) for entry in external)
+                or build_path(path)
+            ):
+                continue
+            if not (repository.root / path).is_file():
+                continue
+            if not any(bound_by(entry, path) for entry in entries):
+                self.add(
+                    "CHK.binds.unbound",
+                    path,
+                    "no Module's realization binds this version-controlled file",
+                )
+
+    def external(self) -> None:
+        repository = self.repository
+        tracked = version_controlled(repository.root)
+        members = set(repository.source_documents)
+        entries = [
+            entry for target in repository.modules.values() for entry in target.files
+        ]
+        for module in repository.declarations.values():
+            source = metadata_path(module.entry)
+            for entry in repository.external_inclusions(repository.modules[module.id]):
+                if not entry_exists(repository.root, entry):
+                    self.add(
+                        "CHK.external.exists",
+                        source,
+                        f"external material {entry} of {module.id} does not exist; check out or "
+                        "vendor it (scripts/development/init-references.py for submodules)",
+                        subject=module.id,
+                    )
+                elif tracked is not None:
+                    files, links = tracked
+                    base = entry_base(entry)
+                    if not any(
+                        base == link
+                        or base.startswith(link + "/")
+                        or covers(link + "/", base)
+                        for link in links
+                    ) and not any(covers(entry, path) for path in files):
+                        self.add(
+                            "CHK.external.exists",
+                            source,
+                            f"external material {entry} is not tracked by version control",
+                            subject=module.id,
+                        )
+                if any(overlaps(entry, member) for member in members) or any(
+                    overlaps(entry, bound) for bound in entries
+                ):
+                    self.add(
+                        "CHK.external.no-overlap",
+                        source,
+                        f"external material {entry} overlaps a document member or realization entry",
+                        subject=module.id,
+                    )
+
+    # --- contracts --------------------------------------------------------------------
+
+    def participation(self) -> None:
+        repository = self.repository
+        declared = []
+        for module in repository.declarations.values():
+            source = metadata_path(module.entry)
+            keys = Counter(
+                (item["contract"], item["peer"], item["role"])
+                for item in module.participates
+            )
+            for key, count in keys.items():
+                if count > 1:
+                    self.add(
+                        "CHK.participates.unique",
+                        source,
+                        f"{module.id} participates in {key[0]} with peer {key[1]} as {key[2]} more than once",
+                        subject=module.id,
+                    )
+            for item in module.participates:
+                contract = repository.contract_nodes.get(item["contract"])
+                if contract is None or contract["version"] != item["version"]:
+                    self.add(
+                        "CHK.participates.version",
+                        source,
+                        f"{module.id} participates in {item['contract']} version {item['version']}, "
+                        + (
+                            "which is not a defined contract"
+                            if contract is None
+                            else f"but its current version is {contract['version']}"
+                        ),
+                        subject=module.id,
+                    )
+                if (
+                    item["peer"] != "external"
+                    and item["peer"] not in repository.declarations
+                ):
+                    self.add(
+                        "CHK.relation.endpoints",
+                        source,
+                        f"participation peer {item['peer']} is not a registered Module",
+                        subject=module.id,
+                    )
+                declared.append((module.id, item))
+        for owner, item in declared:
+            if (
+                item["peer"] == "external"
+                or item["peer"] not in repository.declarations
+            ):
+                continue
+            if not any(
+                other_owner == item["peer"]
+                and other["peer"] == owner
+                and other["contract"] == item["contract"]
+                and other["version"] == item["version"]
+                and other["role"] != item["role"]
+                for other_owner, other in declared
+            ):
+                self.add(
+                    "CHK.participates.complementary",
+                    metadata_path(repository.declarations[owner].entry),
+                    f"{owner} participates in {item['contract']} with {item['peer']}, which declares "
+                    "no complementary participation",
+                    subject=owner,
+                )
+
+    # --- views --------------------------------------------------------------------------
+
+    def views(self) -> None:
+        repository = self.repository
+        relates = {
+            (relation["source"], relation["target"])
+            for relation in repository.metadata_relations
+            if relation["type"] == "relates"
+        }
+        for module in repository.declarations.values():
+            for item in module.uses:
+                relates.add(("uses", module.id, item["target"]))
+            for item in module.contains:
+                relates.add(("contains", module.id, item["target"]))
+        for path, reading in repository.readings.items():
+            unit = repository.units[path]
+            for line, info, body in reading.mermaid:
+                kind = diagram_type(body)
+                if "illustrative" in info:
+                    continue
+                if kind not in {"flowchart", "graph"}:
+                    self.add(
+                        "CHK.view.marked",
+                        path,
+                        "a Mermaid block that is not a flowchart is marked illustrative",
+                        line=line,
+                    )
+                    continue
+                if unit.role != "module":
+                    continue
+                self.flowchart(path, unit.owner, line, body, relates)
+
+    def resolve_label(self, owner: str, label: str) -> list[str]:
+        repository = self.repository
+        text = first_line(label)
+        matches = [
+            node.id
+            for node in (
+                *repository.concept_nodes.values(),
+                *repository.realization_nodes.values(),
+            )
+            if node.owner == owner and node.title == text
+        ]
+        matches += [
+            module.id
+            for module in repository.declarations.values()
+            if module.title == text
+        ]
+        if " / " in text:
+            module_title, node_title = (part.strip() for part in text.split(" / ", 1))
+            for module in repository.declarations.values():
+                if module.title != module_title:
+                    continue
+                matches += [
+                    node.id
+                    for node in (
+                        *repository.concept_nodes.values(),
+                        *repository.realization_nodes.values(),
+                    )
+                    if node.owner == module.id and node.title == node_title
+                ]
+        return list(dict.fromkeys(matches))
+
+    def flowchart(
+        self, path: str, owner: str, line: int, body: str, relates: set
+    ) -> None:
+        try:
+            nodes, edges = flowchart_model(body)
+        except DiagramError as error:
+            self.add(
+                "CHK.view.nodes",
+                path,
+                f"checked flowchart is unreadable: {error}",
+                line=line,
+            )
+            return
+        resolved: dict[str, str] = {}
+        for node_id, label in nodes.items():
+            matches = self.resolve_label(owner, label)
+            if len(matches) != 1:
+                self.add(
+                    "CHK.view.nodes",
+                    path,
+                    f"flowchart node {first_line(label)!r} resolves to "
+                    + (
+                        "no node or Module"
+                        if not matches
+                        else f"several nodes: {matches}"
+                    ),
+                    line=line,
+                )
+                continue
+            resolved[node_id] = matches[0]
+        for source, label, target in edges:
+            if label is None:
+                self.add(
+                    "CHK.view.edges",
+                    path,
+                    f"flowchart edge {source} -> {target} has no label",
+                    line=line,
+                )
+            if source not in resolved or target not in resolved:
+                continue
+            first, second = resolved[source], resolved[target]
+            if (
+                (first, second) not in relates
+                and ("uses", first, second) not in relates
+                and ("contains", first, second) not in relates
+            ):
+                self.add(
+                    "CHK.view.edges",
+                    path,
+                    f"flowchart edge {first} -> {second} matches no declared relates, uses or contains",
+                    line=line,
+                )
+
+    # --- reconciliation -----------------------------------------------------------------
+
+    def reconciliation(self) -> None:
+        repository = self.repository
+        for module in repository.declarations.values():
+            target = repository.modules[module.id]
+            context = set(repository._context_paths(target))
+            owned = set(module.owns)
+            requires: list[tuple[str, str, str]] = []
+            for item in repository.imports:
+                if (
+                    item["document"] in owned
+                    and item["concept"] in repository.concept_nodes
+                ):
+                    requires.append((item["concept"], item["document"], "imports"))
+            for relation in repository.metadata_relations:
+                if relation["document"] in owned and relation["type"] in {
+                    "narrows",
+                    "supersedes",
+                    "relates",
+                }:
+                    requires.append(
+                        (relation["target"], relation["document"], relation["type"])
+                    )
+            for item in module.participates:
+                if item["contract"] in repository.contract_nodes:
+                    requires.append((item["contract"], module.entry, "participates"))
+            for identity, source, kind in requires:
+                if identity in repository.declarations:
+                    satisfied = bool(
+                        context & set(repository.declarations[identity].owns)
                     )
                 else:
-                    identities[item.id] = (kind, item.document)
-        entity_files = repository.entity_files(target)
-        declared = tuple(sorted(entity_files))
-        if declared != target.files:
-            findings.append(
-                Finding(
-                    "CONCORDE-ENTITY-003",
-                    "error",
-                    target.primary_document,
-                    f"registry files for {target.id} differ from the union of its entity files: "
-                    f"registry has {sorted(set(target.files) - set(declared))} extra and lacks {sorted(set(declared) - set(target.files))}",
-                    "Keep the registry files of a Module equal to the sorted union of its entity files.",
-                    subject_id=target.id,
-                )
-            )
-        represented = {
-            entity.target_id for entity in definitions.entities if entity.target_id
-        }
-        expected = {child.id for child in repository.children(target)} | set(
-            target.uses
-        )
-        for missing in sorted(expected - represented):
-            findings.append(
-                Finding(
-                    "CONCORDE-ENTITY-004",
-                    "error",
-                    target.primary_document,
-                    f"child or used Module {missing} has no entity with that target_id in {target.id}",
-                    "Declare an entity with target_id for every child and used Module.",
-                    subject_id=target.id,
-                )
-            )
-        for entry, entity in sorted(entity_files.items()):
-            exists = entry_exists(repository.root, entry)
-            kind = "directory" if is_directory_entry(entry) else "file"
-            if not exists and entry not in entity.pending:
-                findings.append(
-                    Finding(
-                        "CONCORDE-ENTITY-002",
-                        "error",
-                        entity.document,
-                        f"entity {entity.id} lists {entry}, a {kind} that does not exist and is not marked pending",
-                        f"Create the {kind} or mark it pending.",
-                        subject_id=entity.id,
+                    definer = repository.definer(identity)
+                    satisfied = definer is None or definer in context
+                if not satisfied:
+                    self.add(
+                        "CHK.context.reconciled",
+                        source,
+                        f"{module.id} declares {kind} {identity}, whose defining document is not "
+                        "in its Spec context",
+                        subject=module.id,
                     )
-                )
-            elif exists and entry in entity.pending:
-                findings.append(
-                    Finding(
-                        "CONCORDE-ENTITY-005",
-                        "warning",
-                        entity.document,
-                        f"entity {entity.id} still marks {entry} pending although the {kind} exists",
-                        "Delivery confirms created files and removes the marker.",
-                        subject_id=entity.id,
-                    )
-                )
-        for entry in repository.missing_external_references(target):
-            kind = "directory" if is_directory_entry(entry) else "file"
-            findings.append(
-                Finding(
-                    "CONCORDE-REFERENCE-001",
-                    "error",
-                    target.primary_document,
-                    f"external reference {entry} of {target.id} is a {kind} that does not exist",
-                    f"Check out or vendor the {kind} (for a submodule, run scripts/development/init-references.py) "
-                    "or remove the reference; external references are never pending.",
-                    subject_id=target.id,
-                )
-            )
-        findings.extend(architecture_findings(repository, target, definitions.entities))
-    return tuple(findings)
 
+    # --- links ------------------------------------------------------------------------------
 
-def architecture_findings(
-    repository: RepositoryCore, target: SpecTarget, entities
-) -> tuple[Finding, ...]:
-    findings = []
-    path = target.primary_document
-    try:
-        fences = _relationship_fences(repository.document(path).body)
-    except (ValueError, OSError):
-        return ()
-    flowcharts = [
-        fence for fence in fences if re.match(r"^\s*(flowchart|graph)\b", fence)
-    ]
-    if not flowcharts:
-        return ()
-    labels: set[str] = set()
-    for fence in flowcharts:
-        try:
-            nodes, edges = flowchart_model(fence)
-        except DiagramError as problem:
-            findings.append(
-                Finding(
-                    "CONCORDE-ARCHITECTURE-002",
-                    "error",
-                    path,
-                    str(problem),
-                    "Use the Mermaid flowchart node and labeled edge forms the Protocol defines.",
-                    subject_id=target.id,
-                )
-            )
-            continue
-        labels.update(_first_line(label) for label in nodes.values())
-        for source, label, destination in edges:
-            if label is None:
-                findings.append(
-                    Finding(
-                        "CONCORDE-ARCHITECTURE-002",
-                        "error",
+    def links(self) -> None:
+        repository = self.repository
+        for path, reading in repository.readings.items():
+            for line, href in reading.links:
+                linked = link_target(path, href)
+                if linked is None:
+                    continue
+                target_path, fragment = linked
+                if not fragment.startswith(NODE_PREFIXES):
+                    continue
+                definer = repository.definer(fragment)
+                if definer is None or definer != target_path:
+                    self.add(
+                        "CONCORDE-LINK-001",
                         path,
-                        f"relationship {source} -> {destination} has no label",
-                        "Label every edge with its relationship verb.",
-                        subject_id=target.id,
+                        f"link {href} addresses #{fragment}, "
+                        + (
+                            f"which is defined in {definer}"
+                            if definer
+                            else "which names no definition"
+                        ),
+                        line=line,
+                        subject=fragment,
                     )
+
+    # --- evidence ------------------------------------------------------------------------
+
+    def evidence(self) -> None:
+        repository = self.repository
+        for path, reading in repository.readings.items():
+            for line in test_declarations(reading.text):
+                self.add(
+                    "CHK.evidence.no-spec-coverage",
+                    path,
+                    "reading content contains test-declaration syntax outside a fence",
+                    line=line,
                 )
-    titles = {entity.title for entity in entities}
-    if not labels or not labels <= titles:
-        findings.append(
-            Finding(
-                "CONCORDE-ARCHITECTURE-001",
-                "error",
-                path,
-                f"diagram contains unknown or no local entities: {sorted(labels - titles)}",
-                "Use declared local entities within the stated diagram scope; label every edge.",
-                subject_id=target.id,
-            )
-        )
-    return tuple(findings)
-
-
-def unlisted_file_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
-    """Warn about regular files under listed roots that no Module's entries cover."""
-    roots = sorted(
-        {entry.split("/", 1)[0] for entry in repository.file_users if "/" in entry}
-    )
-    findings = []
-    for root_name in roots:
-        base = repository.root / root_name
-        if base.is_symlink() or not base.is_dir():
-            continue
-        for directory, names, files in os.walk(base):
-            names[:] = sorted(
-                name
-                for name in names
-                if name not in SKIPPED_DIRECTORIES
-                and not name.startswith(".")
-                and not (Path(directory) / name).is_symlink()
-            )
-            for name in sorted(files):
-                if name.startswith(".") or name.endswith(SKIPPED_SUFFIXES):
-                    continue
-                relative = (
-                    (Path(directory) / name).relative_to(repository.root).as_posix()
-                )
-                if relative in repository.document_targets or repository.listing_users(
-                    relative
-                ):
-                    continue
-                findings.append(
-                    Finding(
-                        "CONCORDE-ENTITY-006",
-                        "warning",
-                        relative,
-                        "no Module entity lists this file",
-                        "List the file under the entity it realizes, or leave it unlisted deliberately.",
-                    )
-                )
-    return tuple(findings)
-
-
-def document_context_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
-    """Validate physical Spec truth identities, memberships, and main visibility."""
-
-    findings = []
-    identifiers: dict[str, str] = {}
-    reserved_ids = set(repository.targets)
-    for path in repository.document_targets:
+        listed: dict[str, set[str]] = {}
+        realized: set[str] = set()
+        for target in repository.modules.values():
+            if target.files:
+                realized.add(target.id)
+            for file in repository.bound_files(target):
+                listed.setdefault(file, set()).add(target.id)
         try:
-            document = repository.document(path)
-        except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(
+            declarations = scan_declarations(repository.root, listed)
+        except DeclarationError as problem:
+            self.findings.append(
                 Finding(
-                    "CONCORDE-DOCUMENT-001",
+                    "CONCORDE-COVERAGE-003",
                     "error",
-                    path,
-                    f"invalid Spec document context declaration: {problem}",
-                    "Provide the matching metadata companion with the registered document identity and owner.",
+                    problem.path,
+                    str(problem),
+                    "Repair the test file so its scenario declarations can be read.",
+                    line=problem.line,
                 )
             )
-            continue
-        previous = identifiers.get(document.document_id)
-        if document.document_id in reserved_ids:
-            findings.append(
-                Finding(
-                    "CONCORDE-DOCUMENT-002",
-                    "error",
-                    path,
-                    f"document identity {document.document_id} collides with a Module identity",
-                    "Use one globally unique stable document ID.",
-                    subject_id=document.document_id,
+            return
+        scenarios = repository.scenario_nodes
+        covered: set[str] = set()
+        for declaration in declarations:
+            scenario = scenarios.get(declaration.scenario_id)
+            if scenario is None:
+                self.add(
+                    "CHK.verifies.resolves",
+                    declaration.path,
+                    f"test {declaration.name} declares unknown scenario {declaration.scenario_id}",
+                    line=declaration.line,
+                    subject=declaration.scenario_id,
                 )
-            )
-        elif previous is not None and previous != path:
-            findings.append(
-                Finding(
-                    "CONCORDE-DOCUMENT-002",
-                    "error",
-                    path,
-                    f"document identity {document.document_id} is also declared by {previous}",
-                    "Give every physical Spec truth one globally unique stable document ID.",
-                    subject_id=document.document_id,
+                continue
+            covered.add(scenario.id)
+            if scenario.owner not in listed.get(declaration.path, set()):
+                self.findings.append(
+                    Finding(
+                        "CONCORDE-COVERAGE-002",
+                        "warning",
+                        declaration.path,
+                        f"test {declaration.name} verifies {scenario.id}, but {scenario.owner} "
+                        "does not bind this file",
+                        "Bind the test to a realization of the scenario's Module.",
+                        line=declaration.line,
+                        subject_id=scenario.id,
+                    )
                 )
-            )
-        else:
-            identifiers[document.document_id] = path
-    return tuple(findings)
+        for scenario in sorted(scenarios.values(), key=lambda item: item.id):
+            if scenario.id not in covered and scenario.owner in realized:
+                self.findings.append(
+                    Finding(
+                        "CONCORDE-COVERAGE-001",
+                        "warning",
+                        scenario.document,
+                        f"no test declares that it verifies {scenario.id}",
+                        f"Declare {scenario.id} in the tests that exercise this scenario.",
+                        line=scenario.line,
+                        subject_id=scenario.id,
+                    )
+                )
+
+
+def generated_outputs(root: Path) -> set[str]:
+    """Outputs the build records in generated/build-manifest.json (e.g. under .pi/)."""
+    try:
+        manifest = json.loads(read_file(root, "generated/build-manifest.json").decode())
+        return {
+            item["path"] if isinstance(item, dict) else item
+            for item in manifest.get("outputs", [])
+        }
+    except (SpecError, OSError, ValueError, KeyError, TypeError):
+        return set()
+
+
+def generated(path: str, outputs: set[str]) -> bool:
+    return path.startswith(GENERATED_PREFIXES) or path in outputs
+
+
+def build_path(path: str) -> bool:
+    parts = path.split("/")
+    return parts[0] in {"build", "dist"} or any(
+        part in {"node_modules", "__pycache__"} for part in parts
+    )
+
+
+def version_controlled(
+    root: Path, *, untracked: bool = False
+) -> tuple[list[str], list[str]] | None:
+    """The files Git tracks in the work tree rooted at ``root``, and its submodule paths.
+
+    Untracked files are not version-controlled yet; they are checked once they are added.
+    ``untracked`` also lists the untracked files Git does not ignore, which are about to be.
+    """
+    try:
+        top = subprocess.run(
+            ("git", "rev-parse", "--show-toplevel"),
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if top.returncode != 0 or Path(top.stdout.strip()).resolve() != root.resolve():
+            return None
+        listing = subprocess.run(
+            (
+                "git",
+                "ls-files",
+                "-z",
+                "--cached",
+                *(("--others", "--exclude-standard") if untracked else ()),
+            ),
+            cwd=root,
+            capture_output=True,
+            check=True,
+        )
+        stages = subprocess.run(
+            ("git", "ls-files", "-z", "-s"), cwd=root, capture_output=True, check=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    links = [
+        entry.split("\t", 1)[1]
+        for entry in stages.stdout.decode("utf-8", "replace").split("\0")
+        if entry.startswith("160000 ") and "\t" in entry
+    ]
+    files = sorted(
+        {
+            path
+            for path in listing.stdout.decode("utf-8", "replace").split("\0")
+            if path and path not in links
+        }
+    )
+    return files, links
+
+
+def spec_findings(repository: DocumentUnitRepository) -> list[Finding]:
+    """Every Protocol check over a loaded graph: load findings first, then each check family."""
+    return [*repository.load_findings, *Checks(repository).run()]
+
+
+DEPENDENCY_CHECKS = frozenset(
+    {
+        "CHK.relation.meaning",
+        "CHK.relies-on.owned",
+        "CHK.relies-on.linked",
+        "CHK.uses.no-self",
+        "CHK.uses.unique",
+        "CHK.context.reconciled",
+    }
+)
+MISSING_PROMISES = "missing local dependency promises: "
 
 
 def module_dependency_findings(
-    repository: RepositoryCore, target_id: str | None = None
+    repository: DocumentUnitRepository, target_id: str | None = None
 ) -> tuple[Finding, ...]:
-    """Match local relied-upon promises to Module dependencies and direct children."""
-    findings = []
-    for target in repository.targets.values():
-        if target_id is not None and target.id != target_id:
+    """Findings about a Module's own collaborations, used before context assessment.
+
+    A ``contains``, ``uses`` or ``participates`` whose explanation does not resolve is a missing
+    promise (its message starts with ``MISSING_PROMISES``); a ``relies_on`` that names nodes the
+    provider does not own or omits linked ones, a self or repeated ``uses`` and an unreconciled
+    context requirement conflict with the declared topology.
+    """
+    checks = Checks(repository)
+    checks.module_relations()
+    checks.reconciliation()
+    result = []
+    for finding in checks.findings:
+        if finding.rule_id not in DEPENDENCY_CHECKS:
             continue
-        try:
-            declarations = repository.dependencies(target)
-            seen = set()
-            expected = set(target.uses) | {
-                child.id for child in repository.children(target)
-            }
-            for declaration in declarations:
-                peer = declaration["target_id"]
-                if peer in seen:
-                    raise SpecError(f"duplicate dependency declaration: {peer}")
-                if peer not in expected:
-                    raise SpecError(
-                        f"dependency is not a declared use or direct submodule: {peer}"
-                    )
-                seen.add(peer)
-            missing = expected - seen
-            if missing:
-                raise SpecError(
-                    "missing local dependency promises: " + ", ".join(sorted(missing))
-                )
-        except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(
-                Finding(
-                    "CONCORDE-DEPENDENCY-001",
-                    "error",
-                    target.primary_document,
-                    str(problem),
-                    "Declare each direct dependency's responsibility, selection condition and relied-upon promises locally.",
-                    subject_id=target.id,
-                )
-            )
-    return tuple(findings)
-
-
-def terminology_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
-    """Check direct canonical table links and explicit context, not prose quality."""
-    from .content_model import terminology_body
-    from urllib.parse import urlsplit, unquote
-    import posixpath
-
-    findings = []
-    for path in repository.document_targets:
-        try:
-            document = repository.document(path)
-            body = terminology_body(document.body)
-            included = set(repository.spec_files(document.owner))
-            for row in body.splitlines():
-                if not row.strip().startswith("|"):
-                    continue
-                cell = row.strip().strip("|").split("|")[0].strip()
-                match = re.fullmatch(r"\[([^\]]+)\]\(([^\s)]+)\)", cell)
-                if not match:
-                    continue
-                term, href = match.groups()
-                url = urlsplit(href)
-                target = (
-                    posixpath.normpath(
-                        posixpath.join(posixpath.dirname(path), unquote(url.path))
-                    )
-                    if url.path
-                    else path
-                )
-                if (
-                    url.scheme
-                    or url.netloc
-                    or url.fragment != "terminology"
-                    or target not in included
-                ):
-                    raise ValueError(
-                        f"terminology definition outside admitted context or not a table: {href}"
-                    )
-                target_body = terminology_body(repository.document(target).body)
-                names = [
-                    line.strip()
-                    .strip("|")
-                    .split("|")[0]
-                    .strip()
-                    .strip("*` ")
-                    .casefold()
-                    for line in target_body.splitlines()
-                    if line.strip().startswith("|")
-                ]
-                if term.casefold() not in names:
-                    raise ValueError(
-                        f"terminology link has no local canonical definition of {term}: {href}"
-                    )
-        except (ValueError, OSError, KeyError, TypeError) as error:
-            findings.append(
-                Finding(
-                    "CONCORDE-TERMINOLOGY-001",
-                    "error",
-                    path,
-                    str(error),
-                    "Define the term once and reference its defining Terminology table explicitly in context.",
-                )
-            )
-    return tuple(findings)
-
-
-def link_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
-    """A local link whose fragment is a scenario, requirement or entity ID must reach its definition."""
-    findings = []
-    anchors: dict[str, str] = {}
-    for target in repository.targets.values():
-        try:
-            anchors.update(repository.definitions(target).anchors)
-            anchors.update({c["id"]: c["source"] for c in repository.contracts(target)})
-        except (ValueError, OSError, KeyError, TypeError):
+        if target_id is not None and finding.subject_id != target_id:
             continue
-    for path in repository.document_targets:
-        try:
-            document = repository.document(path)
-        except (ValueError, OSError, KeyError, TypeError):
-            continue
-        from urllib.parse import urlsplit, unquote
-
-        lines = [
-            (number, False, line)
-            for number, kind, line in walk_lines(document.body)
-            if kind == "prose"
-        ]
-        unit = repository.unit(path)
-        for entry in (
-            *unit.declarations["dependencies"],
-            *unit.declarations["bindings"],
-        ):
-            meaning = unit.meaning(entry["meaning"])
-            lines.append((meaning.line, True, meaning.text))
-        for number, required, line in lines:
-            for match in LINK.finditer(line):
-                url = match.group(1)
-                parsed = urlsplit(url)
-                if parsed.scheme or parsed.netloc or parsed.path.startswith("/"):
-                    continue
-                location, fragment = unquote(parsed.path), unquote(parsed.fragment)
-                linked = (
-                    path
-                    if not location
-                    else os.path.normpath(
-                        os.path.join(os.path.dirname(path), location)
-                    ).replace(os.sep, "/")
-                )
-                if fragment.startswith(ANCHOR_PREFIXES) and IDENTITY.fullmatch(
-                    fragment
-                ):
-                    defining = anchors.get(fragment)
-                    if defining is None or linked != defining:
-                        findings.append(
-                            Finding(
-                                "CONCORDE-LINK-001",
-                                "error",
-                                path,
-                                (
-                                    f"link {url} addresses #{fragment}, which is defined in {defining}"
-                                    if defining
-                                    else f"link fragment #{fragment} names no scenario, requirement, entity or contract"
-                                ),
-                                "Point the link at the document that defines the ID.",
-                                line=number,
-                                subject_id=fragment,
-                            )
-                        )
-                if required:
-                    try:
-                        included = linked in repository.spec_files(document.owner)
-                    except (ValueError, OSError):
-                        included = False
-                    if not included:
-                        owner = repository.document_targets.get(
-                            linked, ["unknown owner"]
-                        )[0]
-                        findings.append(
-                            Finding(
-                                "CONCORDE-CONTEXT-001",
-                                "error",
-                                path,
-                                f"{document.owner} cannot rely on excluded definition {url}, owned by {owner}",
-                                "Declare the necessary reference or repair the consumer's local obligation; do not fetch undeclared context.",
-                                line=number,
-                                subject_id=document.owner,
-                            )
-                        )
-    return tuple(findings)
-
-
-def verification_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
-    """Tests declare the scenarios they verify; report unknown declarations and undeclared scenarios."""
-    findings = []
-    scenarios: dict[str, tuple[str, str]] = {}
-    # A Module that binds no implementation entry has no test of its own to declare with, so its
-    # scenarios stay unreported; its realization, and their verification, belong to its children.
-    realized: set[str] = set()
-    for target in repository.targets.values():
-        try:
-            for scenario in repository.scenarios(target):
-                scenarios[scenario.id] = (target.id, scenario.document)
-        except (ValueError, OSError, KeyError, TypeError):
-            return ()
-        if target.files:
-            realized.add(target.id)
-    listed: dict[str, set[str]] = {}
-    for target in repository.targets.values():
-        for path in repository.implementation_files(target):
-            listed.setdefault(path, set()).add(target.id)
-    try:
-        declarations = scan_declarations(repository.root, listed)
-    except DeclarationError as problem:
-        return (
-            Finding(
-                "CONCORDE-VERIFICATION-004",
-                "error",
-                problem.path,
-                str(problem),
-                "Repair the listed test file so its scenario declarations can be read.",
-                line=problem.line,
-            ),
-        )
-    declared: dict[str, list] = {scenario_id: [] for scenario_id in scenarios}
-    for declaration in declarations:
-        owner = scenarios.get(declaration.scenario_id)
-        if owner is None:
-            findings.append(
-                Finding(
-                    "CONCORDE-VERIFICATION-001",
-                    "error",
-                    declaration.path,
-                    f"test {declaration.name} declares unknown scenario {declaration.scenario_id}",
-                    "Declare a scenario that a registered Module defines.",
-                    line=declaration.line,
-                    subject_id=declaration.scenario_id,
-                )
+        if finding.rule_id == "CHK.relation.meaning":
+            finding = Finding(
+                finding.rule_id,
+                finding.severity,
+                finding.source,
+                MISSING_PROMISES + finding.message,
+                "Explain the collaboration at its meaning anchor: the provider's responsibility, "
+                "when it applies, the promises relied upon and this Module's own duties.",
+                subject_id=finding.subject_id,
             )
-            continue
-        declared[declaration.scenario_id].append(declaration)
-        if owner[0] not in listed.get(declaration.path, set()):
-            findings.append(
-                Finding(
-                    "CONCORDE-VERIFICATION-003",
-                    "warning",
-                    declaration.path,
-                    f"test {declaration.name} verifies {declaration.scenario_id}, but {owner[0]} does not list this file",
-                    "List the test under an entity of the scenario's Module so its code phases see it.",
-                    line=declaration.line,
-                    subject_id=declaration.scenario_id,
-                )
-            )
-    for scenario_id, (owner, document) in sorted(scenarios.items()):
-        if not declared[scenario_id] and owner in realized:
-            findings.append(
-                Finding(
-                    "CONCORDE-VERIFICATION-002",
-                    "warning",
-                    document,
-                    f"no test declares that it verifies {scenario_id}",
-                    "Declare "
-                    + scenario_id
-                    + " in the tests that exercise this scenario.",
-                    subject_id=scenario_id,
-                )
-            )
-    return tuple(findings)
+        result.append(finding)
+    return tuple(result)
 
 
-def definition_ids(repository: RepositoryCore) -> set[str]:
+def definition_ids(repository: DocumentUnitRepository) -> set[str]:
     """Every Module and scenario identity a reflection may be attributed to."""
-    ids = set(repository.targets)
-    for target in repository.targets.values():
-        try:
-            ids.update(scenario.id for scenario in repository.scenarios(target))
-        except (ValueError, OSError, KeyError, TypeError):
-            continue
-    return ids
+    return set(repository.modules) | set(repository.scenario_nodes)
 
 
 def check_input_findings(
-    repository: RepositoryCore, inputs: list[tuple[str, str]] | None = None
+    repository: SpecRepository, inputs: list[tuple[str, str]] | None = None
 ) -> tuple[Finding, ...]:
-    """Preflight every registered required input without executing checks or reading content.
-
-    Availability/membership joins validation identity when the caller collects assessed inputs;
-    byte contents remain the configured runner's check-revision evidence.
-    """
+    """Preflight every configured required input without executing checks or reading content."""
     findings = []
     for check_id, check in sorted(repository.checks.items()):
         for relative in check.get("inputs", []):
@@ -891,7 +1272,7 @@ def check_input_findings(
                         "error",
                         error.field,
                         f"{error.code}: {error}",
-                        "Restore the required input or reconcile its check registration; do not skip missing inputs.",
+                        "Restore the required input or reconcile the configured check; do not skip missing inputs.",
                         subject_id=check_id,
                     )
                 )
@@ -909,17 +1290,9 @@ def validate_repository(
     registry_bytes: bytes | None = None,
     document_overrides: dict[str, bytes] | None = None,
 ) -> ToolResult:
-    findings = []
-    artifacts = []
-    inputs = []
-
-    def error(code, path, message):
-        findings.append(
-            Finding(
-                code, "error", path, message, "Reconcile the registered Spec and retry."
-            )
-        )
-
+    findings: list[Finding] = []
+    artifacts: list[str] = []
+    inputs: list[tuple[str, str]] = []
     try:
         repository = SpecRepository(
             root,
@@ -929,77 +1302,18 @@ def validate_repository(
             _defer_document_admission=True,
         )
         if target_id and target_id != ".":
-            repository.select(target_id)
+            repository.module(target_id)
         findings.extend(check_input_findings(repository, inputs))
-        definitions = {}
-        bindings = []
-        contexts = {}
-        for target in repository.targets.values():
-            try:
-                documents = repository.documents(target)
-                artifacts.extend(target.sources)
-                inputs.extend(
-                    (record["path"], record["digest"])
-                    for path in target.documents
-                    for record in repository.source_records(path, [])
-                )
-                contexts[target.id] = set(repository.spec_files(target.id))
-                for contract in repository.contracts(target):
-                    if contract["id"] in definitions:
-                        error(
-                            "CONCORDE-CONTRACT-001",
-                            contract["source"],
-                            f"duplicate canonical definition: {contract['id']}",
-                        )
-                    definitions[contract["id"]] = contract
-                bindings.extend(repository.contract_bindings(target))
-            except (ValueError, OSError) as problem:
-                error("CONCORDE-SPEC-001", target.primary_document, str(problem))
-        seen_bindings = set()
-        for binding in bindings:
-            key = (binding["owner"], binding["id"], binding["role"], binding["peer"])
-            if key in seen_bindings:
-                error(
-                    "CONCORDE-CONTRACT-001",
-                    binding["source"],
-                    "duplicate participant binding",
-                )
-            seen_bindings.add(key)
-            definition = definitions.get(binding["id"])
-            if (
-                not definition
-                or definition["version"] != binding["version"]
-                or definition["source"] not in contexts.get(binding["owner"], set())
-            ):
-                error(
-                    "CONCORDE-CONTRACT-002",
-                    binding["source"],
-                    f"canonical definition/version absent from {binding['owner']} context: {binding['id']}",
-                )
-            if binding["peer"].startswith("external:") and len(binding["peer"]) > 9:
-                continue
-            if not any(
-                peer["owner"] == binding["peer"]
-                and peer["peer"] == binding["owner"]
-                and peer["id"] == binding["id"]
-                and peer["version"] == binding["version"]
-                and peer["role"] != binding["role"]
-                for peer in bindings
-            ):
-                error(
-                    "CONCORDE-CONTRACT-003",
-                    binding["source"],
-                    f"missing complementary peer binding: {binding['id']}",
-                )
-        findings.extend(document_context_findings(repository))
-        findings.extend(module_findings(repository))
-        findings.extend(definition_findings(repository))
-        findings.extend(module_dependency_findings(repository))
-        findings.extend(link_findings(repository))
-        findings.extend(terminology_findings(repository))
-        findings.extend(unlisted_file_findings(repository))
-        findings.extend(verification_findings(repository))
-        from ..issues.store import list_issues, issue_path
+        for target in repository.modules.values():
+            artifacts.extend(
+                member
+                for member in target.sources
+                if member in repository.source_documents
+            )
+        for path, unit in sorted(repository.units.items()):
+            inputs.extend((member.path, member.digest) for member in unit.sources)
+        findings.extend(spec_findings(repository))
+        from ..issues.store import issue_path, list_issues
 
         try:
             inputs.extend(
@@ -1007,7 +1321,15 @@ def validate_repository(
                 for item in list_issues(repository.root)
             )
         except (ValueError, OSError) as problem:
-            error("CONCORDE-ISSUE-001", ".concorde/issues", str(problem))
+            findings.append(
+                Finding(
+                    "CONCORDE-ISSUE-001",
+                    "error",
+                    ".concorde/issues",
+                    str(problem),
+                    "Repair the Issue records.",
+                )
+            )
         if (repository.root / "concorde.json").is_file():
             from ..distribution.package_validation import validate_package
 
@@ -1021,7 +1343,15 @@ def validate_repository(
         inputs.append((repository.registry_path, digest(repository.registry_bytes)))
         inputs.append(("protocol", repository.config["protocol"]["digest"]))
     except (ValueError, OSError, KeyError, TypeError) as problem:
-        error("CONCORDE-SOURCE-008", ".concorde/config.json", str(problem))
+        findings.append(
+            Finding(
+                "CONCORDE-SOURCE-008",
+                "error",
+                ".concorde/config.json",
+                str(problem),
+                "Reconcile the project configuration, registry and Protocol binding and retry.",
+            )
+        )
     counts = Counter(f.severity for f in findings)
     return ToolResult(
         "validate",
@@ -1037,19 +1367,25 @@ def validate_repository(
             },
             "source_digest": digest(sorted(inputs)),
             "claims": [
-                "registry structure",
+                "Protocol 11 structural checks (protocol/checks.md)",
+                "registry mirror of the entries' module blocks",
                 "configured check input availability and path safety",
-                "document-unit identity/ownership and complete source members",
-                "Protocol-defined reading subset and reading-entry structure",
-                "requirement, scenario and entity syntax",
-                "ID anchors in local links",
-                "entity file listings and registry files",
-                "scoped relationship diagram entities and labeled edges",
-                "contract examples",
-                "canonical definitions and complementary participant bindings",
-                "Module dependency promises",
-                "scenario verification declarations",
+                "stable-identity link fragments",
+                "scenario verification declarations and coverage",
             ],
             "semantic_completeness": "not_proven",
         },
     )
+
+
+__all__ = [
+    "Checks",
+    "DiagramError",
+    "check_input_findings",
+    "definition_ids",
+    "flowchart_model",
+    "normalize_title",
+    "spec_findings",
+    "validate_repository",
+    "version_controlled",
+]

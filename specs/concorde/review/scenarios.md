@@ -1,76 +1,85 @@
 # Review scenarios
 
-These precise specifications belong directly to the [Review Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+These situations show how [Review](module.md) behaves. The obligations they demonstrate are
+defined once in [Review requirements](requirements.md).
 
-## Terminology
+## Public review
 
-| Term                                       | Meaning / definition           |
-| ------------------------------------------ | ------------------------------ |
-| [Spec](../module.md#terminology)           | Defined in Concorde Framework. |
-| [Issue](../module.md#terminology)          | Defined in Concorde Framework. |
-| [Host](../module.md#terminology)           | Defined in Concorde Framework. |
-| [Worker](../module.md#terminology)         | Defined in Concorde Framework. |
-| [Pi integration](../module.md#terminology) | Defined in Concorde Framework. |
-| [Module](../module.md#terminology)         | Defined in Concorde Framework. |
-| [Review coverage](module.md#terminology)   | Defined in Review.             |
+### scenario.review.standalone — Review without a managed change
 
-## Review
+- GIVEN an initialized project in a worktree without a managed change or an existing Issue
+- AND a request naming a Module, a task and optionally a scenario of that Module as focus
+- WHEN the user session calls `concorde-spec-review` or `concorde-code-review` through the Pi `concorde` tool and invokes the returned native workflow call
+- THEN a fresh reviewer receives the Module's complete context and, for code review, only the Module's bound files and their changes since `HEAD`
+- AND the reviewer has no write, edit, shell or delegation tools
+- AND the Host returns the review coverage, the findings and the outcome, and saves the review report
+- BUT no change is created and no Spec document or implementation file changes
 
-### scenario.review.standalone — Public review without a development change
+A `describe-policy` request for the same review lists the scope and returns `described` without
+running a reviewer or saving a report.
 
-- GIVEN an initialized project without a managed development change or preexisting Issue record
-- AND a task with an explicit Module target, optional same-owner scenario focus and no review-mode selector
-- WHEN the user invokes `concorde-spec-review` or `concorde-code-review` through the Pi `concorde` tool and invokes the exact returned native workflow call
-- THEN the host validates the caller selection and a fresh reviewer receives its complete contract and, for `concorde-code-review`, only its admitted implementation files and scoped changes
-- AND native write/edit/shell/delegation tools are absent while file/network/credential restrictions remain prompt-level policy
-- AND the host returns typed review coverage, findings, gaps and completion status, persisting the review report without creating a development change or changing project Specs or implementation
-- AND an unmanaged Git checkout uses HEAD as the scoped change baseline
+### scenario.review.separate-entries — Each capability selects its own reviewer
 
-The detailed contract is [Independent current review](execution-reference.md#review-independent-review-operation).
+- GIVEN an initialized project and a review task
+- WHEN the user session calls one of the two review capabilities
+- THEN `concorde-spec-review` runs only the Spec reviewer and `concorde-code-review` runs only the code reviewer
 
-### scenario.review.terminology-consistency — Compare local restatements with canonical meaning
+### scenario.review.terminology-consistency — Imported words are compared with their definitions
 
-- GIVEN an admitted Spec collection with imported terminology rows and their complete canonical defining units
-- WHEN `concorde-spec-review` assesses that collection
-- THEN every local restatement is checked for semantic consistency with its direct canonical definition, including unchanged and referenced reading documents
-- AND different wording is allowed without requiring text equality
-- AND additions, omissions, contradictions or consumer-specific behavior that change shared meaning are reported with local and canonical locations
-- AND coverage identifies checked term/source pairs or explicitly states that no imported restatements exist
-- AND missing, ambiguous or unassessed comparisons are reported as gaps or incomplete coverage, never silently counted as consistent
+- GIVEN a Module whose documents import terms and explain how the Module uses them
+- AND the documents defining those terms are in its context
+- WHEN `concorde-spec-review` reviews the Module
+- THEN the reviewer compares each local explanation with the term's canonical definition, including in documents the change did not touch
+- AND a different wording with the same meaning is not reported
+- AND an added condition, a dropped exception or a changed obligation is reported with both locations
+- AND the coverage names the compared terms or states that there was nothing to compare
+- BUT an unfinished comparison is reported as `incomplete` instead of as consistent
 
-### scenario.review.separate-entries — Review authority follows the selected capability
+## Scopes
 
-- GIVEN an initialized project and a standalone review task
-- WHEN a caller selects a public review capability
-- THEN `concorde-spec-review` selects only the Spec reviewer and `concorde-code-review` selects only the code reviewer
-- AND a request containing review_mode is rejected rather than changing that capability's authority
-- AND the retired `concorde-review` entry is rejected without an alias or implicit migration
+### scenario.review.native-scope — A scope is accepted only as a whole
 
-### scenario.review.consumer-currentness — Owner and consumer evidence stay independently current
+- GIVEN a prepared review scope with the selected Module, a shared-file peer and a code-free parent's components
+- WHEN the native review workflow runs every reviewer and its final Host step accepts the scope
+- THEN clean, advisory, blocking and incomplete results keep their distinct meanings and refer to genuine Issue receipts
+- AND each member was reviewed in its own context
+- AND a scope of more than thirty-two reviewers uses the same two Host steps
+- BUT a wrong context, mode, receipt or coverage, a changed input, or a missing or failed reviewer prevents accepting any part of the scope as complete
 
-- GIVEN a managed target with required Spec review and direct consumers of its complete paired contract
-- WHEN review evidence is checked after direct source, metadata, registration or intent changes
-- THEN each owner and consumer needs its own current complete-context review under its accepted intent
-- AND missing, corrupt, skipped, incomplete, empty-coverage, blocking or unrelated evidence cannot satisfy the requirement
-- AND same-scope unresolved contract blockers prevent cached evidence reuse while unrelated work does not clear or inherit those dependencies
-- AND an explicitly selected review runs fresh bounded reviewers and preserves historical reports rather than reusing a deleted workflow's completion
+### scenario.review.explicit-components — A code-free parent is reviewed through its components
 
-### scenario.review.explicit-components — Code-free parents aggregate only current component evidence
+- GIVEN a Module that binds no files and whose change recorded completed component work
+- WHEN the user session calls `concorde-code-review` for that Module
+- THEN each recorded component that binds files receives a fresh reviewer with the task derived for it
+- AND the parent's result aggregates only the components' typed results, without the parent's reviewer reading component code
+- AND the required code review is satisfied by the current component results without a local code review of the parent
+- BUT a changed component, a corrupt report or a different intent makes the aggregate stale, and review never marks implementation work complete
 
-- GIVEN a code-free Module with accepted tasks and separately completed explicit component work
-- WHEN the caller selects code review for that Module
-- THEN each recorded component with implementation files receives a fresh read-only reviewer under its derived task and constraints
-- AND the parent aggregates only typed reports without starting component development or receiving component code
-- AND readiness checks the exact current component review scope, coverage, intent and artifact bytes without requiring a fictional local code review
-- AND changed inputs, corrupt reports or unrelated intent invalidate reuse while fresh review does not fabricate implementation completion
+## Currentness
 
-### scenario.review.native-scope — Fresh native scopes reconcile complete typed evidence
+### scenario.review.consumer-currentness — Owner and consumers each need current evidence
 
-- GIVEN a deterministically selected owner/component/shared-consumer scope
-- WHEN its authored native workflow runs fresh scoped reviewers and fixed Host aggregation
-- THEN clean/advisory/blocking/incomplete results preserve their distinct meaning and genuine immutable receipts
-- AND wrong context/mode/receipt/coverage, stale inputs or missing/failed reviewers cannot accept a partial scope
-- AND shared consumers retain separate complete contexts and code-free parents aggregate applicable components
-- AND a scope of more than thirty-two reviewers uses the same two Host grants without a new business cap
-- AND required review and primary-authoritative evidence remain intact without a public Graph/RPC fallback
+- GIVEN a managed change with a required Spec review for a Module whose documents other Modules select
+- WHEN the required review is checked after a document, its metadata, a registration or the intent changed
+- THEN the Module and each consumer need their own current complete-context result under the accepted intent
+- AND a missing, corrupt, incomplete, blocking, empty-coverage or unrelated result does not satisfy the requirement
+- AND an unresolved blocker for the same scope prevents reusing an earlier result
+- BUT an explicitly requested review always runs fresh reviewers and keeps the earlier reports as history
+
+### scenario.review.promise-impact — Only Modules relying on a changed promise are consumers
+
+- GIVEN a managed change that edits a Module's documents
+- AND one consumer uses the Module without `relies_on`, another narrows its `uses` to one concept with `relies_on`
+- WHEN the Spec review scope is computed
+- THEN the whole-document consumer is a member whenever a document it selects changed
+- AND the narrowed consumer is a member only when a node it relies on or references changed its definition
+- AND a changed `module` block concerns the Modules that relate to that Module
+- BUT an unchanged document concerns nobody, whoever selects it
+
+### scenario.review.multi-module — The change's own reviews cover every Module it edits
+
+- GIVEN a managed change about one Module whose candidate also edits another Module's Spec and code, such as the consumer of a contract whose version the change raises
+- WHEN the scope of a Spec review or code review of the change's Module is computed
+- THEN the Spec review includes the edited Module and every Module the changed definitions concern
+- AND the code review includes every Module binding a file the candidate changed
+- BUT the Host's worktree guidance and local control records do not count as edits

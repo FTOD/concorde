@@ -20,13 +20,16 @@ from ..harness.change_worktree import (
     progress,
     read_change,
     save_change,
+    snapshot_tree,
     workspace_identity,
 )
 from ..harness.invocation import Invocation
 from ..harness.revisions import implementation_digest, target_revision
 from ..harness.worker_executor import OperationExecutionError, WorkerOutcome
 from ..harness.worker_profile import ContractError
+from ..spec.boundaries import scope_roots
 from ..spec.contracts import REVIEW_STAGES
+from ..spec.impact import change_scope, review_impact
 from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
 from ..spec.typed_data import (
     artifact,
@@ -39,15 +42,11 @@ from ..spec.typed_data import (
 
 def _changes(repository, target, mode, baseline) -> list[dict]:
     """Read history only for the current grant; never admit a project-wide diff."""
-    spec_paths = repository.spec_files(target.id)
+    spec_paths = repository.spec_context(target.id).paths
     # Directory entries scope history by their base path; only the files they bind are admitted.
-    entries = (
-        spec_paths if mode == "spec" else repository.implementation_entries(target)
-    )
-    roots = spec_paths if mode == "spec" else repository.implementation_paths(target)
-    current = set(
-        spec_paths if mode == "spec" else repository.implementation_files(target)
-    )
+    entries = spec_paths if mode == "spec" else repository.implementation_scope(target)
+    roots = spec_paths if mode == "spec" else scope_roots(entries)
+    current = set(spec_paths if mode == "spec" else repository.bound_files(target))
     previous = {}
     if baseline and roots:
         tree = git_value(
@@ -117,7 +116,7 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
 
 def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
     repository = SpecRepository(run.repository.root, run.host.package_root)
-    target = repository.select(run.target.id, run.task.get("focus_id"))
+    target = repository.module(run.target.id, run.task.get("focus_id"))
     if mode not in REVIEW_STAGES:
         raise SpecError("review_mode must be spec or code", "invalid_input")
     if mode == "code" and not target.files:
@@ -185,12 +184,13 @@ def inputs(run, mode: str) -> tuple[dict, ModelInstructions]:
                 "src/concorde/harness/checks.py",
                 "src/concorde/harness/revisions.py",
                 "src/concorde/operations/dispatch.py",
-                "src/concorde/operations/dispatch_graph.py",
+                "src/concorde/operations/dispatch_routes.py",
                 "src/concorde/planning/plan.py",
                 "src/concorde/planning/tasks.py",
                 "src/concorde/implementation/implement.py",
                 "src/concorde/validation/validate.py",
                 "src/concorde/spec/project.py",
+                "src/concorde/spec/impact.py",
                 "src/concorde/issues/reporting.py",
                 "src/concorde/issues/references.py",
                 "src/concorde/issues/store.py",
@@ -401,58 +401,112 @@ def _failed_review(run, info, result, error):
     )
 
 
-def spec_consumers(run) -> set[str]:
-    """Current inclusion plus the retained old/candidate impact union."""
-    state = read_change(run.repository.root) or {}
-    selected = set(state.get("spec_context_impacts", {}).get(run.target.id, []))
-    for path in run.target.documents:
-        selected.update(
-            run.repository.context_users(run.repository.document(path).document_id)
-        )
-    selected.update(state.get("shared_spec_reviews", {}).get(run.target.id, {}))
-    baseline = state.get("base_commit")
-    if baseline:
-        # Git objects from this candidate's declared base are host-only inputs. Never inspect
-        # another worktree's project files to reconstruct old ownership or inclusion.
-        raw = git(
-            run.repository.root,
-            "show",
-            f"{baseline}:{run.repository.registry_path}",
-            check=False,
-        )
-        if raw.returncode == 0:
-            from ..spec.typed_data import decode
+def changed_paths(root, baseline: str) -> tuple[str, ...]:
+    """Every deliverable path that differs from a baseline commit, untracked files included.
 
-            registry = decode(raw.stdout)
-            if registry.get("schema_version") != 5:
-                raise SpecError(
-                    "review baseline uses a retired Spec format; migrate the candidate explicitly",
-                    "unsupported_profile",
-                )
-            overrides = {}
-            for path in {
-                member
-                for target in registry["targets"]
-                for document in target["documents"]
-                for member in (document, document + ".json")
-            }:
-                result = subprocess.run(
-                    ("git", "show", f"{baseline}:{path}"),
-                    cwd=run.repository.root,
-                    capture_output=True,
-                    check=True,
-                )
-                overrides[path] = result.stdout
-            old = SpecRepository(
-                run.repository.root,
-                run.host.package_root,
-                registry_bytes=raw.stdout.encode(),
-                document_overrides=overrides,
+    The candidate's deliverable tree excludes local control records and the Host's own worktree
+    guidance, so neither counts as an edit of the change.
+    """
+    tree = snapshot_tree(root)
+    if tree is None:
+        return ()
+    listed = git(
+        root, "diff-tree", "-r", "--name-only", "--no-renames", "-z", baseline, tree
+    ).stdout
+    return tuple(sorted(path for path in listed.split("\0") if path))
+
+
+def change_owner(run) -> bool:
+    """Whether the run's Module is the Module the current managed change is about.
+
+    The owner's review scope and validation cover every Module the whole candidate edits; any
+    other Module's cover only its own documents and files.
+    """
+    state = read_change(run.repository.root)
+    return state is not None and state.get("target_id") == run.target.id
+
+
+def baseline_repository(run, baseline: str) -> SpecRepository | None:
+    """The Spec graph at a baseline commit, read from Git objects only, or None without a registry.
+
+    Git objects from this candidate's declared base are host-only inputs. Never inspect another
+    worktree's project files to reconstruct old ownership or selection.
+    """
+    raw = git(
+        run.repository.root,
+        "show",
+        f"{baseline}:{run.repository.registry_path}",
+        check=False,
+    )
+    if raw.returncode != 0:
+        return None
+    from ..spec.typed_data import decode
+
+    registry = decode(raw.stdout)
+    if registry.get("schema_version") != 3 or not isinstance(
+        registry.get("modules"), list
+    ):
+        raise SpecError(
+            "review baseline registry is not a schema-3 registry",
+            "unsupported_profile",
+        )
+
+    def baseline_bytes(path: str) -> bytes:
+        return subprocess.run(
+            ("git", "show", f"{baseline}:{path}"),
+            cwd=run.repository.root,
+            capture_output=True,
+            check=True,
+        ).stdout
+
+    # The baseline's documents are those its entries own; the entries are the declaration site,
+    # the registry only says which Modules existed and where their entries were.
+    documents: set[str] = set()
+    for record in registry["modules"]:
+        block = decode(baseline_bytes(record["entry"] + ".json").decode()).get(
+            "module", {}
+        )
+        documents.update(block.get("owns", ()) or (record["entry"],))
+    overrides = {
+        member: baseline_bytes(member)
+        for document in documents
+        for member in (document, document + ".json")
+    }
+    return SpecRepository(
+        run.repository.root,
+        run.host.package_root,
+        registry_bytes=raw.stdout.encode(),
+        document_overrides=overrides,
+    )
+
+
+def spec_consumers(run) -> set[str]:
+    """The other Modules a required Spec review of this Module must cover (Framework P6).
+
+    Inside a managed change the baseline and the candidate are compared at promise level
+    (``review_impact``): a Module is a consumer when it selects a changed document without
+    narrowing or references a changed node. For the change's own Module the changed documents
+    are those of the whole candidate, so every Module the change edits is covered; for any
+    other Module they are its own documents. Without a baseline every Module selecting one of
+    its documents is a consumer. Consumers already recorded for this Module stay members.
+    """
+    state = read_change(run.repository.root) or {}
+    selected = set(state.get("shared_spec_reviews", {}).get(run.target.id, {}))
+    baseline = state.get("base_commit")
+    old = baseline_repository(run, baseline) if baseline else None
+    if old is None:
+        for path in run.target.documents:
+            selected.update(
+                run.repository.selected_by(run.repository.document(path).document_id)
             )
-            if run.target.id in old.targets:
-                for path in old.select(run.target.id).documents:
-                    selected.update(old.context_users(old.document(path).document_id))
-    return selected & run.repository.targets.keys() - {run.target.id}
+    else:
+        paths = None
+        if not change_owner(run):
+            paths = set(run.target.documents)
+            if run.target.id in old.modules:
+                paths.update(old.module(run.target.id).documents)
+        selected.update(review_impact(old, run.repository, paths))
+    return selected & run.repository.modules.keys() - {run.target.id}
 
 
 def consumer_intent(task: str) -> str:
@@ -478,25 +532,36 @@ def changed_implementation_paths(run) -> list[str] | None:
     )
     if not baseline:
         return None
+    if change and change.get("target_id") == run.target.id:
+        # The change's own Module answers for every file the candidate changed.
+        return [
+            path
+            for path in changed_paths(run.repository.root, baseline)
+            if run.repository.implemented_by(path)
+        ]
     return [
         item["path"] for item in _changes(run.repository, run.target, "code", baseline)
     ]
 
 
 def code_review_peers(run) -> tuple:
-    """Modules whose entries cover a file of this target that actually changed in the candidate.
+    """Modules that bind a file that actually changed in the candidate (``implemented-by``).
 
-    P6 requires checks for every listing Module of a changed shared file, not of every shared
-    file. Without a known base revision every covering Module is a peer.
+    For the change's own Module every changed file of the candidate counts, so the code review
+    covers every Module whose code the change edits; for any other Module only its own files.
+    P6 requires checks for every binding Module of a changed shared file, not of every shared
+    file. Without a known base revision every Module sharing one of its files is a peer.
     """
     changed = changed_implementation_paths(run)
     peers = (
-        run.repository.covering_modules(run.target)
+        tuple(run.repository.shared_files(run.target))
         if changed is None
-        else run.repository.affected_modules(changed)
+        else run.repository.impact(paths=changed)
     )
     return tuple(
-        target for target in peers if target.id != run.target.id and target.files
+        run.repository.modules[module_id]
+        for module_id in peers
+        if module_id != run.target.id and run.repository.modules[module_id].files
     )
 
 
@@ -505,10 +570,7 @@ def _component_tasks(run, state):
     from ..implementation.implement import component_intent
 
     work = (state or {}).get("targets", {}).get(run.target.id, {})
-    allowed = {
-        *run.target.uses,
-        *(child.id for child in run.repository.children(run.target)),
-    }
+    allowed = set(change_scope(run.repository, run.target.id)) - {run.target.id}
     tasks = {}
     for target_id in work.get("component_revisions", {}):
         selected = [
@@ -538,7 +600,7 @@ def _code_scope_tasks(run, state):
     tasks = {
         key: value
         for key, value in _component_tasks(run, state).items()
-        if run.repository.select(key).files
+        if run.repository.module(key).files
     }
     for target in code_review_peers(run):
         tasks.setdefault(
@@ -555,7 +617,7 @@ def _code_scope_tasks(run, state):
 def _code_scope_identity(run):
     """Bind aggregation to the parent's complete current contract and review question."""
     repository = SpecRepository(run.repository.root, run.host.package_root)
-    target = repository.select(run.target.id, run.task.get("focus_id"))
+    target = repository.module(run.target.id, run.task.get("focus_id"))
     return digest(
         {
             "spec_digest": target_revision(repository, target),
@@ -595,12 +657,9 @@ def scope_members(run, mode, *, initialize=False):
     )
     components = dict(sorted(components.items()))
     allowed = {
-        run.target.id,
-        *run.target.uses,
+        *change_scope(run.repository, run.target.id),
         *components,
         *spec_consumers(run),
-        *(t.id for t in run.repository.covering_modules(run.target)),
-        *(t.id for t in run.repository.children(run.target)),
     }
     members = []
     if not components or mode == "spec" or run.target.files:
@@ -608,7 +667,7 @@ def scope_members(run, mode, *, initialize=False):
     for target_id, record in components.items():
         if target_id == run.target.id:
             continue
-        target = run.repository.select(target_id)
+        target = run.repository.module(target_id)
         if target_id not in allowed:
             raise SpecError("review target outside scope", "permission_denied")
         if mode == "code" and not target.files:

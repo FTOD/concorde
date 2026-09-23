@@ -41,6 +41,14 @@
 .provenance__kind {
   font-weight: 700;
 }
+/* A Mermaid block marked illustrative explains; it is excluded from the declared model. */
+.diagram-illustrative {
+  margin-bottom: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-left: 4px solid var(--ifm-color-warning);
+  background: var(--ifm-color-emphasis-100);
+  font-size: 0.85rem;
+}
 /* Navbar GitHub link: icon-only, colored like other navbar links so it follows the theme. */
 .header-github-link {
   padding: 0.25rem 0.5rem;

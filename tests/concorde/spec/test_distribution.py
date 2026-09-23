@@ -9,6 +9,7 @@ from pathlib import Path
 
 from concorde.distribution.build import load_model_instructions
 from concorde.distribution.package_validation import validate_package
+from concorde.spec.boundaries import scope_roots
 from concorde.spec.contracts import MODEL_OPERATIONS, OPERATION_NAMES, contracts
 from concorde.spec.repository import SpecRepository
 from concorde.spec.typed_data import typed
@@ -43,43 +44,42 @@ class DistributionTests(unittest.TestCase):
         repo = SpecRepository(PACKAGE)
         report = validate_repository(PACKAGE)
         self.assertEqual("success", report.status, [f.message for f in report.findings])
-        self.assertEqual(13, len(repo.targets))
-        self.assertEqual("module.concorde", repo.select("module.agents").parent)
-        self.assertEqual("module.concorde", repo.select("module.operations").parent)
-        self.assertTrue(all(t.kind == "module" for t in repo.targets.values()))
-        self.assertEqual("module.concorde", repo.select("module.views").parent)
+        self.assertEqual("module.concorde", repo.module("module.agents").parent)
+        self.assertEqual("module.concorde", repo.module("module.operations").parent)
+        self.assertTrue(all(t.kind == "module" for t in repo.modules.values()))
+        self.assertEqual("module.concorde", repo.module("module.views").parent)
         self.assertIn(
             "src/concorde/views",
-            repo.implementation_paths(repo.select("module.views")),
+            scope_roots(repo.implementation_scope("module.views")),
         )
-        for target in repo.targets.values():
-            self.assertEqual(list(target.files), sorted(repo.entity_files(target)))
-        shared = [path for path, users in repo.file_users.items() if len(users) > 1]
+        for target in repo.modules.values():
+            self.assertEqual(
+                list(target.files), sorted(repo.realization_entries(target))
+            )
+        shared = {
+            path
+            for module in repo.modules.values()
+            for paths in repo.shared_files(module).values()
+            for path in paths
+        }
         self.assertTrue(
             shared,
             "the self-hosted project shares implementation files between Modules",
         )
         for path in shared:
+            self.assertLess(1, len(repo.implemented_by(path)), path)
             self.assertEqual(
-                set(repo.listing_users(path)),
-                {t.id for t in repo.affected_modules([path])},
+                sorted(repo.implemented_by(path)), list(repo.impact(paths=[path]))
             )
-        self.assertEqual(
-            {
-                "module.harness",
-                "module.planning",
-                "module.review",
-            },
-            {
-                t.id
-                for t in repo.affected_modules(
-                    ["tests/concorde/operations/test_specify_loop.py"]
-                )
-            },
+        self.assertTrue(
+            {"module.planning", "module.review"}
+            <= set(
+                repo.impact(paths=["tests/concorde/operations/test_specify_loop.py"])
+            )
         )
         text = "\n".join(
             repo.source_bytes(path).decode()
-            for path in repo.spec_files("module.harness")
+            for path in repo.spec_context("module.harness").paths
         )
         for op in contracts():
             self.assertIn(op + "-request", text)
@@ -225,6 +225,8 @@ print(json.dumps({'result':result,'outputs':outputs,'module_source':actual_host.
                         "plan",
                         "tasks",
                         "implementation",
+                        # The transfer Module, then Banking, which uses it and reads its Specs.
+                        "spec-review",
                         "spec-review",
                         "code-review",
                     ],

@@ -23,9 +23,8 @@ if ${JSON.stringify(scenario)} in ('references','stale-reference'):
  r=Path(${JSON.stringify(root)})
  (r/'reference/lib').mkdir(parents=True);(r/'reference/lib/api.md').write_text('ADMITTED_LIBRARY_API')
  (r/'reference/foreign').mkdir();(r/'reference/foreign/api.md').write_text('UNGRANTED_LIBRARY_API')
- file=r/'.concorde/specs.json';data=json.loads(file.read_text())
- next(t for t in data['targets'] if t['id']=='service.transfer')['references'].append({'kind':'external','path':'reference/lib/'})
- file.write_text(json.dumps(data))
+ from tests.concorde.spec.support import include_external
+ include_external(r,'service.transfer','reference/lib/')
 import subprocess
 r=Path(${JSON.stringify(root)})
 def git(*args): subprocess.run(['git',*args],cwd=r,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

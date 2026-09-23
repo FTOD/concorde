@@ -1,39 +1,15 @@
-# Views interface contracts
+# Views contracts
 
-These precise specifications belong directly to the [Views Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+The interfaces of [Views](module.md): the scaffold proposal exchanged with its caller, the site
+identity file, the build commands and the build manifest.
 
-## Terminology
+## Scaffold proposal
 
-| Term | Meaning / definition |
-| --- | --- |
-| [Module Specs](../module.md#terminology) | Defined in Concorde Framework. |
-| [Implementation Specs](../module.md#terminology) | Defined in Concorde Framework. |
-| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
-| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
-| [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
-| [Composition](../spec/registry.md#terminology) | Defined in Registry. |
-| [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
-| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
-| [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |
-
-## Publication service
-
-### Scaffold proposal exchange and ownership {#publication-scaffold-proposal-exchange-and-ownership}
-
-The Docsite scaffold command exchanges the following JSON value with its caller. The schema uses
-JSON Schema's `type`, `properties`, `required`, `items`, `enum`, `minItems` and
-`additionalProperties` vocabulary; the path, digest and content rules below further constrain it.
-`--apply --proposal PATH` accepts this value directly, as `{"proposal": value}`, or as
-`{"result": {"proposal": value}}` in the propose command's Tool result. PATH is a safe
-project-relative JSON file. Proposal generation returns `result.proposal` and a separate
-`result.prerequisites` array of `{name, status, detail}` strings for Node and npm; prerequisite
-warnings do not install dependencies or change proposal bytes.
+`concorde.py docsite --propose` returns a result whose `result.proposal` is the value below and
+whose `result.prerequisites` is a separate array of `{name, status, detail}` records for `node` and
+`npm`, with status `present`, `missing` or `outdated`. Prerequisite warnings never change the
+proposal. `--apply --proposal PATH` reads a safe project-relative JSON file holding the value
+itself, `{"proposal": value}` or the whole propose result `{"result": {"proposal": value}}`.
 
 ```concorde-contract
 {
@@ -144,243 +120,150 @@ warnings do not install dependencies or change proposal bytes.
 }
 ```
 
-<a id="participation.document.views.publication.1"></a>
+The example shows the shape, not a real inventory or digest.
 
-**Interface participation.** This Module has the provided role for `contract.views.scaffold-proposal` version 2 with `external:docsite-caller`.
+**Files.** The entries are sorted by `path`, unique, and each has exactly one of `source` and
+`content`. `sha256` is `sha256:` followed by the lowercase hex SHA-256 of the file's bytes. The
+complete set is fixed:
 
-**When this applies.** When a caller proposes or applies a docsite scaffold.
+- every template file, with `source` equal to `path`;
+- `docsite/site.json`, the only entry with inline `content`: the proposal's `identity` serialized
+  as JSON with sorted keys, two-space indentation and a final newline;
+- only when `github_pages` is true, `.github/workflows/deploy-docsite.yml` with `source`
+  `docsite/scaffold/deploy-docsite.yml`.
 
-**Relied-upon guarantee.** [Canonical agreement](#contract.views.scaffold-proposal) defines the exchanged value for this operation.
+**Template inventory.** The template files are the regular files below the installed package's
+`docsite/` whose suffix is `.css`, `.json`, `.md`, `.svg`, `.ts`, `.tsx` or `.yml`, excluding any
+path with a directory component named `node_modules`, `build`, `.generated`, `.docusaurus` or
+`coverage`, the subtrees `tests/repository/`, `custom-docs/` and `scaffold/`, and the root
+`site.json`. A symbolic link anywhere in the traversed tree is an error. The installer ships the
+same set plus `scaffold/`. `template_digest` is `sha256:` over the UTF-8 text made of one line per
+template file, sorted by path, each `path`, a tab and the lowercase hex SHA-256 of its bytes,
+joined by newlines with a final newline.
 
-**Local obligation.** Preserve unrelated files and enforce exact proposal digests before applying any scaffold change.
+**Identity.** `identity` is a site identity (below) with `schema_version` 1, `title`, `url`,
+`baseUrl`, `organizationName`, `projectName` and, when known, `repository`. The title defaults to
+the root Module's title. A GitHub repository, given by `--repository` or read from the `origin`
+remote, supplies `https://<owner>.github.io` as `url`, `/<repo>/` as `baseUrl` (`/` for the
+`<owner>.github.io` repository) and the owner and repository names. Otherwise the defaults are
+`https://localhost`, `/`, and the lowercased title with every run of other characters replaced by
+one hyphen, trimmed, or `project` when empty; an info finding then asks the developer to set the
+final values. Explicit options override the defaults. The scaffold never adds a homepage or custom
+docs.
 
-Version 2 excludes project-owned custom docs and the retired projection publisher from the template.
-Version-1 proposals are rejected with instructions to regenerate using `docsite --propose`;
-acceptance of old template bytes does not authorize this changed inventory.
+**Conflicts.** `conflicts` lists every proposed destination that already exists, with reason
+`target already exists`. It is information only and authorizes nothing.
 
-The example illustrates the schema, not an applicable package inventory or real digest. Each file
-entry has exactly one of `source` and `content`, and paths are unique and sorted. `sha256` hashes
-the resolved UTF-8 content bytes. The complete file set is the installed adapter inventory plus
-`docsite/site.json`, and, only when `github_pages` is true,
-`.github/workflows/deploy-docsite.yml`. An adapter entry's source and destination are its identical
-package-relative path; the workflow source is `docsite/scaffold/deploy-docsite.yml` and its only
-destination is the workflow path above. Only site identity uses inline `content`, containing the
-proposal's `identity` serialized as sorted-key, two-space-indented JSON with a final newline.
-No remapping, additional destination, partial inventory, replacement or deletion operation is
-owned. In particular, the scaffold does not upgrade an existing consumer site by deleting its old
-graph source files; graph removal from this repository's publishing template is a source change,
-and successful site builds replace obsolete published output as specified below.
+**Apply.** Apply rebuilds the complete inventory from the installed package and the proposal's
+`identity` and `github_pages`, and requires the proposal's `template_digest` and `files` to equal it
+exactly; otherwise it returns `invalid`. Then:
 
-The adapter inventory consists of regular files below the installed package's `docsite/` with
-suffix `.css`, `.json`, `.md`, `.svg`, `.ts`, `.tsx` or `.yml`, excluding any directory component
-named `node_modules`, `build`, `.generated`, `.docusaurus` or `coverage`, the root-relative
-`tests/repository/` and `custom-docs/` subtrees, `scaffold/`, and the root `site.json`. Non-excluded symlinks are
-invalid. These template files contain no removed graph feature. Inventory discovery reads the
-installed template, never consumer Spec directories. `template_digest` hashes UTF-8 lines sorted
-by path, each `path`, a tab and the lowercase SHA-256 hex of its bytes, joined by newlines with a
-final newline. The workflow's own file digest also binds its bytes. A changed package digest or
-file digest invalidates acceptance.
+- every destination already has the proposed bytes: `unchanged`, nothing written;
+- any destination exists with other content: `conflict`, nothing written;
+- every destination is absent: the files are created through a file transaction that checks each
+  destination is still absent before staging and before each write, and removes the files it
+  created if one appears; the result is `success` with the created paths, or `failed` after a
+  rollback.
 
-Identity has `schema_version: 1`, nonempty `title`, absolute HTTP(S) `url`, slash-prefixed and
-slash-suffixed `baseUrl`, `organizationName`, `projectName`, and optional absolute HTTP(S)
-`repository`. Title defaults to the registered entry Module's title. A GitHub repository supplies
-owner/repository names, `https://<owner>.github.io`, and `/<repo>/` (or `/` for the owner's Pages
-repository); otherwise defaults are `https://localhost`, `/` and the lowercase title with
-non-alphanumeric runs replaced by hyphens, stripped at the ends, falling back to `project`.
-Explicit options override their corresponding defaults. Scaffolding omits optional homepage and
-Protocol content. `conflicts` lists proposed paths already present, with reason `target already
-exists`; it is informational and authorizes no overwrite.
+Apply never replaces or deletes a file, so it cannot update an existing site or touch a Spec.
 
-Apply first validates the proposal and its owned inventory. If every destination already equals
-the accepted bytes it returns `unchanged` without writing. Otherwise every destination must be
-absent: any existing destination, including a mix of exact and absent files, returns `conflict`
-without writing. Existing symlinks or unsafe paths reject. The creation transaction checks a null
-before-digest (absence) for every destination before staging and again before each write; these
-before-digests are transaction state, not fields in the exchanged proposal. A concurrent change
-rejects with original-byte recovery for writes already performed. Invalid proposals return
-`invalid`; staging failures return `failed`; successful creation returns `success` with the
-created paths. Repeating an unchanged proposal is idempotent. No accepted proposal can replace or
-delete existing files, including project Specs.
+<a id="scaffold-proposal-participation"></a>
 
-For a Module, its unique local `module.md` is the source entry, independent of collection order.
+**Participation.** Views provides this contract, version 2, to external callers: the developer or
+user session calling the command. Views keeps the proposal deterministic for unchanged inputs,
+refuses any proposal that differs from the exact current inventory, and never lets an accepted
+proposal replace, delete or reach outside the files listed above.
 
-## Publication pipeline
+## Site identity {#site-identity}
 
-### Interface signatures {#pipeline-interface-signatures}
+`docsite/site.json` is project-owned JSON, site identity schema 1. It is read when the site starts
+or builds; a missing file, invalid JSON or a broken rule fails with an error naming
+`docsite/site.json` and the field.
 
-```typescript
-// plugins/scoped-content/model.ts
-requireScoped(root: string): void;
-loadScopedRegistry(root: string): ScopedRegistry;
-safeRead(root: string, path: string): string;
-rewriteLinks(registry: ScopedRegistry, page: Page): string;
-hash(value: string | Buffer): string;
-legacyAliasRoute(targetId: string, sourcePath: string): string;
-primaryDocument(target: Target): string;
-// plugins/scoped-content/materialize.ts
-scopedSidebar(registry: ScopedRegistry, collection?: ReadingCollection): object[];
-materializeScoped(registry: ScopedRegistry): Promise<void>;
-// plugins/scoped-content/index.ts
-validateScopedBuild(root: string, directory: string): Promise<void>;
-scopedContent(context: LoadContext, options: unknown): Plugin<ScopedRegistry>; // default export
-// scripts/prepare-publication.ts and scripts/build.ts
-preparePublication(projectRoot: string, options?: {mode?: 'preview' | 'build'}): Promise<{registry: ScopedRegistry}>;
-buildSite(): Promise<void>;
-promoteCandidate(candidate: string, destination: string, backup: string): Promise<void>;
-```
+| Field | Rule |
+| --- | --- |
+| `schema_version` | Exactly `1`. |
+| `title` | Nonempty; site and navigation title. |
+| `url` | Absolute `http://` or `https://` URL. |
+| `baseUrl` | Starts and ends with `/`. |
+| `organizationName`, `projectName` | Nonempty. |
+| `repository` | Optional absolute HTTP(S) URL; adds a navigation link, an icon for `github.com`, otherwise a "Source" label. |
+| `tagline` | Optional nonempty string. |
+| `customDocs` | Optional array of collections, below. |
+| `homepage` | Optional object, below; without it the root redirects to the root Module's entry. |
 
-`root` is a project-root filesystem path. `safeRead` requires a regular file and returns UTF-8
-text; invalid paths throw `Error`, and OS read errors retain their Node error code. `hash` returns
-`sha256:` followed by 64 lowercase hexadecimal digits. `requireScoped` returns normally only for
-`profile_version === 15`; a missing configuration, a different profile, and a malformed JSON,
-unsafe path or read error each throw an `Error` naming the reason. Every entry point of this public
-build contract calls it first: publication accepts Profile 15 projects only, and no other profile
-has a compatibility rendering path.
+The field `protocolDocs` is rejected with a message pointing to `customDocs`.
 
-`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 15` and a
-safe relative `registry` path. The registry is
-`{schema_version: 5, project_id: string, entry_target: string, targets: Module[], checks: unknown[]}`
-with project metadata retained in its source bytes. Each Target has all the fields below. Its IDs
-are unique, Module parents are acyclic, the entry target exists and is a Module, and `uses` names
-Modules. Each Module has explicit `references` with typed Module/document identities. Every
-document unit has one schema-2 `.md.json` companion with document identity/owner/role, entity declarations,
-dependency references and participant bindings. Its local meaning anchors resolve into the reading
-member, and both sources retain sole ownership in `documents`. Malformed identities, ownership, references, diagrams or contract bindings throw
-`Error` before writes. Canonical contracts contain id/version/schema/semantics/example; separate
-bindings select them with id/version/role/peer and a local readable explanation of conditions, guarantees and obligations. Included definitions
-retain their owner and only the explicit one-level resolution supplies validation context.
-The loader never follows links or interface bindings as context edges. Removing graph presentation
-does not remove ownership, reference or agreement validation responsibilities.
+**Custom docs collections.** Each has nonempty `id`, `label`, `path` and `routeBasePath`, and
+optional `sidebarPath`. `id` is a unique lowercase slug other than `default`. `routeBasePath` is
+one or more `/`-separated segments of letters, digits, `_` or `-`, not `specs` or below it, and
+neither equal to, inside nor containing another collection's route. `path` (a directory) and
+`sidebarPath` (a file) are relative to `docsite/`, may use `../`, and may not be absolute, use a
+drive prefix or contain a backslash. A collection must not contain a registered Spec document. Each
+collection is published as its own Docusaurus docs instance with its own sidebar, search index and
+navigation entry; its landing document uses `slug: /`.
 
-### Public model types {#pipeline-public-model-types}
+A project may also provide `docsite/custom-docs/index.ts`, exporting an object with optional
+`plugins` and `navbarItems` arrays. They are added to the site as they are; their routes must stay
+outside `/specs`, and duplicate routes fail the build.
 
-```typescript
-type Kind = 'module';
-type ReadingCollection = 'module' | 'implementation';
-interface Target {
-  id: string; kind: Kind; title: string; documents: string[];
-  references: {kind: "module" | "document"; id: string}[];
-  parent: string | null; uses: string[]; files: string[]; checks: string[];
+**Homepage.** `homepage` has nonempty strings `eyebrow`, `title` and `description`; `features`
+with a nonempty `title` and a nonempty `items` array; `workflow` with nonempty `title`,
+`description` and a nonempty `steps` array; and `quickstart` with nonempty `title`, `description`
+and `code`. Each item and step has nonempty `title` and `description`. Optional `links` is an array
+of `{label, to}` with a nonempty label and a local `/route` or an HTTP(S) URL. Optional `reference`
+has nonempty `title` and `description` and a nonempty `tables` array; each table has nonempty
+`title` and `description`, a nonempty `columns` array of nonempty strings and a nonempty `rows`
+array whose rows have one nonempty string per column. All homepage text renders as plain text.
+
+## Build commands
+
+Commands run from `docsite/` with the dependencies installed from `package-lock.json`.
+
+| Command | Effect |
+| --- | --- |
+| `npm run validate` | Loads the project and renders every page in memory; reports the number of Modules and documents or fails. Writes nothing. |
+| `npm run start` | Stages the Specs and starts the Docusaurus preview. |
+| `npm run build` | Stages, builds the candidate, validates it and promotes it to `docsite/build/`. |
+| `npm test` | Runs the publisher's tests. |
+| `npm run typecheck` | Type-checks the TypeScript sources. |
+| `npm run check` | Runs typecheck, tests, validate and build in that order. |
+
+A command exits nonzero with a diagnostic on any failure; `validate`, `start` and `build` fail
+first when the project has no Concorde configuration.
+
+## Build manifest
+
+A successful build writes `build-manifest.json` at the root of the published site:
+
+```json
+{
+  "schema_version": 23,
+  "sourceDigest": "sha256:…",
+  "pages": [
+    {
+      "sourcePath": "specs/concorde/views/module.md",
+      "route": "/specs/concorde/views/module",
+      "contentDigest": "sha256:…",
+      "metadataPath": "specs/concorde/views/module.md.json",
+      "metadataDigest": "sha256:…",
+      "readingCollection": "module",
+      "owner": "module.views",
+      "includedBy": [
+        {"moduleId": "module.concorde", "reasons": [{"relation": "contains", "id": "module.views"}]},
+        {"moduleId": "module.views", "reasons": [{"relation": "owns", "id": "module.views"}]}
+      ]
+    }
+  ]
 }
-interface Page {
-  sourcePath: string; route: string; stagedPath: string; title: string; content: string;
-  contentDigest: string; documentId: string; owner: string; metadataPath: string; metadataDigest: string;
-  includedBy: {targetId: string; reasons: {kind: 'owned' | 'module' | 'document'; id: string}[]}[];
-  aliases: string[]; kind: Kind; primaryOf: string | null; readingCollection: ReadingCollection;
-}
-interface ScopedRegistry {
-  schema_version: 21; projectRoot: string; registryPath: string; entryTarget: string;
-  sourceDigest: string; targets: Target[]; pages: Page[];
-}
 ```
 
-Publication model schema 21 adds the explicitly classified `readingCollection` to each page and
-build-manifest entry. It binds both reading and metadata source identities and retains explicit
-ownership/inclusion provenance. The Protocol's explicit document role selects the reading collection,
-never complete Spec context membership or execution authority. The former graph `edges` projection and `Edge` type
-remain absent.
-`Target.parent` and `Target.uses` remain registry metadata for navigation, provenance and validation.
-This change does not change registry schema 5 or Profile 15.
-
-A file may be listed by several Modules, unlike a document: schema 5 has no single implementation
-owner, so a shared file's reverse lookup is a plain list of listing Modules rather than one
-authoritative binding. Target/document order follows the registry. There is exactly one Page per
-distinct registered physical document, in the order its sourcePath was first registered. Its
-canonical route is `/specs/` followed by its sourcePath with a leading `specs/` segment removed —
-only when every registered document's path starts with `specs/` — and its `.md` extension dropped;
-a project whose documents are not all under `specs/` keeps full paths. Its staged path is that same
-(possibly unstripped) relative path, `.md` extension kept. `loadScopedRegistry` throws when two
-documents would map to the same canonical route, when a canonical route equals a legacy alias
-route. The former `projections/` source prefix is no longer reserved.
-
-A referenced physical document retains one Page and one sole `owner`. `includedBy` records every
-Module whose one-level context includes it, in registry order, with all sorted inclusion reasons.
-`kind` is `module`; `primaryOf` is the owner only when this page is its unique module.md, otherwise
-null. `readingCollection` comes from required schema-2 `document.role`, with no default, under the
-[collection agreement](scenarios.md#scenario.views.reading-collections).
-`aliases` lists the legacy-format route for the current owner only:
-`/specs/<owner-id>/<key>`, where `key` is the first 16 hex digits of `hash(sourcePath)` after
-`sha256:`. References contribute no ownership alias. Removed owners contribute no alias and no
-historical aliases are inferred. Retained links to a removed alias must be corrected or fail the
-candidate, as specified in [current document references](scenarios.md#scenario.views.publish-legacy-redirect).
-The Markdown H1 supplies the title, falling back to the owner's title. `content` excludes front
-matter; `contentDigest` hashes complete source bytes. Body Markdown links remain links and never
-transclude another file. Ownership and inclusion provenance may be displayed beside the page.
-
-`sourceDigest` hashes JSON serialization of ordered `[path, contentDigest]` pairs: configuration,
-registry and both source members of each distinct registered document in first-reference order. A shared physical document
-contributes its bytes once; ownership and reference changes are represented by the registry input. The reading digest includes every Mermaid fence; a separate metadata digest covers all machine declarations. Inline diagrams create no
-additional source or route record. This is a byte/version identity, not a semantic-completeness
-claim.
-
-### Build artifacts, validation and promotion {#pipeline-build-artifacts-validation-and-promotion}
-
-Successful plugin post-build writes this JSON verification artifact in `outDir`:
-
-```typescript
-// build-manifest.json
-{ schema_version: 21, sourceDigest: string,
-  pages: {sourcePath: string; route: string; contentDigest: string; metadataPath: string; metadataDigest: string; readingCollection: ReadingCollection; owner: string; includedBy: Page["includedBy"]; aliases: string[]}[] }
-```
-
-Build-manifest schema 21 identifies paired-source publication and explicit reading collections
-without an architecture-graph artifact. Older manifests require a fresh build. Publication neither produces nor requires
-`architecture-graph.json`; it has no replacement graph artifact.
-
-`validateScopedBuild(root, directory)` reloads the current model and reads the manifest from the
-candidate directory. It resolves with no value only when its schema version, source digest and
-ordered page path/route/digest/readingCollection/owner/includedBy/aliases entries match exactly, and every alias has a redirect
-stub in the candidate directory whose content contains that page's canonical route. A stale or
-incomplete manifest, missing manifest, missing or non-matching redirect stub, or malformed JSON
-rejects. It also validates internal navigation links in the completed candidate after redirect
-stubs exist. Every link emitted by the site's published documents must resolve to a candidate page
-or other existing site-owned destination; a nonempty fragment targeting a page must identify an
-anchor present on the resolved page. Current aliases resolve to their canonical pages for this
-check, including fragment validation. This covers same-page fragments, root-relative links and
-links produced by Markdown forms that `rewriteLinks` leaves unchanged, as well as rewritten
-source-path links. It includes enabled reading collections without adding them to Spec membership
-or the registered-page manifest.
-
-Resolve navigation URLs against the referring page and the configured site URL/base URL. A
-destination is internal when it has the configured site's origin and its path is within the
-configured base URL; same-site absolute URLs within that base URL are internal too. Query strings
-do not change the destination page or anchor lookup; preserve them in navigation. Other origins,
-same-origin destinations outside the base URL and non-navigation schemes retain their existing
-external handling without network availability checks. A missing destination, missing
-requested anchor or unresolved redirect rejects with the referring page and destination identified.
-Validation never silently removes a reference, infers document ownership and references, repairs source text or
-retains historical output to make the check pass.
-
-This function does not repair artifacts or promote output. Route coverage is measured by the
-plugin's post-build hook; callers must not manufacture a manifest to bypass that hook.
-
-`buildSite` owns `docsite/.generated/candidate`, `docsite/build` and
-`docsite/.generated/previous-build`. It clears the candidate, prepares sources, runs Docusaurus,
-validates the built artifacts and only then calls `promoteCandidate`. Validation failure removes
-the candidate and preserves the previous build. Successful promotion replaces the previous build
-as a directory, so a previously published graph page or dedicated graph artifact cannot survive
-by being copied forward. Observed source changes during post-build or fresh validation reject;
-the identity describes the inputs actually checked and must be checked again if sources change
-before a later independent use of the candidate. Preparation/build callers must exclusively own
-these derived output directories through promotion; concurrent materialization or manual edits to
-staged/candidate artifacts are unsupported. The identity is a host build record, not a signature
-authenticating arbitrary externally supplied HTML.
-
-`promoteCandidate` is a filesystem transaction helper, with caller-supplied distinct candidate,
-destination and backup paths on a rename-compatible filesystem. Its caller must have successfully
-validated the exact candidate. It clears the disposable backup, moves an existing destination to
-backup, moves the candidate to destination, and removes the backup on success. A failed
-move/removal attempts to restore the prior destination and rejects; filesystem failure during
-rollback can still require operator recovery. The helper itself does not validate Spec contents and
-must not be called on unchecked or stale output.
-
-```typescript
-requireScoped(projectRoot);       // throws unless the project declares profile_version 15
-const registry = loadScopedRegistry(projectRoot);
-await materializeScoped(registry); // stage derived assets; not yet a published build
-await buildSite();                // integrated prepare/build/validate/promotion path
-```
-
-Repeated loading of unchanged inputs preserves identities. Repeated successful builds replace
-derived output. No returned model, manifest or successful deterministic check proves that the Spec
-supports every possible future task; independent Spec review and actual task gaps remain separate.
+`schema_version` is 23. `pages` has one entry per registered document in registry order, with
+exactly the fields shown, in that order. `contentDigest` and `metadataDigest` hash the exact bytes
+of the reading and metadata files. `includedBy` lists, in registry order, each Module whose
+one-level Spec context selects the document, with its reasons sorted by `relation`, `kind` and
+`id`; `relation` is `owns`, `contains`, `uses` or `includes`, an `includes` reason also has `kind`
+`module` or `document`, and `id` is the Module or document that the relation names. This is the
+same reason shape as the Spec tooling's context records. `sourceDigest` is defined in the [pipeline](pipeline.md#source-digest). A manifest
+of any other version, or with any difference in these fields, is stale and requires a fresh build.
+The manifest records inputs only and makes no claim that code satisfies the Specs.

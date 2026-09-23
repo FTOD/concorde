@@ -1,4 +1,8 @@
-/** Protocol 8 reading, document roles and metadata admission. Publication layout is deliberately absent. */
+/** Protocol 11 reading and metadata parsing for publication.
+ *
+ * Publication reads what it renders: document pairs, identities, anchors, Terminology tables,
+ * definition headings, contract fences and Mermaid blocks. Structural conformance as a whole is
+ * `concorde.py validate`; this module rejects only what would make a page wrong or unaddressable. */
 export const identityPattern = /^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$/;
 export function requireThat(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
@@ -52,6 +56,7 @@ export function parseJson(text: string, subject: string): any {
     );
   }
 }
+/** Replace fenced lines with blanks so offsets stay valid and fences stay opaque. */
 export function prose(source: string): string {
   let fence: string | undefined;
   return source
@@ -82,18 +87,19 @@ export function headingList(content: string) {
     body: m.index! + m[0].length,
   }));
 }
-export function fenceRanges(
-  content: string,
-): { language: string; start: number; end: number; body: string }[] {
-  const result: {
-    language: string;
-    start: number;
-    end: number;
-    body: string;
-  }[] = [];
+export interface Fence {
+  /** First word of the info string, such as `mermaid`. */
+  language: string;
+  /** The whole trimmed info string, such as `mermaid illustrative`. */
+  info: string;
+  start: number;
+  end: number;
+  body: string;
+}
+export function fenceRanges(content: string): Fence[] {
+  const result: Fence[] = [];
   let open:
-    | { marker: string; language: string; start: number; body: number }
-    | undefined;
+    { marker: string; info: string; start: number; body: number } | undefined;
   let offset = 0;
   for (const line of content.split("\n")) {
     const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
@@ -101,7 +107,7 @@ export function fenceRanges(
       if (!open)
         open = {
           marker: marker[1],
-          language: marker[2].trim(),
+          info: marker[2].trim(),
           start: offset,
           body: offset + line.length + 1,
         };
@@ -111,7 +117,8 @@ export function fenceRanges(
         !marker[2].trim()
       ) {
         result.push({
-          language: open.language,
+          language: open.info.split(/\s+/)[0] ?? "",
+          info: open.info,
           start: open.start,
           end: offset + line.length,
           body: content.slice(open.body, offset).trimEnd(),
@@ -124,15 +131,37 @@ export function fenceRanges(
   requireThat(!open, "Unclosed Markdown fence");
   return result;
 }
-export function declarations(
-  content: string,
-  language: string,
-  path: string,
-): any[] {
-  return fenceRanges(content)
-    .filter((f) => f.language === language)
-    .map((f) => parseJson(f.body, path));
+/** `mermaid illustrative` marks a picture excluded from the declared model. */
+export function isIllustrative(info: string): boolean {
+  const words = info.split(/\s+/);
+  return words[0] === "mermaid" && words.slice(1).includes("illustrative");
 }
+/** Unmarked Mermaid is a checked flowchart and so must be a `flowchart` or `graph`. */
+export function requireMarkedDiagrams(content: string, path: string): void {
+  for (const fence of fenceRanges(content)) {
+    if (fence.language !== "mermaid" || isIllustrative(fence.info)) continue;
+    const body = fence.body
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("%%"));
+    requireThat(
+      /^(?:flowchart|graph)\b/.test(body[0] ?? ""),
+      `Mermaid block is neither a flowchart nor marked illustrative: ${path}`,
+    );
+  }
+}
+export const DEFINITION_HEADING =
+  /^((?:req|scenario)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]+[—–-][ \t]+(\S.*)$/;
+/** Requirement and scenario identities declared by headings, in reading order. */
+export function definitionHeadings(content: string): string[] {
+  return headingList(content)
+    .map(
+      (h) =>
+        DEFINITION_HEADING.exec(h.text.replace(/\s+\{#[^{}]+\}$/, ""))?.[1],
+    )
+    .filter((id): id is string => Boolean(id));
+}
+/** Every readable anchor and the prose of its region. */
 export function readingMeanings(
   content: string,
   path: string,
@@ -143,10 +172,9 @@ export function readingMeanings(
     [];
   for (const heading of headings) {
     const explicit = /\s+\{#([^{}]+)\}$/.exec(heading.text);
-    const definition =
-      /^((?:req|scenario)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)\s+[—–-]\s+\S/.exec(
-        heading.text,
-      );
+    const definition = DEFINITION_HEADING.exec(
+      heading.text.replace(/\s+\{#[^{}]+\}$/, ""),
+    );
     requireThat(
       !explicit || !definition || explicit[1] === definition[1],
       `Definition anchor differs from ID: ${path}`,
@@ -196,272 +224,276 @@ export function readingMeanings(
   }
   return result;
 }
-export function terminologyBody(content: string): string {
+export function sectionBody(content: string, title: string): string {
   const headings = headingList(content);
-  const section = headings.find(
-    (h) => h.level === 2 && h.text === "Terminology",
-  );
+  const section = headings.find((h) => h.level === 2 && h.text === title);
   if (!section) return "";
   const end =
     headings.find((h) => h.start > section.start && h.level <= 2)?.start ??
     content.length;
   return prose(content).slice(section.body, end).trim();
 }
-
-function requireTerminology(
-  content: string,
-  path: string,
-  primary: boolean,
-): void {
-  const headings = headingList(content),
-    top = headings.filter((h) => h.level === 2);
-  requireThat(
-    headings.filter((h) => h.text === "Terminology").length === 1 &&
-      top[primary ? 1 : 0]?.text === "Terminology",
-    `Terminology must be a unique early level-2 section: ${path}`,
-  );
-  const body = terminologyBody(content);
-  if (body === "No specialized terminology.") return;
-  const rows = body
+/** Split a Markdown table row on unescaped pipes. */
+export function tableCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/(?<!\\)\|$/, "")
+    .split(/(?<!\\)\|/)
+    .map((cell) => cell.trim());
+}
+export interface TerminologyRow {
+  term: string;
+  definition: string;
+  /** Present for an import row: the linked text and destination. */
+  link?: { text: string; href: string; fragment: string };
+}
+/** The rows of a document's Terminology table, header and separator excluded. */
+export function terminologyRows(content: string): TerminologyRow[] {
+  const rows = sectionBody(content, "Terminology")
     .split("\n")
     .filter((line) => line.trim().startsWith("|"))
-    .map((line) =>
-      line
-        .trim()
-        .replace(/^\||\|$/g, "")
-        .split("|")
-        .map((cell) => cell.trim()),
-    );
-  requireThat(
-    rows.length >= 3 &&
-      rows[0].join("|") === "Term|Meaning / definition" &&
-      rows[1].length === 2 &&
-      rows[1].every((cell) => /^:?-{3,}:?$/.test(cell)) &&
-      rows.slice(2).every((row) => row.length === 2 && row.every(Boolean)),
-    `Terminology requires a nonempty Term / Meaning / definition table: ${path}`,
-  );
-  for (const row of rows.slice(2))
-    for (const match of row[0].matchAll(/\[[^\]]*\]\(([^\s)]+)\)/g))
-      requireThat(
-        match[1].endsWith("#terminology") && !/^(?:[a-z]+:|\/)/i.test(match[1]),
-        `Imported terms must link directly to a project document's #terminology table: ${path}`,
-      );
+    .map(tableCells);
+  if (rows.length < 2 || !rows[1].every((cell) => /^:?-{3,}:?$/.test(cell)))
+    return [];
+  return rows.slice(2).map(([term = "", definition = ""]) => {
+    const link = /^\[([^\]]+)\]\(([^\s)]+)\)$/.exec(term);
+    return {
+      term,
+      definition,
+      ...(link
+        ? {
+            link: {
+              text: link[1],
+              href: link[2],
+              fragment: link[2].includes("#")
+                ? link[2].slice(link[2].indexOf("#") + 1)
+                : "",
+            },
+          }
+        : {}),
+    };
+  });
 }
-
+const ENTRY_SECTIONS = [
+  "Purpose",
+  "Terminology",
+  "Usage",
+  "Design",
+  "Relationships",
+];
 export function requireReading(
   content: string,
   path: string,
-  primary: boolean,
-  role: "module" | "implementation" = "module",
-): Map<string, string> {
+  entry: boolean,
+  role: "module" | "implementation",
+): void {
   const headings = headingList(content),
     fences = fenceRanges(content);
-  const retired = ["Usage & Contract", "Architecture & Realization"];
   requireThat(
-    !headings.some((h) => retired.includes(h.text)),
-    `Retired reader parts require explicit migration: ${path}`,
-  );
-  requireThat(
-    !fences.some((f) =>
-      [
-        "concorde-document",
-        "concorde-entities",
-        "concorde-dependencies",
-        "concorde-contract-binding",
-        "concorde-operations",
-        "concorde-agents",
-      ].includes(f.language),
-    ),
-    `Machine declarations belong in document metadata: ${path}`,
-  );
-  if (role === "module") requireTerminology(content, path, primary);
-  if (primary) {
-    const names = [
-      "Purpose",
-      "Terminology",
-      "Usage",
-      "Design",
-      "Relationships",
-    ];
-    requireThat(
-      headings
-        .filter((h) => h.level === 2)
-        .slice(0, 5)
-        .map((h) => h.text)
-        .join(",") === names.join(",") &&
-        names.every(
-          (name) => headings.filter((h) => h.text === name).length === 1,
-        ),
-      `Reading entry requires unique level-2 Purpose, Terminology, Usage, Design, Relationships in order: ${path}`,
-    );
-    requireThat(
-      !headings.some((h) => h.text === "Entities"),
-      `Entities is not a reading inventory chapter: ${path}`,
-    );
-    for (const name of names) {
-      if (name === "Terminology") continue;
-      const section = headings.find((h) => h.text === name)!;
-      const end =
-        headings.find((h) => h.start > section.start && h.level <= 2)?.start ??
-        content.length;
-      const body = prose(content)
-        .slice(section.body, end)
-        .replace(/^\s*(?:<a id="[^"]+"><\/a>\s*)+$/gm, "");
-      requireThat(
-        body
-          .split("\n")
-          .some(
-            (line) => line.trim() && !/^\s*(?:#|\||[-*+] |\d+[.)] )/.test(line),
-          ),
-        `${name} requires explanatory prose: ${path}`,
-      );
-      if (name === "Purpose")
-        requireThat(
-          !/^\s*(?:#|\||[-*+] |\d+[.)] )/m.test(body) &&
-            !fences.some((f) => f.start > section.start && f.end <= end),
-          `Purpose requires plain prose: ${path}`,
-        );
-    }
-  }
-  requireThat(
-    !primary || role === "module",
+    !entry || role === "module",
     `module.md must have document.role module: ${path}`,
   );
+  if (entry) {
+    const top = headings.filter((h) => h.level === 2).map((h) => h.text);
+    requireThat(
+      top.slice(0, 5).join(",") === ENTRY_SECTIONS.join(",") &&
+        ENTRY_SECTIONS.every(
+          (name) => top.filter((text) => text === name).length === 1,
+        ),
+      `Module entry requires level-2 Purpose, Terminology, Usage, Design, Relationships once and in order: ${path}`,
+    );
+  }
   requireThat(
     role === "implementation" ||
-      (!headings.some((h) => /^(?:req|scenario)\./.test(h.text)) &&
+      (definitionHeadings(content).length === 0 &&
         !fences.some((f) => f.language === "concorde-contract")),
-    `Formal definitions belong in an implementation-role document, not a Module entry or topic: ${path}`,
+    `Requirements, scenarios and contracts belong in an implementation-role document: ${path}`,
   );
   requireThat(
     role === "implementation" ||
       !fences.some(
         (f) => f.language === "mermaid" && /^\s*%%\s*graph:/m.test(f.body),
       ),
-    `Exact executable Graph catalogs belong in implementation-role documents: ${path}`,
+    `Graph Spec flowcharts belong in an implementation-role document: ${path}`,
   );
-  requireDefinitions(content, path);
-  return readingMeanings(content, path);
+  requireMarkedDiagrams(content, path);
 }
-function requireDefinitions(content: string, path: string): void {
-  const text = prose(content),
-    headings = headingList(content);
-  requireThat(
-    !/^\s*(?:[-*+]|\d+[.)])\s+req\./m.test(text),
-    `Requirements must be heading sections: ${path}`,
-  );
-  for (let index = 0; index < headings.length; index++) {
-    const heading = headings[index];
-    if (!/^(?:req|scenario)\./.test(heading.text)) continue;
-    requireThat(
-      heading.level >= 2 &&
-        heading.level <= 5 &&
-        /^(?:req|scenario)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*\s+[—–-]\s+\S/.test(
-          heading.text,
-        ),
-      `Malformed definition heading: ${path}`,
-    );
-    const next = headings[index + 1];
-    requireThat(
-      !next || next.level <= heading.level,
-      `Definition sections cannot have nested headings: ${path}`,
-    );
-    const body = text.slice(heading.body, next?.start ?? text.length).trim();
-    if (heading.text.startsWith("req.")) {
-      const statement = body.split(/\n\s*\n/)[0];
-      requireThat(
-        statement &&
-          !/^\s*(?:[-*+]|\d+[.)]|\|)/.test(statement) &&
-          (statement.match(/\bSHALL(?: NOT)?\b/g) ?? []).length === 1,
-        `Requirement needs one SHALL statement: ${path}`,
-      );
-    } else {
-      let order = -1;
-      const seen = new Set<string>();
-      for (const line of body.split("\n")) {
-        const item = /^\s*(?:[-*+]|\d+[.)])\s+(.*)/.exec(line);
-        if (!item) continue;
-        const step = /^(GIVEN|WHEN|THEN|AND|BUT)\s+\S/.exec(item[1]);
-        requireThat(step, `Scenario lists contain steps only: ${path}`);
-        const keyword = step[1];
-        if (keyword === "AND" || keyword === "BUT") {
-          requireThat(
-            order >= 0,
-            `Scenario starts with a continuation: ${path}`,
-          );
-          continue;
-        }
-        const position = ["GIVEN", "WHEN", "THEN"].indexOf(keyword);
-        requireThat(
-          position >= order && (order >= 0 || position < 2),
-          `Scenario step order is invalid: ${path}`,
-        );
-        order = position;
-        seen.add(keyword);
-      }
-      requireThat(
-        seen.has("WHEN") && seen.has("THEN"),
-        `Scenario needs WHEN and THEN steps: ${path}`,
-      );
-    }
-  }
-}
-export interface Entity {
+export interface Contract {
   id: string;
+  version: number;
+}
+/** Canonical contracts declared by `concorde-contract` fences. */
+export function contracts(content: string, path: string): Contract[] {
+  return fenceRanges(content)
+    .filter((f) => f.language === "concorde-contract")
+    .map((f) => {
+      const value = parseJson(f.body, path);
+      requireThat(
+        value &&
+          typeof value === "object" &&
+          typeof value.id === "string" &&
+          identityPattern.test(value.id) &&
+          Number.isInteger(value.version) &&
+          value.version > 0,
+        `Invalid canonical contract: ${path}`,
+      );
+      return { id: value.id, version: value.version };
+    });
+}
+
+export interface NodeRecord {
+  id: string;
+  type: "concept" | "realization";
   title: string;
-  kind: string;
   meaning: string;
-  files?: string[];
+  entries?: string[];
   pending?: string[];
-  target_id?: string;
+  retired?: { reason: string };
+  external_conflict?: string;
 }
-export interface Dependency {
-  target_id: string;
+export interface Selection {
+  target: string;
   meaning: string;
+  relies_on?: string[];
 }
-export interface Binding {
-  id: string;
+export interface Inclusion {
+  kind: "module" | "document" | "external";
+  target: string;
+  reason: string;
+}
+export interface Participation {
+  contract: string;
   version: number;
   role: "provided" | "required";
   peer: string;
   meaning: string;
 }
-export interface UnitMetadata {
-  schema_version: 2;
+export interface ModuleBlock {
+  title: string;
+  owns: string[];
+  contains: Selection[];
+  uses: Selection[];
+  includes: Inclusion[];
+  participates: Participation[];
+}
+export interface DocumentMetadata {
+  schema_version: 3;
   document: { id: string; owner: string; role: "module" | "implementation" };
-  entities: Entity[];
-  dependencies: Dependency[];
-  bindings: Binding[];
+  module?: ModuleBlock;
+  defines: NodeRecord[];
+  relations: Record<string, unknown>[];
   extensions?: Record<string, unknown>;
 }
+function fields(
+  value: any,
+  required: string[],
+  optional: string[],
+  subject: string,
+): void {
+  requireThat(
+    value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      required.every((k) => Object.hasOwn(value, k)) &&
+      Object.keys(value).every((k) => [...required, ...optional].includes(k)),
+    `Invalid metadata fields: ${subject}`,
+  );
+}
+function selections(value: unknown, subject: string): void {
+  requireThat(
+    Array.isArray(value),
+    `Invalid Module relation array: ${subject}`,
+  );
+  for (const r of value as any[]) {
+    fields(r, ["target", "meaning"], ["relies_on"], subject);
+    requireThat(
+      typeof r.target === "string" &&
+        identityPattern.test(r.target) &&
+        typeof r.meaning === "string" &&
+        r.meaning.includes("#") &&
+        (r.relies_on === undefined ||
+          (uniqueStrings(r.relies_on) && r.relies_on.length > 0)),
+      `Invalid Module relation: ${subject}`,
+    );
+  }
+}
+/** The `module` block of an entry, also the shape of a registry record's mirrored fields. */
+export function moduleBlock(value: any, subject: string): ModuleBlock {
+  fields(
+    value,
+    ["title", "owns", "contains", "uses", "includes", "participates"],
+    [],
+    subject,
+  );
+  requireThat(
+    typeof value.title === "string" && value.title.trim(),
+    `Module title required: ${subject}`,
+  );
+  requireThat(
+    uniqueStrings(value.owns) && value.owns.length,
+    `Module owns must be a nonempty unique list: ${subject}`,
+  );
+  selections(value.contains, subject);
+  selections(value.uses, subject);
+  requireThat(Array.isArray(value.includes), `Invalid includes: ${subject}`);
+  for (const i of value.includes) {
+    fields(i, ["kind", "target", "reason"], [], subject);
+    requireThat(
+      ["module", "document", "external"].includes(i.kind) &&
+        typeof i.target === "string" &&
+        i.target.trim() &&
+        (i.kind === "external" || identityPattern.test(i.target)) &&
+        typeof i.reason === "string" &&
+        i.reason.trim(),
+      `Invalid includes: ${subject}`,
+    );
+  }
+  requireThat(
+    Array.isArray(value.participates),
+    `Invalid participates: ${subject}`,
+  );
+  for (const p of value.participates) {
+    fields(p, ["contract", "version", "role", "peer", "meaning"], [], subject);
+    requireThat(
+      typeof p.contract === "string" &&
+        Number.isInteger(p.version) &&
+        p.version > 0 &&
+        ["provided", "required"].includes(p.role) &&
+        typeof p.peer === "string" &&
+        typeof p.meaning === "string",
+      `Invalid participates: ${subject}`,
+    );
+  }
+  return value;
+}
+/** Schema-3 document metadata; `owner` is the registry's owner of the reading path. */
 export function metadata(
   text: string,
   path: string,
   owner: string,
-  meanings: Map<string, string>,
-): UnitMetadata {
+  entry: boolean,
+): DocumentMetadata {
   const value = parseJson(text, path);
-  const fields = (v: any, required: string[], optional: string[] = []) =>
-    requireThat(
-      v &&
-        typeof v === "object" &&
-        !Array.isArray(v) &&
-        required.every((k) => Object.hasOwn(v, k)) &&
-        Object.keys(v).every((k) => [...required, ...optional].includes(k)),
-      `Invalid metadata fields: ${path}`,
-    );
   fields(
     value,
-    ["schema_version", "document", "entities", "dependencies", "bindings"],
-    ["extensions"],
+    ["schema_version", "document", "defines", "relations"],
+    ["module", "extensions"],
+    path,
   );
-  fields(value.document, ["id", "owner", "role"]);
   requireThat(
-    value.schema_version === 2 &&
-      typeof value.document.id === "string" &&
-      identityPattern.test(value.document.id) &&
-      value.document.owner === owner,
-    `Invalid metadata version/identity/owner; migrate explicitly to Protocol 8 schema 2: ${path}`,
+    value.schema_version === 3,
+    `Document metadata schema_version 3 required: ${path}`,
+  );
+  fields(value.document, ["id", "owner", "role"], [], path);
+  requireThat(
+    typeof value.document.id === "string" &&
+      identityPattern.test(value.document.id),
+    `Invalid document identity: ${path}`,
+  );
+  requireThat(
+    value.document.owner === owner,
+    `Document owner differs from the registry owner ${owner}: ${path}`,
   );
   requireThat(
     value.document.role === "module" ||
@@ -469,230 +501,67 @@ export function metadata(
     `Invalid document.role: ${path}`,
   );
   requireThat(
-    !value.extensions ||
-      !Object.hasOwn(value.extensions, "concorde.publication"),
-    `Retired concorde.publication extension; migrate to document.role: ${path}`,
+    entry === Object.hasOwn(value, "module"),
+    entry
+      ? `Module entry metadata requires a module block: ${path}`
+      : `Only a Module entry declares a module block: ${path}`,
   );
+  if (entry) moduleBlock(value.module, path);
   if (value.extensions !== undefined)
     requireThat(
       value.extensions &&
-        !Array.isArray(value.extensions) &&
         typeof value.extensions === "object" &&
-        Object.keys(value.extensions).length &&
-        Object.keys(value.extensions).every((k) => identityPattern.test(k)),
+        !Array.isArray(value.extensions),
       `Invalid metadata extensions: ${path}`,
     );
-  const meaning = (ref: unknown) =>
-    requireThat(
-      typeof ref === "string" &&
-        ref.startsWith("#") &&
-        meanings.get(ref.slice(1))?.trim(),
-      `Missing readable meaning ${String(ref)}: ${path}`,
-    );
-  for (const name of ["entities", "dependencies", "bindings"])
-    requireThat(Array.isArray(value[name]), `Invalid ${name} array: ${path}`);
-  for (const e of value.entities) {
-    fields(
-      e,
-      ["id", "title", "kind", "meaning"],
-      ["files", "pending", "target_id"],
-    );
-    requireThat(
-      typeof e.id === "string" &&
-        identityPattern.test(e.id) &&
-        !/^(req|scenario)\./.test(e.id) &&
-        typeof e.title === "string" &&
-        e.title.trim() &&
-        typeof e.kind === "string" &&
-        e.kind.trim() &&
-        e.meaning === `#${e.id}`,
-      `Invalid entity: ${path}`,
-    );
-    meaning(e.meaning);
-    if (e.files !== undefined)
-      requireThat(
-        uniqueStrings(e.files) && e.files.length,
-        `Invalid entity files: ${path}`,
-      );
-    if (e.pending !== undefined)
-      requireThat(
-        uniqueStrings(e.pending) &&
-          e.pending.every((p: string) => e.files?.includes(p)),
-        `Invalid pending subset: ${path}`,
-      );
-    if (e.target_id !== undefined)
-      requireThat(
-        typeof e.target_id === "string" &&
-          identityPattern.test(e.target_id) &&
-          e.target_id !== owner &&
-          e.files === undefined &&
-          e.pending === undefined,
-        `Invalid Module entity: ${path}`,
-      );
-  }
-  for (const d of value.dependencies) {
-    fields(d, ["target_id", "meaning"]);
-    requireThat(
-      typeof d.target_id === "string" && identityPattern.test(d.target_id),
-      `Invalid provider: ${path}`,
-    );
-    meaning(d.meaning);
-  }
-  for (const b of value.bindings) {
-    fields(b, ["id", "version", "role", "peer", "meaning"]);
-    requireThat(
-      typeof b.id === "string" &&
-        identityPattern.test(b.id) &&
-        Number.isInteger(b.version) &&
-        b.version > 0 &&
-        ["provided", "required"].includes(b.role) &&
-        typeof b.peer === "string" &&
-        b.peer !== owner &&
-        (b.peer.startsWith("external:")
-          ? b.peer.slice(9).trim()
-          : identityPattern.test(b.peer)),
-      `Invalid participant binding: ${path}`,
-    );
-    meaning(b.meaning);
-  }
-  return value;
-}
-/** The same bounded flowchart forms as the Protocol validator; behavioral Graph fences are separate. */
-export function relationshipLabels(content: string, path: string): Set<string> {
-  const headings = headingList(content),
-    section = headings.find(
-      (h) => h.level === 2 && h.text === "Relationships",
-    )!;
-  const end =
-    headings.find((h) => h.start > section.start && h.level <= 2)?.start ??
-    content.length;
-  const fences = fenceRanges(content).filter(
-    (f) => f.language === "mermaid" && f.start > section.start && f.end <= end,
-  );
   requireThat(
-    fences.length,
-    `Relationships requires a Mermaid flowchart: ${path}`,
+    Array.isArray(value.defines) && Array.isArray(value.relations),
+    `defines and relations must be arrays: ${path}`,
   );
-  const labels = new Set<string>();
-  const openers = [
-    "(((",
-    "[[",
-    "[(",
-    "((",
-    "{{",
-    "[/",
-    "[\\",
-    "[",
-    "(",
-    "{",
-    ">",
-  ];
-  const closers = [")))", "]]", ")]", "))", "}}", "/]", "\\]", "]", ")", "}"];
-  for (const fence of fences) {
+  for (const node of value.defines) {
     requireThat(
-      /^\s*(flowchart|graph)\b/.test(fence.body),
-      `Relationships requires a flowchart: ${path}`,
+      node && (node.type === "concept" || node.type === "realization"),
+      `A defines record is a concept or realization: ${path}`,
     );
-    const nodes = new Map<string, string>();
-    for (let line of fence.body.split("\n")) {
-      line = line.trim();
-      if (
-        !line ||
-        /^(?:%%|(?:flowchart|graph|subgraph|end|classDef|class|style|linkStyle|direction|click|accTitle|accDescr)(?=[\s:]|$))/.test(
-          line,
-        )
-      )
-        continue;
-      let position = 0,
-        haveNode = false,
-        awaitingNode = false;
-      while (position < line.length) {
-        if (/[ \t]/.test(line[position])) {
-          position++;
-          continue;
-        }
-        if (line[position] === "&") {
-          requireThat(haveNode, `Invalid node group: ${path}`);
-          position++;
-          awaitingNode = true;
-          continue;
-        }
-        const tail = line.slice(position);
-        const inline =
-          /^(?:--[ \t]+([^-]+?)[ \t]+-->|-\.[ \t]+([^.]+?)[ \t]+\.->|==[ \t]+([^=]+?)[ \t]+==>)/.exec(
-            tail,
-          );
-        const edge =
-          /^(?:x--x|o--o|<-->|-->|---|-\.->|-\.-|==>|===|--x|--o|<--|<==)(?:[ \t]*\|([^|]*)\|)?/.exec(
-            tail,
-          );
-        if (inline || edge) {
-          const match = (inline ?? edge)!;
-          requireThat(
-            haveNode &&
-              !awaitingNode &&
-              (inline
-                ? inline.slice(1).some((v) => v?.trim())
-                : edge![1]?.trim()),
-            `Unlabeled or invalid relationship edge: ${path}`,
-          );
-          position += match[0].length;
-          awaitingNode = true;
-          continue;
-        }
-        const node = /^[A-Za-z0-9_]+/.exec(tail);
-        requireThat(node, `Invalid relationship node: ${path}`);
-        const id = node[0];
-        requireThat(
-          ![
-            "flowchart",
-            "graph",
-            "subgraph",
-            "end",
-            "classDef",
-            "class",
-            "style",
-            "linkStyle",
-            "direction",
-            "click",
-            "accTitle",
-            "accDescr",
-          ].includes(id),
-          `Reserved Mermaid node identifier ${id}: ${path}`,
-        );
-        position += id.length;
-        const opener = openers.find((o) => line.startsWith(o, position));
-        if (opener) {
-          position += opener.length;
-          let label: string;
-          if (line[position] === '"') {
-            const close = line.indexOf('"', position + 1);
-            requireThat(close >= 0, `Unclosed node label: ${path}`);
-            label = line.slice(position + 1, close);
-            position = close + 1;
-          } else {
-            const ends = closers
-              .map((c) => line.indexOf(c, position))
-              .filter((i) => i >= 0);
-            requireThat(ends.length, `Unclosed node: ${path}`);
-            const close = Math.min(...ends);
-            label = line.slice(position, close);
-            position = close;
-          }
-          const closer = closers.find((c) => line.startsWith(c, position));
-          requireThat(closer, `Unclosed node shape: ${path}`);
-          position += closer.length;
-          nodes.set(id, label.split(/<br\s*\/?>/)[0].trim());
-        } else if (!nodes.has(id)) nodes.set(id, id);
-        const style = /^:::\w+/.exec(line.slice(position));
-        if (style) position += style[0].length;
-        haveNode = true;
-        awaitingNode = false;
-      }
-      requireThat(!awaitingNode, `Missing relationship endpoint: ${path}`);
-    }
-    requireThat(nodes.size, `Empty relationship diagram: ${path}`);
-    for (const label of nodes.values()) labels.add(label);
+    if (node.type === "concept")
+      fields(
+        node,
+        ["id", "type", "title", "meaning"],
+        ["retired", "external_conflict"],
+        path,
+      );
+    else
+      fields(
+        node,
+        ["id", "type", "title", "meaning", "entries"],
+        ["pending"],
+        path,
+      );
+    requireThat(
+      typeof node.id === "string" &&
+        identityPattern.test(node.id) &&
+        typeof node.title === "string" &&
+        node.title.trim() &&
+        typeof node.meaning === "string" &&
+        /^#[^#\s]+$/.test(node.meaning),
+      `Invalid ${node.type} record ${String(node.id)}: ${path}`,
+    );
+    if (node.type === "realization")
+      requireThat(
+        uniqueStrings(node.entries) &&
+          node.entries.length &&
+          (node.pending === undefined || uniqueStrings(node.pending)),
+        `Invalid realization entries: ${path}`,
+      );
   }
-  return labels;
+  for (const relation of value.relations)
+    requireThat(
+      relation &&
+        typeof relation === "object" &&
+        ["narrows", "supersedes", "contrasts", "relates"].includes(
+          relation.type,
+        ),
+      `Invalid metadata relation: ${path}`,
+    );
+  return value;
 }

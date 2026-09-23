@@ -154,7 +154,7 @@ def relay_operation(
     environment = {
         key: value
         for key, value in os.environ.items()
-        if key not in {"CONCORDE_STUDIO_URL", "PYTHONPATH", "PYTHONHOME"}
+        if key not in {"PYTHONPATH", "PYTHONHOME"}
     }
     import signal
     import subprocess
@@ -214,6 +214,15 @@ def bind_worktree(
         and primary is not None
         and current["path"] == primary["path"]
     )
+    # Only concorde-init and concorde-configure requests carry this field; every other request
+    # schema refuses it as an unknown field.
+    run_in_primary = bool(task.get("run_in_primary"))
+    if run_in_primary and mutation and host.mode == "execute" and not in_primary:
+        raise SpecError(
+            "run_in_primary applies only to a request started in the primary worktree",
+            "workspace_mismatch",
+            field="run_in_primary",
+        )
     if (
         mutation
         and host.mode == "execute"
@@ -268,6 +277,10 @@ def bind_worktree(
                 "primary_worktree",
             )
         }
+    if run_in_primary and mutation:
+        # The developer explicitly chose to configure or initialize the primary worktree now.
+        refresh_registry(host.project_root)
+        return host, None
     if mutation and not host.allow_primary_worktree:
         if task.get("_issue_recovery"):
             raise SpecError(

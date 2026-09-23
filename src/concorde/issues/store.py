@@ -18,7 +18,6 @@ from uuid import NAMESPACE_URL, uuid5
 from ..spec.changes import apply_files
 from ..spec.issue_shapes import (
     ISSUE_ID,
-    LEGACY_RECORD,
     PROVENANCE,
     RECEIPT,
     RECORD,
@@ -58,8 +57,7 @@ def validate_report(report: dict) -> None:
 
 
 def validate_record(record: dict) -> None:
-    historical = isinstance(record, dict) and record.get("schema_version") == 1
-    check_schema(record, LEGACY_RECORD if historical else RECORD)
+    check_schema(record, RECORD)
     identifiers = []
     keys = []
     for observation in record["reports"]:
@@ -106,17 +104,7 @@ def validate_record(record: dict) -> None:
         )
 
 
-def require_current_record(record: dict) -> None:
-    if record.get("schema_version") != 2:
-        raise SpecError(
-            "historical Issue schema 1 is read-only; preserve its observations and create a "
-            "new schema-2 Issue referencing the historical record before further work",
-            "unsupported_issue_version",
-        )
-
-
 def render(record: dict) -> str:
-    require_current_record(record)
     validate_record(record)
     return f"# {record['id']}\n\n```json\n" + json_text(record) + "\n```\n"
 
@@ -253,7 +241,6 @@ def report_issue(root: Path, report: dict, source: dict) -> dict:
             read_issue(root, identifier) if path.exists() else (None, None)
         )
         if record is not None:
-            require_current_record(record)
             for previous in record["reports"]:
                 if (
                     previous["source"]["invocation_id"] == source["invocation_id"]
@@ -309,7 +296,6 @@ def disposition_record(
     created_at: str | None = None,
 ) -> dict:
     """Prepare exact disposition content without writing or granting disposition authority."""
-    require_current_record(record)
     updated = copy.deepcopy(record)
     updated["dispositions"].append(
         {
@@ -377,7 +363,6 @@ def restore_issue(
 ) -> None:
     """Undo only exact owned disposition bytes, idempotently, under the report/disposition lock."""
     record = parse(original.decode("utf-8"), identifier)
-    require_current_record(record)
     if record["status"] != "open":
         raise SpecError(
             "disposition recovery requires an open before-image", "invalid_issue"

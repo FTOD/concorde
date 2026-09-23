@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.distribution import installation
-from concorde.distribution.build import BuildError, check_build, write_build
+from concorde.distribution.build import write_build
 from concorde.distribution.prompt_resolver import resolve_role_prompt
 from concorde.distribution.session_selection import save_selection, select_session
 from concorde.harness.pi_rpc import PiRpcError, PiRun, _records, run_prompt
@@ -135,60 +135,7 @@ def replacement_prompts(argv, project, env, session):
             stream.close()
 
 
-class CoordinatorRetirementTests(unittest.TestCase):
-    @verifies(
-        "scenario.distribution.task-subagents",
-        "scenario.distribution.build-retired-skills",
-    )
-    def test_retire_only_manifest_owned_append_and_preflight_conflicts(self):
-        from tests.concorde.support.build_fixture import build_package_copy
-
-        for changed in (False, True):
-            with (
-                self.subTest(changed=changed),
-                tempfile.TemporaryDirectory() as directory,
-            ):
-                root = Path(directory)
-                build_package_copy(root)
-                old = root / APPEND
-                content = resolve_role_prompt(
-                    REPOSITORY_ROOT, "prompts/user-session/source/coordinator.md"
-                ).body.encode()
-                old.write_bytes(content)
-                manifest = root / "generated/build-manifest.json"
-                value = json.loads(manifest.read_text())
-                value["outputs"][APPEND] = {
-                    "sha256": "sha256:" + hashlib.sha256(content).hexdigest(),
-                    "sources": ["prompts/user-session/source/coordinator.md"],
-                }
-                manifest.write_text(json.dumps(value))
-                if changed:
-                    old.write_bytes(content + b"\nUser modification\n")
-                self.assertFalse(check_build(root)[0])
-                before = {
-                    p.relative_to(root): p.read_bytes()
-                    for p in root.rglob("*")
-                    if p.is_file()
-                }
-                if changed:
-                    with self.assertRaisesRegex(BuildError, "modified retired output"):
-                        write_build(root)
-                    self.assertEqual(
-                        before,
-                        {
-                            p.relative_to(root): p.read_bytes()
-                            for p in root.rglob("*")
-                            if p.is_file()
-                        },
-                    )
-                else:
-                    write_build(root)
-                    self.assertFalse(old.exists())
-                    self.assertTrue((root / COORDINATOR).is_file())
-                    self.assertEqual((True, ()), check_build(root))
-                    write_build(root)
-                    self.assertEqual((True, ()), check_build(root))
-
+class ConsumerInstallRoleTests(unittest.TestCase):
     @verifies("scenario.distribution.task-subagents")
     def test_consumer_install_update_preserve_user_append_bytes_and_mode(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -211,26 +158,6 @@ class CoordinatorRetirementTests(unittest.TestCase):
                 ".concorde/framework/prompts/user-session",
             ):
                 self.assertFalse((root / source_only).exists())
-
-    @verifies("scenario.distribution.task-subagents")
-    def test_unowned_source_append_is_not_adopted_or_deleted(self):
-        from tests.concorde.support.build_fixture import build_package_copy
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            build_package_copy(root)
-            append = root / APPEND
-            append.write_text("User-owned append, not a generated role")
-            write_build(root)
-            self.assertEqual(
-                "User-owned append, not a generated role", append.read_text()
-            )
-            self.assertNotIn(
-                APPEND,
-                json.loads((root / "generated/build-manifest.json").read_text())[
-                    "outputs"
-                ],
-            )
 
 
 @unittest.skipUnless(shutil.which("pi"), "real Pi is required")
@@ -525,6 +452,7 @@ class EffectiveRolePromptTests(unittest.TestCase):
     @verifies(
         "scenario.distribution.private-selection",
         "scenario.distribution.task-subagents",
+        "scenario.agents.tester-independent",
     )
     def test_missing_binding_still_blocks_private_entry_loading(self):
         with self.assertRaises(PiRpcError) as raised:

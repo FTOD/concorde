@@ -397,6 +397,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
             )
             self.assertIn("stale", applied.findings[0].message)
 
+    @verifies("scenario.views.scaffold-conflict")
     def test_modified_target_is_a_conflict_and_nothing_else_is_written_005(
         self,
     ) -> None:
@@ -409,13 +410,16 @@ class DocsiteScaffoldTests(unittest.TestCase):
         (self.root / "docsite/docusaurus.config.ts").write_text(
             "tampered\n", encoding="utf-8"
         )
+        (self.root / "docsite/package.json").write_text("{}\n", encoding="utf-8")
         applied = apply_docsite(self.root, ".concorde/docsite-proposal.json")
         self.assertEqual(applied.status, "conflict")
-        self.assertTrue(
-            any(
-                finding.rule_id == "CONCORDE-DOCSITE-005"
-                for finding in applied.findings
-            )
+        self.assertEqual(
+            ["docsite/docusaurus.config.ts", "docsite/package.json"],
+            applied.result["conflicts"],
+        )
+        self.assertEqual(
+            {"CONCORDE-DOCSITE-005"},
+            {finding.rule_id for finding in applied.findings},
         )
         self.assertFalse((self.root / "docsite/site.json").exists())
         self.assertFalse((self.root / "README.md").exists())

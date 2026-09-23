@@ -14,3 +14,10 @@ operation: init
 
 @prompts/workflow-host/target-identity-opener.md
 @prompts/workflow-host/candidate-worktree.md
+
+From the primary worktree an `apply` request is relayed into a new candidate, and the new Spec
+takes effect only when that candidate is delivered. Before calling `apply` from the primary, ask the
+developer which they want: to change or test this command (run in a candidate, effective after
+delivery), or simply to initialize this project now. Only for the second answer set
+`run_in_primary: true`, which applies the request in the primary worktree directly. Never set it
+without that answer.

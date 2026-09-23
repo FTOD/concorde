@@ -9,9 +9,8 @@ dependencies = []
 dev = [
     "jsonschema>=4.26.0",
     "langgraph>=1.2,<2",
-]
-studio = [
-    "langgraph-cli[inmem]>=0.4,<1",
+    "pytest>=8.3,<10",
+    "pytest-xdist>=3.6,<4",
 ]
 
 [tool.uv]
@@ -22,6 +21,19 @@ extraPaths = ["src", "."]
 venvPath = "."
 venv = ".venv"
 
+[tool.pytest.ini_options]
+minversion = "8.3"
+testpaths = ["tests/concorde"]
+python_files = ["test_*.py"]
+pythonpath = ["src", "."]
+# Parallel by default: the suite is dominated by a few end-to-end tests that spawn processes, so
+# 16 workers finish it in about the longest single test. `-n auto` would start one worker per
+# core (over one hundred on large hosts) for no gain; pass `-n 0` for one in-process run.
+# `--dist load` with `--maxschedchunk 1` hands out one test at a time so a long test never
+# holds a queue of short ones; tests/concorde/support/pytest_timing.py orders known-heavy tests
+# first. Tests are `unittest.TestCase` classes and stay that way.
+addopts = ["-n", "16", "--dist", "load", "--maxschedchunk", "1"]
+
 [tool.concorde]
 python = "3.11"
-test-command = ".venv/bin/python -m unittest discover -s tests/concorde -t . -p test_*.py"
+test-command = ".venv/bin/python -m pytest"

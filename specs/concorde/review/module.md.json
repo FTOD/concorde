@@ -1,78 +1,213 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.review.module",
     "owner": "module.review",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Review",
+    "owns": [
+      "specs/concorde/review/module.md",
+      "specs/concorde/review/requirements.md",
+      "specs/concorde/review/scenarios.md",
+      "specs/concorde/review/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.harness.admission",
+        "meaning": "#uses-harness-admission"
+      },
+      {
+        "target": "module.harness.context",
+        "meaning": "#uses-harness-context"
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-harness-execution",
+        "relies_on": [
+          "concept.execution.workflow"
+        ]
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-harness-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate"
+        ]
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.agent"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.issue",
+          "concept.issues.blocker"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.implementation",
+        "meaning": "#uses-implementation"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": [
+      {
+        "contract": "contract.review.result",
+        "version": 2,
+        "role": "provided",
+        "peer": "external",
+        "meaning": "#provides-review-result"
+      }
+    ]
+  },
+  "defines": [
     {
-      "id": "entity.review.adapter",
-      "title": "Review adapter",
-      "kind": "shared program",
-      "files": [
+      "id": "concept.review.spec-review",
+      "type": "concept",
+      "title": "Spec review",
+      "meaning": "#concept.review.spec-review"
+    },
+    {
+      "id": "concept.review.code-review",
+      "type": "concept",
+      "title": "Code review",
+      "meaning": "#concept.review.code-review"
+    },
+    {
+      "id": "concept.review.scope",
+      "type": "concept",
+      "title": "Review scope",
+      "meaning": "#concept.review.scope"
+    },
+    {
+      "id": "concept.review.result",
+      "type": "concept",
+      "title": "Review result",
+      "meaning": "#concept.review.result"
+    },
+    {
+      "id": "concept.review.finding",
+      "type": "concept",
+      "title": "Finding",
+      "meaning": "#concept.review.finding"
+    },
+    {
+      "id": "concept.review.required-review",
+      "type": "concept",
+      "title": "Required review",
+      "meaning": "#concept.review.required-review"
+    },
+    {
+      "id": "realization.review.service",
+      "type": "realization",
+      "title": "Review service",
+      "meaning": "#realization.review.service",
+      "entries": [
         "operations/code_review.py",
         "operations/spec_review.py",
+        "src/concorde/review/"
+      ]
+    },
+    {
+      "id": "realization.review.workflow",
+      "type": "realization",
+      "title": "Native review workflow",
+      "meaning": "#realization.review.workflow",
+      "entries": [
         "pi/workflows/review.js",
-        "src/concorde/review/",
+        "src/concorde/harness/native_reviews.py"
+      ]
+    },
+    {
+      "id": "realization.review.tests",
+      "type": "realization",
+      "title": "Review tests",
+      "meaning": "#realization.review.tests",
+      "entries": [
         "tests/concorde/harness/native_review_probe.mjs",
         "tests/concorde/harness/test_native_implementation_review.py",
+        "tests/concorde/operations/test_change_scope.py",
+        "tests/concorde/operations/test_operation_modules.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/operations/test_run_operation.py",
         "tests/concorde/operations/test_specify_loop.py",
-        "tests/concorde/operations/test_standalone_review.py",
-        "tests/concorde/operations/test_target_discovery.py",
         "tests/concorde/support/native_planning.py"
-      ],
-      "meaning": "#entity.review.adapter"
-    },
-    {
-      "id": "entity.review.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.review.harness"
-    },
-    {
-      "id": "entity.review.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "target_id": "module.spec",
-      "meaning": "#entity.review.spec"
-    },
-    {
-      "id": "entity.review.review-input",
-      "title": "Review input",
-      "kind": "record",
-      "meaning": "#entity.review.review-input"
-    },
-    {
-      "id": "entity.review.result",
-      "title": "Review result",
-      "kind": "record",
-      "meaning": "#entity.review.result"
-    },
-    {
-      "id": "entity.review.agents",
-      "title": "Agents",
-      "kind": "used module",
-      "target_id": "module.agents",
-      "meaning": "#entity.review.agents"
+      ]
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.harness",
-      "meaning": "#agreement.document.review.module.2"
+      "type": "relates",
+      "source": "realization.review.service",
+      "verb": "prepares",
+      "target": "concept.review.scope"
     },
     {
-      "target_id": "module.spec",
-      "meaning": "#agreement.document.review.module.3"
+      "type": "relates",
+      "source": "realization.review.workflow",
+      "verb": "runs one reviewer per member of",
+      "target": "concept.review.scope"
     },
     {
-      "target_id": "module.agents",
-      "meaning": "#entity.review.agents"
+      "type": "relates",
+      "source": "realization.review.workflow",
+      "verb": "launches reviewers as",
+      "target": "concept.agents.agent"
+    },
+    {
+      "type": "relates",
+      "source": "realization.review.workflow",
+      "verb": "runs as",
+      "target": "concept.execution.workflow"
+    },
+    {
+      "type": "relates",
+      "source": "realization.review.service",
+      "verb": "freezes each reviewer's context through",
+      "target": "module.harness.context"
+    },
+    {
+      "type": "relates",
+      "source": "realization.review.service",
+      "verb": "accepts and saves",
+      "target": "concept.review.result"
+    },
+    {
+      "type": "relates",
+      "source": "concept.review.result",
+      "verb": "records",
+      "target": "concept.review.finding"
+    },
+    {
+      "type": "relates",
+      "source": "concept.review.finding",
+      "verb": "refers to",
+      "target": "concept.issues.issue"
+    },
+    {
+      "type": "relates",
+      "source": "realization.review.service",
+      "verb": "records required reviews on",
+      "target": "concept.worktrees.candidate"
     }
   ],
-  "bindings": []
+  "extensions": {}
 }

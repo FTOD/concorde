@@ -1,386 +1,328 @@
 # Module specifications
 
+[Node types](model.md) and [Relations](relations.md) define what a specification declares.
+[Format](format.md) defines how declarations are written. This chapter defines what the **reading
+content** must explain, because no declaration establishes understanding.
+
+This chapter serves understanding above all: it is what makes a structurally valid specification
+worth reading.
+
 A Module specifies one responsibility for consumers and implementers. It need not correspond to a
-physical software unit. The complete content includes reading and associated machine declarations;
-the Protocol defines which information must remain readable. A publisher organizes that reading
-without becoming another authority over the specification.
+package, directory, service or process. Its purpose, behaviour, concepts and collaborations
+establish its boundary; realization bindings locate its code and establish nothing about scope.
 
-## Reading content
+## Choosing Module boundaries
 
-A developer must be able to understand the responsibility, use it correctly and maintain its
-realization without assembling meaning from an inventory or knowing project internals. Reading
-begins with Purpose, Terminology, Usage, Design and Relationships. The entry and its explanatory topic companions have role `module`.
-Precise requirements, scenarios and canonical interface agreements belong in owned role
-`implementation` companions, never in the entry or topic pages. Both roles remain reading content
-and together form one complete Module specification; neither role is a separate owner or context.
-A Module may use several implementation documents rather than one oversized specification file.
+Draw Modules around responsibilities and axes of change: a capability, a use case, a boundary with
+one collaborator. Things that change together SHOULD belong to one Module, and a Module SHOULD NOT
+collect things only because they are the same kind of artifact, such as all scripts, all prompts or
+all configuration.
+
+This choice serves both purposes at once. A reader understands a responsibility, not a file type.
+And because a task's boundary is built from Modules, a Module that matches how the project actually
+changes yields boundaries that fit real tasks: a typical change needs one Module's write sets, not
+slices of five.
+
+A Module MAY be purely compositional, explaining how its children together fulfil a responsibility,
+and MAY bind files of its own.
+
+## The intended reader
+
+Assume a reader with general software knowledge who does **not** know this project's implementation,
+internal type names, execution library or history.
+
+That reader must be able to explain, from the reading content alone: the problem the Module solves,
+when to use it, a normal interaction and its result, the important stopping conditions, and why the
+design supports the guarantees. If reaching that state requires reading source code, an unselected
+document or a maintainer, the specification is incomplete regardless of how many checks pass.
+
+This reader is the measure of the Protocol's first purpose: a human understands the project from
+its specification without reading its code.
+
+## Document roles
+
+One Module specification has two roles of document, both reading content, both owned directly by
+the Module.
+
+- **Module documents** (`role: module`) — the `module.md` entry and explanatory topics. They explain
+  the responsibility, correct use, design and collaborations. They MUST NOT become link indexes or
+  independently maintained summaries with weaker promises.
+- **Implementation documents** (`role: implementation`) — the precise requirements, scenarios and
+  canonical contracts. They are specifications, not source code, plans or descriptions of incidental
+  implementation.
+
+Role separation is about meaning, not heading syntax. Exact private APIs, wire fields, byte
+algorithms, persistence layouts, internal limits and executable topology belong to
+`implementation` reading even when written as ordinary prose. Architecture, design reasons, actual
+public entry points and any limit or hazard a consumer needs for correct use belong to `module`
+reading. A topic is an explanation, never a second owner or a nested requirements container.
+
+## The entry
+
+Every entry has the same five sections in the same order, so that every Module reads the same way
+and a newcomer meets them in the order they need: what it is for, the words it uses, how to use
+it, why it is built that way, and how it fits with the rest.
 
 ### Purpose
 
-State what the Module is for, who relies on it and where its promises stop. Use short plain prose,
-not an inventory, table or code block. A directory or package name does not establish responsibility.
-A composite Module may delegate all realization and bind no implementation files of its own.
+State what the Module is for, who relies on it, and where its promises stop, including relevant
+non-goals. Short plain prose. A directory or package name establishes no responsibility.
 
 ### Terminology
 
-Introduce the concepts a reader needs before use and design. Use a `Term` / `Meaning / definition`
-table, not an entity inventory. Give a concept one canonical definition; a later page links the term
-directly to that table and names the source. It may also repeat or faithfully restate the meaning so
-the reader can understand the page without jumping away. For example, if Inventory defines Reservation
-as "Stock held before checkout", a Checkout topic can use:
+List the words a reader needs before Usage and Design make sense, in the table defined by
+[Format](format.md#terminology): one row per concept this document defines, with its one-sentence
+definition, and one link-only row per concept it imports from another Module.
 
-```markdown
-| Term | Meaning / definition |
-| --- | --- |
-| [Reservation](inventory.md#terminology) | Stock held before checkout. Source: Inventory. |
-```
+Deciding which concepts exist is substantive. Declare a concept for a domain word, a record, a
+boundary actor or an external standard a reader must understand; not for a file, an identity or an
+internal class. Decide who owns each word by who is entitled to change its meaning; see
+[Node types](model.md#concept). When a word here could be confused with another Module's word or
+with a Module's name, declare `contrasts`; when it conflicts with common usage outside the project,
+state `external_conflict`.
 
-This illustrative link stands for the project's actual defining document. The imported row is a
-reading aid, not a second authority: preserve the source's meaning and constraints, and check affected
-restatements when that source changes. Link-only imports are also permitted. Explain Checkout's own
-duty to handle a rejected request in Usage, not by extending the imported term's definition.
-Required defining units must still be explicitly included in context; a local restatement cannot
-replace them. This allowance does not duplicate formal obligations, interface contracts or schemas.
-Avoid circular or forwarding chains, and do not require a reader to know a private class to understand
-its domain concept.
+Prose after the table may orient the reader, such as how the terms relate or which to learn first.
 
 ### Usage
 
-Explain audience, use conditions, prerequisites, relevant concepts and actual entry points. Follow
-representative input through results and effects before advanced recovery. Include a concrete
-illustration where abstraction would otherwise obscure the user's decision. Then explain errors, repeated invocation,
-cancellation and compatibility where applicable. An unsupported behavior must be identified rather
-than invented. A logical responsibility can participate in a workflow or conceptual agreement
-without having a callable public API.
+Explain the audience, use conditions, prerequisites, the concepts involved and the actual entry
+points. Follow a representative input through its result and effects before turning to errors,
+repeat invocation, cancellation and compatibility.
+
+Start with a coherent normal path. A reader MUST NOT have to assemble instructions from formal
+statements. Include a concrete illustration wherever abstraction would otherwise hide a decision the
+user has to make. An unsupported behaviour is identified as unsupported, never invented to fill a
+template. A logical responsibility may participate in a collaboration without having any callable
+entry point, and MUST NOT invent one.
 
 Usage is canonical explanatory prose, not a second summary with weaker promises. Link to precise
-requirements, scenarios and interface definitions. A consumer should not need a repository lock's
-implementation details to learn that concurrent publication is serialized or rejected.
+definitions rather than restating them.
 
 ### Design
 
-Explain why responsibility decomposition, state, control/data graph, collaboration and failure
-containment fulfill the guarantees. Connect each significant choice to a problem it prevents;
-a sequence of class or function names is not an explanation. Record significant choices and required internal constraints,
-distinguishing them from incidental current code and unresolved implementation. Links to guarantees
-are preferable to restating them as new obligations.
+Explain why the decomposition, state, control and data flow, collaboration and failure containment
+fulfil the guarantees. Connect each significant choice to a problem it prevents. A list of class or
+function names in call order is not an explanation, and intended design is not evidence that code
+conforms.
 
-Entity meaning belongs within these explanations: a reservation record, boundary actor, interface
-or program is introduced where understanding it matters. Entity identity and implementation
-bindings belong in metadata, not a standalone entity-inventory chapter. Several entities may share
-one coherent explanation with distinct identity anchors; that explanation must actually explain
-all of them. Merely placing anchors above unrelated prose does not establish completeness.
+Record significant choices and required internal constraints, and distinguish them from incidental
+current implementation and unresolved questions. Prefer linking to a guarantee over restating it as
+a new obligation.
+
+Concepts and realizations are explained here or in Usage, where understanding them matters.
+Identity and bindings stay in metadata. Several nodes may share one coherent explanation with
+distinct anchors, provided the prose explains all of them.
 
 ### Relationships
 
-Explain the collaborations and the scope of each relationship diagram. Directed edges have
-meaningful labels, preferably verbs. Nodes resolve to local entity titles, including local entities
-representing used or child Modules. A diagram may select a subset of the inventory or split a topic
-into several scoped views. It must not invent entities or import every internal entity of an
-included provider. An omitted inventory node is not by itself a missing contract.
+Explain the architecture: how the Module's concepts and realizations relate, and how it
+collaborates with its children and providers.
 
-The diagrams are authored Mermaid flowcharts in registered reading documents. A reading entry's
-Relationships section contains the principal relationship view; prose explains conditions,
-invariants and reactions that the edges cannot convey. Further behavioral diagrams can illustrate
-state and execution without becoming another relationship inventory. Explain a conceptual view in
-ordinary terms and identify it as conceptual. Exact executable nodes, state channels, reducers and
-machine-checked topology belong in implementation-role units, linked from this explanation. A rendering, export or
-navigation tree is derived, not an independent authority.
+- For every child and every provider, state its responsibility, when the collaboration applies, the
+  canonical promises relied upon, and this Module's own duties and failure reactions. These
+  explanations are what the `contains` and `uses` `meaning` anchors point to. A declared relation
+  with a link and no explanation does not satisfy this.
+- Declare the structural relationships a reader should see as `relates`, with a verb: the service
+  *saves* the record, the operator *approves* the request.
+- Draw the principal collaboration as a checked flowchart. It may only assert declared relations;
+  a picture that shows something else is marked `illustrative`. See [Views](views.md).
+
+Explain the conditions, invariants and reactions that a diagram cannot carry.
 
 ## Precise obligations
 
-Define these only in implementation-role units owned directly by the Module. Topic names can group
-related definitions but do not own them. Module Specs explain the important guarantees and link to
-these canonical definitions; readers should not need to read every acceptance case to understand
-the Module. Do not move coherent topic explanations wholesale merely because they once contained
-formal definitions.
+Define these only in `implementation` documents owned by the Module. Group headings may organize
+definitions but never own them. Module documents explain the important guarantees and link to the
+canonical definitions; a reader should not need to read every acceptance case to understand the
+Module.
 
-### Requirements
+A **requirement** is one decidable Module-wide `SHALL` statement with a stable identity. A
+**scenario** is one testable situation in `GIVEN`/`WHEN`/`THEN` steps. A situation-specific
+guarantee belongs in that scenario's steps or explanation, not in a second requirement. Define each
+obligation once and link to it; editorial organization MUST NOT weaken, duplicate or contradict it.
 
-A requirement has a stable identity, a title and one decidable statement containing SHALL or
-SHALL NOT exactly once. It expresses a Module-wide obligation, not one scenario's private rule.
+An **interface** is specified by a canonical contract plus readable behaviour and scenarios, not by
+a schema alone. Inputs, outputs, effects, failures, compatibility and repeat behaviour MUST be
+explained in selected readable context, never inferred from shape.
 
-```markdown
-### req.checkout.single-order — One order per submission
+## Composition, dependency and inclusion
 
-Checkout SHALL create at most one order for a successfully admitted request.
-```
+- `contains` states structural accountability. A parent explains how its children fulfil the
+  responsibility it holds, and receives their Specs to do so. A Module has at most one parent and
+  composition is acyclic.
+- `uses` states reliance on a provider's promises, and gives the consumer the provider's Specs. It
+  implies no ownership, deployment, directory nesting or shared source. Dependencies may cross
+  hierarchy levels, and two Modules may use each other.
+- `includes` states what else this Module reads, with a reason. It implies no ownership and no
+  dependency.
 
-One sentence with two SHALL occurrences must be split. "The response SHALL be fast" is not
-decidable; an explicit bound can be. Internal structural or technology constraints can be normative
-requirements just as external guarantees can. Their location does not weaken them or change their
-owner. Explanatory prose and links may follow the statement. Ordinary headings may group definitions.
+When a Module relies on a few promises of a large provider, list them in the relation's
+`relies_on` and link them from the explanation of the collaboration. The reader then receives the
+provider's entry and exactly the documents defining those promises.
 
-### Scenarios
+## Realization
 
-A scenario is one concrete situation and the unit tests verify. GIVEN establishes preconditions,
-WHEN names the trigger, THEN specifies the promised result. AND and BUT continue the preceding kind.
-
-```markdown
-### scenario.checkout.submit — Successful checkout
-
-- GIVEN a customer has a valid cart and delivery details
-- WHEN the customer submits it
-- THEN Checkout creates one order
-- AND returns its identifier
-- BUT does not charge the payment method twice
-```
-
-Success, failure, partial results, retries and concurrency deserve their own scenarios when their
-outcomes differ. A situation's additional guarantees belong in its own steps or explanation, not
-in attached requirements. A Module-wide obligation is defined once as a requirement and linked.
-Scenarios may verify internal transitions as well as boundary invocations. Group headings have no
-identity and do not create new context-query kinds.
-
-### Interfaces
-
-An interface is an entity: an API, command, protocol, event or file boundary. Its canonical readable
-agreement explains inputs, outputs, effects, failures, compatibility and repeat behavior, with related
-scenarios. A structured contract may use a readable schema and example; structured syntax is not a
-reason to classify useful contract content as machine-only metadata.
-
-A shared interface's canonical definition occupies an owned implementation-role companion referenced by many Modules. It retains
-one definition and one owner. Participant metadata names ID, version, role and peer and points to
-local readable participation conditions, relied-upon guarantees and obligations. It does not copy
-the canonical schema or common semantics, and does not override that agreement.
-
-## Composition and dependencies
-
-Composition states the Module's single structural parent. Parent links are acyclic. A parent
-explains how its children fulfill the containing responsibility. Dependency states which separately
-identified provider a Module uses. It does not imply ownership, deployment, directory nesting,
-shared source code or additional context.
-
-```mermaid
-flowchart TB
-    accTitle: Composition is distinct from dependency
-    accDescr: Commerce contains Checkout, Fulfilment and Inventory. Both consumers use Inventory without owning it as another child.
-    commerce["Commerce"]
-    checkout["Checkout"]
-    fulfilment["Fulfilment"]
-    inventory["Inventory"]
-    commerce -->|contains| checkout
-    commerce -->|contains| fulfilment
-    commerce -->|contains| inventory
-    checkout -.->|uses| inventory
-    fulfilment -.->|uses| inventory
-```
-
-Every direct child and used Module has one local entity with its provider identity. The local
-reading states that provider's responsibility, selection/use conditions and canonical promises
-relied upon, plus local duties and failure reactions. Metadata links the declared provider to that
-explanation. A uses arrow or a link to the provider alone is insufficient. A shared provider keeps
-one identity and is not owned by any of its consumers. Dependencies may cross hierarchy levels;
-the sibling arrangement shown above is an example, not a universal hierarchy constraint.
-
-## Realization and external knowledge
-
-Entity metadata may bind exact files and directory prefixes. Directory entries retain their slash
-and bind future files under the tool's deterministic exclusions. Within a Module, the most specific
-entry determines the owning entity; several Modules may list one realization without merging their
-contracts. The registry's file listing equals the union of entity entries, entry for entry.
-A missing intended entry can be pending. No reading or metadata member of a document unit can be
-implementation, and a listed directory cannot contain either member.
-
-Tests are bound implementation, but the test-to-scenario declaration is authored in the test,
-not in reading prose. Derived verification coverage is evidence, never another source of promises.
-A pending marker is removed after its realization exists; until then it is an intention.
-
-Vendored library/service/tool documentation or source is declared separately as external reference
-material at a known revision. It must exist, cannot overlap the Module's implementation listing or
-any document unit, and supplies no promise absent from the Spec. Context selection and execution
-permissions remain separate: listing names does not grant file contents or network access.
+A `realization` binds exact files or directory prefixes; see [Node types](model.md). Tests are
+ordinary implementation files. A test declares the scenarios it verifies **in the test**; reading
+content MUST NOT list verifying tests or prescribe coverage declarations. Missing coverage does not
+cancel a promise, and a declared test is not proof of fulfilment.
 
 ## Completeness
 
-The selected complete context makes every owned and explicitly included unit available with both
-members intact. Its readable subset must supply the meaning needed by the selected task. A schema,
-heading, diagram or correctly registered file set is not proof of sufficient meaning. Honest drafts
-name unknowns. Missing necessary meaning remains a gap until explicit authored changes repair it;
-source code, recursive references and publisher summaries cannot silently supply the missing contract.
+The selected context makes every owned and selected document available with both members intact.
+Its readable subset must supply the meaning the task needs.
 
-# Module template
+A schema, a heading, a rendered table, a checked diagram or a correctly registered file set is not
+proof of sufficient meaning. Honest drafts name their unknowns. Missing necessary meaning remains a
+gap until an explicit change to the specification repairs it: source code, another Module's own selections and
+publisher summaries cannot silently supply a missing contract.
 
-Register `module.md` as the reading entry of one Module and author its paired `module.md.json`.
-The pair has one document ID and owner. This starter illustrates the [required format](../format.md),
-not business facts, semantic completeness or a required website layout.
+# Module entry template
 
-## Reading member: module.md
+A starter for `module.md`. Satisfying this shape establishes nothing about meaning; see
+[Module specifications](../module.md) for what each section must explain.
+
+Register the entry in the project registry and write its paired `.md.json` with
+`schema_version: 3`, `document.role: module`, the `module` block and explicit `defines` and
+`relations` arrays. The [required format](../format.md) applies.
 
 ````markdown
 # [Module title]
 
 ## Purpose
 
-[State the responsibility, consumers and scope in short plain prose.]
+[What this Module is for, who relies on it, where its promises stop, and the relevant non-goals.
+Short plain prose. Do not restate the directory or package name as a responsibility.]
 
 ## Terminology
 
-| Term | Meaning / definition |
+| Term | Definition |
 | --- | --- |
-| Coordinator | [Define this page's new concept in familiar language.] |
-| [Provider term](provider.md#terminology) | [Optionally repeat or faithfully restate the canonical meaning without changing its constraints.] Source: Provider. |
+| Example record | The durable record of one accepted request. |
+| [Thing](../provider/module.md#concept.provider.thing) | |
 
-[Imported terms retain direct canonical links and source attribution. Include each defining unit
-explicitly even when its meaning is repeated here; check restatements when the source changes.
-A source-only row is also permitted. This allowance is not for copying formal contracts or schemas.]
+[Optional prose orienting the reader among the terms.]
 
 ## Usage
 
-[Start with one normal interaction and its outcome, then important failures and what to do next.
-Use a concrete illustration when it helps. Explain when and how to use it, prerequisites and actual entry points, representative inputs and
-results, effects and relevant errors, repetition, cancellation and compatibility. A logical Module
-need not invent an API. Link to precise definitions rather than duplicating them.]
+[Audience, use conditions, prerequisites and actual entry points. Follow one representative input
+through its result and effects. Then errors, repeat invocation, cancellation and compatibility.
+Include a concrete illustration where abstraction would hide a user decision. Name unsupported
+behaviour as unsupported.]
+
+<a id="concept.example.record"></a>
+
+[Explain the example record where understanding it matters.]
 
 ## Design
 
-<a id="entity.example.coordinator"></a>
+<a id="realization.example.service"></a>
 
-[Explain why the coordinator's responsibility, state and control/data graph fulfill the guarantees.
-Connect choices to the problems they prevent. Link to exact APIs, byte rules and executable Graph
-catalogs in implementation-role companions rather than reproduce them here. Do not substitute a file inventory.]
+[Why the decomposition, state, flow, collaboration and failure containment fulfil the guarantees.
+Connect each significant choice to the problem it prevents. Distinguish significant choices from
+incidental implementation and open questions.]
 
 ## Relationships
 
-[Explain this view's collaboration scope and what its arrows do not show.]
-
 ```mermaid
 flowchart LR
-    accTitle: Example collaboration
-    accDescr: The coordinator uses its provider without acquiring structural ownership.
-    coordinator["Coordinator"]
-    provider["Provider"]
-    coordinator -->|uses| provider
+    Service[Example service] -->|saves| Record[Example record]
+    Service -->|reserves stock through| Provider[Provider]
 ```
 
-### Provider collaboration
+<a id="uses-example-provider"></a>
 
-<a id="entity.example.provider"></a><a id="example.provider-agreement"></a>
-
-[Explain the provider's responsibility, when it is selected and which included canonical guarantees
-this Module relies on. Link to those guarantees, and state local duties and failure reactions.]
-
-## Precise specifications
-
-[Explain the important guarantees above and link to the Module's owned requirements, scenarios
-and interface contracts. Do not define formal obligations in this entry or explanatory topic pages.]
-
-## Unresolved information
-
-[Name missing behavior/design and the steps it blocks, or state that no such gaps are known.]
+[For each child and provider: its responsibility, when the collaboration applies, the canonical
+promises relied upon, and this Module's own duties and failure reactions. This is the anchor a
+`contains` or `uses` relation points to. Explain the conditions and reactions a picture cannot
+carry.]
 ````
 
-The example's anchors identify canonical readable explanations. Adjacent anchors **on the same
-standalone line** can identify entities and agreements explained together without repeating prose.
-An entity not relevant to this diagram can remain in the metadata and be explained elsewhere in
-the owned reading. A diagram must not invent entities or import every included provider's internals.
+The first Terminology row defines `concept.example.record`; the second is an import row, which
+links to the provider's concept by identity and leaves the definition empty.
 
-## Metadata member: module.md.json
+The flowchart is checked: `Example service` and `Example record` resolve to this Module's nodes,
+`Provider` to a Module title, and each edge to one of the `relates` declarations below. A picture
+that should not be checked is marked `mermaid illustrative`.
 
-```json
+## Paired metadata
+
+````json
 {
-  "schema_version": 2,
-  "document": {"id": "document.example.module", "owner": "module.example", "role": "module"},
-  "entities": [
-    {"id": "entity.example.coordinator", "title": "Coordinator", "kind": "program",
-     "meaning": "#entity.example.coordinator", "files": ["src/example/"]},
-    {"id": "entity.example.provider", "title": "Provider", "kind": "used module",
-     "meaning": "#entity.example.provider", "target_id": "module.provider"}
-  ],
-  "dependencies": [
-    {"target_id": "module.provider", "meaning": "#example.provider-agreement"}
-  ],
-  "bindings": []
-}
-```
-
-Replace example identities and paths with actual facts. A missing intended implementation entry
-needs a `pending` marker; a real provider is registered as a use or child. The registry file union
-must equal the entity entries, and necessary definitions enter context through explicit Module
-references. A Markdown link does not include its target. Remove inapplicable declarations instead
-of inventing a provider, file or interface merely to fill this starter.
-
-## Companion documents and interfaces
-
-A companion has its own metadata pair and sole Module owner. Explanatory topics start with a brief
-orientation followed by a Terminology table, but do not repeat the whole entry template.
-Use role `module` for explanatory topics such as Registry or Publication. Use role `implementation`
-for the Module's requirements, scenarios and precise interfaces. Never place formal definitions in
-explanatory topics. Register every reading path in the same owner's collection; consumers reference
-its document ID or the owner's Module ID. A split requires explicit references to the units now
-containing relied-upon definitions; following Markdown links does not include them.
-
-For example, `requirements.md` has schema-2 metadata:
-
-```json
-{
-  "schema_version": 2,
-  "document": {"id": "document.example.requirements", "owner": "module.example", "role": "implementation"},
-  "entities": [], "dependencies": [], "bindings": []
-}
-```
-
-Its reading member can define:
-
-```markdown
-# Example requirements
-
-### req.example.promise — [Requirement title]
-
-[One decidable sentence containing SHALL or SHALL NOT exactly once.]
-```
-
-Use the [scenario fragment](scenario.md) in another registered implementation-role unit, or in the
-same unit when this keeps the Module's precise specification readable. A canonical structured
-agreement is also defined once in an implementation-role unit:
-
-````markdown
-```concorde-contract
-{
-  "id": "contract.example.request",
-  "version": 1,
-  "schema": {
-    "type": "object",
-    "properties": {"request_id": {"type": "string", "minLength": 1}},
-    "required": ["request_id"],
-    "additionalProperties": false
+  "schema_version": 3,
+  "document": {
+    "id": "document.example.module",
+    "owner": "module.example",
+    "role": "module"
   },
-  "semantics": "[Explain the agreed value and its use.]",
-  "example": {"request_id": "example-1"}
+  "module": {
+    "title": "Example",
+    "owns": ["example/module.md"],
+    "contains": [],
+    "uses": [
+      {"target": "module.provider", "meaning": "#uses-example-provider",
+       "relies_on": ["concept.provider.thing"]}
+    ],
+    "includes": [],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.example.record",
+      "type": "concept",
+      "title": "Example record",
+      "meaning": "#concept.example.record"
+    },
+    {
+      "id": "realization.example.service",
+      "type": "realization",
+      "title": "Example service",
+      "meaning": "#realization.example.service",
+      "entries": ["src/example/"]
+    }
+  ],
+  "relations": [
+    {"type": "relates", "source": "realization.example.service", "verb": "saves",
+     "target": "concept.example.record"},
+    {"type": "relates", "source": "realization.example.service",
+     "verb": "reserves stock through", "target": "module.provider"}
+  ]
 }
-```
-
-[Describe the offline schema vocabulary, inputs, results, effects, failures, compatibility and
-related scenarios. Schema shape alone is not a behavioral agreement.]
-
-### Local participation {#example.participation}
-
-[State use conditions, relied-upon guarantees and obligations, with ordinary links to the included
-canonical definition. Do not copy its schema or common semantics.]
 ````
 
-Its participant metadata selects the existing definition:
+The `uses` entry selects the provider's entry and the document defining `concept.provider.thing`,
+which satisfies the context requirements of importing that concept and of relating to
+`module.provider`. The `Provider` label in the flowchart resolves because the provider Module's
+title is `Provider`.
 
-```json
+## Registry record
+
+The project registry mirrors the `module` block and adds the entry path:
+
+````json
 {
-  "id": "contract.example.request", "version": 1, "role": "required",
-  "peer": "module.provider", "meaning": "#example.participation"
+  "id": "module.example",
+  "title": "Example",
+  "entry": "example/module.md",
+  "owns": ["example/module.md"],
+  "contains": [],
+  "uses": [
+    {"target": "module.provider", "meaning": "#uses-example-provider",
+     "relies_on": ["concept.provider.thing"]}
+  ],
+  "includes": [],
+  "participates": []
 }
-```
-
-Place that record in the companion's `bindings` array. Internal peers need complementary roles;
-external peers use `external:<name>`. Tests declare scenario IDs in their own code, not in reading.
-Changing either source member invalidates dependent context/review identities. Neither a metadata
-record nor this template grants access to implementation or undeclared external material.
+````
 
 # Scenario fragment
 
-A scenario belongs to the Module owning its defining document unit. It can describe boundary use or
-an internal verification situation. It is not another Spec kind, document owner or context filter.
-Define it only in an implementation-role companion, never in `module.md` or a module-role topic.
-Register its Markdown reading path and author schema-2 metadata with the owner's identity,
-`document.role: implementation` and explicit declaration arrays. No enclosing usage/architecture parts
-are required. The [required format](../format.md) applies.
+A scenario belongs to the Module owning its defining document. It may describe boundary use or an
+internal verification situation. It is not a separate Spec kind, document owner or context filter.
+
+Define it only in an `implementation` document, never in `module.md` or a `module`-role topic.
+Register the reading path and write its paired metadata with `schema_version: 3`, the owner's
+identity and `document.role: implementation`. The [required format](../format.md) applies.
 
 ````markdown
 ### scenario.example.situation — [Scenario title]
@@ -395,9 +337,14 @@ are required. The [required format](../format.md) applies.
 [Explain relevant limits, the triggering interface or unresolved facts in ordinary prose.]
 ````
 
-Write separate scenarios for situations with distinct successful, failed, repeated or concurrent
-outcomes. Put a situation's guarantees in its steps or explanation; define Module-wide obligations
-once as requirements and link to them. Keep identities stable across title or path changes. Tests
-name the scenario identity, and publication exposes it as an anchor. Querying the scenario selects
-its owner's entire complete context, including both source members of every explicitly included
-unit, not just this fragment or the human-readable subset.
+Write separate scenarios for situations whose successful, failed, repeated or concurrent outcomes
+differ. Put a situation's guarantees in its own steps or explanation; define a Module-wide
+obligation once as a requirement and link to it.
+
+Identities stay stable across title and path changes. A test names the scenario identity **in the
+test source**; reading content never lists verifying tests. Publication exposes the identity as an
+anchor.
+
+Querying a scenario selects its owner's entire context, including both members of every owned and
+selected document. It never trims to this fragment, and never selects the consumer that happened to
+read it.

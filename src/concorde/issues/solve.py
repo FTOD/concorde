@@ -96,7 +96,7 @@ class IssueSolve:
 
     def current_inputs(self):
         repository = SpecRepository(self.root, self.run.host.package_root)
-        target = repository.select(self.run.target.id)
+        target = repository.module(self.run.target.id)
         return digest(
             {
                 "spec": target_revision(repository, target),
@@ -389,7 +389,7 @@ class IssueSolve:
         self.solution["attempts"] += 1
         self.save()
         self.run.repository = SpecRepository(self.root, self.run.host.package_root)
-        self.run.target = self.run.repository.select(self.run.target.id)
+        self.run.target = self.run.repository.module(self.run.target.id)
         return {"selection": selection}
 
     def accept_decision(self, result):

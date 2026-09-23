@@ -11,7 +11,6 @@ from .timing import Span, timed
 
 import copy
 import os
-import re
 import stat
 import subprocess
 import tempfile
@@ -23,8 +22,9 @@ from typing import Literal, overload
 
 from ..spec.changes import apply_files, file_change
 from ..spec.repository import SpecError, identifier
-from ..spec.typed_data import canonical, checked_path, decode
+from ..spec.typed_data import canonical, checked_path
 from .status_store import (
+    RUNS_PATH,
     STATUS_PATH,
     all_status,
     read_status,
@@ -32,26 +32,11 @@ from .status_store import (
     write_status,
 )
 
-STATE_PATH = ".concorde/worktree.json"
-REGISTRY_PATH = ".concorde/worktrees.json"
 WORK_PATH = ".concorde/work"
-DELIVERIES_PATH = ".concorde/deliveries"
-LOCAL_PATHS = (
-    STATE_PATH,
-    REGISTRY_PATH,
-    STATUS_PATH,
-    WORK_PATH,
-    DELIVERIES_PATH,
-    ".concorde/runs",
-    # Historical local artifacts remain excluded from deliverable trees; no producer remains.
-    ".concorde/topology-proposals",
-    ".concorde/*.legacy-archive",
-)
+LOCAL_PATHS = (STATUS_PATH, WORK_PATH, RUNS_PATH)
 GUIDANCE_START = "\n<!-- concorde-change-worktree:start -->\n"
 GUIDANCE_END = "<!-- concorde-change-worktree:end -->\n"
 GUIDANCE_FILES = ("AGENTS.md",)
-# Historical status retains its original ownership map; this is admission, not creation.
-HISTORICAL_GUIDANCE_FILES = ("AGENTS.md", "CLAUDE.md")
 
 
 def git(
@@ -197,7 +182,7 @@ def worktree_incarnation(root: Path, *, create: bool = False) -> str | None:
 
     Git removes this token with the worktree admin directory. Recreating even the
     same path, branch and commit therefore cannot inherit the old incarnation.
-    Creation is confined to locked registration or explicitly accepted migration.
+    Creation is confined to locked registration.
     """
     directory = Path(git_value(root, "rev-parse", "--absolute-git-dir"))
     path = checked_path(directory, "concorde-incarnation")
@@ -265,40 +250,11 @@ def read_change(root: Path, *, required: bool) -> dict | None: ...
 
 
 def read_change(root: Path, *, required: bool = False) -> dict | None:
-    legacy = checked_path(root, STATE_PATH)
-    if legacy.exists():
-        historical = decode(legacy.read_text())
-        if isinstance(historical, dict) and historical.get("schema_version") == 1:
-            raise SpecError(
-                "schema-1 worktree history requires explicit archival",
-                "unsupported_worktree_version",
-            )
-        raise SpecError(
-            "legacy lifecycle state requires migrate-status --apply",
-            "migration_required",
-        )
     primary, current = workspace_identity(root)
-    if (
-        primary is not None
-        and primary["path"] != str(root.resolve())
-        and checked_path(root, ".concorde/runs").exists()
-    ):
-        raise SpecError(
-            "candidate-local durable runs require explicit migration",
-            "migration_required",
-        )
     git_id = worktree_incarnation(root) if current else None
     located = [
         item for item in all_status(root) if item.get("path") == str(root.resolve())
     ]
-    if current and any(
-        not str(item.get("git_worktree_id", "")).startswith("incarnation:")
-        for item in located
-    ):
-        raise SpecError(
-            "pathname-only task identity requires explicit archival and re-registration",
-            "migration_required",
-        )
     candidates = [
         item
         for item in located
@@ -318,23 +274,12 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
     if len(matches) > 1:
         raise SpecError("multiple tasks claim this workspace", "workspace_mismatch")
     if not matches:
-        if checked_path(root, STATE_PATH).exists():
-            raise SpecError(
-                "legacy lifecycle state requires migrate-status --apply",
-                "migration_required",
-            )
         if required:
             raise SpecError(
                 "this operation requires a managed change worktree", "missing_change"
             )
         return None
     state = matches[0]
-    if isinstance(state, dict) and state.get("schema_version") == 1:
-        raise SpecError(
-            "legacy worktree state requires explicit archival and fresh validation; "
-            "schema 1 cannot resume under the Operations profile",
-            "unsupported_worktree_version",
-        )
     if (
         not isinstance(state, dict)
         or type(state.get("schema_version")) is not int
@@ -405,24 +350,10 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             observation = resolve_report(root, receipt(item["blocker"]))
             if (
                 item["id"] != expected
-                or item["status"] not in {"open", "resolved", "superseded"}
+                or item["status"] not in {"open", "resolved"}
                 or observation["source"]["context_id"] not in item["contexts"]
             ):
                 raise ValueError("Issue blocker identity or provenance changed")
-            if item["status"] == "superseded":
-                reassessment = item.get("reassessment", {})
-                if (
-                    item["phase"] != "specify"
-                    or reassessment.get("phase") != "context-solve"
-                    or reassessment.get("reason") != "retired_author_prerequisite"
-                    or not re.fullmatch(
-                        r"sha256:[0-9a-f]{64}", reassessment.get("context_id", "")
-                    )
-                    or not re.fullmatch(
-                        r"sha256:[0-9a-f]{64}", reassessment.get("spec_digest", "")
-                    )
-                ):
-                    raise ValueError("invalid retired-prerequisite supersession")
     except (ValueError, KeyError, TypeError) as error:
         raise SpecError(
             f"invalid Issue blocker history: {error}", "invalid_worktree_state"
@@ -435,7 +366,7 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             "worktree state belongs to a different branch or primary worktree",
             "workspace_mismatch",
         )
-    if set(state["guidance"]) - set(HISTORICAL_GUIDANCE_FILES):
+    if set(state["guidance"]) - set(GUIDANCE_FILES):
         raise SpecError(
             "worktree guidance names an unsupported file", "invalid_worktree_state"
         )
@@ -599,12 +530,6 @@ def ensure_change(
                 "incompatible_handoff",
             )
         return existing
-    legacy = checked_path(root, ".concorde/attempts")
-    if legacy.exists() and any(legacy.iterdir()):
-        raise SpecError(
-            "legacy attempt state is not supported; remove it explicitly before adopting this worktree",
-            "legacy_attempt",
-        )
     primary, current = workspace_identity(root)
     secondary = (
         current is not None
@@ -620,15 +545,7 @@ def ensure_change(
             "a change worktree requires an attached branch", "detached_worktree"
         )
     if current is not None:
-        tracked = git_value(
-            root,
-            "ls-files",
-            "--",
-            STATE_PATH,
-            REGISTRY_PATH,
-            WORK_PATH,
-            DELIVERIES_PATH,
-        )
+        tracked = git_value(root, "ls-files", "--", WORK_PATH)
         if tracked:
             raise SpecError(
                 "worktree control paths must not be tracked project files",
@@ -997,7 +914,6 @@ def record_task_gaps(
     review_input_digest: str | None = None,
     spec_resolution: dict | None = None,
     scope_id: str | None = None,
-    assessment_context_id: str | None = None,
 ) -> None:
     """Retain Issue dependencies by change/Module/phase/Issue, never by task wording.
 
@@ -1066,38 +982,6 @@ def record_task_gaps(
         if context_id not in item["contexts"]:
             item["contexts"].append(context_id)
     for item in history:
-        # A current assessment can replace the retired prerequisite, not prove
-        # that the old author succeeded or that its independently recorded Issue is fixed.
-        reassessed_author = (
-            phase == "context-solve"
-            and item["phase"] == "specify"
-            and assessment_context_id is not None
-            and item["target_id"] == target_id
-            and item["scope_id"] == scope_id
-            and item["status"] == "open"
-            and not blockers
-        )
-        if reassessed_author:
-            observation = resolve_report(root, receipt(item["blocker"]))
-            source = observation["source"]
-            if (
-                item.get("task") != task
-                or source.get("target_id") != target_id
-                or source.get("phase") != "specify"
-                or source.get("operation") != "concorde-specify"
-            ):
-                raise SpecError(
-                    "retired author relation has ambiguous attribution",
-                    "invalid_worktree_state",
-                )
-            item["status"] = "superseded"
-            item["reassessment"] = {
-                "phase": phase,
-                "context_id": assessment_context_id,
-                "spec_digest": spec_digest,
-                "reason": "retired_author_prerequisite",
-            }
-            continue
         if (
             item["target_id"] == target_id
             and item["scope_id"] == scope_id
@@ -1108,8 +992,7 @@ def record_task_gaps(
                 item.get("spec_digest") != spec_digest
                 or (
                     review_input_digest is not None
-                    and item.get("review_input_digest") is not None
-                    and item["review_input_digest"] != review_input_digest
+                    and item.get("review_input_digest") != review_input_digest
                 )
                 or (
                     phase in {"spec-review", "code-review"}
@@ -1161,7 +1044,7 @@ def unchanged_task_gaps(
         and (
             review_input_digest is None
             or phase not in {"spec-review", "code-review"}
-            or item.get("review_input_digest") in {None, review_input_digest}
+            or item.get("review_input_digest") == review_input_digest
         )
     ]
 

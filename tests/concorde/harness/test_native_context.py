@@ -149,7 +149,7 @@ class NativeContextTests(unittest.TestCase):
                     file.write_text(json.dumps(value))
                 elif relative.endswith("specs.json"):
                     value = json.loads(original)
-                    value["targets"].reverse()
+                    value["modules"].reverse()
                     file.write_text(json.dumps(value))
                 else:
                     file.write_bytes(original + b"\nChanged contract\n")

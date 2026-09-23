@@ -91,41 +91,20 @@ class OperationModuleContractTests(unittest.TestCase):
             set(PUBLIC_OPERATIONS),
             {m.EXTERNAL_NAME for m in _modules().values() if m.PUBLIC},
         )
-        self.assertTrue(
-            {
-                "concorde-main",
-                "concorde-dev-loop",
-                "concorde-specify-loop",
-                "concorde-specify",
-            }.isdisjoint(OPERATION_NAMES)
-        )
 
-    def test_review_entries_have_fixed_authority_and_no_legacy_selector(self):
+    @verifies("scenario.review.separate-entries")
+    def test_each_review_entry_uses_only_its_own_reviewer(self):
         modules = _modules()
-        self.assertNotIn("review", modules)
-        self.assertNotIn("concorde-review", contracts())
-        self.assertNotIn("concorde-review-request", schemas())
-        self.assertNotIn("concorde-review-response", schemas())
         for kind in ("spec", "code"):
             with self.subTest(kind=kind):
                 operation = f"concorde-{kind}-review"
                 module = modules[f"{kind}_review"]
                 self.assertEqual((f"{kind}_reviewer",), module.USES)
                 self.assertEqual({"target_id", "task"}, set(module.REQUEST["required"]))
-                self.assertNotIn("review_mode", module.REQUEST["properties"])
                 typed(
                     operation + "-request",
                     {"target_id": "module.example", "task": "Inspect"},
                 )
-                with self.assertRaises(TypedDataError):
-                    typed(
-                        operation + "-request",
-                        {
-                            "target_id": "module.example",
-                            "task": "Inspect",
-                            "review_mode": kind,
-                        },
-                    )
 
     def test_uses_is_the_only_dependency_relation_and_is_acyclic(self):
         modules = _modules()

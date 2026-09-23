@@ -1,423 +1,336 @@
 # Distribution scenarios
 
-These precise specifications belong directly to the [Distribution Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
-
-## Terminology
-
-| Term                                                      | Meaning / definition                         |
-| --------------------------------------------------------- | -------------------------------------------- |
-| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.               |
-| [Worker](../module.md#terminology)                        | Defined in Concorde Framework.               |
-| [Worker profile](../harness/module.md#terminology)        | Defined in Harness.                          |
-| [Operation](../module.md#terminology)                     | Defined in Concorde Framework.               |
-| [Public operation](../operations/module.md#terminology)   | Defined in Operations.                       |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations.                       |
-| [Host](../module.md#terminology)                          | Defined in Concorde Framework.               |
-| [Worktree](../module.md#terminology)                      | Defined in Concorde Framework.               |
-| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.               |
-| [Installation](installation.md#terminology)               | Defined in Installing and updating Concorde. |
-| [Update](installation.md#terminology)                     | Defined in Installing and updating Concorde. |
-| [Installation receipt](installation.md#terminology)       | Defined in Installing and updating Concorde. |
-| [Initialization](../spec/initialize.md#terminology)       | Defined in Project initialization.           |
-| [Protocol binding](../spec/values.md#terminology)         | Defined in Identities and versions.          |
-| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.               |
-
-Throughout these scenarios, public operation/Operation is the compatibility catalog/launcher term
-from [Operations](../operations/module.md#terminology), not a StateGraph backend claim. Exact
-scenario IDs, transport fields and historical retirement names remain unchanged. Current
-capability kinds and canonical Agent ownership follow [Agents](../agents/contracts.md) and the
-[typed catalog contract](contracts.md#typed-executable-catalog-compatibility).
-
-## Installation service
-
-### scenario.distribution.install-preview — Preview reports current owned output integrity without writing
-
-- GIVEN a Pi installation target directory
-- WHEN the installer runs without `--apply`
-- THEN it returns a read-only preview of owned Framework, Pi extension and root-guidance changes, with a notice explaining manual retirement of external CLI-owned Skills
-- AND repeating the preview reports current owned output integrity without writing anything
-
-### scenario.distribution.install-apply — Applying an accepted current proposal installs owned outputs
-
-- GIVEN a reviewed installation or update proposal that is still current
-- WHEN the installer runs with `--apply`
-- THEN it writes the accepted receipt-owned Framework, Pi extension and root-guidance changes without invoking a Skills CLI
-- AND it deploys the Protocol bundle under `.concorde/protocol/` as receipt-owned output, refreshed on every install and update, without touching the project's Protocol binding
-- AND it preserves project Specs, configuration, reflection history and unrelated user files
-- AND a `node_modules` directory below the package's `pi/` directory is neither deployed nor inspected
-
-Framework code, internal worker instructions, rule assets, templates and supporting tools are
-deployed under `.concorde/framework/`; the managed runtime is provisioned separately. No public
-Skill product is deployed. The installer copies no Skill into `.agents/skills/` or `.claude/skills/`
-and never invokes `npx skills`. The Protocol bundle is deployed at `.concorde/protocol/`, independent
-of the Framework layout, without accepting its binding for the project. `pi/node_modules` is
-neither inspected nor copied; the managed runtime provisions TypeBox from its own lock with npm.
-The Pi shim imports the deployed extension, and `AGENTS.md` directs the reader to the Protocol.
-Concorde-owned defaults such as `.concorde/issues/.gitignore` are seeded only when absent,
-excluded from the receipt, and never overwritten. Initialization remains separate.
-
-### scenario.distribution.install-conflict-rejected — Conflicting or stale ownership blocks acceptance
-
-- GIVEN a locally modified owned block, an unowned root entry, a symlinked or malformed root file, or a stale preview
-- WHEN `--apply` is requested
-- THEN the installer rejects the change before writing
-- AND any already-replaced owned state is restored
-
-Root rule ownership and installation's failure rollback are Module-wide requirements; see
-[req.distribution.root-block-ownership](requirements.md#req.distribution.root-block-ownership) and
-[req.distribution.rollback-on-failure](requirements.md#req.distribution.rollback-on-failure).
-
-Root entries are shared files with block ownership, not whole-file ownership. New entries precede
-user text; upgrades retain an existing block's position. Bytes outside the block and existing modes
-survive reinstall, update and retirement of legacy client entries. Root symlinks (including dangling ones),
-directories, malformed/duplicate/misordered markers, unowned blocks and modified owned blocks are
-conflicts. The one whole-file act the installer performs is removing a root file it created itself
-when its entry's removal leaves that file empty; the receipt records that creation, and a file the
-developer created is never removed.
-
-### scenario.distribution.install-remove-guidance — Root-guidance cleanup removes only receipt-owned entries
-
-- GIVEN an installed receipt with owned root entries
-- WHEN `--remove-protocol-guidance --apply` is requested
-- THEN only the receipt-owned root entries are removed
-- AND a root file the installer itself created for its entry, which the receipt records, is removed with the entry when nothing else remains in it, while a file the developer created stays even when the removal leaves it empty
-- AND the runtime, Framework and other receipt records are left in place
-- AND repeating the cleanup leaves the result unchanged
-
-This is the root-entry cleanup step for uninstall, not a full-package removal command. The same
-entry removal happens when upgrading a legacy Claude installation to Pi, with the same rule
-for the file the entry leaves behind.
-
-### scenario.distribution.install-retired-clients — Pi-only upgrade preserves legacy ownership
-
-- GIVEN a legacy schema-1 multi-client installation receipt
-- WHEN the Pi-only installer applies an upgrade
-- THEN it installs the Pi shim and AGENTS.md entry and removes only unchanged receipt-owned retired files and the exact owned CLAUDE.md block
-- AND edited owned content, unsafe links or changed preview inputs block before writing
-- AND surrounding text, modes, unrelated files, external CLI-owned Skills and skills-lock.json are preserved
-- AND a failure restores retired owned bytes, modes and the previous receipt, permitting a fresh-plan retry
-- AND old receipts without root entries can add Pi guidance without adopting arbitrary preexisting marked content
-
-Both text and JSON installer results report that external CLI-owned Skills require explicit manual
-removal of the developer's own retired Concorde entries, never wholesale directory or lock deletion.
-The installer performs no CLI delegation, including during migration. Empty retired directories
-may remain; ownership of a file does not grant ownership of neighboring directory contents.
-
-### scenario.distribution.template-ownership — Templates ship only with their owners
-
-- GIVEN a current package and a fresh target or a legacy receipt naming root template outputs
-- WHEN installation previews and applies the current package
-- THEN fresh Framework output has no root templates directory, Module and Scenario starters remain under protocol/templates, and plan/task starters ship in their owning Agent packages
-- AND upgrade removes only unchanged receipt-owned obsolete template files, leaving unowned neighboring material untouched and possibly leaving empty legacy directories
-- AND modified owned files, symlinks or changes after preview block before writing, while a failed apply restores retired bytes, modes and the prior receipt
-- AND repeated installation is idempotent and the relocated starters add no worker context, tools or prompt injection
-
-### scenario.distribution.install-pi-session — Installing places the Pi session extension only
-
-- GIVEN a target project
-- WHEN installation is applied without client-selection flags
-- THEN it installs `.pi/extensions/concorde-session.ts` as a receipt-owned output importing the deployed framework extension and naming its launcher and managed runtime interpreter
-- AND it installs the AGENTS.md Protocol entry that Pi reads as a context file
-- AND no standalone Skills, Skills CLI locks, Codex projections or Claude projections are installed
-- BUT the retired `--integration` flag is rejected for every value, including pi, before target mutation
-
-### scenario.distribution.configure-apply — Configuration changes an initialized project's Pi worker selection atomically
-
-- GIVEN an initialized project and an explicit supported configuration value
-- WHEN concorde-configure is applied
-- THEN the new configuration is written atomically
-- AND unsupported values, an uninitialized project or a failed write leave the previous configuration in place
-
-### scenario.distribution.accept-protocol — Accepting an upgraded installed Protocol is explicit
-
-- GIVEN an initialized project whose Protocol binding no longer matches the Protocol copy the installer placed under `.concorde/protocol/`
-- WHEN concorde-configure is applied without `accept_protocol`
-- THEN it fails with protocol_mismatch and leaves the binding unchanged
-- BUT when it is applied with `accept_protocol: true`, it rebinds the configuration to the installed copy's manifest and admits the repository, rolling the write back if admission fails
-
-Owned content is hashed in the installation receipt. A local modification conflicts unless an
-explicit supported ownership transition authorizes replacement. Staging, provisioning and
-verification must finish before installation is accepted; failure restores replaced outputs and
-receipts. The locked managed Python runtime runs actual operations. Check verifies receipt hashes
-and required runtime identity without changing project behavior.
-
-The distributable manifest is `concorde.json` schema_version 5, Concorde 8.0.0, Architecture
-Profile 15, Workspace Protocol 16 and Delivery Proposal 10. Schema 5 removes the top-level
-`templates` inventory field and package root; the retired field is rejected even when empty.
-Module and Scenario starters belong only to `protocol/templates/module.md` and
-`protocol/templates/scenario.md`. Plan and task starters belong to
-`agents/planner/plan-template.md` and `agents/task_author/tasks-template.md`, carried by
-ordinary Agent packaging without runtime injection. Earlier package schemas require an
-explicit package update and are rejected rather than reinterpreted. The Pi-only `client: "pi"`
-layout remains; `integrations`, `skill_namespace`, Skills CLI selection and the `skills` package
-root remain unsupported. Receipt schema 2, runtime/wire and project Protocol versions are unchanged.
-
-Installation receipt schema 2 records `client: "pi"`, not client selections or Skills CLI delegation.
-Schema 1 receipts are explicitly accepted for migration because their exact output-digest and
-bounded root-block records retain identical meanings; only their obsolete client/delegation
-metadata is discarded on successful upgrade. Unsupported receipt versions fail closed. Cleanup
-of root guidance alone preserves the rest of the existing receipt. Eleven public capability adapters and seven Domain Agents remain; the separate tester Task subagent is
-also distributed, while maintenance-worker and source coordinator support are source-only.
-Removing a client does not remove a model provider.
-
-Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
-operation owned by the [Spec Module](../spec/module.md), not by this Module.
-
-### scenario.distribution.check-docsite-external — Type-check preparation uses disposable external files
-
-- GIVEN a source checkout with a configured docsite type check
-- WHEN the maintenance type-check command runs
-- THEN it prepares a disposable external docsite copy and derives the sidebar from the actual project registry
-- AND dependency installation and generated sidebar files are confined to that copy
-- AND installed project dependencies may be reused read-only only when their dependency marker matches package and lock bytes
-- AND the command returns the type compiler's exit status and removes the temporary copy
-
-`scripts/development/check-docsite-types.py` uses the temporary directory selected by the host's
-environment. Configured invocation supplies external scratch through TMPDIR. Existing matching
-dependencies are linked for reads; otherwise `npm ci --ignore-scripts` installs into the temporary
-copy. It never updates a dependency marker or `.generated` files in the actual checkout. Checks
-that need persistent source or dependency changes must prepare them in the implementation phase.
+These are the concrete situations [Distribution](module.md) promises to handle. Module-wide
+obligations are stated once in the [requirements](requirements.md) and linked from here.
 
 ## Build
 
-### scenario.distribution.prompt-references — Resolve only explicit whole-line path references
+### scenario.distribution.prompt-references — Resolve whole-line prompt references
 
-- GIVEN prompt sources with column-one `@path.md` references and optional quoted key=value bindings
-- WHEN the resolver renders a worker, Protocol adapter or Operation guidance root
-- THEN nested references preserve binding behavior and source provenance without changing intended rendered instruction bytes
-- AND invalid or missing targets, unsafe paths, malformed parameters, audience/layer violations, cycles and diamonds fail without a partial successful result
-- AND retired column-one `@include path.md` directives fail explicitly, including in nested sources
-- BUT ordinary literal Markdown mentions, emails, decorators, inline references and indented lines remain unchanged
+- GIVEN prompt sources that reference other prompts with column-one `@path.md` lines, optionally followed by `KEY=value` bindings
+- WHEN the resolver renders a worker, Protocol or capability guidance root
+- THEN each reference is replaced by the referenced prompt with its bindings substituted
+- AND the result lists every source that contributed to it
+- AND a missing or unsafe target, a malformed binding, an unbound variable, an audience or layer violation, a cycle or a second inclusion of one file within one root fails with its rule identity and no partial result
+- BUT ordinary mentions, email addresses, decorators, inline references and indented lines stay literal text
 
-### scenario.distribution.build-render — Build renders deterministic Pi projections from authored sources
+The exact grammar and rule identities are in [Interfaces](interfaces.md#prompt-references).
 
-- GIVEN current Operation guidance, worker instruction, operation and Protocol sources
-- WHEN build runs without a client selector
-- THEN it renders seven canonical native Agent bodies and their byte-identical compatibility paths, one Pi catalog containing exactly eleven public descriptions, guidance and versioned schemas, Studio configuration, Protocol assets and runtime schemas
-- AND repeated renders are byte-identical and perform no network or process I/O
-- BUT retired integration arguments and Skill publishing commands are rejected, not reinterpreted
+### scenario.distribution.build-render — The build renders every output from sources
 
-### scenario.distribution.build-checkout-skills-user-invoked — The source Pi entry stays private and waits for explicit requests
+- GIVEN current Agent definitions, prompts, capability guidance, Protocol text and request contracts
+- WHEN the build renders the checkout
+- THEN it produces native instructions for the seven domain Agents under `generated/native/` and the same bytes under `generated/agents/`
+- AND one session entry whose catalog lists the eleven public capabilities
+- AND the Task subagent files, the Protocol assets and the exported schemas
+- AND rendering the same sources again yields byte-identical outputs and manifest
 
-- GIVEN a source-checkout build without a framework prefix
-- WHEN build renders the Pi entry
-- THEN its only client projection is `generated/session/pi/concorde-session.ts`, outside ambient discovery
-- AND its catalog requires an explicit developer request before an Operation runs
-- AND consumer installation separately renders the same catalog under `.pi/extensions/` with the installed framework and runtime paths
+See [req.distribution.build-idempotent](requirements.md#req.distribution.build-idempotent) and
+[req.distribution.build-no-io](requirements.md#req.distribution.build-no-io).
 
-### scenario.distribution.private-selection — Private fresh session selection
+### scenario.distribution.build-write — Writing the build records sources and outputs
 
-- GIVEN an assigned candidate with a fresh build and explicitly named absolute Pi entry/runtime paths
-- WHEN a fresh test child's inputs are selected
-- THEN selection returns only the exact candidate-built Pi entry and embedded catalog bytes, transitive source/build digest and runtime identity
-- AND missing, modified, aliased or out-of-candidate paths fail without ambient fallback
-- AND maintenance selection admits no Concorde entry/catalog and every selection requests fresh non-forked context with inherited/discovered catalogs disabled
-- AND saved selections are admitted only in ignored candidate scratch and reverified before Pi registration, tool calls and runtime use
-- AND legacy API/schema, unknown fields, changed catalog or implementation, source links and foreign runtime paths fail closed
-- AND a Studio redirect or a redirect into another linked source worktree is refused, while explicitly scoped external disposable consumer data is allowed
-- BUT returning selection metadata or bytes does not prove extension loading, tool use or model execution
+- GIVEN a successful render
+- WHEN `build` writes it
+- THEN every output is written
+- AND `generated/build-manifest.json` records the digest of every source and every output
+- AND an output the new render no longer produces is removed when its bytes match the previous manifest, together with directories it leaves empty
+- AND a modified or unrecorded file or a symbolic link among the owned outputs stops the build before anything is written or removed
+- BUT files of other tools under `generated/` are neither judged nor removed
 
-### scenario.distribution.build-pi-session — Build embeds ordinary Operation guidance in the Pi shim
+See [req.distribution.owned-retirement](requirements.md#req.distribution.owned-retirement).
 
-- GIVEN `prompts/operation-guidance/<name>.md`, their shared includes and exported request schemas
-- WHEN build renders the Pi shim
-- THEN it imports the tracked session extension and embeds every public Operation's exact name, description, resolved guidance and request schema with its version
-- AND guidance contains no unresolved package token or standalone stdin envelope mechanics
-- AND the source catalog names its own launcher and `.venv` and marks explicit-request-only, while an installed catalog names the prefixed extension/launcher and managed runtime interpreter
-- AND build checking, package validation and byte-exact goldens detect catalog or source drift without independent Skill assets
+### scenario.distribution.build-check — Checking the build writes nothing
 
-### scenario.distribution.build-write — write_build records source and output digests in the manifest
+- GIVEN the generated outputs currently in the checkout
+- WHEN `build --check` runs
+- THEN it compares them with a fresh render in memory
+- AND reports every missing, stale or extra owned output and every asset digest in `protocol/manifest.json` that differs from the render
+- BUT it writes nothing
 
-- GIVEN a completed render
-- WHEN write_build runs
-- THEN it writes the rendered outputs plus `generated/build-manifest.json` recording every recorded source path's sha256
-- AND it removes retired outputs within its declared owned subtrees (`generated/agents`, `generated/protocol` and `generated/docs`) and manifest-owned retired private or ambient projections under the retirement contract below, preserving other generators' assets
+### scenario.distribution.build-checkout-skills-user-invoked — The source session entry stays private
 
-### scenario.distribution.build-check — check_build reports staleness without writing
+- GIVEN a build of this checkout
+- WHEN it renders the session entry
+- THEN the entry is `generated/session/pi/concorde-session.ts`, which Pi does not discover by itself
+- AND its catalog is marked explicit-request-only and names the checkout's own launcher and `.venv` interpreters
+- AND the installed layout renders the same capabilities under `.pi/extensions/concorde-session.ts` with the installed launcher and the managed runtime's interpreters
 
-- GIVEN the currently committed generated outputs
-- WHEN check_build runs
-- THEN it compares a pure in-memory render and reports every stale or drifted output
-- AND it writes nothing to the worktree
+### scenario.distribution.build-pi-session — The catalog embeds guidance and request schemas
 
-### scenario.distribution.build-retired-skills — Retired output requires exact ownership before removal
+- GIVEN capability guidance under `prompts/operation-guidance/` and the exported request schemas
+- WHEN the build renders a session entry
+- THEN the entry imports the tracked session extension and embeds, for each public capability, its name, kind, description, resolved guidance, request schema and that schema's version
+- AND guidance with wrong front matter, an unresolved `{SCRIPT}`, `{FRAMEWORK}` or `{OPERATION}` token, or no exported request schema fails the build
+- AND `build --check`, package validation and the byte-exact test fixture detect any drift between the entry and its sources
 
-- GIVEN old private Codex/Claude projections or ambient projections remain from a previous source build
-- WHEN check_build or write_build runs
-- THEN checking reports their presence without writing and rebuilding retires only exact-byte old manifest-owned regular outputs after whole-plan preflight
-- AND unowned or modified retired files, symlinked files or ancestors, extra retired directory content and unknown files in owned generated subtrees block before any output write or deletion
-- AND neighboring external CLI-owned Skills, unknown ambient names and skills-lock.json remain untouched
-- AND retired golden fixtures are removed only from the explicit historical fixture inventory, with extra files and symlinks rejected
+### scenario.distribution.build-stale-blocks-execution — A stale build stops model-backed work
 
-The historical projection roots are `generated/session/codex`, `generated/session/claude`,
-`.agents/skills` and `.claude/skills`; only the eleven public names and the explicitly retired
-`concorde-reflections-triage`, `concorde-review`, `concorde-main`, `concorde-dev-loop` and
-`concorde-specify-loop` are inspected there. The old ambient Pi shim is also an exact retirement
-candidate. Name membership is not proof of file ownership: every removed file needs its old
-manifest digest. Unknown contents are never erased by prefix or recursive cleanup. Empty output
-ancestors can be pruned after their last verified file is removed. Repeated builds are idempotent.
-`write_build` has no alternate destination or installed-layout option; the installer consumes the
-pure renderer and performs its own receipt-owned writes. The tracked `skills/` product is removed
-in source maintenance, not a directory a normal build or installer may adopt wholesale.
+- GIVEN a recorded build source has changed or disappeared since the last build, or no build exists
+- WHEN a model-backed capability is run or described, or an Agent's instructions are loaded
+- THEN the freshness check fails with `stale_build`
+- AND no instructions from the old build are used
+- BUT `concorde-init`, `concorde-configure`, `concorde-validate` and `concorde-deliver`, which load no generated instructions, are not stopped by this check at admission
 
-### scenario.distribution.build-stale-blocks-execution — A stale build fails closed
+See [req.distribution.fresh-instructions](requirements.md#req.distribution.fresh-instructions).
 
-- GIVEN a recorded source has changed since the last build
-- WHEN a top-level model-backed operation is invoked in execute or describe-policy mode
-- THEN verify_fresh raises a `stale_build` BuildError and the invocation does not proceed with stale instructions
+### scenario.distribution.load-agent — Loading one Agent's current instructions
 
-The deterministic operations `concorde-init`, `concorde-configure`,
-`concorde-validate` and `concorde-deliver` are exempt from this entry check: they launch no Agents
-and consume no generated Agent instructions. Loading an Agent still verifies freshness
-independently. This exception does not waive Protocol, input, permission or evidence checks.
+- GIVEN a fresh build
+- WHEN the Host loads the instructions of a domain Agent by its bare, hyphenated or `concorde-` prefixed name
+- THEN the build's freshness is checked first
+- AND the result carries the Agent's external name, description, source path, rendered instructions, effects ceiling and complete worker binding
+- AND an unknown Agent, an invalid binding or a stale build fails with the build error code `unknown_agent`, `invalid_agent_binding` or `stale_build`
+- BUT a public capability name is not an Agent name and loads no instructions
 
-### scenario.distribution.load-agent — load_model_instructions returns one Agent's current admitted binding
+### scenario.distribution.operation-determinism — Capability modules declare whether they call a model
 
-- GIVEN a named Agent and a fresh build
-- WHEN load_model_instructions is called
-- THEN it verifies freshness first and returns a frozen `ModelInstructions` with the worker's name, description, source path, rendered body, non-null effect declaration and complete `WorkerBinding`
-- AND its record has no Skill discriminator or optional unbound-instruction form, while the binding retains every source, instruction, profile, manifest, timeout and digest field
-- AND an unknown Agent or an invalid binding fails closed with a typed BuildError (`stale_build`, `unknown_agent`, or `invalid_agent_binding`)
-- BUT a public Operation catalog name alone is not a worker identity and cannot load worker instructions
+- GIVEN capability modules in `operations/` that declare their kind, exposure, context selection, profile and the modules they use
+- WHEN package validation checks them
+- THEN each module must declare a boolean `DETERMINISTIC`
+- AND that flag must be true exactly when neither its profile nor any module it uses, directly or transitively, can call a model
+- AND a module that selects no Agent context must have no path to a model call
+- AND the capability inventory in the Operations Spec's metadata must carry the same `deterministic` value for each capability
+- BUT validation judges declared model-call paths only, not what arbitrary Python code does
 
-`validate_package(root)` runs the complete prompt, operation-module, Agent, contract,
-Spec-alignment and build-output checks behind `python -m concorde validate` and `build --check`.
-`recompute_protocol_manifest`/`python -m concorde protocol-manifest` report, accept (`--write`), or
-bind (`--bind-project`) the tracked `protocol/manifest.json` digest to the current build; accepting
-a changed Protocol export is developer-only, and a consumer separately accepts the installed
-manifest version/digest in its own project configuration. Domain Agent responsibility files are bound
-separately by their canonical Agent profiles. Protocol adapters and the Framework execution profile are bound by
-Protocol assets; the independent standard under `protocol/` is an external normative input, not a
-Module-bound Spec. Protocol adapters alone may include its plain Markdown chapters, which require
-no audience front matter. The build records included chapter bytes in source identities so edits
-invalidate runtime outputs. Modules refer to their own entity file listings rather than owning file
-prefixes themselves.
+Findings use `CONCORDE-OPERATION-CONSTANTS-001`, `CONCORDE-OPERATION-DETERMINISTIC-001` and
+`CONCORDE-SPEC-OPERATIONS-001`.
 
-### scenario.distribution.operation-determinism — Operation metadata accounts for model calls
+## Session integration
 
-- GIVEN operation modules declaring public exposure, context selection, workers and acyclic `USES` composition
-- WHEN package validation checks their metadata
-- THEN each module must declare a boolean `DETERMINISTIC`, rejecting missing values, strings and integers
-- AND the flag must be true exactly when neither its model profile nor any transitive USES operation can call a model
-- AND an operation declaring no Agent context selection must have no model-call path
-- AND the single registered `concorde.operations` metadata array must contain the same boolean `deterministic` for every operation alongside its `id`, `public`, `context_selection` and `public_name`
-- BUT a path that skips model execution does not make a model-backed operation deterministic
+### scenario.distribution.pi-session-prompt — A session learns the tool and the capabilities
 
-Validation checks declared model-call paths, not arbitrary Python or subprocess behavior. It
-reports invalid metadata with `CONCORDE-OPERATION-CONSTANTS-001`, inconsistent determinism
-with `CONCORDE-OPERATION-DETERMINISTIC-001`, and Spec metadata drift with
-`CONCORDE-SPEC-OPERATIONS-001`. Unknown or cyclic composition remains a composition error;
-validation cannot certify its determinism.
+- GIVEN a Pi session that loaded a session entry
+- WHEN a turn starts
+- THEN the entry appends a Concorde section to the system prompt naming the `concorde` tool and every capability with its description
+- AND in the source checkout the section adds that a capability runs only when the developer asks for it by name
+- AND the tool's `operation` parameter admits exactly the catalog's capabilities, its `action` is `run`, `describe` or `result`, and its optional `mode` is `execute` or `describe-policy`
 
-## Pi session projection
+### scenario.distribution.pi-session-describe — Describing a capability runs nothing
 
-### scenario.distribution.pi-session-prompt — A Pi session learns the concorde tool and the public Operations
-
-- GIVEN a Pi session that loaded the rendered shim
-- WHEN the session starts a turn
-- THEN the extension appends a Concorde section to the system prompt naming the `concorde` tool and every public Operation with its description, and in the source checkout the rule to run an Operation only on the developer's explicit request
-- AND the tool's `operation` parameter admits exactly the public Operations, with actions `describe` and `run` and an optional `mode` of `execute` or `describe-policy`
-
-### scenario.distribution.pi-session-describe — Describing an Operation runs nothing
-
-- GIVEN a Pi session that loaded the rendered shim
+- GIVEN a Pi session that loaded a session entry
 - WHEN the model calls `concorde` with action `describe`
-- THEN the tool returns the Operation's description, guidance and request schema from the catalog without starting the launcher
+- THEN the tool returns the capability's description, guidance and request schema from the catalog
+- BUT it does not start the launcher
 
-### scenario.distribution.pi-session-run — Running an Operation submits the typed envelope through the launcher
+### scenario.distribution.pi-session-run — Running a Host capability goes through the launcher
 
-- GIVEN a Pi session that loaded the rendered shim
-- WHEN the model calls `concorde` with action `run` and the request data as `input`
-- THEN the tool wraps the input in a `concorde-operation-invocation@3` envelope with the Operation's request type and version, runs the launcher in the project root with the envelope on stdin, and returns the launcher's result envelope with its usage summary
-- AND a result the launcher reports as blocked or failed is returned as a tool error carrying that envelope
-- AND a missing `input` or an unknown Operation is refused without starting the launcher
-- AND a result above 48 KiB is saved to a file the returned text names
+- GIVEN a Pi session that loaded a session entry
+- WHEN the model calls `concorde` with action `run` for a Host capability and the request data as `input`
+- THEN the tool wraps `input` in a version 3 `concorde-operation-invocation` envelope with the capability's typed request, runs the launcher in the project root with the envelope on standard input, and returns the launcher's result with its usage summary
+- AND a result the launcher reports as `blocked` or `failed`, a non-zero exit or unreadable output is returned as a tool error carrying the envelope
+- AND a missing `input` or an unknown capability is refused without starting the launcher
+- AND a result larger than 48 KiB is saved whole to a file that the returned text names
 
-### scenario.distribution.pi-session-cancel — Aborting the turn cancels the running Operation
+### scenario.distribution.pi-session-cancel — Aborting the turn cancels the run
 
 - GIVEN a `run` in progress through the `concorde` tool
 - WHEN the developer aborts the turn
 - THEN the extension sends the launcher SIGTERM and reports the cancellation as a tool error carrying whatever result the launcher printed
-- AND a launcher that has not exited within the grace period is killed together with its process group
+- AND a launcher that has not exited within five seconds is killed together with its process group
 
-### scenario.distribution.launcher-terminated — SIGTERM cancels the launcher like Ctrl-C
+### scenario.distribution.launcher-terminated — SIGTERM ends the launcher like Ctrl-C
 
 - GIVEN a running `scripts/run-operation.py`
 - WHEN the process receives SIGTERM
-- THEN it takes the Ctrl-C path: a running worker's Pi process is killed and its outcome is cancelled, a finite Host invocation interrupted outside a worker launch ends with the `execution_cancelled` error and the change's recorded status, and the result envelope is printed before exit
-- AND SIGTERM while the launcher is still waiting for its invocation prints the pre-host failure envelope with `execution_cancelled`
+- THEN it takes the Ctrl-C path, so the Host cancels the running work and the launcher prints the result envelope before exiting
+- AND SIGTERM while the launcher is still reading its invocation prints a failure envelope with `execution_cancelled`
 
-## Managed runtime
+See [req.distribution.launcher-sigterm-cancels](requirements.md#req.distribution.launcher-sigterm-cancels).
 
-### scenario.distribution.runtime-plan — Planning compares existing state without changing it
+### scenario.distribution.private-selection — Selecting exact candidate inputs for a fresh session
 
-- GIVEN a target directory, the loaded runtime specification and its current receipt
-- WHEN plan_runtime runs
-- THEN it returns one action of create, unchanged, rebuild or conflict with the compared path, role and digest
-- AND planning performs no file replacement or package acquisition, though it may run local offline health probes
+- GIVEN a candidate with a fresh build and absolute paths to its private session entry and launcher
+- WHEN `select-session --mode test` runs
+- THEN the record names the build manifest digest, the launcher and session extension digests, the complete entry bytes, the exact embedded catalog and the Pi flags of a fresh session without discovered resources
+- AND a missing, modified, aliased or out-of-candidate path, a symbolic link among the sources or a stale build fails without any fallback
+- AND mode `maintenance` accepts no entry, and test and task modes require one
+- AND a selection is saved only under the candidate's `.concorde/work/` and `--verify` accepts it only if a fresh selection is identical
+- AND the private entry refuses to load without a selection, verifies it before registering the tool and before every call, and refuses a changed selection
+- BUT a selection is not evidence that Pi loaded the entry, that a tool was used or that a model ran
 
-### scenario.distribution.runtime-provision — Provisioning stages and verifies the reviewed action
+See [req.distribution.private-selection](requirements.md#req.distribution.private-selection).
 
-- GIVEN a current reviewed plan_runtime action that is not conflict
-- WHEN provision_runtime runs
-- THEN it stages the locked Python interpreter and the pinned Pi worker extensions, verifies their identity, and records the resulting receipt
-- AND it runs every public Operation's launcher runtime check with the managed runtime's own interpreter and rejects a check that reports another environment as its prefix, so the verified inventory describes the runtime rather than the installer's interpreter
-- AND an unchanged verified runtime may be reused, though even `unchanged` rechecks health and may refresh the marker
+## Installation
 
-### scenario.distribution.runtime-provision-failure — Failed acquisition or verification does not replace a valid runtime
+### scenario.distribution.install-preview — Previewing writes nothing
 
-- GIVEN a provisioning attempt that fails acquisition or verification
-- WHEN provision_runtime returns that failure
-- THEN it must not replace a previously valid runtime or mark partial state usable
-- AND a create destination that appears after planning is rejected rather than adopted
-- AND the returned result carries no successful runtime metadata, so a caller cannot infer recovery from its absence
+- GIVEN a target project directory
+- WHEN the installer runs without `--apply`
+- THEN it prints the plan of actions for every Framework, Pi, Protocol, root guidance and runtime path
+- AND it exits with status 2 when any action is a conflict
+- BUT it writes no file, and repeating it gives the same plan
 
-### scenario.distribution.launcher-managed-runtime — The installed launcher re-executes itself inside the managed runtime
+### scenario.distribution.install-apply — Applying a current plan installs owned outputs
 
-- GIVEN an installed project whose framework lives at `.concorde/framework` and whose verified managed runtime, with the installer's owner marker, lives at `.concorde/.venv`
-- WHEN `.concorde/framework/scripts/run-operation.py` is started with any other interpreter, including an ambient `python3`, even one that cannot import LangGraph
-- THEN it re-executes itself with the managed runtime's interpreter before reading its invocation, so the Operation runs with the locked dependencies and the runtime check reports that runtime as its prefix
-- AND a launcher already running inside that runtime, such as the one the Pi session tool starts, is not re-executed
-- AND the source checkout, which matches neither layout, keeps the interpreter that started it
-- AND an unavailable selected Graph backend returns a blocked `missing_runtime` envelope, while direct Host-tool dispatch does not impose that Graph check
-- AND missing or unverified installed runtimes still fail local installation admission without an ambient fallback
+- GIVEN a previewed plan without conflicts that still matches the target
+- WHEN the installer runs with `--apply`
+- THEN it writes the Framework under `.concorde/framework/`, the session entry, observer and tester definition under `.pi/`, the Protocol copy under `.concorde/protocol/` and the `AGENTS.md` block
+- AND it provisions the managed runtime and writes the installation receipt last
+- AND it seeds `.concorde/issues/.gitignore` only when absent, without recording it in the receipt
+- AND it leaves the project's Specs, configuration, Protocol binding and unrelated files unchanged
+- BUT `node_modules` below the package's `pi/` directory is neither deployed nor inspected
 
-### scenario.distribution.install-local-worktree — Full local installs from source or installed providers
+### scenario.distribution.install-conflict-rejected — Conflicting or stale state blocks the apply
 
-- GIVEN an explicitly admitted source package or receipt-verified installed package and a normal Git-created consumer worktree whose ignored runtime and receipt are absent
-- WHEN the host explicitly bootstraps that worktree through the supported installation service or its deployed installer
-- THEN it installs the complete local Framework, Pi entry with embedded catalog, independently provisioned dependencies, managed interpreter and receipt of the exact admitted package identity
-- AND all runtime checks use that local interpreter and the installation remains verifiable without the provider's virtual environment
-- AND current verified local state is reused without reinstalling, acquiring dependencies or rewriting marker/receipt bytes
-- AND no candidate-local durable status/runs are created and no Operation or model is called
+- GIVEN a modified owned file or block, an unowned file or marked block in the way, a symbolic link or malformed root file, or a target that changed after the preview
+- WHEN `--apply` is requested
+- THEN the installer refuses before writing
+- AND if a failure happens after writing began, every owned change is restored
 
-### scenario.distribution.install-preserve-project — Preserve inherited project assets without adopting them
+See [req.distribution.receipt-ownership](requirements.md#req.distribution.receipt-ownership),
+[req.distribution.root-block-ownership](requirements.md#req.distribution.root-block-ownership) and
+[req.distribution.rollback-on-failure](requirements.md#req.distribution.rollback-on-failure).
 
-- GIVEN a target with committed inherited Protocol and canonical AGENTS guidance but no local installation receipt, or arbitrary existing project-owned root instructions
-- WHEN installation selects explicit preserve-project mode
-- THEN existing complete Protocol, root instruction bytes and modes, config, registry, Specs and accepted binding remain unchanged and unowned content is not adopted
-- AND wholly absent admissible Protocol and absent AGENTS may be seeded as owned outputs, and repeated application retains that ownership and is idempotent
-- AND prior local receipt-owned project entries must still match their recorded ownership and retain it
-- AND partial, aliased or invalid Protocol bundles stop without mixing versions, while a complete incompatible preserved bundle is not automatically accepted for execution
-- BUT the default installer still rejects an unowned marked root block
+### scenario.distribution.install-remove-guidance — Removing only the owned root blocks
 
-### scenario.distribution.install-local-failure — Failed local installation never supplies an execution fallback
+- GIVEN an installation whose receipt owns root blocks
+- WHEN `--remove-protocol-guidance --apply` runs
+- THEN only the owned blocks are removed and their records dropped from the receipt
+- AND a root file the receipt records the installer created is removed when nothing else remains in it, while a file the developer created stays even when empty
+- AND the Framework, runtime and other receipt records stay
+- AND repeating the removal changes nothing
 
-- GIVEN missing or conflicting local installation state, changed admitted provider bytes, a concurrent installer or a failed acquisition/verification step
-- WHEN local verification or explicitly authorized bootstrap is requested
-- THEN missing/stale state fails clearly without implicit bootstrap, conflicting ownership is preserved, and no primary/global runtime replaces the local installation
-- AND failed creation rolls back owned files and receipt while preserving unrelated project bytes and permits a fresh-plan retry after the cause is corrected
-- AND source/target aliases and active source-checkout targets are refused, and a concurrent supported installer cannot mutate the same installation
-- AND every failed verification returns no successful local execution observation
+### scenario.distribution.install-upgrade — Updating removes only unchanged superseded outputs
 
+- GIVEN a current receipt that owns files, including files and a root block the new package still ships and files it no longer ships
+- WHEN the installer applies the newer package
+- THEN it updates the owned files and the `AGENTS.md` block that are unchanged since they were written, and removes the unchanged owned files the package no longer ships
+- AND an edited owned file, a symbolic link or a file changed since the preview blocks the apply before anything is written
+- AND surrounding text, modes and unrelated files stay
+- AND a failure restores the removed bytes, modes and the previous receipt, so a fresh plan can retry
+- BUT a receipt of any other schema is refused
 
-### scenario.distribution.test-timing — Test reasons and measured input identity
+### scenario.distribution.template-ownership — Templates ship only inside their owners
 
-- GIVEN legacy or explicitly scoped test-runner arguments and optional prior evidence
-- WHEN the runner discovers and executes its selected units
-- THEN it records reason, scope, phase, attempt/prior identity and whitelisted input/test/runtime/lock/environment fingerprints
-- AND unchanged declared inputs are recognizable without treating a same-tree commit as invalidation
-- AND discovery, queue, execution and total elapsed durations remain separate, setup remains unknown unless observed, and expensive fixture runtime spans remain nested diagnostics
-- AND legacy callers use manual reason and unspecified scope/phase without new required flags
-- AND parallel unit sums are not reported as elapsed wall time or server thinking time
+- GIVEN the current package
+- WHEN installation previews and applies it
+- THEN the Module and Scenario starters ship under `protocol/templates/` and the plan and task starters ship inside their Agents' packages
+- AND the package declares no separate templates root
+- AND repeating the installation changes nothing
+
+### scenario.distribution.install-pi-session — The session entry is the only client integration
+
+- GIVEN a target project
+- WHEN installation is applied
+- THEN `.pi/extensions/concorde-session.ts` is an owned output that imports the installed session extension and names the installed launcher and the managed runtime's interpreters
+- AND the `AGENTS.md` block is installed for Pi to read as a context file
+- BUT no other client's files are installed, and an unknown option is refused before the target is touched
+
+See [req.distribution.pi-only-install](requirements.md#req.distribution.pi-only-install).
+
+### scenario.distribution.install-preserve-project — Keeping inherited project files without owning them
+
+- GIVEN a target with a committed Protocol copy and `AGENTS.md` block but no local receipt, or with arbitrary existing root instructions
+- WHEN installation runs with `--preserve-project`
+- THEN the existing Protocol copy, root files and their modes, configuration, registry, Specs and binding stay unchanged and are not adopted
+- AND an entirely absent Protocol copy or `AGENTS.md` may be seeded as owned outputs, and repeating the installation keeps that ownership and changes nothing
+- AND files a local receipt already owns must still match it and keep their ownership
+- AND a partial, aliased or changed Protocol copy stops the installation, and a complete copy of another version is kept but not accepted for running
+- BUT without `--preserve-project` an unowned marked block is still a conflict
+
+### scenario.distribution.install-local-worktree — Installing a worktree from an admitted package
+
+- GIVEN an admitted source or installed package and a Git worktree without a runtime or receipt
+- WHEN the Host explicitly bootstraps that worktree through the local installation service or its deployed installer
+- THEN the worktree receives a complete Framework, session entry with catalog, managed runtime and receipt naming the exact package identity
+- AND every runtime check uses the worktree's own interpreter, so the installation stays valid without the provider's environment
+- AND a later call reuses the verified installation without reinstalling, acquiring dependencies or rewriting the marker or receipt
+- BUT no candidate status or run record is created and no capability or model is started
+
+See [req.distribution.worktree-local-install](requirements.md#req.distribution.worktree-local-install).
+
+### scenario.distribution.install-local-failure — A failed local installation never supplies a fallback
+
+- GIVEN missing or conflicting local state, changed provider bytes, a concurrent installer or a failed acquisition or check
+- WHEN local verification or an explicit bootstrap is requested
+- THEN missing or stale state fails without an implicit bootstrap, and conflicting ownership is preserved
+- AND a failed creation restores the owned files and receipt, keeps unrelated project bytes, and allows a fresh plan once the cause is fixed
+- AND an aliased target, a Concorde source checkout as target and a second concurrent installer are refused
+- BUT no failure returns a verified installation, and no other worktree's or global runtime takes its place
+
+See [req.distribution.no-runtime-fallback](requirements.md#req.distribution.no-runtime-fallback).
+
+## Runtime
+
+### scenario.distribution.runtime-plan — Planning the runtime changes nothing
+
+- GIVEN a target, the package's runtime specification and the current receipt
+- WHEN the runtime is planned
+- THEN the plan holds one action of `create`, `unchanged`, `rebuild` or `conflict` with the runtime path, role and digest
+- BUT planning replaces no file and acquires no package, although it may run local offline health probes
+
+### scenario.distribution.runtime-provision — Provisioning builds and verifies the runtime
+
+- GIVEN a current runtime action that is not `conflict`
+- WHEN the runtime is provisioned
+- THEN a created or rebuilt runtime receives the locked Python dependencies and the pinned Pi dependencies
+- AND every public capability's runtime check runs with the runtime's own interpreter and must report that runtime as its prefix and the pinned LangGraph version
+- AND only then is the owner marker written and the runtime record returned
+- AND an `unchanged` runtime is not rebuilt but is checked again and may have its marker refreshed
+
+See [req.distribution.runtime-verified-before-use](requirements.md#req.distribution.runtime-verified-before-use).
+
+### scenario.distribution.runtime-provision-failure — A failed provisioning leaves nothing marked as verified
+
+- GIVEN a provisioning attempt whose dependency acquisition or verification fails
+- WHEN the provisioner reports the failure
+- THEN the directory it was creating or rebuilding is removed and no marker claims a verified runtime
+- AND a runtime directory that appeared after a `create` plan is refused rather than adopted
+- AND no runtime record is returned, so a caller cannot mistake the failure for success
+- BUT a failed rebuild does not bring back the previous runtime, and the installer must run again
+
+### scenario.distribution.launcher-managed-runtime — The installed launcher enters the managed runtime
+
+- GIVEN a consumer project whose Framework is at `.concorde/framework` and whose verified runtime, with Concorde's owner marker, is at `.concorde/.venv`
+- WHEN `.concorde/framework/scripts/run-operation.py` is started with another interpreter, even an ambient `python3` without LangGraph
+- THEN it re-executes itself with the runtime's interpreter before reading its invocation
+- AND a launcher already running inside that runtime is not re-executed
+- AND the source checkout, which has neither layout, keeps the interpreter that started it
+- AND a runtime check that cannot import LangGraph reports `missing_runtime`
+
+See [req.distribution.launcher-managed-runtime](requirements.md#req.distribution.launcher-managed-runtime).
+
+## Configuration
+
+### scenario.distribution.configure-apply — Configuring workers is all or nothing
+
+- GIVEN an initialized project and a valid worker configuration
+- WHEN `concorde-configure` is applied
+- THEN the configuration is written to `.concorde/config.json` and the result is `status: applied`
+- AND an invalid value, an uninitialized project or a failed write leaves the previous configuration in place
+- BUT a `describe-policy` request is refused with `use_proposal`
+
+See [req.distribution.configure-atomic](requirements.md#req.distribution.configure-atomic).
+
+### scenario.distribution.accept-protocol — Accepting an installed Protocol is explicit
+
+- GIVEN an initialized project whose Protocol binding no longer matches the Protocol copy under `.concorde/protocol/`
+- WHEN `concorde-configure` is applied without `accept_protocol`
+- THEN it fails with `protocol_mismatch` and the binding stays unchanged
+- BUT with `accept_protocol: true` it binds the configuration to the copy's manifest and keeps the write only if the repository then loads
+
+See [req.distribution.no-silent-protocol-rewrite](requirements.md#req.distribution.no-silent-protocol-rewrite).
+
+## Development
+
+### scenario.distribution.check-docsite-external — The docsite type check works on a disposable copy
+
+- GIVEN this checkout with its docsite
+- WHEN `scripts/development/check-docsite-types.py` runs
+- THEN it copies the docsite to a temporary directory, derives the sidebar from the project registry there and runs the TypeScript compiler on the copy
+- AND dependency installation and generated files stay inside that copy
+- AND the checkout's installed dependencies are reused read-only only when their marker matches the package and lock bytes
+- AND the command returns the compiler's exit status and removes the copy
+
+### scenario.distribution.test-timing — Test runs record reasons and input identity
+
+- GIVEN pytest arguments with or without `--reason`, `--scope`, `--phase`, `--attempt` and `--prior`
+- WHEN the suite runs with `--json` reporting
+- THEN the report records the reason, scope, phase, attempt, prior run and fingerprints of the tests, inputs, runtime, locks and environment
+- AND a rerun with unchanged declared inputs is recognized as such
+- AND discovery, queueing, execution and total elapsed times are reported separately, with setup time unknown unless measured
+- AND callers that pass none of the options get `manual` and `unspecified` without new required flags
+- BUT summed parallel test time is never reported as elapsed time
+
+See [req.distribution.test-evidence](requirements.md#req.distribution.test-evidence).

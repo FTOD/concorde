@@ -24,7 +24,7 @@ def check_service(repository: SpecRepository, target, invocation_id: str):
 
     def run_checks() -> dict:
         current = SpecRepository(repository.root, repository.package_root)
-        results = configured_checks(current, current.select(target.id), invocation_id)
+        results = configured_checks(current, current.module(target.id), invocation_id)
         for item in results:
             log = run_path(
                 current.root, f".concorde/runs/{invocation_id}/{item['check_id']}.log"

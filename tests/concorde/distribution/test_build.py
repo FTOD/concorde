@@ -16,10 +16,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution.build import (
-    LEGACY_OPERATION_NAMES,
-    LEGACY_PROJECTION_ROOTS,
     MODEL_ROOTS,
-    OPERATION_GUIDANCE,
     PUBLIC_OPERATIONS,
     BuildError,
     ModelInstructions,
@@ -30,12 +27,17 @@ from concorde.distribution.build import (
     write_build,
 )
 from concorde.distribution.build import (
-    PI_SESSION_SHIM as INSTALLED_PI_SESSION_SHIM,
-)
-from concorde.distribution.build import (
     PRIVATE_PI_SESSION_SHIM as PI_SESSION_SHIM,
 )
+
+# Imported eagerly: the wire-helper test below patches ``subprocess.Popen`` while it invokes an
+# Operation, and a module first imported under that patch would keep the mock in any
+# definition-time default (``pi_rpc.run_prompt`` once did), leaking into every later test of the
+# same process.
+from concorde.harness.admission import run_operation  # noqa: E402
+from concorde.spec.typed_data import typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
+from tests.concorde.support.native_planning import OperationHost  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
 
@@ -70,7 +72,7 @@ class BuildGoldenTests(unittest.TestCase):
                     self.assertEqual(output.content, golden)
 
     @verifies("scenario.distribution.build-render")
-    def test_one_pi_catalog_seven_workers_and_one_langgraph_config(self):
+    def test_one_pi_catalog_and_seven_workers(self):
         session_outputs = [
             p for p in self.by_path if p.startswith("generated/session/")
         ]
@@ -85,18 +87,6 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertEqual(
             set(agent_outputs),
             {f"generated/agents/{agent}.md" for agent in MODEL_ROOTS},
-        )
-        self.assertIn("generated/langgraph.json", self.by_path)
-
-    @verifies("scenario.distribution.build-render")
-    def test_langgraph_config_names_one_graph_per_operation(self):
-
-        payload = json.loads(self.by_path["generated/langgraph.json"].content)
-        self.assertEqual(
-            payload["graphs"],
-            {
-                "terminal-agent-operation": "./src/concorde/harness/studio.py:terminal_agent_operation"
-            },
         )
 
     def test_manifest_has_sorted_keys_and_trailing_newline(self):
@@ -195,32 +185,18 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertIn("generated/protocol/principles.md", differences)
 
     @verifies("scenario.distribution.build-check")
-    def test_check_never_writes_under_generated_or_the_skill_roots(self):
+    def test_check_never_writes(self):
         self.assertFalse((self.root / "generated").exists())
-        self.assertFalse((self.root / ".claude").exists())
-        self.assertFalse((self.root / ".agents").exists())
+        self.assertFalse((self.root / ".pi").exists())
         check_build(self.root)
         self.assertFalse((self.root / "generated").exists())
-        self.assertFalse((self.root / ".claude").exists())
-        self.assertFalse((self.root / ".agents").exists())
-
-    @verifies("scenario.distribution.build-check")
-    def test_check_ignores_a_third_party_skill_directory(self):
-        write_build(self.root)
-        other = self.root / ".claude/skills/example-third-party"
-        other.mkdir(parents=True)
-        (other / "SKILL.md").write_text(
-            "unrelated third-party skill\n", encoding="utf-8"
-        )
-        current, differences = check_build(self.root)
-        self.assertTrue(current)
-        self.assertEqual(differences, ())
+        self.assertFalse((self.root / ".pi").exists())
 
     @verifies("scenario.distribution.build-check")
     def test_check_ignores_an_unrelated_file_under_generated(self):
         """`generated/` is a shared, ignored root; a file another tool writes there (for example
-        the legacy initializer's diagram renders under `generated/architecture/`) is not a
-        build-owned location and must never be reported as drift."""
+        diagram renders under `generated/architecture/`) is not a build-owned location and must
+        never be reported as drift."""
         write_build(self.root)
         other = self.root / "generated/architecture"
         other.mkdir(parents=True)
@@ -410,22 +386,6 @@ class BuildFreshnessTests(unittest.TestCase):
                     prompt.body = "replacement"
 
     @verifies("scenario.distribution.load-agent")
-    def test_retired_instruction_wrapper_is_not_a_constructor_alias(self):
-        from concorde.distribution import build as build_module
-
-        write_build(self.root)
-        prompt = load_model_instructions(self.root, "planner")
-        self.assertFalse(hasattr(build_module, "SkillPrompt"))
-        self.assertFalse(hasattr(prompt, "kind"))
-        fields = {key: getattr(prompt, key) for key in asdict(prompt)}
-        self.assertEqual(prompt, ModelInstructions(**fields))
-        with self.assertRaises(TypeError):
-            ModelInstructions(**fields, kind="skill")
-        for required in ("effects", "binding"):
-            with self.subTest(required=required), self.assertRaises(TypeError):
-                ModelInstructions(**{k: v for k, v in fields.items() if k != required})
-
-    @verifies("scenario.distribution.load-agent")
     def test_public_catalog_entries_do_not_imply_worker_instructions(self):
         write_build(self.root)
         for name in PUBLIC_OPERATIONS:
@@ -481,10 +441,6 @@ class WireHelperBuildTests(unittest.TestCase):
             def invoke_model_backed_operation():
                 # The fixture is this invocation's package root: a top-level model-backed
                 # operation verifies the fixture build before admitting anything else.
-                from concorde.harness.admission import run_operation
-                from concorde.spec.typed_data import typed
-                from tests.concorde.support.native_planning import OperationHost
-
                 def launched(launch):
                     raise AssertionError("an WorkerProfile launched on a stale build")
 
@@ -679,18 +635,16 @@ class BuildErrorTests(unittest.TestCase):
             self.assertFalse((root / "generated").exists())
 
 
-class PiOnlyBuildSafetyTests(unittest.TestCase):
-    """Pi inventory and explicit legacy ownership are independent of client selectors."""
+class StaleOutputRemovalTests(unittest.TestCase):
+    """An owned output the render no longer produces is removed only under manifest ownership."""
 
     setUp = BuildCheckLifecycleTests.setUp
 
-    def legacy(self, relative, content=b"old generated bytes\n"):
-        import hashlib
-
-        path = self.root / relative
+    def recorded(self, root, relative, content=b"old generated bytes\n"):
+        path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
-        manifest_path = self.root / "generated/build-manifest.json"
+        manifest_path = root / "generated/build-manifest.json"
         manifest = json.loads(manifest_path.read_bytes())
         manifest["outputs"][relative] = {
             "sha256": "sha256:" + hashlib.sha256(content).hexdigest(),
@@ -699,114 +653,44 @@ class PiOnlyBuildSafetyTests(unittest.TestCase):
         manifest_path.write_text(json.dumps(manifest))
         return path
 
-    @verifies(
-        "scenario.distribution.build-checkout-skills-user-invoked",
-        "scenario.distribution.build-retired-skills",
-    )
-    def test_known_legacy_outputs_retire_by_digest_and_preserve_external_content(self):
+    @verifies("scenario.distribution.build-write", "scenario.distribution.build-check")
+    def test_recorded_output_no_longer_produced_is_removed_with_empty_directories(self):
         write_build(self.root)
-        retired = [
-            self.legacy(f"{prefix}/{name}/SKILL.md")
-            for prefix in LEGACY_PROJECTION_ROOTS
-            for name in LEGACY_OPERATION_NAMES
-        ]
-        retired.append(self.legacy(INSTALLED_PI_SESSION_SHIM))
-        neighbor = self.root / ".agents/skills/concorde-custom/SKILL.md"
-        neighbor.parent.mkdir(parents=True)
-        neighbor.write_text("external CLI-owned bytes\n")
-        lock = self.root / "skills-lock.json"
-        lock.write_text("external lock\n")
+        stale = self.recorded(self.root, "generated/native/retired/worker.md")
         self.assertFalse(check_build(self.root)[0])
         write_build(self.root)
-        self.assertTrue(all(not p.exists() for p in retired))
-        self.assertEqual("external CLI-owned bytes\n", neighbor.read_text())
-        self.assertEqual("external lock\n", lock.read_text())
+        self.assertFalse(stale.exists())
+        self.assertFalse(stale.parent.exists())
         self.assertEqual((True, ()), check_build(self.root))
-        self.assertFalse((self.root / "generated/session/codex").exists())
-        self.assertFalse((self.root / "generated/session/claude").exists())
-        self.assertFalse((self.root / INSTALLED_PI_SESSION_SHIM).exists())
-        self.assertEqual(
-            {p.name for p in (self.root / ".pi/agents").glob("*.md")},
-            {"maintenance-worker.md", "tester.md"},
-        )
-        self.assertTrue((self.root / ".pi/extensions/concorde-observe.ts").is_file())
 
-    @verifies("scenario.distribution.build-retired-skills")
-    def test_retirement_preflights_all_paths_and_preserves_unverified_bytes(self):
-        for defect in (
-            "modified",
-            "extra",
-            "link",
-            "unknown",
-            "ancestor",
-            "destination-link",
-        ):
+    @verifies("scenario.distribution.build-write")
+    def test_removal_preflights_every_path_and_preserves_unverified_bytes(self):
+        from tests.concorde.support.build_fixture import build_package_copy
+
+        for defect in ("modified", "link", "unknown", "destination-link"):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as raw:
                 root = Path(raw)
-                from tests.concorde.support.build_fixture import build_package_copy
-
                 build_package_copy(root)
-                old_root = self.root
-                self.root = root
-                try:
-                    old = self.legacy("generated/session/codex/concorde-plan/SKILL.md")
-                    other = self.legacy(
-                        "generated/session/claude/concorde-plan/SKILL.md"
-                    )
-                    if defect == "modified":
-                        other.write_text("user edit")
-                    elif defect == "extra":
-                        (other.parent / "notes").write_text("user data")
-                    elif defect == "link":
-                        other.unlink()
-                        other.symlink_to(old)
-                    elif defect == "unknown":
-                        (root / "generated/agents/unknown.md").write_text("user data")
-                    elif defect == "ancestor":
-                        other.unlink()
-                        other.parent.rmdir()
-                        other.parent.symlink_to(old.parent, target_is_directory=True)
-                    else:
-                        dest = root / PI_SESSION_SHIM
-                        dest.unlink()
-                        dest.symlink_to(old)
-                    manifest = (root / "generated/build-manifest.json").read_bytes()
-                    with self.assertRaises(BuildError):
-                        write_build(root)
-                    self.assertEqual(b"old generated bytes\n", old.read_bytes())
-                    self.assertEqual(
-                        manifest, (root / "generated/build-manifest.json").read_bytes()
-                    )
-                finally:
-                    self.root = old_root
-
-    @verifies("scenario.distribution.build-retired-skills")
-    def test_known_ambient_name_without_manifest_ownership_is_never_adopted(self):
-        write_build(self.root)
-        path = self.root / ".agents/skills/concorde-plan/SKILL.md"
-        path.parent.mkdir(parents=True)
-        path.write_text("external CLI owns this")
-        with self.assertRaisesRegex(BuildError, "unowned or modified"):
-            write_build(self.root)
-        self.assertEqual("external CLI owns this", path.read_text())
-
-    @verifies("scenario.distribution.build-render")
-    def test_retired_cli_and_python_selectors_are_rejected(self):
-        from concorde.distribution.cli import create_parser
-
-        for args in (
-            ["skills", "--write"],
-            ["skills", "--check"],
-            ["build", "--integration", "pi"],
-            ["build", "--integration", "all"],
-        ):
-            with self.subTest(args=args), self.assertRaises(SystemExit):
-                create_parser().parse_args(args)
-        for function in (build, check_build, write_build):
-            with self.assertRaises(TypeError):
-                function(self.root, "pi")
-        self.assertEqual(11, len(OPERATION_GUIDANCE))
-        self.assertEqual(set(PUBLIC_OPERATIONS), set(OPERATION_GUIDANCE))
+                old = self.recorded(root, "generated/native/retired-a.md")
+                other = self.recorded(root, "generated/native/retired-b.md")
+                if defect == "modified":
+                    other.write_text("user edit")
+                elif defect == "link":
+                    other.unlink()
+                    other.symlink_to(old)
+                elif defect == "unknown":
+                    (root / "generated/agents/unknown.md").write_text("user data")
+                else:
+                    dest = root / PI_SESSION_SHIM
+                    dest.unlink()
+                    dest.symlink_to(old)
+                manifest = (root / "generated/build-manifest.json").read_bytes()
+                with self.assertRaises(BuildError):
+                    write_build(root)
+                self.assertEqual(b"old generated bytes\n", old.read_bytes())
+                self.assertEqual(
+                    manifest, (root / "generated/build-manifest.json").read_bytes()
+                )
 
 
 if __name__ == "__main__":

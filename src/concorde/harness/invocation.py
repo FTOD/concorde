@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..spec.contracts import REVIEW_OPERATIONS
 from ..spec.repository import SpecError, SpecRepository, digest
 from ..spec.typed_data import OPERATION_CONTRACTS, typed
-from ..spec.validation import module_dependency_findings
+from ..spec.validation import MISSING_PROMISES, module_dependency_findings
 from .change_worktree import WORK_PATH, blocker_scope, read_change
 from .host import (
     OperationHost,
@@ -33,7 +33,7 @@ class Invocation:
             host,
         )
         self.repository = SpecRepository(host.project_root, host.package_root)
-        self.target = self.repository.select(task["target_id"], task.get("focus_id"))
+        self.target = self.repository.module(task["target_id"], task.get("focus_id"))
         change = read_change(host.project_root)
         if task.get("change_id") is not None and (
             change is None or task["change_id"] != change["change_id"]
@@ -151,7 +151,6 @@ class Invocation:
                 self.blocker_revision(phase),
                 review_input_digest=review_input_digest,
                 spec_resolution=self.repository.spec_context(self.target.id).value,
-                assessment_context_id=self.last_context if assessment_intent else None,
             )
 
     def pending_gaps(
@@ -186,14 +185,6 @@ class Invocation:
             prerequisites = (
                 set(order[: order.index(phase)]) if phase in order else set()
             )
-            if phase in {
-                "spec-review",
-                "plan",
-                "tasks",
-                "implementation",
-                "code-review",
-            }:
-                prerequisites.add("specify")
             change = read_change(self.repository.root)
             blockers.extend(
                 dict(item["blocker"])
@@ -217,7 +208,7 @@ class Invocation:
             conflicts = [
                 finding
                 for finding in participant_findings
-                if not finding.message.startswith("missing local dependency promises:")
+                if not finding.message.startswith(MISSING_PROMISES)
             ]
             if conflicts:
                 return {

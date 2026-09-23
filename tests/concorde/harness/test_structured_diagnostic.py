@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -70,15 +71,14 @@ console.log('Selected arguments/errors roundtrip; secret sources excluded; sourc
                         case,
                     ]
                 )
-                environment = {
-                    **os.environ,
-                    "PYTHONPATH": str(REPOSITORY_ROOT / "src"),
-                    "CONCORDE_SESSION_SELECTION": str(
+                environment = child_environment(
+                    PYTHONPATH=str(REPOSITORY_ROOT / "src"),
+                    CONCORDE_SESSION_SELECTION=str(
                         REPOSITORY_ROOT
                         / ".concorde/work/pi-first-diagnostic-selection.json"
                     ),
-                    "CONCORDE_DIAGNOSTIC_REPORT": "1",
-                }
+                    CONCORDE_DIAGNOSTIC_REPORT="1",
+                )
                 result = subprocess.run(
                     [sys.executable, "-m", "concorde.distribution.tester_check"],
                     input=json.dumps(

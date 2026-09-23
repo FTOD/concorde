@@ -21,30 +21,19 @@ def implementation_digest(repository: SpecRepository, target) -> str:
             "listed": list(target.files),
             "files": [
                 (path, digest(read_file(repository.root, path)))
-                for path in repository.implementation_files(target)
+                for path in repository.bound_files(target)
             ],
         }
     )
 
 
-def implementation_users(repository: SpecRepository, target) -> tuple:
-    """Every Module whose entries cover one of these entries or bound files, with no context union."""
-    affected = {
-        target.id,
-        *(module.id for module in repository.covering_modules(target)),
-    }
-    return tuple(
-        module for module in repository.targets.values() if module.id in affected
-    )
-
-
 def unconfirmed_files(repository: SpecRepository, target) -> list[str]:
-    """Listed entries that neither exist nor are explicitly declared pending by their entity."""
-    entities = repository.entity_files(target)
+    """Realization entries that neither exist nor are declared pending by their realization."""
+    realizations = repository.realization_entries(target)
     return sorted(
         entry
         for entry in repository.missing_entries(target)
-        if entry not in entities or entry not in entities[entry].pending
+        if entry not in realizations or entry not in realizations[entry].pending
     )
 
 

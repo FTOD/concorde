@@ -1,312 +1,139 @@
 # Project Docsite
 
-`docsite/` is the packaged, project-neutral publishing template. Project-owned `site.json`,
-`custom-docs/` and `tests/repository/` are excluded from its packaged inventory. A scaffold copies
-the common adapter and creates a neutral identity; it does not copy Concorde's homepage, Protocol
-chapters or their resources.
+`docsite/` is the packaged, project-neutral publisher of a Concorde project's Specs. A scaffold
+copies it into another project with a neutral `site.json`. Project-owned `site.json`,
+`custom-docs/` and `tests/repository/` are excluded from the packaged inventory, so a scaffolded
+project never receives Concorde's homepage, Protocol chapters or repository tests.
 
-The adapter publishes the host project's explicitly registered Module Specs. Canonical content
-stays outside `docsite/`; `.concorde/specs.json` names the documents, Module relationships and each
-Module's implementation file listing. Nearby Markdown is not discovered as authority. Control state
-under `.concorde/` is excluded from published prose.
+## What it publishes
 
-## Navigation
+The publisher reads `.concorde/config.json`, the registry it names and the documents the registry's
+Modules own, each as a reading file plus its `.md.json` metadata. Nothing else is a source: it never
+scans directories for Markdown or follows links to find documents.
 
-The adapter publishes Profile 15 projects only: it reads `plugins/scoped-content` and registry
-schema 5, and refuses any other `profile_version` with an explicit error. Every registered document
-publishes once at a readable source-derived route: `specs/project/module.md` becomes
-`/specs/project/module`. The navbar always exposes `Module Specs`; explicitly classified companions
-enable a parallel `Implementation Specs` tab. These are two reading paths into the same complete
-Module specification, not separate ownership or agent-context models. A
-Module name opens its `module.md` directly, while its Module Specs companions and child Modules appear
-underneath; no duplicate main-Spec entry is generated. Module labels use registry titles;
-supplemental document labels use their filenames without `.md`, independently of Markdown headings. Source paths
-remain visible in provenance. Supplementary documents appear under their sole owning Module. References retain one canonical
-page and do not duplicate it in the sidebar. Registry `parent` alone determines nesting; root
-Modules appear directly, without a directory tree or Module composition wrapper.
+- **One page per document.** Every owned document is published once, at a route derived from its
+  source path: `specs/project/module.md` becomes `/specs/project/module` (the leading `specs/` is
+  dropped when every document lies under it). A document read by other Modules through `uses` or
+  `includes` is not copied; their links lead to its owner's page.
+- **Two reading collections.** The **Module Specs** tab shows entries and `module`-role topics; the
+  **Implementation Specs** tab, present when any document has role `implementation`, shows
+  requirements, scenarios and contracts. The role in each document's metadata decides the tab.
+- **Navigation follows composition.** Both tabs follow the `contains` tree from the root Module, in
+  the parent's `contains` order. A Module's name opens its `module.md`; its topics (in `owns`
+  order) and child Modules appear beneath it. Topic labels are file names without `.md`.
+- **Provenance.** Each page shows its collection, source path, links between the entry and the
+  Module's implementation documents, and a "Spec metadata" disclosure with the document identity,
+  owner, the Modules whose Spec context selects the document (and the `owns`, `contains`, `uses` or
+  `includes` relation that selects it) and the digests of both members.
 
-Publication validates complete document units: each registered Markdown reading file and its
-`.md.json` companion share identity and ownership. It checks entity bindings, provider declarations,
-local readable meaning anchors, scoped relationship diagrams and complementary interface bindings.
-The Markdown is the Protocol-defined reading subset, not an independently generated summary.
+## What rendering adds
 
-The entry reads Purpose, Terminology, Usage, Design and Relationships. Formal requirements/scenarios belong
-only in owned implementation-role companions; publication never automatically extracts them or
-writes a summary.
-The publisher creates one page per reading document and does not append a duplicate Files inventory
-or publish metadata as a second page. An auxiliary Spec metadata disclosure shows document identity,
-owner, inclusion provenance and the separate reading/metadata source digests. Both members participate
-in build identity and source watching; metadata-only changes invalidate a candidate.
+Rendering works on a staged copy under `.generated/`; Spec files are never changed.
 
-Directory implementation entries stay in metadata as declared. Publication checks their kind and
-exclusion from document units but never reads implementation contents or expands directories into a
-reading inventory. Relationship diagrams render in their authored position with labeled edges and
-a nonempty subset of declared local entity titles. Their surrounding prose explains the scope.
-These conventions are this publisher's presentation of Protocol reading, not additional Protocol
-page, sidebar or interaction requirements.
+- Every stable identity is an anchor: the Module (on its entry), the document, and every concept,
+  realization, requirement, scenario and contract it defines. Requirement and scenario headings
+  show only their titles and keep their identity as the heading anchor, so
+  `scenarios.md#scenario.x.y` resolves. A concept or realization whose identity the reading does
+  not carry gets an anchor at its Terminology row or explanation anchor.
+- A Terminology import row, which holds only a link in its source, shows the imported concept's
+  definition from its owner's defining row, marked *Imported from* the owning Module. A definition
+  cell that is written is shown as written.
+- An unmarked Mermaid `flowchart` or `graph` renders where it is written. A block marked
+  ```` ```mermaid illustrative ```` renders as Mermaid under a visible "Illustrative,
+  non-normative" label.
 
-Stable target/path-hash aliases redirect to current canonical document routes. Changed source
-paths require deliberate migration of external links. Human navigation does not widen agent context.
-Older profiles require explicit migration; there is no compatibility publishing path for them.
+## What it refuses
 
-The docsite has no standalone graph page or Graph navigation entry; inline Mermaid diagrams
-remain available in the documents that author them.
+The publisher refuses what it cannot publish correctly: an unreadable configuration, a registry
+that is not schema 3, malformed Module records or metadata that is not schema 3, a document owned
+twice, a duplicate identity, a composition cycle or a Module with two parents, an entry that is not
+a `module`-role `module.md` with a `module` block, a requirement, scenario, contract or Graph Spec
+flowchart in a `module`-role document, a concept defined in an `implementation`-role document, an
+unmarked Mermaid block that is not a flowchart, a `relies_on` identity the target does not own, a
+Terminology import row that does not link to its concept's defining document, and a relative link to
+an unregistered document. After the build, every internal link and anchor must resolve.
 
-## Implementation Specs
+The publisher is not the Protocol validator. Structural conformance, such as checked flowcharts,
+the registry mirror, realization bindings and contract examples, is established by
+`python3 scripts/concorde.py validate`.
 
-Keep the Module entry understandable on its own: explain purpose, correct use, significant design,
-collaboration and important guarantees. Put dense normative requirements, scenarios and interface
-details in registered owned companions, linking to their canonical definitions instead of duplicating
-them. Implementation Specs means specifications implementations must satisfy, including external
-behavior, not a record of current code or a temporary implementation plan.
+## Commands
 
-Protocol 10 retains the requirement for every `.md.json` to use schema 2 and declare `document.role` explicitly:
+Run from `docsite/` after `npm ci` (Node.js 20 or newer):
 
-```json
-{
-    "schema_version": 2,
-    "document": {
-        "id": "document.example.requirements",
-        "owner": "module.example",
-        "role": "implementation"
-    },
-    "entities": [],
-    "dependencies": [],
-    "bindings": []
-}
-```
+| Command             | Purpose                                                                    |
+| ------------------- | -------------------------------------------------------------------------- |
+| `npm run validate`  | Load and render every page in memory; writes nothing.                      |
+| `npm run start`     | Stage the current Specs, then start the Docusaurus preview.                |
+| `npm run build`     | Stage, build a candidate, validate it and promote it to `build/`.          |
+| `npm test`          | Run the publisher's tests.                                                 |
+| `npm run typecheck` | Type-check the TypeScript sources.                                         |
+| `npm run check`     | Run typecheck, tests, validate and build.                                  |
 
-Use `module` for the entry and explanatory topics and `implementation` for precise specifications.
-Missing or invalid roles, schema-1 metadata, an implementation-role `module.md`, or formal
-requirement/scenario/structured-contract definitions in module-role reading reject publication.
-The pilot's `concorde.publication` extension is retired and rejected even when it agrees with the
-role. Classification is never inferred from paths or headings. Both Python admission and the
-publisher enforce this Protocol rule; registry schema 5 and Framework Profile 15 remain unchanged.
-
-The second sidebar follows the same registry parentage but contains only classified companions and
-omits empty branches. Each registered document appears in exactly one sidebar at its unchanged
-canonical route. Reading-path links connect implementation pages to the Module entry and explanation
-pages to the owner's implementation companions. Search, provenance and identity anchors remain
-available. Metadata changes invalidate byte-bound context, review and build evidence without changing
-ownership, complete context membership or file permissions. Both collections remain Protocol reading
-content; never configure these companions as `customDocs`.
-
-Without implementation-role companions there is no Implementation Specs tab; an honest newly
-initialized draft can have only its explanatory entry until actual obligations are authored.
-All retained Concorde Modules have migrated, with requirements and scenarios directly owned by each
-Module and explanatory topics retained in Module Specs. A source relocation still requires updating source links:
-stable definition IDs do not by themselves redirect old page/fragment URLs.
-
-## Explanation-first authoring and Terminology
-
-Write for a reader with general software knowledge but no knowledge of project internals. Entries
-start with Purpose, Terminology, Usage, Design and Relationships. Topics have a short introduction,
-then Terminology as their first level-2 section. Use a nonempty `Term` / `Meaning / definition` table;
-if genuinely unnecessary, state `No specialized terminology.` rather than invent terms.
-
-Give a concept one canonical definition. Other pages link the term directly to that document's
-`#terminology` table and name the source in the meaning cell. They may repeat or faithfully restate
-the meaning for reading convenience, without changing its constraints or creating a second authority.
-For example: `| [Reservation](inventory.md#terminology) | Stock held before checkout. Source: Inventory. |`
-Link-only imports remain permitted. Check affected restatements when the canonical definition changes;
-this allowance does not extend to duplicate formal obligations, interface contracts or schemas.
-Include the defining unit explicitly in the Module's context even when its meaning is repeated;
-neither a link nor a restatement grants it. Both validators reject noncanonical table links or links
-to excluded definitions; semantic review checks faithful meaning and source attribution. Entity
-identity/file listings remain metadata, and contextual entity duties remain in Design/Relationships;
-the term table is not another inventory.
-
-Explain a normal interaction before advanced recovery, use concrete illustrations, and connect design
-choices to the problems they prevent. Private API catalogs, serialization algorithms and exact
-executable Graphs belong in Implementation Specs even without req/scenario headings. Module Specs may
-show clearly labeled conceptual diagrams and simple public usage examples. Keep destructive defaults,
-security limits and known unfulfilled guarantees visible. These semantic requirements need reader-
-oriented review; a correct table shape is not proof that prose is understandable.
+A build writes `build/build-manifest.json` (schema 22): every published document with its route,
+owner, reading collection, selecting Modules and the digests of both members, plus one digest over
+all inputs. A candidate whose manifest, digest or links do not match the current sources is deleted
+and the previous `build/` stays. Promotion replaces the whole directory, so pages no longer
+produced disappear. `node_modules/`, `.docusaurus/`, `.generated/`, `coverage/` and `build/` are
+disposable; preview and production keep separate generated directories.
 
 ## Site identity
 
-The adapter reads `docsite/site.json` (site identity schema 1). Project-specific content is optional;
-without classified implementation companions or custom docs, the only documentation tab is **Module Specs**.
+`docsite/site.json` (schema 1) names the site:
 
-| Field              | Type             | Rule                                                                                                                                         |
-| ------------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema_version`   | integer          | Exactly `1`.                                                                                                                                 |
-| `title`            | string           | Non-empty; site and navbar title.                                                                                                            |
-| `url`              | string           | Absolute `http(s)://` URL without path.                                                                                                      |
-| `baseUrl`          | string           | Starts and ends with `/`.                                                                                                                    |
-| `organizationName` | string           | Non-empty.                                                                                                                                   |
-| `projectName`      | string           | Non-empty.                                                                                                                                   |
-| `repository`       | string, optional | Absolute URL; enables the navbar repository link (a GitHub host renders the icon-only link; any other host renders a labeled "Source" link). |
-| `tagline`          | string, optional | Falls back to a generic tagline when absent.                                                                                                 |
-| `customDocs`       | array, optional  | Independent project-owned documentation collections; see below.                                                                              |
-| `homepage`         | object, optional | Enables the project introduction at `/`; omitted by default so the root redirects to the registered entry Module.                            |
+| Field              | Type             | Rule                                                                                 |
+| ------------------ | ---------------- | ------------------------------------------------------------------------------------ |
+| `schema_version`   | integer          | Exactly `1`.                                                                         |
+| `title`            | string           | Non-empty; site and navbar title.                                                    |
+| `url`              | string           | Absolute `http(s)://` URL without path.                                              |
+| `baseUrl`          | string           | Starts and ends with `/`.                                                            |
+| `organizationName` | string           | Non-empty.                                                                           |
+| `projectName`      | string           | Non-empty.                                                                           |
+| `repository`       | string, optional | Absolute URL; adds a navbar repository link.                                         |
+| `tagline`          | string, optional | Falls back to a generic tagline.                                                     |
+| `customDocs`       | array, optional  | Project-owned documentation collections; see below.                                  |
+| `homepage`         | object, optional | A project introduction at `/`; without it the root redirects to the root Module.     |
 
-The optional `homepage` object contains project-owned presentation copy. Its required fields are
-nonempty strings `eyebrow`, `title` and `description`; `features` with a nonempty `title` and `items`
-array; `workflow` with nonempty `title`, `description` and `steps` array; and `quickstart` with
-nonempty `title`, `description` and `code`. Each feature or step has nonempty `title` and
-`description` strings. Invalid or incomplete configuration fails with the field path in the error.
-Text renders as text, and the quickstart code block supports copying through the docsite theme.
+`homepage` requires nonempty `eyebrow`, `title` and `description`; `features` (`title`, `items`);
+`workflow` (`title`, `description`, `steps`); and `quickstart` (`title`, `description`, `code`).
+Optional `reference` adds tables (`title`, `description`, `columns`, `rows`) and optional `links`
+adds `{label, to}` links to local routes or HTTP(S) URLs. All copy renders as plain text. An invalid
+file fails the build with the field path in the error.
 
-An optional `homepage.reference` adds a reference section after the quickstart. It has nonempty
-`title` and `description` strings and a nonempty `tables` array. Each table has nonempty `title`
-and `description` strings, a nonempty `columns` array of nonempty strings, and a nonempty `rows`
-array. Every row contains one nonempty string per column. All copy renders as plain text.
-The section includes table navigation, column headers and keyboard-accessible horizontal scrolling
-for narrow screens. Omitting it preserves the existing homepage layout.
+## Custom docs
 
-Concorde enables this introduction to present its core operations and installation steps. The
-renderer is the same packaged template every project receives; consumer scaffolding does not copy
-Concorde's homepage content. The main Spec link resolves from the registered entry Module, and
-project-owned `homepage.links` and repository links appear only when configured.
-All local navigation respects `baseUrl`. Homepage copy is outside Spec membership and
-the registered-page manifest; it grants no agent context and does not replace any Module's Spec.
+Human-authored guides live outside the Specs in their own tabs. They belong to no Module and never
+enter an agent's context. Add a collection to `site.json`:
 
-`docusaurus.config.ts` loads the identity once at startup and fails with an actionable error naming
-`docsite/site.json` and the violated rule when the file is missing or invalid.
-
-## Add custom docs
-
-Keep human-authored guides outside the Spec registry and publish them in independent tabs. They
-will not enter a Module's agent Spec context or its registered-page manifest. This is the recommended
-extension path for general project guides. Module-specific usage documentation belongs in the
-Module's own Usage reading and should not be copied into a competing external manual.
-
-1. Create `docsite/custom-docs/guides/index.md`:
-
-    ```markdown
-    ---
-    slug: /
-    ---
-
-    # Team handbook
-
-    Human-authored onboarding and operating notes.
-    ```
-
-2. Add a collection to `docsite/site.json`:
-
-    ```json
-    "customDocs": [
-      {"id": "guides", "label": "Handbook", "path": "./custom-docs/guides", "routeBasePath": "handbook"}
-    ]
-    ```
-
-3. Run `npm run build`. The Handbook tab opens `/handbook`, has its own generated sidebar and
-   participates in local search. Use `slug: /` on its landing document as above.
-
-Each collection has a unique lowercase slug `id` (except `default`), a label, a content path relative
-to `docsite/`, and a distinct `routeBasePath` without leading/trailing slashes. Route bases must not
-be `specs`, below `specs/`, or overlap another collection. Optional `sidebarPath` names a
-project-owned Docusaurus sidebar file relative to `docsite/`. Collections cannot include registered
-Spec files. Missing content, duplicate routes and broken links fail the build.
-Paths may use `../` to reach project-owned content beside `docsite/`, but cannot be absolute or
-use Windows drive prefixes or backslashes. Content paths name directories; sidebar paths name files.
-
-For executable custom pages, create `docsite/custom-docs/index.ts` and export an additive extension:
-
-```typescript
-import type { CustomDocsExtension } from "../plugins/scoped-content/custom-docs";
-import handbookPlugin from "./handbook-plugin";
-
-export default {
-    plugins: [handbookPlugin],
-    navbarItems: [
-        { to: "/handbook-app", label: "Handbook app", position: "left" },
-    ],
-} satisfies CustomDocsExtension;
+```json
+"customDocs": [
+  {"id": "guides", "label": "Handbook", "path": "./custom-docs/guides", "routeBasePath": "handbook"}
+]
 ```
 
-The plugin uses normal Docusaurus `addRoute`/`createData` APIs. Keep its routes outside `/specs`;
-route conflicts with registered pages are build errors. The optional extension and all custom docs
-are authored and maintained by the project, never generated by the scaffold.
+`id` is a unique lowercase slug other than `default`; `path` is a directory relative to `docsite/`;
+`routeBasePath` must not be `specs`, lie below it or overlap another collection; optional
+`sidebarPath` names a sidebar file. A collection may not contain a registered Spec document.
+For executable pages, export `{plugins, navbarItems}` from `docsite/custom-docs/index.ts` (type
+`CustomDocsExtension` in `plugins/scoped-content/custom-docs.ts`) and keep its routes outside
+`/specs`.
 
-Optional `homepage.links` is an array such as `[{"label":"Handbook","to":"/handbook"}]`. Labels
-render as text; destinations are local `/routes` or HTTP(S) URLs. Local links respect `baseUrl`.
-This configures homepage links without adding project-specific logic to the shared renderer.
-
-Concorde's own `site.json` selects `../protocol` with a sidebar in `custom-docs/sidebars.protocol.ts`.
-This retains `/protocol` and is an example of a project-owned collection, not a consumer default.
-Concorde adds no executable custom page: each of its Operations, and the Graph Spec of every
-Operation that runs a Graph, is published with the Specs of the Module that owns it.
-
-### Migration
-
-- `protocolDocs` has been removed, including the false form. Delete the field. To retain a Protocol
-  collection, add `{"id":"protocol","label":"Spec Protocol","path":"../protocol","routeBasePath":"protocol"}`
-  to `customDocs` and supply your own content and optional sidebar. The adapter reports this
-  migration explicitly instead of inferring a Concorde-specific collection.
-- Scaffold proposal version 2 reflects the new inventory. Regenerate old proposals with
-  `docsite --propose`; version 1 is rejected. Scaffolding stays creation-only: it cannot upgrade or
-  overwrite an existing site. Apply template changes to existing sites through a reviewed source
-  update while preserving their own identity and custom docs.
-- The file-directory navigation, Module composition wrapper and unregistered Projections pages
-  are removed. Builds ignore stale `generated/docs` inputs and successful promotion removes old
-  published projection pages. Framework runtime instructions and schema APIs remain available.
+Concorde's own `site.json` publishes `../protocol` at `/protocol` with the sidebar in
+`custom-docs/sidebars.protocol.ts`.
 
 ## Scaffold a docsite
-
-Concorde projects add this adapter with the runtime `docsite` Tool, from
-`.concorde/framework/scripts/concorde.py` in installed projects:
 
 ```bash
 python3 .concorde/framework/scripts/concorde.py docsite --propose
 python3 .concorde/framework/scripts/concorde.py docsite --apply --proposal <path>
 ```
 
-Add `--github-pages` to the proposal to also write `.github/workflows/deploy-docsite.yml` from
-`docsite/scaffold/deploy-docsite.yml`, the packaged GitHub Pages workflow template. The scaffold
-proposal writes a project-owned `docsite/site.json`; every other copied file is template bytes,
-digest-bound to the package. It neither requires nor creates a project README.
+`--github-pages` adds `.github/workflows/deploy-docsite.yml` from `docsite/scaffold/deploy-docsite.yml`.
+Scaffolding only creates files; it never updates or deletes an existing site.
 
-## Prerequisites
+## Repository-specific tests
 
-- Node.js 20 or newer
-- npm with lockfile support
-
-Install dependencies with `npm ci`. `node_modules/`, `.docusaurus/`, `.generated/`, `coverage/`
-and `build/` are disposable. Webpack filesystem caches live inside the matching generated directory:
-`.docusaurus/webpack` for preview and `.generated/docusaurus-production/webpack` for production.
-Each `start` or `build` launch clears its own generated modules and compiled cache together, avoiding
-stale local-search exports without clearing the other mode's cache. This means a cold compilation
-on each launch; incremental recompilation within a running preview still uses Webpack's cache.
-
-## Commands
-
-Run commands from `docsite/`:
-
-| Command             | Purpose                                                                           |
-| ------------------- | --------------------------------------------------------------------------------- |
-| `npm run validate`  | Validate registered sources, identities, relations, routes, provenance and links. |
-| `npm run start`     | Materialize the current registered content, then start Docusaurus preview.        |
-| `npm test`          | Run unit, contract, fixture, and integration evidence.                            |
-| `npm run build`     | Build, validate, and atomically promote the verified site.                        |
-| `npm run typecheck` | Type-check maintained TypeScript.                                                 |
-| `npm run check`     | Run typechecking, all tests, source validation, and a production build.           |
-
-Successful builds emit `build/build-manifest.json` using Build Manifest 21. It records registered
-document routes, aliases, reading collections and exact source identities. It neither emits nor requires
-`architecture-graph.json`; older manifest versions require a fresh build. A stale
-materialization or changed source prevents candidate promotion. The manifest stores no claim that
-a Module's implementation currently satisfies its promises.
-
-A failed candidate is removed and never replaces the last verified `build/`. Perceptual review of
-a published page remains an explicit human-evidence step.
-Successful promotion replaces the whole build directory, removing obsolete graph pages and their
-dedicated assets from previous builds. Scaffolding remains creation-only and does not delete old
-source files from existing consumer sites.
-
-## Repository-specific evidence
-
-`docsite/tests/repository/` holds tests that assert facts about the Concorde repository itself —
-its own Module navigation, its own maintained specifications, and that `docsite/site.json` and
-`.github/workflows/deploy-docsite.yml` reproduce Concorde's identity and deployment workflow. These
-tests are not part of the template: every other project that scaffolds the adapter carries its own
-`docsite/site.json` and no `tests/repository/` content.
-
-## Concorde repository deployment
-
-For this repository, `.github/workflows/deploy-docsite.yml` is the scaffold workflow unchanged.
-It runs the verified build on `main` and deploys `build/` to
-`https://ftod.github.io/concorde/`. This package does not prescribe deployment for other Concorde
-projects; `--github-pages` at scaffold time is how another project opts in.
+`docsite/tests/repository/` tests the Concorde repository itself: building and publishing its own
+Specs, its `site.json` and its deployment workflow. For this repository,
+`.github/workflows/deploy-docsite.yml` is the scaffold workflow unchanged; it builds on `main` and
+deploys `build/` to `https://ftod.github.io/concorde/`.

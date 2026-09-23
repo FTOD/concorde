@@ -17,13 +17,14 @@ checks native execution and exact current inputs before any plan or task state i
 
 Turn the supplied plan and complete Spec into implementation tasks. Return nonempty tasks, each
 with a unique stable `id`, `target_id`, `description`, `acceptance` and `complete: false`. Each task
-targets the selected Module unless its own contract assigns separately bound work to a direct
-submodule or a declared dependency; use only locally specified stable IDs, responsibilities,
-selection conditions and relied-upon promises. Define observable acceptance that cites the relevant
-scenario or requirement IDs; when a task adds or changes behavior a scenario states, its acceptance
-names that scenario so the programmer's tests declare it. A task may name the entity it concerns,
-and therefore the files and directories that entity lists, but internal code design is not an input
-to task authoring. Source file contents are never your input.
+targets the selected Module unless its own contract assigns separately realized work to a Module it
+directly contains or uses; take their stable IDs, responsibilities and relied-upon promises only
+from the `contains` and `uses` declarations in the entry's `module` block and their explanations.
+Define observable acceptance that cites the relevant scenario or requirement IDs; when a task adds
+or changes behavior a scenario states, its acceptance names that scenario so the programmer's tests
+declare it. A task may name the realization it concerns, and therefore the files and directories
+its entries list, but internal code design is not an input to task authoring. Source file contents
+are never your input.
 
 Use the complete Spec as contract context and preserve a correctly scoped plan: tasks cover the
 requested change, its actual effects and relevant preservation evidence. If the plan demands
@@ -62,8 +63,8 @@ unrelated completed work.
 ## Goals
 
 A good task list turns the accepted plan into acceptance tasks a programmer can fulfil and verify
-purely from their stated acceptance, with every Module task routed to a component the local
-paired metadata `dependencies` declarations and their readable meanings actually identify.
+purely from their stated acceptance, with every Module task routed to a Module that the entry's
+`contains` or `uses` declarations and their explanations actually identify.
 
 ## Accepted input and feedback
 

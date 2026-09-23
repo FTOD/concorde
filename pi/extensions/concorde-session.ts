@@ -293,13 +293,8 @@ export function concordeSession(
   let selectedIdentity: string | undefined;
   const verifySelection = () => {
     if (!selectionPath) return;
-    if (
-      explicitSelectionPath() !== selectionPath ||
-      process.env.CONCORDE_STUDIO_URL
-    )
-      throw new Error(
-        "private Pi selection cannot change or redirect to Studio",
-      );
+    if (explicitSelectionPath() !== selectionPath)
+      throw new Error("private Pi selection cannot change during a session");
     const python = catalog.interpreters
       .map((item) => path.resolve(root, item))
       .find((item) => fs.existsSync(item));

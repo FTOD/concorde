@@ -72,18 +72,23 @@ describe("build interface", () => {
     );
   });
 
-  it("refuses to publish a project that does not declare Profile 15", async () => {
-    const root = await temporaryRoot("concorde-legacy-profile-");
+  it("refuses a registry it cannot read with a non-zero diagnostic", async () => {
+    const root = await temporaryRoot("concorde-unreadable-registry-");
     await mkdir(resolve(root, ".concorde"), { recursive: true });
     await writeFile(
       resolve(root, ".concorde/config.json"),
-      JSON.stringify({ profile_version: 7 }),
+      JSON.stringify({ registry: ".concorde/specs.json" }),
+      "utf8",
+    );
+    await writeFile(
+      resolve(root, ".concorde/specs.json"),
+      JSON.stringify({ schema_version: 5, targets: [] }),
       "utf8",
     );
     const result = validate(root);
     expect(result.status).toBe(1);
     expect(`${result.stdout}${result.stderr}`).toContain(
-      "Profile 15 is required",
+      "Module registry schema 3",
     );
   });
 });

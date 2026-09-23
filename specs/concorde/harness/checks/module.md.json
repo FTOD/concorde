@@ -1,0 +1,177 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.checks.module",
+    "owner": "module.harness.checks",
+    "role": "module"
+  },
+  "module": {
+    "title": "Check execution",
+    "owns": [
+      "specs/concorde/harness/checks/module.md",
+      "specs/concorde/harness/checks/requirements.md",
+      "specs/concorde/harness/checks/scenarios.md",
+      "specs/concorde/harness/checks/interfaces.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-worktrees",
+        "relies_on": [
+          "concept.worktrees.primary-worktree",
+          "concept.worktrees.run-record"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.diagnostic-span"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "reference/pi/",
+        "reason": "Pi extension API used by the test_command tool of the tester"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.checks.configured-check",
+      "type": "concept",
+      "title": "Configured check",
+      "meaning": "#concept.checks.configured-check"
+    },
+    {
+      "id": "concept.checks.read-only-boundary",
+      "type": "concept",
+      "title": "Read-only check boundary",
+      "meaning": "#concept.checks.read-only-boundary"
+    },
+    {
+      "id": "concept.checks.scratch",
+      "type": "concept",
+      "title": "Check scratch",
+      "meaning": "#concept.checks.scratch"
+    },
+    {
+      "id": "concept.checks.tester-command",
+      "type": "concept",
+      "title": "Tester command",
+      "meaning": "#concept.checks.tester-command"
+    },
+    {
+      "id": "concept.checks.tester-evidence",
+      "type": "concept",
+      "title": "Tester evidence",
+      "meaning": "#concept.checks.tester-evidence"
+    },
+    {
+      "id": "realization.checks.runner",
+      "type": "realization",
+      "title": "Check runner",
+      "meaning": "#realization.checks.runner",
+      "entries": [
+        "src/concorde/harness/check_executor.py"
+      ]
+    },
+    {
+      "id": "realization.checks.configured-checks",
+      "type": "realization",
+      "title": "Configured check service",
+      "meaning": "#realization.checks.configured-checks",
+      "entries": [
+        "src/concorde/harness/checks.py"
+      ]
+    },
+    {
+      "id": "realization.checks.tester-evidence",
+      "type": "realization",
+      "title": "Tester evidence export",
+      "meaning": "#realization.checks.tester-evidence",
+      "entries": [
+        "src/concorde/harness/check_evidence.py",
+        "pi/extensions/concorde-tester.ts",
+        "pi/extensions/concorde-selection.ts"
+      ]
+    },
+    {
+      "id": "realization.checks.tests",
+      "type": "realization",
+      "title": "Check tests",
+      "meaning": "#realization.checks.tests",
+      "entries": [
+        "tests/concorde/harness/test_check_evidence.py",
+        "tests/concorde/harness/test_check_executor.py",
+        "tests/concorde/harness/test_check_service.py",
+        "tests/concorde/operations/test_check_execution.py",
+        "tests/concorde/harness/test_tester_tmp.py",
+        "tests/concorde/harness/structured_failure_driver.mjs",
+        "tests/concorde/harness/tester_command_driver.mjs",
+        "tests/concorde/distribution/test_install_output_handoff.py",
+        "tests/concorde/harness/test_feedback_export.py"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "narrows",
+      "source": "concept.checks.tester-evidence",
+      "target": "concept.concorde.evidence"
+    },
+    {
+      "type": "relates",
+      "source": "realization.checks.configured-checks",
+      "verb": "runs",
+      "target": "concept.checks.configured-check"
+    },
+    {
+      "type": "relates",
+      "source": "concept.checks.configured-check",
+      "verb": "runs inside",
+      "target": "concept.checks.read-only-boundary"
+    },
+    {
+      "type": "relates",
+      "source": "concept.checks.tester-command",
+      "verb": "runs inside",
+      "target": "concept.checks.read-only-boundary"
+    },
+    {
+      "type": "relates",
+      "source": "realization.checks.runner",
+      "verb": "enforces",
+      "target": "concept.checks.read-only-boundary"
+    },
+    {
+      "type": "relates",
+      "source": "concept.checks.read-only-boundary",
+      "verb": "provides",
+      "target": "concept.checks.scratch"
+    },
+    {
+      "type": "relates",
+      "source": "realization.checks.tester-evidence",
+      "verb": "exports",
+      "target": "concept.checks.tester-evidence"
+    }
+  ]
+}

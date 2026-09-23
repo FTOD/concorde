@@ -1,73 +1,214 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.implementation.module",
     "owner": "module.implementation",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Implementation",
+    "owns": [
+      "specs/concorde/implementation/module.md",
+      "specs/concorde/implementation/programmer.md",
+      "specs/concorde/implementation/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.planning",
+        "meaning": "#uses-planning",
+        "relies_on": [
+          "concept.planning.plan",
+          "concept.planning.task",
+          "concept.planning.change-scope",
+          "req.planning.tasks-admission"
+        ]
+      },
+      {
+        "target": "module.harness.admission",
+        "meaning": "#uses-admission",
+        "relies_on": [
+          "concept.admission.capability-request",
+          "concept.admission.relay"
+        ]
+      },
+      {
+        "target": "module.harness.context",
+        "meaning": "#uses-context",
+        "relies_on": [
+          "concept.context.snapshot",
+          "req.context.contents-code-phases",
+          "req.context.recheck"
+        ]
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.proposal",
+          "req.execution.proposal-not-completion"
+        ]
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks",
+        "relies_on": [
+          "concept.checks.configured-check",
+          "concept.checks.read-only-boundary"
+        ]
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.agent",
+          "concept.agents.definition"
+        ]
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate",
+          "concept.worktrees.change-status"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.registry",
+          "concept.spec.boundary-set"
+        ]
+      },
+      {
+        "target": "module.review",
+        "meaning": "#uses-review",
+        "relies_on": [
+          "concept.review.finding",
+          "concept.review.required-review",
+          "req.review.repair-feedback"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "reference/pi/",
+        "reason": "Pi Agent definition and tool formats that the programmer's native preparation writes"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.implementation.adapter",
-      "title": "Implementation adapter",
-      "kind": "shared program",
-      "files": [
-        "operations/implement.py",
-        "src/concorde/implementation/",
+      "id": "concept.implementation.completion",
+      "type": "concept",
+      "title": "Task completion",
+      "meaning": "#concept.implementation.completion"
+    },
+    {
+      "id": "concept.implementation.component-work",
+      "type": "concept",
+      "title": "Component work",
+      "meaning": "#concept.implementation.component-work"
+    },
+    {
+      "id": "realization.implementation.capability",
+      "type": "realization",
+      "title": "Implementation capability declaration",
+      "meaning": "#realization.implementation.capability",
+      "entries": [
+        "operations/implement.py"
+      ]
+    },
+    {
+      "id": "realization.implementation.admission",
+      "type": "realization",
+      "title": "Implementation admission",
+      "meaning": "#realization.implementation.admission",
+      "entries": [
+        "src/concorde/implementation/"
+      ]
+    },
+    {
+      "id": "realization.implementation.native",
+      "type": "realization",
+      "title": "Native programmer preparation",
+      "meaning": "#realization.implementation.native",
+      "entries": [
+        "src/concorde/harness/native_context.py"
+      ]
+    },
+    {
+      "id": "realization.implementation.tests",
+      "type": "realization",
+      "title": "Implementation tests",
+      "meaning": "#realization.implementation.tests",
+      "entries": [
         "tests/concorde/harness/native_programmer_probe.mjs",
         "tests/concorde/harness/test_native_implementation_review.py",
         "tests/concorde/harness/test_worker_binding.py",
+        "tests/concorde/issues/test_scope.py",
+        "tests/concorde/operations/test_change_scope.py",
         "tests/concorde/operations/test_review.py",
         "tests/concorde/support/native_planning.py"
-      ],
-      "meaning": "#entity.implementation.adapter"
-    },
-    {
-      "id": "entity.implementation.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.implementation.harness"
-    },
-    {
-      "id": "entity.implementation.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "target_id": "module.spec",
-      "meaning": "#entity.implementation.spec"
-    },
-    {
-      "id": "entity.implementation.task-input",
-      "title": "Implementation task",
-      "kind": "record",
-      "meaning": "#entity.implementation.task-input"
-    },
-    {
-      "id": "entity.implementation.completion",
-      "title": "Task completion",
-      "kind": "record",
-      "meaning": "#entity.implementation.completion"
-    },
-    {
-      "id": "entity.implementation.agents",
-      "title": "Agents",
-      "kind": "used module",
-      "target_id": "module.agents",
-      "meaning": "#entity.implementation.agents"
+      ]
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.harness",
-      "meaning": "#agreement.document.implementation.module.2"
+      "type": "relates",
+      "source": "realization.implementation.capability",
+      "verb": "hands requests to",
+      "target": "module.harness.admission"
     },
     {
-      "target_id": "module.spec",
-      "meaning": "#agreement.document.implementation.module.3"
+      "type": "relates",
+      "source": "realization.implementation.admission",
+      "verb": "implements",
+      "target": "concept.planning.task"
     },
     {
-      "target_id": "module.agents",
-      "meaning": "#entity.implementation.agents"
+      "type": "relates",
+      "source": "realization.implementation.admission",
+      "verb": "returns to the user session",
+      "target": "concept.implementation.component-work"
+    },
+    {
+      "type": "relates",
+      "source": "realization.implementation.admission",
+      "verb": "records",
+      "target": "concept.implementation.completion"
+    },
+    {
+      "type": "relates",
+      "source": "realization.implementation.admission",
+      "verb": "stores completion in",
+      "target": "module.harness.worktrees"
+    },
+    {
+      "type": "relates",
+      "source": "realization.implementation.admission",
+      "verb": "admits repair feedback from",
+      "target": "module.review"
+    },
+    {
+      "type": "relates",
+      "source": "realization.implementation.native",
+      "verb": "prepares the programmer from",
+      "target": "module.agents"
+    },
+    {
+      "type": "relates",
+      "source": "realization.implementation.native",
+      "verb": "runs checks through",
+      "target": "module.harness.checks"
     }
-  ],
-  "bindings": []
+  ]
 }

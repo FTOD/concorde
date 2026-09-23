@@ -2,329 +2,166 @@
 
 ## Purpose
 
-The Harness Module admits every operation request at one common boundary, then prepares and runs each worker the request needs with a defined task, information and permissions, and checks the result. It also runs configured checks in a separate read-only environment. Other Modules rely on it to execute work without treating an agent answer as permission for unrelated actions.
+The Harness is how Concorde configures and runs a bounded model task. Every capability request
+enters through it; it decides, from the Specs, what each worker may know and touch; it runs each
+model step as a fresh worker and accepts the result only after the Host has checked it; it runs
+deterministic checks in a read-only sandbox; and it keeps every change in its own candidate
+worktree. The providers under Operations rely on it for all of this, so that none of them has to
+implement request checks, context, execution or isolation on its own. The Harness does not decide
+what a capability does, does not define the callable workers (Agents does), and does not compute
+the Spec boundary sets (Spec does). It is at an early stage: it records the Protocol's boundaries
+exactly, but enforces only part of them, as the Design section states.
 
 ## Terminology
 
-| Term                                              | Meaning / definition                                                                                                                                                                                                                                                  |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Worker profile                                    | The instructions and maximum tools, workspace and effects available to a kind of worker; a particular job can be narrower.                                                                                                                                            |
-| Tool gate                                         | The checks applied inside the agent process before a model-requested tool runs.                                                                                                                                                                                       |
-| Worker sandbox                                    | The historical RPC diagnostic/test operating-system boundary, not native Agent isolation: the host filesystem read-only with the developer's secret locations, agent-client state and other worktrees masked, the grant and run directory writable, a private temporary directory and process namespace. |
-| Capsule                                           | A temporary workspace containing the documents admitted for one Spec-only worker invocation.                                                                                                                                                                          |
-| [Worker](../module.md#terminology)                | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Harness](../module.md#terminology)               | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Context](../module.md#terminology)               | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Grant](../module.md#terminology)                 | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Operation](../module.md#terminology)             | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Graph](../module.md#terminology)                 | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Candidate](../module.md#terminology)             | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Worktree](../module.md#terminology)              | Defined in Concorde Framework.                                                                                                                                                                                                                                        |
-| [Spec context](context.md#terminology)            | Defined in What information a worker receives.                                                                                                                                                                                                                        |
-| [Implementation context](context.md#terminology)  | Defined in What information a worker receives.                                                                                                                                                                                                                        |
-| [Resource context](context.md#terminology)        | Defined in What information a worker receives.                                                                                                                                                                                                                        |
-| [Task context](context.md#terminology)            | Defined in What information a worker receives.                                                                                                                                                                                                                        |
-| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions.                                                                                                                                                                                                                                   |
+| Term | Definition |
+| --- | --- |
+| [Capability](../vocabulary.md#concept.concorde.capability) | |
+| [User session](../vocabulary.md#concept.concorde.user-session) | |
+| [Host](../vocabulary.md#concept.concorde.host) | |
+| [Worker](../vocabulary.md#concept.concorde.worker) | |
+| [Context](../vocabulary.md#concept.concorde.context) | |
+| [Boundary](../vocabulary.md#concept.concorde.boundary) | |
+| [Evidence](../vocabulary.md#concept.concorde.evidence) | |
+| [Context snapshot](context/module.md#concept.context.snapshot) | |
+| [Grant](context/module.md#concept.context.grant) | |
+| [Workflow](execution/module.md#concept.execution.workflow) | |
+| [Candidate](worktrees/module.md#concept.worktrees.candidate) | |
+
+The Harness defines no words of its own; each child defines the words of its own interface.
 
 ## Usage
 
-Every public operation request first passes [Operation admission](host.md): it checks the request
-and configuration, binds the worktree the request was started in, relays a consumer-project mutation
-from primary into a host-created candidate, and hands the admitted request to the
-[Operations dispatch](../operations/module.md). The request's result envelope always keeps
-admission, domain and execution outcomes apart. Source-primary mutations instead stop for a fresh
-catalog-free writer in an assigned candidate and a separate sibling tester; relay is not a
-self-maintenance exception.
+Nobody calls "the Harness" as such. The user session calls a capability, and the Harness's five
+parts handle it in turn. Following one `concorde-implement` call for Module `module.checkout`
+shows how they fit:
 
-A calling workflow gives the Harness Module one worker job or one configured check. Harness fixes the allowed
-inputs and permissions, starts the job, and validates its matching result before the caller proceeds.
-Spec-only workers receive specification information; code access is a separate phase-specific choice.
+```mermaid illustrative
+sequenceDiagram
+    accTitle: One capability call through the Harness
+    accDescr: Conceptual flow of an implement request from the user session through admission, the provider, context, execution and checks.
+    participant U as User session
+    participant A as Request admission
+    participant W as Candidate worktrees
+    participant P as Provider under Operations
+    participant C as Task context
+    participant E as Agent execution
+    participant K as Check execution
+    U->>A: concorde-implement request
+    A->>W: bind the worktree, find or create the candidate
+    A->>P: dispatch the admitted request
+    P->>C: freeze a snapshot for phase implementation
+    P->>E: prepare the programmer worker
+    E-->>U: exact native call to run
+    U->>E: run it, return the proposal
+    E->>K: optional read-only checks for the worker
+    E->>P: independently accepted result
+    P->>A: typed output
+    A-->>U: one result envelope
+```
 
-For example, a planner can describe a change without reading source. A programmer later receives
-accepted tasks and allowed code files; a reviewer receives read-only inputs in a fresh conversation.
-The workers share accepted artifacts, not all of each other's knowledge or authority.
+1. **Request admission** reads the request, checks its type, the stored configuration and the
+   worktree, and, because implementing is a mutation, runs it in the change's candidate.
+2. The **Implementation** provider under Operations asks **Task context** to freeze a context
+   snapshot of `module.checkout` for phase `implementation`: its Spec documents, the names and
+   digests of its implementation files, its external references, the accepted task list and the
+   workspace facts.
+3. **Agent execution** prepares a fresh programmer worker: a capsule with the snapshot, the
+   worker's instructions and tool list. The user session's Pi runs it; the worker's submission is
+   only a proposal until the Host accepts it against current inputs.
+4. The worker may run the Module's configured checks through **Check execution**, which runs them
+   with the project mounted read-only.
+5. **Candidate worktrees** records the change's progress and the run in the primary worktree.
 
-Failures, cancellation, time limits and changed inputs stop dependent execution. Authorized code
-edits can remain after failure. Native file/network/credential limits are prompt-level policy,
-not OS confinement; native tool/delegation ceilings are separately enforced. In particular, a native
-programmer's shell is not confined to its intended file paths by Concorde.
-
-Configured checks and tester commands use an actual OS read-only governing-filesystem boundary,
-issued writable scratch and process-tree cleanup. That boundary does not define a finer read,
-network or credential policy. Historical low-level RPC diagnostic/test workers have their own Linux
-sandbox and tool/path gate with fixed masks and a shared network; they are not native fallback paths.
-Read [execution](execution.md) before relying on any of these distinct guarantees.
+Other capabilities use a subset: `concorde-validate` needs no worker, `concorde-plan` and the
+reviews run a workflow of several workers, and the read-only capabilities run where they are
+started instead of in a candidate.
 
 ## Design
 
-<a id="entity.harness.agent-model"></a><a id="entity.harness.agent-definitions"></a><a id="entity.harness.typed-values"></a>
+**Specs decide, the Harness records and checks.** Concorde's central safety property is that
+nothing a model says changes what counts as accepted. The Harness gets there by separating three
+things: what a worker may know (a context snapshot frozen from the Spec's boundary sets), what it
+may do (its tool list and grant), and what counts as done (a result the Host accepted after
+rechecking the snapshot). A model step can only propose.
 
-Agents owns canonical native Agent definitions and their task contracts, intended effects, workspace,
-tools and timeout. Harness owns their execution and binding mechanisms. The Model execution profiles service combines the authored Agent Spec and Python profile into a reproducible
-WorkerBinding, using fresh instructions supplied by [Distribution Module](../distribution/module.md). The Typed values layer validates the
-contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
-instruction identity separate from the project knowledge a worker may read.
+**Why five parts.** Each part changes for a different reason: the request protocol and its
+envelopes (Request admission), the mapping from Specs to worker inputs (Task context), the way
+models run on Pi and optional LangGraph Graphs (Agent execution), operating-system sandboxing
+(Check execution), and the Git lifecycle of changes (Candidate worktrees). Keeping them apart lets
+one change without touching the others, and lets a task on one part receive a small boundary.
 
-<a id="entity.harness.context"></a><a id="entity.harness.permissions"></a>
+**What is enforced today.** The Spec Protocol defines what a task may read and write. The Harness
+freezes those sets exactly, but enforces them only partly:
 
-Context resolution freezes the selected Module's complete document units, implementation names,
-external references and admitted task artifacts. Both reading and metadata source bytes participate
-in identity. The Permissions compiler intersects declared effects with host authority for that phase; metadata
-never becomes writable merely because a programmer can change the implementation it names.
-A changed binding, source member or reference selection requires a fresh context.
+| Boundary | Enforced today by | Not enforced |
+| --- | --- | --- |
+| Which capability runs, with which configuration, in which worktree | Request admission, always | — |
+| A worker's tools and the ban on delegation | the worker's native definition and its Pi session | — |
+| What a worker reads | nothing at the operating-system level; a capsule holds only the granted copies and is the worker's working directory | a worker's file tools can name paths outside its capsule |
+| What the programmer writes | its instructions name the intended files | its edits and shell are not confined to them |
+| Network and credentials of a worker | — | not restricted |
+| What counts as a result | independent Host acceptance with a recheck of the snapshot | — |
+| Configured checks and tester commands | an operating-system read-only filesystem with private scratch | reads, network and credentials |
+| Pi RPC diagnostic workers | a tool gate and a Linux sandbox built from the compiled grant | network |
 
-<a id="entity.harness.agent-execution"></a><a id="entity.harness.pi-worker-runtime"></a><a id="entity.harness.pi"></a>
+A worker that ignores its instructions can therefore read or write more than its grant, but its
+result is still refused if any input it was given changed, and every change stays inside a
+candidate until the developer delivers it.
 
-Native execution projects a fresh file-Agent into invocation-owned scratch, binds public native
-preflight and returns the exact call. Authored workflows order multiple terminal calls. Finite Host
-services stage proposals and accept only independently correlated terminal results with current
-inputs. No Python provider stack waits for a model. Native intended file scope is prompt-level;
-scratch is not a lifecycle ledger or proof of exclusive reads. Historical `WorkerExecutor` and
-Pi-RPC sandbox utilities remain diagnostic/test support, never a public fallback.
+<a id="realization.harness.packages"></a>
 
-Common request, workspace and configuration admission runs directly for all public capabilities.
-Its stable identity and domain checks are independent of whether a capability is a native Agent,
-Workflow or deterministic Host service.
-
-<a id="entity.harness.studio"></a><a id="entity.harness.worktree-lifecycle"></a><a id="entity.harness.langgraph"></a>
-
-Only explicitly selected StateGraph Operations use LangGraph. Studio inspects the same genuine
-[terminal Agent Operation](execution-reference.md#host-operation-node-operation-node), with no
-capability mirrors. Its trusted embedding supplies a native service; default inspection does not
-launch a worker. Worktree lifecycle still binds candidate identity and progress; no model response
-alone advances it or widens another invocation's authority.
-
-### Flow overview
-
-This conceptual view shows the common boundary around an Operation, not its executable node
-catalog. Admission fixes which request may run and where; each worker then receives its own
-narrow grant. A successful process exit alone is not an accepted result. The Host preserves the
-difference between a business stop, invalid output and execution failure when reporting back.
-
-The [admission contract](admission.md#operation-execution-boundary) defines request and workspace
-checks. The [optional Operation Graph Spec](execution-reference.md#host-operation-node-operation-node)
-defines the explicitly selected typed State boundary. Native workflows, not a batch Graph, order
-reviewers and domain decisions without granting one item another item's context.
-
-```mermaid
-flowchart LR
-    accTitle: Operation admission and execution flow overview
-    accDescr: Check the request, workspace and configuration before dispatching the selected behavior. Workers receive separate bounded invocations as needed. Return the admitted result or a precise stop without widening authority.
-    request["Receive an Operation request"]
-    admit["Check request, workspace and configuration"]
-    execute["Run the selected behavior with bounded invocations"]
-    finish["Return accepted output or an explicit stop"]
-    request -->|enter the common boundary| admit
-    admit -->|admitted in the correct workspace| execute
-    admit -->|rejected or unavailable boundary| finish
-    execute -->|validate results and preserve failure distinctions| finish
-```
+The Harness binds only its Python package markers; all behaviour is bound by its children.
 
 ## Relationships
 
-Each invocation is the unit of work this Module executes. Its Spec context is the selected
-Module's complete one-level owned/reference context; its implementation context is the
-Protocol-defined set of files the Module's own entities bind — every phase sees their names, only
-the programmer and code reviewer see authorized contents; its resource context is
-its worker's tools together with the Module's declared external references, whose readable files
-reach the planner, task author, programmer and code reviewer read-only; its task context is the
-task, constraints, stage artifacts and lifecycle metadata. The frozen closure is never empty and its
-identity covers every admitted byte.
-
-Canonical Agent definitions bind Agent Specs, task contracts, intended scope, tools and limits.
-Fresh preparation and native preflight bind the actual call; independent admission checks terminal
-results. File policy and terminal tool ceilings remain distinct. Authored native workflows own
-public cognitive control flow; optional StateGraph composition is explicit. Historical RPC utilities
-retain their diagnostic sandbox contract without confining native Agents.
-
 ```mermaid
 flowchart TB
-    accTitle: Harness entities and relationships
-    accDescr: Context and Agent profiles prepare native terminal execution; admission and typed result checks preserve authority. Studio is a separately selected StateGraph surface. Pi worker runtime is retained historical diagnostic support, not the native backend.
-    agentModel["Operation and Harness model"]
-    agentDefs["Model execution profiles"]
-    permissions["Permissions"]
-    execution["Worker execution"]
-    context["Context resolution"]
-    typedValues["Typed values"]
-    worktree["Worktree lifecycle"]
-    studio["Studio"]
-    admission["Operation admission"]
-    operations["Operations"]
-    spec["Spec"]
-    distribution["Distribution"]
-    langgraph["LangGraph"]
-    piRuntime["Pi worker runtime"]
-    pi["Pi"]
-    agentModel -->|defines worker profile and contract records for| agentDefs
-    agentModel -->|supplies profile, contract, WorkerBinding and selection records to| execution
-    agentModel -->|declares maximum effects for| permissions
-    agentModel -->|supplies the host environment allowlist to| piRuntime
-    agentDefs -->|resolves a verified WorkerBinding for| execution
-    agentDefs -->|renders instructions and attests freshness through| distribution
-    permissions -->|compiles the effective policy for| execution
-    worktree -->|verifies an isolated mutation boundary for| permissions
-    context -->|supplies Spec, implementation and task context to| execution
-    context -->|resolves documents, identities and entity file listings from| spec
-    context -->|admits Protocol assets rendered by| distribution
-    context -->|freezes typed stage inputs and records through| typedValues
-    context -->|supplies the declared reference documentation of| langgraph
-    execution -->|validates typed results and schemas through| typedValues
-    studio -->|inspects explicitly selected StateGraph Operations with| langgraph
-    execution -->|retains historical diagnostic launches through| piRuntime
-    studio -->|inspects the separately selected typed boundary of| execution
-    admission -->|binds candidate workspaces through| worktree
-    admission -->|hands admitted requests to the dispatch of| operations
-    admission -->|validates envelopes and requests through| typedValues
-    piRuntime -->|runs historical diagnostic workers in RPC mode on| pi
+    accTitle: The parts of the Harness
+    accDescr: The Harness contains five Modules.
+    harness[Harness]
+    admission[Request admission]
+    context[Task context]
+    execution[Agent execution]
+    checks[Check execution]
+    worktrees[Candidate worktrees]
+    harness -->|contains| admission
+    harness -->|contains| context
+    harness -->|contains| execution
+    harness -->|contains| checks
+    harness -->|contains| worktrees
 ```
 
-## Reading by responsibility
+<a id="contains-admission"></a>
 
-The following topics explain how to use each Harness boundary. Their exact requirements and
-acceptance cases belong to the Harness Module's [requirements](requirements.md) and
-[scenarios](scenarios.md), rather than to the topic pages.
+**Request admission** is the single entry of every capability request. The Harness relies on it to
+refuse malformed requests, requests from inside a worker, stale builds and configuration
+mismatches before any provider runs, to run mutations in a candidate, and to return one envelope
+that keeps refusals, business outcomes and execution failures apart.
 
-### Context freezing
+<a id="contains-context"></a>
 
-Realized by `resolve_context` and its recheck; see
-[context](context.md).
+**Task context** turns the Spec's boundary sets into a context snapshot for one Module and one
+step, holds the worker profiles, and compiles grants. The Harness relies on it to give every worker
+exactly its Module's context and, outside code phases, only the names of implementation files, and
+to reject any result whose snapshot no longer matches the repository.
 
-### Domain Agent profile and Harness binding
+<a id="contains-execution"></a>
 
-Realized by `worker_profile` and `resolve_worker`; see [Agents and Harnesses](agents-and-harnesses.md)
-and [runtime values](runtime-values.md).
+**Agent execution** prepares and runs the native Pi workers and workflows, selects their models,
+and accepts their results independently of what the model claims. It also owns the optional
+LangGraph Graph boundary and the Pi RPC diagnostic worker path. The Harness relies on it to make
+every model step a fresh, terminal worker whose submission is a proposal.
 
-### Permission compilation
+<a id="contains-checks"></a>
 
-Realized by `compile_policy` and the worktree boundary check; see [permissions](permissions.md).
+**Check execution** runs the project's configured checks and a tester's commands with the project
+mounted read-only and a private scratch directory, and exports their evidence. The Harness relies
+on it for the only operating-system isolation that applies to project code today; when that
+isolation is unavailable, checks do not run at all.
 
-### Operation admission
+<a id="contains-worktrees"></a>
 
-Realized by `run_operation`, `operation_graph_nodes`, `bind_worktree` and `json_main`; see
-[host](host.md) and the [admission contracts](admission.md).
-
-### Worker execution
-
-Native preparation, proposal staging and independent admission are realized by the native Host
-services and authored Pi workflows. `launch_worker`, `WorkerExecutor` and Pi-RPC are historical
-diagnostic/test support only; see [execution](execution.md) and [host](host.md).
-
-The deterministic check executor's read-only filesystem, scratch, result, unavailable-backend and
-process-lifetime cases are defined in [Harness scenarios](scenarios.md#scenario.harness.check-read-only).
-The Pi RPC client, worker launch, tool gate and terminal worker scenarios are defined in
-[Harness scenarios](scenarios.md#scenario.harness.pi-worker-launch). See [every tool call is
-gated](requirements.md#req.harness.worker-gate), [a capsule grants only its own snapshot](requirements.md#req.harness.capsule-closed),
-[closed process inputs](requirements.md#req.harness.process-inputs-closed), [workers cannot delegate](requirements.md#req.harness.delegation-one-level) and [only the submitted result leaves the
-worker](requirements.md#req.harness.worker-single-result).
-
-### Typed value validation
-
-Realized by `typed`, `validate_typed`, `json_schema`, `decode`, `canonical` and the schema
-evaluator; see [typed values](typed-values.md).
-
-## Local collaboration agreements
-
-These entries describe the exact direct providers registered for this Module. They state
-relied-upon behavior from this Module's perspective without importing another Module's documents.
-
-### Spec
-
-<a id="entity.harness.spec"></a><a id="agreement.document.harness.module.1"></a>
-
-The [Spec Module](../spec/module.md) owns the project Spec model: the pinned Protocol binding, the explicit registry, structural validation, stable-ID file-set queries and honest initialization.
-
-Admit the registry and resolve identities, document collections, entity file listings and file ownership.
-
-This collaboration applies when freezing any context kind or checking a target, focus or binding.
-
-- [Resolve the full one-level context and own implementation bindings; rebuild snapshots after changes](../spec/contracts.md#registry-stable-id-spec-context-queries)
-
-### Operations
-
-<a id="entity.harness.operations"></a><a id="agreement.document.harness.module.3"></a>
-
-The [Operations Module](../operations/module.md) owns explicit StateGraph composition and the compatibility capability inventory and dispatch that route an admitted request to its business provider. Canonical Agent definitions remain owned by [Agents](../agents/module.md).
-
-Admit only registered public entries and declared composition, then dispatch finite Host services or prepare the selected native Agent/workflow.
-
-This collaboration applies when admission executes an admitted capability request or checks a collaborator against its caller's declared composition.
-
-- [Capability inventory and composition](../operations/execution-reference.md#operations-operation-registry); refuse unknown and non-public entries with `unknown_operation` and undeclared composition with `undeclared_operation`, never routing by name outside the catalog.
-- [Finite dispatch and native preparation](../operations/execution-reference.md#operations-behavioral-ownership-and-composition-limits); adopt the admitted Host service's typed output or independently accepted native result, or a relayed candidate's complete envelope, as the invocation's result. Preparation alone is not completion; no dispatch Graph runs under these public capabilities.
-
-### Distribution
-
-<a id="entity.harness.distribution"></a><a id="agreement.document.harness.module.2"></a>
-
-Build authored projections, install and configure owned integrations, provision the managed runtime and keep a source checkout's own projections bound to the worktree that built them.
-
-Render Agent instructions and Protocol assets from authored sources and attest their freshness.
-
-This collaboration applies when resolving an Agent binding, admitting the Protocol rule bundle,
-or preparing consumer worktree execution. Harness admits the explicit invoking package, bootstraps
-only its newly created consumer candidate, and verifies/reuses local installations on resume and
-installed entry admission. It relies on Distribution's ownership-preserving complete-install
-[service](../distribution/contracts.md#local-installation-service); failure blocks before a worker,
-retains the candidate and requires explicit installation recovery. The host keeps the target
-quiescent; receipt verification supplies no task, Protocol acceptance or lifecycle authority.
-
-- [Load only fresh, source-traceable instructions and pinned rule assets](../distribution/build.md)
-
-## Unresolved information
-
-The sandbox, credential-copy and placeholder limitations below refer to retained low-level RPC
-diagnostic/test utilities, not to native Agent confinement. Native file/network/credential policy
-is cooperative; configured-check/tester isolation is the separate actual OS boundary.
-
-- Resource context carries only the Module's declared external references and each worker's
-  profile tools today: no worker admits an Operation or Tool reference beyond them, so those
-  contracts are not yet snapshot fields. Materializing them in the snapshot record, with their
-  identities in the context digest, is pending implementation work that must not widen any grant.
-- The historical RPC diagnostic/test worker sandbox does not restrict the network, because Pi must reach its model provider.
-  Anything the process can read, including the workspace, can therefore leave the sandbox over the
-  network. Closing this needs a private network namespace in which only the credential proxy
-  below is reachable; that is pending.
-- The provider credentials the worker itself uses are readable inside the sandbox: the run
-  directory holds the copied `auth.json` and `models.json`, and the Pi process environment carries
-  the provider key variables, which the gate unsets only for each shell command. A shell command
-  can read that copy and, with the shared network, send it out. The pending credential broker
-  keeps the real credentials on the host: a loopback proxy that adds the authorization and
-  performs the OAuth refresh, with the run's `models.json` pointing Pi at the proxy under a
-  placeholder key, so no real credential enters the sandbox.
-- The sandbox's secret masks are the fixed list `MASKED_HOME_PATHS`, not a discovery of every
-  credential a developer keeps; a secret stored elsewhere under the home directory stays readable.
-  Toolchains under the home directory stay readable on purpose, so workers can run tests.
-- A pending write entry becomes an empty placeholder file or directory in the candidate before
-  the launch and is removed only if the worker left it empty; a placeholder is the price of an
-  exact write boundary for a path that does not exist yet.
-- The sandbox requires Linux with a trusted system bubblewrap and refuses every such diagnostic worker launch
-  elsewhere; there is no unconfined fallback and no backend for another platform yet.
-- A relayed consumer candidate executes only its own verified installation and managed interpreter.
-  Source candidates require their own fresh private build and local environment instead; no host
-  installs an ambient shim into a source checkout. Durable usage, results and logs remain only in
-  primary-owned `.concorde/runs/`, with candidate source/runtime provenance. The requesting session
-  receives the result and diagnostics; the optional Studio surface does not mirror relay as a public capability graph. A host interrupt
-  gives the launcher thirty seconds to cancel its worker before killing it. Missing or stale resumed
-  installation requires explicit supported installer recovery, not silent reinstallation or fallback.
-- Checks run by `run_checks` use the configured-check executor, but the worker receives only the tail
-  of each check's log; whether a longer or structured report is needed is unresolved.
-
-The Harness implements Protocol 10 ownership/reference resolution and independently versioned context handoffs. See [context migration status](context.md#implementation-status).
-Referenced definitions remain read-only and do not enter local entity/file grants.
-
-## Precise specifications
-
-The Harness Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
-These companions are part of the same complete Module specification, not separate topic owners.
-
-### Agents
-
-<a id="entity.harness.agents"></a>
-
-[Agents](../agents/module.md) owns callable Agent definitions and interaction. This Module consumes
-those definitions rather than maintaining an Agent catalog or behavioral copy. It preserves the
-Agent's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
-acceptance and execution mechanisms remain with their existing owners.
+**Candidate worktrees** creates candidates, keeps each change's status and every run record in the
+primary worktree, and answers which worktree a request is in. The Harness relies on it so that a
+change never touches the primary checkout before delivery and its evidence survives the candidate.

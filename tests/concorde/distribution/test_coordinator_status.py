@@ -28,7 +28,10 @@ class CoordinatorStatusTests(unittest.TestCase):
             REPOSITORY_ROOT, "prompts/user-session/source/coordinator.md"
         ).body
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies(
+        "scenario.agents.coordinator-ownership",
+        "scenario.distribution.task-subagents",
+    )
     def test_canonical_lifecycle_is_rendered_only_for_source_user_session(self):
         prompt = self.source_prompt()
         outputs = {item.path: item for item in render(REPOSITORY_ROOT)}
@@ -101,7 +104,7 @@ class CoordinatorStatusTests(unittest.TestCase):
             ).read_text(),
         )
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.agents.coordinator-ownership")
     def test_documented_cli_registers_two_candidates_and_hands_off_exact_owner(self):
         commands = re.findall(
             r"^\.venv/bin/python scripts/concorde.py (status[^\n]*)$",
@@ -168,7 +171,7 @@ class CoordinatorStatusTests(unittest.TestCase):
             self.assertEqual(bound["child"], resumed["child"])
             self.assertEqual(states[0], read_status(primary, states[0]["change_id"]))
 
-    @verifies("scenario.distribution.task-subagents")
+    @verifies("scenario.agents.coordinator-ownership")
     def test_cleanup_flag_is_never_silently_ignored(self):
         with tempfile.TemporaryDirectory() as directory:
             primary = Path(directory) / "primary"

@@ -1,0 +1,77 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.concorde.vocabulary",
+    "owner": "module.concorde",
+    "role": "module"
+  },
+  "defines": [
+    {
+      "id": "concept.concorde.developer",
+      "type": "concept",
+      "title": "Developer",
+      "meaning": "#concept.concorde.developer"
+    },
+    {
+      "id": "concept.concorde.user-session",
+      "type": "concept",
+      "title": "User session",
+      "meaning": "#concept.concorde.user-session"
+    },
+    {
+      "id": "concept.concorde.task-subagent",
+      "type": "concept",
+      "title": "Task subagent",
+      "meaning": "#concept.concorde.task-subagent"
+    },
+    {
+      "id": "concept.concorde.capability",
+      "type": "concept",
+      "title": "Capability",
+      "meaning": "#concept.concorde.capability"
+    },
+    {
+      "id": "concept.concorde.module",
+      "type": "concept",
+      "title": "Module",
+      "meaning": "#concept.concorde.module"
+    },
+    {
+      "id": "concept.concorde.spec",
+      "type": "concept",
+      "title": "Spec",
+      "meaning": "#concept.concorde.spec"
+    },
+    {
+      "id": "concept.concorde.context",
+      "type": "concept",
+      "title": "Context",
+      "meaning": "#concept.concorde.context"
+    },
+    {
+      "id": "concept.concorde.boundary",
+      "type": "concept",
+      "title": "Boundary",
+      "meaning": "#concept.concorde.boundary"
+    },
+    {
+      "id": "concept.concorde.host",
+      "type": "concept",
+      "title": "Host",
+      "meaning": "#concept.concorde.host"
+    },
+    {
+      "id": "concept.concorde.worker",
+      "type": "concept",
+      "title": "Worker",
+      "meaning": "#concept.concorde.worker"
+    },
+    {
+      "id": "concept.concorde.evidence",
+      "type": "concept",
+      "title": "Evidence",
+      "meaning": "#concept.concorde.evidence"
+    }
+  ],
+  "relations": []
+}

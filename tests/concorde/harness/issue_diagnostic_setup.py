@@ -10,11 +10,7 @@ import subprocess
 from concorde.distribution.project_defaults import install_project_defaults
 from concorde.harness.change_worktree import bind_owner, ensure_change, read_change
 from concorde.issues.store import read_issue, report_issue
-from concorde.spec.initialize import (
-    apply_project_proposal,
-    empty_target,
-    project_proposal,
-)
+from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
 
@@ -43,9 +39,13 @@ Supply Python callers with the next integer. This pure arithmetic Module has no 
 
 ## Terminology
 
-| Term | Meaning / definition |
+| Term | Definition |
 | --- | --- |
 | Supported integer | A Python int excluding bool, with no magnitude bound. |
+
+<a id="concept.increment.supported-integer"></a>
+
+A supported integer is any Python int that is not a bool.
 
 ## Usage
 
@@ -55,10 +55,10 @@ Import increment from app.increment and call increment(n) with any supported int
 
 The Increment function performs one integer addition. The Check compares its return against arithmetic expectations at zero, negative, positive and large values. This requires no external collaborator. There are no imported terminology restatements.
 
-<a id="entity.increment.function"></a>
+<a id="realization.increment.function"></a>
 The Increment function computes the result without external effects.
 
-<a id="entity.increment.check"></a>
+<a id="realization.increment.check"></a>
 The Check independently exercises the stated cases.
 
 ## Relationships
@@ -93,6 +93,10 @@ increment SHALL have no externally observable side effects.
 - THEN both calls return n + 1
 - AND there is no output or external state change
 """
+for path in ("specs/project/module.md", "specs/project/module.md.json"):
+    (r / path).unlink()
+(r / "specs/project").rmdir()
+owns = ["specs/increment/module.md", "specs/increment/obligations.md"]
 for name, body, role in [
     ("module", entry, "module"),
     ("obligations", precise, "implementation"),
@@ -101,59 +105,83 @@ for name, body, role in [
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(body)
     m = dict(
-        schema_version=2,
+        schema_version=3,
         document=dict(
             id=f"document.increment.{name}", owner="module.increment", role=role
         ),
-        entities=[],
-        dependencies=[],
-        bindings=[],
+        defines=[],
+        relations=[],
     )
     if name == "module":
-        m["entities"] = [
+        m["module"] = dict(
+            title="Increment",
+            owns=owns,
+            contains=[],
+            uses=[],
+            includes=[],
+            participates=[],
+        )
+        m["defines"] = [
             dict(
-                id="entity.increment.function",
-                title="Increment function",
-                kind="function",
-                meaning="#entity.increment.function",
-                files=["app/increment.py"],
+                id="concept.increment.supported-integer",
+                type="concept",
+                title="Supported integer",
+                meaning="#concept.increment.supported-integer",
             ),
             dict(
-                id="entity.increment.check",
+                id="realization.increment.function",
+                type="realization",
+                title="Increment function",
+                meaning="#realization.increment.function",
+                entries=["app/increment.py"],
+            ),
+            dict(
+                id="realization.increment.check",
+                type="realization",
                 title="Check",
-                kind="test",
-                meaning="#entity.increment.check",
-                files=["checks/increment_check.py"],
+                meaning="#realization.increment.check",
+                entries=["checks/increment_check.py"],
             ),
         ]
+        m["relations"] = [
+            dict(
+                type="relates",
+                source="realization.increment.check",
+                verb="checks",
+                target="realization.increment.function",
+            )
+        ]
     pathlib.Path(str(p) + ".json").write_text(json.dumps(m))
-t = empty_target(
-    "module.increment",
-    "module",
-    "Increment",
-    ["specs/increment/module.md", "specs/increment/obligations.md"],
-)
-t["files"] = ["app/increment.py", "checks/increment_check.py"]
-t["checks"] = ["check.increment"]
 (r / ".concorde/specs.json").write_text(
     json.dumps(
         dict(
-            schema_version=5,
-            project_id="project.increment",
-            entry_target=t["id"],
-            targets=[t],
-            checks=[
+            schema_version=3,
+            modules=[
                 dict(
-                    id="check.increment",
-                    target_id=t["id"],
-                    argv=["{python}", "checks/increment_check.py"],
-                    timeout_seconds=30,
-                    inputs=t["files"],
+                    id="module.increment",
+                    title="Increment",
+                    entry="specs/increment/module.md",
+                    owns=owns,
+                    contains=[],
+                    uses=[],
+                    includes=[],
+                    participates=[],
                 )
             ],
         )
     )
 )
+configuration = json.loads((r / ".concorde/config.json").read_text())
+configuration["checks"] = [
+    dict(
+        id="check.increment",
+        module="module.increment",
+        argv=["{python}", "checks/increment_check.py"],
+        timeout_seconds=30,
+        inputs=["app/increment.py", "checks/increment_check.py"],
+    )
+]
+(r / ".concorde/config.json").write_text(json.dumps(configuration, indent=2))
 (r / "app").mkdir()
 (r / "checks").mkdir()
 (r / "app/increment.py").write_text("def increment(n):\n    return n - 1\n")
@@ -204,7 +232,7 @@ receipt = report_issue(
         description=message,
         impact="Every supported integer receives the wrong next value.",
         basis="req.increment.result and scenario.increment.values",
-        owner_target_id=t["id"],
+        owner_target_id="module.increment",
         evidence=[
             dict(
                 path="app/increment.py",
@@ -217,7 +245,7 @@ receipt = report_issue(
         agent="host",
         operation="concorde-issues",
         phase="report",
-        target_id=t["id"],
+        target_id="module.increment",
         context_id="sha256:" + "a" * 64,
         change_id=None,
         head=None,

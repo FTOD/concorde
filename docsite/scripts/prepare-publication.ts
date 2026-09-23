@@ -11,9 +11,8 @@ import { materializeScoped } from "../plugins/scoped-content/materialize";
 export const productionGeneratedDirectory = ".generated/docusaurus-production";
 
 /**
- * Stage the registered Markdown and navigation this build publishes. Registry schema 5 declares no
- * external diagram sources: every Architecture section is an inline Mermaid fence, so publication
- * renders the registered documents. Checkout-only extensions register their own independent routes.
+ * Stage the registered Markdown and navigation this build publishes. Diagrams are inline Mermaid
+ * fences of the registered documents; checkout-only extensions register their own routes.
  */
 export async function preparePublication(
  projectRoot: string,

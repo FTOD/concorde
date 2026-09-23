@@ -1,0 +1,201 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.context.module",
+    "owner": "module.harness.context",
+    "role": "module"
+  },
+  "module": {
+    "title": "Task context",
+    "owns": [
+      "specs/concorde/harness/context/module.md",
+      "specs/concorde/harness/context/requirements.md",
+      "specs/concorde/harness/context/scenarios.md",
+      "specs/concorde/harness/context/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-worktrees",
+        "relies_on": [
+          "concept.worktrees.worktree",
+          "concept.worktrees.change-status",
+          "scenario.harness.workspace-inventory"
+        ]
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.agent"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.context.snapshot",
+      "type": "concept",
+      "title": "Context snapshot",
+      "meaning": "#concept.context.snapshot"
+    },
+    {
+      "id": "concept.context.phase",
+      "type": "concept",
+      "title": "Phase",
+      "meaning": "#concept.context.phase"
+    },
+    {
+      "id": "concept.context.stage-input",
+      "type": "concept",
+      "title": "Stage input",
+      "meaning": "#concept.context.stage-input"
+    },
+    {
+      "id": "concept.context.capsule",
+      "type": "concept",
+      "title": "Capsule",
+      "meaning": "#concept.context.capsule"
+    },
+    {
+      "id": "concept.context.grant",
+      "type": "concept",
+      "title": "Grant",
+      "meaning": "#concept.context.grant"
+    },
+    {
+      "id": "concept.context.worker-profile",
+      "type": "concept",
+      "title": "Worker profile",
+      "meaning": "#concept.context.worker-profile"
+    },
+    {
+      "id": "realization.context.freezing",
+      "type": "realization",
+      "title": "Context freezing",
+      "meaning": "#realization.context.freezing",
+      "entries": [
+        "src/concorde/harness/context.py",
+        "src/concorde/harness/revisions.py"
+      ]
+    },
+    {
+      "id": "realization.context.profiles",
+      "type": "realization",
+      "title": "Worker profiles",
+      "meaning": "#realization.context.profiles",
+      "entries": [
+        "src/concorde/harness/worker_profile.py",
+        "src/concorde/harness/effects.py"
+      ]
+    },
+    {
+      "id": "realization.context.permissions",
+      "type": "realization",
+      "title": "Permission compiler",
+      "meaning": "#realization.context.permissions",
+      "entries": [
+        "src/concorde/harness/permissions.py"
+      ]
+    },
+    {
+      "id": "realization.context.reference-check",
+      "type": "realization",
+      "title": "Reference version check",
+      "meaning": "#realization.context.reference-check",
+      "entries": [
+        "scripts/development/check-reference-versions.py"
+      ]
+    },
+    {
+      "id": "realization.context.tests",
+      "type": "realization",
+      "title": "Context tests",
+      "meaning": "#realization.context.tests",
+      "entries": [
+        "tests/concorde/harness/test_boundaries.py",
+        "tests/concorde/harness/test_scoped_protocol.py",
+        "tests/concorde/harness/test_external_references.py",
+        "tests/concorde/harness/test_permissions.py",
+        "tests/concorde/harness/test_worker_profile.py",
+        "tests/concorde/harness/test_worker_binding.py",
+        "tests/concorde/harness/test_check_evidence.py",
+        "tests/concorde/harness/test_worker_executor.py"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.context.freezing",
+      "verb": "freezes",
+      "target": "concept.context.snapshot"
+    },
+    {
+      "type": "relates",
+      "source": "realization.context.freezing",
+      "verb": "reads boundary sets from",
+      "target": "module.spec"
+    },
+    {
+      "type": "relates",
+      "source": "realization.context.freezing",
+      "verb": "reads workspace facts from",
+      "target": "module.harness.worktrees"
+    },
+    {
+      "type": "relates",
+      "source": "concept.context.snapshot",
+      "verb": "carries",
+      "target": "concept.context.stage-input"
+    },
+    {
+      "type": "relates",
+      "source": "concept.context.snapshot",
+      "verb": "is copied into",
+      "target": "concept.context.capsule"
+    },
+    {
+      "type": "relates",
+      "source": "realization.context.profiles",
+      "verb": "loads profiles from",
+      "target": "module.agents"
+    },
+    {
+      "type": "relates",
+      "source": "realization.context.profiles",
+      "verb": "validates",
+      "target": "concept.context.worker-profile"
+    },
+    {
+      "type": "relates",
+      "source": "realization.context.permissions",
+      "verb": "compiles",
+      "target": "concept.context.grant"
+    },
+    {
+      "type": "relates",
+      "source": "concept.context.worker-profile",
+      "verb": "bounds",
+      "target": "concept.context.grant"
+    }
+  ],
+  "extensions": {}
+}

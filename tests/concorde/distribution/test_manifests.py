@@ -26,12 +26,9 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(manifest["schema_version"], 5)
         self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "8.0.0"))
         self.assertEqual(
-            (manifest["architecture_profile"], manifest["workspace_protocol"]), (15, 16)
+            (manifest["architecture_profile"], manifest["workspace_protocol"]), (16, 16)
         )
         self.assertEqual(manifest["client"], "pi")
-        self.assertNotIn("integrations", manifest)
-        self.assertNotIn("skill_namespace", manifest)
-        self.assertNotIn("skills", manifest["package_roots"])
         self.assertEqual(
             manifest["install"],
             {
@@ -52,9 +49,7 @@ class ManifestContractTests(unittest.TestCase):
 
     @verifies("scenario.distribution.template-ownership")
     def test_templates_live_only_in_their_owning_packages(self):
-        self.assertNotIn("templates", self.manifest)
         self.assertNotIn("templates", self.manifest["package_roots"])
-        self.assertFalse((REPOSITORY_ROOT / "templates").exists())
         for relative in (
             "protocol/templates/module.md",
             "protocol/templates/scenario.md",
@@ -176,15 +171,10 @@ class ManifestContractTests(unittest.TestCase):
                 (target / ".concorde/framework/generated/build-manifest.json").is_file()
             )
             self.assertTrue((target / ".concorde/framework/operations").is_dir())
-            self.assertFalse((target / ".concorde/framework/capabilities").exists())
             self.assertTrue((target / ".pi/extensions/concorde-session.ts").is_file())
-            self.assertFalse((target / ".agents").exists())
-            self.assertFalse((target / ".claude").exists())
-            self.assertFalse((target / "skills-lock.json").exists())
             self.assertFalse(
                 (target / ".concorde/framework/docsite/sidebars.docs.ts").exists()
             )
-            self.assertFalse((target / ".specify").exists())
 
             # The host in the consumer must pass the freshness check without ever building itself.
             check = subprocess.run(

@@ -131,7 +131,6 @@ def _agents_package(
     init_source: str = VALID_AGENT_INIT,
     module_source: str = VALID_AGENT_ALPHA_MODULE,
     spec_source: str = VALID_AGENT_ALPHA_SPEC,
-    children: dict[str, str] | None = None,
 ) -> None:
     _operations_package(root, init_source="OPERATIONS = ()", alpha_source="")
     (root / "operations/alpha.py").unlink()
@@ -142,11 +141,6 @@ def _agents_package(
     alpha.mkdir(parents=True, exist_ok=True)
     (alpha / "__init__.py").write_text(module_source, encoding="utf-8")
     (alpha / "spec.md").write_text(spec_source, encoding="utf-8")
-    if children:
-        children_dir = alpha / "children"
-        children_dir.mkdir(parents=True, exist_ok=True)
-        for name, content in children.items():
-            (children_dir / f"{name}.md").write_text(content, encoding="utf-8")
 
 
 class PromptRuleTests(unittest.TestCase):
@@ -294,14 +288,6 @@ class OperationModuleRuleTests(unittest.TestCase):
                     findings,
                 )
 
-    def test_removed_class_declaration_is_rejected(self) -> None:
-        _operations_package(self.root, alpha_source=VALID_ALPHA + '\nCLASS = "stage"\n')
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001" for f in findings),
-            findings,
-        )
-
     def test_unknown_uses_name_is_reported(self) -> None:
         broken = VALID_ALPHA.replace("USES = ()", 'USES = ("unknown",)')
         _operations_package(self.root, alpha_source=broken)
@@ -354,14 +340,6 @@ class OperationModuleRuleTests(unittest.TestCase):
         findings = package_validation._validate_operation_modules(self.root)
         self.assertTrue(
             any("duplicate Operation" in f.message for f in findings), findings
-        )
-
-    def test_removed_agents_relation_is_rejected(self) -> None:
-        _operations_package(self.root, alpha_source=VALID_ALPHA + "\nAGENTS = ()\n")
-        findings = package_validation._validate_operation_modules(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-OPERATION-CONSTANTS-001" for f in findings),
-            findings,
         )
 
     def test_profiles_must_be_worker_profile_objects(self) -> None:
@@ -669,15 +647,6 @@ class AgentRuleTests(unittest.TestCase):
             any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings
         )
 
-    def test_undeclared_child_file_is_reported(self) -> None:
-        _agents_package(
-            self.root, children={"scout": "Retired child catalog must fail."}
-        )
-        findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(
-            any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings
-        )
-
 
 class ContractRuleTests(unittest.TestCase):
     """Rule 3: exported type identities are unique; generated/protocol/schemas.json matches json_schema."""
@@ -843,23 +812,19 @@ def _required_documents(root: Path) -> dict[str, str]:
 
 def _registry(root: Path, *, documents: list[str]) -> None:
     registry = {
-        "schema_version": 5,
-        "project_id": "project.fixture",
-        "entry_target": "service.alpha",
-        "targets": [
+        "schema_version": 3,
+        "modules": [
             {
                 "id": "service.alpha",
-                "kind": "module",
                 "title": "Alpha",
-                "documents": documents,
-                "parent": None,
+                "entry": "specs/alpha/module.md",
+                "owns": documents,
+                "contains": [],
                 "uses": [],
-                "references": [],
-                "files": [],
-                "checks": [],
+                "includes": [],
+                "participates": [],
             }
         ],
-        "checks": [],
     }
     path = root / ".concorde/specs.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -873,11 +838,10 @@ def _document(root: Path, relative: str, document_id: str, body: str) -> None:
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
     metadata = {
-        "schema_version": 2,
+        "schema_version": 3,
         "document": {"id": document_id, "owner": "service.alpha", "role": "module"},
-        "entities": [],
-        "dependencies": [],
-        "bindings": [],
+        "defines": [],
+        "relations": [],
     }
     for language, key in [
         ("concorde-operations", "concorde.operations"),
@@ -1235,7 +1199,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.harness.admission",
+            "document.admission.contracts",
             "Mentions `concorde-not-a-real-type@1` here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1250,7 +1214,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.harness.admission",
+            "document.admission.contracts",
             "Mentions `concorde-operation-invocation@2` here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1266,7 +1230,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.harness.admission",
+            "document.admission.contracts",
             "Nothing about types here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1308,7 +1272,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.harness.admission",
+            "document.admission.contracts",
             "No error table here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1334,7 +1298,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.harness.admission",
+            "document.admission.contracts",
             "No error table here.",
         )
         _registry(self.root, documents=["specs/boundary.md"])
@@ -1374,7 +1338,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         _document(
             self.root,
             "specs/boundary.md",
-            "document.harness.admission",
+            "document.admission.contracts",
             "| Error code | Meaning |\n| --- | --- |\n| `fixture_code` | Something. |",
         )
         _registry(self.root, documents=["specs/boundary.md"])

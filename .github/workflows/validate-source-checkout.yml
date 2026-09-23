@@ -43,10 +43,14 @@ jobs:
       - name: Validate the Spec and package
         run: python3 scripts/concorde.py validate
 
+      - name: Install the Pi extension dependencies
+        # Populates npm's cache with the locked tarballs the offline test installs are seeded from.
+        run: npm ci --prefix pi
+
       - name: Run the full Python test suite
         env:
           PYTHONPATH: src
-        run: .venv/bin/python -m unittest discover -s tests/concorde -t . -p test_*.py
+        run: .venv/bin/python -m pytest --reason=independent --scope=full
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -70,41 +74,3 @@ jobs:
       # Concorde build above.
       - name: Validate the docsite against the current build
         run: npm --prefix docsite run validate
-
-  studio:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-
-      - name: Install optional Studio development runtime
-        run: |
-          python3 -m pip install uv
-          uv sync --locked --group studio
-
-      - name: Install system sandbox dependency
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes bubblewrap
-          # Nested sandbox tests require user namespaces on this disposable Ubuntu runner.
-          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
-            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          fi
-
-      - name: Build
-        run: python3 scripts/concorde.py build
-
-      - name: Test Studio graphs, transport and real Agent Server
-        env:
-          PYTHONPATH: src
-          CONCORDE_TEST_STUDIO: "1"
-        run: |
-          .venv/bin/python -m unittest \
-            tests.concorde.harness.test_studio \
-            tests.concorde.harness.test_studio_client \
-            tests.concorde.harness.test_studio_server

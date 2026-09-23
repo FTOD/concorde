@@ -1,490 +1,1180 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 10.0.0 defines Module specifications, their complete content and the subset
-intended for human reading. It applies to project Specs, including those of software implementing
-this Protocol. The standard's own chapters need not describe themselves as software Modules.
+Concorde Spec Protocol 11.0.0 defines how a project describes itself as a set of Modules, what each
+Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
+including those of software implementing the Protocol. The standard's own chapters need not
+describe themselves as Modules.
 
-## Requirement language
+## Two purposes
 
-**MUST** is required for conformance; **MUST NOT** is prohibited. **SHOULD** is recommended and may
-be departed from for an explained reason. **MAY** permits a choice. Examples prescribe neither
-project names nor business behavior.
+The Protocol exists for two purposes. Every rule in it serves at least one of them, and each
+chapter says how its rules do.
 
-### P1. A Module has one complete specification and a readable subset
+1. **Understanding.** A human grasps the backbone of the project quickly from its specification:
+   its parts, what each is for, how they fit together and how the main flows run. The ultimate goal
+   is that a human never needs to read the code to understand the project; the specification is
+   enough.
+2. **Boundaries.** A harness running an AI task can derive from the specification exactly what the
+   task may read and what it may write. Different tasks need different boundaries, so the Protocol
+   defines the sets that boundaries are composed from, not one fixed boundary.
 
-A **Module** is one cohesive software responsibility, not necessarily a package, directory, service
-or process. Its realization may span or share physical units or be supplied entirely by children.
-Its purpose, behavior, concepts and relationships establish its boundary; file bindings locate its
-realization and do not establish that boundary.
+The two support each other. A boundary is only useful if what lies inside it is understandable, and
+a Module that a human can understand as one responsibility is also the natural unit of a task.
 
-Let `Content(M)` be the complete specification content owned by Module M and `Reading(M)` its
-human-readable content. **Reading(M) is a subset of Content(M)**. The Protocol defines membership
-and completeness of both, not a docsite's layout. Reading is not an independently maintained
-summary, a weaker contract or whatever a renderer chooses to retain.
+Four failures undermine these purposes, and the rules of the Protocol are designed against them:
 
-Reading content MUST explain:
+1. **Inferred promises.** A reader concludes that something is promised because a file, a
+   directory, a name, a link or an adjacent paragraph suggested it. Nothing promised it.
+2. **Meaning drift.** The same word denotes different things in different documents, silently.
+3. **Authority creep.** Permission to read something becomes permission to change it, or a
+   relationship becomes an execution grant.
+4. **Fabricated evidence.** Coverage or conformance is claimed by the promise itself rather than by
+   anything that ran.
 
-- **Purpose:** responsibility, intended consumers, scope and relevant non-goals.
-- **Terminology:** the concepts needed to understand this document, introduced before detailed use.
-  Give each term one canonical Terminology definition; elsewhere link directly to that table and
-  MAY repeat or faithfully restate its meaning with explicit source attribution for reading convenience.
-  This is a reader aid, not an entity inventory or file-binding declaration.
-- **Usage:** when and how to use the Module, concepts and prerequisites, actual entry points,
-  inputs, results, effects, errors and applicable repeat, cancellation and compatibility behavior.
-  Start with a coherent explanation rather than asking readers to assemble instructions from formal
-  statements. A logical responsibility MUST NOT invent an executable interface to fill a template.
-- **Design:** responsibility decomposition, collaborations, significant control/data flow and state,
-  internal invariants, constraints, choices and how they support the guarantees. Intended design
-  is not proof that existing code conforms. A diagram or inventory is not a design explanation.
-- **Relationships:** what the participating entities mean, how they collaborate, and the distinction
-  between structural composition and operation use. Explain conditions and reactions that arrows
-  cannot express. A scoped diagram is not required to reproduce the entire entity inventory.
-- **Precise obligations:** Module requirements, concrete scenarios, interface definitions and the
-  local duties and relied-upon guarantees of collaborators. Infrequent failures, concurrency,
-  security and compatibility promises remain readable even when they are not on the initial path.
+## The model at a glance
 
-Identity, ownership, registration, implementation bindings and pending markers are machine
-metadata, not mandatory reading. Their mechanical records MUST NOT be mixed into the reading
-body. Metadata MUST refer to readable meaning rather than become the only place an essential
-responsibility or obligation is stated. This distinction is about information, not syntax:
-interface schemas and examples can be reading content; a file listing written as a Markdown table
-is still implementation metadata. A publisher MAY expose metadata as an auxiliary inspection view.
+A project's specification is **one graph**. Its nodes are the things the specification declares;
+its edges are the relations between them. Everything else in the Protocol is either how the graph
+is written down, or something computed from it.
 
-The complete Module specification has two explicit document roles, both within Reading(M):
+```mermaid illustrative
+flowchart LR
+    accTitle: The Spec Protocol graph
+    accDescr: Node types and the main relation types between them.
+    Parent[Module] -->|contains| M[Module]
+    M -->|uses / includes| Provider[Module]
+    M -->|owns| D[Document]
+    D -->|defines| C[Concept]
+    D -->|defines| Rz[Realization]
+    D -->|defines| RS[Requirement / Scenario]
+    D -->|defines| K[Contract]
+    D -->|imports| Foreign[Concept of another Module]
+    M -->|participates| K
+    Rz -->|binds| F[(Implementation files)]
+    T[(Test file)] -->|verifies| RS
+```
 
-- **Module Specs** (`module`): the reading entry and explanatory topic documents. The entry follows
-  **Purpose, Terminology, Usage, Design, Relationships**. Topics explain concepts, correct use, collaborations,
-  significant design and important guarantees. Together these explanations MUST establish a usable
-  mental model without requiring readers to reconstruct it from formal definitions. They MUST NOT
-  become empty link indexes or independently maintained summaries.
-- **Implementation Specs** (`implementation`): the precise normative requirements, scenarios and
-  interface contracts that implementations must satisfy, including external behavior and internal
-  constraints. They are not implementation source, temporary plans or descriptions of incidental code.
+**Nodes.** Seven types, defined in [Node types](model.md):
 
-Formal requirement and scenario definitions MUST occur only in implementation-role document units.
-The entry and module-role topics MUST NOT define them. Canonical structured interface contracts
-MUST also be defined in implementation-role units; explanation, usage examples and links to those
-contracts belong in Module Specs. Define each precise obligation once. Explanations retain important
-meaning and link to its exact definition rather than duplicating a second formal contract.
+| Node | What it is |
+| --- | --- |
+| Module | One responsibility. The unit of ownership, of context and of task boundaries |
+| Document | A Markdown reading file paired with its JSON metadata; the unit a Module owns |
+| Concept | A named meaning a reader must understand; its title is a term |
+| Realization | A binding of implementation files to the Module |
+| Requirement | One Module-wide `SHALL` obligation |
+| Scenario | One concrete situation in `GIVEN`/`WHEN`/`THEN` steps |
+| Contract | The versioned agreement for a shared interface |
 
-The intended reader understands general software concepts but does not know the project's
-implementation, internal type names, execution library or migration history. Explanatory reading
-MUST let that reader explain the problem, when to use the Module, a normal interaction, its result,
-important stopping conditions and why the design works. Purpose uses ordinary verbs before internal
-names. Usage presents a representative normal path before exceptional recovery. Illustrative examples
-SHOULD make abstract distinctions concrete; they explain existing promises, not invent new ones.
+**Edges.** Thirteen typed, directed relation types, defined in [Relations](relations.md): `owns`,
+`defines`, `contains` and `uses` state who is responsible for what; `includes` selects extra
+reading; `binds` joins the specification to code; `imports`, `narrows`, `supersedes`, `contrasts`
+and `relates` connect meanings and architecture; `participates` and `verifies` tie contracts and
+tests to promises.
 
-Role separation is about meaning, not just heading syntax. Exact private APIs, wire fields, byte
-algorithms, persistence layouts, internal limits and executable-node/state catalogs belong in
-Implementation Specs even when written as ordinary prose without SHALL or scenario headings.
-Module Specs retain architecture, design reasons, actual public entry points, and any limits or
-hazards a consumer needs for correct use. They MUST NOT hide destructive defaults, security limits
-or known unfulfilled guarantees behind detail links. A simple usage example is not an API inventory.
+**Where the graph is written.** Every node and edge is declared exactly once, in a document owned
+by the Module responsible for it: in its reading, by a fixed syntax, or in its metadata. A Module's
+own relations are in its entry's metadata; the project registry mirrors them for a global view.
 
-Design MUST connect a decision to the problem it solves and the guarantee it supports, not merely
-list implementation calls in order. Conceptual diagrams SHOULD answer one reader question with
-recognizable labels. They MUST be distinguished from exact executable diagrams; the latter belong
-in implementation-role units and remain the single authority for execution topology. A concept view
-must not become a competing executable model. Explain relevant collaborations locally, but do not
-repeat generic permission, compatibility or completeness disclaimers on every path. Historical
-migration records MUST be labeled with their baseline and kept apart from the default explanation
-of current behavior; preserve any still-applicable obligations in the current specification.
+**What is computed from the graph.** Nothing below is declared; all of it is derived:
 
-Terminology tables MUST contain only concepts relevant to the page. A local definition uses familiar
-language rather than another chain of unexplained terms. An imported term links directly to its
-canonical document's Terminology table and identifies that source. Its row MAY repeat or faithfully
-restate the definition so readers need not navigate away to understand the term. Such a restatement
-MUST preserve the canonical meaning without adding, removing or changing its constraints; it is not
-another authoritative definition. Changes to the canonical definition MUST include checking affected
-restatements for consistency. An intermediate glossary, even one containing a restatement, is not the
-canonical source. This permission applies only to terminology explanations, not duplicate formal
-requirements, scenarios, interface contracts or schemas. Neither links nor restatements grant context:
-required defining units must still be explicitly included.
-Entity identities and realization bindings stay in metadata; Design and Relationships explain how
-particular entities participate. A glossary neither duplicates those declarations nor replaces that
-contextual explanation. Identical words with distinct meanings must be qualified explicitly.
+- **Context** — what a reader of a Module may read. See [Context](context.md).
+- **Scope** — what a task bound to a Module may be given to write. See
+  [Boundaries](boundaries.md).
+- **Boundary** — the read and write sets a harness assigns to one task.
+- **Views** — diagrams, indexes and pages a human reads. See [Views](views.md).
+- **Checks** — decidable rules that the graph is well formed. See [Checks](checks.md).
 
-Both roles belong directly to the same owning Module. A topic such as Registry is an explanation,
-not a new owner, sub-Module or requirements container. Implementation Specs MAY be split into several
-owned units and grouped by subject, but requirements and scenarios remain Module-owned. Roles
-MUST be explicit metadata, never inferred from paths, headings, body syntax or publishing preferences.
-Roles change neither complete context inclusion nor execution authority. There are no mandatory
-usage/architecture wrappers or standalone entity-inventory chapters.
+A few more words are used throughout:
 
-A **requirement** is one decidable Module-wide SHALL statement with a stable identity. A **scenario**
-is one testable situation expressed through GIVEN, WHEN and THEN steps. A situation-specific
-obligation belongs in its scenario, not in a second attached requirement. Both external behavior
-and internal constraints are normative where prescribed. Define each obligation once and link to
-it; editorial organization MUST NOT silently weaken, duplicate or contradict it.
+| Term | Meaning |
+| --- | --- |
+| Declared | Written in the specification: a node or relation stated at its declaration site |
+| Derived | Computed from declarations, never written by hand |
+| Declaration | The single place where a node or relation is stated |
+| Owner | The Module entitled to change a node; every node has exactly one |
+| Entry | A Module's `module.md` document, the start of reading it and the home of its own relations |
+| Reading | The Markdown member of a document, written for humans |
+| Metadata | The JSON member of a document, holding identities and declarations |
+| Registry | The project-wide index of Modules, a checked mirror of their entries |
 
-**Entities** are named programs, records, concepts, interfaces, files, Modules or boundary actors.
-Their identities and bindings are metadata; their meaning belongs in reading prose. **Relationships**
-are directed edges with meaningful free-text labels, preferably verbs. An interface is an entity
-whose behavior is specified by readable definitions and scenarios, not another Spec kind.
+## Axioms
 
-The Module model is recursive. A Module has at most one structural parent; composition is acyclic.
-Using a provider does not acquire it as a child. A shared provider has one identity and MUST NOT
-be owned by one of its consumers; dependencies may cross hierarchy levels. Module ownership,
-execution composition and context references are independent relations. Missing or inapplicable facts MUST be stated honestly, not
-invented from code, examples or template placeholders.
+### A1. Every node has one identity, one owner and one explanation
 
-### P2. Implementation bindings are metadata, not reading or implicit code access
+Every declared node MUST have a stable project-wide identity, exactly one owning Module, and
+nonempty explanatory prose in the document that defines it. A declaration without an explanation is
+invalid, not merely incomplete. Identity survives title and path changes.
 
-An entity MAY bind exact project-relative files or directory prefixes. A prefix binds every regular
-file below it, including future files, under a tool's explicit deterministic exclusion rule. The
-Module's implementation listing is the union of its entities' entries. It records realization,
-not a promise omitted from reading content or permission to inspect the files.
+*Serves both:* a reader always finds the explanation, and a harness always knows whose write set a
+node lies in.
 
-Within a Module each entry belongs to one entity. When entries cover the same file, an exact entry
-wins over a directory, and a longer directory prefix wins over a shorter one. Several Modules MAY
-bind the same implementation; each retains its own identity and contract, and changes concern all
-listing Modules. No document-unit member, generated output or project-control record may be bound
-as implementation; a directory binding MUST NOT contain a document-unit member.
+### A2. Every relation is typed, directional and declared exactly once
 
-A pending marker names an intended entry that does not yet exist. A non-pending entry MUST exist.
-Pending is intent, not evidence. File contents and external material remain separately authorized.
+A relation MUST have a registered type, an explicit source and target, and one declaration site
+fixed by its type. The same fact MUST NOT be declarable in two places; the only permitted copy is
+a mirror the Protocol names, the project registry, whose equality with the declarations is
+checked. A filename, path, title, link, prose sentence, unchecked diagram or directory
+neighbourhood MUST NOT create a relation.
 
-Tests are implementation files. A test names the scenario it verifies; reading content MUST NOT
-list verifying tests or prescribe coverage declarations. A tool derives coverage from those test
-annotations without executing them. Metadata may bind test files like other implementation files.
-Missing coverage does not cancel a promise, and a declared test is not proof of fulfillment.
+*Serves both:* nothing is promised by accident, and boundaries depend only on declarations.
 
-### P3. A Module resolves complete document units
+### A3. Reading, writing and proving stay separate
 
-Each Module MUST have a stable identity and a nonempty owned `documents` collection with exactly one
-local `module.md` reading entry. Each registered **document unit** has one stable document identity,
-one owner and two source members: reading Markdown and its associated metadata. Registering the
-reading path registers the pair. Neither member is independently owned or included.
+Read sets and write sets are derived from different declarations. Being able to read a document
+never makes it writable: a provider's Specs are readable by its consumers and writable only within
+the provider's own scope. Realization bindings put file **names** in the read side; contents
+become readable or writable only through a task boundary. Evidence is never produced by
+specification content.
 
-The Module separately declares `references`: another Module's whole owned collection, one document
-unit by stable identity, or existing project-relative vendored external material pinned at a known
-revision. References select knowledge, not ownership, composition, dependency, implementation or
-permission. Only the selected Module's references expand, once. Referenced Modules' references,
-Markdown links, neighbors and directory structure MUST NOT expand the context.
+*Serves boundaries:* this is the rule against authority creep.
 
-The complete Spec context is the deduplicated union of all owned and directly referenced units,
-with **both source members available whole**. Reading content is a subset of this context, never a
-replacement for it. External references and implementation contents remain outside Spec context.
-A tool MUST provide all admitted sources and no sources outside its explicit grant, whatever file
-delivery mechanism it chooses. A scenario query resolves its sole owner and then that owner's
-complete context; it never trims to the scenario or selects the consumer that happened to read it.
+### A4. Every relation declares what context it grants and what it requires
 
-The resolved reading subset MUST explain purpose, correct use, design and obligations without
-undeclared reading or source code supplying missing meaning. For every child and direct dependency,
-state responsibility, use conditions, canonical promises relied upon and local obligations/reactions.
-Necessary provider definitions must be included through explicit references; use ordinary links,
-not copies or transclusion as a substitute for inclusion. Attributed terminology restatements under
-P1 aid reading but do not replace those complete defining units. Included entities keep their owner and do not join the consumer's local
-entity inventory, diagram or implementation listing.
+A relation type MUST declare `context_grants` and `context_requires`. For every Module, everything
+its declared relations require MUST be granted by its declared relations. The reconciliation is a
+structural check, defined in [Context](context.md).
 
-Record exact source-byte digests, member roles, document identity, owner and inclusion provenance,
-and bind the selecting registration to the context identity. Changing metadata alone invalidates
-dependent context and review evidence just as changing reading does. Identity links MUST continue
-to reach canonical readable definitions after publication. Missing meaning remains an attributed
-gap; a reader MUST NOT silently fetch more files to repair it.
+*Serves both:* a reader of a Module has every definition its Spec relies on, and a harness that
+grants the Module's read set grants a self-sufficient one.
 
-### P4. Conformance covers content, reading, structure and consistency
+### A5. Evidence originates from what ran, never from what was promised
 
-A conformance claim identifies its Protocol version. Stable identities, unique unit ownership,
-complete paired source inclusion, explicit document roles and definition placement, explicit
-one-level references, consistent declarations, required reading structure, one statement per requirement and consistent file listings are structural
-requirements. Complete and mutually consistent readable obligations, design and relationships,
-including decidable requirements and an explanation usable without implementation knowledge, are
-semantic requirements. Readability review checks the stated reader's questions, terminology,
-normal-path order, concrete examples, causal design and visible safety limits. It is not a word-count
-gate or a preference for shorter prose. A correctly named section or table cannot prove understanding.
+An evidence relation MUST be declared by the artifact that executes, not by the specification that
+the artifact verifies. A specification MUST NOT declare its own coverage.
 
-Passing shape checks, headings, diagrams or coverage checks cannot establish semantic completeness
-or implementation conformance. Reading must not hide necessary guarantees in metadata, while
-metadata must not override prose or silently infer relationships absent from the registry.
+*Serves both:* a reader can trust that coverage was not merely claimed, and coverage cannot be
+claimed from inside the write set of the Module whose promises it covers.
 
-The [Required format](format.md) defines representation, and templates provide starters, not proof.
-A tool's configuration version, registry serialization, worker wire types, execution policy and
-context delivery are separate agreements. Tools MUST preserve the content model and its reading
-subset, identities, ownership, inclusion, relationships and obligations. The Protocol does not
-prescribe docsite pages, sidebars, tabs, themes, folding or interaction behavior.
+### A6. Views are derived or checked
 
-# Spec management
+A published diagram, index or navigation tree is derived from declared relations. A diagram
+written in reading is either **checked**, asserting only declared relations, or **illustrative**, explicitly
+marked and excluded from the model. See [Views](views.md).
 
-Spec management identifies and relates complete Module specifications independently of a publisher.
-It separates document ownership, context inclusion, composition, dependency and implementation
-listing. The [Required format](format.md) specifies their representation; [Spec and Context](spec-management/spec-and-context.md)
-defines exact source selection.
+*Serves understanding:* pictures a human relies on cannot silently diverge from the model.
 
-## Document units and ownership
+### A7. No inference, no recursion
 
-Every Module owns a nonempty collection of registered reading paths, including exactly one local
-`module.md` entry. Each reading path registers its paired `.md.json` metadata source. The unit has
-one stable document ID and one owner, recorded in its metadata and consistent with registration.
-The two members cannot have different owners or be referenced independently. Aliases, duplicate
-ownership, duplicate IDs, unregistered members and missing partners are invalid.
+The model is assertional. Every check operates on declared relations only. No relation is
+transitive, symmetric or invertible unless its type says so; derived indexes are never a source of
+obligations. Context expansion is one level and never recursive.
 
-Every unit declares role `module` (entry or explanatory topic) or `implementation` (precise
-specifications). Requirements, scenarios and canonical structured interfaces are defined only in
-implementation-role reading; entity declarations bind identities to readable meaning in either role.
-All belong directly to the Module owner of their defining unit, not to a topical page or group.
-Roles are document organization, never structural parentage, Spec kinds or context filters. A document relocation or title change does not itself change identity. Links
-use the reading path and the definition ID as fragment; a publisher must expose those anchors.
+*Serves boundaries:* every set is computable and every member is attributable to a declaration.
 
-Reading membership is defined by the Protocol, not a visibility preference. All reading members
-are human-readable specification content. Metadata remains part of the complete content and
-context, even when a site omits it from its main page. Presentation does not select agent knowledge.
+## Conformance
 
-## Registration and references
+A conformance claim identifies its Protocol version and distinguishes three claims that cannot
+substitute for one another:
 
-A registry distinguishes these facts:
+- **Structural conformance.** Identities, ownership, pairing, declaration sites, cardinalities,
+  checked views and the context reconciliation all hold. This is machine-decidable; see
+  [Checks](checks.md). It is what makes boundaries computable.
+- **Semantic sufficiency.** The readable content explains the responsibility, its correct use, its
+  design and its obligations to the intended reader. This is what makes the specification
+  understandable, and it is not machine-decidable.
+- **Implementation conformance.** The realization satisfies the requirements and scenarios. This is
+  established by evidence, never by structure.
 
-- `parent`: at most one structural parent, with acyclic composition.
-- `uses`: directed dependencies on provider Modules, not ownership or an execution graph.
-- `documents`: solely owned document units named by their reading paths.
-- `references`: explicitly included Module collections, individual document units or external material.
-- `files`: the union of local entity implementation entries, exact paths and directory prefixes.
+Passing structural checks MUST NOT be reported as either of the other two. Missing meaning is an
+attributed gap; a reader MUST NOT read outside its boundary, or infer a promise from source code, to
+repair it.
 
-These relations are independent. A filename, path, display title, diagram edge or ordinary prose
-link must not create one implicitly. Registry serialization is a tool agreement; it must preserve
-the Protocol's meanings and required declarations.
+## What the Protocol does not define
+
+Which boundary a particular task receives and how a harness enforces it. Docsite pages, navigation,
+themes and interaction. The serialization and location of the project registry, tool
+configuration, worker wire formats and context delivery. These are separate agreements; a change
+in any of them is not a Protocol version change.
+
+# Node types
+
+This chapter defines every kind of thing a specification may declare. [Relations](relations.md)
+defines how they may be connected. The machine-readable vocabulary of both is
+[`model.yaml`](model.yaml); the decision procedures are in [Checks](checks.md).
+
+Each node type exists because a human reader needs the thing it names explained, a harness needs
+it to compute a boundary, or both; each section says which.
+
+The model has **seven node types** and three **value types**. A value type has no identity, no
+owner and no explanation, because the specification makes no promise about it.
+
+## Common obligations
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Stable, project-wide unique, matching `^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$` |
+| `type` | One of the seven node types below |
+| owner | Exactly one Module identity, derived from the defining document or declared for a document |
+| explanation | Nonempty prose in the defining document; where it lives depends on the node type |
+
+An ID prefix does not establish ownership. Titles and paths may change without changing identity.
+An explanation cannot be outsourced: it is never a URL or a path into another document.
+
+Nodes are declared at one of two sites. **Metadata-declared** nodes (`concept`, `realization`) are
+records in a document's metadata and point to their explanation with a local `meaning` anchor.
+**Reading-declared** nodes (`requirement`, `scenario`, `contract`) are located by reading syntax,
+and their defining section is their explanation. A Module and the documents it owns are declared
+in the `module` block of its entry's metadata, and mirrored in the project registry.
+
+## module
+
+**What it is.** One cohesive software responsibility, and the unit of context selection.
+
+**Understanding.** A reader learns the system as a set of responsibilities, each explained by one
+owner, independent of how files happen to be arranged.
+
+**Boundaries.** A Module is what a task is bound to. Its read sets and write sets are all computed
+from it, so "who promises this" and "what a task on it may read and write" have one answer that
+survives file movement. The Protocol accepts over-inclusion in read sets deliberately, because a
+reader cannot detect meaning that was silently withheld.
+
+**Fields.** `id` (the entry's owner) and `title`, declared in the entry's `module` block and
+mirrored in the registry. Its owner is itself. Its explanation is the
+Purpose section of its entry document.
+
+**Constraints.** A Module MUST own exactly one document whose role is `module` and whose reading
+path ends in `module.md`; that document is its **entry**. A Module need not correspond to a package,
+directory, service or process, and its realization may span, share or omit physical files. A
+composite Module may bind no implementation of its own, and a composite Module may also bind files,
+such as end-to-end tests of its own promises.
+
+## document
+
+**What it is.** A reading Markdown file **paired** with its metadata file. The pair is one node.
+
+**Understanding.** Prose and the declarations it justifies cannot be separated, so metadata never
+becomes a second, unreviewed specification.
+
+**Boundaries.** The pair is the unit of ownership, selection and writing. A boundary always
+contains both members or neither.
+
+**Fields.** `id`, `owner` and `role`, stated in the metadata and agreeing with the owner's `owns`. `role` is
+exactly `module` or `implementation`, with no default. A document explains itself; it has no
+separate explanation.
+
+- `module` — the entry and explanatory topics: the responsibility, its correct use, its design and
+  its collaborations.
+- `implementation` — the precise requirements, scenarios and canonical contracts. These are
+  specifications, not source code, and are reading content like any other document.
+
+**Constraints.** Both members have the same owner, identity and inclusion provenance. Registering
+the reading path registers its exact companion. Role is document organization only: it MUST NOT act
+as an ownership level, a context filter or a separate Spec kind.
+
+The two roles serve understanding: explanation is not buried under acceptance cases, and precise
+obligations are not diluted into prose.
+
+## concept
+
+**What it is.** One named meaning a reader must understand: a domain word, a record, a boundary
+actor, an external standard, a participant in a collaboration. Its title is the **term** the
+specification uses for it.
+
+**Understanding.** Meaning is what crosses Module boundaries. A concept gives a word one owner and
+one canonical sentence, so a reader finds one meaning per word, and importing, specializing,
+retiring and colliding are declarations a tool checks instead of prose conventions.
+
+**Boundaries.** Importing or relating to a concept puts its defining document into the read set,
+and `referenced-by` makes the impact of changing its definition computable.
+
+**Fields.** A metadata record with `id`, `type`, `title` and `meaning`, optional `retired` and
+`external_conflict`; and a **definition**, written as the concept's row in the defining document's
+Terminology table.
+
+| Part | Meaning |
+| --- | --- |
+| definition | One sentence in the Terminology table: the canonical meaning, written once |
+| `meaning` | Local anchor of the extended explanation in the defining document's reading |
+| `retired` | Optional object `{"reason": "..."}`; the term is kept only for migration readers |
+| `external_conflict` | Optional prose naming a conflicting usage outside this project |
+
+The definition is one sentence on purpose, and it lives in the Markdown so that a human opening the
+file reads it in place. Extended explanation belongs in reading prose at the `meaning` anchor.
+
+**Constraints.** A concept is defined only in a `module` document. It MUST NOT bind implementation
+and MUST NOT stand for another Module; a collaboration with another Module is a `uses` or
+`contains` relation, and a naming collision with one is a `contrasts` relation.
+
+**Who owns a word.** Owning a concept means being entitled to change its meaning: its definition
+lies in the owner's write set, and a change concerns every importer. Ownership does not mean having
+invented the word or using it most. Every concept has exactly one owner, chosen as follows:
+
+- A word of a provider's own interface belongs to the provider; its consumers import it.
+- A word several Modules use with one meaning belongs to their nearest common ancestor in the
+  composition tree, or to the root. When the owner is hard to name, move the word one level up.
+- A word that means different things in different Modules is several concepts, each owned where
+  it is used, connected by `contrasts` or `narrows`.
+
+A composite that owns shared vocabulary SHOULD keep it in one small `module` document, so that its
+descendants select only that document when they import from it.
+
+## realization
+
+**What it is.** A declaration binding exact implementation paths or directory prefixes to this
+Module.
+
+**Understanding.** A reader learns where a promise is realized without inferring it from directory
+names.
+
+**Boundaries.** Its entries are the Module's `ImplementationScope`: the code a task bound to the
+Module may be given to change. `pending` entries declare where new files may be created before any
+code is written.
+
+**Fields.** `id`, `type`, `title`, `meaning`, `entries` (exact project-relative paths, or directory
+prefixes ending in `/`); optional `pending` (a subset of `entries` that does not yet exist).
+
+**Constraints.** Non-pending entries MUST exist. Within a Module no two realizations list the same
+entry, and the longest covering entry determines which realization a file belongs to. A directory
+entry binds present and future regular files below it under the tool's deterministic exclusion
+rule. No document member, generated output or project-control record may be bound, and a bound
+directory MUST NOT contain a document member. Several Modules MAY bind the same path; each keeps
+its own promises, and a change concerns all of them.
+
+A pending entry records intent, not evidence, and is removed once the file exists. On the read
+side, listing a path grants its **name**; contents are readable or writable only through a task
+boundary. See [Boundaries](boundaries.md).
+
+## requirement
+
+**What it is.** One decidable, Module-wide obligation.
+
+**Understanding.** A Module-wide promise is stated once, exactly, and survives the churn of the
+situations that demonstrate it.
+
+**Boundaries.** Its identity lets reviews, tasks and evidence name an exact promise.
+
+**Constraints.** Declared by a heading in an `implementation` document; the heading supplies `id`
+and title, and the section is its explanation. Its statement is one sentence containing `SHALL` or
+`SHALL NOT` exactly once. Two obligations under one identity make partial satisfaction
+undecidable, so they MUST be split.
+
+## scenario
+
+**What it is.** One concrete situation with preconditions, a trigger and a promised outcome.
+
+**Understanding.** A concrete situation shows what a requirement means in practice; the step
+grammar keeps a situation from quietly growing into a Module-wide obligation.
+
+**Boundaries.** A requirement cannot be executed; a scenario is what tests declare they verify. A
+task focused on a scenario is bound to the scenario's owner and receives that owner's whole
+boundary.
+
+**Constraints.** Declared by a heading in an `implementation` document; the heading supplies `id` and
+title. Situations with different successful, failed, repeated or concurrent outcomes get their own
+scenarios. A Module-wide obligation is defined once as a requirement and linked, never restated in
+steps.
+
+## contract
+
+**What it is.** The canonical, versioned agreement for a shared interface: an API, command,
+protocol, event or file boundary.
+
+**Understanding.** A shared interface is stated once, with one owner, and every participant says
+which version it conforms to.
+
+**Boundaries.** Participants are declared, so the impact of a contract change and the multi-Module
+write boundary it needs are computable. Without a version, a participant bound to an older meaning
+is undetectable.
+
+**Fields.** `id`, `version` (positive integer), `schema`, `semantics`, `example`, all inside one
+`concorde-contract` fence in an `implementation` document. Its explanation is `semantics` together
+with the prose of the section containing the fence.
+
+**Constraints.** The schema vocabulary is explicit and offline: a schema MUST NOT load Spec documents
+or remote resources. The example MUST satisfy the schema. A behaviour or schema change increments
+`version`, and every participant is reconciled atomically.
+
+## Value types
+
+These appear as relation targets or attributes but are not nodes.
+
+| Value | Where it appears | Why it is not a node |
+| --- | --- | --- |
+| **path literal** | `binds`, external `includes`, `verifies` | A path carries no promise and has no owner in the Spec's sense. |
+| **anchor** | `meaning` of nodes and reified relations | It has no identity of its own; only its declaration refers to it. |
+| **digest** | context identity | It is a measurement of a source member, not a declared thing. |
+
+# Relations
+
+Relations serve both purposes of the Protocol: they are the explained connections a human reads
+as architecture, and the only input from which a harness computes read and write sets.
+
+Every relation type declares the same attribute set. A connection that cannot fill these fields is
+not a relation (axiom A2). The vocabulary is closed: a project cannot register relation types of
+its own, and tool data in a metadata `extensions` object never creates a relation.
+
+| Attribute | Meaning |
+| --- | --- |
+| `source` / `target` | Permitted node or value types |
+| `cardinality` | How many may exist, and any uniqueness rule |
+| `declared_in` | The single site where it is declared: `entry` (the entry's `module` block), `metadata`, `reading` or `implementation-source` |
+| `mirrored_in` | Where a checked copy is kept, if anywhere: only `registry` |
+| `reified` | Attributes the relation itself carries |
+| `symmetric` | Whether one declaration holds in both directions |
+| `context_grants` | What it adds to the declaring Module's context, in the expression language of [Context](context.md) |
+| `context_requires` | What MUST be in the declaring Module's context for the declaration to be honest |
+| `checks` | Decidable rules, by identity, defined in [Checks](checks.md) |
+
+**Where a relation is declared** follows one rule: a relation whose source is a Module is declared
+in the `module` block of that Module's entry; a relation whose source is a document or a node
+defined in a document is declared in that document, in its metadata or by reading syntax. Either
+way the declaration lies in the source Module's own `SpecScope`: a Module changes its own
+collaborations without writing into another Module, and a task bound to it sees all of its
+relations in its own documents.
+
+Module-level relations are also **mirrored** in the project registry, which gives a project-wide
+view without opening every entry. The mirror is not a second declaration site: it MUST equal the
+entries, and `CHK.registry.mirror` reports any difference.
+
+The attribute blocks below are the prose form of [`model.yaml`](model.yaml). The two MUST agree.
+
+---
+
+## Ownership and collaboration
+
+### `owns`
+
+```yaml
+source: module
+target: document
+cardinality: "1..N per Module; a document is owned exactly once"
+declared_in: entry
+mirrored_in: registry
+context_grants: spec(target)
+context_requires: []
+```
+
+This Module is responsible for this document. Ownership is exclusive so that "who can change
+this promise" has exactly one answer: the document lies in this Module's `SpecScope` and in no
+other Module's write set. A Module always reads its own promises.
+
+**Checks.** `CHK.owns.unique`, `CHK.document.entry`.
+
+### `defines`
+
+```yaml
+source: document
+target: [concept, realization, requirement, scenario, contract]
+cardinality: "0..N; a node is defined exactly once"
+declared_in: metadata (concept, realization) | reading (requirement, scenario, contract)
+context_grants: none
+context_requires: []
+```
+
+This document is the defining site of this node, so its owner is the node's owner and its
+explanation lives here. The declaration site is fixed by the target's node type: concepts and
+realizations are metadata records, while requirements, scenarios and contracts are located by their
+reading syntax. A concept's one-sentence definition is its defining row in the document's
+Terminology table.
+
+**Checks.** `CHK.defines.once`, `CHK.defines.role` — requirements, scenarios and contracts are
+defined only in `implementation` documents.
+
+### `contains`
+
+```yaml
+source: module
+target: module
+cardinality: "0..N; a Module has at most one parent; acyclic"
+declared_in: entry
+mirrored_in: registry
+reified: [meaning, relies_on]  # relies_on optional
+context_grants: spec(selection)
+context_requires: []
+```
+
+The source Module is accountable for a responsibility that this child fulfils in part, and its
+`meaning` explains how. The parent receives the child's Specs, because it cannot explain the child's
+part without them. `relies_on` narrows that grant exactly as for `uses`.
+
+Composition is the top-down reading path through a project. A project SHOULD have exactly one
+Module without a parent, its **root**, so that every Module is reachable from one entry. A root, or
+any composite Module, MAY realize nothing itself or MAY bind files of its own, such as end-to-end
+tests of its promises.
+
+Whether a parent's explanation of its decomposition is adequate is a semantic judgement. The
+decidable consequences are acyclicity, single parenthood, a resolvable explanation and the grant.
+
+**Checks.** `CHK.contains.acyclic`, `CHK.contains.single-parent`, `CHK.contains.root`,
+`CHK.relation.meaning`, `CHK.relies-on.owned`, `CHK.relies-on.linked`.
+
+### `uses`
+
+```yaml
+source: module
+target: module
+cardinality: "0..N; at most one per target"
+declared_in: entry
+mirrored_in: registry
+reified: [meaning, relies_on]  # relies_on optional
+context_grants: spec(selection)
+context_requires: []
+```
+
+The source Module relies on promises this provider makes. The `meaning` anchor states the
+provider's responsibility, when the collaboration applies, the canonical promises relied upon, and
+this Module's own duties and failure reactions, so a reader never meets a collaboration as a bare
+arrow. The consumer receives the provider's Specs.
+
+`relies_on` optionally lists the provider's promises this Module depends on: requirements,
+scenarios, contracts and concepts, by identity. When present, the consumer receives only the
+provider's entry and the documents defining those nodes, instead of every document the provider
+owns. The list is exact and checkable, it turns the prose "promises relied upon" into links a reader
+can follow, and it makes the impact of changing one promise precise.
+
+`uses` is not ownership: the provider keeps one identity and is owned by none of its consumers. It
+implies no deployment, directory nesting or shared source. Mutual `uses` between two Modules is
+legitimate.
+
+**Checks.** `CHK.uses.no-self`, `CHK.uses.unique`, `CHK.relation.meaning`, `CHK.relies-on.owned`,
+`CHK.relies-on.linked`.
+
+---
+
+## Context
+
+### `includes`
+
+```yaml
+source: module
+target: [module, document, path-literal]
+cardinality: "0..N; unique per (kind, target)"
+declared_in: entry
+mirrored_in: registry
+reified: [kind, reason]
+context_grants: spec(selection) | external(target)
+context_requires: []
+```
+
+This Module reads something it neither owns nor depends on. `kind` is `module` (that Module's owned
+documents), `document` (one document) or `external` (a directory or file of pinned third-party
+material). `reason` records why, because removing an inclusion changes provenance and context
+identity.
+
+Specification inclusions and external inclusions are one relation because both answer the same
+question, *what else does this Module read*, and differ only in the channel they fill.
+
+**Checks.** `CHK.includes.no-self`, `CHK.includes.unique`, `CHK.includes.reason`,
+`CHK.includes.redundant`, `CHK.external.exists`, `CHK.external.no-overlap`.
+
+---
+
+## Realization
+
+### `binds`
+
+```yaml
+source: realization
+target: path-literal
+cardinality: "1..N per realization"
+declared_in: metadata (the realization's entries)
+context_grants: implementation(target)
+context_requires: []
+```
+
+These paths realize this Module's promises. On the read side the grant is the implementation
+channel: **names only**. On the write side the covered files form the Module's
+`ImplementationScope`, the code a task bound to this Module may be given to change; see
+[Boundaries](boundaries.md). A file bound by no Module is in no Module's scope.
+
+**Checks.** `CHK.binds.exists`, `CHK.binds.disjoint`, `CHK.binds.no-spec`,
+`CHK.binds.pending-subset`, `CHK.binds.unbound`.
+
+---
+
+## Meaning
+
+### `imports`
+
+```yaml
+source: document
+target: concept
+cardinality: "0..N; unique per target"
+declared_in: reading (an import row of a module document's Terminology table)
+context_grants: none
+context_requires: spec(definer(target))
+```
+
+This document uses a term whose canonical definition another Module owns. The import row links to
+the definition and never copies it. The document that defines the concept MUST be in the
+importer's context.
+
+The owner of a shared word is the Module entitled to change its meaning; see
+[Node types](model.md#concept). An import from a Module that is neither a provider the importer
+uses, nor one of its ancestors or descendants, usually means the word belongs higher in the
+composition tree, which `CHK.imports.owner` reports.
+
+**Checks.** `CHK.imports.foreign`, `CHK.imports.owner`, `CHK.terminology.import-row`,
+`CHK.context.reconciled`.
+
+### `narrows`
+
+```yaml
+source: concept
+target: concept
+cardinality: "0..N"
+declared_in: metadata
+context_grants: none
+context_requires: spec(definer(target))
+```
+
+The source concept is a strictly more specific case of the target concept, so the two cannot drift
+apart unnoticed.
+
+**Checks.** `CHK.narrows.acyclic`, `CHK.context.reconciled`.
+
+### `supersedes`
+
+```yaml
+source: concept
+target: concept
+cardinality: "0..1 per source"
+declared_in: metadata
+context_grants: none
+context_requires: spec(definer(target))
+```
+
+The source concept is retired and the target replaces it. A retired concept without a replacement
+states why in its `retired.reason`.
+
+**Checks.** `CHK.concept.retired`, `CHK.context.reconciled`.
+
+### `contrasts`
+
+```yaml
+source: concept
+target: [concept, module]
+cardinality: "0..N; at most one per unordered pair"
+declared_in: metadata
+reified: [reason]
+symmetric: true
+context_grants: none
+context_requires: []
+```
+
+These two are easily confused and are **not** the same thing. The `reason` states the difference,
+so a reader who has met only one of them is warned. It requires no context: the warning is the
+point, and forcing each side to read the other would couple unrelated Modules by an accident of
+naming.
+
+**Checks.** `CHK.contrasts.required`, `CHK.contrasts.once`.
+
+### `relates`
+
+```yaml
+source: [concept, realization, module]
+target: [concept, realization, module]
+cardinality: "0..N; unique per (source, verb, target)"
+declared_in: metadata
+reified: [verb]
+context_grants: none
+context_requires: spec(definer(target))
+```
+
+A named architectural relationship: the realization *saves* the record, the actor *submits* the
+request, the Module *publishes* the event. `verb` is free text, recommended as a verb phrase. The
+source is a node this document's owner owns, or that Module itself; the target may belong to any
+Module, whose defining document then MUST be in context.
+
+`relates` states structure for readers and for checked diagrams. It is not a dependency: relying on
+another Module's promises is still a `uses`.
+
+**Checks.** `CHK.relates.source`, `CHK.relates.verb`, `CHK.context.reconciled`.
+
+---
+
+## Interfaces and evidence
+
+### `participates`
+
+```yaml
+source: module
+target: contract
+cardinality: "0..N; unique per (contract, peer, role)"
+declared_in: entry
+mirrored_in: registry
+reified: [version, role, peer, meaning]
+context_grants: none
+context_requires: spec(definer(target))
+```
+
+This Module provides or requires a shared contract. `version` is the contract version the
+participant conforms to; `role` is `provided` or `required`; `peer` names the internal Module on the
+other side or `external`. A participant that has not received the canonical definition cannot
+honestly claim conformance, so the defining document MUST be in context.
+
+**Checks.** `CHK.participates.version`, `CHK.participates.complementary`,
+`CHK.participates.unique`, `CHK.relation.meaning`, `CHK.context.reconciled`.
+
+### `verifies`
+
+```yaml
+source: path-literal
+target: scenario
+cardinality: "0..N"
+declared_in: implementation-source
+context_grants: none
+context_requires: []
+```
+
+This test asserts that it verifies this scenario. It is the only relation declared outside
+specification content, because coverage must originate from the artifact that runs (axiom A5).
+Reading content MUST NOT list verifying tests or prescribe coverage declarations. A declared test
+is not proof of fulfilment, and missing coverage does not cancel a promise. Because tests declare
+coverage, it cannot be claimed from inside the write set of the Module whose promises it covers.
+
+**Checks.** `CHK.verifies.resolves`, `CHK.evidence.no-spec-coverage`.
+
+---
+
+## Derived indexes
+
+These are computed, never declared. They are evidence, navigation and impact aids, never a source
+of obligations, and never widen a boundary.
+
+| Derived | Computed from | Used for |
+| --- | --- | --- |
+| `selected-by` | inverting context selection | which Modules read a document, and so are concerned when it changes |
+| `referenced-by` | inverting `relies_on`, `imports`, `narrows`, `supersedes`, `relates` and `participates` | which declarations depend on a concept, node or contract |
+| `implemented-by` | inverting `binds` | which Modules a file change concerns |
+| `covered-by` | aggregating `verifies` | per-scenario coverage reports |
+
+# Context
+
+Context is the information explicitly made available to a reader of one Module. Knowing that a
+document exists does not make it available; neither does linking to it or naming a word it defines.
+Only declared relations grant context.
+
+This chapter defines the read side of the Protocol's boundary purpose: the three context
+channels, how a Module's context is selected, the reconciliation of what relations grant against
+what they require, and context identity. The write side is in [Boundaries](boundaries.md). Because
+the reconciliation guarantees that a Module's context holds every definition its own Spec relies
+on, the same selection is also what a human reader of the Module needs open beside it.
+
+## Three channels
+
+| Channel | Granted by | Contains | Authority conveyed |
+| --- | --- | --- | --- |
+| `spec` | `owns`, `contains`, `uses`, `includes` of kind `module` or `document` | both members of each selected document | read only |
+| `implementation` | `binds` | the **names** of bound paths | none |
+| `external` | `includes` of kind `external` | pinned third-party material | read only |
+
+The channels stay separate so that "may read this Module's promises" never implies "may read or
+change its code". Whether a task receives implementation contents, read-only or writable, is part
+of its task boundary; see [Boundaries](boundaries.md).
+
+## Expressions
+
+`context_grants` and `context_requires` in [`model.yaml`](model.yaml) use this expression language:
+
+```text
+spec(target)             the target document
+spec(selection)          for a contains or uses with relies_on: the target's entry and the
+                         documents defining the listed nodes; otherwise every document the
+                         target Module owns
+spec(definer(target))    the document that defines the target node; for a Module target,
+                         that Module
+external(target)         the pinned material at the target path
+implementation(target)   the name of the target path
+none                     nothing
+```
+
+A requirement `spec(D)` naming a document D is satisfied when D is in the Module's spec channel. A
+requirement `spec(N)` naming a Module N is satisfied when at least one document N owns is in it.
+
+## Spec context selection
+
+Let `D(M)` be the documents Module M owns, and `members(U)` the reading and metadata members of a
+document U.
+
+```text
+Spec(M)        = D(M)
+               ∪ ⋃ { selection(r) : r a contains, uses or spec includes declared by M }
+SpecContext(M) = ⋃ { members(U) : U ∈ Spec(M) }
+
+selection(r to Module N) = { entry(N) } ∪ { definer(x) : x ∈ r.relies_on }  if relies_on present
+                         = D(N)                                               otherwise
+selection(includes document U) = { U }
+```
+
+Selection is one level. A selected Module contributes its owned documents, never the documents its
+own relations select. Parentage, dependency and inclusion of the target, term usage, participation,
+Markdown links, directory neighbourhood and implementation bindings add nothing further. Because
+expansion is not recursive, cycles among Modules are harmless, and every member of a read set is
+explained by the one declaration that selected it.
+
+A scenario query resolves the scenario's owner and selects that owner's whole context. It never
+trims to the scenario, and never selects the consumer that happened to read it.
+
+Every selected document contributes **both** members whole. No excerpt, summary, rendered view or
+diagram export substitutes for a complete document.
+
+## Reconciliation
+
+```text
+Requires(M) = ⋃ { r.context_requires : r declared in the metadata or reading
+                                        of a document M owns, including its entry }
+
+CONFORMANCE:  ∀ q ∈ Requires(M) :  satisfied(q, Spec(M))
+```
+
+`imports`, `narrows`, `supersedes`, `relates` and `participates` each require the document that
+defines their target. A Module that declares one without having that document in its context fails
+`CHK.context.reconciled`. The repair is an explicit grant: a `uses` or `contains` that selects the
+document, or an `includes` that states a reason.
+
+The check is exact, because a node has exactly one defining document. A `uses` or `contains` that
+narrows its grant with `relies_on` selects the documents defining the listed promises, so the
+narrowing is exact as well. What no check establishes is that the list names every promise the
+Module actually relies on; `CHK.relies-on.linked` catches every one the explanation links to.
+
+## Implementation context
+
+```text
+ImplementationContext(M) = ⋃ { entries of M's realizations }
+ImplementationContext(scenario S) = ImplementationContext(owner(S))
+```
+
+Exact entries and files below directory prefixes resolve under an explicit deterministic exclusion
+rule. Pending entries record intent without pretending that missing content exists.
+
+Document members never belong to implementation context. When another Module binds the same file,
+a change to it concerns that Module too; this adds neither that Module's Specs nor its code to this
+reader's context. A Module with no bindings has an empty implementation context, which does not
+prove it has no realization.
+
+## External context
+
+```text
+ExternalContext(M) = ⋃ { readable files below M's external inclusions }
+```
+
+Only the selecting Module's own external inclusions count; a selected Module does not bring its
+own. External material MUST be pinned by the project's version control, for example as a
+submodule at a fixed commit, so that its content is identified by the checkout rather than by a
+second declared revision. A tool MAY exclude media and archives by a documented deterministic rule.
+An undeclared network fetch or an installed dependency's sources MUST NOT substitute for declared
+material. External material supplies no promise absent from the Spec.
+
+## Context identity
+
+A resolved context is identified by its selected sources and the declarations that selected them,
+so a harness can tell whether anything inside a boundary changed since a check.
+Every source record carries document identity, owner, path, member role (`reading` or `metadata`),
+an exact-byte SHA-256 digest, and every relation that selected it. External entries carry one tree
+digest each.
+
+The identity changes, even when the set of paths is unchanged, on:
+
+- any byte change in either member of a selected document, including whitespace;
+- a change to the declarations that selected the context, including removing a redundant inclusion;
+- an ownership transfer;
+- a change to pinned external material.
+
+What a tool does with evidence bound to a previous identity is the tool's policy.
+
+## Visibility
+
+The resolved context is the exact visibility scope of a bounded reader: every selected source is
+available whole and no unselected source is visible. How a tool makes it available is not part of
+the Protocol. A tool MAY also supply task material such as changes since a baseline; such material
+adds no source and replaces none. A reader that opened only some granted files still received the
+complete context: missing meaning is judged against the full granted scope.
+
+## Gaps
+
+A missing definition is a semantic gap even after structural resolution succeeds. Record the needed
+promise, its owner when known, the selected Module, the context identity and the blocked step. Do
+not follow a selected Module's own relations or a prose link to repair it. An additional explicit
+selection is a new context, not a retrospective claim that the previous one was complete.
+
+# Boundaries
+
+This chapter serves the Protocol's second purpose: letting a harness give each task a clear
+boundary of what it may read and what it may write, derived from the specification rather than
+guessed. [Context](context.md) defines the read sets in detail; this chapter defines the write sets,
+the impact of a write, and how a harness composes sets into the boundary of one task.
+
+The Protocol defines the **sets**. Which sets a given task receives, at which access level, and how
+the boundary is enforced are decisions of the harness running the task. A specification never
+grants a task anything by itself.
+
+## Boundary sets of a Module
+
+Every set is computed from declarations alone, so two tools computing the same set from the same
+checkout get the same answer.
+
+| Set | Definition | Derived from |
+| --- | --- | --- |
+| `SpecContext(M)` | both members of every document M owns or selects | `owns`, `contains`, `uses`, `includes` |
+| `ExternalContext(M)` | pinned material M includes | `includes` of kind `external` |
+| `ImplementationContext(M)` | the names of every file M's realizations bind | `binds` |
+| `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block | `owns` |
+| `ImplementationScope(M)` | every file covered by M's realization entries, including pending entries not yet created | `binds` |
+
+The first three are **read** sets, the last two are **write** sets. They are deliberately different:
+M may read a provider's documents because it `uses` the provider, but those documents stay in the
+provider's `SpecScope`, never in M's. Reading never widens what may be written.
+
+Every declaration a Module makes, including its Module-level relations, lies in its own documents,
+so `SpecScope(M)` is a plain set of files and a harness can enforce it with file permissions.
+
+## What no Module may write
+
+The following are outside every Module's write sets:
+
+- another Module's documents;
+- the project registry;
+- external material;
+- generated outputs and project-control records, which are owned by the tools that produce them;
+- files bound by no Module;
+- the installed Protocol copy.
+
+A file bound by no Module is therefore not writable by any Module-scoped task. To change or create
+such a file, first bind it: add it to a realization as an entry, or as a `pending` entry when it
+does not exist yet. Declaring the file is a Spec change within `SpecScope(M)`; creating it is then
+within `ImplementationScope(M)`. This two-step shape is what lets a planning task decide where code
+may go before a coding task writes it.
+
+## The project registry
+
+The registry is the project-wide index of Modules and a checked mirror of their `module` blocks. It
+is what a coordinating session reads to plan work, to compute the sets of every Module involved and
+to assign each task its boundary. A Module-scoped task needs neither to read nor to write it: its
+own relations are in its entry, and the harness resolves identities for it.
+
+Because the registry is outside every Module's write sets, a Module-scoped task that changes its
+own `module` block leaves the mirror stale. `CHK.registry.mirror` reports that, and a project-level
+step, which MAY regenerate the mirrored fields, reconciles it. Adding or removing a Module changes
+which Modules exist, and is always such a project-level step: it writes the registry and the
+parent's `contains`.
+
+## Impact of a write
+
+A write can break promises that other Modules rely on. The derived **impact** of a write lists
+them, so that a harness can widen the task's read boundary, schedule review, or reject the write:
+
+| Written | Concerns |
+| --- | --- |
+| a document D | every Module whose `SpecContext` contains D |
+| a requirement, scenario or concept | every Module whose `relies_on` lists it, and every document that imports, narrows or relates to it |
+| a contract | every Module that participates in it |
+| a file F | every Module whose `ImplementationScope` contains F |
+
+Two rules follow from the model:
+
+- **Shared files.** When several Modules bind a file, a task that writes it MUST also be able to read
+  the documents of every binding Module, because it can otherwise break a promise it cannot see.
+- **Atomic reconciliation.** Some changes are only valid if other Modules change with them: a
+  contract version increment requires every participant's `participates` version to move, and
+  retiring or re-owning a concept requires its importers to follow. Such a change is a
+  multi-Module change, and its write boundary is the union of the write sets of every Module it
+  edits. A single-Module task MUST NOT be given another Module's scope to complete it.
+
+## Composing a task boundary
+
+A task is bound to one or more Modules. Its boundary assigns each boundary set of those Modules one
+access level:
+
+| Level | Meaning |
+| --- | --- |
+| `none` | not visible |
+| `names` | paths are visible, contents are not |
+| `read` | contents are visible and immutable |
+| `write` | contents may be changed, files created or removed within the set |
+
+A harness MUST keep every boundary within these limits:
+
+1. **Write only within write sets.** Everything writable belongs to `SpecScope` or
+   `ImplementationScope` of a Module the task is bound to.
+2. **Write implies read.** Anything writable is also readable.
+3. **Read only within read sets.** Specification contents come from the `SpecContext` of the bound
+   Modules, implementation contents only from their `ImplementationScope`, and external material
+   only from their `ExternalContext`. A provider's code is never read in place of its Specs.
+4. **Task material adds no source.** A harness MAY supply material produced for the task, such as a
+   plan, a brief or a diff since a baseline. It is not a Protocol source and widens no set.
+
+Within these limits, different tasks receive different boundaries. For example, bound to one
+Module M:
+
+| Task | `SpecContext` | `ImplementationContext` | `ImplementationScope` | `SpecScope` | `ExternalContext` |
+| --- | --- | --- | --- | --- | --- |
+| Explain or plan | read | names | none | none | read |
+| Write the Spec | read | names | none | write | read |
+| Implement | read | names | write | none | read |
+| Review code | read | names | read | none | read |
+
+This table is illustrative; the Protocol does not prescribe task kinds. What it guarantees is that
+each row can be computed exactly and stays inside rules 1 to 4.
+
+A scenario-scoped task is bound to the scenario's owner. A task bound to several Modules receives
+the union of their sets at the levels the harness chooses.
+
+# Required format
+
+This chapter defines how the [node types](model.md) and [relations](relations.md) are written.
+The fixed reading structure serves understanding: every Module reads the same way. The fixed
+declaration syntax serves boundaries: a tool computes every set without interpreting prose.
+Satisfying the syntax establishes structural conformance only; it proves nothing about meaning.
+
+## Documents
+
+A registered document is a pair: an explicit project-relative Markdown reading path, and that same
+path with `.json` appended. `checkout/module.md` and `checkout/module.md.json` are **one** document.
+
+Reading files are nonempty UTF-8 Markdown. Metadata files are UTF-8 JSON with unique keys and no
+non-JSON numeric constants. Paths use canonical project-relative POSIX spelling: no absolute paths,
+backslashes, empty, dot or traversal components, control characters or symlink aliases.
+
+Both members always travel together: same owner, same identity, same selection provenance, both in
+context, both in source digests. Registering a reading path
+registers its exact companion. Tools MUST NOT discover documents from the filesystem or by
+following Markdown links; this is what lets every boundary set be enumerated from declarations
+alone.
+
+## Module declaration
+
+A Module declares itself and its Module-level relations in a `module` block of its **entry's**
+metadata. This is the one declaration site of those relations: a task bound to the Module reads and
+writes it as part of its own documents, and learns who it relates to without any global file.
 
 ```json
 {
-  "id": "module.checkout",
-  "documents": ["checkout/module.md", "checkout/scenarios.md"],
-  "references": [
-    {"kind": "module", "id": "module.inventory"},
-    {"kind": "document", "id": "document.delivery-terms"},
-    {"kind": "external", "path": "reference/payment-sdk/"}
+  "schema_version": 3,
+  "document": {"id": "document.checkout.module", "owner": "module.checkout", "role": "module"},
+  "module": {
+    "title": "Checkout",
+    "owns": ["checkout/module.md", "checkout/contracts.md"],
+    "contains": [],
+    "uses": [
+      {"target": "module.inventory", "meaning": "#uses-inventory",
+       "relies_on": ["req.inventory.hold-expiry", "concept.inventory.reservation",
+                     "contract.inventory.reserve"]}
+    ],
+    "includes": [
+      {"kind": "document", "target": "document.delivery-terms", "reason": "delivery window wording"},
+      {"kind": "external", "target": "reference/payment-sdk/", "reason": "payment request fields"}
+    ],
+    "participates": [
+      {"contract": "contract.inventory.reserve", "version": 1, "role": "required",
+       "peer": "module.inventory", "meaning": "checkout/contracts.md#reserve-participation"}
+    ]
+  },
+  "defines": [],
+  "relations": []
+}
+```
+
+- The `module` block appears in the entry's metadata and in no other document. The Module's
+  identity is the entry's `document.owner`.
+- `title` is required. Module titles are unique in the project.
+- `owns` lists reading paths, is nonempty and includes the entry itself.
+- `contains` and `uses` entries have `target` and `meaning`, and optionally a nonempty `relies_on`
+  list of identities of requirements, scenarios, contracts and concepts the target owns. Without
+  `relies_on` the whole target is selected.
+- `includes` entries have `kind` (`module`, `document` or `external`), `target` (a Module identity,
+  a document identity, or a project-relative path; a directory ends in `/`) and a nonempty `reason`.
+- `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
+  Module identity or `external`) and `meaning`.
+- `contains`, `uses`, `includes` and `participates` are explicit arrays and MAY be empty.
+- A relation `meaning` is a local `#anchor` into the entry, or a qualified `<reading path>#<anchor>`
+  into another document the Module owns.
+
+## Project registry
+
+The project registry is the index of all Modules and a **mirror** of their declarations. It gives
+a project-wide view, such as the one a coordinating session uses to plan work and set each task's
+boundary, without opening every Module. It is not a declaration site.
+
+```json
+{
+  "modules": [
+    {"id": "module.checkout", "title": "Checkout", "entry": "checkout/module.md",
+     "owns": ["checkout/module.md", "checkout/contracts.md"], "contains": [],
+     "uses": [{"target": "module.inventory", "meaning": "#uses-inventory",
+               "relies_on": ["req.inventory.hold-expiry", "concept.inventory.reservation",
+                             "contract.inventory.reserve"]}],
+     "includes": ["..."], "participates": ["..."]}
   ]
 }
 ```
 
-A Module reference includes all units owned by that Module, not its references. A document
-reference includes exactly that unit's two members. Self references and duplicate kind/identity
-pairs are invalid; overlapping Module/document references are allowed, supply each source once and
-retain every inclusion reason. Cycles terminate because expansion is not recursive. Only the
-selected Module's external references are granted separately; included providers do not bring theirs.
+- Every Module has exactly one registry record: `id`, `title`, `entry` (the entry's reading path)
+  and every field of its `module` block, equal to that block.
+- The registry lists which Modules exist. A tool MAY regenerate the mirrored fields from the
+  entries; adding or removing a Module is a deliberate registry change.
+- A disagreement between the registry and an entry is a structural error
+  (`CHK.registry.mirror`). Neither side silently wins; the change that caused it is reconciled.
 
-## Entity identity and realization
+The Protocol fixes the registry's content. Its serialization and location are a tool agreement.
 
-Metadata gives each entity a stable ID, title, free-text kind and local readable `meaning` anchor.
-It does not carry another copy of that meaning. An entity can be a program, record, interface,
-concept, actor, child or used Module. Titles are unique within a Module so diagram labels resolve.
-Meaning must be understandable where it occurs in Design, Usage or collaboration explanations;
-an inventory is not mandatory reading and cannot replace those explanations.
+## Metadata
 
-An entity may bind exact implementation files or directory prefixes with optional pending markers.
-The Module listing equals their union. Within the Module an entry belongs to one entity and the
-most specific covering entry owns a file. Several Modules may list one implementation without
-merging contracts. Tests are ordinary implementation files whose own annotations name scenarios.
-No document-unit member, generated output or control record can be bound as implementation, and a
-bound directory cannot contain a Spec unit. Listing names never grants contents or write authority.
-
-Every direct child and used provider is represented exactly once by a local entity with `target_id`.
-That entity lists no implementation files: the provider's files stay with the provider. External
-libraries are entities without local provider identities; their vendored material is an external
-reference, not an entity's implementation listing.
-
-## Local collaboration agreements
-
-A dependency metadata record names the provider and a local readable explanation. For every child
-and direct use, this explanation states responsibility, selection conditions and the canonical
-promises relied upon, together with the consumer's own duties and failure reactions. A relationship
-edge alone is insufficient. The declaration set agrees with registered children/uses exactly.
-
-Necessary provider definitions must occur in the selected context through explicit references.
-Ordinary links identify them but do not include them. Prefer links and local explanations of reliance
-to copied common schemas or promises. Dependency conditions are behavioral meaning, not routing
-commands or grants to read a provider implementation.
-
-## Shared interfaces and participants
-
-An interface remains a local entity with one canonical readable contract in an implementation-role
-companion unit owned by one Module and referenced by many. Each canonical contract has a stable ID,
-positive version, offline schema, semantics and conforming example, plus readable behavior and
-scenarios. Definition ownership need not equal every provider's identity.
-
-Participant metadata selects that exact ID/version, a provided/required role and a peer, and refers
-to local readable participation conditions, guarantees and obligations. A binding cannot override
-the definition or repeat its schema/example/common meaning. Every participant includes the canonical
-definition version. Internal peers declare complementary roles with mutually named participants;
-external peers require no local counterpart. Duplicate participant/peer/role bindings are invalid.
-Structural matching does not prove behavioral compatibility.
-
-Changing a canonical unit affects its owner and every direct context consumer, including consumers
-that reference the entire owner Module. A behavior/schema change increments the contract version and
-reconciles bindings atomically. Editorial changes, metadata-only edits, changed references and
-ownership changes also invalidate byte-bound context and review evidence. Ownership transfer keeps
-IDs stable and reconciles both source members, registrations, references, links and bindings together.
-Publication shows a canonical definition once, with owner/reference navigation rather than copies.
-
-## Relationship views
-
-The authoritative authored relationship views are Mermaid flowcharts in the reading entry's
-Relationships section, with explicit scope and labeled edges between declared local entities.
-A view may omit irrelevant inventory entities; additional views can explain another collaboration.
-Provider definitions included as context do not expand the local diagram or entity inventory.
-Composition remains the registry's parent relation and dependency remains its uses relation; prose
-and diagrams must agree with them rather than establish alternate structural ownership.
-
-A tool may derive diagrams, navigation and indexes from these declarations. Such output is not
-another authored model. The Protocol specifies readable meaning and identity preservation, not
-website pages, sidebars, themes, folded panels or visual interaction.
-
-## Versions, evidence and gaps
-
-A project identifies the accepted Protocol version separately from its own interface versions,
-registry serialization and development-tool configuration. Exact content digests can additionally
-bind sources and evidence. Metadata and reading must form one consistent model: neither silently
-overrides the other. A correctly shaped record cannot prove complete meaning.
-
-Missing necessary behavior is a semantic gap even when all files exist and all references resolve.
-A reader names that gap instead of reading outside its granted context or inferring promises from
-code. Test-declared coverage and reverse implementation indexes remain derived evidence, not Spec
-content or permission to widen the selected task.
-
-# Spec and Context
-
-A Module is the unit of complete Spec context selection. A scenario query first resolves its sole
-owner and selects that Module. Reading is the Protocol-defined human-readable subset of content,
-not an additional query kind, a summary substitute or an execution grant.
-
-## Exact source selection
-
-Let `D(M)` be the document units owned by M, `R(M)` its explicit references, and `members(U)` the
-reading and metadata files of unit U. A Module reference includes its owned units; a document
-reference includes exactly the identified unit. External material is selected separately.
-
-```text
-Units(M) = D(M) union (union of include(r) for r in R(M) when r is a context reference)
-Context(M) = union of members(U) for U in Units(M)
-ReadingContext(M) = the reading member of each U in Units(M)
-Context(scenario S) = Context(owner(defining_unit(S)))
+```json
+{
+  "schema_version": 3,
+  "document": {"id": "document.checkout.topic.holds", "owner": "module.checkout", "role": "module"},
+  "defines": [
+    {"id": "concept.checkout.basket", "type": "concept", "title": "Basket",
+     "meaning": "#concept.checkout.basket"},
+    {"id": "concept.checkout.hold", "type": "concept", "title": "Hold",
+     "meaning": "#concept.checkout.hold"},
+    {"id": "realization.checkout.service", "type": "realization", "title": "Checkout service",
+     "meaning": "#realization.checkout.service", "entries": ["src/checkout/"], "pending": []}
+  ],
+  "relations": [
+    {"type": "narrows", "source": "concept.checkout.hold",
+     "target": "concept.inventory.reservation"},
+    {"type": "contrasts", "source": "concept.checkout.basket", "target": "concept.catalog.basket",
+     "reason": "a catalog basket is a saved wish list; this one is submitted immediately"},
+    {"type": "relates", "source": "realization.checkout.service", "verb": "records",
+     "target": "concept.checkout.hold"}
+  ],
+  "extensions": {}
+}
 ```
 
-Only `R(M)` expands. Never recursively resolve a provider's context. Neither links, parentage,
-uses, directory neighbors, entity target IDs nor implementation bindings add sources. Each selected
-unit contributes both exact members, even when a publisher puts its reading on an auxiliary page.
-No excerpt, summary, diagram export or reading-only projection replaces a complete unit.
-`D(M)` includes both module-role explanations and implementation-role precise specifications.
-A document's role never filters this union, including during discovery, planning or Spec review.
-Implementation Specs are Spec context, not the separately authorized implementation source context.
+- `schema_version` is the integer `3`.
+- `document` has exactly `id`, `owner` and `role`, agreeing with the owner's `owns`. `role` is
+  exactly `module` or `implementation` with no default; the entry `module.md` has role `module`.
+- `module` is present exactly in the entry; see [Module declaration](#module-declaration).
+- `defines` lists only `concept` and `realization` records. Concepts are defined only in `module`
+  documents, and each concept's definition is its row in the document's Terminology table.
+  Requirements, scenarios and contracts are located by their reading syntax below.
+- `relations` lists `narrows`, `supersedes`, `contrasts` and `relates`, each naming a `source` that
+  this document defines or, for `relates`, the owning Module itself. Imports are declared by
+  Terminology rows, not here.
+- `defines` and `relations` are explicit arrays and MAY be empty.
+- `extensions`, if present, is an object keyed by stable names holding tool data. A tool MUST define
+  and validate the extension vocabulary it uses. An extension MUST NOT create a relation, change
+  ownership or selection, or hide essential meaning.
+
+## Identities and anchors
+
+Module, document, concept, realization, requirement, scenario and contract identities are
+project-wide unique and match:
 
 ```text
-resolve(registry, query):
-    find the unique selected Module or scenario owner
-    validate registration, ownership, paths, kinds and source availability
-    include each owned unit, reason = owned(Module ID)
-    include each directly referenced unit, retaining its typed reference reason
-    expand each included unit to its exact reading and metadata source members
-    deduplicate sources and retain all sorted inclusion reasons
-    return source records sorted by canonical project-relative path
+^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$
 ```
 
-Every record contains document ID, sole owner, path, source role (`reading` or `metadata`), exact-byte
-SHA-256 digest and inclusion reasons. The selecting registration, including owned collection and
-explicit references, is bound to context identity. Both members have the same owner, document ID
-and inclusion provenance. Changing only whitespace, metadata, reference declarations or provenance
-invalidates dependent byte-bound evidence even if the set of paths is unchanged.
+Requirement identities begin `req.`; scenario identities begin `scenario.`. Prefixes do not
+establish ownership. Stable identities let links survive renames and moves, and let boundaries,
+reviews and tests name exactly one thing.
 
-Unknown IDs, wrong kinds, duplicate identities, unsafe or aliased paths, ambiguous ownership and
-missing members fail without partial successful resolution. Identity lookup may inspect registered
-metadata without reading unselected human bodies. Requirement, entity, contract, document and
-heading anchors are addressable artifacts, not separate task-context query kinds.
+A readable anchor is either a standalone `<a id="identity"></a>` line before its explanation, or an
+ATX heading carrying a trailing `{#identity}`. Requirement and scenario headings supply their
+identity directly. Anchors are unique within their document and outside fences. A heading anchor
+extends to the next heading of the same or higher level; a standalone anchor extends to the next
+heading; either ends at the next anchor group.
 
-## Visibility and delivery
-
-The resolved context is the exact Spec visibility scope of a bounded reader. The tool must make
-every selected source available whole and no unselected source visible. It may grant paths in place,
-copy byte-identical members into a capsule, provide their bodies, or combine these mechanisms.
-Delivery mechanism does not change membership, ownership, source identity or authority.
-
-A tool may also provide task material derived from in-scope files, such as their changes since a
-baseline. Such material adds no file and cannot replace complete sources. An agent that reads only
-some granted files still received the complete context; missing meaning is judged against the full
-scope, not against what that reader happened to open.
-
-## Example: overlapping references
-
-Checkout owns its entry and scenario units. It references Inventory's entire collection and also
-Inventory's interface unit. Inventory owns its entry and interface and references Tax. Checkout
-therefore receives four units, eight source members, with two reference reasons on both interface
-members. Tax is absent. Querying an Inventory scenario selects Inventory's own context, including
-Tax. Removing Checkout's redundant interface reference changes provenance and invalidates its
-context identity even though its source paths are unchanged.
-
-## Implementation context
-
-Implementation context is derived only from local entity file bindings. Exact entries and files
-below directory prefixes are resolved under an explicit deterministic exclusion rule. Metadata
-records pending intent without pretending missing file contents exist.
-
-```text
-ImplementationContext(M) = union of bound files of locally owned entities
-ImplementationContext(scenario S) = ImplementationContext(owner(S))
-```
-
-Neither reading nor metadata members belong to implementation context. A file shared with another
-Module adds that Module to reverse-use metadata, not its Spec or implementation to the selected
-reader's context. A Module with no bindings has an empty implementation context; this does not
-prove it has no realization.
-
-Implementation names and pending status are visible through admitted metadata. Contents are a
-separate phase-specific grant. A tool may grant names for planning, read-only contents for review,
-or writable contents for implementation, but never add unlisted files implicitly. Context inclusion
-alone grants no write, command, credential or network authority. Test-to-scenario coverage is derived
-from tests in implementation context, not from a second Spec-authored test list.
-
-## External reference material
-
-External references declare existing project-relative vendored library, service or tool material,
-pinned at a known revision. They are neither specification promises nor implementation files and
-cannot overlap a document unit or the selecting Module's implementation listing. They are never
-pending. Only the selected Module's external references are considered.
-
-```text
-References(M) = union of readable files selected by M's external entries
-References(scenario S) = References(owner(S))
-```
-
-A tool may exclude media and archives by a documented deterministic rule and record one tree digest
-per external entry. The entries are metadata; their contents are separately authorized read-only.
-An undeclared network fetch or installed dependency's sources must not substitute for declared
-material. Missing necessary external knowledge is a gap, not permission to widen the grant.
-
-## Changes and gaps
-
-Source members stay paired for ownership, context and review. An owner-only authoring proposal may
-change either or both members, but must be checked as one complete overlay before application.
-Referenced units remain read-only. A metadata-only ownership or binding edit cannot evade affected
-context review, stale-input checks or the prohibition on code writers changing Specs.
-
-A missing definition is a semantic gap, even after successful structural resolution. Record the
-needed promise, its owner when known, selected Module, context identity and blocked step. Do not
-follow an included Module's references or a prose link to repair it. An additional explicit Module
-selection is a new bounded context, not a retrospective claim that the old one was complete.
-
-# Required format
-
-Protocol 10 separates complete content from its human-readable subset and assigns each document
-unit an explicit explanatory or precise-specification role. This chapter defines the
-representation of both. It does not define a documentation site's navigation or layout. Templates
-are starters; satisfying syntax does not establish semantic completeness.
-
-## Document units
-
-Each registered document is a pair: the explicit project-relative Markdown reading path and that
-same path with `.json` appended. For example, `checkout/module.md` and `checkout/module.md.json`
-are one unit, not two documents. A Module registers a nonempty `documents` collection with exactly
-one local `module.md` entry. Registration of a reading path registers its exact companion; no
-filesystem discovery or Markdown link expansion is permitted.
-
-Reading files are nonempty UTF-8 Markdown. Metadata files are UTF-8 JSON with unique keys and no
-non-JSON numeric constants. Paths use canonical project-relative POSIX spelling: no absolute paths,
-backslashes, empty, dot or traversal components, control characters or symlink aliases. Physical
-source aliases and multiple ownership are invalid. Both members have one identity and owner and
-must be included together in context, source digests, proposals and ownership reconciliation.
+Adjacent anchors on one standalone line identify several nodes explained together by the following
+prose, and that prose MUST explain all of them.
 
 ## Reading structure
 
-The first five level-2 ATX headings of `module.md`, outside fences, are exactly once and in order:
+The first level-2 headings of an entry `module.md`, outside fences, are exactly once and in order:
 
 ```text
 Purpose
@@ -494,491 +1184,542 @@ Design
 Relationships
 ```
 
-A level-1 title and brief navigation may precede them. Purpose contains nonempty plain prose, not
-lists, tables, nested headings or fences. Invisible identity anchors are allowed. Usage, Design and
-Relationships each contain explanatory prose, not only links, headings or diagrams. Relationships
-contains at least one Mermaid flowchart for the principal collaboration. Honest unknowns are stated
-explicitly; the presence of prose is not proof that its explanation is sufficient.
+A level-1 title and brief navigation may precede them. Purpose is nonempty plain prose: no lists,
+tables, nested headings or fences. Usage, Design and Relationships contain explanatory prose, not
+only links, headings or diagrams. Honest unknowns are stated explicitly.
 
-Every module-role topic starts with a short orienting introduction followed by `## Terminology` as
-its first level-2 section; the entry puts Terminology immediately after Purpose. There is exactly one
-Terminology section, with a nonempty two-column Markdown table headed `Term` and `Meaning / definition`.
-A local term is defined plainly in its row. An imported term in the `Term` column links directly to
-its canonical table by a relative Markdown link ending in `#terminology`. Its `Meaning / definition`
-cell identifies the source and MAY also repeat or faithfully restate the definition for reading
-convenience. A restatement preserves the canonical meaning and constraints, creates no new authority,
-and must be checked for consistency when its source changes. Link-only imports remain permitted.
-For example: `| [Reservation](inventory.md#terminology) | Stock held before checkout. Source: Inventory. |`
-The source remains explicitly included even when the meaning is repeated locally. This permission
-does not extend to duplicate formal obligations, interface contracts or schemas.
-Qualify distinct meanings instead of merging them. Do not list files, implementation IDs or
-all declared entities to fill the table. If no specialized terms are needed, state that explicitly
-instead of inventing rows. Implementation-role units MAY use the same convention for orientation.
-The heading publishes the stable `terminology` anchor. Necessary linked tables must belong to the
-owner's complete selected context; they do not expand it implicitly.
+A `module`-role topic begins with a short orienting introduction. When the topic defines or imports
+a concept, its first level-2 section is `## Terminology`. In the entry, Terminology always follows
+Purpose; it may hold only prose when the entry defines and imports nothing.
 
-`module.md` has role `module`. Its additional sections and module-role companions explain topics,
-rationale, correct use and unresolved facts. They MUST NOT contain formal `req.*` or `scenario.*`
-definitions or canonical `concorde-contract` fences. Usage examples and links to precise definitions
-are permitted. A topic remains an explanation owned by its Module, not a nested specification owner.
+`module` documents MUST NOT contain requirement or scenario definitions or canonical contract
+fences. `implementation` documents contain those definitions and MAY group them under headings
+that carry no identity. Both roles are reading content; role never filters context.
 
-Role `implementation` contains the Module's formal requirements, scenarios and canonical interface
-contracts. Units may group definitions by subject without creating a second ownership hierarchy.
-Both roles are registered, paired human-readable Spec content. Topics need no full entry template
-beyond early Terminology. Required exact private APIs, serialization rules, implementation algorithms
-and executable Graph catalogs belong in implementation-role reading regardless of their syntax.
-Conceptual design and safe-use explanations stay in module-role reading. Implementation details that do not constrain behavior or significant
-design do not become obligations merely by appearing in code. The former `Usage & Contract`,
-`Architecture & Realization` and standalone `Entities` entry structure is not admitted.
+Exact private APIs, wire fields, serialization rules, internal limits and executable topology belong
+in `implementation` reading regardless of the syntax used to write them. Conceptual design and
+safe-use explanation stay in `module` reading. A `module` document MUST NOT hide destructive
+defaults, security limits or known unfulfilled guarantees behind a link.
 
-Machine management blocks `concorde-document`, `concorde-entities`, `concorde-dependencies` and
-`concorde-contract-binding` are not reading declarations. They must be migrated to metadata with
-readable meaning references. Examples inside enclosing fences remain opaque. Interface schemas,
-examples and `concorde-contract` definitions remain human-readable content; canonical definitions
-belong in implementation-role units. Fenced examples of Spec syntax do not declare definitions.
+## Terminology
 
-## Metadata representation
+The Terminology section of a `module` document holds exactly one Markdown table with the columns
+`Term` and `Definition`, optionally followed by orienting prose. Every row is one of two kinds:
 
-The companion has these required fields and optional `extensions`:
+```markdown
+## Terminology
 
-```json
-{
-  "schema_version": 2,
-  "document": {"id": "document.checkout.module", "owner": "module.checkout", "role": "module"},
-  "entities": [
-    {"id": "entity.checkout.service", "title": "Checkout service", "kind": "program",
-     "meaning": "#entity.checkout.service", "files": ["src/checkout/"], "pending": []}
-  ],
-  "dependencies": [
-    {"target_id": "module.inventory", "meaning": "#inventory-collaboration"}
-  ],
-  "bindings": [
-    {"id": "contract.inventory.reserve", "version": 1, "role": "required",
-     "peer": "module.inventory", "meaning": "#reservation-participation"}
-  ]
-}
+| Term | Definition |
+| --- | --- |
+| Hold | Stock withheld from other customers until a submission succeeds or expires. |
+| [Reservation](../inventory/module.md#concept.inventory.reservation) | |
 ```
 
-`schema_version` is the integer 2. `document` has exactly `id`, `owner` and `role`. Identity and
-owner agree with registration; `role` is exactly `module` or `implementation`, with no implicit
-default. The unique `module.md` entry MUST have role `module`. Unknown/missing roles, version-1
-metadata and an implementation-role entry require explicit migration and are invalid. The three
-declaration arrays are explicit and may be empty. There is no `main_visible` property: both roles
-remain Protocol reading content. The retired `concorde.publication` classification extension MUST
-NOT be used: publishers derive classification from `document.role`, not a competing role declaration.
-`extensions`, if present, is a nonempty object keyed by stable names. An implementation must define
-and validate the extension vocabulary it uses; an extension cannot change Protocol ownership,
-inclusion or the required reading subset. Essential meaning cannot be hidden in extension payloads.
+- A **defining row** has the plain title of a concept this document defines and its definition: one
+  sentence. The row is the definition's only home; the metadata record holds the concept's identity,
+  title, explanation anchor and relations.
+- An **import row** has a link to another Module's concept, addressed by that concept's identity,
+  and an empty `Definition` cell. The row declares the `imports` relation. It never copies the
+  definition, because copies drift; the link text is free, so renaming the concept breaks nothing.
 
-### Identities and readable anchors
+The rows correspond one to one with the concepts the document defines and imports. A document with
+neither has no table. A publisher MAY show imported definitions inline; that enrichment is a
+[view](views.md) and never written into the file.
 
-Module, document, entity, requirement, scenario and canonical contract IDs are project-wide unique
-and match `^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$`. Requirements additionally start with `req.` and
-scenarios with `scenario.`. Prefixes do not establish ownership. Titles and paths may change without
-changing identity. Participant bindings use an existing contract ID, not a new definition.
-
-A readable anchor is either a standalone `<a id="identity"></a>` before its explanation or an
-ATX heading with a trailing `{#identity}`. Requirement/scenario headings supply their ID directly.
-A heading cannot redirect a definition to a different ID. Anchors are unique in their document,
-outside fences. Adjacent anchors on one standalone line can identify several entities explained together by the
-following prose. Separate anchor lines delimit separate explanations. All of those entities must actually be
-explained; an empty or unrelated paragraph is a semantic gap.
-
-A heading anchor extends to the next heading of the same or higher level; a standalone anchor
-extends to the next heading. Either ends at the next anchor group. A metadata `meaning` is a
-nonempty local `#anchor`, never a URL or another document path. It resolves to nonempty readable
-explanation in this unit, without following links. Required context inclusion for links within that
-explanation is checked separately.
-
-### Entities
-
-An entity has required `id`, `title`, `kind`, `meaning` and optional `files`, `pending`, `target_id`.
-Title and kind are nonempty strings; titles are unique within the Module. Its readable meaning
-anchor is its stable ID. Files, when present, are a nonempty unique list of exact project-relative
-paths or directory prefixes ending in `/`; `pending` is a unique subset of those entries.
-No two entities in a Module list the same entry. More specific overlapping entries determine file
-ownership. The union equals the registry listing entry for entry. Existing exact entries are files;
-existing directory entries are directories. Non-pending entries must exist.
-
-A Module entity's `target_id` names one direct child or used Module. Such an entity has no `files`
-or `pending`. Every direct child and used provider has exactly one such local entity. Other
-entities may be concepts, records, interfaces or external actors without implementation bindings.
-Entity meaning is reading prose, not a `responsibility` string copied into metadata.
-
-### Dependency explanations
-
-Each dependency record has exactly `target_id` and `meaning`. Across the owner's collection the
-provider set equals the union of its direct uses and children, each once. The pointed reading
-explains responsibility, when the collaboration applies, canonical guarantees relied upon and
-local duties/reactions. It should link to provider definitions in the explicitly included context,
-not copy their schemas. A provider both used and contained has one local agreement.
-
-### Participant bindings
-
-A binding has exactly `id`, `version`, `role`, `peer`, `meaning`. Version is a positive integer;
-role is `provided` or `required`; peer is a Module ID or nonempty `external:<name>`. The local
-explanation states participation conditions, relied-upon guarantees and obligations. It does not
-repeat the canonical schema, example or common semantics. Participant/peer/role bindings are unique
-across the owner's collection. Internal peers require complementary roles for the same ID/version,
-with mutually named participants; external peers require no project-owned counterpart. Every
-participant's complete context includes the exact canonical definition version.
+Each definition is written once, in its owner's table. A change to it rewrites no document of an
+importer; the importer's context still changes, because the defining document is in it.
 
 ## Requirements
 
-In an implementation-role unit, a definition is a level-2 through level-5 ATX heading `req.<identity> — Title`, followed by a
-statement. A spaced en dash or hyphen is also accepted. The first paragraph is one sentence with
-uppercase SHALL or SHALL NOT exactly once. A requirement section ends at the next heading of any
-level and has no nested heading. It cannot be defined inside a scenario. Subsequent paragraphs,
-lists and fences explain the statement; a list item beginning with a requirement ID is invalid.
+In an `implementation` document, a requirement is a level-2 to level-5 ATX heading
+`req.<identity> — Title`, followed by its statement. A spaced en dash or hyphen is accepted.
+
+```markdown
+### req.checkout.single-order — One order per submission
+
+Checkout SHALL create at most one order for a successfully admitted request.
+```
+
+The first paragraph is one sentence containing uppercase `SHALL` or `SHALL NOT` exactly once. The
+section ends at the next heading of any level and contains no nested heading. Later paragraphs,
+lists and fences explain the statement; a list item beginning with a requirement identity is
+invalid.
 
 ## Scenarios
 
-In an implementation-role unit, a definition is a level-2 through level-5 ATX heading `scenario.<identity> — Title`, with the same
-dash choices. Its section ends at the next heading of any level and has no nested heading. Every
-list item in that section is a step beginning with GIVEN, WHEN, THEN, AND or BUT and a space.
-The first step is GIVEN or WHEN; at least one WHEN and one THEN are required. AND and BUT continue
-the preceding kind. A sequence never returns to an earlier kind. Prose may explain the situation.
-Requirements and scenarios belong to the sole owner of their defining unit.
+In an `implementation` document, a scenario is a level-2 to level-5 ATX heading
+`scenario.<identity> — Title`, followed by its steps.
 
-## Canonical structured contracts
+```markdown
+### scenario.checkout.submit — Successful checkout
 
-An implementation-role unit's `concorde-contract` JSON fence defines exactly `id`, `version`, `schema`, `semantics`, `example`.
-The version is a positive integer, semantics is nonempty, and the example satisfies the schema.
-The tool's schema vocabulary is explicit and offline: schema references cannot load Spec units or
-remote resources. The contract ID has one canonical definition; its anchor is exposed in reading.
-Inputs, outputs, effects, failures, compatibility and related scenarios must be explained in the
-resolved readable context, not inferred from shape alone. No role or peer appears in a definition.
-Behavior or schema changes increment the version and reconcile affected bindings atomically.
-Editorial changes still invalidate byte-bound evidence without requiring a behavior-version bump.
+- GIVEN a customer has a valid basket and delivery details
+- WHEN the customer submits it
+- THEN Checkout creates one order
+- AND returns its identifier
+- BUT does not charge the payment method twice
+```
 
-## Relationship diagrams
+Every list item in the section is a step beginning with `GIVEN`, `WHEN`, `THEN`, `AND` or `BUT` and
+a space. The first step is `GIVEN` or `WHEN`; at least one `WHEN` and one `THEN` are required.
+`AND` and `BUT` continue the preceding kind, and the sequence never returns to an earlier kind. The
+section ends at the next heading of any level and has no nested heading. Prose may explain the
+situation.
 
-The reading entry's `## Relationships` section contains Mermaid fences beginning with `flowchart`
-or `graph`, with one statement per line in an authoritative relationship view. A diagram's node
-labels form a nonempty subset of the Module's own entity titles.
-A shaped node's first label line (before `<br/>`) is its title; an unshaped node uses its identifier.
-Edges are labeled `A -->|label| B` or `A -- label --> B`, with the supported Mermaid arrow styles.
-Every relationship edge has a nonempty label. The surrounding prose states the diagram's scope;
-additional diagrams can cover other scopes without duplicating inventory. Accessible `accTitle`
-and `accDescr`, grouping and styling are supported; their rendering is not another authority.
+## Canonical contracts
 
-## Links, references and verification
+In an `implementation` document, a `concorde-contract` JSON fence defines exactly `id`, `version`,
+`schema`, `semantics`, `example`. The version is a positive integer, `semantics` is nonempty, and
+the example satisfies the schema. Schema references MUST NOT load Spec documents or remote
+resources. Publishers expose the contract identity as an anchor at the fence.
 
-Ordinary Markdown links navigate to readable definitions. A stable-ID fragment must name the actual
-definition in the addressed reading document. Publishers expose these anchors and keep links as
-links, not transclusion. Other heading fragments use the renderer's slug rules. A link never adds
-a file to agent context; Module registration's explicit references are the sole inclusion authority.
+No role or peer appears in a definition; those belong to `participates`. A behaviour or schema
+change increments the version, and every participant is reconciled in the same change. Editorial
+changes need no version increment.
 
-Each Module declares an explicit reference array. A context reference has exactly `kind` and `id`,
-with kind `module` or `document`. An external reference has exactly `kind: external` and `path`,
-naming existing vendored material. Duplicate references, self selections, wrong kinds and unknown
-IDs are invalid. Overlapping module/document references deduplicate the paired sources while
-retaining all reasons. Only the selecting Module's references expand, once.
+## Diagrams
 
-A test declares verified scenario IDs in the test, in a syntax documented by its development tool.
-Tools read these declarations without executing tests and reject unknown scenario IDs. Reading
-content contributes no test locations. Derived coverage and reverse file indexes are evidence,
-not another source of specification obligations.
+A Mermaid block in reading is either a **checked flowchart** or marked `illustrative`. The rules are
+in [Views](views.md).
 
-## Drafts and migration
+## Links
 
-Unresolved facts are explicit gaps. Templates do not invent behavior or establish completeness.
-Migrating Protocol 8 requires adding early, canonical Terminology tables, editing explanation for
-readers without implementation knowledge, and separating remaining technical contracts from topics.
-Keep important operational risks visible; preserve exact obligations, IDs and executable diagrams
-while reconciling relocated anchors and explicit references. Metadata schema 2 is unchanged.
-For older projects, migrating Protocol 7 additionally requires explicit schema-2 roles for every unit, moving all formal requirements,
-scenarios and canonical structured contracts out of entries and explanatory topics into Module-owned
-implementation units, and removing publisher-specific classification extensions. Preserve definition
-IDs, Module ownership and valid obligations; retain coherent explanatory meaning in topic documents.
-If a unit is split, the retained unit keeps its document identity and each new unit gets a new one.
-Update references to include moved definitions explicitly; links alone cannot repair context.
-Moving a definition does not change interface behavior or require a behavior-version increment. It also reconciles owned
-pairs, reference sets, links, file exclusions, context digests and affected evidence. A format
-migration is an explicit project change, never an installer's silent reinterpretation. Registry,
-Framework configuration and worker-wire versions are separate implementation compatibility gates.
+Ordinary Markdown links navigate to readable definitions. A stable-identity fragment MUST name an
+actual definition in the addressed reading document; other fragments use the renderer's slug rules.
+A link never adds a document to context.
+
+## Evidence declarations
+
+A test declares the scenario identities it verifies in the test source, in a syntax documented by
+the development tool. Tools read these declarations without executing tests and reject unknown
+identities. Reading content MUST NOT contain that syntax outside fences, list test locations or
+prescribe coverage declarations.
+
+# Checks
+
+Every check has a stable identity, a decidable statement and a severity. The identities listed
+here are exactly those referenced by [`model.yaml`](model.yaml) and the other chapters.
+
+Checks serve boundaries directly: a harness can only compute a trustworthy boundary from a
+specification whose ownership, declaration sites and selections are structurally sound. They serve
+understanding only indirectly, by keeping explanations attached to what they explain; no check
+proves that an explanation is understandable.
+
+Severities: **error** blocks structural conformance. **warning** is reported and does not block.
+
+## Nodes
+
+| Identity | Statement | Severity |
+| --- | --- | --- |
+| `CHK.node.id` | Every node identity matches the grammar, is project-wide unique and, for requirements and scenarios, carries its prefix. | error |
+| `CHK.node.type` | Every `defines` record has type `concept` or `realization`. | error |
+| `CHK.node.owner` | Every node resolves to exactly one owning Module. | error |
+| `CHK.node.title` | Titles are nonempty. Module titles are unique in the project; concept and realization titles are unique among the concepts and realizations of their owner. | error |
+| `CHK.node.meaning` | A metadata-declared node's `meaning` is a local `#anchor` resolving to nonempty prose in the same document. | error |
+| `CHK.node.explained` | An anchor group's prose is not empty and not only links, headings or fences. | warning |
+| `CHK.concept.definition` | Each concept has exactly one defining row in its document's Terminology table, whose definition is one nonempty sentence. | error |
+| `CHK.concept.retired` | `retired`, when present, has a nonempty `reason`; only a retired concept is the source of `supersedes`. | error |
+| `CHK.requirement.statement` | The first paragraph is one sentence containing `SHALL` or `SHALL NOT` exactly once; the section has no nested heading. | error |
+| `CHK.scenario.steps` | Every list item is a step; the grammar of [Format](format.md) holds. | error |
+| `CHK.contract.fence` | The fence has exactly the five fields, a positive version, nonempty semantics, an offline schema and an example that satisfies it. | error |
+
+## Documents
+
+| Identity | Statement | Severity |
+| --- | --- | --- |
+| `CHK.document.pair` | Both members exist and agree with the owner's `owns` on identity and owner; `role` is declared. | error |
+| `CHK.document.path` | Paths are canonical project-relative POSIX, with no alias, traversal or symlink. | error |
+| `CHK.document.role` | `role` is exactly `module` or `implementation`, explicitly declared. | error |
+| `CHK.document.schema` | Metadata is `schema_version` 3 with the required fields and no unknown keys outside `extensions`. | error |
+| `CHK.document.entry` | Each Module owns exactly one `module`-role document whose reading path ends in `module.md`; its metadata, and no other, has the `module` block, whose `owns` includes the entry. | error |
+| `CHK.document.sections` | An entry has Purpose, Terminology, Usage, Design, Relationships once, in order, as its first level-2 headings. | error |
+| `CHK.document.topic-terminology` | A `module`-role topic that defines or imports a concept has `## Terminology` as its first level-2 section. | error |
+| `CHK.document.prose` | Purpose is plain prose; Usage, Design and Relationships are not only links, headings or diagrams. | error |
+| `CHK.terminology.rows` | A Terminology section has at most one table, with columns `Term` and `Definition`, whose rows correspond one to one with the concepts the document defines and imports. | error |
+| `CHK.terminology.import-row` | An import row links to a concept anchor of another document by identity, and its `Definition` cell is empty. | error |
+
+## Relations
+
+| Identity | Statement | Severity |
+| --- | --- | --- |
+| `CHK.relation.type` | Every relation has a registered type. | error |
+| `CHK.relation.endpoints` | Source and target resolve and have permitted types. | error |
+| `CHK.relation.site` | Every relation is declared at its site; a metadata relation's source is defined by that document, or is its owning Module for `relates`. | error |
+| `CHK.relation.meaning` | A Module relation's `meaning` is a local anchor into the entry, or a qualified anchor into another document the source Module owns, resolving to nonempty prose. | error |
+| `CHK.registry.mirror` | The registry has exactly one record per Module, with the entry's path and every field of its `module` block, equal to that block. | error |
+| `CHK.owns.unique` | Each document is owned exactly once. | error |
+| `CHK.defines.once` | Each node has exactly one defining document. | error |
+| `CHK.defines.role` | Requirements, scenarios and contracts are defined only in `implementation` documents; concepts only in `module` documents. | error |
+| `CHK.contains.acyclic` | Composition is acyclic. | error |
+| `CHK.contains.single-parent` | A Module has at most one parent. | error |
+| `CHK.contains.root` | Exactly one Module has no parent. | warning |
+| `CHK.uses.no-self` | A Module does not use itself. | error |
+| `CHK.uses.unique` | A Module uses each provider at most once. | error |
+| `CHK.relies-on.owned` | Every identity in `relies_on` names a requirement, scenario, contract or concept owned by the relation's target. | error |
+| `CHK.relies-on.linked` | When `relies_on` is present, every stable-identity link from the relation's `meaning` section to a node of the target names a listed node. | error |
+| `CHK.includes.no-self` | A Module does not include itself or a document it owns. | error |
+| `CHK.includes.unique` | No duplicate `(kind, target)` pairs. | error |
+| `CHK.includes.reason` | Each `includes` has a nonempty `reason`. | error |
+| `CHK.includes.redundant` | A spec inclusion whose documents are all already selected by `owns`, `contains`, `uses` or another inclusion is reported. | warning |
+| `CHK.external.exists` | External material exists at the declared path and is tracked by the project's version control. | error |
+| `CHK.external.no-overlap` | External paths overlap no document member and no realization entry. | error |
+| `CHK.binds.exists` | Non-pending entries exist; exact entries are files and `/` entries are directories. | error |
+| `CHK.binds.disjoint` | No two realizations in one Module list the same entry. | error |
+| `CHK.binds.no-spec` | No document member, generated output or control record is bound; a bound directory contains no document member. | error |
+| `CHK.binds.pending-subset` | `pending` is a subset of `entries`, and pending entries do not exist. | error |
+| `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, generated output, external material or a control record such as the project registry and configuration. | error |
+| `CHK.imports.foreign` | An imported concept is owned by a Module other than the importer's owner. | error |
+| `CHK.imports.owner` | An imported concept's owner is a Module the importer uses, an ancestor of the importer, or a descendant of it. | warning |
+| `CHK.narrows.acyclic` | `narrows` never relates a concept to itself, directly or through other `narrows`. | error |
+| `CHK.contrasts.required` | Two nodes of different owners whose titles normalize equal have a `contrasts` between them. | error |
+| `CHK.contrasts.once` | At most one `contrasts` is declared per unordered pair, and it has a nonempty `reason`. | error |
+| `CHK.relates.source` | A `relates` source is defined by the declaring document or is its owning Module. | error |
+| `CHK.relates.verb` | `verb` is nonempty; `(source, verb, target)` is unique. | error |
+| `CHK.participates.version` | The contract exists and the declared version is its current version. | error |
+| `CHK.participates.complementary` | Internal peers declare complementary roles for the same contract and version and name each other. | error |
+| `CHK.participates.unique` | `(contract, peer, role)` is unique per Module. | error |
+| `CHK.verifies.resolves` | Every verified scenario identity exists. | error |
+| `CHK.evidence.no-spec-coverage` | Reading content contains no test-declaration syntax outside fences. | error |
+
+**Name normalization** for `CHK.contrasts.required`: Unicode NFKC, case folding, and every run of
+whitespace, hyphens and underscores treated as one space, trimmed. The compared nodes are concepts
+and Modules; a concept is not compared with its own Module.
+
+## Views
+
+| Identity | Statement | Severity |
+| --- | --- | --- |
+| `CHK.view.marked` | Every Mermaid block in reading is a `flowchart`/`graph` or is marked `illustrative`. | error |
+| `CHK.view.nodes` | Every node label of a checked flowchart resolves to exactly one node or Module. | error |
+| `CHK.view.edges` | Every edge of a checked flowchart is labelled and matches a declared `relates`, `uses` or `contains` in its direction. | error |
+
+## Reconciliation
+
+| Identity | Statement | Severity |
+| --- | --- | --- |
+| `CHK.context.reconciled` | For every Module M and every `q ∈ Requires(M)`, `satisfied(q, Spec(M))` holds. | error |
+
+## Limits of the checks
+
+These checks are weaker than the obligations they serve:
+
+| Check | What it does not establish |
+| --- | --- |
+| `CHK.relies-on.linked` | That `relies_on` lists a relied-upon promise the explanation never links to. |
+| `CHK.relation.meaning` | That a parent's or consumer's explanation of a collaboration is adequate. |
+| `CHK.node.explained` | That prose explains its node; it detects empty regions only. |
+| `CHK.contrasts.required` | Collisions that normalization misses. Unrelated same-named nodes also trigger it; declaring the `contrasts` with its reason is then the correct answer, not an escape. |
+| `CHK.view.edges` | That a drawn label describes the declared relation accurately. |
+| `CHK.participates.version` | That the participant behaves as the contract says; that is implementation conformance. |
+
+Not checked at all: whether a requirement is true of the implementation, whether reading is
+sufficient for its reader, whether a scenario is worth having, and whether an illustrative block is
+accurate.
+
+## Tool obligations
+
+These are requirements on tools rather than checks of declarations:
+
+- Context selection is one level and never follows a selected Module's own relations.
+- Documents are registered, never discovered from the filesystem or links.
+- Coverage is read from test declarations without executing tests.
+- Derived views are never written into reading files.
+- A harness keeps every task boundary within the composition rules of [Boundaries](boundaries.md):
+  writes only within write sets of bound Modules, write implies read, reads only within their read
+  sets, and task material adds no source.
+
+# Views
+
+A view is any rendering of the model: a diagram, a terminology table, an index, a navigation tree,
+a graph export, a documentation site. Views serve understanding: they are how most humans meet the
+specification. Axiom A6 governs all of them: **a view is derived or checked, and an unchecked
+picture is marked as such**, so that what a human sees cannot contradict what a harness computes
+boundaries from.
+
+## Derived views
+
+A publisher renders views from declared relations. The renderer chooses:
+
+- **scope** — which Modules, nodes and relation types to show;
+- **grouping** — subgraphs, layers and ordering;
+- **layout and styling**.
+
+The renderer MUST NOT choose which relations exist. An omitted node or edge is a scope decision and
+is not by itself a missing contract; an added edge is invalid output. Rendered views state their
+scope and the relation types they display, so a reader knows what the absence of an edge means.
+
+Derived views are rendered at publication or delivery time and are never written into reading
+files. A publisher MAY enrich a written table, for example by showing an imported term's
+definition next to its link; the enrichment is a view.
+
+## Checked flowcharts
+
+A `module` document may draw the architecture it explains. An unmarked Mermaid `flowchart` or `graph` block in
+`module` reading is a **checked flowchart**: it may only assert what is declared.
+
+- **Nodes.** Every node label resolves to exactly one of: a concept or realization of the owning
+  Module, by title; a Module, by title; or a node of another Module, by the qualified form
+  `Module title / node title`. An unresolved or ambiguous label is an error.
+- **Edges.** Every edge carries a nonempty label and corresponds to a declared relation between its
+  endpoints in the drawn direction: `relates`, `uses` or `contains`. For a `relates` edge the label
+  SHOULD be the relation's `verb`.
+- **Nothing else.** Subgraph titles, styling and comments assert nothing.
+
+A checked flowchart need not show every declared relation; like a derived view, its omissions are
+scope decisions. The `Relationships` section of an entry SHOULD contain a checked flowchart of the
+principal collaboration.
+
+Naming a node in a view grants no context and transfers no ownership. The owner is visible in a
+qualified label, so a node of another Module cannot be mistaken for a local one.
+
+## Illustrative blocks
+
+Explanation sometimes needs a picture that is not a relationship inventory: a flow over time, a
+state sketch, a before/after comparison. Any other Mermaid block, and any flowchart not meant as a
+checked view, MUST be marked `illustrative` in its info string:
+
+````markdown
+```mermaid illustrative
+sequenceDiagram
+    accTitle: How a submission proceeds
+    accDescr: Conceptual overview; not a relationship declaration.
+    ...
+```
+````
+
+An `illustrative` block is excluded from the model, labelled non-normative by the publisher and not
+checked against declarations. It carries no authority beyond the surrounding prose, and it MUST NOT
+be the only place a collaboration is described: a load-bearing relationship is declared.
+
+## Publication obligations
+
+A publisher MUST expose every stable identity as an addressable anchor, keep links as links rather
+than transclusion, and show one canonical definition per node with its owner rather than copies.
+
+A rendered view grants no reader context and MUST NOT be offered as a substitute for a complete
+document. The Protocol specifies readable meaning and identity preservation; it does not prescribe
+pages, sidebars, themes, folding or interaction behaviour.
 
 ## Concorde Framework execution profile
 
-This profile applies the independent Spec Protocol to Concorde's runtime. Framework configuration
-uses `profile_version: 15` for the content/reading document-unit model and registry schema 5 for its JSON
-storage. `.concorde/config.json` declares `profile_version`, `registry`, `protocol` and
-`operation_configuration`. Its `protocol` binding identifies the accepted version and exact
-manifest digest. These configuration and storage versions are Framework compatibility identifiers,
-not additional versions of the specification language. Older configurations require explicit
-migration; the runtime must not infer their meaning from paths or names.
+This profile applies the Spec Protocol to Concorde's runtime. `.concorde/config.json` declares the
+Framework `profile_version`, the path of the project `registry`, the accepted `protocol` binding
+(version and exact manifest digest), `operation_configuration` and the project's configured
+`checks`. The profile version identifies the Framework's configuration and storage formats; it is
+not a version of the specification language. A configuration of another profile version is refused
+rather than reinterpreted.
 
-### P5. One complete Module context per bounded task
+The registry is `{"schema_version": 3, "modules": [...]}`: one record per Module with its `id`,
+`title`, `entry` and a mirror of the entry's `module` block. `python3 scripts/concorde.py registry
+--write` regenerates the mirrored fields from the entries; which Modules exist changes only by an
+explicit registry edit.
 
-A bounded invocation selects one Module and freezes four kinds of context. Its **Spec context** is
-the Protocol's one-level union of complete owned document units and explicit Module references; scenario focus
-does not trim it. Definitions in included documents retain their original owner. The Protocol
-fixes which files are visible, not how they are delivered; this profile chooses the delivery. The
-host delivers the Spec context as a **context index and grant**: the invocation's frozen record
-lists both source members of every included unit with document identity, owner, source role, digest,
-inclusion reasons and the reading entry; reading and metadata members themselves are granted read-only at their project-relative paths, copied
-byte-for-byte into a capsule when the phase has no project workspace. No Spec document body is
-embedded in an invocation's input, so an invocation pays only for the documents its task opens;
-the agent opens the granted files with its own tools, starting from the reading entry, and must not read outside the grant. Native file scope is prompt policy, not OS confinement or proof
-of exclusive reads. Actual isolated tester/check subprocess boundaries are separate. Its
-**implementation context** is the Protocol-defined set of files bound by the Module's entities:
-their exact entries plus every regular file below their directory prefixes, excluding directories
-named `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, directories and files whose names
-start with a dot, and `.pyc` and `.log` files. Every phase may see the declared entries and the
-resulting file names, because the entity declarations are part of the Spec context; only
-code-writing and code-review phases receive file contents, in their declared subsets. Its
-**resource context** is the set of admitted Operation and Tool contracts the invocation may use
-together with the Module's Protocol-defined external references: the vendored documentation and
-source of the libraries, services and tools it declares with `references` of kind `external`,
-each identified by one tree digest. Every phase sees those entries; planning, task authoring,
-code-writing and code-review phases receive their readable files read-only, copied into a capsule
-when the phase has no project workspace, with media and archives excluded. No phase receives an
-undeclared network or an installed dependency's sources in their place. Its **task context** is the
-task, constraints, admitted stage artifacts and lifecycle metadata. Task context travels inline in
-the invocation input: stage artifacts and, for a review, the typed changes to the reviewed Module's
-own Spec documents or implementation files since the baseline revision. Those changes are derived
-from files inside the phase's visible scope, add no file to it and replace no granted file. A
-kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author inputs
-contain no implementation file contents. The calling session, the user session or its Task subagent, reads and selects complete Module Specs
-directly and answers questions within its own task grant. It chooses an explicit Module target for
-each retained Operation, rather than asking a discovery worker to route or expand a task. Every
-bounded worker is fresh and receives only its selected complete Module context. Additional calling-session
-reading never becomes an implicit worker grant.
+### P5. One Module's boundary per bounded task
 
-Assessors, planners and task authors use only the selected Module's complete
-project-Spec collection and, for planners and task authors, its declared external references.
-They MUST NOT read source code to supply missing Module meaning. Only the
-code-writing phase receives the complete implementation context; code review receives its separately
-declared read-only subset. Agent instructions, the Protocol rule bundle and Pi integration are not context:
-instructions belong to the canonical native Agent, and the Pi session tool exposes compatibility
-capability entries for the developer's own agent runtime. All native Agents receive their terminal rules
-and Agent specification, and
-reads the complete Protocol documents listed with their digests in its frozen context index.
+A bounded invocation is bound to one Module and freezes the Protocol's boundary sets for it.
 
-Context identities cover ownership, explicit references, inclusion reasons and document bytes,
-Protocol and instructions, declared stage artifacts, declared listing entries and lifecycle
-identity. Code-phase context identities additionally cover the bound file names and their current
-digests; a code writer may create files below a listed directory without a prior pending
-declaration. A changed input requires a new snapshot. Implementation-only changes do not add
-implementation knowledge to a planner.
+- **Spec context** is the Module's `SpecContext`: its own documents plus the documents its `uses`,
+  `contains` and `includes` select, one level, both members of each. A scenario focus does not trim
+  it. The host delivers it as a **context index and grant**: the frozen record lists every selected
+  document with identity, owner, member role, digest and the relations that selected it; the
+  members are granted read-only in place, or copied byte for byte into a capsule when the phase has
+  no project workspace. No Spec body is embedded in an invocation's input. The worker opens the
+  granted files itself, starting from the entry, and must not read outside the grant.
+- **Implementation context** is the Module's `ImplementationContext`: the names of the files its
+  realizations bind. A directory entry covers every regular file below it except directories named
+  `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, names starting with a dot, and `.pyc` and
+  `.log` files. Every phase sees the names; only code-writing and code-review phases receive
+  contents, from the Module's `ImplementationScope`.
+- **External context** is the Module's `ExternalContext`: the pinned material under its external
+  `includes`, each entry identified by one tree digest. Planning, task authoring, code writing and
+  code review receive it read-only, with media and archives excluded. An undeclared network fetch or
+  an installed dependency's sources never replaces it.
+- **Task context** travels inline: the task, constraints, admitted stage artifacts and lifecycle
+  metadata, and, for a review, the typed changes to the reviewed Module's own documents or
+  implementation files since the baseline. It adds no source and replaces none.
 
-### P6. Gaps and review are tied to the affected contract
+Assessors, planners and task authors reason from the Spec context and, for planners and task
+authors, the external context. They MUST NOT read source code to supply missing meaning. Agent
+instructions, the Protocol bundle and the Pi integration are not context; every native Agent
+receives its own instructions and reads the Protocol documents listed in its frozen index.
 
-Missing required behavior is a Module Spec gap. Name the missing promise, blocked step, Module and
-snapshot; continue only independent work. Implementation source cannot resolve that gap implicitly.
-A failed execution, an explicit prohibition and a missing runtime value with defined failure
-behavior are distinct from an unspecified contract.
+Native file scope is prompt-level policy, not OS confinement or proof of exclusive reads. The
+configured-check and tester subprocess boundaries are real OS read-only boundaries and are
+separate. The calling session reads and selects Specs within its own task grant; its extra reading
+never becomes a worker's grant.
 
-Spec review uses complete Module specifications, including both document roles. Code review uses the same Module contracts and authorized code in a
-fresh read-only invocation. A review records its exact inputs, coverage, findings and completion.
-Changed relevant inputs invalidate it. Skipped, failed, incomplete and successful reviews remain
-distinct. A changed canonical Spec document requires review for its owner and every Module whose
-resolved context includes it, including Module-reference consumers. Reference and ownership changes
-also invalidate their snapshots, plans and reviews. A change to a file listed by several Modules
-requires checks for all listing Modules, with separate Module contexts and explicit per-consumer
-evidence. Deterministic validation also reads the scenario declarations of the listed tests
-and reports every scenario that no test declares, unless its Module binds no implementation file at
-all; that coverage is evidence about the tests, never a change to the contract. No passing structural check proves semantic completeness.
+A context's identity covers the selected documents' bytes, the selecting declarations and their
+reasons, the Protocol and instructions, stage artifacts, realization entries and lifecycle identity;
+code phases also cover the bound file names and digests. Any changed input requires a new snapshot.
+
+### P6. Gaps and reviews are tied to the affected contract
+
+A missing required behaviour is a Spec gap of the owning Module. Name the missing promise, the
+blocked step, the Module and the snapshot; continue only independent work. Source code never fills
+the gap implicitly. A failed execution, an explicit prohibition and a missing runtime value with
+defined failure behaviour are not Spec gaps.
+
+Spec review reads the complete Spec context; code review reads the same Specs and the authorized
+code in a fresh read-only invocation. A review records its exact inputs, coverage, findings and
+completion; skipped, failed, incomplete and successful reviews stay distinct. Required reviews
+follow promise-level impact: inside a change the Host compares the changed documents' definitions
+between the change's base commit and the candidate (the defining section of each requirement,
+scenario and contract, each concept's definition row, record and explanation, and the entry's
+`module` block). A Module needs a fresh review when it selects a changed document without narrowing
+(it owns the document, or a `contains` or `uses` without `relies_on`, or an `includes`, selects it)
+or references a changed node (`referenced-by`: `relies_on`, `imports`, `narrows`, `supersedes`,
+`relates`, `participates`); a Module whose only selection is a `relies_on` narrowing of unchanged
+nodes does not. Without a baseline, every Module whose Spec context selects a document
+(`selected-by`) is concerned. When a file bound by several Modules changes, every binding Module
+(`implemented-by`) needs its own checks and evidence.
+Validation reports scenario coverage from the tests' `verifies` declarations; coverage is evidence
+about the tests, never a change to the contract. No structural check proves semantic sufficiency.
 
 ### P7. Execution authority is explicit
 
-The host binds each normal Framework invocation to declared context and file permissions. Only
-code-writing invocations receive file contents with write authority, and only for the files the
-selected Module lists; they never change Spec documents, entity declarations or the registry. Code
-review and deterministic checks have separately declared read authority. The registry's reverse
-index never grants a writer another Module's Spec or unrelated code. How the host keeps an
-invocation within that authority belongs to the Harness Module's Specs, not to this profile. Task-authorized sessions, the user session and its Task subagents, may edit files, including `.concorde`, within their own workspace
-and task grant; the directory name creates no blanket host-only prohibition. Truthful evidence,
-concurrency safety and bounded worker phase permissions remain mandatory.
+The host binds each invocation to its declared context and file permissions. Only code-writing
+invocations write files, and only within the selected Module's `ImplementationScope`; they never
+change Spec documents or the registry. Code review and deterministic checks have separately declared
+read authority. How the host keeps an invocation within that authority, and how far it is enforced
+today, belongs to the Harness Module's Specs. The user session and its Task subagents may edit any
+file within their own workspace and task grant, including `.concorde`; truthful evidence,
+concurrency safety and bounded worker permissions remain mandatory.
 
-An **Agent** is a callable native Pi agent with one canonical Concorde definition, either a Domain Agent or a Task subagent. A **Workflow** is an authored native pi-subagents
-composition. An **Operation** is an explicitly selected LangGraph StateGraph flow. Finite non-model
-actions are **Host tools/services**. Module ownership, context references and composition remain
-independent of these executable kinds. Compatibility `concorde-*` names, `operation_id` fields and
-the `operations/` package name do not make every capability a LangGraph Operation.
+An **Agent** is a callable native Pi agent with one canonical Concorde definition, either a Domain
+Agent or a Task subagent. A **Workflow** is an authored native pi-subagents composition. An
+**Operation** is an explicitly selected LangGraph StateGraph flow. Finite non-model actions are
+**Host services**. Module ownership and Spec relations are independent of these executable kinds;
+`concorde-*` capability names and `operation_id` fields do not make every capability an Operation.
 
-Context assessment, tasks and implementation use direct native Agents. Plan, independent review
-scopes and bounded Issue solving use authored native workflows. Deterministic admission, configured
-checks, lifecycle, Issue bookkeeping/disposition and validation remain Host services. No public
-native path compiles a mandatory Graph or launches a hidden old Pi-RPC worker. All seven native
-Domain Agents are terminal, fresh and explicitly scoped, without recursive task delegation or an extra
-coordinating model. Native capacity and tool ceilings remain authoritative.
+Context assessment, tasks and implementation use direct native Agents. Planning, independent review
+scopes and Issue solving use authored native workflows. Admission, configured checks, lifecycle,
+Issue bookkeeping and validation are Host services. Native Domain Agents are terminal, fresh and
+explicitly scoped, without task delegation or an extra coordinating model; native capacity and tool
+ceilings stay authoritative. A model proposal is never domain completion: the Host accepts a result
+only after correlating the actual native artifacts with the current inputs. Failed or cancelled work
+keeps its partial edits and receipts.
 
-Model proposals and successful stage-only gates are not domain completion. Host acceptance follows
-independent native terminal-artifact correlation and exact current-input/business checks. Expected
-implementation edits do not invalidate immutable contract/task identity; failed/cancelled work keeps
-partial edits and historical receipts. Native file/network/credential exclusions are prompt-level
-policy, not OS confinement or proof of exclusive reads. Actual tester/check subprocess isolation
-remains enforced and distinct. Primary status/runs, single-writer lifecycle and explicit integration/
-cleanup authorization remain unchanged.
+LangGraph is used only for explicitly selected StateGraph Operations, always through the Graph API
+(`StateGraph`, nodes and edges declared before compilation), never `langgraph.func`. `OperationNode`
+supplies a typed State transition with a trusted native launch and admission service in the Runtime;
+State cannot carry or expand authority.
 
-LangGraph stays available for genuine explicitly selected StateGraph Operations and Studio inspection.
-`OperationNode` supplies a typed State transition with a trusted native launch/admission service in
-Runtime; missing service refuses rather than selecting a model backend. State cannot carry or expand
-authority. Parent graphs own reducers and mapping. No fake Graph mirror represents native workflows.
-The Graph API is used, never hidden `langgraph.func` task/entrypoint scheduling. Installed LangGraph
-health remains verified; optional execution is not permission to delete untested dependencies.
+Agent instructions, the Pi session extension, schemas and rule assets are deterministic build
+projections of their sources. Generated output is never edited as source.
 
-Agent instructions, the Pi session shim, schemas and rule assets are deterministic projections of authored
-sources. Generated output is not edited as source. Builds distribute the Module kind definition and
-the accepted Protocol binding. Configuration, installation and publication must agree on that
-binding. Runtime Agent responsibility files are authored implementation assets, not another category
-of project Spec.
+### P8. Declarations change together
 
-### P8. Structure and file listings change together
-
-Direct structural edits reconcile Module parentage, uses, document ownership, explicit references,
-interface bindings and file listings as one consistent candidate. The task-authorized calling session
-edits the reading, paired metadata and registry directly. A Module's entity entry union equals its
-registry `files`, entry for entry, marking absent intended entries pending. Within one Module the
-most specific entry owns a file, and a listed directory never contains a registered Spec document.
-The reverse index identifies every listing Module before a shared file changes.
-
-Ownership is independent of the editing session: a shared contract is defined once by its owner,
-not copied into consumers. Reconcile both members, old and candidate affected contexts, links and
-participant versions together. Validate the combined candidate before dependent work; do not claim
-a partially edited model is admitted. Fresh reviews use separate complete owner/consumer contexts.
-Code-writing workers retain their own listed implementation grant and never edit either Spec member
-or the registry. Direct edits confer no successful assessment, review, check or completion evidence;
-selected retained Operations re-admit actual current inputs without requiring deleted workflow history.
+A structural change edits the owning Modules' entries (`module` blocks), document metadata and
+reading together, then regenerates the registry mirror, and validates the combined result before any
+dependent work. A shared definition is defined once by its owner and imported or relied upon by
+others, never copied. A change is owned by one Module and may edit every Module of its change scope,
+which is what atomic reconciliation can require: the Modules it contains or uses, the participants
+of contracts it defines or participates in, the Modules referencing nodes it defines
+(`referenced-by`) and the Modules binding its files (`implemented-by`). Each other Module's work
+runs as that Module's own single-Module invocation in the same candidate, never under the owner's
+scope; the owner's validation and required reviews cover every Module the candidate edits, so
+delivering the one candidate is the atomic step. Realization entries name intended files as
+`pending` until they exist; within one Module the longest covering entry decides a file's
+realization, and a bound directory never contains a Spec document. Before a file bound by several
+Modules changes, `implemented-by` names every Module concerned. Code-writing workers never edit
+Specs or the registry. Direct edits confer no assessment, review, check or completion evidence.
 
 ### P9. Task status and evidence have one primary authority
 
-One stable task/change ID owns a change; branch and path are mutable locators, not identity.
-Only the primary worktree keeps authoritative local `.concorde/status/` records and durable
-`.concorde/runs/` evidence, including candidate executions. A status records mode, goal, base,
-candidate, child ownership, phase, blockers and run references. Delivery and ordinary-Git manual
-merge are distinct outcomes; cleanup is separate and terminal records survive candidate deletion.
-Direct primary tasks need no secondary worktree. These local ignored records are not project
-configuration and are never merged between branches. Host persistence uses repository locking and
-atomic writes without granting a child access to primary source or index. Missing primary authority
-blocks persistence until recovery; it never creates a candidate-local replacement archive.
+One stable task ID owns a change; branch and path are locators, not identity. Only the primary
+worktree keeps the authoritative local `.concorde/status/` records and durable `.concorde/runs/`
+evidence, including candidate executions. A status records mode, goal, base, candidate, child
+ownership, phase, blockers and run references. Delivery and ordinary Git merge are distinct
+outcomes; cleanup is separate, and terminal records survive candidate deletion. These records are
+local, never project configuration, and never merged between branches. Host persistence uses
+repository locking and atomic writes without giving a child access to the primary source or index.
+Missing primary authority blocks persistence; it never creates a candidate-local replacement.
 
-Evidence binds actual source worktree, branch, commit, dirty input identity and runtime/build/Pi integration
-provenance when known. A catalog is not execution evidence. Shared-file and shared-Spec edits
-invalidate all affected consumers' evidence. Delivery verifies actual integration, preserves
-unrelated changes and confirms pending entries only when they exist. Completed integration with
-cleanup pending is not an integration failure. Legacy worktrees, deliveries and candidate-local
-runs require explicit collision-checked migration, preserving history and retrying interruption;
-old readiness never becomes fresh validation implicitly.
+Evidence binds the actual worktree, branch, commit, dirty input identity and runtime, build and Pi
+integration provenance when known. A catalog is not execution evidence. Delivery verifies the
+actual integration, preserves unrelated changes and confirms pending entries only when they exist.
 
 ### P10. Fresh task sessions, never session moves
 
-The user session understands needs and coordinates. It may delegate complete tasks
-to at most one layer of fresh Task subagents; a Task subagent may run a series of public Operations
-and continue one change to delivery, but never delegates tasks or moves worktrees. Bounded
-native Domain Agents are terminal pi-subagents agents, distinct from author/tester task delegation.
-Every native terminal Domain Agent is a fresh Pi leaf with no delegation tools; its Host-issued
-preparation and independent acceptance remain separate from the native model execution. Native
-Pi child-safety ceilings apply; insufficient native launch capacity refuses rather than bypassing
-a ceiling.
-They cannot delegate, create subagents or recursively call Operations. Concorde neither inspects
-nor computes cross-runtime current/maximum agent depth for these leaves; absent or legacy depth
-variables do not govern launch. Task subagent limits and all worker file/tool grants remain intact. An Operation in an assigned candidate reuses it instead of creating a nested one.
-Ordinary consumer projects may use direct primary editing for simple authorized tasks.
+The user session understands needs and coordinates. It may delegate complete tasks to at most one
+layer of fresh Task subagents. A Task subagent may call a series of capabilities and carry one
+change to delivery, but never delegates tasks or moves worktrees. Native Domain Agents are terminal
+Pi leaves with no delegation tools; they cannot create subagents or call capabilities. Insufficient
+native launch capacity refuses rather than bypassing a ceiling. An Operation in an assigned
+candidate reuses it instead of creating a nested one. Ordinary consumer projects may edit the
+primary worktree directly for simple authorized tasks.
 
-The user session decides task scope, worktree ownership, author continuation, checks, independent testing and
-integration authorization. One writer owns a worktree at a time and stops writing before testing.
-The user session owns lightweight high-level decomposition into work packages, dependencies, file/contract
-ownership, independent worktrees, native workflow steps and component/integration/testing gates.
-This is not product Concorde plan/tasks and requires no mandatory planner Operation or coordinator
-LLM. The user session may author profiles, prompts, tools, workflows and process repairs within task authority
-and its own exclusive tree. Native workflow steps remain terminal Pi workers with no child task
-delegation. Frozen launches do not adopt edited governance or wider grants retroactively.
-Reuse the author within an unfinished coherent stage and feedback cycle. Ordinary milestones do
-not require a new session; a completed stage with changed goals/context may use a fresh author
-after durable handoff, observed stop, exact ownership release and binding of the actual new child.
-Parallel component work stays in separate trees; combined-input integration is a distinct gate. The user session chooses none, targeted or full
-independent testing with an explicit scope and reason; an author's self-tests are not independent.
-When selected, the project-discovered `tester` is a fresh sibling Task subagent, not a LangGraph node.
-It receives only explicitly selected local Pi integration/runtime provenance and its actual grant.
-Missing or stale assets block without a primary/global fallback. Selection metadata is not proof
-of extension loading, tool use or model execution. Tester keeps governing artifacts read-only,
-uses scoped external fixtures, returns failures rather than repairing, and cannot delegate tasks.
-Its command tool enforces the OS read-only check boundary rather than unrestricted shell access.
-The user session's pi-subagents is a host prerequisite, never a terminal-worker dependency. Passive observation
-adds no tools, catalogs, authority or network telemetry. The user session owns durable primary persistence.
+The user session decides task scope, worktree ownership, continuation of a Task subagent, checks,
+independent testing and integration authorization. One writer owns a worktree at a time and stops
+writing before testing. The user session's high-level decomposition into work packages,
+ownership and gates is not Concorde's product `plan`/`tasks`. Parallel component work stays in
+separate worktrees; combining them is a distinct gate. Reuse a Task subagent within one coherent
+stage; after a completed stage with changed goals, a fresh one may continue after a durable handoff,
+an observed stop and an exact release of ownership.
 
-Changed relevant inputs/environment invalidate corresponding check evidence; stage reports and
-same-tree commits alone do not demand repeated full suites. State the reason for same-input reruns.
-Already fully read unchanged complete Specs in valid same-session context need no bundle reread;
-new ownership seams and fresh readers retain complete-context obligations. Resource handoffs state
-observed capacity, current input including cache, reserve and compaction status or an actual error.
-Unknown metrics stay unknown. Cumulative usage, document size and absence of a compact tool do not
-establish exhaustion. The user session verifies the need after supported compaction with an observed completion or error; a checkpoint
-or a message saying compact is not compaction. After success inject the CURRENT concise task brief
-once: goal/grant, accepted decisions, evidence and next step, not obsolete launch instructions.
-Host-observed lifecycle/activity/context/compaction stays distinct from worker-reported stage,
-objective, completed artifacts, checks/failures, blocker and next action/evidence. Native supervisor,
-events/status and primary authority carry meaningful updates without polling, repetitive reports,
-fake percentages or activity-as-correctness claims. Quality concerns are labelled separately. Integration requires explicit authorization; cleanup remains separate.
+The user session chooses none, targeted or full independent testing with an explicit scope and
+reason; self-tests are not independent. When selected, the project `tester` is a fresh sibling Task
+subagent, not a LangGraph node. It receives only explicitly selected local Pi integration and
+runtime provenance and its actual grant; missing or stale assets block, without a global fallback.
+Tester keeps governing artifacts read-only, uses external scratch, returns failures rather than
+repairing them, and runs commands only through the OS read-only check boundary. The user session's
+pi-subagents extension is a host prerequisite, never a worker dependency. Passive observation adds
+no tools, catalogs, authority or network telemetry.
 
-Concorde's source repository adds its own source-only maintenance/coordinator prompts and validation
-policy. They are not installed as consumer testing instructions.
+Changed relevant inputs or environment invalidate the corresponding check evidence; stage reports
+and same-tree commits alone do not demand repeated full suites. Already fully read, unchanged Specs
+in valid same-session context need not be reread. Resource handoffs state observed capacity,
+current input including cache, reserve and compaction status, or an actual error; unknown metrics
+stay unknown. After a supported compaction completes, inject the current concise task brief once:
+goal and grant, accepted decisions, evidence and next step.
+
+Host-observed lifecycle, activity, context and compaction stay distinct from worker-reported stage,
+objective, completed artifacts, checks and failures, blocker and next action. Supervisor updates
+carry meaningful changes without polling, repetitive reports or fake percentages. Integration
+requires explicit authorization; cleanup remains separate.
+
+Concorde's source repository adds its own source-only maintenance and coordinator prompts and
+validation policy. They are not installed as consumer testing instructions.
 
 ### Framework authoring and publication conventions
 
-Every Concorde Module's `module.md` starts with Purpose, Terminology, Usage, Design and Relationships as
-level-2 headings. The entry and explanatory topic companions have `document.role: module` and
-contain no formal requirement/scenario definitions or canonical structured contracts. Those belong
-in directly Module-owned implementation-role companions. Both roles remain complete Spec reading,
-not separate ownership or context scopes. Companion topics do not repeat a mandatory entry template.
-Each Markdown source has one schema-2 `.md.json` companion with explicit document identity, owner,
-role, and entity, dependency and participant declarations. Mechanical fields
-stay there; readable responsibilities, conditions, guarantees and obligations have local anchors
-referenced by metadata. Group adjacent anchors on one line when a coherent explanation covers
-several entities. Do not replace the retired JSON inventory with another giant human inventory.
+Concorde's own Specs follow the Protocol's layout: one folder per Module under `specs/concorde/`
+(Harness children under `specs/concorde/harness/<child>/`), an entry `module.md` with Purpose,
+Terminology, Usage, Design and Relationships, optional `module`-role topics, and
+`implementation`-role documents for requirements, scenarios, contracts and Graph Specs. Identities
+follow `<kind>.<module-short>.<slug>`, where the module short name is the last segment of the
+Module identity. Words shared by every Module are defined in the root's `vocabulary.md`.
 
-Both source members are indexed, granted whole and byte-bound. A metadata-only change invalidates
-owner and direct-consumer evidence. The task-authorized calling session edits authored reading and metadata directly
-within its task authorization, reconciling the registry and topology as needed. Validate the complete
-combined candidate, not isolated files. Preserve stable identity and unique ownership through
-relocation and structural change. No private author result or topology application artifact is
-required. Bounded code writers never edit either member.
+Reading diagrams use English labels and `accTitle`/`accDescr`. An unmarked flowchart in a `module`
+document is a checked flowchart; a conceptual picture is marked `mermaid illustrative`.
 
-A requirement is one Module-wide SHALL statement with a stable heading ID. A scenario has ordered
-GIVEN/WHEN/THEN steps and its own situational guarantees, not attached requirements. Internal
-constraints remain normative; link rather than duplicate obligations. The Relationships view uses
-English labels, accTitle and accDescr, a nonempty subset of local entity titles and labeled edges.
-Explain its scope; inventory coverage is not a readability requirement or proof of completeness.
-Files are bound in entity metadata, using owned package directory prefixes and exact shared files;
-the registry listing remains their exact union. Project-owned metadata extensions
-`concorde.operations` records the checked compatibility capability-adapter inventory, including
-State contracts and USES; `concorde.agents` separately records the Agents-owned nine-Agent inventory,
-including family, distribution scope, registration and canonical instruction source. Their
-behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
+The metadata extensions `concorde.operations` (the checked public capability inventory, with State
+contracts and composition) and `concorde.agents` (the Agent inventory, with family, distribution
+scope, registration and instruction source) live in the Operations and Agents documents that
+explain them. Their behaviour is explained in reading; an extension never overrides the Protocol.
 
-Every Operation is explained in the Specs of the Module that owns its behavior: that Module's
-reading says what the Operation is for, when to use it, what it takes and returns and when it
-stops, and its actual StateGraph composition. Public compatibility capability adapters do not
-become Operations merely because their wire names contain operation. Every executable Graph has one Graph Spec in its owning Module's implementation-role
-documents, not its explanation-first topics. Module-role reading explains the conceptual sequence
-and its reasons, with clearly labeled conceptual diagrams when useful, and links to this exact
-Graph Spec. The Graph Spec is written with LangGraph's concepts as three parts in order, each
-opening a paragraph with its bold label: **State.** (the channels, their reducers and the records
-the nodes read and write), **Nodes.** (a table of node name, what executes, `in` and `out` state)
-and **Edges.** (how the next node is chosen, by a conditional edge reading a named State channel or
-by a `Command` the node returns, and where stops and errors lead). A Mermaid flowchart follows,
-bound to the compiled Graph by `%% graph: <name>`, whose node identifiers are the compiled node
-names including `__start__` and `__end__`, whose node labels state `in:` and `out:` as the Nodes
-table does, and whose edges carry their routing condition as a label exactly when the source node
-has several successors. The configured Graph Spec check keeps every Graph Spec's parts, Nodes table
-and diagram equal to its compiled Graph and requires its owner's module-role reading to link to its
-heading anchor. Publication shows Operations and Graph Specs only inside their owners' Specs; no
-separate Operation or Graph page repeats them.
+Every Operation is explained in the Spec of the Module that owns its behaviour: what it is for, when
+to use it, what it takes and returns, when it stops, and its actual StateGraph composition. Every
+executable Graph has one **Graph Spec** in its owner's `implementation` documents, written with
+LangGraph's concepts as three parts in order, each opening a paragraph with its bold label:
+**State.** (the channels, their reducers and the records the nodes read and write), **Nodes.** (a
+table of node name, what executes, `in` and `out` state) and **Edges.** (how the next node is
+chosen, by a conditional edge reading a named State channel or by a `Command` the node returns, and
+where stops and errors lead). A Mermaid flowchart follows, bound to the compiled Graph by
+`%% graph: <name>`, whose node identifiers are the compiled node names including `__start__` and
+`__end__`, whose node labels state `in:` and `out:` as the Nodes table does, and whose edges carry
+their routing condition as a label exactly when the source node has several successors. The
+heading carries an explicit `{#anchor}`, and a `module` document of the same Module links to it.
+The configured Graph Spec check keeps every Graph Spec equal to its compiled Graph. A Graph Spec
+flowchart is not a checked relationship view.
 
 A Python test declares the scenarios it verifies with the `verifies` decorator from
-`concorde.spec.verification`, for example `@verifies("scenario.harness.context-freeze")` on the test
-function or method. A TypeScript test declares them with an own-line `// verifies:` comment above
-the test, for example `// verifies: scenario.views.publish-candidate` above its `it` call; several
-IDs are separated by commas or spaces, and the following `it`, `test` or `describe` title names the
-declaring test. A test may name several scenarios in either language, and the declaration is read by
-parsing, never by compiling or running the test. A Module whose entities bind no implementation file
-has no test to declare its scenarios, and its scenarios are not reported as uncovered. No Spec
-document lists tests. Links inside Specs address definitions by ID
-(`scenarios.md#scenario.harness.context-freeze`, `requirements.md#req.harness.permission-no-widen`); publication
-turns every scenario, requirement, entity and canonical contract ID into an anchor. Rendered views
-and navigation are derived and create no ownership or context inclusion. Links to canonical shared
-definitions remain links in rendered pages, never transclusions; the site exposes owner and
-reference provenance. These conventions implement the Protocol's requirements for this project; they
-are not requirements on every Protocol implementation.
+`concorde.spec.verification`, for example `@verifies("scenario.harness.context-freeze")`. A
+TypeScript test declares them with an own-line `// verifies:` comment above the test, for example
+`// verifies: scenario.views.publish-candidate` above its `it` call; several IDs are separated by
+commas or spaces. Declarations are read by parsing, never by running the test. A Module that binds
+no implementation file has no test to declare its scenarios, and its scenarios are not reported as
+uncovered. No Spec document lists tests. Links inside Specs address definitions by identity, such as
+`scenarios.md#scenario.harness.context-freeze`; publication makes every identity an anchor. These
+conventions implement the Protocol for this project; they are not requirements on every Protocol
+implementation.

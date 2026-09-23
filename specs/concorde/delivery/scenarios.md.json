@@ -1,11 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.delivery.scenarios",
     "owner": "module.delivery",
     "role": "implementation"
   },
-  "entities": [],
-  "dependencies": [],
-  "bindings": []
+  "defines": [],
+  "relations": [],
+  "extensions": {}
 }

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ..spec.changes import confirm_pending_files
 from ..spec.repository import SpecError, SpecRepository, identifier, read_file
-from ..spec.typed_data import artifact, checked_path, decode, typed
+from ..spec.typed_data import artifact, checked_path, typed
 from ..spec.validation import validate_repository
 from .change_worktree import (
     _inventory,
@@ -198,7 +198,7 @@ def _verify_merged_tree(
                 )
             repository = SpecRepository(root, package)
             checks = []
-            for target in repository.targets.values():
+            for target in repository.modules.values():
                 if target.checks:
                     results = configured_checks(
                         repository, target, host.invocation_id + "/delivery/" + phase
@@ -700,7 +700,7 @@ def _response(root: Path, receipt: dict, complete: bool) -> dict:
             + receipt["primary_merge"]["branch"]
             + "."
         )
-    elif receipt.get("primary_branch"):
+    else:
         answer += " The primary branch is unchanged; its owning session must receive an explicit merge request."
     return typed(
         "concorde-deliver-response",

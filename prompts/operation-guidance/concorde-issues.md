@@ -16,9 +16,10 @@ current-worktree bookkeeping. An Issue is not an implementation task, and report
 stops a running agent nor approves a repair.
 
 Solve returns needed implementation or Spec repair to the calling agent with the selected target,
-intended behavior and rationale. It does not author Specs, change implementation or start planning
-or child development. The caller performs authorized Spec, paired metadata and registry edits or
-selects the supported planning/implementation capabilities explicitly, then requests fresh verification with current inputs.
+intended behavior and rationale. It does not change Specs or implementation, or start planning
+or child development. The caller performs authorized Spec edits (reading, metadata or the entry's
+`module` block, then the registry mirror) or selects the supported planning/implementation
+capabilities explicitly, then requests fresh verification with current inputs.
 A return-to-caller result preserves the open Issue and is not completed repair or readiness.
 Solve can run Issue-specific read-only verification, resolve, identify a duplicate or reject a
 mistaken report from evidence without mandatory human approval. Unresolved product/design choices

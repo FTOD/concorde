@@ -72,28 +72,3 @@ RECORD = obj(
         "dispositions": array(DISPOSITION),
     }
 )
-
-# Historical schema 1 is read-only: preserve immutable observation bytes and digests.
-# This field is an old storage spelling, never a second executable entity or wire alias.
-LEGACY_PROVENANCE = obj(
-    {
-        "invocation_id": STRING,
-        "agent": STRING,
-        "capability": STRING,
-        "phase": STRING,
-        "target_id": STRING,
-        "context_id": DIGEST,
-        "change_id": NULLABLE_STRING,
-        "head": NULLABLE_STRING,
-    }
-)
-LEGACY_RECORD = obj(
-    {
-        **RECORD["properties"],
-        "schema_version": {"type": "integer", "const": 1},
-        "reports": {
-            **array(obj({**OBSERVATION["properties"], "source": LEGACY_PROVENANCE})),
-            "minItems": 1,
-        },
-    }
-)

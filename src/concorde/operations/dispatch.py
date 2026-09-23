@@ -13,6 +13,7 @@ from ..implementation.implement import implement
 from ..planning.plan import context_solve, plan
 from ..planning.tasks import tasks
 from ..spec.contracts import MODEL_STAGES, REVIEW_OPERATIONS
+from ..spec.impact import change_scope
 from ..spec.project import project_nodes, project_operation
 from ..spec.repository import SpecError, SpecRepository
 from ..validation.validate import validate
@@ -42,7 +43,7 @@ def dispatch_graph_nodes(operation, configuration, task, host):
         nonlocal run, host
         if not task.get("target_id"):
             raise SpecError("select an explicit target_id", "invalid_input")
-        SpecRepository(host.project_root, host.package_root).select(
+        SpecRepository(host.project_root, host.package_root).module(
             task["target_id"], task.get("focus_id")
         )
         readonly = operation in {"concorde-context-solve", *REVIEW_OPERATIONS}
@@ -58,11 +59,8 @@ def dispatch_graph_nodes(operation, configuration, task, host):
             repository = SpecRepository(host.project_root, host.package_root)
             admitted = False
             for owner_id, record in change["targets"].items():
-                owner = repository.select(owner_id)
-                allowed = {
-                    *owner.uses,
-                    *(child.id for child in repository.children(owner)),
-                }
+                owner = repository.module(owner_id)
+                allowed = set(change_scope(repository, owner_id)) - {owner_id}
                 selected = [
                     item
                     for item in record.get("tasks", [])
@@ -217,7 +215,7 @@ def dispatch_graph_nodes(operation, configuration, task, host):
                 subgraphs[name] = issue_nodes(bound_run())
         return subgraphs[name][child](state)
 
-    from .dispatch_graph import SUBGRAPH_NODES
+    from .dispatch_routes import SUBGRAPH_NODES
 
     return {
         "select_operation": select_operation,

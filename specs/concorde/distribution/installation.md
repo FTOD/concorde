@@ -1,91 +1,198 @@
 # Installing and updating Concorde
 
-Installation puts the Framework tools and instructions into a project so its developer can use
-Concorde. It does not write the project's intended business behavior. The [Spec Module](../spec/module.md) owns initialization as a separate
-step after installation.
+This topic explains how the installer puts Concorde into a consumer project, how updates avoid
+overwriting the developer's work, how the Host makes each worktree runnable, and how the managed
+runtime is created and checked. The installer supplies tools; it creates no Spec, registry or
+configuration of the project. `concorde-init` of the Spec Module does that afterwards.
 
 ## Terminology
 
-| Term                                                | Meaning / definition                                                                                  |
-| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Installation                                        | Placing and verifying the Framework-owned tools, instructions and runtime assets in a target project. |
-| Update                                              | Refreshing the outputs recorded as owned by the installer, while preserving project-owned content.    |
-| Installation receipt                                | A record of exactly which outputs the installer owns and which bytes it last installed.               |
-| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization.                                                                    |
-| [Protocol binding](../spec/values.md#terminology)   | Defined in Identities and versions.                                                                   |
-| [Spec](../module.md#terminology)                    | Defined in Concorde Framework.                                                                        |
-| [Registry](../module.md#terminology)                | Defined in Concorde Framework.                                                                        |
+| Term | Definition |
+| --- | --- |
+| [Developer](../vocabulary.md#concept.concorde.developer) | |
+| [Host](../vocabulary.md#concept.concorde.host) | |
+| [Candidate](../harness/worktrees/module.md#concept.worktrees.candidate) | |
 
-## A normal installation
+The installation terms themselves, such as installation receipt, Protocol copy, managed runtime and
+local installation, are defined in the [Distribution entry](module.md#terminology).
 
-Start by previewing the proposed installation into the intended project. Inspect the target and
-owned changes before applying. The installer deploys Framework tools and the Protocol copy,
-prepares the required runtime, and installs the Pi session extension shim and its `AGENTS.md`
-Protocol entry. Pi is the only supported client; the installer has no client-selection flag and
-rejects the retired `--integration` option. It neither installs public Skills nor invokes the
-Agent Skills CLI. The installer preserves project Specs, configuration and unrelated files.
-The internal launcher runs inside the verified managed runtime, so the bootstrap interpreter
-needs no Concorde dependencies. Then initialize the project's own registry and first Spec, and
-supply the business intent that the initial draft deliberately leaves unknown.
+## What an installation contains
 
-For example, installing Concorde into a service does not mean Concorde knows that service's retry or
-payment policy. Installation supplies the tools; initialization creates an honest starting point;
-Spec authoring establishes the actual promises.
+| Location in the consumer project | Content | Owned by the receipt |
+| --- | --- | --- |
+| `.concorde/framework/` | The package roots `agents`, `operations`, `pi`, `prompts`, `protocol` and `src`, the docsite template, the command-line and launcher scripts, `concorde.json`, `LICENSE`, `README.md`, and the installed-layout build outputs with their build manifest | yes, file by file |
+| `.pi/extensions/concorde-session.ts` | The session entry with the installed capability catalog | yes |
+| `.pi/extensions/concorde-observe.ts`, `.pi/agents/tester.md` | The passive observer entry and the tester Task subagent definition | yes |
+| `.concorde/protocol/` | The Protocol copy: the package's `protocol/manifest.json` and the rendered assets it lists | yes |
+| `AGENTS.md` | One marked block telling readers to follow `.concorde/protocol/principles.md` | the block only |
+| `.concorde/issues/.gitignore` | A default the project starts from | no; written only when absent |
+| `.concorde/.venv` | The managed runtime | yes, as one runtime record |
+| `.concorde/install.json` | The installation receipt | it is the receipt |
 
-## Installing another worktree
+Source-only files never ship: the maintenance-worker definition and its profile, the source user
+session prompts, the maintenance and brief lifecycle extensions, `node_modules` below `pi/` and
+Python caches. A package containing a symbolic link is refused.
 
-Each consumer worktree needs its own complete installation, even when its Framework, runtime and
-receipt are Git-ignored. Its normal Pi session loads its local entry and uses its own Framework
-and managed dependencies. Use an explicitly admitted source or installed package as the provider,
-not a global package name or a primary-runtime fallback. An installed package includes the same
-supported installer, so a consumer can bootstrap another ordinary Git-created worktree:
+## Previewing and applying
 
-```sh
-python3 /explicit/project/.concorde/framework/scripts/install-concorde.py \
-  --target /explicit/new-worktree --preserve-project --preview
-# Inspect the plan, then repeat with --apply.
+The installer first loads the package: it checks `concorde.json`, renders the installed layout,
+checks the runtime lock and, for a source checkout, runs package validation. It then builds a plan
+with one action per path:
+
+| Action | Meaning |
+| --- | --- |
+| `create` | The path is absent and will be written |
+| `unchanged` | The path already holds the wanted bytes and the receipt owns them |
+| `adopt` | The path already holds the wanted bytes but was not recorded; applying records it |
+| `update` | The path holds exactly the bytes the receipt recorded and will be replaced |
+| `remove` | An owned file the new package no longer ships, unchanged since it was written |
+| `drop-missing` | An owned file that is already gone; its record is dropped |
+| `preserve` | A project default or preserved project file that stays as it is |
+| `conflict` | Anything else: a changed owned file, an unowned file in the way, a symbolic link, or an unsafe path |
+
+The managed runtime appears as one more action (`create`, `unchanged`, `rebuild` or `conflict`).
+Without `--apply` the installer prints the plan and exits: status 0 for a clean preview, 2 when any
+action is a conflict, 3 when the package or target cannot be read. `--format json` prints the
+same plan as JSON.
+
+With `--apply` and no conflict, the installer takes the target's installation lock and applies the
+plan in this order:
+
+1. It rechecks that every root file is byte-for-byte what the preview saw, then recomputes the whole
+   plan and refuses if anything differs. A plan is only ever applied to the state it was made from.
+2. It writes each file through a temporary file and a rename, marking installed scripts executable
+   and keeping the mode of files it updates.
+3. It provisions the managed runtime.
+4. It recomputes the package identity and refuses if the package changed meanwhile.
+5. It writes the new receipt the same way as the files.
+
+If any step fails, it removes files it created, restores the bytes and modes of files it replaced
+or removed, restores or deletes the receipt, removes a runtime it created in this apply and removes
+directories it created. The one exception is a runtime rebuild; see
+[the managed runtime](#the-managed-runtime).
+
+## The root guidance block
+
+`AGENTS.md` is the developer's file, so the installer owns only this block inside it:
+
+```markdown
+<!-- concorde-protocol:start -->
+## Concorde Spec Protocol and Framework rules
+
+Read and follow `.concorde/protocol/principles.md` before Concorde workflow actions.
+<!-- concorde-protocol:end -->
 ```
 
-Preservation leaves existing root instructions and complete project Protocol bytes untouched and
-does not adopt inherited ownership. This handles committed AGENTS guidance without requiring an
-ignored receipt to have been committed too. Missing assets can be seeded only under the
-[project preservation contract](contracts.md#preserve-project-contract). Locally receipt-owned
-edits still conflict; an incomplete Protocol tree is never completed from a different version.
-The accepted binding is not updated. Receiving a complete installation does not make an
-incompatible project runnable until its real Protocol/configuration admission succeeds.
+A new block goes before the existing text so that it is not hidden inside the developer's Markdown;
+an existing owned block keeps its position. The receipt records only the digest of the block.
+Duplicated, misordered or unrecorded markers, an edited block, a symbolic link or a directory in
+place of the file are conflicts. If the installer created `AGENTS.md` only to hold its block, the
+receipt says so, and removing the block later also removes the then empty file; a file the
+developer created stays even when it becomes empty.
 
-The host can use the [local installation service](contracts.md#local-installation-service) with
-explicit bootstrap authority before admission. Later calls verify/reuse current local assets,
-without reinstalling them. Failed or stale verification stops; it never redirects execution to
-the provider's environment. Package provenance is distinct from project/lifecycle authority:
-primary alone still holds durable status and runs. Installation does not create worktrees,
-move sessions, coordinate work or change worker grants. The installer needs exclusive target
-ownership; it refuses an active Concorde source checkout and unsupported/concurrent locking.
+## Updating
 
-## Updating without overwriting local work
+Running the installer from a newer package produces a plan against the current receipt. Owned files
+that changed in the package are updated, files the package no longer ships are removed, and every
+file the developer modified is a conflict that blocks the apply. Nothing is merged. A receipt of
+any schema other than the current one is refused.
 
-An update compares the receipt with current bytes. A local change to an installer-owned output is a
-conflict, not permission to discard it. Project-owned content remains outside that replacement scope.
-A failed installation transaction attempts to recover its owned changes rather than present partial
-state as a completed installation. Upgrading a legacy multi-client receipt removes only
-unchanged receipt-owned retired files and exact owned root blocks. Modified files or blocks,
-symlinks and stale previews conflict before writing. A root file the installer created solely
-for its entry disappears only when removing the entry leaves it empty; a user-created file stays.
-Unrelated files and all text outside the owned block remain unchanged.
+`--remove-protocol-guidance` removes only the owned root blocks and records the removal in the
+receipt; the Framework and the runtime stay. Running it again changes nothing.
 
-Skills previously placed by the external `npx skills` CLI, and its `skills-lock.json`, were never
-receipt-owned. The installer leaves them untouched and reports a manual migration notice in both
-text and JSON output. Inspect `.agents/skills` and `.claude/skills` and manually remove only retired
-Concorde entries you own. Do not delete those directories or the CLI lock wholesale, and do not run
-the retired CLI merely to install or upgrade Concorde. Empty legacy directories may remain.
+## Preserving an inherited project
 
-An installed Protocol update does not silently accept new rules for the project. Review any required
-Spec migration, then explicitly accept the new binding. This separates receiving software from agreeing
-to a specification-language change. [Build](build.md) explains instruction freshness, and
-[runtime](runtime.md) states the current runtime-replacement limitation.
+A worktree created from a branch that already contains Concorde files, for example a committed
+`AGENTS.md` block and a committed Protocol copy, has no receipt of its own: receipts and the runtime
+are usually not committed. `--preserve-project` installs the Framework and runtime there without
+taking ownership of those inherited files:
 
-## Precise specifications
+- An existing `AGENTS.md` stays byte for byte, and an absent `AGENTS.md` receives a new owned
+  block.
+- An existing Protocol copy must be complete, with every asset matching its manifest, and is kept as
+  it is, even if it belongs to another version; it is never completed with files of the new package.
+- An absent Protocol copy is seeded only when the project is uninitialized or its configuration
+  already binds exactly the package's manifest.
+- Files a local receipt already owns keep their ownership and must still match it.
 
-The Module-owned [installation scenarios](scenarios.md#installation-service) and
-[requirements](requirements.md) define ownership conflicts, configuration, retries and failure behavior.
-The Spec Module owns initialization and Protocol acceptance.
+Preservation and `--remove-protocol-guidance` cannot be combined. Keeping a different Protocol copy
+does not make the project runnable: capabilities stay refused until the binding and the copy agree.
+
+## The Protocol copy and its acceptance
+
+The installer always writes the package's Protocol copy (outside preservation) but never touches the
+`protocol` binding in `.concorde/config.json`. Admission refuses to run capabilities while the
+binding does not match the copy and the installed package. The developer reviews the Protocol change,
+migrates the project's Specs if needed, and then calls `concorde-configure` with
+`accept_protocol: true`, which binds the configuration to the copy's manifest and keeps the change
+only if the repository then loads. This separates receiving new software from agreeing to a new
+specification language.
+
+## Local installations in worktrees
+
+Each worktree that runs Concorde needs its own complete installation, because its Framework, runtime
+and receipt are ignored by Git and are never shared. The local installation service gives the Host
+three operations:
+
+- **Admit a package.** The Host names the exact package that admitted the request. Its identity is
+  the version plus a digest over every file the installer would write and a digest of the installed
+  build manifest, so a source checkout and an installed copy with the same bytes have the same
+  identity, and a version label alone proves nothing.
+- **Verify.** Read every owned file and compare it with the receipt and a fresh render, check that
+  the receipt names the admitted package, and check the runtime: marker identity, installed Pi
+  dependency lock and TypeBox, that LangGraph is imported from inside the runtime and not through a
+  global site directory, and every capability's runtime check. Verification writes nothing.
+- **Ensure.** Verify, and only when the caller passes an explicit bootstrap grant, install a current
+  plan with preservation and verify again. The provider package is re-admitted after the lock is
+  taken, so a package that changed while waiting is refused.
+
+Every applying installer, command-line or service, holds an exclusive POSIX lock on
+`.concorde/install.lock` in the target; a second one fails at once instead of waiting, and a system
+without POSIX locking cannot apply at all. The lock excludes other installers, not editors or
+running capabilities, so the caller keeps the worktree quiet while installing and verifying.
+
+A failed verification returns no installation, and no path falls back to the provider's files, the
+primary worktree's runtime or a global package. The service creates no worktree, starts no
+capability, grants nothing and records no candidate status. It refuses to install into a Concorde
+source checkout.
+
+Installed Concorde can bootstrap another ordinary Git worktree with its own deployed installer:
+
+```sh
+python3 /path/to/project/.concorde/framework/scripts/install-concorde.py \
+  --target /path/to/new-worktree --preserve-project --preview
+```
+
+## The managed runtime
+
+**Plan.** Planning compares the runtime directory with the package without changing anything:
+
+- `create` when it does not exist;
+- `unchanged` when the receipt or the runtime's owner marker says Concorde owns it, the marker
+  matches the package's Concorde version, lock digests, TypeBox version and capability list, the
+  interpreter reports the pinned LangGraph version from inside the runtime, and the Pi dependencies
+  are intact;
+- `rebuild` when Concorde owns it but anything above differs;
+- `conflict` when the path is a symbolic link, not a directory, or not owned by Concorde.
+
+Planning may run local, offline health probes.
+
+**Provision.** For `create` and `rebuild`, the provisioner creates a virtual environment with the
+installer's interpreter, installs `scripts/requirements.lock` with pip, and installs the Pi
+dependencies with `npm ci --ignore-scripts` from the package's `pi/package.json` and
+`pi/package-lock.json` into `share/concorde/pi` inside the runtime. For every action it then records
+the Python version, runs `run-operation.py <capability> --runtime-check` for each public capability
+with the runtime's own interpreter, requires each check to report the runtime as its prefix and the
+pinned LangGraph version, verifies the installed TypeBox package, and finally writes the owner marker
+`.concorde-runtime.json`. A `create` whose directory appeared after planning is refused rather than
+adopted. `npm` must be available on the host.
+
+**Failure.** On any failure during `create` or `rebuild`, the provisioner deletes the directory it
+was building. For `rebuild` this means the previous environment is gone as well, because it was
+deleted before the new one was created, and the installation's rollback does not restore it. The
+project then has no managed runtime, and later verification fails until an installation succeeds.
+A failed provisioning never leaves a marker that claims a verified runtime.
+
+**Verify.** Local verification repeats the plan, which must be `unchanged`, compares the marker and
+the receipt's runtime record with what it observes, runs the isolation and capability checks, and
+writes nothing.

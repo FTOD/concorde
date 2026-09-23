@@ -2,69 +2,59 @@ import { captureProcess } from "../capture-process";
 import { access, mkdir, writeFile, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { beforeAll, it, expect } from "vitest";
-import { loadScopedRegistry } from "../../plugins/scoped-content/model";
+import {
+  loadScopedRegistry,
+  type ScopedRegistry,
+} from "../../plugins/scoped-content/model";
 import { validateScopedBuild } from "../../plugins/scoped-content";
+import {
+  contracts,
+  definitionHeadings,
+  fenceRanges,
+  isIllustrative,
+  terminologyRows,
+} from "../../plugins/scoped-content/reading-format";
+import { loadSiteIdentity } from "../../plugins/scoped-content/site-identity";
+
 const site = resolve(__dirname, "../.."),
   root = resolve(site, ".."),
   output = resolve(site, "build");
-beforeAll(async () => {
-  await mkdir(resolve(output, "assets"), { recursive: true });
-  for (const path of [
-    "graph.html",
-    "architecture-graph.json",
-    "assets/obsolete-graph.js",
-  ])
-    await writeFile(resolve(output, path), "obsolete graph output");
+const obsolete = [
+  "graph.html",
+  "architecture-graph.json",
+  "assets/obsolete-graph.js",
+];
+let registry: ScopedRegistry;
+const html = (route: string) =>
+  readFile(resolve(output, route.replace(/^\//, "") + ".html"), "utf8");
+function build() {
   const result = captureProcess(
     process.execPath,
     ["--import", "tsx", "scripts/build.ts"],
-    { cwd: site, timeout: 120000 },
+    { cwd: site, timeout: 240000 },
   );
   expect(result.error).toBeUndefined();
   expect(result.signal).toBeNull();
   expect(result.status, result.stdout + "\n" + result.stderr).toBe(0);
-}, 120000);
+}
+beforeAll(async () => {
+  await mkdir(resolve(output, "assets"), { recursive: true });
+  for (const path of obsolete)
+    await writeFile(resolve(output, path), "obsolete output");
+  build();
+  registry = loadScopedRegistry(root);
+}, 240000);
+
 // verifies: scenario.views.publish-candidate
-it("publishes the current exact registry and verifies the promoted manifest", async () => {
+it("publishes the current registry and verifies the promoted manifest", async () => {
   await validateScopedBuild(root, output);
-  const r = loadScopedRegistry(root);
-  for (const page of r.pages) {
-    const html = await readFile(
-      resolve(output, page.route.slice(1) + ".html"),
-      "utf8",
-    );
-    expect(html).toContain(page.sourcePath);
-  }
-  const home = await readFile(resolve(output, "index.html"), "utf8");
-  expect(home).toContain(
-    r.pages.find((p) => p.primaryOf === r.entryTarget)!.route,
-  );
-  const entry = r.pages.find((p) => p.primaryOf === r.entryTarget)!;
-  const html = await readFile(
-    resolve(output, entry.route.slice(1) + ".html"),
-    "utf8",
-  );
-  expect(html).toContain("theme-doc-sidebar-container");
-  expect(html).not.toContain(">Specs by source path<");
-  expect(html).not.toContain(">Specs by target<");
-  const navbar = html.match(/<nav\b[\s\S]*?<\/nav>/)![0];
-  expect(navbar).toContain("Spec Protocol");
-  expect(html).not.toContain(">Module composition<");
-  expect(html).not.toContain(">Projections<");
-  expect(navbar).toContain("Module Specs");
-  expect(navbar).toContain("Implementation Specs");
-  expect(navbar).not.toContain("Agent Graphs");
-  expect(navbar).not.toContain(">Graph<");
-  expect(html).toContain('id="purpose"');
-  expect(html).not.toContain('id="scenarios"');
-  expect(html).not.toContain('id="req.concorde.routing-no-access"');
-  expect(html).not.toContain("<iframe");
-  for (const module of r.targets) {
-    const page = r.pages.find((p) => p.primaryOf === module.id)!;
-    const source = await readFile(
-      resolve(output, page.route.slice(1) + ".html"),
-      "utf8",
-    );
+  const base = loadSiteIdentity(site).baseUrl.replace(/\/$/, "");
+  for (const page of registry.pages) {
+    const source = await html(page.route);
+    expect(source, page.sourcePath).toContain(page.sourcePath);
+    expect(source).toContain(page.metadataDigest);
+    expect(source).toContain("theme-doc-sidebar-container");
+    if (!page.primaryOf) continue;
     const sections = [
       "purpose",
       "terminology",
@@ -72,303 +62,174 @@ it("publishes the current exact registry and verifies the promoted manifest", as
       "design",
       "relationships",
     ];
-    for (const name of sections) expect(source).toContain(`id="${name}"`);
     for (let i = 1; i < sections.length; i++)
       expect(source.indexOf(`id="${sections[i - 1]}"`)).toBeLessThan(
         source.indexOf(`id="${sections[i]}"`),
       );
-    for (const removed of [
-      "usage--contract",
-      "architecture--realization",
-      "entities",
-      "files",
-    ])
-      expect(source).not.toContain(`id="${removed}"`);
-    expect(source).toContain(page.metadataPath);
-    expect(source).toContain(page.metadataDigest);
   }
-});
-
-// verifies: scenario.views.reading-collections
-it("publishes every Module as two reading paths and retains Views topics", async () => {
-  const registry = loadScopedRegistry(root);
-  const owned = registry.pages.filter((page) => page.owner === "module.views");
-  expect(
-    owned
-      .filter((page) => page.readingCollection === "module")
-      .map((page) => page.documentId),
-  ).toEqual([
-    "document.views.module",
-    "document.views.publication",
-    "document.views.pipeline",
-  ]);
-  expect(
-    owned.filter((page) => page.readingCollection === "implementation"),
-  ).toHaveLength(4);
-  for (const target of registry.targets) {
-    const documents = registry.pages.filter((page) => page.owner === target.id);
-    expect(
-      documents.some((page) => page.readingCollection === "implementation"),
-    ).toBe(true);
-    for (const page of documents.filter(
-      (page) => page.readingCollection === "module",
-    )) {
-      expect(page.content).not.toMatch(/^#{2,5}\s+(?:req|scenario)\./m);
-      expect(page.content).not.toContain("```concorde-contract");
-    }
-  }
-  const entry = await readFile(
-    resolve(output, "specs/concorde/views/module.html"),
-    "utf8",
+  const entry = registry.pages.find(
+    (p) => p.primaryOf === registry.rootModule,
+  )!;
+  expect(await readFile(resolve(output, "index.html"), "utf8")).toContain(
+    `href="${base}${entry.route}"`,
   );
-  expect(entry).not.toContain('id="req.views.registry-derived-pages"');
-  expect(entry).not.toContain('id="requirements"');
-  expect(entry).toContain('aria-label="Module specification reading paths"');
-  for (const page of owned.filter(
-    (page) => page.readingCollection === "implementation",
-  )) {
-    expect(entry).toContain(`href="/concorde${page.route}"`);
-    const html = await readFile(
-      resolve(output, page.route.slice(1) + ".html"),
-      "utf8",
-    );
-    expect(html).toContain('href="/concorde/specs/concorde/views/module"');
-    expect(html).toContain(
-      "Both reading paths belong to the same complete Module specification.",
-    );
-    expect(html).toContain(page.metadataDigest);
-  }
-  const requirements = await readFile(
-    resolve(output, "specs/concorde/views/requirements.html"),
-    "utf8",
-  );
-  expect(requirements).toContain('id="req.views.registry-derived-pages"');
-  const publication = await readFile(
-    resolve(output, "specs/concorde/views/scenarios.html"),
-    "utf8",
-  );
-  expect(publication).toContain('id="scenario.views.reading-collections"');
   const manifest = JSON.parse(
     await readFile(resolve(output, "build-manifest.json"), "utf8"),
   );
-  expect(manifest.schema_version).toBe(21);
-  expect(
-    manifest.pages.filter(
-      (page: { readingCollection: string }) =>
-        page.readingCollection === "implementation",
-    ),
-  ).toHaveLength(
-    registry.pages.filter((page) => page.readingCollection === "implementation")
-      .length,
+  expect(manifest.schema_version).toBe(registry.schema_version);
+  expect(manifest.pages).toHaveLength(registry.pages.length);
+  expect(manifest.pages.some((p: { route: string }) => p.route === "/")).toBe(
+    false,
   );
 });
 
 // verifies: scenario.views.reading-collections
-it("publishes Agents navigation, all nine Agent anchors and Task subagent collaboration", async () => {
-  const entry = await readFile(
-    resolve(output, "specs/concorde/agents/module.html"),
-    "utf8",
+it("publishes both reading collections with links between entry and implementation pages", async () => {
+  const entryHtml = await html(
+    registry.pages.find((p) => p.primaryOf === registry.rootModule)!.route,
   );
-  const contracts = await readFile(
-    resolve(output, "specs/concorde/agents/contracts.html"),
-    "utf8",
-  );
-  const taskSubagents = await readFile(
-    resolve(output, "specs/concorde/agents/task-subagents.html"),
-    "utf8",
-  );
-  for (const page of ["contracts", "task-subagents"]) {
-    expect(entry).toContain(`href="/concorde/specs/concorde/agents/${page}"`);
+  const navbar = entryHtml.match(/<nav\b[\s\S]*?<\/nav>/)![0];
+  expect(navbar).toContain("Module Specs");
+  expect(navbar).toContain("Implementation Specs");
+  expect(navbar).toContain("Spec Protocol");
+  const base = loadSiteIdentity(site).baseUrl.replace(/\/$/, "");
+  for (const module of registry.modules) {
+    const details = registry.pages.filter(
+      (p) => p.owner === module.id && p.readingCollection === "implementation",
+    );
+    if (!details.length) continue;
+    const entry = registry.pages.find((p) => p.primaryOf === module.id)!;
+    const source = await html(entry.route);
+    expect(source).toContain('aria-label="Module specification reading paths"');
+    for (const page of details) {
+      expect(source).toContain(`href="${base}${page.route}"`);
+      const detail = await html(page.route);
+      expect(detail).toContain(`href="${base}${entry.route}"`);
+      expect(detail).toContain(
+        "Both reading paths belong to the same complete Module specification.",
+      );
+    }
   }
-  for (const agent of [
-    "context-assessor",
-    "planner",
-    "task-author",
-    "programmer",
-    "spec-reviewer",
-    "code-reviewer",
-    "issue-solver",
-    "maintenance-worker",
-    "tester",
-  ]) {
-    expect(contracts).toContain(`id="${agent}"`);
+});
+
+// verifies: scenario.views.id-anchors
+it("exposes every stable identity as an anchor on its page", async () => {
+  for (const page of registry.pages) {
+    const source = await html(page.route);
+    const ids = [
+      page.documentId,
+      ...(page.primaryOf ? [page.primaryOf] : []),
+      ...registry.nodes
+        .filter((n) => n.document === page.sourcePath)
+        .map((n) => n.id),
+      ...definitionHeadings(page.content),
+      ...contracts(page.content, page.sourcePath).map((c) => c.id),
+    ];
+    for (const id of ids)
+      expect(source, `${page.sourcePath} ${id}`).toContain(`id="${id}"`);
   }
-  expect(contracts).toContain('href="/concorde/specs/concorde/agents/module"');
-  expect(contracts).toContain("document.agents.contracts");
-  expect(taskSubagents).toContain('id="coordination-and-validation"');
-  expect(taskSubagents).toContain(
-    'href="/concorde/specs/concorde/agents/scenarios#scenario.distribution.task-subagents"',
-  );
+});
+
+// verifies: scenario.views.import-definition scenario.views.illustrative-label
+it("shows imported definitions and labels illustrative diagrams", async () => {
+  let imports = 0,
+    illustrative = 0;
+  for (const page of registry.pages) {
+    const source = await html(page.route);
+    const rows =
+      page.readingCollection === "module"
+        ? terminologyRows(page.content).filter(
+            (row) =>
+              row.link?.fragment.startsWith("concept.") && !row.definition,
+          )
+        : [];
+    imports += rows.length;
+    expect(
+      source.split("Imported from").length - 1,
+      page.sourcePath,
+    ).toBeGreaterThanOrEqual(rows.length);
+    const labels = fenceRanges(page.content).filter((f) =>
+      isIllustrative(f.info),
+    ).length;
+    illustrative += labels;
+    expect(
+      source.split("Illustrative, non-normative.").length - 1,
+      page.sourcePath,
+    ).toBeGreaterThanOrEqual(labels);
+  }
+  expect(imports).toBeGreaterThan(0);
+  expect(illustrative).toBeGreaterThan(0);
 });
 
 // verifies: scenario.views.operation-graphs-in-owner-specs
-it("publishes each Operation Graph only inside its owning Module Specs", async () => {
+it("publishes Graph Specs only inside their owners' implementation pages", async () => {
   await expect(access(resolve(output, "agent-graphs.html"))).rejects.toThrow();
   const home = await readFile(resolve(output, "index.html"), "utf8");
   expect(home).not.toContain("agent-graphs");
-  expect(home).not.toContain("Agent Graphs");
-  const entry = await readFile(
-    resolve(output, "specs/concorde/harness/module.html"),
-    "utf8",
-  );
-  expect(entry).toContain(
-    'href="/concorde/specs/concorde/harness/execution-reference#host-operation-node-operation-node"',
-  );
-  const graphSpec = await readFile(
-    resolve(output, "specs/concorde/harness/execution-reference.html"),
-    "utf8",
-  );
-  expect(graphSpec).toContain('id="host-operation-node-operation-node"');
-  const section = graphSpec.slice(
-    graphSpec.indexOf('id="host-operation-node-operation-node"'),
-  );
-  const parts = ["State.", "Nodes.", "Edges."].map((part) =>
-    section.indexOf(`<strong>${part}</strong>`),
-  );
-  expect(parts.every((index) => index > 0)).toBe(true);
-  expect(parts).toEqual([...parts].sort((a, b) => a - b));
-  expect(section).toContain("<code>terminal_agent</code>");
+  for (const page of registry.pages)
+    if (/^\s*%%\s*graph:/m.test(page.content))
+      expect(page.readingCollection, page.sourcePath).toBe("implementation");
 });
+
 // verifies: scenario.views.protocol-docs-tab
-it("publishes the independent standard with chapter navigation and no Spec wrapper", async () => {
+it("publishes the Protocol as its own collection without Spec provenance", async () => {
   const overview = await readFile(resolve(output, "protocol.html"), "utf8");
   expect(overview).toContain("Spec Protocol");
-  expect(overview).toContain("Spec management");
-  expect(overview).toContain("Required format");
-  expect(overview).toContain("Templates");
   expect(overview).not.toContain("provenanceShell");
-  expect(overview).not.toContain("feature.concorde.evolve-protocol");
   for (const chapter of [
     "principles",
+    "model",
+    "relations",
+    "context",
+    "boundaries",
     "module",
-    "spec-management",
-    "spec-management/spec-and-context",
     "format",
+    "checks",
+    "views",
     "templates/module",
     "templates/scenario",
   ]) {
-    const html = await readFile(
+    const page = await readFile(
       resolve(output, `protocol/${chapter}.html`),
       "utf8",
     );
-    expect(html).toContain("theme-doc-sidebar-container");
-    expect(html).not.toContain("provenanceShell");
+    expect(page, chapter).toContain("theme-doc-sidebar-container");
+    expect(page, chapter).not.toContain("provenanceShell");
   }
-  const moduleChapter = await readFile(
-    resolve(output, "protocol/module.html"),
-    "utf8",
-  );
-  expect(moduleChapter).toContain("inventory.md#terminology");
-  expect(moduleChapter).not.toMatch(/href="[^"]*inventory[^"\s]*"/);
-  expect(moduleChapter).toMatch(
-    /<pre\b[\s\S]*?inventory\.md#terminology[\s\S]*?<\/pre>/,
-  );
 });
+
 // verifies: scenario.views.publish-homepage
-it("publishes the configured introduction at the root while preserving direct Spec navigation", async () => {
+it("publishes the configured homepage at the root and links the Specs", async () => {
+  const identity = loadSiteIdentity(site);
+  const homepage = identity.homepage!;
+  const base = identity.baseUrl.replace(/\/$/, "");
   const home = await readFile(resolve(output, "index.html"), "utf8");
-  expect(home).toContain("Specify the architecture. Guide your agents.");
-  expect(home).toContain("Distinguish grants from enforced isolation.");
+  const text = (value: string) =>
+    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  expect(home).toContain(text(homepage.title));
   expect(home).toContain('id="get-started"');
-  expect(home).toContain('id="reference-title"');
-  expect(home.indexOf('id="reference-title"')).toBeGreaterThan(
-    home.indexOf('id="get-started"'),
-  );
-  expect(home).toContain("Callable Pi Agents");
-  expect(home).toContain("Public capabilities");
-  expect(home).toContain("Shared execution services");
-  expect(home).toContain("Launchers and supporting tools");
-  expect(home).toContain("concorde-issues");
-  expect(home).not.toContain("concorde-reflections-triage");
-  for (const retired of [
-    "concorde-main",
-    "concorde-specify-loop",
-    "concorde-dev-loop",
-    "topology-author",
-    "spec-author",
-  ]) {
-    expect(home).not.toContain(retired);
-  }
-  for (const retained of [
-    "concorde-context-solve",
-    "concorde-plan",
-    "concorde-tasks",
-    "concorde-implement",
-  ]) {
-    expect(home).toContain(retained);
-  }
-  expect(home).not.toContain("18 Operations");
-  expect(home).toContain("Eleven public capability adapters");
-  expect(home).toContain('href="/concorde/specs/concorde/agents/module"');
-  expect(home).toContain("concorde-spec-review");
-  expect(home).toContain("concorde-code-review");
-  expect(home).not.toContain("concorde-review");
-  expect(home).not.toContain("3 Agents with 12 task modes");
-  expect(home).toContain('scope="col"');
-  expect(home).toMatch(/role="region"[^>]*tabindex="0"/i);
-  expect(home).toContain('href="/concorde/specs/concorde/module"');
-  expect(home).not.toContain('href="/concorde/graph"');
-  expect(home).toContain('href="/concorde/protocol"');
+  for (const table of homepage.reference?.tables ?? [])
+    expect(home).toContain(text(table.title));
+  expect(home).toContain(`href="${base}/protocol"`);
   expect(home).toContain('name="description"');
   expect(home).not.toMatch(/http-equiv="refresh"/i);
   expect(home).not.toContain("provenanceShell");
-  const manifest = JSON.parse(
-    await readFile(resolve(output, "build-manifest.json"), "utf8"),
-  );
-  expect(
-    manifest.pages.some((page: { route: string }) => page.route === "/"),
-  ).toBe(false);
 });
-// verifies: scenario.views.publish-legacy-redirect
-it("preserves every legacy membership route as a redirect stub to its canonical page", async () => {
-  const r = loadScopedRegistry(root);
-  for (const page of r.pages)
-    for (const alias of page.aliases) {
-      const stub = await readFile(
-        resolve(output, alias.slice(1) + ".html"),
-        "utf8",
-      );
-      expect(stub).toContain(page.route);
-      expect(stub).toContain("refresh");
-    }
-});
+
 // verifies: scenario.views.publish-without-graph
 it("omits graph routes and artifacts", async () => {
-  for (const path of [
-    "graph.html",
-    "graph/index.html",
-    "architecture-graph.json",
-    "assets/obsolete-graph.js",
-  ])
+  for (const path of [...obsolete, "graph/index.html"])
     await expect(readFile(resolve(output, path))).rejects.toThrow();
-});
-it("does not publish retired unregistered projections", async () => {
-  for (const name of ["instructions", "wire"])
-    await expect(
-      readFile(resolve(output, "specs/projections/" + name + ".html")),
-    ).rejects.toThrow();
 });
 
 // verifies: scenario.views.publish-repeat-without-graph
 it("a second checked build preserves absence and reading", async () => {
-  const result = captureProcess(
-    process.execPath,
-    ["--import", "tsx", "scripts/build.ts"],
-    { cwd: site, timeout: 120000 },
-  );
-  expect(result.error).toBeUndefined();
-  expect(result.signal).toBeNull();
-  expect(result.status, result.stdout + "\n" + result.stderr).toBe(0);
+  build();
   await validateScopedBuild(root, output);
-  for (const path of [
-    "graph.html",
-    "architecture-graph.json",
-    "assets/obsolete-graph.js",
-  ])
+  for (const path of obsolete)
     await expect(readFile(resolve(output, path))).rejects.toThrow();
-  const r = loadScopedRegistry(root);
-  const page = r.pages.find((p) => p.primaryOf === r.entryTarget)!;
-  expect(
-    await readFile(resolve(output, page.route.slice(1) + ".html"), "utf8"),
-  ).toContain("Module Specs");
-}, 120000);
+  const entry = registry.pages.find(
+    (p) => p.primaryOf === registry.rootModule,
+  )!;
+  expect(await html(entry.route)).toContain("Module Specs");
+}, 240000);

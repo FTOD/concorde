@@ -12,7 +12,7 @@ import styles from "./index.module.css";
 
 interface GlobalData {
   pages: Page[];
-  entryTarget: string;
+  rootModule: string;
   siteIdentity: SiteIdentity;
 }
 
@@ -31,8 +31,8 @@ const contractParts = [
 export default function Home() {
   // SAFETY: the concorde-content plugin publishes this shape after registry validation.
   const data = usePluginData("concorde-content") as unknown as GlobalData;
-  const root = data.pages.find((page) => page.primaryOf === data.entryTarget);
-  if (!root) throw new Error("The docsite requires a registered entry target.");
+  const root = data.pages.find((page) => page.primaryOf === data.rootModule);
+  if (!root) throw new Error("The docsite requires a registered root Module.");
   const target = useBaseUrl(root.route);
   const { siteIdentity: identity } = data;
   const page = identity.homepage;

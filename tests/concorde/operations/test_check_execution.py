@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.harness.change_worktree import read_change
 from concorde.harness.checks import configured_checks, check_revision
 from concorde.harness.host import OperationHost
 from concorde.harness.admission import run_operation
@@ -22,14 +23,18 @@ class CheckIntegrationTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.registry = project(self.root)
+        project(self.root)
+        self.config = json.loads((self.root / ".concorde/config.json").read_text())
+
+    def save_config(self):
+        (self.root / ".concorde/config.json").write_text(json.dumps(self.config))
 
     def configure(self, code, timeout=10):
-        check = self.registry["checks"][0]
+        check = self.config["checks"][0]
         check.update(argv=["{python}", "-c", code], timeout_seconds=timeout)
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+        self.save_config()
         repo = SpecRepository(self.root, PACKAGE)
-        return repo, repo.select("service.transfer"), check["id"]
+        return repo, repo.module("service.transfer"), check["id"]
 
     @verifies("scenario.validation.blocked")
     def test_all_registered_required_check_inputs_are_available_and_safe(self):
@@ -39,7 +44,7 @@ class CheckIntegrationTests(unittest.TestCase):
 
     @verifies("scenario.validation.blocked")
     def test_missing_check_input_is_reported_before_execution(self):
-        self.registry["checks"][0]["inputs"] = ["removed-lock.json"]
+        self.config["checks"][0]["inputs"] = ["removed-lock.json"]
         repo, target, check_id = self.configure("print('must not run')")
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("invalid", report.status)
@@ -66,7 +71,7 @@ class CheckIntegrationTests(unittest.TestCase):
 
     @verifies("scenario.validation.blocked")
     def test_public_validation_reports_preflight_owner_without_executing_checks(self):
-        self.registry["checks"][0]["inputs"] = ["removed-lock.json"]
+        self.config["checks"][0]["inputs"] = ["removed-lock.json"]
         _, target, check_id = self.configure("print('must not run')")
         with patch("concorde.harness.checks.execute_check") as execute:
             result = run_operation(
@@ -89,7 +94,7 @@ class CheckIntegrationTests(unittest.TestCase):
     def test_regular_files_and_directories_share_revision_and_preflight_rules(self):
         directory = self.root / "check-data"
         directory.mkdir()
-        self.registry["checks"][0]["inputs"] = ["app/transfer.py", "check-data"]
+        self.config["checks"][0]["inputs"] = ["app/transfer.py", "check-data"]
         repo, target, _ = self.configure("print('safe')")
         empty = check_revision(repo, target)
         (directory / "data.txt").write_text("one")
@@ -122,7 +127,7 @@ class CheckIntegrationTests(unittest.TestCase):
                 path = self.root / link
                 path.symlink_to(destination)
                 try:
-                    self.registry["checks"][0]["inputs"] = [entry]
+                    self.config["checks"][0]["inputs"] = [entry]
                     repo, target, check_id = self.configure("print('must not run')")
                     report = validate_repository(self.root, package_root=PACKAGE)
                     finding = next(
@@ -144,7 +149,7 @@ class CheckIntegrationTests(unittest.TestCase):
         import os
 
         os.mkfifo(self.root / "pipe")
-        self.registry["checks"][0]["inputs"] = ["pipe"]
+        self.config["checks"][0]["inputs"] = ["pipe"]
         repo, target, _ = self.configure("print('must not run')")
         with self.assertRaises(SpecError) as raised:
             check_revision(repo, target)
@@ -155,7 +160,7 @@ class CheckIntegrationTests(unittest.TestCase):
 
     @verifies("scenario.validation.blocked")
     def test_input_disappearing_during_hashing_still_names_its_owner(self):
-        self.registry["checks"][0]["inputs"] = ["app/transfer.py"]
+        self.config["checks"][0]["inputs"] = ["app/transfer.py"]
         repo, target, check_id = self.configure("print('must not run')")
         with (
             patch(
@@ -175,13 +180,13 @@ class CheckIntegrationTests(unittest.TestCase):
 
     @verifies("scenario.validation.blocked")
     def test_unsafe_registered_spelling_keeps_owning_check_diagnostics(self):
-        self.registry["checks"][0]["inputs"] = ["../outside"]
-        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+        self.config["checks"][0]["inputs"] = ["../outside"]
+        self.save_config()
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("invalid", report.status)
         message = " ".join(f.message for f in report.findings)
         for value in (
-            self.registry["checks"][0]["id"],
+            self.config["checks"][0]["id"],
             "service.transfer",
             "../outside",
         ):
@@ -228,9 +233,9 @@ sys.exit(17)
         self.assertNotEqual("succeeded", result["status"], result)
         self.assertFalse((self.root / "unlisted-new.txt").exists())
         self.assertIn("failed", json.dumps(result))
-        state = self.root / ".concorde/worktree.json"
-        if state.exists():
-            self.assertNotEqual("ready", json.loads(state.read_text())["status"])
+        change = read_change(self.root)
+        if change is not None:
+            self.assertNotEqual("ready", change["status"])
 
     @verifies("scenario.validation.check-isolation")
     def test_unavailable_sandbox_blocks_without_leaking_private_diagnostics(self):
@@ -263,9 +268,9 @@ sys.exit(17)
             (self.root / f".concorde/runs/timeout/{check_id}.log").read_bytes(),
         )
 
-    @verifies("scenario.validation.blocked")
+    @verifies("scenario.validation.blocked", "scenario.checks.stale-measurement")
     def test_external_host_change_still_invalidates_post_check_digest(self):
-        repo, target, _ = self.configure("print('read-only check')")
+        repo, target, check_id = self.configure("print('read-only check')")
 
         def concurrent_host_change(*args, **kwargs):
             result = execute_check(*args, **kwargs)
@@ -278,6 +283,11 @@ sys.exit(17)
             with self.assertRaises(SpecError) as caught:
                 configured_checks(repo, target, "stale")
         self.assertEqual("stale_evidence", caught.exception.code)
+        # The log written before the digest mismatch stays for inspection.
+        self.assertIn(
+            b"read-only check",
+            (self.root / f".concorde/runs/stale/{check_id}.log").read_bytes(),
+        )
 
 
 if __name__ == "__main__":

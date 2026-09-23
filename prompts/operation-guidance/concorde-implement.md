@@ -10,7 +10,7 @@ operation: implement
 
 @prompts/workflow-host/task-request-fields.md
 
-Requires a current accepted plan and tasks. The programmer may change only registered implementation files, never Specs, metadata or registry. Component work and necessary contract changes return to the calling agent for separate selection; no child workflow or Spec authoring runs automatically. Completion is not review, validation, readiness or delivery.
+Requires a current accepted plan and tasks. The programmer may change only files the Module's realization entries bind, never Spec documents, their metadata or the registry. Component work (tasks for another Module of the change scope, such as a contract participant) and necessary contract changes return to the calling agent for separate selection, each as that Module's own implementation in the same candidate; no child workflow or Spec change runs automatically. Completion is not review, validation, readiness or delivery.
 
 The calling agent chooses whether and when to invoke other capabilities. Report invalid or stale
 inputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews

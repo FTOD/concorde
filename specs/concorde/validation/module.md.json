@@ -1,63 +1,164 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.validation.module",
     "owner": "module.validation",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Validation",
+    "owns": [
+      "specs/concorde/validation/module.md",
+      "specs/concorde/validation/requirements.md",
+      "specs/concorde/validation/scenarios.md",
+      "specs/concorde/validation/records.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-harness-checks"
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-harness-worktrees",
+        "relies_on": ["concept.worktrees.candidate"]
+      },
+      {
+        "target": "module.harness.admission",
+        "meaning": "#uses-harness-admission"
+      },
+      {
+        "target": "module.review",
+        "meaning": "#uses-review",
+        "relies_on": ["concept.review.required-review", "req.review.required-current"]
+      },
+      {
+        "target": "module.planning",
+        "meaning": "#uses-planning",
+        "relies_on": ["concept.planning.task"]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": ["concept.issues.blocker"]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.validation.adapter",
-      "title": "Validation adapter",
-      "kind": "shared program",
-      "files": [
+      "id": "concept.validation.ready",
+      "type": "concept",
+      "title": "Ready",
+      "meaning": "#concept.validation.ready"
+    },
+    {
+      "id": "concept.validation.evidence",
+      "type": "concept",
+      "title": "Validation evidence",
+      "meaning": "#concept.validation.evidence"
+    },
+    {
+      "id": "concept.validation.affected-module",
+      "type": "concept",
+      "title": "Affected Module",
+      "meaning": "#concept.validation.affected-module"
+    },
+    {
+      "id": "concept.validation.direct-candidate",
+      "type": "concept",
+      "title": "Direct candidate",
+      "meaning": "#concept.validation.direct-candidate"
+    },
+    {
+      "id": "realization.validation.service",
+      "type": "realization",
+      "title": "Validation service",
+      "meaning": "#realization.validation.service",
+      "entries": [
         "operations/validate.py",
-        "src/concorde/harness/checks.py",
-        "src/concorde/validation/",
+        "src/concorde/validation/"
+      ]
+    },
+    {
+      "id": "realization.validation.check-runner",
+      "type": "realization",
+      "title": "Configured check runner",
+      "meaning": "#realization.validation.check-runner",
+      "entries": [
+        "src/concorde/harness/checks.py"
+      ]
+    },
+    {
+      "id": "realization.validation.tests",
+      "type": "realization",
+      "title": "Validation tests",
+      "meaning": "#realization.validation.tests",
+      "entries": [
         "tests/concorde/harness/test_host_tools.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/operations/test_change_scope.py",
         "tests/concorde/operations/test_check_execution.py",
         "tests/concorde/operations/test_review.py"
-      ],
-      "meaning": "#entity.validation.adapter"
-    },
-    {
-      "id": "entity.validation.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.validation.harness"
-    },
-    {
-      "id": "entity.validation.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "target_id": "module.spec",
-      "meaning": "#entity.validation.spec"
-    },
-    {
-      "id": "entity.validation.evidence",
-      "title": "Validation evidence",
-      "kind": "record",
-      "meaning": "#entity.validation.evidence"
-    },
-    {
-      "id": "entity.validation.readiness",
-      "title": "Readiness decision",
-      "kind": "record",
-      "meaning": "#entity.validation.readiness"
+      ]
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.harness",
-      "meaning": "#agreement.document.validation.module.2"
+      "type": "relates",
+      "source": "realization.validation.service",
+      "verb": "validates the Specs with",
+      "target": "module.spec"
     },
     {
-      "target_id": "module.spec",
-      "meaning": "#agreement.document.validation.module.3"
+      "type": "relates",
+      "source": "realization.validation.service",
+      "verb": "runs configured checks through",
+      "target": "realization.validation.check-runner"
+    },
+    {
+      "type": "relates",
+      "source": "realization.validation.check-runner",
+      "verb": "executes each check in",
+      "target": "module.harness.checks"
+    },
+    {
+      "type": "relates",
+      "source": "realization.validation.service",
+      "verb": "records",
+      "target": "concept.validation.evidence"
+    },
+    {
+      "type": "relates",
+      "source": "realization.validation.service",
+      "verb": "requires current",
+      "target": "concept.review.required-review"
+    },
+    {
+      "type": "relates",
+      "source": "realization.validation.service",
+      "verb": "decides",
+      "target": "concept.validation.ready"
+    },
+    {
+      "type": "relates",
+      "source": "concept.validation.ready",
+      "verb": "is recorded on",
+      "target": "concept.worktrees.candidate"
     }
   ],
-  "bindings": []
+  "extensions": {}
 }

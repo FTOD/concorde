@@ -16,6 +16,7 @@ from unittest.mock import patch
 from concorde.harness.check_evidence import CheckEvidence, report_names
 from concorde.harness.check_executor import CheckResult, execute_check
 from concorde.spec.verification import verifies
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
@@ -32,7 +33,7 @@ class CheckEvidenceTests(unittest.TestCase):
         paths = [source["path"] for source in sources]
         for suffix in ("", ".json"):
             self.assertEqual(
-                1, paths.count("specs/concorde/harness/execution-reference.md" + suffix)
+                1, paths.count("specs/concorde/harness/checks/interfaces.md" + suffix)
             )
 
     def setUp(self):
@@ -43,17 +44,9 @@ class CheckEvidenceTests(unittest.TestCase):
         self.project.mkdir()
         self.storage = self.root / "scratch"
         self.storage.mkdir()
-        self.environment = {
-            **os.environ,
-            "PYTHONPATH": str(REPOSITORY_ROOT / "src"),
-            "TMPDIR": str(self.storage),
-        }
-        for key in (
-            "CONCORDE_SESSION_SELECTION",
-            "PI_SUBAGENT_EXTENSION_BINDINGS",
-            "CONCORDE_STUDIO_URL",
-        ):
-            self.environment.pop(key, None)
+        self.environment = child_environment(
+            PYTHONPATH=str(REPOSITORY_ROOT / "src"), TMPDIR=str(self.storage)
+        )
 
     def bridge(self, code, *, reports=(), timeout=10, bootstrap=None):
         command = shlex.join([sys.executable, "-c", code])
@@ -88,7 +81,11 @@ class CheckEvidenceTests(unittest.TestCase):
         self.assertEqual(0o600, Path(reference["path"]).stat().st_mode & 0o777)
         return json.loads(raw)
 
-    @verifies("scenario.harness.check-result", "scenario.harness.check-read-only")
+    @verifies(
+        "scenario.harness.check-result",
+        "scenario.harness.check-read-only",
+        "scenario.checks.tester-evidence",
+    )
     def test_failure_reports_and_output_survive_cleanup_exactly_without_scratch_secrets(
         self,
     ):
@@ -231,7 +228,7 @@ r=Path(os.environ['CONCORDE_CHECK_REPORT_DIR']);r.rmdir()
         self.assertFalse(result["evidence"]["complete"])
         self.assertIsNone(self.manifest(result)["artifacts"][-1]["artifact"])
 
-    @verifies("scenario.harness.check-lifetime")
+    @verifies("scenario.harness.check-lifetime", "scenario.checks.tester-evidence")
     def test_timeout_keeps_partial_output_and_named_report(self):
         result = self.bridge(
             """
@@ -250,7 +247,7 @@ print('deadline evidence',flush=True);time.sleep(30)
         self.assertIn("deadline evidence", result["stdout"])
         self.assertTrue(self.manifest(result)["timed_out"])
 
-    @verifies("scenario.harness.check-lifetime")
+    @verifies("scenario.harness.check-lifetime", "scenario.checks.tester-evidence")
     def test_cancellation_captures_before_cleanup_and_ignores_repeat_abort(self):
         code = "import os,time;from pathlib import Path;Path(os.environ['CONCORDE_CHECK_REPORT_DIR'],'ready').write_text('cancel detail');print('cancel output',flush=True);time.sleep(30)"
         p = subprocess.Popen(
@@ -317,7 +314,7 @@ main()
         self.assertTrue(result["evidence"]["complete"])
         self.assertEqual(0, self.manifest(result)["returncode"])
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.harness.primary-status", "scenario.checks.tester-evidence")
     def test_missing_primary_authority_never_creates_a_replacement_archive(self):
         missing = self.root / "missing"
         evidence = CheckEvidence(missing, (), command="true", timeout=1)
@@ -356,7 +353,7 @@ main()
         self.assertTrue(result["evidence"]["errors"])
         self.assertEqual([], list(outside.iterdir()))
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.harness.primary-status", "scenario.checks.tester-evidence")
     def test_partial_export_is_recorded_with_successful_artifacts_still_retrievable(
         self,
     ):
@@ -408,7 +405,7 @@ main()
             Path(summary["artifacts"][0]["artifact"]["path"]).read_bytes(),
         )
 
-    @verifies("scenario.harness.primary-status")
+    @verifies("scenario.harness.primary-status", "scenario.checks.tester-evidence")
     def test_linked_fixture_uses_only_primary_authority_and_retains_input_identity(
         self,
     ):

@@ -1,381 +1,492 @@
-# Spec interface contracts
+# Spec interface definitions
 
-These precise specifications belong directly to the [Spec Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+The exact files, calls and records of the [Spec tooling](module.md) Module. The Protocol's
+Required format (`protocol/format.md`) defines the entry `module` block, document metadata,
+identities, anchors and reading syntax; this document does not repeat it and adds only what
+Concorde fixes on top of it.
 
-## Terminology
+## Project configuration {#project-configuration}
 
-| Term                                              | Meaning / definition                             |
-| ------------------------------------------------- | ------------------------------------------------ |
-| [Module](../module.md#terminology)                | Defined in Concorde Framework.                   |
-| [Spec](../module.md#terminology)                  | Defined in Concorde Framework.                   |
-| [Registry](../module.md#terminology)              | Defined in Concorde Framework.                   |
-| [Snapshot](../module.md#terminology)              | Defined in Concorde Framework.                   |
-| [Host](../module.md#terminology)                  | Defined in Concorde Framework.                   |
-| [Ownership](registry.md#terminology)              | Defined in Registry.                             |
-| [Composition](registry.md#terminology)            | Defined in Registry.                             |
-| [Use](registry.md#terminology)                    | Defined in Registry.                             |
-| [Reference](registry.md#terminology)              | Defined in Registry.                             |
-| [Implementation binding](registry.md#terminology) | Defined in Registry.                             |
-| [Document unit](values.md#terminology)            | Defined in Identities and versions.              |
-| [Document role](values.md#terminology)            | Defined in Identities and versions.              |
-| [Source-member role](values.md#terminology)       | Defined in Identities and versions.              |
-| [Protocol binding](values.md#terminology)         | Defined in Identities and versions.              |
-| [Entity](../module.md#terminology)                | Defined in Concorde Framework.                   |
-| [Requirement](../module.md#terminology)           | Defined in Concorde Framework.                   |
-| [Scenario](../module.md#terminology)              | Defined in Concorde Framework.                   |
-| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives.   |
-| [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
-| [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
-| [Initialization](initialize.md#terminology)       | Defined in Project initialization.               |
-| [Initial proposal](initialize.md#terminology)     | Defined in Project initialization.               |
-| [Worker](../module.md#terminology)                | Defined in Concorde Framework.                   |
-| [Grant](../module.md#terminology)                 | Defined in Concorde Framework.                   |
-| [Issue](../module.md#terminology)                 | Defined in Concorde Framework.                   |
+`.concorde/config.json` is a control record. It holds exactly these fields:
 
-## Registry
-
-### Interface signatures {#registry-interface-signatures}
-
-```python
-SpecRepository(project_root: Path | str, package_root: Path | str | None = None, *,
-               registry_bytes: bytes | None = None,
-               document_overrides: dict[str, bytes] | None = None)
-SpecRepository.select(target_id: str, focus_id: str | None = None) -> SpecTarget
-SpecRepository.document(path: str) -> SpecDocument
-SpecRepository.documents(target: SpecTarget) -> tuple[SpecDocument, ...]
-SpecRepository.contracts(target: SpecTarget) -> tuple[dict, ...]
-SpecRepository.dependencies(target: SpecTarget) -> tuple[dict, ...]
-SpecRepository.definitions(target: SpecTarget) -> ModuleDefinitions
-SpecRepository.entities(target: SpecTarget) -> tuple[SpecEntity, ...]
-SpecRepository.scenarios(target: SpecTarget) -> tuple[Scenario, ...]
-SpecRepository.entity_files(target: SpecTarget) -> dict[str, SpecEntity]
-SpecRepository.entity_for_path(target: SpecTarget, path: str) -> SpecEntity | None
-SpecRepository.external_references(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.external_reference_paths(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.external_reference_files(entry: str) -> tuple[str, ...]
-SpecRepository.external_reference_digest(entry: str) -> str
-SpecRepository.external_reference_records(target: SpecTarget) -> list[dict]
-SpecRepository.missing_external_references(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.implementation_entries(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.implementation_paths(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.implementation_files(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.missing_entries(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.children(target: SpecTarget) -> tuple[SpecTarget, ...]
-SpecRepository.descendants(target: SpecTarget) -> tuple[SpecTarget, ...]
-SpecRepository.listing_users(path: str) -> tuple[str, ...]
-SpecRepository.affected_modules(paths: tuple[str, ...]) -> tuple[SpecTarget, ...]
-SpecRepository.covering_modules(target: SpecTarget) -> tuple[SpecTarget, ...]
-digest(value: bytes | Any) -> str
-read_file(root: Path, relative: str) -> bytes
-strings(value: Any, label: str, *, nonempty: bool = False) -> tuple[str, ...]
-identifier(value: Any) -> str
+```json
+{
+  "profile_version": 16,
+  "registry": ".concorde/specs.json",
+  "protocol": {"version": "11.0.0", "digest": "sha256:<64 hex digits>"},
+  "operation_configuration": {
+    "type_id": "concorde-operation-configuration",
+    "schema_version": 2,
+    "data": {"model": "provider/model-id", "thinking": "medium"}
+  },
+  "checks": [
+    {"id": "check.spec.model", "module": "module.spec",
+     "argv": ["{python}", "-m", "pytest", "tests/concorde/spec"],
+     "timeout_seconds": 120, "inputs": ["src", "tests/concorde/spec"]}
+  ]
+}
 ```
 
-Listing queries separate declarations from current disk state. `implementation_entries` returns the
-declared entries unchanged, exact files and directory prefixes alike; `implementation_paths` returns
-their base paths without a trailing slash, for permission and history roots; `implementation_files`
-expands each directory entry into the existing regular files below it, skipping the Framework's
-skipped directories, dot-prefixed names, symlinks and skipped suffixes; `missing_entries` returns the
-entries whose file or directory does not exist yet. `entity_files` is keyed by declared entry, and
-`entity_for_path` answers which entity owns a concrete file through the most specific covering entry.
-`listing_users` and `affected_modules` resolve a path or entry through the reverse index, in which a
-directory prefix covers every path below it, and `covering_modules` answers the same question for one
-Module's whole listing, so a peer that binds a file inside a listed directory is found as well.
-The external-reference queries serve a Module's `references` of kind `external`, the Protocol's
-external references: `external_references` and `external_reference_paths` return the declared
-entries and their base paths, `external_reference_files` expands one entry with the ordinary
-exclusions plus media and archive suffixes, `external_reference_digest` is one digest over those
-files' paths and bytes (cached per repository), `external_reference_records` is the snapshot form
-(entry, directory flag, digest), and `missing_external_references` names entries that do not
-exist. Admission rejects an external reference that is or contains a Spec document, that overlaps
-the Module's own files, or that is declared twice; context resolution skips external references
-entirely.
+- `profile_version` is the Framework's configuration profile; the loader supports exactly `16` and
+  refuses others with `unsupported_profile`. It is a Framework compatibility number, not a Protocol
+  version.
+- `registry` is the project-relative path of the registry.
+- `protocol` is the Protocol binding: the `version` from the installed copy's manifest and the
+  SHA-256 digest of that manifest's exact bytes.
+- `operation_configuration` is the typed worker model selection described in
+  [Typed values](#typed-values).
+- `checks` lists the configured checks. Each has a unique `id`, the `module` whose promises it
+  checks, a nonempty `argv`, a `timeout_seconds` from 1 to 3600 and optional unique project-relative
+  `inputs`. Spec tooling only reads and preserves these records, and validation checks that their inputs exist; the Check execution Module runs
+  them.
 
-No call above writes project files. Host candidate overlays stay in memory. A repository is a snapshot-oriented reader with document caching; reconstruct it after source changes. Selection returns the full target descriptor even with a scenario focus. Ownership and references are explicit; context expands references once. Paths, links and entity file listings do not add files.
+`concorde-configure` rewrites `operation_configuration`, and `protocol` when the developer accepts
+the installed Protocol, and keeps every other field, including `checks`, unchanged.
 
-### Required collaborator promises {#registry-required-collaborator-promises}
+## Registry file {#registry-file}
 
-The wire boundary's `decode(text: str) -> Any` rejects duplicate JSON keys and non-finite numbers;
-`canonical(value: Any) -> str` produces stable sorted-key compact JSON. Its
-`safe_path(value: str, field: str = "") -> str` and
-`checked_path(project: Path, relative: str, field: str = "") -> Path` reject absolute paths, traversal,
-backslashes and symlink components. Failures raise `TypedDataError(ValueError)` carrying `code`
-and `field`; they never retry through a different path. The offline schema boundary provides
-`admit(schema: Any, root: dict | None = None) -> None` and
-`validate(value: Any, schema: Any, field: str = "", *, root: dict | None = None, depth: int = 0) -> None`.
-This is a bounded offline subset, not a full JSON Schema dialect. Schemas are objects or booleans.
-The admitted keywords are `$schema`, `$id`, `$defs`, `$ref`, `title`, `description`, `examples`,
-`default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`,
-`uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`,
-`oneOf`, `allOf` and `format`. The metadata keywords do not select a dialect or fetch resources.
-Types are object, array, string, integer, number, boolean and null, individually or in a nonempty
-array; integers satisfy number, while booleans do not satisfy numeric types. References must be
-direct `#/$defs/<name>` references to the supplied root's definitions; nested pointers and remote
-references are rejected. Object properties, required fields and additional-properties rules,
-homogeneous array items and uniqueness, inclusive size/numeric bounds, Python-regex string patterns,
-exact typed enum/const values and the three schema combinators are enforced. Only `project-path`
-format is supported and delegates to the safe-path boundary. Bounds must be valid finite numbers
-or nonnegative integer lengths with minimum no greater than maximum. Unknown keywords, invalid
-types, unresolved references and malformed rule values fail admission; schema/value recursion beyond
-100 validation levels fails validation. `validate` expects an admitted schema.
+The registry file is JSON with exactly two fields:
 
-Schema admission or example-validation failures raise `ContractError(ValueError)` with a `field`
-JSON pointer (empty for an admission/root error). Invalid `project-path` values instead propagate
-`TypedDataError` from the path boundary. `contracts()` propagates both without wrapping, returns
-no partial tuple on any error, and separately raises `SpecError` for malformed contract metadata.
-It rejects unknown keywords, remote references, invalid schemas and invalid examples without network
-access. Local `contracts` includes every block from the target's own registered documents, returns an
-empty tuple when no blocks exist, and leaves canonical-definition uniqueness and global binding checks to the
-separate repository validator. This is the canonical offline schema and path boundary used by interface definitions; consumers
-include this document explicitly and link to it without copying its vocabulary.
+```json
+{
+  "schema_version": 3,
+  "modules": [
+    {"id": "module.example", "title": "Example", "entry": "specs/example/module.md",
+     "owns": ["specs/example/module.md"], "contains": [], "uses": [], "includes": [],
+     "participates": []}
+  ]
+}
+```
 
-### Stable-ID Spec context queries {#registry-stable-id-spec-context-queries}
+Each record has exactly `id`, `title`, `entry`, `owns`, `contains`, `uses`, `includes` and
+`participates`. `id` equals the entry metadata's `document.owner`, `entry` is the entry's reading
+path, and every field from `title` on, except `entry`, equals the entry's `module` block
+(`CHK.registry.mirror`). Records are unique by `id`. Decoding rejects duplicate keys and non-JSON
+numeric constants.
 
-`spec_files(entity_id: str) -> tuple[str, ...]` is the metadata-only locator query. Module and
-scenario identities resolve to the selected owner's full context, sorted by canonical path:
-owned document units plus one-level Module/document references, each expanded to its reading and metadata member. Identity resolution reads declared metadata, not unselected reading bodies.
-A scenario's defining document never trims the result or transfers the scenario to a consumer.
-Document IDs, requirements, entities and paths are unsupported query kinds (`SpecError/invalid_target`).
-Unknown references, wrong kinds, ambiguous ownership and unsafe aliases reject the selection.
+## Repository interface {#repository-interface}
 
-`spec_context(entity_id: str) -> SpecResolution` reads the resolved files and supplies exact byte
-digests, original owner and every inclusion reason. It rejects unavailable required bytes rather
-than returning a partial success. Reconstruct the repository after source changes. Both APIs are
-read-only, offline and deterministic. Neither follows links, parentage, uses, referenced Modules'
-references or implementation listings.
+The repository has one vocabulary: every query that answers a Protocol concept carries the
+Protocol's name for it. A query that takes a Module accepts its identity or its `Module` record.
 
-`SpecResolution` is a closed version-1 record with `schema_version`, `registration` (the selecting Module descriptor), `query_id`, `query_kind` (`module` or `scenario`),
-`module_id`, `reading_entry` (the selected owner's `module.md` path), `documents` (the selected
-owner's ordered registered paths), `references` (its typed reference pairs) and `sources` (sorted
-index records). Each source has `document_id`, `path`, `owner`, `digest`, `role` (`reading` or `metadata`) and
-`reasons`; no source carries its body, which a consumer reads from the file the record identifies. A reason is `{kind, id}`: kind `owned`
-names the selected Module, kind `module` names a direct referenced Module, and kind `document`
-names a direct referenced document unit. Both members have identical ownership and provenance. Reasons are unique and sorted by kind then ID. Digests hash
-exact bytes before UTF-8 decoding; invalid UTF-8 rejects resolution. The record is bound into
-the [Harness Module](../harness/module.md) snapshot, not independently authored as another context inventory.
+```python
+SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
+SpecRepository.modules -> dict[str, Module]
+SpecRepository.module(module_id: str, scenario: str | None = None) -> Module
+SpecRepository.root_module -> str
+SpecRepository.contained(module) -> tuple[Module, ...]
+SpecRepository.document(path: str) -> SpecDocument
+SpecRepository.documents(module) -> tuple[SpecDocument, ...]
+SpecRepository.definitions(module) -> ModuleDefinitions
+SpecRepository.definer(identity: str) -> str | None
+SpecRepository.selection(relation: dict) -> tuple[str, ...]
+SpecRepository.meaning_text(module_id: str, meaning: str) -> str | None
+SpecRepository.realization_entries(module) -> dict[str, Realization]
+SpecRepository.realization_for_path(module, path: str) -> Realization | None
+SpecRepository.fresh() -> SpecRepository
+```
 
-`context_contracts(target)` returns canonical contracts in this resolution with owner/document
-provenance; `contract_bindings(target)` returns only owned bindings. `definitions`, `entities`,
-`scenarios`, dependency and implementation queries remain ownership-only. Reference inclusion
-never affects their entity union, diagram requirements or code permissions.
+Construction reads the configuration, verifies the Protocol binding, reads the registry and loads
+every entry and registered document. `package_root` locates the installed Concorde package whose
+Protocol the project copy must equal; it defaults to the running package. `registry_bytes` and
+`document_overrides` (a map from member path to bytes) replace the corresponding files in memory
+only, so a caller can load a candidate state; they are never written. `fresh()` builds a new
+repository from the same root and overrides.
 
-`context_users(document_id)` returns the owner plus every Module whose one-level context includes
-the document, sorted by Module ID. It drives review/invalidation, separately from the implementation
-reverse index. Ownership or reference edits compare both old and candidate users, even when the
-resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
-owned documents; changes only to the provider's references do not expand the consumer.
+`modules` maps every registered Module to its `Module` record, in registry order; `module` returns
+one: its `id`, `title`, entry path, owned document paths (`documents`), parent, used Module
+identities (`uses`), realization entries (`files`), inclusions (`references`) and the identities of
+the configured checks whose `module` is this Module (`checks`). A `scenario` must be a scenario the
+Module owns and never changes the result. An unknown Module, or a scenario of another Module, fails
+with a `SpecError`. `root_module` is the first recorded Module that no other Module contains, and
+`contained` returns the Modules a Module `contains`.
 
-The runtime implements these resolution and binding interfaces under Protocol 10.0.0/Profile 15/
-schema 5. Older profiles and membership-based declarations fail admission. Owned-definition and
-implementation queries remain separate from the explicit context resolver.
+`definitions` returns the requirements, scenarios, concepts, realizations and contracts the
+Module's own documents define. `document` returns one registered reading member with its metadata,
+owner and digest, and `documents` every document a Module owns. `definer` returns the reading path
+of the document defining a node, or `None` for an unknown identity. `selection` returns the
+documents one `contains`, `uses` or `includes` declaration selects. `meaning_text` returns the
+prose a Module relation's `meaning` anchor resolves to. `realization_entries` maps each declared
+entry of the Module to its realization, and `realization_for_path` returns the realization whose
+most specific entry covers a file; an exact entry is more specific than any directory entry.
 
-## Registry values and selection
+Failures raise `SpecError(ValueError)` with a `code` and a `field`; path and JSON failures raised by
+the typed values keep their own `TypedDataError`. No call writes a file.
 
-### Selection and returned values {#values-selection-and-returned-values}
+### Loading failures {#loading-failures}
 
-SpecRepository(project_root, package_root=None, \*, registry_bytes=None, document_overrides=None)
-admits Profile 15 and registry schema 5. The optional bytes and document overrides form an in-memory
-candidate; they never authorize ambient agent reads. Construction rejects malformed identities,
-unknown parents/uses/references, composition cycles, duplicate file owners within one Module and
-shared providers structurally owned by one of their consumers. A provider and its consumers need
-not share a structural parent or hierarchy level; such cross-level uses are admitted under the
-[shared-provider rule](requirements.md#req.spec.sibling-sharing), without changing parentage,
-document ownership, explicit context references or implementation permissions.
+A repository opened for consumers refuses the project, raising `SpecError`, on any of these
+problems:
 
-SpecTarget has id, kind="module", title, documents, references, parent, uses, files and checks. primary_document
-resolves exactly one local module.md, independently of document order. select(target_id,
-focus_id=None) returns the complete Module descriptor and rejects a focus that does not belong to
-the target. documents(target) returns only its owned Markdown collection; spec_context(target.id) returns
-the owned-plus-referenced full sources with provenance. document(path) checks
-the paired metadata identity and sole owner. contracts(target) parses owned canonical contract definitions and checks schemas/examples offline;
-contract_bindings(target) returns local participant bindings without copying provider definitions.
-context_contracts(target) resolves canonical definitions from the full context, retaining their owners. dependencies(target) parses local
-dependency metadata and its local readable explanation without following those edges. definitions(target) parses the
-Module's own scenarios, requirements and entities from its registered documents; entities(target) and
-scenarios(target) project that same result. entity_files(target) maps each declared listing entry, an exact
-file or a directory prefix, to its owning entity, and entity_for_path(target, path) resolves a
-concrete file through the most specific covering entry. implementation_entries(target),
-implementation_paths(target), implementation_files(target) and missing_entries(target) return the
-declared entries, their base paths, the existing files those entries bind and the entries whose file
-or directory is still missing. children(target) and descendants(target) return structural metadata, never inherited
-context. listing_users(path) and affected_modules(paths) resolve changed files or entries through the reverse
-index, in which a directory prefix covers every path below it, and covering_modules(target) applies it
-to one Module's complete listing; a shared file therefore names several
-Modules, never one exclusive owner.
+- an unreadable configuration or registry, or a registry with malformed or duplicate records;
+- a Protocol binding that does not match the installed copy (`protocol_mismatch`) or an
+  unsupported profile (`unsupported_profile`);
+- an entry whose metadata owner differs from its registry record;
+- a failure of `CHK.document.entry`, `CHK.document.pair` or `CHK.document.path`;
+- a metadata envelope with the wrong schema version, missing fields or an invalid role;
+- two documents with one identity, a failure of `CHK.node.owner` or of `CHK.owns.unique`;
+- a `contains`, `uses` or `includes` whose target is unknown;
+- a failure of `CHK.contains.single-parent` or `CHK.contains.acyclic`.
 
-SpecDocument is the reading view carrying path, content, digest, document_id, owner, metadata and body.
-DocumentUnit carries the reading and metadata SourceMembers plus local readable meanings. Each source
-has path, role, exact bytes and its own digest. SpecTarget.sources expands its registered document
-paths to reading/metadata pairs in document order. The metadata document role organizes reading but never filters context; source-member role still distinguishes reading from metadata.
-source_records returns both indexed members; source_bytes verifies registration and reads current
-bytes for digest checking; source_is_overridden selects the complete candidate unit even when only
-metadata changes. validate_source_records rejects incomplete pairs or inconsistent role/provenance.
-A referenced document is included only by explicit Module references and retains its sole owner. Paths are safe project-relative
-POSIX file paths; symlinks and aliases fail. read_file reads a regular file, digest produces
-canonical sha256 identity, strings checks unique string arrays and identifier checks stable IDs.
-Failures raise SpecError with code and field; typed path/JSON failures retain their TypedDataError
-contract. No lookup writes files, changes authority, silently retries a different path or reads
-source to invent missing Module meaning.
+Every other problem leaves the repository usable and is reported only by validation. The
+validator opens the repository in a collecting mode, in which these problems become findings as
+well.
 
-### Task authoring transport values {#values-task-authoring-transport-values}
+### Spec context records {#spec-context-records}
 
-The Typed values interface admits the following existing version-1 records in the closed envelope
-`{type_id, schema_version: 1, data}`. Their data objects are closed as well; all fields below are
-required. They carry task metadata, not implementation contents or execution authority.
+```python
+SpecRepository.spec_context(query_id: str, *, shares: bool = False) -> SpecContext
+SpecContext.paths -> tuple[str, ...]
+SpecContext.value -> dict
+```
 
-| Type ID                              | Data shape                                                  | Meaning                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `concorde-task-scope-feedback`       | `{tasks_digest: sha256, reason: "implementation_boundary"}` | Host feedback identifying the exact task list whose implementation acceptance must be separated from later Host responsibilities. `tasks_digest` is `sha256:` plus 64 lowercase hexadecimal digits, computed over the canonical JSON task list. The fixed reason requests preservation of software acceptance while correcting that phase boundary. |
-| `concorde-task-identity-constraints` | `{reserved_task_ids: string[]}`                             | The IDs a fresh task author must not reuse: retained history and, during replacement, the current task list. Strings are nonblank and unique; an empty array is valid. These are identity reservations only, not additional work obligations or permission to replay prior work.                                                                    |
+`spec_context` accepts a Module identity or a scenario identity; a scenario resolves to its owner.
+Any other identity fails with code `invalid_target`. `paths` is the Protocol's `SpecContext`: the
+paths of both members of every selected document, without duplicates and sorted. `value` is the
+record of that context, a JSON object with:
 
-`typed(type_id, data)` constructs and validates the envelope; `validate_typed(value, expected=None,
-field="")` validates an existing envelope and optionally its expected type. The validator checks
-the exact type, version, fields, digest syntax, fixed reason and ID-list shape without reading a
-change record. It does not prove that a digest names the current list, that reservations are
-complete, or that a caller may admit the value to a phase. Those contextual checks remain with the
-calling Host and the receiving Agent's mode. Neither value can complete tasks, waive validation or
-review, modify lifecycle state or widen file, network or credential authority by itself.
+| Field | Meaning |
+| --- | --- |
+| `schema_version` | `2` |
+| `query_id`, `query_kind` | the queried identity and whether it is a `module` or a `scenario` |
+| `module_id` | the Module whose context was selected |
+| `shares` | whether the shared-file readers were added (below) |
+| `registration` | that Module's descriptor, as `module` returns it |
+| `reading_entry` | that Module's entry reading path |
+| `documents` | the paths of the documents that Module owns |
+| `references` | that Module's inclusions |
+| `sources` | one record per selected member, sorted by path |
 
-## Spec structure and validation
+Each source record has `document_id`, `path`, `owner` (the defining Module, never the selecting
+one), `role` (`reading` or `metadata`), `digest` (SHA-256 of the exact bytes, as `sha256:` plus 64
+lowercase hexadecimal digits) and `reasons`: every relation that selected the document, each
+recorded as the Protocol relation and its target, sorted by relation, kind and identity:
 
-### Validator interface {#structure-validator-interface}
+| Reason | Recorded when |
+| --- | --- |
+| `{"relation": "owns", "id": M}` | the queried Module M owns the document |
+| `{"relation": "contains", "id": N}` | a `contains` of child N selected it |
+| `{"relation": "uses", "id": N}` | a `uses` of provider N selected it |
+| `{"relation": "includes", "kind": "module" or "document", "id": X}` | an `includes` of Module or document X selected it |
+| `{"relation": "shares", "id": N, "files": [...]}` | Module N binds the listed files of the queried Module's ImplementationScope, and `shares` was requested |
 
-`validate_repository(root, target_id=None, package_root=None) -> ToolResult` returns
-`status=success|invalid`, findings with `rule_id`, `message` and `remediation`, and a result
-containing `source_digest` for the assessed Spec state. It checks identities, document
-declarations, unique ownership, one-level references, canonical contract definitions, participant bindings, dependency metadata and readable meaning, scenario/requirement/entity syntax, entity listing
-entries against the registry, architecture diagrams, structured contracts and Issue
-attribution; a declared entry whose file or directory is missing is an error unless its entity marks
-it pending, a still-pending entry that now exists is a warning, and a regular file that no Module's
-entries cover is a warning; it explicitly does not prove semantics. Configured implementation checks
-execute separately on the host using the registered `argv` and `timeout_seconds`, returning `check_id`,
-`target_id`, `status`, `exit_code`, `source_digest` and `log_digest` with raw output retained
-privately. No check result is a source-read proxy for an agent. Validation reads project files and
-writes nothing.
+Two relations that select the same document are both recorded, so removing a redundant one
+changes the record and the context identity. With `shares`, every document owned by another Module
+that binds a file in the queried Module's ImplementationScope (see `shared_files` below) is added,
+so a task that writes a shared file can read the promises of every Module binding it (Protocol
+Boundaries, shared files). The addition is read material only and widens no write set; without
+`shares` the record is exactly the Protocol's `SpecContext`. No source record carries file
+content; a consumer reads the file the record names and can check its digest. A member that is not
+valid UTF-8 or cannot be read fails the resolution.
 
-## Project initialization
+`recheck_context(context)` recomputes the record from the current files with the same `shares`
+and fails with `stale_context` when anything differs; `context_bytes(context)` rechecks and
+returns the exact bytes of every source.
 
-### Request and proposal shapes {#initialize-request-and-proposal-shapes}
+### Boundary sets and impact indexes {#boundary-sets}
 
-The public input is `concorde-init-request@2`, an ordinary
-`{type_id, schema_version: 2, data}` envelope. `data` is a closed object with required
-`action: "propose"|"apply"` and optional `name`, `target_id`, `configuration` and `proposal`.
-`name` and `target_id`, when supplied, are nonblank strings. `configuration` is
-`concorde-operation-configuration@2`, whose data is the Pi worker model selection: an optional
-default `model` (Pi's `provider/id`), `thinking` level and `timeout_seconds`, and optional `workers`
-overrides keyed by a terminal worker. Any worker-child key, an unknown worker, a
-nonpositive timeout or a model that is not a Pi `provider/id` is rejected here instead of failing at
-the first worker launch.
-`proposal` is `concorde-project-proposal@1` with exactly `{action: "initialize", base_digest: sha256|null,
-files: list[{path, before_digest: sha256|null, content: str}]}` in its data. File paths must be
-canonical project-relative paths and distinct; content may be empty. These nested records reject
-unknown properties.
+The repository answers every set and index of the Protocol's Boundaries (`protocol/boundaries.md`)
+and Context (`protocol/context.md`) chapters for a Module, computed from declarations alone:
 
-Initialization produces only what the user's project generates through Concorde: its
-configuration, its registry and its first Module Spec. Everything that exists only because Concorde
-is installed, the Protocol copy under `.concorde/protocol/`, and the Issue directory defaults, is the installer's output and is never created here.
+| Set or index | Returns | Repository query |
+| --- | --- | --- |
+| Spec context | both members of each owned and selected document, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context` |
+| External context | per external inclusion: the entry, whether it is a directory, whether it exists, the readable files below it and one digest over their paths and bytes | `external_context`; `external_inclusions` lists the declared entries, `external_files` and `external_digest` expand and digest one entry |
+| Implementation context | the names of the existing files the realizations bind, and of pending exact entries | `implementation_context`; `bound_files` lists only the existing bound files |
+| Spec scope | both members of each owned document | `spec_scope` |
+| Implementation scope | the realization entries, pending entries included; a directory entry covers every present and future file below it | `implementation_scope`; `missing_entries` lists the entries not yet on disk |
+| selected-by | the Modules whose Spec context contains a document | `selected_by` |
+| referenced-by | the declarations that name a concept, requirement, scenario or contract, each with its Module | `referenced_by` |
+| implemented-by | the Modules whose realizations bind a path or list it as an entry | `implemented_by` |
+| shared files | per other Module, the files both it and this Module bind | `shared_files` |
+| covered-by | the verification declarations that name a scenario; `coverage` answers it for every scenario of a Module | `covered_by`, `coverage` |
 
-`action: "propose"` additionally requires `name` and `configuration` and optionally a `target_id`
-(default `module.project`); `action: "apply"` requires the returned typed project proposal. A
-proposal records `action: "initialize"`, a nullable `base_digest` and `files: {path, before_digest,
-content}`. It creates `specs/project/module.md` with Purpose, Terminology, Usage, Design and Relationships,
-paired schema-2 metadata with role module, and
-an inline Mermaid diagram in Relationships with accessible title and description text; no external
-diagram file is created. The stub models only known participants, the project Spec and the external
-Framework; unknown business requirements, scenarios and architecture are explicit gaps recorded in
-the stub's own Unresolved information. The illustration does not turn a draft into a complete
-business contract.
+`concorde.spec.impact` builds Concorde's change and review rules on these queries:
 
-Success returns `concorde-init-response@1` with closed data
-`{status: "proposed"|"applied", proposal: TypedValue<concorde-project-proposal>|null,
-files: list[path]}`. Propose returns the exact typed proposal and its ordered paths, without
-changing project files; apply returns `status: "applied"`, `proposal: null` and the applied paths.
+| Query | Returns |
+| --- | --- |
+| `change_scope(repository, module_id)` | the Modules one change owned by the Module may edit: the owner, the Modules it contains or uses, the Modules selecting one of its documents, the participants and owners of contracts it defines or participates in, the Modules referencing a node it defines, and the Modules binding one of its files; one level only |
+| `edited_modules(repository, paths)` | the Modules whose write sets hold a changed path: the owner of a changed document member and every Module binding a changed file |
+| `changed_documents(old, new)`, `changed_nodes(old, new)` | the documents and nodes whose definitions differ between two revisions, a node being compared by its defining section, contract fence, concept record and definition row, realization record or entry `module` block |
+| `review_impact(old, new, paths)` | the Modules needing a fresh review: those selecting a changed document without narrowing (`owns`, `includes`, or `contains`/`uses` without `relies_on`) and those referencing a changed node |
 
-### Executable boundary {#initialize-executable-boundary}
+`boundary_sets(module)` returns all five sets of one Module at once as a `BoundarySets` record,
+whose `writable(path)` answers whether a path lies in the Spec scope or is covered by the
+implementation scope. `impact(*, documents=(), nodes=(), paths=())` returns every Module that
+writing the given documents, nodes or files concerns: the readers of the documents, the Modules
+referencing the nodes and the Modules binding the files. `shared_files` is computed from entries
+alone: an exact entry both Modules list, an exact entry of one below a directory entry of the
+other, or the inner of two nested directory entries. `concorde.spec.boundaries` holds the
+`BoundarySets` and `ExternalEntry` records and `scope_roots(entries)`, which turns entries into
+permission roots by dropping trailing slashes.
 
-At the executable boundary these typed values travel inside a
-`concorde-operation-invocation@3` with `operation_id: "concorde-init"`, `mode: "execute"`,
-nullable typed outer `configuration`, and `input` containing the request. The returned
-`concorde-operation-result@3` has the same operation ID, fresh `invocation_id`, mode, nullable
-workspace/output, status and `errors: list[{code, field, message}]`. Successful initialization has
-`status: "succeeded"` and the typed output above; admission failures are blocked and execution
-failures are failed, with no successful output.
+A `uses` or `contains` with `relies_on` selects the target's entry and the documents defining the
+listed nodes; without it, every document the target owns. An `includes` of kind `document` selects
+that document; of kind `module`, every document that Module owns. Selection never follows the
+selected Modules' own relations.
 
-### Project Graph (`project_graph`) {#graphs-project-graph-project-graph}
+### Implementation exclusions {#implementation-exclusions}
 
-This former runtime wrapper is retired. Native Agent/Workflow and finite Host services execute
-the capability directly; no LangGraph mirror is claimed. The explicit optional StateGraph boundary
-is [Terminal Agent Operation](../harness/execution-reference.md#host-operation-node-operation-node).
+A directory entry binds every regular file below it except files inside a directory named
+`node_modules`, `__pycache__`, `.venv`, `build` or `dist`, files and directories whose names begin
+with a dot, files ending in `.pyc` or `.log`, and symbolic links. External material is expanded by
+the same rule and additionally excludes media and archive files by suffix: images (`.gif`, `.png`,
+`.jpg`, `.jpeg`, `.webp`, `.svg`, `.ico`), video (`.mp4`, `.webm`), fonts (`.woff`, `.woff2`,
+`.ttf`, `.otf`), `.pdf`, archives (`.zip`, `.gz`, `.tar`, `.tgz`, `.bz2`, `.xz`, `.7z`) and
+packaged binaries (`.jar`, `.whl`, `.so`, `.dylib`, `.dll`). A path is
+never bound when it lies under `.concorde/` or `generated/`.
 
+## Validation result {#validation-result}
 
-## File transactions {#structure-file-transactions}
+```python
+validate_repository(root, target_id=None, package_root=None, *, registry_bytes=None,
+                    document_overrides=None) -> ToolResult
+```
 
-File transactions (this Module's `entity.spec.file-transactions`, a file also listed by Views):
-`file_change(root: Path, path: str, content: str) ->
-{path,before_digest,content}` captures current bytes (null digest for new files).
-`apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]` requires
-nonempty unique allowed paths, UTF-8 replacement text and exact before digests. It rechecks before
-writes, optionally calls the zero-argument verifier, and restores written bytes on failure.
-Stale or foreign proposals raise SpecError; no partial transaction is reported successful.
+`python3 scripts/concorde.py validate [target]` prints the same result as JSON. The result has
+`tool: "validate"`, `target` (the requested Module or `.`), `status` (`success` or `invalid`),
+`artifacts` (the assessed Spec member paths), `findings` and `result`.
 
-## Diagrams as part of registered documents {#structure-diagrams-in-registered-documents}
+A finding has `rule_id`, `severity` (`error` or `warning`), `source` (a project-relative path),
+`message` and `remediation`, and optionally `line`, `column` and `subject_id` (the node identity
+concerned). For every Protocol check, `rule_id` is the check's identity, such as
+`CHK.relies-on.linked`. Findings that Concorde adds beyond the Protocol use `CONCORDE-` rule
+identities:
 
-Relationships diagrams in this project are inline Mermaid flowchart fences inside a registered
-Markdown document, with `accTitle` and `accDescr` accessible text stated beside the fence. A
-Module's main diagram, in its `module.md` Relationships subsection, describes its principal entities
-and directed relationships; further diagrams may appear in other registered documents. The entire
-containing Markdown document is the diagram's only authored source.
+| Rule | Severity | Meaning |
+| --- | --- | --- |
+| `CONCORDE-LINK-001` | error | a link fragment shaped like a node identity names no definition in the linked document |
+| `CONCORDE-COVERAGE-001` | warning | no test declares a scenario of a Module that binds files |
+| `CONCORDE-COVERAGE-002` | warning | a test declares a scenario whose owner does not bind the test |
+| `CONCORDE-COVERAGE-003` | error | a bound test cannot be parsed, or a declaration is malformed |
+| `CONCORDE-CHECK-001` | error | a configured check's declared input is missing or unsafe |
+| `CONCORDE-ISSUE-001` | error | an Issue record cannot be read |
+| `CONCORDE-SOURCE-008` | error | the configuration, registry or Protocol binding cannot be read, so nothing else was checked |
 
-The diagram's bytes already occur in `documents` and participate in document,
-revision and context digests; no separate diagram-source pool or result field exists. The task-authorized calling session
-edits a changed fence in its containing reading member and checks the paired metadata and registry. Shared Markdown
-changes retain their sole owner and are reviewed for affected direct context consumers; bounded workers
-cannot replace these sources; and rendered SVG/HTML is never a cognitive input or another
-authority.
+Distribution's package validation adds its own findings in Concorde's source checkout.
 
-Spec review receives scoped Markdown changes, including any diagram fence they touch, and
-attributes findings to that registered document and owning Module. Direct edits are not review evidence. File transactions, when used, bind the complete accepted
-change set and every before-digest. Syntax and publication failures remain distinct from an incomplete or contradictory
-behavioral contract. Publication renders the same Mermaid source as part of the Markdown page.
+`result` holds `summary` (the counts of errors and warnings), `source_digest` (a digest over the
+paths and digests of the configuration, registry, every assessed document member, the Protocol
+binding and the Issue records), `claims` (the kinds of structure the run checked) and
+`semantic_completeness: "not_proven"`.
 
-## Framework configuration and storage versions {#values-framework-configuration-and-storage-versions}
+The command-line envelope is canonical JSON with `schema_version: 2` and the fields above;
+findings are sorted by rule, source, line, column and message, and artifacts are sorted. The exit
+code is 0 for `success` and 1 for `invalid`.
 
-`Profile 15` is the Framework's project-configuration compatibility version for the complete content model and its human-readable subset. It is distinct from Spec Protocol 10.0.0 and from registry schema 5, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+## Registry command {#registry-command}
 
-The Framework reads `.concorde/config.json` with exactly `profile_version: 15`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `operation_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per terminal worker). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
+`python3 scripts/concorde.py registry --write` loads every recorded Module's entry and rewrites the
+registry so that each record's `owns`, `contains`, `uses`, `includes` and `participates` equal the
+entry's `module` block. It keeps the records' order and their `id`, `title` and `entry`, and adds or
+removes no record. With `--check` it writes nothing and reports one finding per record that
+differs. The command fails without writing when an entry cannot be read.
 
-Registry schema 5 stores exactly `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. `targets` holds Module descriptors; both Module Specs and Implementation Specs are owned units in the same documents collection, distinguished by the explicit schema-2 document.role. Implementation Specs are normative documents, not entity file bindings or implementation source. The separate check records configure executable verification; they are Framework execution metadata. Their serialized shape does not replace the Protocol's meaning of identity, membership, composition, dependency, entity or file binding.
+## Verification declarations {#verification-declarations}
 
-## Registry admission details {#structure-registry-admission-details}
+A Python test declares the scenarios it verifies with the decorator from
+`concorde.spec.verification`, on a test function or method:
 
-Registry schema 5 contains `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. A Module descriptor has `id`, `kind="module"`, `title`, `documents`, `references`, `parent`, `uses`, `files` and `checks`. Every array is explicit. `files` holds listing entries: an exact project file, or a directory prefix written with a trailing `/` that binds every regular file below it. It MUST equal the sorted union of the Module's own entity listing declarations, entry for entry, so a directory prefix appears as that prefix and never as its expanded file names; membership, composition and dependency are checked independently of that entry set. The entry names one Module as the project reading entry; it does not start automatic routing.
+```python
+from concorde.spec.verification import verifies
 
-Each registered reading document has a `.md.json` companion with `schema_version: 2`, `document`
-identity/owner/role and explicit `entities`, `dependencies` and `bindings` arrays. Entity records contain
-id/title/kind and a local readable meaning anchor, with optional files/pending/target_id. Dependency
-records contain target_id and a local meaning anchor. Participant bindings contain id/version/role/
-peer and a local meaning anchor. Responsibilities, conditions, guarantees and obligations remain
-readable prose, never copied semantic strings in metadata. File/directory binding specificity and
-pending rules still apply, and neither source member may be bound as implementation or external
-material. Every child and used Module has exactly one local entity and one dependency explanation.
+@verifies("scenario.example.submit", "scenario.example.retry")
+def test_submit_once():
+    ...
+```
 
-The principal Relationships diagram uses a nonempty subset of local entity titles and labels each
-edge. Scoped omission of an inventory node is permitted; inventing a node is not. Check records
-retain id/target_id/argv/timeout_seconds and optional inputs. Shared implementation changes concern
-every listing Module, whose contract is evaluated separately.
+A TypeScript test declares them with an own-line comment directly above the test call; several
+identities are separated by commas or spaces, and the title of the following `it`, `test` or
+`describe` call names the declaring test:
 
-The task-authorized calling session reconciles structural changes directly across the registry and
-paired document members. Repository overlays and deterministic validation can inspect a combined
-candidate without applying it; neither a valid overlay nor a direct edit supplies review evidence.
-No topology proposal store or authoring Operation remains.
+```typescript
+// verifies: scenario.example.render
+it("renders the page", () => {});
+```
 
-### Reference and interface validation
+The scanner reads bound files ending in `.py`, `.ts`, `.tsx`, `.mts` or `.cts` by parsing them,
+never by importing, compiling or running them. In Python it reads module-level functions and the
+methods of classes at any class nesting; a function nested inside another function is a helper and
+is ignored. Every argument must be a string literal beginning with `scenario.`. A declaration
+comment that no test call follows, an argument that is not a scenario identity, and a Python file
+that does not parse are errors.
 
-Schema 5 requires a references array on every Module. Each `{kind, id}` must resolve to the
-declared Module/document kind; duplicates, self references, document aliases and multiple owners
-are errors. Overlap is deduplicated with all provenance, and cycles do not recurse. Each binding's
-canonical definition/version must occur in its participant's resolved context; internal peers
-require complementary bindings. Definitions have one owner and cannot be duplicated in consumers.
-Required links to excluded definitions identify gaps rather than authorizing another read.
-Structural checks report missing references/definitions separately from semantic incompleteness.
+## Typed values {#typed-values}
+
+A typed value is a closed JSON object `{"type_id": ..., "schema_version": ..., "data": ...}`:
+
+```python
+typed(type_id: str, data: dict) -> dict
+validate_typed(value, expected: str | None = None, field: str = "") -> dict
+json_schema(type_id: str) -> dict
+decode(text: str) -> Any
+canonical(value: Any) -> str
+safe_path(value: str, field: str = "") -> str
+checked_path(project: Path, relative: str, field: str = "") -> Path
+```
+
+`typed` builds and checks a value at the registered version of its type; `validate_typed` checks
+an existing one and, with `expected`, its type. Every type's version is fixed; a value with another
+version fails with `unsupported_version`, an unregistered type with `unknown_type`, a value of the
+wrong type where `expected` is given with `incompatible_handoff`, and any other mismatch with
+`invalid_field` naming the JSON pointer of the offending field. Objects are closed unless their
+schema gives one schema for all additional keys. A checked value is returned as a deep copy.
+
+The registered types are the host-owned values (the worker model selection, context snapshots,
+stage contexts and results, review records, Issue records, plans and tasks) together with the
+`<capability>-request` and `<capability>-response` types each capability adapter and each
+request-taking Agent declares. `json_schema` exports one type as a self-contained JSON Schema
+Draft 2020-12 document; the build writes all exported types into the distributed
+`schemas.json` asset.
+
+`decode` parses JSON, rejecting duplicate keys and non-finite numbers. `canonical` writes sorted,
+compact JSON. `safe_path` accepts only canonical project-relative POSIX paths: nonempty, no leading
+`/`, no backslash, colon or control character, and no empty, `.` or `..` component. `checked_path`
+additionally refuses a path any of whose components is a symbolic link. Failures raise
+`TypedDataError(ValueError)` with `code` and `field`.
+
+### Worker model selection {#operation-configuration}
+
+`concorde-operation-configuration` version 2 has optional `model` (a Pi `provider/id`), `thinking`
+(`off`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`), `timeout_seconds` (an integer) and
+`workers`, a map from a worker name to an object with the same three optional fields. The most
+specific setting wins. An absent value keeps Pi's default model and thinking level and the worker
+profile's timeout.
+
+### Task metadata values {#task-metadata-values}
+
+These two version-1 values carry task metadata, not implementation content or authority. Their
+data objects are closed and every field is required.
+
+| Type | Data | Meaning |
+| --- | --- | --- |
+| `concorde-task-scope-feedback` | `{tasks_digest, reason: "implementation_boundary"}` | Host feedback naming the exact task list, by the `sha256:` digest of its canonical JSON, whose implementation acceptance must be separated from later Host responsibilities. |
+| `concorde-task-identity-constraints` | `{reserved_task_ids: string[]}` | Task identities a fresh task list must not reuse; strings are nonblank and unique, and an empty list is valid. |
+
+Checking them proves only their shape. It does not prove that a digest names the current task
+list, that the reservations are complete, or that a phase may accept the value; the calling Host
+decides those.
+
+### Offline schema subset {#offline-schema-subset}
+
+The schema and example of every `concorde-contract` fence are checked with an offline JSON Schema
+subset:
+
+```python
+admit(schema, root: dict | None = None) -> None
+validate(value, schema, field: str = "", *, root: dict | None = None, depth: int = 0) -> None
+```
+
+A schema is an object or a boolean. The admitted keywords are `$schema`, `$id`, `$defs`, `$ref`,
+`title`, `description`, `examples`, `default`, `type`, `properties`, `required`,
+`additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`,
+`pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and `format`. `$ref`
+must be `#/$defs/<name>` into the same root schema; any other reference is refused, so no schema
+can load a Spec document or a remote resource. The only `format` is `project-path`, checked by
+`safe_path`. Integers satisfy `number`; booleans do not. Unknown keywords, invalid bounds and
+unresolved references fail admission, and nesting deeper than 100 levels fails validation, with a
+`ContractError(ValueError)` carrying the JSON pointer of the problem.
+
+### Front matter
+
+Prompt and agent instruction files begin with a constrained YAML front matter block, which
+`concorde.spec.frontmatter.parse_document` reads: space-indented keys, scalars, lists, nested maps and
+JSON-style inline collections. Tags, anchors, aliases, merge keys, block scalars and duplicate keys
+are refused with a `FrontMatterError` naming the file and line.
+
+## File transactions {#file-transactions}
+
+```python
+file_change(root: Path, path: str, content: str) -> dict
+apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]
+confirm_pending_files(root: Path, package_root: Path | None = None) -> tuple[list[dict], list[str]]
+```
+
+`file_change` returns `{path, before_digest, content}`, where `before_digest` is the digest of the
+file's current bytes or `null` when it does not exist. `apply_files` requires a nonempty list of
+such changes with unique paths, every path in `allowed` and every content a string. It fails with
+`invalid_proposal` for a malformed change set, `permission_denied` for a path outside `allowed`, and
+`stale_proposal` when a file's current bytes do not match its `before_digest`, checked once before
+any write and again just before each write. Each file is written to a temporary file in its
+directory, flushed and renamed into place. After all writes, the optional `verify` callable runs;
+if it or any write raises, every written file is restored to its original bytes or removed if it
+did not exist, and the exception propagates. It returns the written paths in order.
+
+`confirm_pending_files` removes from every realization's `pending` the entries that now exist. It
+rewrites only the affected metadata members, in one file transaction whose final check requires the
+project to load and no other Spec source to have changed meanwhile. It returns the confirmed entries, each with its
+Module, realization and path, and the entries that are still missing. The Validation Module calls it in a
+candidate before validating, and delivery calls it again for entries created since.
+
+## Initialization {#initialization}
+
+`concorde-init` takes `concorde-init-request` version 3, whose closed data has `action`
+(`"propose"` or `"apply"`) and optional `name`, `target_id`, `configuration`, `proposal` and
+`run_in_primary` (Request admission's opt-in to apply in the primary worktree):
+
+- `propose` requires `name` (nonblank) and `configuration` (a worker model selection) and accepts
+  `target_id`, default `module.project`. It fails with `already_initialized` when
+  `.concorde/config.json` exists and with `not_installed` when the installer's Protocol copy is
+  missing.
+- `apply` requires `proposal`, the complete `concorde-project-proposal` version-1 value that propose
+  returned, with closed data `{action: "initialize", base_digest: null, files: [{path,
+  before_digest, content}]}`.
+
+It returns `concorde-init-response` version 1 with closed data `{status, proposal, files}`:
+`proposed` with the typed proposal and its ordered paths, or `applied` with `proposal: null` and the
+written paths. A request with the Host's describe-policy mode is refused with `use_proposal`,
+because the proposal is already the preview.
+
+The proposal contains four files, each with `before_digest: null`: `.concorde/config.json` with
+profile 16, the registry path, the binding of the installed Protocol copy, the given worker
+configuration and an empty `checks` list; `.concorde/specs.json` with one record for the root Module; and
+`specs/project/module.md` with its metadata. The entry has the five required sections and says
+that the project's responsibility, behaviour and architecture are not yet specified. Its metadata
+declares the `module` block with the entry as the only owned document and empty relation arrays,
+and no concepts.
+
+When the project already has files, the metadata defines one realization,
+`realization.<local>.existing-files` titled Existing project files, where `<local>` is the last
+segment of the root Module's identity. Its entries cover every file that version control tracks or
+leaves untracked without ignoring, except the proposed document members, files under `.concorde/`,
+generated and build outputs, and paths inside symbolic links. A file directly under the project
+root is an exact entry; a top-level directory is one directory entry, unless it holds a document
+member, in which case its files are exact entries, as are files the exclusion rule would skip. The
+entry explains this realization and says it promises nothing about the files. A project with no
+files gets no realization.
+
+Apply refuses a proposal whose envelope is not exactly that shape, that lacks the configuration or
+the registry, whose configuration names another registry path or a Protocol binding other than the
+installed copy's, or that has a non-null digest (`invalid_proposal`). It writes only the
+configuration, the registry and the members of the documents the proposed registry lists, through
+one file transaction whose final check validates the project; a validation error rolls every file
+back.
+
+At the capability boundary the request travels in a `concorde-operation-invocation` version 3 with
+`operation_id: "concorde-init"`, and the result is a `concorde-operation-result` version 3. A
+refused request has status `blocked` and a failed application has status `failed`, each with
+`errors` of `{code, field, message}` and no output.
+
+## Protocol manifest and binding {#protocol-manifest}
+
+`protocol/manifest.json` records the distributed Protocol:
+
+```json
+{
+  "schema_version": 1,
+  "version": "11.0.0",
+  "source_profile": 15,
+  "workspace_protocol": 16,
+  "assets": [{"path": "generated/protocol/principles.md", "digest": "sha256:<64 hex digits>"}]
+}
+```
+
+The assets are `generated/protocol/principles.md` (the Protocol chapters and the Framework
+execution profile, assembled from `prompts/protocol/principles.md`), `generated/protocol/kinds/module.md`
+(the Module chapter and the templates, from `prompts/protocol/kinds/module.md`) and
+`generated/protocol/schemas.json` (the exported typed-value schemas). The installer copies the
+manifest and the assets into `.concorde/protocol/`. The project's binding is the manifest's
+`version` and the digest of the manifest's bytes. The loader reads the installed copy, checks each
+asset against its recorded digest, and requires the copy's manifest to equal the package's
+`protocol/manifest.json`; any mismatch is `protocol_mismatch`. The Distribution Module's
+`protocol-manifest` command recomputes the recorded digests from a fresh build.

@@ -51,7 +51,6 @@ class OperationHost:
     session_provenance: dict | None = None
     coordinated: bool = False
     track_gaps: bool = False
-    defer_ready: bool = False
     issue_intent: str | None = None
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))

@@ -2,137 +2,232 @@
 
 ## Purpose
 
-Implementation fulfills accepted tasks by changing the code that its worker is allowed to access. It reports which tasks are complete without weakening their acceptance conditions. Independent checks, review, readiness and delivery remain separate decisions.
+Implementation changes a Module's code to fulfil the tasks that Planning accepted. It owns the
+capability `concorde-implement`: one fresh programmer Agent edits, in the candidate worktree, the
+files that the Module's realizations bind, and the Host records the tasks as complete only when the
+programmer reports every task fulfilled and the result passes the Host's checks. Implementation
+does not change Specs, does not run the final checks or reviews, and does not make a candidate
+ready or deliver it. Work that belongs to another Module goes back to the user session.
 
 ## Terminology
 
-| Term                                                      | Meaning / definition               |
-| --------------------------------------------------------- | ---------------------------------- |
-| [Spec](../module.md#terminology)                          | Defined in Concorde Framework.     |
-| [Module](../module.md#terminology)                        | Defined in Concorde Framework.     |
-| [Worker](../module.md#terminology)                        | Defined in Concorde Framework.     |
-| [Host](../module.md#terminology)                          | Defined in Concorde Framework.     |
-| [Grant](../module.md#terminology)                         | Defined in Concorde Framework.     |
-| [Candidate](../module.md#terminology)                     | Defined in Concorde Framework.     |
-| [Ready](../module.md#terminology)                         | Defined in Concorde Framework.     |
-| [Delivery](../module.md#terminology)                      | Defined in Concorde Framework.     |
-| [Acceptance task](../planning/tasks.md#terminology)       | Defined in Making work verifiable. |
-| [Internal operation](../operations/module.md#terminology) | Defined in Operations.             |
-| [Pi integration](../module.md#terminology)                | Defined in Concorde Framework.     |
-| [Graph](../module.md#terminology)                         | Defined in Concorde Framework.     |
-| [Entity](../module.md#terminology)                        | Defined in Concorde Framework.     |
+| Term | Definition |
+| --- | --- |
+| Task completion | The Host's record that every local task of the accepted list is fulfilled, together with the digest of the Module's implementation files at that moment. |
+| Component work | The tasks of an accepted list that target another Module of the selected Module's change scope, which must be planned and implemented for that Module separately. |
+| [Plan](../planning/module.md#concept.planning.plan) | |
+| [Task](../planning/module.md#concept.planning.task) | |
+| [Change scope](../planning/module.md#concept.planning.change-scope) | |
+| [User session](../vocabulary.md#concept.concorde.user-session) | |
+| [Host](../vocabulary.md#concept.concorde.host) | |
+| [Module](../vocabulary.md#concept.concorde.module) | |
+| [Spec](../vocabulary.md#concept.concorde.spec) | |
+| [Agent](../agents/module.md#concept.agents.agent) | |
+| [Candidate](../harness/worktrees/module.md#concept.worktrees.candidate) | |
+| [Finding](../review/module.md#concept.review.finding) | |
+
+Local tasks are the tasks that target the selected Module itself; the programmer works only on
+those. Component work is everything else in the list.
 
 ## Usage
 
-The calling agent invokes `concorde-implement` with a current accepted plan and nonempty task
-list for one selected Module. This is a public explicitly target-bound native Agent capability.
-The programmer receives the complete Module Spec and the implementation paths its own entities
-bind, and must return every admitted task with unchanged identity and acceptance. Only fulfilled
-tasks are complete; completion is not validation, readiness or delivery.
+### Before calling
 
-Missing tasks reject before launch. Incomplete output cannot establish fulfillment. Authorized
-edits may remain after a failed or cancelled run, so inspect preserved candidate state and re-admit
-current artifacts rather than assuming rollback. A listed test does not authorize its transitive inputs:
-record unavailable repository-level execution as deferred host verification, not as a pass.
-Coordination with other Modules returns their separately selectable work to the caller; no arbitrary
-scheduler or automatic child development is accepted.
+`concorde-implement` needs a managed candidate in which [Planning](../planning/module.md) has
+accepted a current plan and task list for the target. The request repeats the plan's `target_id`,
+`task` and `constraints`. If the candidate records that the Module needs a Spec review, that review
+must be current and non-blocking.
 
-For example, a test may import a fixture outside the programmer's allowed files. That import does
-not grant access. The programmer records why execution must be deferred to a host-level check and
-continues independent work. Deferred execution is not a passing test, while an actual defect still
-prevents task completion. Final host checks remain required.
+### A normal run
+
+<a id="concept.implementation.completion"></a>
+
+The user session calls `concorde-implement` and receives a prepared Agent call. It invokes the call
+unchanged. The programmer receives the Module's frozen Spec context, the accepted plan and the
+local tasks, and an index that names the candidate worktree and the absolute paths it may write:
+the entries of the Module's realizations. It edits those files in place, not copies, and may run the
+Module's configured checks through its `run_checks` tool. It returns every task with its identity,
+target, description and acceptance unchanged, marked complete only if fulfilled.
+
+When the call returns, the Host accepts the answer only if every local task comes back complete and
+unchanged, and every non-pending file that the Module's realizations list exists. It then records
+**task completion**: the tasks are marked complete, the digest of the implementation files is
+stored, earlier check results are cleared, and the target's phase becomes `implementation`. The
+user session then chooses the next steps, typically `concorde-code-review` and `concorde-validate`.
+
+If the code review finds blocking problems, the user session asks Planning for repaired tasks with
+the review's [findings](../review/module.md#concept.review.finding), then implements again; the
+programmer then also receives that review as feedback.
+
+### Component work
+
+<a id="concept.implementation.component-work"></a>
+
+A task list may include **component work**: tasks for another Module of the target's
+[change scope](../planning/module.md#concept.planning.change-scope), for example a Module it uses,
+a child, or a participant of a contract whose version the change raises. The programmer never
+receives another Module's files. Instead, `concorde-implement`
+returns `unsupported` with each component's target and the exact task text derived from its tasks,
+without starting a programmer. The user session then plans, derives tasks for and implements each
+component with that exact text, in the same candidate. When it calls `concorde-implement` for the
+parent again, the Host checks that each component's recorded work matches the derived text and
+constraints, is complete, and is current for the component's Spec and implementation. Only then
+does the programmer run for the local tasks. If there are no local tasks, the Host records
+completion without starting a programmer. The whole change stays one candidate: validating the
+target afterwards covers every Module the candidate edited, and delivering that candidate lands
+all of them together.
+
+### When implementation stops
+
+Before any Agent starts, the request is refused when there is no managed candidate
+(`missing_change`), no task list (`missing_tasks`), a required Spec review is missing
+(`review_required`), the plan is stale (`stale_context`) or belongs to another task
+(`incompatible_handoff`), a recorded gap still blocks the step (`spec_incomplete`), the project's
+Specs do not validate (`incompatible_contracts`), or there are local tasks but the Module binds no
+implementation files (`unsupported_target`).
+
+After the programmer ran, a missing, changed or incomplete task, or a listed file that does not
+exist, is reported as `incomplete_tasks`. Edits the programmer made stay in the candidate: there is
+no rollback. A failed, cancelled or rejected run leaves the candidate for inspection, and a retry
+admits the current inputs afresh without any wider permission.
+
+The programmer's file limits, and its promise not to use the network or credentials, are
+instructions to the Agent, not an operating-system boundary. The `run_checks` tool is different:
+it takes no arguments and runs the configured checks through the Host's read-only sandbox.
 
 ## Design
 
-<a id="entity.implementation.adapter"></a><a id="entity.implementation.task-input"></a><a id="entity.implementation.completion"></a>
+Implementation keeps one programmer to one Module. A task list may reach into components, but a
+programmer that could edit them would silently gain another Module's code and break promises it
+cannot see. Returning component work to the user session keeps each change inside the boundary of
+the Module that owns it, even when one change must edit several Modules to stay valid, and the Host's later check of each component's recorded work ensures that
+a component label cannot stand in for work that was never done.
 
-The implementation adapter admits current plan/task artifacts, launches one programmer under the
-selected Module's implementation grant, and validates exact returned task identities and acceptance
-before storing completion. Code edits are made inside the candidate, so execution failure can
-leave authorized partial edits; progress and currentness checks support recovery rather than a
-fictional rollback guarantee.
+Completion is narrow on purpose. Marking tasks complete says only that the programmer's acceptance
+conditions are met in the candidate. Independent review, validation and delivery each need their
+own current evidence, so a quick completion can never be mistaken for a ready change.
 
-[Caller-selected component work](execution-reference.md#implementation-component-coordination-and-current-adapter-limit)
-keeps local tasks separate from component obligations. When participating work is missing or stale,
-implementation returns its exact target and intended task to the calling agent. The agent selects
-component capabilities and performs any contract edits; there is no automatic authoring, development
-or stabilization workflow. On retry, the host checks every component's current intent and completed
-revision before one bounded local programmer runs. This prevents a component label from granting
-another Module's code or turning an old completion into fresh evidence.
+The programmer edits the real candidate files, because copies would have to be merged back and
+could drift. The price is that a failed run can leave partial edits. The Host therefore records
+nothing until an answer is accepted, and a retry starts from the candidate as it is.
 
-### Flow overview
+While the programmer works, its own edits must not make its inputs look stale. The Host therefore
+checks the answer against the snapshot it prepared, and allows the Module's implementation files to
+change, while the Spec, registry, configuration, plan, tasks and review feedback must stay as they
+were.
 
-The caller completes separately selected component work, then invokes implementation for local
-accepted tasks. The host validates contract structure and component evidence, gives one programmer
-only its local code grant, and records exact task completion. The caller then chooses checks and
-independent review; changed shared files invalidate earlier consumer evidence.
+<a id="realization.implementation.capability"></a>
+
+The **implementation capability declaration** is the module in `operations/` that declares
+`concorde-implement` for the capability catalog.
+
+<a id="realization.implementation.admission"></a>
+
+The **implementation admission** code checks the prerequisites, separates local tasks from
+component work, validates the programmer's answer and records task completion.
+
+<a id="realization.implementation.native"></a>
+
+The **native programmer preparation** is the shared native preparation service, whose programmer
+case writes the index with the candidate worktree and the intended write paths and gives the
+programmer its `run_checks` tool.
+
+<a id="realization.implementation.tests"></a>
+
+The **Implementation tests** cover task admission, component work, failed runs and a scripted
+native programmer run against a real candidate.
 
 ## Relationships
 
-This view follows an admitted Implementation task to Task completion. [Spec Module](../spec/module.md) determines the selected
-Module's implementation boundary, [Harness Module](../harness/module.md) binds the programmer's intended scope and independently admits completion, and [Harness admission](../harness/admission.md) admits
-the exact task list and retains its progress. The adapter's use of these sibling providers does not
-merge their ownership or permissions. Task completion reports fulfilled acceptance only; validation,
-review and delivery remain separate caller/Host decisions.
-
 ```mermaid
-flowchart TB
-    accTitle: Implementation entities and dependencies
-    accDescr: Implementation consumes admitted tasks, resolves code ownership through Spec, binds a programmer through Harness and records task fulfillment through the host. Completion does not mark ready.
-    e0["Implementation adapter"]
-    e2["Harness"]
-    e3["Spec"]
-    e0 -->|runs the bounded programmer, and admits tasks and preserves progress through| e2
-    e0 -->|resolves code ownership and components through| e3
-    domain_task_input["Implementation task"]
-    e0 -->|consumes| domain_task_input
-    domain_completion["Task completion"]
-    e0 -->|reports fulfilled acceptance as| domain_completion
+flowchart LR
+    accTitle: Implementation and its providers
+    accDescr: Implementation admits tasks from Planning, prepares the programmer, runs checks through Check execution and records completion in the candidate.
+    admission[Implementation admission]
+    native[Native programmer preparation]
+    completion[Task completion]
+    component[Component work]
+    task[Planning / Task]
+    agents[Agents]
+    checks[Check execution]
+    worktrees[Candidate worktrees]
+    review[Review]
+    admission -->|implements| task
+    admission -->|returns to the user session| component
+    admission -->|records| completion
+    admission -->|stores completion in| worktrees
+    admission -->|admits repair feedback from| review
+    native -->|prepares the programmer from| agents
+    native -->|runs checks through| checks
 ```
 
-### Harness
+<a id="uses-planning"></a>
 
-<a id="entity.implementation.harness"></a><a id="agreement.document.implementation.module.2"></a>
+**Planning** supplies the accepted [plan](../planning/module.md#concept.planning.plan) and
+[task](../planning/module.md#concept.planning.task) list that implementation works on, and guarantees
+that every task targets a Module in the target's
+[change scope](../planning/module.md#concept.planning.change-scope), as
+[accept only valid new task lists](../planning/workflow.md#req.planning.tasks-admission) states.
+Implementation relies on the list being current for the Module's Spec revision and the request's
+task, and refuses otherwise. It never edits the plan or the tasks' descriptions and acceptance
+conditions; it only marks tasks complete.
 
-Bind a fresh programmer to the complete selected contract and state intended writes only to that Module's listed implementation paths.
+<a id="uses-admission"></a>
 
-This collaboration applies when launching the programmer or admitting its matching completion under the current grant.
+**Request admission** checks the [capability request](../harness/admission/module.md#concept.admission.capability-request),
+binds the candidate and wraps the result. The programmer's preparation runs inside admission, so a
+request arriving through admission's [relay](../harness/admission/module.md#concept.admission.relay) into the candidate gets the
+same checks.
 
-Admit the current implementation task and permitted repair feedback, persist exact task progress and preserve the candidate on failure.
+<a id="uses-context"></a>
 
-This collaboration applies before implementation starts and when its returned task completion or execution failure is recorded.
+**Task context** freezes the Module's [context snapshot](../harness/context/module.md#concept.context.snapshot) for
+the programmer, the one phase that may read implementation contents, as
+[implementation contents only for code phases](../harness/context/requirements.md#req.context.contents-code-phases)
+allows. Implementation relies on that snapshot to name the Module's implementation files, which
+become the programmer's intended write paths, and on [recheck rejecting changed inputs](../harness/context/requirements.md#req.context.recheck)
+before it accepts an answer.
 
-- [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; native file/network/credential bounds remain explicit model policy; configured-check subprocess enforcement is separate.
-- [Host admission](../harness/admission.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+<a id="uses-execution"></a>
 
-### Spec
+**Agent execution** runs the programmer as a native Agent and verifies that the run completed and
+was not tampered with. Implementation treats the programmer's answer as a
+[proposal](../harness/execution/module.md#concept.execution.proposal), because
+[a proposal is not a result](../harness/execution/requirements.md#req.execution.proposal-not-completion): a run that
+failed, was cancelled or cannot be verified records no completion.
 
-<a id="entity.implementation.spec"></a><a id="agreement.document.implementation.module.3"></a>
+<a id="uses-checks"></a>
 
-Resolve the selected Module's implementation entries, current files, contract and direct component relationships.
+**Check execution** runs the Module's [configured checks](../harness/checks/module.md#concept.checks.configured-check) inside
+the [read-only check boundary](../harness/checks/module.md#concept.checks.read-only-boundary) when the programmer calls
+`run_checks`, and records their real outcomes. Implementation passes no command or path to it.
 
-This collaboration applies when deriving a local code grant or admitting separately bound component work and rechecking revisions.
+<a id="uses-agents"></a>
 
-- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+**Agents** defines the programmer. Implementation prepares the
+[Agent](../agents/module.md#concept.agents.agent) from its
+[Agent definition](../agents/module.md#concept.agents.definition) and adds no delegation.
 
-## Precise specifications
+<a id="uses-worktrees"></a>
 
-The Implementation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#implementation-implementation-operation).
-These companions are part of the same complete Module specification, not separate topic owners.
+**Candidate worktrees** holds the [change status](../harness/worktrees/module.md#concept.worktrees.change-status) of the
+[candidate](../harness/worktrees/module.md#concept.worktrees.candidate), where Implementation reads the tasks and component
+records and writes task completion. The programmer's edits are made in that candidate's worktree
+and nowhere else.
 
-The public entry prepares a real direct native programmer. Its capsule supplies file-Agent discovery,
-frozen Specs/references and the index; the index names the actual assigned candidate and absolute
-intended implementation paths. Native write/edit tools change that candidate, not scratch copies.
-Broad file and shell tools are not OS-confined by this transport. Network/credential abstention is
-model policy, not a claim of enforced denial. No delegation tools are supplied. The fixed Host
-check service retains its real enforced subprocess boundary and records actual check outcomes.
+<a id="uses-spec"></a>
 
-### Agents
+**Spec** resolves the target, its components and their revisions from the
+[registry](../spec/module.md#concept.spec.registry), and computes the Module's
+[boundary sets](../spec/module.md#concept.spec.boundary-set), whose realization entries become the
+programmer's write paths. It also validates the whole project before a programmer starts, so that
+no code is written against Specs that do not agree with each other.
 
-<a id="entity.implementation.agents"></a>
+<a id="uses-review"></a>
 
-[Agents](../agents/module.md) owns callable Agent definitions and interaction. This Module consumes
-those definitions rather than maintaining an Agent catalog or behavioral copy. It preserves the
-Agent's family, scope and frozen grant and refuses missing or stale bindings; domain artifact
-acceptance and execution mechanisms remain with their existing owners.
+**Review** says whether a [required review](../review/module.md#concept.review.required-review) of
+the Module's Spec is current, and supplies the code review whose blocking
+[findings](../review/module.md#concept.review.finding) a repair addresses, following
+[repair feedback comes only from the current blocking code review](../review/requirements.md#req.review.repair-feedback).
+Implementation checks that feedback before the programmer starts and treats it as fixed input
+afterwards, so the programmer's own repair does not make it look stale.

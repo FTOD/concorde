@@ -1,0 +1,37 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.issues.solving",
+    "owner": "module.issues",
+    "role": "module"
+  },
+  "defines": [
+    {
+      "id": "concept.issues.decision",
+      "type": "concept",
+      "title": "Solve decision",
+      "meaning": "#concept.issues.decision"
+    },
+    {
+      "id": "concept.issues.journal",
+      "type": "concept",
+      "title": "Closing journal",
+      "meaning": "#concept.issues.journal"
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "concept.issues.decision",
+      "verb": "selects the next step for",
+      "target": "concept.issues.issue"
+    },
+    {
+      "type": "relates",
+      "source": "concept.issues.journal",
+      "verb": "protects the closing write of",
+      "target": "concept.issues.disposition"
+    }
+  ],
+  "extensions": {}
+}

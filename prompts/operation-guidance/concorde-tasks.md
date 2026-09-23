@@ -11,6 +11,9 @@ operation: tasks
 @prompts/workflow-host/task-request-fields.md
 
 Requires the managed change and current accepted plan for the same intent. Returns new incomplete tasks, preserving prior task identities in history. Optional repair_task_scope binds the exact incomplete task-list digest; optional repair_review names a current blocking code-review ArtifactRef for this same intent. Neither field bypasses currentness or review gates.
+Every task targets a Module in the selected Module's change scope: itself, the Modules it contains
+or uses, the participants of contracts it defines or participates in, the Modules referencing its
+nodes and the Modules binding its files. Any other target is refused with `permission_denied`.
 
 The calling agent chooses whether and when to invoke other capabilities. Report invalid or stale
 inputs and blockers explicitly; never reinterpret old evidence as fresh. describe-policy previews

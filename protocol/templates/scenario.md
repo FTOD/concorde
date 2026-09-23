@@ -1,11 +1,11 @@
 # Scenario fragment
 
-A scenario belongs to the Module owning its defining document unit. It can describe boundary use or
-an internal verification situation. It is not another Spec kind, document owner or context filter.
-Define it only in an implementation-role companion, never in `module.md` or a module-role topic.
-Register its Markdown reading path and author schema-2 metadata with the owner's identity,
-`document.role: implementation` and explicit declaration arrays. No enclosing usage/architecture parts
-are required. The [required format](../format.md) applies.
+A scenario belongs to the Module owning its defining document. It may describe boundary use or an
+internal verification situation. It is not a separate Spec kind, document owner or context filter.
+
+Define it only in an `implementation` document, never in `module.md` or a `module`-role topic.
+Register the reading path and write its paired metadata with `schema_version: 3`, the owner's
+identity and `document.role: implementation`. The [required format](../format.md) applies.
 
 ````markdown
 ### scenario.example.situation — [Scenario title]
@@ -20,9 +20,14 @@ are required. The [required format](../format.md) applies.
 [Explain relevant limits, the triggering interface or unresolved facts in ordinary prose.]
 ````
 
-Write separate scenarios for situations with distinct successful, failed, repeated or concurrent
-outcomes. Put a situation's guarantees in its steps or explanation; define Module-wide obligations
-once as requirements and link to them. Keep identities stable across title or path changes. Tests
-name the scenario identity, and publication exposes it as an anchor. Querying the scenario selects
-its owner's entire complete context, including both source members of every explicitly included
-unit, not just this fragment or the human-readable subset.
+Write separate scenarios for situations whose successful, failed, repeated or concurrent outcomes
+differ. Put a situation's guarantees in its own steps or explanation; define a Module-wide
+obligation once as a requirement and link to it.
+
+Identities stay stable across title and path changes. A test names the scenario identity **in the
+test source**; reading content never lists verifying tests. Publication exposes the identity as an
+anchor.
+
+Querying a scenario selects its owner's entire context, including both members of every owned and
+selected document. It never trims to this fragment, and never selects the consumer that happened to
+read it.

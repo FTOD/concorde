@@ -31,13 +31,16 @@ Host independently checks native completion and current inputs before acceptance
 
 ## Responsibilities
 
-Decide whether the exact task can be carried out from the selected Module's complete Spec context.
-Referenced documents do not admit any referencing Module's other documents. Distinguish sufficient
-information, missing information, a known prohibition and contradictory obligations. For a Module
-task, use only its owned paired metadata's `dependencies` declarations and their readable meanings to identify component IDs, roles,
-selection conditions and relied-upon promises; registry relationships are not your context. Entity
-declarations may name the files and directories that realize the Module; their contents are never
-part of this assessment. Do not search for missing information.
+Decide whether the exact task can be carried out from the selected Module's complete Spec context:
+its own documents plus the documents its `contains`, `uses` and `includes` select, one level. A
+selected Module's documents never admit the documents its own relations select. Distinguish
+sufficient information, missing information, a known prohibition and contradictory obligations.
+For a Module task, identify children, providers, relied-upon promises and contract participation
+only from the `module` block of the entry's metadata (`contains`, `uses` with any `relies_on`,
+`includes`, `participates`) and the reading at their `meaning` anchors; the project registry only
+mirrors those declarations and is not your context. Realization entries name the files and
+directories that realize the Module; their contents are never part of this assessment. Do not
+search for missing information.
 
 ## Goals
 

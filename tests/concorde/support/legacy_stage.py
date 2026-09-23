@@ -17,6 +17,7 @@ from concorde.harness.invocation import Invocation as BaseInvocation
 from concorde.harness.invocation import validate_stage_identity
 from concorde.harness.launch import WorkerLaunch, launch_worker
 from concorde.harness.worker_profile import worker_profile
+from concorde.spec.boundaries import scope_roots
 from concorde.spec.contracts import MODEL_STAGES
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.typed_data import typed
@@ -132,9 +133,9 @@ def stage(
             change_id=self.change_id,
             implementation=(
                 (
-                    self.repository.implementation_files(self.target)
+                    self.repository.bound_files(self.target)
                     if readonly
-                    else self.repository.implementation_paths(self.target)
+                    else scope_roots(self.repository.implementation_scope(self.target))
                 )
                 if project_workspace
                 else None
@@ -150,7 +151,7 @@ def stage(
     if implementation and not readonly:
         current = SpecRepository(self.repository.root, self.host.package_root)
         self.repository = current
-        self.target = current.select(self.target.id)
+        self.target = current.module(self.target.id)
     self.completed.append(operation)
     if (
         data["blockers"]

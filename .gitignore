@@ -5,7 +5,6 @@ docsite/build/
 docsite/.test-stdio-*/
 *.zip
 .concorde-acceptance/
-tests/concorde/.tmp/
 .docusaurus/
 .generated/
 generated/
@@ -50,7 +49,6 @@ Thumbs.db
 .pi/extensions/concorde-session.ts
 
 .venv
-.concorde/attempts/
 .concorde/runs/
 
 node_modules

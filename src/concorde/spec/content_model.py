@@ -1,114 +1,53 @@
-"""Protocol 10 document-unit primitives shared by runtime admission and publishing checks.
+"""Protocol 11 document metadata (schema 3): closed shapes of every declaration record.
 
-A registered reading document and its deterministic metadata companion are one owned unit.
-Reading is a subset of content, not a summary generated from an inventory. Machine records point
-at local readable meaning instead of copying it. This module admits one unit, not a project:
-registry-wide identity, composition, binding and context checks remain a separate responsibility.
+A registered reading document and its ``.md.json`` companion are one document. This module checks
+the companion's shape and returns every problem it finds, attributed to a check identity; the
+project-level loader decides what a problem means for the graph. Nothing here reads a file.
 """
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Literal
 
-from .repository_base import (
-    HEADING,
-    IDENTITY,
-    SpecError,
-    check_entry,
-    digest,
-    read_file,
-    walk_lines,
+from .repository_base import IDENTITY, METADATA_SCHEMA, SpecError, digest, is_identity
+from .typed_data import safe_path
+
+TOP_FIELDS = {"schema_version", "document", "defines", "relations"}
+MODULE_FIELDS = ("title", "owns", "contains", "uses", "includes", "participates")
+RELATION_TYPES = (
+    "owns",
+    "defines",
+    "contains",
+    "uses",
+    "includes",
+    "binds",
+    "imports",
+    "narrows",
+    "supersedes",
+    "contrasts",
+    "relates",
+    "participates",
+    "verifies",
 )
-from .typed_data import decode, safe_path
-
-METADATA_VERSION = 2
-READING_SECTIONS = ("Purpose", "Terminology", "Usage", "Design", "Relationships")
-RETIRED_FENCES = frozenset(
-    {
-        "concorde-document",
-        "concorde-entities",
-        "concorde-dependencies",
-        "concorde-contract-binding",
-        "concorde-operations",
-        "concorde-capabilities",  # historical syntax is refused, never aliased
-        "concorde-agents",
-    }
-)
-_OLD_PARTS = frozenset({"Usage & Contract", "Architecture & Realization"})
-_HTML_ANCHOR = re.compile(r'^\s*(?:<a id="[^"]+"></a>\s*)+$')
-_HEADING_ANCHOR = re.compile(r"\s+\{#([^{}]+)\}\s*$")
-_DEFINITION = re.compile(
-    r"^((?:req|scenario)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)\s+[—–-]\s+\S"
-)
-
-
-class ContentModelError(SpecError):
-    """A source-local admission error; never a claim about semantic completeness."""
-
-    def __init__(self, path: str, message: str):
-        self.path = path
-        super().__init__(f"{path}: {message}", "invalid_spec", path)
+METADATA_RELATIONS = {
+    "narrows": {"type", "source", "target"},
+    "supersedes": {"type", "source", "target"},
+    "contrasts": {"type", "source", "target", "reason"},
+    "relates": {"type", "source", "verb", "target"},
+}
 
 
 def metadata_path(reading_path: str) -> str:
     """Exact companion name; never inspect a directory or follow a prose link."""
     safe_path(reading_path)
-    if not reading_path.endswith(".md") or reading_path.startswith(
-        (".concorde/", ".git/")
-    ):
-        raise ContentModelError(reading_path, "reading source must be durable Markdown")
-    return reading_path + ".json"
-
-
-def _identity(value: Any, path: str) -> str:
-    if not isinstance(value, str) or not IDENTITY.fullmatch(value):
-        raise ContentModelError(path, f"invalid stable identity: {value!r}")
-    return value
-
-
-def _object(value: Any, required: set[str], optional: set[str], path: str) -> dict:
-    if (
-        not isinstance(value, dict)
-        or not required <= value.keys()
-        or value.keys() - required - optional
-    ):
-        raise ContentModelError(
-            path, f"expected fields {sorted(required)}, optional {sorted(optional)}"
+    if not reading_path.endswith(".md"):
+        raise SpecError(
+            f"reading source must be Markdown: {reading_path}",
+            "invalid_spec",
+            reading_path,
         )
-    return value
-
-
-def _text(value: Any, path: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ContentModelError(path, "expected nonempty text")
-    return value
-
-
-def _array(value: Any, path: str) -> list:
-    if not isinstance(value, list):
-        raise ContentModelError(path, "expected an array")
-    return value
-
-
-def _entries(value: Any, path: str, *, nonempty: bool = False) -> tuple[str, ...]:
-    values = _array(value, path)
-    if nonempty and not values:
-        raise ContentModelError(path, "expected a nonempty entry array")
-    result = []
-    for entry in values:
-        try:
-            check_entry(entry)
-        except (TypeError, ValueError, AttributeError) as error:
-            raise ContentModelError(
-                path, f"invalid implementation entry: {entry!r}"
-            ) from error
-        if entry in result:
-            raise ContentModelError(path, f"duplicate implementation entry: {entry}")
-        result.append(entry)
-    return tuple(result)
+    return reading_path + ".json"
 
 
 @dataclass(frozen=True)
@@ -123,24 +62,20 @@ class SourceMember:
 
 
 @dataclass(frozen=True)
-class ReadingMeaning:
-    """A local readable explanation. Its text is derived from the reading source, never stored twice."""
-
-    anchor: str
-    text: str
-    line: int
-
-
-@dataclass(frozen=True)
 class DocumentUnit:
+    """One registered document: both members, its identity, owner and role."""
+
     document_id: str
     owner: str
+    role: str | None
     reading: SourceMember
     metadata: SourceMember
-    meanings: tuple[ReadingMeaning, ...]
+    value: Any
 
     @property
-    def declarations(self) -> dict:
+    def declarations(self) -> Any:
+        from .typed_data import decode
+
         # A caller cannot mutate the admitted bytes or another caller's declaration view.
         return decode(self.metadata.content.decode("utf-8"))
 
@@ -150,503 +85,368 @@ class DocumentUnit:
             sorted((self.reading, self.metadata), key=lambda member: member.path)
         )
 
-    @property
-    def identity(self) -> str:
-        """Bind identity, ownership, member roles, paths and exact bytes, including metadata edits."""
-        return digest(
-            {
-                "document_id": self.document_id,
-                "owner": self.owner,
-                "sources": [
-                    {"path": s.path, "role": s.role, "digest": s.digest}
-                    for s in self.sources
-                ],
-            }
-        )
 
-    def meaning(self, reference: str) -> ReadingMeaning:
-        if not isinstance(reference, str) or not reference.startswith("#"):
-            raise ContentModelError(
-                self.metadata.path, "meaning must be a local reading anchor"
-            )
-        anchor = reference[1:]
-        _identity(anchor, self.metadata.path)
-        for meaning in self.meanings:
-            if meaning.anchor == anchor:
-                if not meaning.text.strip():
-                    raise ContentModelError(
-                        self.reading.path, f"empty reading meaning: {reference}"
-                    )
-                return meaning
-        raise ContentModelError(
-            self.reading.path, f"missing reading meaning: {reference}"
-        )
+def _is_text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
 
 
-def reading_meanings(text: str, path: str) -> tuple[ReadingMeaning, ...]:
-    """Resolve explicit reading anchors outside fences, with bounded local section bodies.
+def _shape(
+    value: Any, required: set[str], optional: set[str] = frozenset()
+) -> str | None:
+    if not isinstance(value, dict):
+        return "expected an object"
+    missing = required - value.keys()
+    unknown = value.keys() - required - optional
+    if missing or unknown:
+        return f"missing fields {sorted(missing)}, unknown fields {sorted(unknown)}"
+    return None
 
-    A heading anchor extends to the next heading at the same or a higher level. A standalone
-    anchor extends to the next heading. Either ends at the next explicit anchor, so an empty
-    explanation cannot borrow a later declaration's text. Fenced examples create no anchors.
+
+def _path_list(value: Any, *, nonempty: bool) -> str | None:
+    if not isinstance(value, list) or (nonempty and not value):
+        return "expected a " + ("nonempty " if nonempty else "") + "array of paths"
+    if len(set(map(str, value))) != len(value):
+        return "paths must be unique"
+    for entry in value:
+        if not isinstance(entry, str) or entry == "/" or entry.endswith("//"):
+            return f"invalid path literal: {entry!r}"
+        try:
+            safe_path(entry[:-1] if entry.endswith("/") else entry)
+        except ValueError:
+            return f"invalid path literal: {entry!r}"
+    return None
+
+
+def metadata_problems(value: Any, *, entry: bool) -> list[tuple[str, str]]:
+    """Every schema-3 problem of one metadata member as (check identity, message)."""
+    return envelope_problems(value, entry=entry) + declaration_problems(value)
+
+
+def envelope_problems(value: Any, *, entry: bool) -> list[tuple[str, str]]:
+    """Problems of the metadata envelope: top-level fields, version, document record, module block presence.
+
+    An envelope problem makes the document's identity, owner or role untrustworthy.
     """
-    lines = walk_lines(text)
-    headings: dict[int, int] = {}
-    anchors: list[tuple[str, int, int | None]] = []
-    seen: set[str] = set()
-    for number, kind, line in lines:
-        if kind != "prose":
-            continue
-        heading = HEADING.match(line)
-        explicit = _HEADING_ANCHOR.search(heading.group(2)) if heading else None
-        definition = _DEFINITION.match(heading.group(2)) if heading else None
-        html = _HTML_ANCHOR.fullmatch(line)
-        if heading:
-            headings[number] = len(heading.group(1))
-        # A requirement/scenario heading cannot be redirected to a different definition ID.
-        if explicit and definition and explicit.group(1) != definition.group(1):
-            raise ContentModelError(
-                path, f"definition anchor differs from its identity at line {number}"
-            )
-        names = (
-            [explicit.group(1)]
-            if explicit
-            else [definition.group(1)]
-            if definition
-            else re.findall(r'<a id="([^"]+)"></a>', line)
-            if html
-            else []
-        )
-        for anchor in names:
-            _identity(anchor, path)
-            if anchor in seen:
-                raise ContentModelError(path, f"duplicate reading anchor: {anchor}")
-            seen.add(anchor)
-            anchors.append((anchor, number, len(heading.group(1)) if heading else None))
-    result = []
-    for index, (anchor, start, level) in enumerate(anchors):
-        next_anchor = next(
-            (number for _, number, _ in anchors[index + 1 :] if number > start),
-            len(lines) + 1,
-        )
-        end = min(
-            [
-                next_anchor,
-                *(
-                    number
-                    for number, next_level in headings.items()
-                    if number > start and (level is None or next_level <= level)
-                ),
-            ]
-        )
-        # Only readable text can supply the meaning. A bare code block or heading is not prose.
-        body = "\n".join(
-            line
-            for number, kind, line in lines
-            if start < number < end and kind == "prose" and number not in headings
-        )
-        result.append(ReadingMeaning(anchor, body.strip(), start))
-    return tuple(result)
-
-
-def terminology_body(text: str) -> str:
-    """Return only the real level-2 Terminology section, never a fenced example."""
-    result = []
-    active = False
-    for _, kind, line in walk_lines(text):
-        heading = HEADING.match(line) if kind == "prose" else None
-        if heading and len(heading.group(1)) <= 2:
-            if active:
-                break
-            active = len(heading.group(1)) == 2 and heading.group(2) == "Terminology"
-            continue
-        if active and kind == "prose":
-            result.append(line)
-    return "\n".join(result)
-
-
-def terminology_problems(text: str, *, primary: bool) -> tuple[str, ...]:
-    headings = [
-        (len(m.group(1)), m.group(2))
-        for _, kind, line in walk_lines(text)
-        if kind == "prose" and (m := HEADING.match(line))
-    ]
-    top = [title for level, title in headings if level == 2]
-    expected = 1 if primary else 0
-    if (
-        sum(title == "Terminology" for _, title in headings) != 1
-        or len(top) <= expected
-        or top[expected] != "Terminology"
-    ):
-        return (
-            "Terminology must be a unique early level-2 section (after Purpose in the entry, first in a topic)",
-        )
-    body = terminology_body(text)
-    if body.strip() == "No specialized terminology.":
-        return ()
-    rows = [line.strip() for line in body.splitlines() if line.strip().startswith("|")]
-    cells = [[cell.strip() for cell in row.strip("|").split("|")] for row in rows]
-    if (
-        len(cells) < 3
-        or cells[0] != ["Term", "Meaning / definition"]
-        or any(not re.fullmatch(r":?-{3,}:?", c) for c in cells[1])
-        or len(cells[1]) != 2
-        or any(len(row) != 2 or not all(row) for row in cells[2:])
-    ):
-        return ("Terminology requires a nonempty Term / Meaning / definition table",)
-    for row in cells[2:]:
-        for href in re.findall(r"\[[^\]]*\]\(([^\s)]+)\)", row[0]):
-            if not href.endswith("#terminology") or re.match(
-                r"(?:[a-z]+:|/)", href, re.I
-            ):
-                return (
-                    "Imported terms must link directly to a project document's #terminology table",
-                )
-    return ()
-
-
-def reading_problems(
-    text: str, *, primary: bool, role: str = "module"
-) -> tuple[str, ...]:
-    """Reading structure and forbidden inventory fences, not semantic sufficiency or site layout."""
-    lines = walk_lines(text)
-    headings = [
-        (number, len(m.group(1)), m.group(2))
-        for number, kind, line in lines
-        if kind == "prose" and (m := HEADING.match(line))
-    ]
-    problems = []
-    mermaid = False
-    for _, kind, line in lines:
-        if kind == "fence-open":
-            language = re.sub(r"^ {0,3}(?:`{3,}|~{3,})\s*", "", line).strip()
-            mermaid = language == "mermaid"
-            if language in RETIRED_FENCES:
-                problems.append(f"{language} is metadata, not a reading block")
-            if language == "concorde-contract" and role != "implementation":
-                problems.append(
-                    "canonical contracts belong in an implementation-role document"
-                )
-        elif kind == "fenced" and mermaid and re.match(r"\s*%%\s*flow:", line):
-            problems.append(
-                "retired executable flow binding; migrate explicitly to %% graph:"
-            )
-        elif (
-            kind == "fenced"
-            and mermaid
-            and role != "implementation"
-            and re.match(r"\s*%%\s*graph:", line)
-        ):
-            problems.append(
-                "exact executable Graph catalogs belong in implementation-role documents"
-            )
-        elif kind == "fence-close":
-            mermaid = False
-    if role != "implementation" and any(
-        _DEFINITION.match(title) for _, _, title in headings
-    ):
+    problems: list[tuple[str, str]] = []
+    if not isinstance(value, dict):
+        return [("CHK.document.schema", "metadata must be a JSON object")]
+    unknown = value.keys() - TOP_FIELDS - {"module", "extensions"}
+    missing = TOP_FIELDS - value.keys()
+    if unknown or missing:
         problems.append(
-            "requirements and scenarios belong in an implementation-role document, not a Module entry or topic"
+            (
+                "CHK.document.schema",
+                f"metadata fields: missing {sorted(missing)}, unknown {sorted(unknown)}",
+            )
         )
-    if primary and role != "module":
-        problems.append("module.md must have document.role module")
-    if any(title in _OLD_PARTS for _, _, title in headings):
-        problems.append("retired two-part headings require explicit migration")
-    if role == "module":
-        problems.extend(terminology_problems(text, primary=primary))
-    if primary:
-        top = [(number, title) for number, level, title in headings if level == 2]
-        if [title for _, title in top[:5]] != list(READING_SECTIONS) or any(
-            sum(title == required for _, _, title in headings) != 1
-            for required in READING_SECTIONS
-        ):
+    if (
+        type(value.get("schema_version")) is not int
+        or value.get("schema_version") != METADATA_SCHEMA
+    ):
+        problems.append(("CHK.document.schema", "schema_version must be the integer 3"))
+    document = value.get("document")
+    shape = _shape(document, {"id", "owner", "role"})
+    if shape:
+        problems.append(("CHK.document.schema", f"document: {shape}"))
+    if isinstance(document, dict):
+        if "role" not in document or document.get("role") not in {
+            "module",
+            "implementation",
+        }:
             problems.append(
-                "reading entry must start with unique level-2 Purpose, Terminology, Usage, Design, Relationships"
-            )
-        if any(title == "Entities" for _, _, title in headings):
-            problems.append(
-                "explain entity meaning in Design or Relationships, not an Entities inventory chapter"
-            )
-        for number, title in top:
-            if title not in READING_SECTIONS or title == "Terminology":
-                continue
-            end = next(
-                (n for n, level, _ in headings if n > number and level <= 2),
-                len(lines) + 1,
-            )
-            section = [(kind, line) for n, kind, line in lines if number < n < end]
-            if not any(
-                kind == "prose"
-                and line.strip()
-                and not HEADING.match(line)
-                and not _HTML_ANCHOR.fullmatch(line)
-                and not re.match(r"\s*(?:\||[-*+] |\d+[.)] )", line)
-                for kind, line in section
-            ):
-                problems.append(f"{title} requires explanatory prose")
-            if title == "Relationships":
-                in_mermaid = False
-                first_line = None
-                has_flowchart = False
-                for kind, line in section:
-                    if kind == "fence-open":
-                        in_mermaid = bool(
-                            re.fullmatch(r" {0,3}(?:`{3,}|~{3,})mermaid\s*", line)
-                        )
-                        first_line = None
-                    elif (
-                        kind == "fenced"
-                        and in_mermaid
-                        and first_line is None
-                        and line.strip()
-                    ):
-                        first_line = line.strip()
-                    elif kind == "fence-close" and in_mermaid:
-                        has_flowchart |= bool(
-                            first_line and re.match(r"^(flowchart|graph)\b", first_line)
-                        )
-                        in_mermaid = False
-                if not has_flowchart:
-                    problems.append("Relationships requires a Mermaid flowchart fence")
-            if title == "Purpose" and any(
-                kind != "prose"
-                or HEADING.match(line)
-                or re.match(r"\s*(?:\||[-*+] |\d+[.)] )", line)
-                for kind, line in section
-            ):
-                problems.append(
-                    "Purpose must be plain prose without headings, lists, tables or fences"
+                (
+                    "CHK.document.role",
+                    "document.role must be exactly module or implementation",
                 )
-    return tuple(problems)
+            )
+        for key in ("id", "owner"):
+            if key in document and not is_identity(document[key]):
+                problems.append(
+                    ("CHK.node.id", f"document.{key} is not a stable identity")
+                )
+    if entry and "module" not in value:
+        problems.append(
+            ("CHK.document.entry", "the entry's metadata requires the module block")
+        )
+    if not entry and "module" in value:
+        problems.append(
+            ("CHK.document.entry", "only the entry's metadata has a module block")
+        )
+    for name in ("defines", "relations"):
+        if name in value and not isinstance(value[name], list):
+            problems.append(("CHK.document.schema", f"{name} must be an array"))
+    return problems
 
 
-def json_declarations(text: str, language: str, path: str) -> tuple[Any, ...]:
-    """Decode only actual outer declarations; nested example fences are opaque."""
-    declarations = []
-    payload: list[str] | None = None
-    for _, kind, line in walk_lines(text):
-        if kind == "fence-open":
-            name = re.sub(r"^ {0,3}(?:`{3,}|~{3,})\s*", "", line).strip()
-            payload = [] if name == language else None
-        elif kind == "fenced" and payload is not None:
-            payload.append(line)
-        elif kind == "fence-close" and payload is not None:
-            declarations.append(decode("\n".join(payload)))
-            payload = None
-    if payload is not None:
-        raise ContentModelError(path, f"unclosed {language} declaration")
-    return tuple(declarations)
-
-
-def metadata_identity(path: str, raw: bytes, *, expected_owner: str) -> tuple[str, str]:
-    """Read identity from metadata alone, without admitting an unselected reading body.
-
-    Full declaration and readable-meaning validation happens on unit admission. This bounded
-    index step checks only the closed envelope, explicit array fields and document ownership.
-    """
-    try:
-        value = decode(raw.decode("utf-8"))
-    except (ValueError, UnicodeError) as error:
-        raise ContentModelError(
-            path, f"invalid metadata UTF-8 or JSON: {error}"
-        ) from error
-    _object(
-        value,
-        {"schema_version", "document", "entities", "dependencies", "bindings"},
-        {"extensions"},
-        path,
-    )
+def declaration_problems(value: Any) -> list[tuple[str, str]]:
+    """Problems of the declaration records: the module block, defines, relations and extensions."""
+    if not isinstance(value, dict):
+        return []
+    problems: list[tuple[str, str]] = []
+    if "module" in value:
+        problems.extend(module_block_problems(value["module"]))
+    for record in (
+        value.get("defines", []) if isinstance(value.get("defines"), list) else []
+    ):
+        problems.extend(define_problems(record))
+    for record in (
+        value.get("relations", []) if isinstance(value.get("relations"), list) else []
+    ):
+        problems.extend(relation_problems(record))
     if "extensions" in value:
         extensions = value["extensions"]
-        if not isinstance(extensions, dict) or not extensions:
-            raise ContentModelError(path, "extensions must be a nonempty named object")
-        for name in extensions:
-            _identity(name, path)
-        if "concorde.publication" in extensions:
-            raise ContentModelError(
-                path, "retired concorde.publication extension; migrate to document.role"
-            )
-    if (
-        type(value["schema_version"]) is not int
-        or value["schema_version"] != METADATA_VERSION
-    ):
-        raise ContentModelError(
-            path,
-            "unsupported document metadata version; migrate explicitly to Protocol 10 schema 2",
-        )
-    document = _object(value["document"], {"id", "owner", "role"}, set(), path)
-    if not isinstance(document["role"], str) or document["role"] not in {
-        "module",
-        "implementation",
-    }:
-        raise ContentModelError(path, "document.role must be module or implementation")
-    if Path(path).name == "module.md.json" and document["role"] != "module":
-        raise ContentModelError(path, "module.md must have document.role module")
-    document_id = _identity(document["id"], path)
-    owner = _identity(document["owner"], path)
-    if owner != expected_owner:
-        raise ContentModelError(path, "document owner differs from registration")
-    if document_id == owner:
-        raise ContentModelError(path, "document identity collides with Module identity")
-    for name in ("entities", "dependencies", "bindings"):
-        _array(value[name], path)
-    return document_id, owner
-
-
-def admit_document_unit(
-    reading_path: str,
-    reading: bytes,
-    metadata: bytes,
-    *,
-    expected_owner: str,
-    primary: bool = False,
-) -> DocumentUnit:
-    """Admit an explicitly supplied pair without reading any file or following any link.
-
-    Safe filesystem access, registry-wide uniqueness, expected provider sets, interface pairing,
-    file existence and diagram entity resolution are checked by the project-level caller.
-    """
-    sidecar = metadata_path(reading_path)
-    if not isinstance(reading, bytes) or not isinstance(metadata, bytes):
-        raise ContentModelError(reading_path, "source members must be exact bytes")
-    try:
-        text = reading.decode("utf-8")
-    except UnicodeError as error:
-        raise ContentModelError(reading_path, f"invalid UTF-8: {error}") from error
-    try:
-        value = decode(metadata.decode("utf-8"))
-    except (ValueError, UnicodeError) as error:
-        raise ContentModelError(sidecar, f"invalid UTF-8 or JSON: {error}") from error
-    if not text.strip():
-        raise ContentModelError(reading_path, "reading source must not be empty")
-    document_id, owner = metadata_identity(
-        sidecar, metadata, expected_owner=expected_owner
-    )
-    problems = reading_problems(text, primary=primary, role=value["document"]["role"])
-    if problems:
-        raise ContentModelError(reading_path, "; ".join(problems))
-    unit = DocumentUnit(
-        document_id,
-        owner,
-        SourceMember(reading_path, "reading", reading),
-        SourceMember(sidecar, "metadata", metadata),
-        reading_meanings(text, reading_path),
-    )
-    entity_ids: set[str] = set()
-    entity_titles: set[str] = set()
-    entity_targets: set[str] = set()
-    bound_entries: set[str] = set()
-    for entity in _array(value["entities"], sidecar):
-        _object(
-            entity,
-            {"id", "title", "kind", "meaning"},
-            {"files", "pending", "target_id"},
-            sidecar,
-        )
-        entity_id = _identity(entity["id"], sidecar)
-        title = _text(entity["title"], sidecar)
-        _text(entity["kind"], sidecar)
-        if (
-            entity_id in entity_ids
-            or entity_id in {document_id, owner}
-            or entity_id.startswith(("req.", "scenario."))
+        if not isinstance(extensions, dict) or any(
+            not is_identity(k) for k in extensions
         ):
-            raise ContentModelError(
-                sidecar, f"duplicate or conflicting entity identity: {entity_id}"
-            )
-        if title in entity_titles:
-            raise ContentModelError(sidecar, f"duplicate entity title: {title}")
-        entity_ids.add(entity_id)
-        entity_titles.add(title)
-        if entity["meaning"] != "#" + entity_id:
-            raise ContentModelError(
-                sidecar, "entity meaning must use its stable identity anchor"
-            )
-        unit.meaning(entity["meaning"])
-        files = _entries(entity.get("files", []), sidecar, nonempty="files" in entity)
-        pending = _entries(entity.get("pending", []), sidecar)
-        if set(pending) - set(files):
-            raise ContentModelError(
-                sidecar, "pending entries must be a subset of the entity's files"
-            )
-        if set(files) & bound_entries:
-            raise ContentModelError(
-                sidecar, "an implementation entry is listed by two entities"
-            )
-        bound_entries.update(files)
-        for entry in files:
-            if entry in {reading_path, sidecar} or (
-                entry.endswith("/") and reading_path.startswith(entry)
-            ):
-                raise ContentModelError(
-                    sidecar, "implementation entry cannot bind either document member"
+            problems.append(
+                (
+                    "CHK.document.schema",
+                    "extensions must be an object keyed by stable names",
                 )
-        if "target_id" in entity:
-            target = _identity(entity["target_id"], sidecar)
-            if (
-                "files" in entity
-                or "pending" in entity
-                or target == owner
-                or target in entity_targets
-            ):
-                raise ContentModelError(
-                    sidecar,
-                    "Module entity must be a unique non-self provider without file bindings",
-                )
-            entity_targets.add(target)
-    providers: set[str] = set()
-    for dependency in _array(value["dependencies"], sidecar):
-        _object(dependency, {"target_id", "meaning"}, set(), sidecar)
-        target = _identity(dependency["target_id"], sidecar)
-        if target == owner or target in providers:
-            raise ContentModelError(sidecar, "duplicate or self dependency declaration")
-        providers.add(target)
-        unit.meaning(dependency["meaning"])
-    participants: set[tuple[str, str, str]] = set()
-    for binding in _array(value["bindings"], sidecar):
-        _object(binding, {"id", "version", "role", "peer", "meaning"}, set(), sidecar)
-        contract = _identity(binding["id"], sidecar)
-        if type(binding["version"]) is not int or binding["version"] < 1:
-            raise ContentModelError(
-                sidecar, "contract version must be a positive integer"
             )
-        if not isinstance(binding["role"], str) or binding["role"] not in {
-            "provided",
-            "required",
-        }:
-            raise ContentModelError(
-                sidecar, "binding role must be provided or required"
-            )
-        peer = _text(binding["peer"], sidecar)
-        if peer.startswith("external:"):
-            _text(peer[len("external:") :], sidecar)
-        else:
-            _identity(peer, sidecar)
-            if peer == owner:
-                raise ContentModelError(
-                    sidecar, "binding peer cannot be the participant itself"
-                )
-        key = (contract, binding["role"], peer)
-        if key in participants:
-            raise ContentModelError(sidecar, "duplicate participant/peer/role binding")
-        participants.add(key)
-        unit.meaning(binding["meaning"])
-    return unit
+    return problems
 
 
-def load_document_unit(
-    root: Path, reading_path: str, *, expected_owner: str, primary: bool = False
-) -> DocumentUnit:
-    """Read exactly the explicitly selected pair, rejecting missing members and symlink aliases."""
-    if root.is_symlink() or not root.is_dir():
-        raise ContentModelError(
-            str(root), "project root must be a real directory, not a symlink"
+def define_problems(record: Any) -> list[tuple[str, str]]:
+    if not isinstance(record, dict):
+        return [("CHK.document.schema", "a defines record must be an object")]
+    kind = record.get("type")
+    if kind not in {"concept", "realization"}:
+        return [
+            (
+                "CHK.node.type",
+                f"defines record type must be concept or realization: {kind!r}",
+            )
+        ]
+    problems = []
+    if kind == "concept":
+        shape = _shape(
+            record, {"id", "type", "title", "meaning"}, {"retired", "external_conflict"}
         )
-    sidecar = metadata_path(reading_path)
-    return admit_document_unit(
-        reading_path,
-        read_file(root, reading_path),
-        read_file(root, sidecar),
-        expected_owner=expected_owner,
-        primary=primary,
-    )
+    else:
+        shape = _shape(
+            record, {"id", "type", "title", "meaning", "entries"}, {"pending"}
+        )
+    if shape:
+        problems.append(
+            ("CHK.document.schema", f"{kind} {record.get('id')!r}: {shape}")
+        )
+    if not is_identity(record.get("id")):
+        problems.append(
+            ("CHK.node.id", f"invalid {kind} identity: {record.get('id')!r}")
+        )
+    if "title" in record and not _is_text(record["title"]):
+        problems.append(
+            ("CHK.node.title", f"{kind} {record.get('id')} requires a nonempty title")
+        )
+    if "meaning" in record and not isinstance(record["meaning"], str):
+        problems.append(
+            ("CHK.node.meaning", f"{kind} {record.get('id')} meaning must be an anchor")
+        )
+    if kind == "concept":
+        if "retired" in record and (
+            _shape(record["retired"], {"reason"})
+            or not _is_text(record["retired"].get("reason"))
+        ):
+            problems.append(
+                (
+                    "CHK.concept.retired",
+                    f"concept {record.get('id')} retired requires a nonempty reason",
+                )
+            )
+        if "external_conflict" in record and not _is_text(record["external_conflict"]):
+            problems.append(
+                (
+                    "CHK.document.schema",
+                    f"concept {record.get('id')} external_conflict must be prose",
+                )
+            )
+    else:
+        entries = _path_list(record.get("entries"), nonempty=True)
+        if entries:
+            problems.append(
+                (
+                    "CHK.document.schema",
+                    f"realization {record.get('id')} entries: {entries}",
+                )
+            )
+        if "pending" in record:
+            pending = _path_list(record["pending"], nonempty=False)
+            if pending:
+                problems.append(
+                    (
+                        "CHK.document.schema",
+                        f"realization {record.get('id')} pending: {pending}",
+                    )
+                )
+    return problems
+
+
+def relation_problems(record: Any) -> list[tuple[str, str]]:
+    if not isinstance(record, dict):
+        return [("CHK.document.schema", "a relations record must be an object")]
+    kind = record.get("type")
+    if kind not in RELATION_TYPES:
+        return [("CHK.relation.type", f"unregistered relation type: {kind!r}")]
+    if kind not in METADATA_RELATIONS:
+        return [
+            (
+                "CHK.relation.site",
+                f"a {kind} relation is not declared in document metadata",
+            )
+        ]
+    shape = _shape(record, METADATA_RELATIONS[kind])
+    if shape:
+        return [("CHK.document.schema", f"{kind} relation: {shape}")]
+    problems = []
+    for key in ("source", "target"):
+        if not is_identity(record[key]):
+            problems.append(
+                ("CHK.relation.endpoints", f"{kind} {key} is not a stable identity")
+            )
+    if kind == "relates" and not _is_text(record["verb"]):
+        problems.append(("CHK.relates.verb", "relates requires a nonempty verb"))
+    if kind == "contrasts" and not _is_text(record["reason"]):
+        problems.append(("CHK.contrasts.once", "contrasts requires a nonempty reason"))
+    return problems
+
+
+def module_block_problems(block: Any) -> list[tuple[str, str]]:
+    shape = _shape(block, set(MODULE_FIELDS))
+    if shape:
+        return [("CHK.document.schema", f"module block: {shape}")]
+    problems = []
+    if not _is_text(block["title"]):
+        problems.append(
+            ("CHK.node.title", "the module block requires a nonempty title")
+        )
+    owns = block["owns"]
+    if (
+        not isinstance(owns, list)
+        or not owns
+        or any(not isinstance(path, str) for path in owns)
+        or len(set(owns)) != len(owns)
+    ):
+        problems.append(
+            (
+                "CHK.document.schema",
+                "owns must be a nonempty array of unique reading paths",
+            )
+        )
+    for name in ("contains", "uses"):
+        items = block[name]
+        if not isinstance(items, list):
+            problems.append(("CHK.document.schema", f"{name} must be an array"))
+            continue
+        for item in items:
+            shape = _shape(item, {"target", "meaning"}, {"relies_on"})
+            if shape:
+                problems.append(("CHK.document.schema", f"{name} entry: {shape}"))
+                continue
+            if not is_identity(item["target"]):
+                problems.append(
+                    ("CHK.relation.endpoints", f"{name} target is not an identity")
+                )
+            if not isinstance(item["meaning"], str):
+                problems.append(
+                    ("CHK.relation.meaning", f"{name} meaning must be an anchor")
+                )
+            if "relies_on" in item and (
+                not isinstance(item["relies_on"], list)
+                or not item["relies_on"]
+                or any(not is_identity(x) for x in item["relies_on"])
+                or len(set(map(str, item["relies_on"]))) != len(item["relies_on"])
+            ):
+                problems.append(
+                    (
+                        "CHK.document.schema",
+                        f"{name} relies_on must be a nonempty array of identities",
+                    )
+                )
+    if not isinstance(block["includes"], list):
+        problems.append(("CHK.document.schema", "includes must be an array"))
+    else:
+        for item in block["includes"]:
+            shape = _shape(item, {"kind", "target", "reason"})
+            if shape:
+                problems.append(("CHK.document.schema", f"includes entry: {shape}"))
+                continue
+            if item["kind"] not in {"module", "document", "external"}:
+                problems.append(
+                    (
+                        "CHK.document.schema",
+                        f"includes kind must be module, document or external: {item['kind']!r}",
+                    )
+                )
+            elif item["kind"] == "external":
+                if _path_list([item["target"]], nonempty=True):
+                    problems.append(
+                        (
+                            "CHK.relation.endpoints",
+                            f"external include target is not a path: {item['target']!r}",
+                        )
+                    )
+            elif not is_identity(item["target"]):
+                problems.append(
+                    ("CHK.relation.endpoints", "includes target is not an identity")
+                )
+            if not _is_text(item["reason"]):
+                problems.append(
+                    (
+                        "CHK.includes.reason",
+                        f"includes {item['target']!r} requires a nonempty reason",
+                    )
+                )
+    if not isinstance(block["participates"], list):
+        problems.append(("CHK.document.schema", "participates must be an array"))
+    else:
+        for item in block["participates"]:
+            shape = _shape(item, {"contract", "version", "role", "peer", "meaning"})
+            if shape:
+                problems.append(("CHK.document.schema", f"participates entry: {shape}"))
+                continue
+            if type(item["version"]) is not int or item["version"] < 1:
+                problems.append(
+                    (
+                        "CHK.participates.version",
+                        "participation version must be a positive integer",
+                    )
+                )
+            if item["role"] not in {"provided", "required"}:
+                problems.append(
+                    (
+                        "CHK.document.schema",
+                        "participation role must be provided or required",
+                    )
+                )
+            if item["peer"] != "external" and not is_identity(item["peer"]):
+                problems.append(
+                    (
+                        "CHK.relation.endpoints",
+                        "participation peer must be a Module or external",
+                    )
+                )
+            if not is_identity(item["contract"]):
+                problems.append(
+                    (
+                        "CHK.relation.endpoints",
+                        "participation contract is not an identity",
+                    )
+                )
+            if not isinstance(item["meaning"], str):
+                problems.append(
+                    ("CHK.relation.meaning", "participation meaning must be an anchor")
+                )
+    return problems
+
+
+__all__ = [
+    "DocumentUnit",
+    "IDENTITY",
+    "METADATA_RELATIONS",
+    "MODULE_FIELDS",
+    "RELATION_TYPES",
+    "SourceMember",
+    "metadata_path",
+    "metadata_problems",
+]

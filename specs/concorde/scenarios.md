@@ -1,89 +1,75 @@
-# Concorde Framework scenarios
+# Framework scenarios
 
-These precise specifications belong directly to the [Concorde Framework Module](module.md).
-Subject headings organize the Module's obligations; they do not create separate owners or contexts.
+These scenarios describe whole flows that cross several Modules, from the developer's point of
+view. The acceptance tests bound to the root Module verify them.
 
-## Terminology
+## Changing a project
 
-| Term                                             | Meaning / definition                           |
-| ------------------------------------------------ | ---------------------------------------------- |
-| [Module](module.md#terminology)                  | Defined in Concorde Framework.                 |
-| [Spec](module.md#terminology)                    | Defined in Concorde Framework.                 |
-| [Candidate](module.md#terminology)               | Defined in Concorde Framework.                 |
-| [Ready](module.md#terminology)                   | Defined in Concorde Framework.                 |
-| [Delivery](module.md#terminology)                | Defined in Concorde Framework.                 |
-| [Evidence](module.md#terminology)                | Defined in Concorde Framework.                 |
-| [Worker](module.md#terminology)                  | Defined in Concorde Framework.                 |
-| [Worktree](module.md#terminology)                | Defined in Concorde Framework.                 |
-| [Issue](module.md#terminology)                   | Defined in Concorde Framework.                 |
-| [Disposition](issues/lifecycle.md#terminology)   | Defined in Solving a recorded problem.         |
-| [Protocol binding](spec/values.md#terminology)   | Defined in Identities and versions.            |
-| [Spec context](harness/context.md#terminology)   | Defined in What information a worker receives. |
-| [Initialization](spec/initialize.md#terminology) | Defined in Project initialization.             |
+### scenario.concorde.develop-change — A change reaches a ready candidate
 
-## Concorde Framework
+- GIVEN a developer has agreed the intended behaviour in the owning Module's Spec
+- WHEN the user session calls planning, tasks, implementation, review and validation for that Module
+- THEN the change ends as one ready candidate that meets its configured checks
+- AND delivering it remains a separate request
 
-### scenario.concorde.develop-change — Successful development to a ready candidate
+### scenario.concorde.develop-gap — A missing promise stops dependent work
 
-- GIVEN a developer supplies intended behavior and constraints
-- WHEN the caller explicitly selects the owning Module, edits its contract as needed and invokes planning, tasks, implementation and required evidence Operations
-- THEN the request completes with one ready candidate that meets its configured completion conditions
-- AND delivery to a destination remains a separate, explicitly authorized transition
-
-### scenario.concorde.develop-gap — Missing promise stops dependent work
-
-- GIVEN an explicitly selected change depends on a Module promise that is not specified
+- GIVEN a change depends on a promise that the owning Module's Spec does not state
 - WHEN assessment or planning reaches that dependency
-- THEN the Framework stops the dependent work and reports the gap against its owning Module
-- AND the caller may select independent work in the same candidate
-- BUT the candidate does not reach ready
+- THEN the step stops and reports the gap against the owning Module
+- AND the user session may still choose independent work in the same candidate
+- BUT the candidate does not become ready
 
-### scenario.concorde.develop-failure — Failed step preserves inspectable progress
+### scenario.concorde.develop-failure — A failed step keeps its progress
 
-- GIVEN an explicit change fails during planning, implementation or evidence collection
-- WHEN the failure occurs
-- THEN the candidate's progress remains inspectable and resumable
-- BUT the candidate is not represented as a completed delivery
+- GIVEN a change fails during planning, implementation or validation
+- WHEN the failure is reported
+- THEN the candidate's progress remains available to inspect and resume
+- BUT the candidate is not reported as delivered
 
-### scenario.concorde.adopt-initialize — Initializing an uninitialized project
+## Adopting Concorde
 
-- GIVEN an uninitialized project and a supported integration
-- WHEN the developer previews and applies installation, then explicitly proposes and applies initialization
-- THEN initialization pins the accepted installed Protocol binding and creates an honest Module stub
-- AND unspecified business behavior is recorded as an explicit draft gap
+### scenario.concorde.adopt-initialize — Initializing a new project
 
-### scenario.concorde.adopt-conflict — Conflicting ownership prevents adoption
+- GIVEN an uninitialized project
+- WHEN the developer installs Concorde and then proposes and applies initialization
+- THEN the project records the installed Protocol version it accepted
+- AND it receives a starting Spec whose unknown business behaviour is stated as an open gap
 
-- GIVEN an installation target already owns conflicting state, or provisioning fails
-- WHEN adoption is attempted
-- THEN adoption does not complete
-- AND the Framework recovers previously valid owned state
-- BUT no partially applied owned state is left in place
+### scenario.concorde.adopt-conflict — A conflicting installation leaves the project unchanged
 
-### scenario.concorde.configure-apply — Applying Pi worker configuration
+- GIVEN the target project already has conflicting files, or provisioning fails
+- WHEN installation is applied
+- THEN installation does not complete
+- AND the previously installed state is restored
+- BUT no partially applied state remains
 
-- GIVEN an initialized project and an explicit, supported Pi worker model/thinking/timeout configuration
-- WHEN the developer applies it
-- THEN the Framework updates the configured worker selection accordingly
-- BUT an unsupported configuration value fails explicitly
+### scenario.concorde.configure-apply — Configuring workers
 
-### scenario.concorde.validate-record — Recording current deterministic evidence
+- GIVEN an initialized project and a supported worker model, thinking level and time limit
+- WHEN the developer applies that configuration
+- THEN later workers use it
+- BUT an unsupported value is rejected with an explicit error
+
+## Checking and delivering
+
+### scenario.concorde.validate-record — Recording current evidence
 
 - GIVEN a candidate under development
-- WHEN the developer checks it
-- THEN the Framework records current deterministic Spec and configured code check evidence for that candidate
-- BUT a failed or stale check cannot establish readiness
+- WHEN the developer validates it
+- THEN the Spec checks and configured code checks run, and their evidence is recorded for that candidate
+- BUT a failed or stale check cannot make the candidate ready
 
-### scenario.concorde.deliver-stage — Staging a verified change for delivery
+### scenario.concorde.deliver-stage — Delivering a ready candidate
 
 - GIVEN a ready candidate
 - WHEN the developer requests delivery
-- THEN the Framework stages the change on an independent branch and removes its worktree by default
-- BUT merging into the primary branch requires a further, separately authorized request by the sole primary writer
+- THEN the change is staged on its own branch and its worktree is removed by default
+- BUT merging into the primary branch needs a further, separate authorization
 
-### scenario.concorde.issues — Working with recorded feedback
+### scenario.concorde.issues — Inspecting recorded problems
 
-- GIVEN feedback or a persistent gap recorded against a Module or scenario identity
-- WHEN the developer inspects it through concorde-issues
-- THEN inspection is read-only
-- AND any mutation follows its declared evidence and disposition conditions
+- GIVEN a problem was recorded against a Module or scenario
+- WHEN the developer lists or shows it through `concorde-issues`
+- THEN nothing changes
+- AND any change to the record follows the Issues Module's evidence and disposition rules

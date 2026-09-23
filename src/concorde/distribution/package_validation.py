@@ -339,15 +339,6 @@ def _validate_operation_modules(root: Path) -> list[Finding]:
             )
             continue
         valid_modules[name] = module
-        if hasattr(module, "CLASS") or hasattr(module, "AGENTS"):
-            findings.append(
-                _finding(
-                    "CONCORDE-OPERATION-CONSTANTS-001",
-                    source,
-                    f"operation {name!r} retains a removed CLASS or AGENTS declaration.",
-                    "Use the typed executable inventory and declared USES relationships.",
-                )
-            )
         if module.CONTEXT_SELECTION not in {"bound", "none"}:
             findings.append(
                 _finding(
@@ -524,7 +515,7 @@ _AGENT_SPEC_HEADINGS: tuple[str, ...] = (
 def _validate_agent_profile(
     root: Path, agent: WorkerProfile, source: str
 ) -> list[Finding]:
-    """Validate terminal profiles, exported contracts and absence of retired child catalogs."""
+    """Validate terminal profiles and their exported contracts."""
 
     findings: list[Finding] = []
     try:
@@ -547,16 +538,6 @@ def _validate_agent_profile(
                 source,
                 f"agent {agent.name!r} contract references unexported types: {unknown}.",
                 "Reference only types in contracts.exported_types().",
-            )
-        )
-
-    if (root / "agents" / agent.name / "children").exists():
-        findings.append(
-            _finding(
-                "CONCORDE-AGENT-PROFILE-001",
-                source,
-                "worker child definitions are retired",
-                "Remove the child catalog; the terminal worker does its own admitted work.",
             )
         )
     return findings
@@ -756,11 +737,11 @@ _ENVELOPE_VERSIONS = {
     "concorde-operation-result": 3,
 }
 
-_OPERATION_HOST_BOUNDARY_ID = "document.harness.admission"
+_OPERATION_HOST_BOUNDARY_ID = "document.admission.contracts"
 
 
 def _registered_documents(root: Path) -> dict[str, str] | None:
-    """``{relative_path: text}`` for every unique Markdown path any registry target declares.
+    """``{relative_path: text}`` for every reading path any registry record ``owns``.
 
     Returns ``None`` when no readable registry exists at the conventional ``.concorde/specs.json``
     path, distinguishing "no registry" from "registry exists but is otherwise invalid" (already
@@ -774,12 +755,12 @@ def _registered_documents(root: Path) -> dict[str, str] | None:
         registry = json.loads(registry_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
         return None
-    if not isinstance(registry, dict) or not isinstance(registry.get("targets"), list):
+    if not isinstance(registry, dict) or not isinstance(registry.get("modules"), list):
         return None
     paths: set[str] = set()
-    for target in registry["targets"]:
-        if isinstance(target, dict) and isinstance(target.get("documents"), list):
-            paths.update(path for path in target["documents"] if isinstance(path, str))
+    for record in registry["modules"]:
+        if isinstance(record, dict) and isinstance(record.get("owns"), list):
+            paths.update(path for path in record["owns"] if isinstance(path, str))
     documents: dict[str, str] = {}
     for relative in sorted(paths):
         path = root / relative

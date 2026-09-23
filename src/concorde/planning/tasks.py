@@ -9,6 +9,7 @@ from ..harness.change_worktree import (
     target_state,
 )
 from ..review.review import repair_feedback, require_spec_review
+from ..spec.impact import change_scope
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import (
     artifact,
@@ -95,15 +96,12 @@ def validate_tasks(run, result, reserved_ids):
             "tasks must be nonempty, uniquely identified and initially incomplete",
             "invalid_completion",
         )
+    scope = change_scope(run.repository, run.target.id)
     for task in tasks:
-        run.repository.select(task["target_id"])
-        if task["target_id"] not in {
-            run.target.id,
-            *run.target.uses,
-            *(child.id for child in run.repository.children(run.target)),
-        }:
+        run.repository.module(task["target_id"])
+        if task["target_id"] not in scope:
             raise SpecError(
-                "Module tasks may target only this Module, its declared dependencies or direct submodules",
+                "Module tasks may target only this Module's change scope",
                 "permission_denied",
             )
 

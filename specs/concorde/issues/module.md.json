@@ -1,96 +1,279 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document": {
     "id": "document.issues.module",
     "owner": "module.issues",
     "role": "module"
   },
-  "entities": [
+  "module": {
+    "title": "Issues",
+    "owns": [
+      "specs/concorde/issues/module.md",
+      "specs/concorde/issues/solving.md",
+      "specs/concorde/issues/interface.md",
+      "specs/concorde/issues/requirements.md",
+      "specs/concorde/issues/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.harness.admission",
+        "meaning": "#uses-admission"
+      },
+      {
+        "target": "module.harness.context",
+        "meaning": "#uses-context",
+        "relies_on": [
+          "concept.context.grant"
+        ]
+      },
+      {
+        "target": "module.harness.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.workflow"
+        ]
+      },
+      {
+        "target": "module.harness.worktrees",
+        "meaning": "#uses-worktrees",
+        "relies_on": [
+          "concept.worktrees.candidate",
+          "concept.worktrees.worktree"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.registry"
+        ]
+      },
+      {
+        "target": "module.review",
+        "meaning": "#uses-review",
+        "relies_on": [
+          "concept.review.finding"
+        ]
+      },
+      {
+        "target": "module.validation",
+        "meaning": "#uses-validation",
+        "relies_on": [
+          "concept.validation.ready"
+        ]
+      },
+      {
+        "target": "module.agents",
+        "meaning": "#uses-agents",
+        "relies_on": [
+          "concept.agents.agent"
+        ]
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.operation"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "reference/pi/",
+        "reason": "Pi agent runtime and extension API that run the native solve workflow and serve the report_issue tool"
+      },
+      {
+        "kind": "external",
+        "target": "reference/langgraph/",
+        "reason": "the bookkeeping actions run as nodes of the Operations dispatch StateGraph"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
     {
-      "id": "entity.issues.runtime",
-      "title": "Issue runtime",
-      "kind": "program",
-      "meaning": "#entity.issues.runtime",
-      "files": [
-        "operations/issues.py",
-        "pi/workflows/issues.js",
+      "id": "concept.issues.issue",
+      "type": "concept",
+      "title": "Issue",
+      "meaning": "#concept.issues.issue"
+    },
+    {
+      "id": "concept.issues.report",
+      "type": "concept",
+      "title": "Issue report",
+      "meaning": "#concept.issues.report"
+    },
+    {
+      "id": "concept.issues.blocker",
+      "type": "concept",
+      "title": "Blocker",
+      "meaning": "#concept.issues.blocker"
+    },
+    {
+      "id": "concept.issues.disposition",
+      "type": "concept",
+      "title": "Disposition",
+      "meaning": "#concept.issues.disposition"
+    },
+    {
+      "id": "realization.issues.store",
+      "type": "realization",
+      "title": "Issue store",
+      "meaning": "#realization.issues.store",
+      "entries": [
+        "src/concorde/issues/store.py",
+        "src/concorde/spec/issue_shapes.py",
         "scripts/issues.py",
-        "src/concorde/issues/solve.py",
-        "tests/concorde/harness/native_issue_probe.mjs",
-        "tests/concorde/harness/test_host_tools.py",
-        "tests/concorde/harness/test_native_issues.py",
+        "tests/concorde/issues/test_store.py"
+      ]
+    },
+    {
+      "id": "realization.issues.reporting",
+      "type": "realization",
+      "title": "Reporting service",
+      "meaning": "#realization.issues.reporting",
+      "entries": [
+        "src/concorde/issues/reporting.py",
+        "src/concorde/issues/references.py",
+        "tests/concorde/issues/test_reporting.py",
+        "tests/concorde/issues/test_scope.py",
+        "tests/concorde/harness/test_pi_worker.py",
         "tests/concorde/operations/test_review.py"
       ]
     },
     {
-      "id": "entity.issues.solver",
-      "title": "Issue solver",
-      "kind": "agent",
-      "meaning": "#entity.issues.solver"
+      "id": "realization.issues.capability",
+      "type": "realization",
+      "title": "Issues capability",
+      "meaning": "#realization.issues.capability",
+      "entries": [
+        "operations/issues.py",
+        "src/concorde/issues/__init__.py",
+        "src/concorde/issues/graph.py",
+        "src/concorde/issues/solve.py",
+        "tests/concorde/issues/__init__.py",
+        "tests/concorde/issues/test_graph.py",
+        "tests/concorde/issues/test_disposition_recovery.py",
+        "tests/concorde/harness/test_host_tools.py"
+      ]
     },
     {
-      "id": "entity.issues.langgraph",
-      "title": "LangGraph",
-      "kind": "external library",
-      "meaning": "#entity.issues.langgraph"
-    },
-    {
-      "id": "entity.issues.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "meaning": "#entity.issues.harness",
-      "target_id": "module.harness"
-    },
-    {
-      "id": "entity.issues.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "meaning": "#entity.issues.spec",
-      "target_id": "module.spec"
-    },
-    {
-      "id": "entity.issues.review",
-      "title": "Review",
-      "kind": "used module",
-      "meaning": "#entity.issues.review",
-      "target_id": "module.review"
-    },
-    {
-      "id": "entity.issues.validation",
-      "title": "Validation",
-      "kind": "used module",
-      "meaning": "#entity.issues.validation",
-      "target_id": "module.validation"
-    },
-    {
-      "id": "entity.issues.agents",
-      "title": "Agents",
-      "kind": "used module",
-      "target_id": "module.agents",
-      "meaning": "#entity.issues.agents"
+      "id": "realization.issues.workflow",
+      "type": "realization",
+      "title": "Native solve workflow",
+      "meaning": "#realization.issues.workflow",
+      "entries": [
+        "pi/workflows/issues.js",
+        "src/concorde/harness/native_issues.py",
+        "tests/concorde/harness/native_issue_probe.mjs",
+        "tests/concorde/harness/test_native_issues.py"
+      ]
     }
   ],
-  "dependencies": [
+  "relations": [
     {
-      "target_id": "module.harness",
-      "meaning": "#entity.issues.harness"
+      "type": "relates",
+      "source": "concept.issues.issue",
+      "verb": "holds",
+      "target": "concept.issues.report"
     },
     {
-      "target_id": "module.spec",
-      "meaning": "#entity.issues.spec"
+      "type": "relates",
+      "source": "concept.issues.blocker",
+      "verb": "references",
+      "target": "concept.issues.report"
     },
     {
-      "target_id": "module.review",
-      "meaning": "#entity.issues.review"
+      "type": "relates",
+      "source": "concept.issues.disposition",
+      "verb": "closes or reopens",
+      "target": "concept.issues.issue"
     },
     {
-      "target_id": "module.validation",
-      "meaning": "#entity.issues.validation"
+      "type": "relates",
+      "source": "realization.issues.store",
+      "verb": "keeps",
+      "target": "concept.issues.issue"
     },
     {
-      "target_id": "module.agents",
-      "meaning": "#entity.issues.agents"
+      "type": "relates",
+      "source": "realization.issues.reporting",
+      "verb": "records reports through",
+      "target": "realization.issues.store"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.reporting",
+      "verb": "takes its limits from",
+      "target": "module.harness.context"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.capability",
+      "verb": "reads and disposes through",
+      "target": "realization.issues.store"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.capability",
+      "verb": "is admitted through",
+      "target": "module.harness.admission"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.capability",
+      "verb": "records solve progress in",
+      "target": "module.harness.worktrees"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.capability",
+      "verb": "validates the candidate through",
+      "target": "module.validation"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.capability",
+      "verb": "is dispatched by",
+      "target": "module.operations"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.store",
+      "verb": "writes files through",
+      "target": "module.spec"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.workflow",
+      "verb": "calls the host steps of",
+      "target": "realization.issues.capability"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.workflow",
+      "verb": "asks for decisions from",
+      "target": "module.agents"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.workflow",
+      "verb": "verifies through",
+      "target": "module.review"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.workflow",
+      "verb": "runs through",
+      "target": "module.harness.execution"
     }
   ],
-  "bindings": []
+  "extensions": {}
 }

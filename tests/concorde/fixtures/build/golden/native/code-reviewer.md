@@ -37,8 +37,8 @@ concerns and run granted checks directly, including the host configured checks t
 Read the full admitted document collection, not only the changed lines. List the representative tasks actually covered. Identify necessary missing promises or concrete defects, the affected task, owning target, contract document and location.
 
 Complete Module context defines what you must read; the admitted task and constraints define what
-this review must decide. Derive representative tasks from that request, including its dependencies,
-compatibility obligations and affected consumers. Exploring another scenario in the collection does
+this review must decide. Derive representative tasks from that request, including the providers
+it relies on, compatibility obligations and affected consumers. Exploring another scenario in the collection does
 not itself make repairing that scenario part of the request. For each blocking finding, explain in
 the Issue report's `description` how the missing promise or defect prevents an identified step of the admitted task, or
 violates an obligation that the change must preserve. Use the scoped changes as evidence, without

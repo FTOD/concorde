@@ -5,7 +5,6 @@ import unittest
 
 from concorde.harness.operation_node import OperationNode
 from concorde.harness.operation_state import OperationRuntimeContext
-from concorde.harness.studio import build_studio_graph
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
 from tests.concorde.harness.test_operation_node import _stage_context
@@ -13,7 +12,7 @@ from tests.concorde.harness.test_operation_node import _stage_context
 
 class OptionalOperationTests(unittest.TestCase):
     @verifies("scenario.harness.optional-operation")
-    def test_stategraph_sync_async_and_studio_are_the_same_boundary(self):
+    def test_stategraph_sync_and_async_share_one_boundary(self):
         context = _stage_context()
         seen = []
 
@@ -53,8 +52,5 @@ class OptionalOperationTests(unittest.TestCase):
         )
         self.assertEqual(value["plan"], "Plan")
         self.assertEqual(seen, [context, context])
-        studio = build_studio_graph("planner", launcher=result)
-        self.assertEqual(studio.get_graph().to_json(), graph.get_graph().to_json())
-        self.assertEqual(studio.invoke(context["data"])["plan"], "Plan")
         with self.assertRaisesRegex(RuntimeError, "inspection only"):
             graph.invoke(context["data"])
